@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -e
+
+GPADMIN=gpadmin
+GPVER=6
+GPHOME=/opt/greenplum-db
+
+if [ "$1" = configure ]; then
+
+  chown -R ${GPADMIN}:${GPADMIN} ${GPHOME}-${GPVER}
+
+  cat << _EOF_ > /etc/ld.so.conf.d/gpdb.conf
+${GPHOME}-${GPVER}/lib/
+_EOF_
+
+  /sbin/ldconfig
+fi

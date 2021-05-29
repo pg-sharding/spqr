@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+    #   shgo:
+    shard1:
+        build:
+            dockerfile: ./docker/shard/Dockerfile
+            context: .
+        environment:
+            CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+        ports:
+            - "6432:6432"
+        #    shard2:
+
+#netrowk:

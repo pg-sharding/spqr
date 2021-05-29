@@ -1,0 +1,6 @@
+addr: 'localhost:6432'
+proto: 'tcp'
+conn_cfg:
+    shard_mapping: 
+        - conn_addr: 'localhost:5432'
+        - conn_addr: 'localhost:5442'
