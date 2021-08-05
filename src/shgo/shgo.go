@@ -24,6 +24,7 @@ import (
 	//"os"
 	//"crypto/x509"
 	"github.com/wal-g/tracelog"
+	"google.golang.org/grpc/reflection"
 )
 
 type Config struct {
@@ -300,6 +301,8 @@ func (sg *Shgo) ServHttp() error {
 
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
+
+	reflection.Register(serv)
 
 	lis, err  := net.Listen("tcp", "localhost:7000")
 	if err != nil {

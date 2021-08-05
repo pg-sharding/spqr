@@ -5,17 +5,13 @@ package yandex.shgo.shards;
 option go_package = "yandex/shgo/shards";
 
 // The greeting service definition.
-service ShardSerivce {
-  // Sends a greeting
+service ShardService {
   rpc ListShards (ShardRequest) returns (ShardReply) {}
 }
 
-
-// The request message containing the user's name.
 message ShardRequest {
 }
 
-// The response message containing the greetings
 message ShardReply {
 	repeated string shards = 1;
 }

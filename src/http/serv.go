@@ -2,15 +2,16 @@ package shhttp
 
 import (
 	"context"
+	"fmt"
 	shards "github.com/shgo/genproto/protos"
 	"google.golang.org/grpc"
 )
 
 type Shgoserver struct {
-	shards.UnimplementedShardSerivceServer
+	shards.UnimplementedShardServiceServer
 }
 
-var _ shards.ShardSerivceServer = &Shgoserver{}
+var _ shards.ShardServiceServer = &Shgoserver{}
 //
 //func NewShgoServer() *shgoserver {
 //	//server := grpc.NewServer()
@@ -18,13 +19,15 @@ var _ shards.ShardSerivceServer = &Shgoserver{}
 //}
 
 func (* Shgoserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
+	fmt.Print("repl")
 	return &shards.ShardReply{
 		Shards: []string{
-			"fd",
+			"loh1",
+			"loh2",
 		},
 	}, nil
 }
 
 func Register(server * grpc.Server) {
-	shards.RegisterShardSerivceServer(server, &Shgoserver{})
+	shards.RegisterShardServiceServer(server, &Shgoserver{})
 }
