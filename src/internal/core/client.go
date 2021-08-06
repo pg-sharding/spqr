@@ -5,56 +5,41 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"net"
+
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
-	"net"
 )
 
 type ShClient struct {
-
 	conn net.Conn
-	rule *Rule
+	rule *FRRule
+
+	r *Route
 
 	be *pgproto3.Backend
 
-	sm *pgproto3.StartupMessage
+	sm     *pgproto3.StartupMessage
+	shconn *ShServer
 }
-//
-//func (cl *ShClient) Send(msg pgproto3.FrontendMessage) error {
-//	return cl.fr.Send(msg)
-//}
 
+func (cl *ShClient) ShardConn() *ShServer {
+	return cl.shconn
+}
+
+func (cl *ShClient) Unroute() {
+	cl.shconn = nil
+}
 
 func NewClient(pgconn net.Conn) *ShClient {
-
 	return &ShClient{
 		conn: pgconn,
 	}
-
-	//
-	////pgConn, err := net.Dial("tcp6", conn.cfg.ShardMapping[i].ConnAddr)
-	////util.Fatal(err)
-	//
-	//if ret.rule.SHStorage.ReqSSL {
-	//	pgConn, err = conn.ReqBackendSsl(pgConn)
-	//}
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//fr, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(pgConn), pgConn)
-	//util.Fatal(err)
-	//
-	//if err := conn.initConn(fr, conn.smFromSh(shConf), shConf); err != nil {
-	//	return nil, err
-	//}
 }
 
-const sslproto = 80877103
 
-func (cl *ShClient) Init ()  error {
+func (cl *ShClient) Init() error {
 
 	var backend *pgproto3.Backend
 
@@ -122,8 +107,6 @@ func (cl *ShClient) Init ()  error {
 		}
 	}
 	//!! frontend auth
-
-
 	cl.sm = sm
 
 	tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
@@ -135,6 +118,8 @@ func (cl *ShClient) Init ()  error {
 	backend.Send(&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"})
 	backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"})
 	backend.Send(&pgproto3.ReadyForQuery{})
+
+	cl.be = backend
 
 	return nil
 }
@@ -160,12 +145,47 @@ func (cl *ShClient) DB() string {
 
 	return defaultUsr
 }
-
-
-func (cl * ShClient) Receive() (pgproto3.FrontendMessage, error) {
+func (cl *ShClient) Receive() (pgproto3.FrontendMessage, error) {
 	return cl.be.Receive()
 }
 
-func (cl*ShClient) Send(msg pgproto3.BackendMessage) error {
+func (cl *ShClient) Send(msg pgproto3.BackendMessage) error {
 	return cl.be.Send(msg)
+}
+
+func (cl *ShClient) AssignRoute(r *Route) {
+	cl.r = r
+}
+
+func (cl *ShClient) ProcQuery(query *pgproto3.Query) (byte, error) {
+
+	if err := cl.shconn.Send(query); err != nil {
+		return 0, err
+	}
+
+	for {
+		msg, err := cl.shconn.Receive()
+		if err != nil {
+			return 0, err
+		}
+		switch v := msg.(type) {
+		case *pgproto3.ReadyForQuery:
+			return v.TxStatus, nil
+		}
+
+		err = cl.Send(msg)
+		if err != nil {
+			//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+			//tracelog.InfoLogger.Println(msg)
+			return 0, err
+		}
+	}
+}
+
+func (cl *ShClient) AssignShrdConn(srv *ShServer) {
+	cl.shconn = srv
+}
+
+func (cl *ShClient) Route() *Route {
+	return cl.r
 }

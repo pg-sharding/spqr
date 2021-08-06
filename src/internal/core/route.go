@@ -1,105 +1,107 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/jackc/pgproto3"
-	"net"
 )
 
 type routeKey struct {
 	usr string
-	db string
+	db  string
 }
-
-
 type shardKey struct {
 	i int
 }
 
 type Route struct {
-	rule *Rule
+	rule []*BERule
 
-	servPoolPending map[shardKey]*ShServer
+	mu sync.Mutex
+
+	servPoolPending map[shardKey][]*ShServer
 
 	client *ShClient
 
-	shardConn *ShServer
 	//serv   ShServer
-}
-
-func (r *Route) assignCLient(client * ShClient) {
-	r.client = client
 }
 
 func (r *Route) Client() *ShClient {
 	return r.client
 }
 
-func (r *Route) ShardConn() *ShServer {
-	return r.shardConn
+func (r *Route) Unroute(i int, cl *ShClient) {
+	key := shardKey{
+		i: i,
+	}
+
+	r.mu.Lock()
+
+	srv := cl.ShardConn()
+	cl.Unroute()
+	r.servPoolPending[key] = append(r.servPoolPending[key], srv)
+
+	r.mu.Unlock()
 }
 
-func (r*Route) Unroute() {
-	r.shardConn = nil
-}
-
-func NewRoute(rule *Rule) *Route {
+func NewRoute(rules []*BERule) *Route {
 	return &Route{
-		rule: rule,
-		servPoolPending: map[shardKey]*ShServer{
-
-		},
+		rule:            rules,
+		servPoolPending: map[shardKey][]*ShServer{},
+		mu:              sync.Mutex{},
 	}
 }
 
-func (r*Route) ProcQuery(query *pgproto3.Query) (byte, error) {
-
-	if err := r.shardConn.Send(query); err != nil {
-		return 0, err
-	}
-
-	for {
-		msg, err := r.shardConn.Receive()
-		if err != nil {
-			return 0, err
-		}
-		switch v := msg.(type) {
-		case *pgproto3.ReadyForQuery:
-			return v.TxStatus, nil
-		}
-
-		err = r.client.Send(msg)
-		if err != nil {
-			//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-			//tracelog.InfoLogger.Println(msg)
-			return 0, err
-		}
-	}
-}
-
-
-
-func (r *Route) smFromSh() *pgproto3.StartupMessage {
+func (r *Route) smFromSh(i int) *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "shgo",
 			"client_encoding":  "UTF8",
-			"user":             r.rule.Usr,
-			"database":         r.rule.DB,
+			"user":             r.rule[i].SHStorage.ConnUsr,
+			"database":         r.rule[i].SHStorage.ConnDB,
 		},
 	}
 	return sm
 }
 
-func (r *Route) PushConn(netconn net.Conn) error {
+func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
 
-	srv := NewServer(r.rule, netconn)
-	if r.rule.SHStorage.ReqSSL {
+	key := shardKey{
+		indx,
+	}
+
+	var ret *ShServer
+
+	r.mu.Lock()
+
+	if srv, ok := r.servPoolPending[key]; ok && len(srv) > 0 {
+		ret, r.servPoolPending[key] = r.servPoolPending[key][0], r.servPoolPending[key][1:]
+
+		r.mu.Unlock()
+		return ret, nil
+	} else if !ok {
+		r.servPoolPending[key] = make([]*ShServer, 0)
+	}
+
+	netconn, err := Connect(proto, r.rule[indx])
+	if err != nil {
+		return nil, err
+	}
+
+	srv := NewServer(r.rule[indx], netconn)
+	if r.rule[indx].SHStorage.ReqSSL {
 		if err := srv.ReqBackendSsl(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return srv.initConn(r.smFromSh())
+	r.mu.Unlock()
+
+	if err := srv.initConn(r.smFromSh(indx)); err != nil {
+		return nil, err
+	}
+
+	return srv, nil
 }

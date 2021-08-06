@@ -4,17 +4,18 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"net"
+	"reflect"
+
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
-	"net"
-	"reflect"
 )
 
 type ShServer struct {
-	rule *Rule
+	rule *BERule
 	conn net.Conn
-	fr *pgproto3.Frontend
+	fr   *pgproto3.Frontend
 }
 
 func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
@@ -64,16 +65,12 @@ func (srv *ShServer) Send(query pgproto3.FrontendMessage) error {
 func (srv *ShServer) Receive() (pgproto3.BackendMessage, error) {
 	return srv.fr.Receive()
 }
-
-
-func NewServer(rule *Rule, conn net.Conn) *ShServer {
+func NewServer(rule *BERule, conn net.Conn) *ShServer {
 	return &ShServer{
 		rule: rule,
 		conn: conn,
 	}
 }
-
-
 func (srv *ShServer) ReqBackendSsl() error {
 
 	b := make([]byte, 4)

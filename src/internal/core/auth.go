@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/jackc/pgproto3"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"

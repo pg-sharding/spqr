@@ -2,61 +2,49 @@ package shgo
 
 import (
 	"fmt"
-	shhttp "github.com/shgo/src/http"
-	"github.com/shgo/src/internal/core"
-	"google.golang.org/grpc"
 	"net"
 	"reflect"
-	//"strconv"
 
-	//	"github.com/jackc/pgx"
-	//	"encoding/json"
 	"github.com/jackc/pgproto3"
-	"github.com/shgo/src/internal/conn"
+	shhttp "github.com/shgo/src/http"
+	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
-	//spqr "github.com/shgo/parser"
-	//sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
-	//	"github.com/pganalyze/pg_query_go"
-	//"github.com/wal-g///tracelog"
-	//"os"
-	//"crypto/x509"
 	"github.com/wal-g/tracelog"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-type Config struct {
-	Addr    string      `json:"addr" toml:"addr" yaml:"addr"`
-	ADMAddr string      `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
-	PROTO   string      `json:"proto" toml:"proto" yaml:"proto"`
-	ConnCfg conn.Config `json:"conn_cfg" toml:"conn_cfg" yaml:"conn_cfg"`
+type GlobConfig struct {
+	Addr    string `json:"addr" toml:"addr" yaml:"addr"`
+	ADMAddr string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
+	PROTO   string `json:"proto" toml:"proto" yaml:"proto"`
 
 	Tlscfg core.TLSConfig `json:"tls_cfg" toml:"tls_cfg" yaml:"tls_cfg"`
+
+	RouterCfg core.RouterConfig `json:"router" toml:"router" yaml:"router"`
 }
 
 type Shgo struct {
-	Cfg Config
+	Cfg GlobConfig `json:"global" toml:"global" yaml:"global"`
 
-	Od conn.Connector
-	router core.Router
-	R  r.R
+	Router *core.Router `json:"router" toml:"router" yaml:"router"`
+	R      r.R
 }
 
 const TXREL = 73
 
-func (sg *Shgo) frontend(route *core.Route) error {
+func (sg *Shgo) frontend(cl *core.ShClient) error {
 
-	for k, v := range route.Client().StartupMessage().Parameters {
+	for k, v := range cl.StartupMessage().Parameters {
 		tracelog.InfoLogger.Println("log loh %v %v", k, v)
 	}
 	msgs := make([]pgproto3.Query, 0)
-
-
 	activeSh := r.NOSHARD
 
 	for {
 		tracelog.InfoLogger.Println("round")
-		msg, err := route.Client().Receive()
+		msg, err := cl.Receive()
 		if err != nil {
 			util.Fatal(err)
 			return err
@@ -75,8 +63,8 @@ func (sg *Shgo) frontend(route *core.Route) error {
 
 			if shindx == r.NOSHARD && activeSh == r.NOSHARD {
 
-				_ = route.Client().Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
-				_ = route.Client().Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+				_ = cl.Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
+				_ = cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 					{
 						Name:                 "fortune",
 						TableOID:             0,
@@ -88,37 +76,43 @@ func (sg *Shgo) frontend(route *core.Route) error {
 					},
 				}})
 
-				_ = route.Client().Send(&pgproto3.DataRow{Values: [][]byte{[]byte("loh")}})
-				_ = route.Client().Send(&pgproto3.CommandComplete{CommandTag: "SELECT 1"})
-				_ = route.Client().Send(&pgproto3.ReadyForQuery{})
+				_ = cl.Send(&pgproto3.DataRow{Values: [][]byte{[]byte("loh")}})
+				_ = cl.Send(&pgproto3.CommandComplete{CommandTag: "SELECT 1"})
+				_ = cl.Send(&pgproto3.ReadyForQuery{})
 
 			} else {
 
 				fmt.Printf("get conn to %d\n", shindx)
-				if route.ShardConn() == nil {
+				if cl.ShardConn() == nil {
+
 					activeSh = shindx
-					netconn, err := sg.Od.Connect(shindx)
-					route.PushConn(netconn)
+
+					shConn, err := cl.Route().GetConn(sg.Router.CFG.PROTO, activeSh)
+
 					if err != nil {
-						return err
+						panic(err)
 					}
+
+					cl.AssignShrdConn(shConn)
 				}
 				var txst byte
 				for _, msg := range msgs {
-					if txst, err = route.ProcQuery(&msg); err != nil {
+					if txst, err = cl.ProcQuery(&msg); err != nil {
 						return err
 					}
 				}
 
 				msgs = make([]pgproto3.Query, 0, 0)
 
-				if err := route.Client().Send(&pgproto3.ReadyForQuery{}); err != nil {
+				if err := cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
 					return err
 				}
 
 				if txst == TXREL {
 					fmt.Println("releasing tx\n")
-					route.Unroute()
+
+					cl.Route().Unroute(activeSh, cl)
+
 					activeSh = r.NOSHARD
 				}
 			}
@@ -132,17 +126,15 @@ func (sg *Shgo) frontend(route *core.Route) error {
 
 	return nil
 }
-
-
 func (sg *Shgo) serv(conn net.Conn) error {
 
-	route, err := sg.router.PreRoute(conn)
+	client, err := sg.Router.PreRoute(conn)
 	if err != nil {
 		return err
 	}
 
 	//msgBuf := make([]pgproto3.FrontendMessage, 0)
-	return sg.frontend(route)
+	return sg.frontend(client)
 }
 
 func (sg *Shgo) ProcPG() error {

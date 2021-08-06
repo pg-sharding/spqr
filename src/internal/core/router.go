@@ -1,18 +1,38 @@
 package core
 
 import (
-	"golang.org/x/xerrors"
+	"github.com/wal-g/tracelog"
 	"net"
 	"sync"
 )
 
-type Router struct {
-	mu sync.Mutex
-	routePool map[routeKey][]*Route
-	rules map[routeKey]*Rule
+type RouterConfig struct {
+	BackendRules    []*BERule `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	FrontendRules   []*FRRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	MaxConnPerRoute int    `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
+	CAPath          string `json:"ca_path" toml:"ca_path" yaml:"ca_path"`
+	ServPath        string `json:"serv_key_path" toml:"serv_key_path" yaml:"serv_key_path"`
+	TLSSertPath     string `json:"tls_cert_path" toml:"tls_cert_path" yaml:"tls_cert_path"`
+	ReqSSL          bool   `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
+
+	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
 }
 
-func (r * Router) PreRoute(conn net.Conn) (*Route, error) {
+type Router struct {
+	CFG       RouterConfig
+	mu        sync.Mutex
+	routePool map[routeKey][]*Route
+}
+
+func NewRouter(cfg RouterConfig) *Router {
+	return &Router{
+		CFG:       cfg,
+		mu:        sync.Mutex{},
+		routePool: map[routeKey][]*Route{},
+	}
+}
+
+func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 
 	cl := NewClient(conn)
 
@@ -24,7 +44,7 @@ func (r * Router) PreRoute(conn net.Conn) (*Route, error) {
 	{
 		key := routeKey{
 			usr: cl.Usr(),
-			db: cl.DB(),
+			db:  cl.DB(),
 		}
 		if routes, ok := r.routePool[key]; ok && len(routes) > 0 {
 
@@ -32,55 +52,41 @@ func (r * Router) PreRoute(conn net.Conn) (*Route, error) {
 
 			r.routePool[key] = routes
 
-			route.assignCLient(cl)
+			cl.AssignRoute(route)
 
 			r.mu.Unlock()
-			return route, nil
+			return cl, nil
 		} else {
 			if !ok {
 				r.routePool[key] = make([]*Route, 0)
 			}
 
+			route := NewRoute(r.CFG.BackendRules)
 
-			if rule, ok := r.rules[key]; !ok {
-				r.mu.Unlock()
-				return nil, xerrors.Errorf("failed to match route")
-			} else{
-				route := NewRoute(rule)
+			r.routePool[key] = append(r.routePool[key], route)
 
-				r.routePool[key] = append(r.routePool[key], route)
+			cl.AssignRoute(route)
 
-				route.assignCLient(cl)
+			r.mu.Unlock()
+			return cl, nil
 
-				r.mu.Unlock()
-				return route, nil
-			}
 		}
 	}
 
 	return nil, nil
 }
+func (r *Router) ListShards() []string {
+	var ret []string
 
+	for _, sh := range r.CFG.BackendRules {
+		ret = append(ret, sh.SHStorage.ConnAddr)
+	}
 
-//
-//func (router *Router) Connect(i int) (*core.ShServer, error) {
-//
-//	shConf := conn.cfg.ShardMapping[i]
-//
-//	conn.connMu[i].Lock()
-//	{
-//		if connl := conn.connMp[i]; len(connl) > 0 {
-//			serv := connl[0]
-//			connl = connl[1:]
-//			conn.connMp[i] = connl
-//		} else {
-//
-//
-//
-//			serv := core.NewServer(
-//			)
-//		}
-//	}
-//	conn.connMu[i].Unlock()
-//	return serv, nil
-//}
+	return ret
+}
+
+func Connect(proto string, rule *BERule) (net.Conn, error) {
+	tracelog.InfoLogger.Printf("acuire backend connection on addr %v\n", rule.SHStorage.ConnAddr)
+
+	return net.Dial(proto, rule.SHStorage.ConnAddr)
+}

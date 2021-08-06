@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/shgo/src/internal/conn"
+	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/shgo"
 	"github.com/spf13/cobra"
@@ -27,7 +27,7 @@ var runCmd = &cobra.Command{
 
 		fmt.Println("i open file", cnfPath)
 
-		var cfg shgo.Config
+		var cfg shgo.GlobConfig
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(&cfg)
 		if err != nil {
@@ -35,11 +35,11 @@ var runCmd = &cobra.Command{
 		}
 
 		fmt.Println("PARSED:", cfg.Addr)
-		fmt.Println("PARSED:", cfg.ConnCfg.ShardMapping)
+
 		sh := shgo.Shgo{
-			Cfg: cfg,
-			Od:  conn.NewConnector(cfg.ConnCfg),
-			R:   r.NewR(),
+			Cfg:    cfg,
+			Router: core.NewRouter(cfg.RouterCfg),
+			R:      r.NewR(),
 		}
 
 		wg := &sync.WaitGroup{}
