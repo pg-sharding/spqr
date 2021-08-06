@@ -65,12 +65,14 @@ func (srv *ShServer) Send(query pgproto3.FrontendMessage) error {
 func (srv *ShServer) Receive() (pgproto3.BackendMessage, error) {
 	return srv.fr.Receive()
 }
+
 func NewServer(rule *BERule, conn net.Conn) *ShServer {
 	return &ShServer{
 		rule: rule,
 		conn: conn,
 	}
 }
+
 func (srv *ShServer) ReqBackendSsl() error {
 
 	b := make([]byte, 4)

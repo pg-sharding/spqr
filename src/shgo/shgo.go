@@ -22,66 +22,7 @@ type GlobConfig struct {
 	ADMAddr string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
 	PROTO   string `json:"proto" toml:"proto" yaml:"proto"`
 
-	Tlscfg core.TLSConfig `json:"tls_
-type relayState struct {
-	txActive bool
-
-	activeShard int
-}
-
-type ConnManager interface {
-	TXBeginCB(cl *core.ShClient, rst *relayState) error
-	TXEndCB(cl *core.ShClient, rst *relayState) error
-
-	RouteCB(cl *core.ShClient, rst *relayState) error
-	ValidateReRoute(rst *relayState) bool
-}
-
-type TxConnManager struct {
-}
-
-func NewTxConnManager() *TxConnManager {
-	return &TxConnManager{
-
-	}
-}
-
-func (t *TxConnManager) RouteCB(cl *core.ShClient, rst *relayState) error {
-
-	shConn, err := cl.Route().GetConn("tcp6", rst.activeShard)
-
-	if err != nil {
-		return err
-	}
-
-	cl.AssignShrdConn(shConn)
-
-	return nil
-}
-
-func (t *TxConnManager) ValidateReRoute(rst *relayState) bool {
-	return rst.activeShard == r.NOSHARD || rst.txActive
-}
-
-func (t *TxConnManager) TXBeginCB(cl *core.ShClient, rst *relayState) error {
-	return nil
-}
-
-func (t *TxConnManager) TXEndCB(cl *core.ShClient, rst *relayState) error {
-
-	fmt.Println("releasing tx\n")
-
-	cl.Route().Unroute(rst.activeShard, cl)
-
-	return nil
-}
-
-var _ ConnManager = &TxConnManager{}
-
-type SessConnManager struct {
-
-}
-cfg" toml:"tls_cfg" yaml:"tls_cfg"`
+	Tlscfg core.TLSConfig `json:"tls_cfg" toml:"tls_cfg" yaml:"tls_cfg"`
 
 	RouterCfg core.RouterConfig `json:"router" toml:"router" yaml:"router"`
 }
@@ -127,6 +68,8 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 			// txactive == 0 || activeSh == r.NOSHARD
 			if cmngr.ValidateReRoute(rst) {
+
+				fmt.Printf("rerouting\n")
 				shindx := rt.Route(v.String)
 
 				if shindx == r.NOSHARD && rst.ActiveShard == r.NOSHARD {
@@ -141,6 +84,8 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 				fmt.Printf("get conn to %d\n", shindx)
 
 				if rst.ActiveShard != r.NOSHARD {
+					fmt.Printf("unrouted prev shard conn\n")
+
 					cl.Route().Unroute(rst.ActiveShard, cl)
 				}
 
@@ -172,13 +117,15 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 					rst.TxActive = false
 				}
 			} else {
-				if rst.TxActive {
+				if !rst.TxActive {
 					if err := cmngr.TXBeginCB(cl, rst); err != nil {
 						return err
 					}
 					rst.TxActive = true
 				}
 			}
+
+			tracelog.InfoLogger.Printf(" relay state is %v\n", rst)
 
 		default:
 			//msgs := append(msgs, msg)
@@ -200,12 +147,24 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 
 	var cmngr core.ConnManager
 
+	tracelog.InfoLogger.Printf("pooling mode %v", client.Rule().PoolingMode)
+
 	switch client.Rule().PoolingMode {
 	case conn.PoolingModeSession:
 		cmngr = core.NewSessConnManager()
 	case conn.PoolingModeTransaction:
 		cmngr = core.NewTxConnManager()
 	default:
+		for _, msg := range []pgproto3.BackendMessage {
+			&pgproto3.ErrorResponse{
+				Message: "unknown pooling mode for route",
+				Severity: "ERROR",
+			},
+		} {
+			if err := client.Send(msg); err != nil {
+				return err
+			}
+		}
 		return xerrors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
 	}
 

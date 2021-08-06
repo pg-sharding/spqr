@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-
 	"github.com/shgo/src/internal/r"
 )
 
@@ -42,7 +41,7 @@ func (t *TxConnManager) RouteCB(cl *ShClient, rst *RelayState) error {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShard == r.NOSHARD || rst.TxActive
+	return rst.ActiveShard == r.NOSHARD || !rst.TxActive
 }
 
 func (t *TxConnManager) TXBeginCB(cl *ShClient, rst *RelayState) error {
@@ -72,11 +71,20 @@ func (s SessConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 }
 
 func (s SessConnManager) RouteCB(cl *ShClient, rst *RelayState) error {
+
+	shConn, err := cl.Route().GetConn("tcp6", rst.ActiveShard)
+
+	if err != nil {
+		return err
+	}
+
+	cl.AssignShrdConn(shConn)
+
 	return nil
 }
 
 func (s SessConnManager) ValidateReRoute(rst *RelayState) bool {
-	return false
+	return rst.ActiveShard == r.NOSHARD
 }
 
 var _ ConnManager = &SessConnManager{}
