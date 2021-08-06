@@ -95,7 +95,7 @@ type Shgo struct {
 
 const TXREL = 73
 
-func frontend(rt r.R, cl *core.ShClient, cmngr conn.ConnManager) error {
+func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 	for k, v := range cl.StartupMessage().Parameters {
 		tracelog.InfoLogger.Println("log loh %v %v", k, v)
@@ -103,7 +103,7 @@ func frontend(rt r.R, cl *core.ShClient, cmngr conn.ConnManager) error {
 
 	msgs := make([]pgproto3.Query, 0)
 
-	rst := &conn.RelayState{
+	rst := &core.RelayState{
 		ActiveShard: r.NOSHARD,
 		TxActive:    false,
 	}
@@ -198,13 +198,13 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 		return err
 	}
 
-	var cmngr conn.ConnManager
+	var cmngr core.ConnManager
 
 	switch client.Rule().PoolingMode {
 	case conn.PoolingModeSession:
-		cmngr = nil
+		cmngr = core.NewSessConnManager()
 	case conn.PoolingModeTransaction:
-		cmngr = conn.NewTxConnManager()
+		cmngr = core.NewTxConnManager()
 	default:
 		return xerrors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
 	}
