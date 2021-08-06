@@ -11,7 +11,5 @@ type FRRule struct {
 	DB        string `json:"db" yaml:"db" toml:"db"`
 	ClientMax int    `json:"client_max" yaml:"client_max" toml:"client_max"`
 
-	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-
 	AuthRule AuthRule `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 }

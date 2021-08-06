@@ -4,15 +4,19 @@ import (
 	"net"
 	"sync"
 
+	"github.com/jackc/pgproto3"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
 type RouterConfig struct {
-	BackendRules    []*BERule            `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	FrontendRules   map[routeKey]*FRRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	MaxConnPerRoute int                  `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
-	ReqSSL          bool                 `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
+	BackendRules    []*BERule `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	FrontendRules   []*FRRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	MaxConnPerRoute int       `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
+	ReqSSL          bool      `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
+
+	// frontend tls settings
+	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
 	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
 }
@@ -21,13 +25,27 @@ type Router struct {
 	CFG       RouterConfig
 	mu        sync.Mutex
 	routePool map[routeKey][]*Route
+
+	mpFrontendRules map[routeKey]*FRRule
 }
 
 func NewRouter(cfg RouterConfig) *Router {
+
+	mp := make(map[routeKey]*FRRule, 0)
+
+	for _, e := range cfg.FrontendRules {
+		tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
+		mp[routeKey{
+			usr: e.Usr,
+			db:  e.DB,
+		}] = e
+	}
+
 	return &Router{
-		CFG:       cfg,
-		mu:        sync.Mutex{},
-		routePool: map[routeKey][]*Route{},
+		CFG:             cfg,
+		mu:              sync.Mutex{},
+		routePool:       map[routeKey][]*Route{},
+		mpFrontendRules: mp,
 	}
 }
 
@@ -35,9 +53,11 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.CFG.ReqSSL); err != nil {
+	if err := cl.Init(r.CFG.TLSCfg, r.CFG.ReqSSL); err != nil {
 		return nil, err
 	}
+
+	tracelog.InfoLogger.Printf("routing %v %v", cl.Usr(), cl.DB())
 
 	// match client frontend rule
 	key := routeKey{
@@ -46,10 +66,22 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 	}
 
 	var frRule *FRRule
-	frRule, ok := r.CFG.FrontendRules[key]
+	frRule, ok := r.mpFrontendRules[key]
 	if !ok {
-		return nil, xerrors.Errorf(
-			"failed ro match route for user %v database %v", key.usr, key.db)
+
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.ErrorResponse{
+				Message: "failed to route",
+			},
+		} {
+			if err :=
+				cl.Send(msg); err != nil {
+				tracelog.InfoLogger.Printf("failed to make route failure resp")
+				return nil, err
+			}
+		}
+
+		return nil, xerrors.Errorf("failed to route cl")
 	}
 
 	cl.AssignRule(frRule)

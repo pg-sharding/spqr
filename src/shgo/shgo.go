@@ -39,6 +39,7 @@ func (sg *Shgo) frontend(cl *core.ShClient) error {
 	for k, v := range cl.StartupMessage().Parameters {
 		tracelog.InfoLogger.Println("log loh %v %v", k, v)
 	}
+
 	msgs := make([]pgproto3.Query, 0)
 	activeSh := r.NOSHARD
 
@@ -130,6 +131,7 @@ func (sg *Shgo) serv(conn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(conn)
 	if err != nil {
+		tracelog.ErrorLogger.PrintError(err)
 		return err
 	}
 

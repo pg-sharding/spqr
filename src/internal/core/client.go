@@ -36,6 +36,7 @@ func (cl *ShClient) Unroute() {
 func NewClient(pgconn net.Conn) *ShClient {
 	return &ShClient{
 		conn: pgconn,
+		sm:   &pgproto3.StartupMessage{},
 	}
 }
 
@@ -44,7 +45,9 @@ func (cl *ShClient) AssignRule(rule *FRRule) {
 }
 
 // startup + ssl
-func (cl *ShClient) Init(reqssl bool) error {
+func (cl *ShClient) Init(tlscgf TLSConfig, reqssl bool) error {
+
+	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
 
 	var backend *pgproto3.Backend
 
@@ -73,8 +76,8 @@ func (cl *ShClient) Init(reqssl bool) error {
 			panic(err)
 		}
 
-		fmt.Printf("%v %v\n", cl.rule.TLSCfg.TLSSertPath, cl.rule.TLSCfg.ServPath)
-		cert, err := tls.LoadX509KeyPair(cl.rule.TLSCfg.TLSSertPath, cl.rule.TLSCfg.ServPath)
+		fmt.Printf("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
+		cert, err := tls.LoadX509KeyPair(tlscgf.TLSSertPath, tlscgf.ServPath)
 		if err != nil {
 			panic(err)
 		}
@@ -111,9 +114,8 @@ func (cl *ShClient) Init(reqssl bool) error {
 			return err
 		}
 	}
-	//!! frontend auth
-	cl.sm = sm
 
+	cl.sm = sm
 	cl.be = backend
 
 	if reqssl && protVer != sslproto {
@@ -134,8 +136,11 @@ func (cl *ShClient) Init(reqssl bool) error {
 	return nil
 }
 func (cl *ShClient) Auth() error {
+
+	tracelog.InfoLogger.Printf("processing auth for %v %v\n", cl.Usr(), cl.DB())
+
 	if err := func() error {
-		switch cl.rule.AuthRule.am {
+		switch cl.rule.AuthRule.Am {
 		case AuthOK:
 			return nil
 			// TODO:
@@ -152,7 +157,7 @@ func (cl *ShClient) Auth() error {
 		case AuthSASL:
 
 		default:
-			return xerrors.Errorf("invalid auth method %v", cl.rule.AuthRule.am)
+			return xerrors.Errorf("invalid auth method %v", cl.rule.AuthRule.Am)
 		}
 
 		return nil
@@ -164,14 +169,14 @@ func (cl *ShClient) Auth() error {
 		} {
 			if err :=
 				cl.Send(msg); err != nil {
-
-				tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
-
-				return err
+				tracelog.InfoLogger.Printf("server startup resp failed %v %v\n", msg, err)
 			}
 		}
 		return err
 	}
+
+	tracelog.InfoLogger.Printf("auth client ok")
+
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
@@ -186,8 +191,10 @@ func (cl *ShClient) Auth() error {
 			return err
 		}
 	}
+
 	return nil
 }
+
 func (cl *ShClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.sm
 }
@@ -203,7 +210,7 @@ func (cl *ShClient) Usr() string {
 }
 
 func (cl *ShClient) DB() string {
-	if db, ok := cl.sm.Parameters["dbname"]; ok {
+	if db, ok := cl.sm.Parameters["database"]; ok {
 		return db
 	}
 

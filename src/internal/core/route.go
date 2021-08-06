@@ -10,6 +10,11 @@ type routeKey struct {
 	usr string
 	db  string
 }
+
+func (r *routeKey) String() string {
+	return r.db + " " + r.usr
+}
+
 type shardKey struct {
 	i int
 }
@@ -23,8 +28,6 @@ type Route struct {
 	servPoolPending map[shardKey][]*ShServer
 
 	client *ShClient
-
-	//serv   ShServer
 }
 
 func (r *Route) Client() *ShClient {
