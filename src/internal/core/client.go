@@ -110,6 +110,8 @@ func (cl *ShClient) Init(reqssl bool) error {
 	//!! frontend auth
 	cl.sm = sm
 
+	cl.be = backend
+
 	if reqssl && protVer != sslproto {
 		cl.Send(
 			&pgproto3.ErrorResponse{
@@ -123,12 +125,10 @@ func (cl *ShClient) Init(reqssl bool) error {
 		tracelog.InfoLogger.Printf("%v %v\n", k, v)
 	}
 
-	backend.Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
-	backend.Send(&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"})
-	backend.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"})
-	backend.Send(&pgproto3.ReadyForQuery{})
-
-	cl.be = backend
+	cl.Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
+	cl.Send(&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"})
+	cl.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"})
+	cl.Send(&pgproto3.ReadyForQuery{})
 
 	return nil
 }
