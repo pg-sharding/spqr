@@ -145,10 +145,10 @@ func (cl *ShClient) Auth() error {
 			return nil
 			// TODO:
 		case AuthNOTOK:
-			return xerrors.Errorf("user si blocked", cl.Usr(), cl.DB())
+			return xerrors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case AuthClearText:
-			if cl.Password() != "secret" {
-				return xerrors.Errorf("user si blocked", cl.Usr(), cl.DB())
+			if cl.Password() != cl.rule.AuthRule.Password {
+				return xerrors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 
 			return nil

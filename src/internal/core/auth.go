@@ -19,8 +19,8 @@ const AuthMD5 = AuthMethod("md5")
 const AuthSASL = AuthMethod("scram")
 
 type AuthRule struct {
-	Am AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
-	Password string `json:"password" yaml:"password" toml:"password"`
+	Am       AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
+	Password string     `json:"password" yaml:"password" toml:"password"`
 }
 
 func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
