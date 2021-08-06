@@ -8,11 +8,8 @@ import (
 
 type RouterConfig struct {
 	BackendRules    []*BERule `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	FrontendRules   []*FRRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	FrontendRule    *FRRule `json:"frontend_rule" toml:"frontend_rule" yaml:"frontend_rule"`
 	MaxConnPerRoute int    `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
-	CAPath          string `json:"ca_path" toml:"ca_path" yaml:"ca_path"`
-	ServPath        string `json:"serv_key_path" toml:"serv_key_path" yaml:"serv_key_path"`
-	TLSSertPath     string `json:"tls_cert_path" toml:"tls_cert_path" yaml:"tls_cert_path"`
 	ReqSSL          bool   `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
 
 	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
@@ -34,9 +31,9 @@ func NewRouter(cfg RouterConfig) *Router {
 
 func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 
-	cl := NewClient(conn)
+	cl := NewClient(conn, r.CFG.FrontendRule)
 
-	if err := cl.Init(); err != nil {
+	if err := cl.Init(r.CFG.ReqSSL); err != nil {
 		return nil, err
 	}
 

@@ -32,14 +32,15 @@ func (cl *ShClient) Unroute() {
 	cl.shconn = nil
 }
 
-func NewClient(pgconn net.Conn) *ShClient {
+func NewClient(pgconn net.Conn, rule *FRRule) *ShClient {
 	return &ShClient{
 		conn: pgconn,
+		rule: rule,
 	}
 }
 
 
-func (cl *ShClient) Init() error {
+func (cl *ShClient) Init(reqssl bool) error {
 
 	var backend *pgproto3.Backend
 
@@ -108,6 +109,14 @@ func (cl *ShClient) Init() error {
 	}
 	//!! frontend auth
 	cl.sm = sm
+
+	if reqssl && protVer != sslproto {
+		cl.Send(
+			&pgproto3.ErrorResponse{
+				Severity: "ERROR",
+				Message: "SSL IS REQUIRED",
+			})
+	}
 
 	tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
 	for k, v := range sm.Parameters {

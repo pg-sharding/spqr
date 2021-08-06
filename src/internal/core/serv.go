@@ -97,6 +97,8 @@ func (srv *ShServer) ReqBackendSsl() error {
 		panic("SSL SHOUD BE ENABLED")
 	}
 
+	tracelog.InfoLogger.Printf("%v %v\n", srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)
+
 	cert, err := tls.LoadX509KeyPair(srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)
 	if err != nil {
 		panic(err)

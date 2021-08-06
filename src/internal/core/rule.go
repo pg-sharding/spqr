@@ -13,5 +13,5 @@ type FRRule struct {
 	DB  string `json:"db" yaml:"db" toml:"db"`
 	ClientMax int `json:"client_max" yaml:"client_max" toml:"client_max"`
 
-	TLSCfg TLSConfig
+	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
