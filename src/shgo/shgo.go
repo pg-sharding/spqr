@@ -7,10 +7,12 @@ import (
 
 	"github.com/jackc/pgproto3"
 	shhttp "github.com/shgo/src/http"
+	"github.com/shgo/src/internal/conn"
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -20,7 +22,66 @@ type GlobConfig struct {
 	ADMAddr string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
 	PROTO   string `json:"proto" toml:"proto" yaml:"proto"`
 
-	Tlscfg core.TLSConfig `json:"tls_cfg" toml:"tls_cfg" yaml:"tls_cfg"`
+	Tlscfg core.TLSConfig `json:"tls_
+type relayState struct {
+	txActive bool
+
+	activeShard int
+}
+
+type ConnManager interface {
+	TXBeginCB(cl *core.ShClient, rst *relayState) error
+	TXEndCB(cl *core.ShClient, rst *relayState) error
+
+	RouteCB(cl *core.ShClient, rst *relayState) error
+	ValidateReRoute(rst *relayState) bool
+}
+
+type TxConnManager struct {
+}
+
+func NewTxConnManager() *TxConnManager {
+	return &TxConnManager{
+
+	}
+}
+
+func (t *TxConnManager) RouteCB(cl *core.ShClient, rst *relayState) error {
+
+	shConn, err := cl.Route().GetConn("tcp6", rst.activeShard)
+
+	if err != nil {
+		return err
+	}
+
+	cl.AssignShrdConn(shConn)
+
+	return nil
+}
+
+func (t *TxConnManager) ValidateReRoute(rst *relayState) bool {
+	return rst.activeShard == r.NOSHARD || rst.txActive
+}
+
+func (t *TxConnManager) TXBeginCB(cl *core.ShClient, rst *relayState) error {
+	return nil
+}
+
+func (t *TxConnManager) TXEndCB(cl *core.ShClient, rst *relayState) error {
+
+	fmt.Println("releasing tx\n")
+
+	cl.Route().Unroute(rst.activeShard, cl)
+
+	return nil
+}
+
+var _ ConnManager = &TxConnManager{}
+
+type SessConnManager struct {
+
+}
+cfg" toml:"tls_cfg" yaml:"tls_cfg"`
 
 	RouterCfg core.RouterConfig `json:"router" toml:"router" yaml:"router"`
 }
@@ -34,14 +95,18 @@ type Shgo struct {
 
 const TXREL = 73
 
-func (sg *Shgo) frontend(cl *core.ShClient) error {
+func frontend(rt r.R, cl *core.ShClient, cmngr conn.ConnManager) error {
 
 	for k, v := range cl.StartupMessage().Parameters {
 		tracelog.InfoLogger.Println("log loh %v %v", k, v)
 	}
 
 	msgs := make([]pgproto3.Query, 0)
-	activeSh := r.NOSHARD
+
+	rst := &conn.RelayState{
+		ActiveShard: r.NOSHARD,
+		TxActive:    false,
+	}
 
 	for {
 		tracelog.InfoLogger.Println("round")
@@ -56,65 +121,62 @@ func (sg *Shgo) frontend(cl *core.ShClient) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
-			shindx := sg.R.Route(v.String)
-
 			msgs = append(msgs, pgproto3.Query{
 				String: v.String,
 			})
 
-			if shindx == r.NOSHARD && activeSh == r.NOSHARD {
+			// txactive == 0 || activeSh == r.NOSHARD
+			if cmngr.ValidateReRoute(rst) {
+				shindx := rt.Route(v.String)
 
-				_ = cl.Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
-				_ = cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-					{
-						Name:                 "fortune",
-						TableOID:             0,
-						TableAttributeNumber: 0,
-						DataTypeOID:          25,
-						DataTypeSize:         -1,
-						TypeModifier:         -1,
-						Format:               0,
-					},
-				}})
+				if shindx == r.NOSHARD && rst.ActiveShard == r.NOSHARD {
 
-				_ = cl.Send(&pgproto3.DataRow{Values: [][]byte{[]byte("loh")}})
-				_ = cl.Send(&pgproto3.CommandComplete{CommandTag: "SELECT 1"})
-				_ = cl.Send(&pgproto3.ReadyForQuery{})
-
-			} else {
-
-				fmt.Printf("get conn to %d\n", shindx)
-				if cl.ShardConn() == nil {
-
-					activeSh = shindx
-
-					shConn, err := cl.Route().GetConn(sg.Router.CFG.PROTO, activeSh)
-
-					if err != nil {
-						panic(err)
-					}
-
-					cl.AssignShrdConn(shConn)
-				}
-				var txst byte
-				for _, msg := range msgs {
-					if txst, err = cl.ProcQuery(&msg); err != nil {
+					if err := cl.DefaultReply(); err != nil {
 						return err
 					}
+
+					break
 				}
 
-				msgs = make([]pgproto3.Query, 0, 0)
+				fmt.Printf("get conn to %d\n", shindx)
 
-				if err := cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
+				if rst.ActiveShard != r.NOSHARD {
+					cl.Route().Unroute(rst.ActiveShard, cl)
+				}
+
+				rst.ActiveShard = shindx
+
+				if err := cmngr.RouteCB(cl, rst); err != nil {
 					return err
 				}
+			}
 
-				if txst == TXREL {
-					fmt.Println("releasing tx\n")
+			var txst byte
+			for _, msg := range msgs {
+				if txst, err = cl.ProcQuery(&msg); err != nil {
+					return err
+				}
+			}
 
-					cl.Route().Unroute(activeSh, cl)
+			msgs = make([]pgproto3.Query, 0, 0)
 
-					activeSh = r.NOSHARD
+			if err := cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
+				return err
+			}
+
+			if txst == TXREL {
+				if rst.TxActive {
+					if err := cmngr.TXEndCB(cl, rst); err != nil {
+						return err
+					}
+					rst.TxActive = false
+				}
+			} else {
+				if rst.TxActive {
+					if err := cmngr.TXBeginCB(cl, rst); err != nil {
+						return err
+					}
+					rst.TxActive = true
 				}
 			}
 
@@ -127,15 +189,27 @@ func (sg *Shgo) frontend(cl *core.ShClient) error {
 
 	return nil
 }
-func (sg *Shgo) serv(conn net.Conn) error {
 
-	client, err := sg.Router.PreRoute(conn)
+func (sg *Shgo) serv(netconn net.Conn) error {
+
+	client, err := sg.Router.PreRoute(netconn)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 		return err
 	}
 
-	return sg.frontend(client)
+	var cmngr conn.ConnManager
+
+	switch client.Rule().PoolingMode {
+	case conn.PoolingModeSession:
+		cmngr = nil
+	case conn.PoolingModeTransaction:
+		cmngr = conn.NewTxConnManager()
+	default:
+		return xerrors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
+	}
+
+	return frontend(sg.R, client, cmngr)
 }
 
 func (sg *Shgo) ProcPG() error {

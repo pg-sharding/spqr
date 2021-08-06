@@ -90,29 +90,28 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 		return nil, err
 	}
 
+	var route *Route
+
 	r.mu.Lock()
 	{
 		if routes, ok := r.routePool[key]; ok && len(routes) > 0 {
-
-			route, routes := routes[0], routes[1:]
+			route, routes = routes[0], routes[1:]
 
 			r.routePool[key] = routes
-
-			cl.AssignRoute(route)
-
 		} else {
 			if !ok {
 				r.routePool[key] = make([]*Route, 0)
 			}
 
-			route := NewRoute(r.CFG.BackendRules, frRule)
+			route = NewRoute(r.CFG.BackendRules, frRule)
 
 			r.routePool[key] = append(r.routePool[key], route)
-
-			cl.AssignRoute(route)
 		}
 	}
 	r.mu.Unlock()
+
+	cl.AssignRoute(route)
+
 	return cl, nil
 }
 

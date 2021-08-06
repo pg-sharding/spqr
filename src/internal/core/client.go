@@ -217,7 +217,7 @@ func (cl *ShClient) DB() string {
 	return defaultUsr
 }
 
-func  (cl *ShClient)receivepasswd() string {
+func (cl *ShClient) receivepasswd() string {
 	msg, err := cl.be.Receive()
 
 	if err != nil {
@@ -297,4 +297,33 @@ func (cl *ShClient) AssignShrdConn(srv *ShServer) {
 
 func (cl *ShClient) Route() *Route {
 	return cl.r
+}
+func (cl *ShClient) DefaultReply() error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "fortune",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte("loh")}},
+		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cl *ShClient) Rule() *FRRule {
+	return cl.rule
 }

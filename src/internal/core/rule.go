@@ -1,5 +1,7 @@
 package core
 
+import "github.com/shgo/src/internal/conn"
+
 type BERule struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
@@ -11,6 +13,7 @@ type FRRule struct {
 	DB        string `json:"db" yaml:"db" toml:"db"`
 	ClientMax int    `json:"client_max" yaml:"client_max" toml:"client_max"`
 
+	PoolingMode conn.PoolingMode `json:"pooling_mode" yaml:"pooling_mode" toml:"pooling_mode"`
 
 	// TODO: validate!
 	AuthRule AuthRule `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
