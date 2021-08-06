@@ -1,6 +1,8 @@
 package core
 
-import "sync"
+import (
+	"sync"
+)
 
 type Rule struct {
 
@@ -10,6 +12,8 @@ type Rule struct {
 	SHStorage Storage `json:"storage_cfg" yaml:"storage_cfg" toml:"storage_cfg"`
 
 	ClientMax int `json:"client_max" yaml:"client_max" toml:"client_max"`
+
+	TLSCfg TLSConfig
 
 	mu * sync.Mutex
 }

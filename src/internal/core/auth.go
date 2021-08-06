@@ -12,7 +12,7 @@ import (
 type connAuth struct {
 }
 
-func authBackend(sh *ShServer, v *pgproto3.Authentication, shardConnCfg ConnConnCfg) error {
+func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 
 	fmt.Printf("Auth type proc %T\n", v)
 	switch v.Type {
@@ -21,7 +21,7 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication, shardConnCfg ConnConn
 	case pgproto3.AuthTypeMD5Password:
 		hash := md5.New()
 
-		hash.Write([]byte(shardConnCfg.Passwd + shardConnCfg.ConnUsr))
+		hash.Write([]byte(sh.rule.SHStorage.Passwd + sh.rule.SHStorage.ConnUsr))
 
 		res := hash.Sum(nil)
 
@@ -44,8 +44,8 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication, shardConnCfg ConnConn
 		}
 
 	case pgproto3.AuthTypeCleartextPassword:
-		tracelog.InfoLogger.Println("authBackend bypass %s", shardConnCfg.Passwd)
-		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: shardConnCfg.Passwd}); err != nil {
+		tracelog.InfoLogger.Println("authBackend bypass %s", sh.rule.SHStorage.Passwd)
+		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: sh.rule.SHStorage.Passwd}); err != nil {
 			return err
 		}
 	default:

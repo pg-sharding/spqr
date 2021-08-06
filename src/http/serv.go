@@ -12,11 +12,6 @@ type Shgoserver struct {
 }
 
 var _ shards.ShardServiceServer = &Shgoserver{}
-//
-//func NewShgoServer() *shgoserver {
-//	//server := grpc.NewServer()
-//	//shardsServ := shards.NewShardSerivceClient(server)
-//}
 
 func (* Shgoserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
 	fmt.Print("repl")
