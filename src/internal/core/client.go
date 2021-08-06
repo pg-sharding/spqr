@@ -147,7 +147,7 @@ func (cl *ShClient) Auth() error {
 		case AuthNOTOK:
 			return xerrors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case AuthClearText:
-			if cl.Password() != cl.rule.AuthRule.Password {
+			if cl.PasswordCT() != cl.rule.AuthRule.Password {
 				return xerrors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 
@@ -217,12 +217,41 @@ func (cl *ShClient) DB() string {
 	return defaultUsr
 }
 
-func (cl *ShClient) Password() string {
+func  (cl *ShClient)receivepasswd() string {
+	msg, err := cl.be.Receive()
+
+	if err != nil {
+		return ""
+	}
+
+	switch v := msg.(type) {
+	case *pgproto3.PasswordMessage:
+		return v.Password
+	default:
+		return ""
+
+	}
+}
+
+func (cl *ShClient) PasswordCT() string {
 	if db, ok := cl.sm.Parameters["password"]; ok {
 		return db
 	}
 
-	return ""
+	cl.be.Send(&pgproto3.Authentication{
+		Type: pgproto3.AuthTypeCleartextPassword,
+	})
+
+	return cl.receivepasswd()
+}
+
+func (cl *ShClient) PasswordMD5() string {
+	cl.be.Send(&pgproto3.Authentication{
+		Type: pgproto3.AuthTypeMD5Password,
+		Salt: [4]byte{1, 3, 3, 7},
+	})
+
+	return cl.receivepasswd()
 }
 
 func (cl *ShClient) Receive() (pgproto3.FrontendMessage, error) {
