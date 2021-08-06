@@ -5,12 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/xerrors"
 	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 type ShClient struct {
@@ -39,10 +39,9 @@ func NewClient(pgconn net.Conn) *ShClient {
 	}
 }
 
-func (cl*ShClient)AssignRule(rule * FRRule) {
+func (cl *ShClient) AssignRule(rule *FRRule) {
 	cl.rule = rule
 }
-
 
 // startup + ssl
 func (cl *ShClient) Init(reqssl bool) error {
@@ -134,11 +133,7 @@ func (cl *ShClient) Init(reqssl bool) error {
 
 	return nil
 }
-
-
-func (cl* ShClient) Auth() error {
-
-
+func (cl *ShClient) Auth() error {
 	if err := func() error {
 		switch cl.rule.AuthRule.am {
 		case AuthOK:
@@ -161,7 +156,7 @@ func (cl* ShClient) Auth() error {
 		}
 
 		return nil
-	} (); err != nil {
+	}(); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
 				Message: "auth failed",
@@ -177,8 +172,6 @@ func (cl* ShClient) Auth() error {
 		}
 		return err
 	}
-
-
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
@@ -195,8 +188,6 @@ func (cl* ShClient) Auth() error {
 	}
 	return nil
 }
-
-
 func (cl *ShClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.sm
 }

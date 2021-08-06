@@ -1,10 +1,11 @@
 package core
 
 import (
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 	"net"
 	"sync"
+
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 type RouterConfig struct {

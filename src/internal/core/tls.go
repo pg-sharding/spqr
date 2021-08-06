@@ -1,6 +1,5 @@
 package core
 
-
 const sslproto = 80877103
 
 type TLSConfig struct {
