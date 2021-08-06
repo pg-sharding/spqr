@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"golang.org/x/xerrors"
 	"net"
 
 	"github.com/jackc/pgproto3"
@@ -32,14 +33,18 @@ func (cl *ShClient) Unroute() {
 	cl.shconn = nil
 }
 
-func NewClient(pgconn net.Conn, rule *FRRule) *ShClient {
+func NewClient(pgconn net.Conn) *ShClient {
 	return &ShClient{
 		conn: pgconn,
-		rule: rule,
 	}
 }
 
+func (cl*ShClient)AssignRule(rule * FRRule) {
+	cl.rule = rule
+}
 
+
+// startup + ssl
 func (cl *ShClient) Init(reqssl bool) error {
 
 	var backend *pgproto3.Backend
@@ -113,11 +118,13 @@ func (cl *ShClient) Init(reqssl bool) error {
 	cl.be = backend
 
 	if reqssl && protVer != sslproto {
-		cl.Send(
+		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",
-				Message: "SSL IS REQUIRED",
-			})
+				Message:  "SSL IS REQUIRED",
+			}); err != nil {
+			return err
+		}
 	}
 
 	tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
@@ -125,13 +132,70 @@ func (cl *ShClient) Init(reqssl bool) error {
 		tracelog.InfoLogger.Printf("%v %v\n", k, v)
 	}
 
-	cl.Send(&pgproto3.Authentication{Type: pgproto3.AuthTypeOk})
-	cl.Send(&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"})
-	cl.Send(&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"})
-	cl.Send(&pgproto3.ReadyForQuery{})
-
 	return nil
 }
+
+
+func (cl* ShClient) Auth() error {
+
+
+	if err := func() error {
+		switch cl.rule.AuthRule.am {
+		case AuthOK:
+			return nil
+			// TODO:
+		case AuthNOTOK:
+			return xerrors.Errorf("user si blocked", cl.Usr(), cl.DB())
+		case AuthClearText:
+			if cl.Password() != "secret" {
+				return xerrors.Errorf("user si blocked", cl.Usr(), cl.DB())
+			}
+
+			return nil
+		case AuthMD5:
+
+		case AuthSASL:
+
+		default:
+			return xerrors.Errorf("invalid auth method %v", cl.rule.AuthRule.am)
+		}
+
+		return nil
+	} (); err != nil {
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.ErrorResponse{
+				Message: "auth failed",
+			},
+		} {
+			if err :=
+				cl.Send(msg); err != nil {
+
+				tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
+
+				return err
+			}
+		}
+		return err
+	}
+
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err :=
+			cl.Send(msg); err != nil {
+
+			tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
+
+			return err
+		}
+	}
+	return nil
+}
+
 
 func (cl *ShClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.sm
@@ -154,6 +218,15 @@ func (cl *ShClient) DB() string {
 
 	return defaultUsr
 }
+
+func (cl *ShClient) Password() string {
+	if db, ok := cl.sm.Parameters["password"]; ok {
+		return db
+	}
+
+	return ""
+}
+
 func (cl *ShClient) Receive() (pgproto3.FrontendMessage, error) {
 	return cl.be.Receive()
 }

@@ -15,7 +15,8 @@ type shardKey struct {
 }
 
 type Route struct {
-	rule []*BERule
+	beRule []*BERule
+	frRule *FRRule
 
 	mu sync.Mutex
 
@@ -44,9 +45,10 @@ func (r *Route) Unroute(i int, cl *ShClient) {
 	r.mu.Unlock()
 }
 
-func NewRoute(rules []*BERule) *Route {
+func NewRoute(rules []*BERule, frRules *FRRule) *Route {
 	return &Route{
-		rule:            rules,
+		beRule:          rules,
+		frRule:          frRules,
 		servPoolPending: map[shardKey][]*ShServer{},
 		mu:              sync.Mutex{},
 	}
@@ -59,8 +61,8 @@ func (r *Route) smFromSh(i int) *pgproto3.StartupMessage {
 		Parameters: map[string]string{
 			"application_name": "shgo",
 			"client_encoding":  "UTF8",
-			"user":             r.rule[i].SHStorage.ConnUsr,
-			"database":         r.rule[i].SHStorage.ConnDB,
+			"user":             r.beRule[i].SHStorage.ConnUsr,
+			"database":         r.beRule[i].SHStorage.ConnDB,
 		},
 	}
 	return sm
@@ -85,13 +87,13 @@ func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
 		r.servPoolPending[key] = make([]*ShServer, 0)
 	}
 
-	netconn, err := Connect(proto, r.rule[indx])
+	netconn, err := Connect(proto, r.beRule[indx])
 	if err != nil {
 		return nil, err
 	}
 
-	srv := NewServer(r.rule[indx], netconn)
-	if r.rule[indx].SHStorage.ReqSSL {
+	srv := NewServer(r.beRule[indx], netconn)
+	if r.beRule[indx].SHStorage.ReqSSL {
 		if err := srv.ReqBackendSsl(); err != nil {
 			return nil, err
 		}

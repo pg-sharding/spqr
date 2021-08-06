@@ -133,7 +133,6 @@ func (sg *Shgo) serv(conn net.Conn) error {
 		return err
 	}
 
-	//msgBuf := make([]pgproto3.FrontendMessage, 0)
 	return sg.frontend(client)
 }
 

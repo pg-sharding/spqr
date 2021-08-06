@@ -10,7 +10,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type connAuth struct {
+type AuthMethod string
+
+const AuthOK = AuthMethod("ok")
+const AuthNOTOK = AuthMethod("notok")
+const AuthClearText = AuthMethod("clear_text")
+const AuthMD5 = AuthMethod("md5")
+const AuthSASL = AuthMethod("scram")
+
+type AuthRule struct {
+	am AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
 }
 
 func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
