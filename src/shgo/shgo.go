@@ -72,14 +72,17 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 				fmt.Printf("rerouting\n")
 				shindx := rt.Route(v.String)
 
-				if shindx == r.NOSHARD && rst.ActiveShard == r.NOSHARD {
-
+				if shindx == r.NOSHARD {
 					if err := cl.DefaultReply(); err != nil {
 						return err
 					}
 
 					break
 				}
+
+				//if shindx == r.NOSHARD {
+				//	break
+				//}
 
 				fmt.Printf("get conn to %d\n", shindx)
 
