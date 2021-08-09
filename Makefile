@@ -8,6 +8,9 @@ TMP_DIR := $(GO_ROUTER_DIR)/tmp
 init:
 	mkdir $(TMP_DIR)
 
+fmt:
+	ya tool yoimports -w ./
+
 compile:
 	go build src/main/shgo.go -o shgo
 
