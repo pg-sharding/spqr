@@ -1,8 +1,10 @@
 #!/bin/bash
 set -ex
 
+rm -fr /var/lib/postgresql/13/main/ 
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ init
+
 setup
 
-sleep 23323
+sudo -u postgres /usr/lib/postgresql/13/bin/postgres -D /var/lib/postgresql/13/main
 
-exec start-stop-daemon --start --chuid pg_ctlcluster 13 main start

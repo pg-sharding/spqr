@@ -8,8 +8,31 @@ services:
             context: .
         environment:
             CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+            PG_LISTEN_ADDR: "shgo_shard1_1.shgo_shgo."
         ports:
-            - "6432:6432"
-        #    shard2:
+            - "7432:6432"
+        hostname: shgo_shard_1_1
+        networks:
+            shgo:
+                ipv4_address: 192.168.233.03
+    shard2:
+        build:
+            dockerfile: ./docker/shard/Dockerfile
+            context: .
+        environment:
+            CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+            PG_LISTEN_ADDR: "shgo_shard2_1.shgo_shgo."
+        ports:
+            - "7433:6432"
+        hostname: shgo_shard_2_1
+        networks:
+            shgo:
+                ipv4_address: 192.168.233.02
 
-#netrowk:
+networks:
+    shgo:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: 192.168.233.0/24

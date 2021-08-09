@@ -3,17 +3,18 @@
 export SETUP_LOG=/var/log/postgresql/postgresql-13-main.log
 
 # Start postgresql
-if ! /usr/bin/pg_ctlcluster 13 main start && psql -h localhost -p 5432 -U postgres  -c 'SELECT 1 AS ok'; then
-    echo "ERROR: 'pg_ctl start' failed, examine the log"
-    cat "$SETUP_LOG"
-    exit 1
-fi
 
 cat >> /etc/postgresql/13/main/pg_hba.conf <<-EOF
 local  all       postgres                trust
 host   all       postgres  127.0.0.1/32  trust
 EOF
 
+cat >> /var/lib/postgresql/13/main/postgresql.conf <<-EOF
+listen_addresses = "$PG_LISTEN_ADDR"
+port = 5432
+EOF
+
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ start
 
 # Create databases
 for database_name in db1 dbtpcc; do
@@ -31,3 +32,4 @@ psql -h localhost -p 5432 -U postgres -c "create role user1 with login" -d postg
     exit 1
 }
 
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop
