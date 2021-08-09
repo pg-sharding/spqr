@@ -2,7 +2,11 @@ package core
 
 import (
 	"fmt"
+	"github.com/jackc/pgproto3"
+	"github.com/shgo/src/internal/conn"
 	"github.com/shgo/src/internal/r"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 
@@ -91,4 +95,33 @@ var _ ConnManager = &SessConnManager{}
 
 func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
+}
+
+
+func InitClConnection(client *ShClient) (ConnManager, error) {
+
+	var cmngr ConnManager
+
+	tracelog.InfoLogger.Printf("pooling mode %v", client.Rule().PoolingMode)
+
+	switch client.Rule().PoolingMode {
+	case conn.PoolingModeSession:
+		cmngr = NewSessConnManager()
+	case conn.PoolingModeTransaction:
+		cmngr = NewTxConnManager()
+	default:
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.ErrorResponse{
+				Message:  "unknown pooling mode for route",
+				Severity: "ERROR",
+			},
+		} {
+			if err := client.Send(msg); err != nil {
+				return nil, err
+			}
+		}
+		return nil, xerrors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
+	}
+
+	return cmngr, nil
 }

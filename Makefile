@@ -9,7 +9,7 @@ init:
 	mkdir $(TMP_DIR)
 
 compile:
-	go build src/main/shgo.go
+	go build src/main/shgo.go -o shgo
 
 clean:
 	rm -f ./main
