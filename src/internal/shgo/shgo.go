@@ -2,15 +2,15 @@ package shgo
 
 import (
 	"fmt"
+	"net"
 	"reflect"
+
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
-	"net"
 )
-
 
 type GlobConfig struct {
 	Addr    string `json:"addr" toml:"addr" yaml:"addr"`
@@ -23,11 +23,10 @@ type GlobConfig struct {
 }
 
 type Shgo struct {
-	Cfg GlobConfig
+	Cfg    GlobConfig
 	Router *core.Router
 	R      r.R
 }
-
 
 const TXREL = 73
 
@@ -134,8 +133,6 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 	return nil
 }
-
-
 func (sg *Shgo) serv(netconn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(netconn)
@@ -151,9 +148,7 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 
 	return frontend(sg.R, client, cmngr)
 }
-
-
-func (sg*Shgo) Run(listener net.Listener) error {
+func (sg *Shgo) Run(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 
@@ -163,9 +158,7 @@ func (sg*Shgo) Run(listener net.Listener) error {
 
 	return nil
 }
-
-
-func (sg*Shgo) RunAdm(listener net.Listener) error {
+func (sg *Shgo) RunAdm(listener net.Listener) error {
 	//for {
 	//	conn, err := listener.Accept()
 	//

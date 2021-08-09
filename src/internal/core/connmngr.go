@@ -2,13 +2,13 @@ package core
 
 import (
 	"fmt"
+
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/conn"
 	"github.com/shgo/src/internal/r"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
-
 
 type RelayState struct {
 	TxActive bool
@@ -96,8 +96,6 @@ var _ ConnManager = &SessConnManager{}
 func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
-
-
 func InitClConnection(client *ShClient) (ConnManager, error) {
 
 	var cmngr ConnManager

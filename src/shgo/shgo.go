@@ -1,10 +1,10 @@
 package shgo
 
 import (
-	"github.com/shgo/src/internal/shgo"
 	"net"
 
 	shhttp "github.com/shgo/src/http"
+	"github.com/shgo/src/internal/shgo"
 	"github.com/shgo/src/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -73,8 +73,6 @@ func (app *App) ProcADM() error {
 	util.Fatal(err)
 
 	defer listener.Close()
-
-
 	return app.sg.RunAdm(listener)
 }
 
