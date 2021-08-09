@@ -8,7 +8,7 @@ services:
             context: .
         environment:
             CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
-            PG_LISTEN_ADDR: "shgo_shard1_1.shgo_shgo."
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-shgo_shard1_1.shgo_shgo.}"
         ports:
             - "7432:6432"
         hostname: shgo_shard_1_1
@@ -21,7 +21,7 @@ services:
             context: .
         environment:
             CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
-            PG_LISTEN_ADDR: "shgo_shard2_1.shgo_shgo."
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-shgo_shard2_1.shgo_shgo.}"
         ports:
             - "7433:6432"
         hostname: shgo_shard_2_1
