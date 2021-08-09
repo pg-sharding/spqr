@@ -1,17 +1,11 @@
 package shgo
 
 import (
-	"fmt"
 	"github.com/shgo/src/internal/shgo"
 	"net"
-	"reflect"
 
-	"github.com/jackc/pgproto3"
 	shhttp "github.com/shgo/src/http"
-	"github.com/shgo/src/internal/core"
-	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
-	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -20,13 +14,13 @@ type App struct {
 	sg shgo.Shgo
 }
 
-func (a *App) ProcPG() error {
+func (app *App) ProcPG() error {
 	////	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
-	listener, err := net.Listen(a.sg.Cfg.PROTO, a.sg.Cfg.Addr)
+	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.Addr)
 	util.Fatal(err)
 	defer listener.Close()
 
-	return a.sg.Run(listener)
+	return app.sg.Run(listener)
 }
 
 //
@@ -73,22 +67,18 @@ func (a *App) ProcPG() error {
 //	return nil
 //}
 
-func (sg *Shgo) ProcADM() error {
+func (app *App) ProcADM() error {
 	//	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
-	listener, err := net.Listen(sg.Cfg.PROTO, sg.Cfg.Addr)
+	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.ADMAddr)
 	util.Fatal(err)
 
 	defer listener.Close()
 
-	for {
-		conn, err := listener.Accept()
 
-		util.Fatal(err)
-		go sg.serv(conn)
-	}
+	return app.sg.RunAdm(listener)
 }
 
-func (sg *Shgo) ServHttp() error {
+func (app *App) ServHttp() error {
 
 	serv := grpc.NewServer()
 	shhttp.Register(serv)

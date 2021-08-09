@@ -2,13 +2,13 @@ package shgo
 
 import (
 	"fmt"
+	"reflect"
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
 	"github.com/wal-g/tracelog"
 	"net"
-	"reflect"
 )
 
 
@@ -153,11 +153,26 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 }
 
 
-func (sg*Shgo) Run(listener net.Listener) {
+func (sg*Shgo) Run(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 
 		util.Fatal(err)
 		go sg.serv(conn)
 	}
+
+	return nil
+}
+
+
+func (sg*Shgo) RunAdm(listener net.Listener) error {
+	//for {
+	//	conn, err := listener.Accept()
+	//
+	//	util.Fatal(err)
+	//	go sg.serv(conn)
+	//}
+
+	return nil
+
 }
