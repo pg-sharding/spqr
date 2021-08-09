@@ -5,9 +5,10 @@ import (
 	"os"
 	"sync"
 
+	"github.com/shgo/src/app"
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
-	"github.com/shgo/src/shgo"
+	"github.com/shgo/src/internal/shgo"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
@@ -36,17 +37,16 @@ var runCmd = &cobra.Command{
 
 		fmt.Println("PARSED:", cfg.Addr)
 
-		sh := shgo.Shgo{
+		app := app.NewApp(shgo.Shgo{
 			Cfg:    cfg,
 			Router: core.NewRouter(cfg.RouterCfg),
 			R:      r.NewR(),
-		}
-
+		})
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := sh.ProcPG()
+			err := app.ProcPG()
 
 			if err != nil {
 				panic(err)
@@ -57,7 +57,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := sh.ServHttp()
+			err := app.ServHttp()
 
 			if err != nil {
 				panic(err)

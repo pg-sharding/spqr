@@ -12,7 +12,7 @@ fmt:
 	ya tool yoimports -w ./
 
 compile:
-	go build src/main/shgo.go -o shgo
+	go build src/main/shgo.go && mv shgo shgopg
 
 clean:
 	rm -f ./main

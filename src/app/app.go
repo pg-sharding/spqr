@@ -1,4 +1,4 @@
-package shgo
+package app
 
 import (
 	"net"
@@ -12,6 +12,12 @@ import (
 
 type App struct {
 	sg shgo.Shgo
+}
+
+func NewApp(sg shgo.Shgo) *App {
+	return &App{
+		sg: sg,
+	}
 }
 
 func (app *App) ProcPG() error {

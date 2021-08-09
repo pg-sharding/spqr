@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package yandex.shgo.shards;
 
-option go_package = "yandex/shgo/shards";
+option go_package = "yandex/app/shards";
 
 // The greeting service definition.
 service ShardService {

@@ -7,7 +7,7 @@ import (
 )
 
 var RootCmd = &cobra.Command{
-	Use: "shgo",
+	Use: "app",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("RUN ME!")
 	},

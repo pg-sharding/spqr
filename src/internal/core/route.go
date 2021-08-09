@@ -62,7 +62,7 @@ func (r *Route) smFromSh(i int) *pgproto3.StartupMessage {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
-			"application_name": "shgo",
+			"application_name": "app",
 			"client_encoding":  "UTF8",
 			"user":             r.beRule[i].SHStorage.ConnUsr,
 			"database":         r.beRule[i].SHStorage.ConnDB,

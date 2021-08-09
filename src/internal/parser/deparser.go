@@ -2,7 +2,7 @@ package deparse
 
 import (
 
-	//spqr "github.com/shgo/parser"
+	//spqr "github.com/app/parser"
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
 )
 

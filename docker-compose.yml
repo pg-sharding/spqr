@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-    #   shgo:
+    #   app:
     shard1:
         build:
             dockerfile: ./docker/shard/Dockerfile
