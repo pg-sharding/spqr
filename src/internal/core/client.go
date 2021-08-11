@@ -238,7 +238,7 @@ func (cl *ShClient) PasswordCT() string {
 		return db
 	}
 
-	cl.be.Send(&pgproto3.Authentication{
+	_ = cl.be.Send(&pgproto3.Authentication{
 		Type: pgproto3.AuthTypeCleartextPassword,
 	})
 
@@ -246,7 +246,7 @@ func (cl *ShClient) PasswordCT() string {
 }
 
 func (cl *ShClient) PasswordMD5() string {
-	cl.be.Send(&pgproto3.Authentication{
+	_ = cl.be.Send(&pgproto3.Authentication{
 		Type: pgproto3.AuthTypeMD5Password,
 		Salt: [4]byte{1, 3, 3, 7},
 	})
@@ -298,6 +298,7 @@ func (cl *ShClient) AssignShrdConn(srv *ShServer) {
 func (cl *ShClient) Route() *Route {
 	return cl.r
 }
+
 func (cl *ShClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},

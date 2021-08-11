@@ -9,8 +9,31 @@ import ( //"fmt"
 
 const NOSHARD = -1
 
+type Qrouter interface {
+	Route(q string) int
+}
 type R struct {
-	shindx int
+	Qrouter
+	shindx  int
+	SHCOLMP map[string]struct{}
+
+	LOCALS map[string]struct{}
+}
+
+var _ Qrouter = &R{
+	SHCOLMP: map[string]struct{}{
+		"w_id":     {},
+		"d_w_id":   {},
+		"c_w_id":   {},
+		"h_c_w_id": {},
+		"o_w_id":   {},
+		"no_w_id":  {},
+		"ol_w_id":  {},
+		"s_w_id":   {},
+	},
+	LOCALS: map[string]struct{}{
+		"item1": {},
+	},
 }
 
 func NewR() R {
@@ -52,33 +75,18 @@ func routeByIndx(i int) int {
 	return NOSHARD
 }
 
-var SHCOLMP = map[string]struct{}{
-	"w_id":     {},
-	"d_w_id":   {},
-	"c_w_id":   {},
-	"h_c_w_id": {},
-	"o_w_id":   {},
-	"no_w_id":  {},
-	"ol_w_id":  {},
-	"s_w_id":   {},
-}
-
-var LOCALS = map[string]struct{}{
-	"item1": {},
-}
-
-func matchShkey(expr sqlp.Expr) bool {
+func (r *R) matchShkey(expr sqlp.Expr) bool {
 
 	switch texpr := expr.(type) {
 	case sqlp.ValTuple:
 		for _, val := range texpr {
-			if matchShkey(val) {
+			if r.matchShkey(val) {
 				return true
 			}
 		}
 	case *sqlp.ColName:
 		//fmt.Printf("colanme is %s\n", texpr.Name.String())
-		_, ok := SHCOLMP[texpr.Name.String()]
+		_, ok := r.SHCOLMP[texpr.Name.String()]
 		return ok
 	default:
 		//fmt.Printf("%T", texpr)
@@ -87,19 +95,19 @@ func matchShkey(expr sqlp.Expr) bool {
 	return false
 }
 
-func routeByExpr(expr sqlp.Expr) int {
+func (r *R) routeByExpr(expr sqlp.Expr) int {
 	switch texpr := expr.(type) {
 	case *sqlp.AndExpr:
-		lft := routeByExpr(texpr.Left)
+		lft := r.routeByExpr(texpr.Left)
 		if lft == NOSHARD {
 			//fmt.Println("go right")
-			return routeByExpr(texpr.Right)
+			return r.routeByExpr(texpr.Right)
 		}
 		//fmt.Printf("go lft %d\n", lft)
 		return lft
 	case *sqlp.ComparisonExpr:
-		if matchShkey(texpr.Left) {
-			shindx := routeByExpr(texpr.Right)
+		if r.matchShkey(texpr.Left) {
+			shindx := r.routeByExpr(texpr.Right)
 			//fmt.Printf("shkey mathed %d\n", shindx)
 			return shindx
 		}
@@ -116,7 +124,7 @@ func routeByExpr(expr sqlp.Expr) int {
 	return NOSHARD
 }
 
-func isLocalTbl(frm sqlp.TableExprs) bool {
+func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 
 	for _, texpr := range frm {
 		switch tbltype := texpr.(type) {
@@ -133,7 +141,7 @@ func isLocalTbl(frm sqlp.TableExprs) bool {
 			switch tname := tbltype.Expr.(type) {
 			case sqlp.TableName:
 				//fmt.Printf("table name is %v\n", tname.Name)
-				if _, ok := LOCALS[tname.Name.String()]; ok {
+				if _, ok := r.LOCALS[tname.Name.String()]; ok {
 					return true
 				}
 			case *sqlp.Subquery:
@@ -149,7 +157,7 @@ func isLocalTbl(frm sqlp.TableExprs) bool {
 
 }
 
-func getshindx(sql string) int {
+func (r *R) getshindx(sql string) int {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
@@ -160,11 +168,11 @@ func getshindx(sql string) int {
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
 		//fmt.Println("select routing")
-		if isLocalTbl(stmt.From) {
+		if r.isLocalTbl(stmt.From) {
 			return 2
 		}
 		if stmt.Where != nil {
-			shindx := routeByExpr(stmt.Where.Expr)
+			shindx := r.routeByExpr(stmt.Where.Expr)
 			return shindx
 		}
 		return NOSHARD
@@ -174,19 +182,19 @@ func getshindx(sql string) int {
 		for i, c := range stmt.Columns {
 
 			//fmt.Printf("stmt = %+v\n", c)
-			if _, ok := SHCOLMP[c.String()]; ok {
+			if _, ok := r.SHCOLMP[c.String()]; ok {
 
 				switch vals := stmt.Rows.(type) {
 				case sqlp.Values:
 					valTyp := vals[0]
-					return routeByExpr(valTyp[i])
+					return r.routeByExpr(valTyp[i])
 				}
 			}
 		}
 	case *sqlp.Update:
 		//fmt.Println("updater routing")
 		if stmt.Where != nil {
-			shindx := routeByExpr(stmt.Where.Expr)
+			shindx := r.routeByExpr(stmt.Where.Expr)
 			return shindx
 		}
 		return NOSHARD
@@ -197,5 +205,5 @@ func getshindx(sql string) int {
 }
 
 func (r *R) Route(q string) int {
-	return getshindx(q)
+	return r.getshindx(q)
 }

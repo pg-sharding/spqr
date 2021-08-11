@@ -13,7 +13,8 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveShard int
+	ActiveShardConn *ShServer
+	ActiveShardIndx int
 }
 
 type ConnManager interface {
@@ -33,7 +34,7 @@ func NewTxConnManager() *TxConnManager {
 
 func (t *TxConnManager) RouteCB(cl *ShClient, rst *RelayState) error {
 
-	shConn, err := cl.Route().GetConn("tcp6", rst.ActiveShard)
+	shConn, err := cl.Route().GetConn("tcp6", rst.ActiveShardIndx)
 
 	if err != nil {
 		return err
@@ -45,7 +46,7 @@ func (t *TxConnManager) RouteCB(cl *ShClient, rst *RelayState) error {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShard == r.NOSHARD || !rst.TxActive
+	return rst.ActiveShardIndx == r.NOSHARD || !rst.TxActive
 }
 
 func (t *TxConnManager) TXBeginCB(cl *ShClient, rst *RelayState) error {
@@ -56,7 +57,7 @@ func (t *TxConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 
 	fmt.Println("releasing tx\n")
 
-	cl.Route().Unroute(rst.ActiveShard, cl)
+	cl.Route().Unroute(rst.ActiveShardIndx, cl)
 
 	return nil
 }
@@ -76,19 +77,20 @@ func (s SessConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 
 func (s SessConnManager) RouteCB(cl *ShClient, rst *RelayState) error {
 
-	shConn, err := cl.Route().GetConn("tcp6", rst.ActiveShard)
+	shConn, err := cl.Route().GetConn("tcp6", rst.ActiveShardIndx)
 
 	if err != nil {
 		return err
 	}
 
 	cl.AssignShrdConn(shConn)
+	rst.ActiveShardConn = shConn
 
 	return nil
 }
 
 func (s SessConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShard == r.NOSHARD
+	return rst.ActiveShardIndx == r.NOSHARD
 }
 
 var _ ConnManager = &SessConnManager{}
@@ -96,6 +98,7 @@ var _ ConnManager = &SessConnManager{}
 func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
+
 func InitClConnection(client *ShClient) (ConnManager, error) {
 
 	var cmngr ConnManager

@@ -34,7 +34,7 @@ func (r *Route) Client() *ShClient {
 	return r.client
 }
 
-func (r *Route) Unroute(i int, cl *ShClient) {
+func (r *Route) Unroute(i int, cl *ShClient) error {
 	key := shardKey{
 		i: i,
 	}
@@ -42,10 +42,16 @@ func (r *Route) Unroute(i int, cl *ShClient) {
 	r.mu.Lock()
 
 	srv := cl.ShardConn()
+	if err := srv.Cleanup(); err != nil {
+		return err
+	}
 	cl.Unroute()
+
 	r.servPoolPending[key] = append(r.servPoolPending[key], srv)
 
 	r.mu.Unlock()
+
+	return nil
 }
 
 func NewRoute(rules []*BERule, frRules *FRRule) *Route {

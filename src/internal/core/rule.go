@@ -5,6 +5,9 @@ import "github.com/shgo/src/internal/conn"
 type BERule struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
+	PoolDiscard  bool `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
+	PoolRollback bool `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
+
 	SHStorage Storage `json:"storage_cfg" yaml:"storage_cfg" toml:"storage_cfg"`
 }
 

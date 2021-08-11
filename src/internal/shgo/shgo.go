@@ -39,8 +39,9 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 	msgs := make([]pgproto3.Query, 0)
 
 	rst := &core.RelayState{
-		ActiveShard: r.NOSHARD,
-		TxActive:    false,
+		ActiveShardIndx: r.NOSHARD,
+		ActiveShardConn: nil,
+		TxActive:        false,
 	}
 
 	for {
@@ -80,13 +81,15 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 				fmt.Printf("get conn to %d\n", shindx)
 
-				if rst.ActiveShard != r.NOSHARD {
+				if rst.ActiveShardIndx != r.NOSHARD {
 					fmt.Printf("unrouted prev shard conn\n")
 
-					cl.Route().Unroute(rst.ActiveShard, cl)
+					if err := cl.Route().Unroute(rst.ActiveShardIndx, cl); err != nil {
+						return err
+					}
 				}
 
-				rst.ActiveShard = shindx
+				rst.ActiveShardIndx = shindx
 
 				if err := cmngr.RouteCB(cl, rst); err != nil {
 					return err
@@ -133,6 +136,7 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 	return nil
 }
+
 func (sg *Shgo) serv(netconn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(netconn)
@@ -148,16 +152,22 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 
 	return frontend(sg.R, client, cmngr)
 }
+
 func (sg *Shgo) Run(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 
 		util.Fatal(err)
-		go sg.serv(conn)
+		go func() {
+			if err := sg.serv(conn); err != nil {
+				util.Fatal(err)
+			}
+		}()
 	}
 
 	return nil
 }
+
 func (sg *Shgo) RunAdm(listener net.Listener) error {
 	//for {
 	//	conn, err := listener.Accept()

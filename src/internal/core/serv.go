@@ -88,7 +88,10 @@ func (srv *ShServer) ReqBackendSsl() error {
 
 	resp := make([]byte, 1)
 
-	srv.conn.Read(resp)
+	if _, err := srv.conn.Read(resp); err != nil {
+		return err
+	}
+
 	fmt.Printf("%v", resp)
 
 	sym := resp[0]
@@ -110,5 +113,25 @@ func (srv *ShServer) ReqBackendSsl() error {
 
 	srv.conn = tls.Client(srv.conn, cfg)
 
+	return nil
+}
+
+func (srv *ShServer) Cleanup() error {
+
+	if srv.rule.PoolRollback {
+		if err := srv.Send(&pgproto3.Query{
+			String: "ROLLBACK",
+		}); err != nil {
+			return err
+		}
+	}
+
+	if srv.rule.PoolDiscard {
+		if err := srv.Send(&pgproto3.Query{
+			String: "DISCARD ALL",
+		}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
