@@ -1,0 +1,85 @@
+
+state 0
+	$accept: .show_stmt $end 
+
+	SHOW  shift 2
+	.  error
+
+	show_stmt  goto 1
+
+state 1
+	$accept:  show_stmt.$end 
+
+	$end  accept
+	.  error
+
+
+state 2
+	show_stmt:  SHOW.show_statement_type 
+
+	POOLS  shift 5
+	STATS  shift 9
+	SERVERS  shift 8
+	CLIENTS  shift 7
+	DATABASES  shift 6
+	.  error
+
+	show_statement_type  goto 3
+	reserved_keyword  goto 4
+
+state 3
+	show_stmt:  SHOW show_statement_type.    (9)
+
+	.  reduce 9 (src line 88)
+
+
+state 4
+	show_statement_type:  reserved_keyword.    (8)
+
+	.  reduce 8 (src line 76)
+
+
+state 5
+	reserved_keyword:  POOLS.    (3)
+
+	.  reduce 3 (src line 68)
+
+
+state 6
+	reserved_keyword:  DATABASES.    (4)
+
+	.  reduce 4 (src line 70)
+
+
+state 7
+	reserved_keyword:  CLIENTS.    (5)
+
+	.  reduce 5 (src line 71)
+
+
+state 8
+	reserved_keyword:  SERVERS.    (6)
+
+	.  reduce 6 (src line 72)
+
+
+state 9
+	reserved_keyword:  STATS.    (7)
+
+	.  reduce 7 (src line 73)
+
+Rule not reduced: string:  
+Rule not reduced: string:  LETTER string 
+
+19 terminals, 5 nonterminals
+10 grammar rules, 10/16000 states
+0 shift/reduce, 0 reduce/reduce conflicts reported
+54 working sets used
+memory: parser 3/240000
+0 extra closures
+6 shift entries, 1 exceptions
+4 goto entries
+-1 entries saved by goto default
+Optimizer space used: output 9/240000
+9 table entries, 0 zero
+maximum spread: 11, maximum offset: 6
