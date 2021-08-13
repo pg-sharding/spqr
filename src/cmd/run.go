@@ -63,7 +63,17 @@ var runCmd = &cobra.Command{
 				panic(err)
 			}
 
-			wg.Wait()
+			wg.Done()
+		}(wg)
+
+		wg.Add(1)
+		go func(wg * sync.WaitGroup) {
+			err := app.ProcADM()
+			if err != nil {
+				panic(err)
+			}
+
+			wg.Done()
 		}(wg)
 
 		wg.Wait()

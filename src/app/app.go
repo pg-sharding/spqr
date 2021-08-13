@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/wal-g/tracelog"
 	"net"
 
 	shhttp "github.com/shgo/src/http"
@@ -74,7 +75,9 @@ func (app *App) ProcPG() error {
 //}
 
 func (app *App) ProcADM() error {
-	//	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
+	//	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:7432")
+
+	tracelog.InfoLogger.Print("listening adm   !!!")
 	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.ADMAddr)
 	util.Fatal(err)
 
