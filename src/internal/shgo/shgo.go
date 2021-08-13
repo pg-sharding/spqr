@@ -2,6 +2,7 @@ package shgo
 
 import (
 	"fmt"
+	shgoparser "github.com/shgo/genyacc"
 	"net"
 	"reflect"
 
@@ -168,13 +169,24 @@ func (sg *Shgo) Run(listener net.Listener) error {
 	return nil
 }
 
+
+func (sg *Shgo) servAdm(netconn net.Conn) error {
+
+	cmngr, err := core.InitClConnection(client)
+	if err != nil {
+		return err
+	}
+
+	shgoparser.Parse()
+}
+
 func (sg *Shgo) RunAdm(listener net.Listener) error {
-	//for {
-	//	conn, err := listener.Accept()
-	//
-	//	util.Fatal(err)
-	//	go sg.serv(conn)
-	//}
+	for {
+		conn, err := listener.Accept()
+
+		util.Fatal(err)
+		go sg.servAdm(conn)
+	}
 
 	return nil
 

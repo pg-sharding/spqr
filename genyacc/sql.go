@@ -2,13 +2,11 @@
 
 //line shgoparser/sql.y:8
 
-//package shgoparser
-
-package main
+package shgoparser
 
 import __yyfmt__ "fmt"
 
-//line shgoparser/sql.y:11
+//line shgoparser/sql.y:9
 
 import (
 	"bufio"
@@ -24,7 +22,7 @@ func setParseTree(yylex interface{}, stmt Statement) {
 	yylex.(*Tokenizer).ParseTree = stmt
 }
 
-//line shgoparser/sql.y:31
+//line shgoparser/sql.y:29
 type yySymType struct {
 	yys   int
 	empty struct{}
@@ -69,10 +67,16 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line shgoparser/sql.y:96
+//line shgoparser/sql.y:94
 
-func main() {
-	yyParse(&yyLex{})
+func Parse(sql string) (Statement, error) {
+
+	tokenizer := NewStringTokenizer(sql)
+	if yyParse(tokenizer) != 0 {
+		return nil, errors.New(tokenizer.LastError)
+	}
+	ast := tokenizer.ParseTree
+	return ast, nil
 }
 
 //line yacctab:1
@@ -478,7 +482,7 @@ yydefault:
 
 	case 8:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line shgoparser/sql.y:78
+//line shgoparser/sql.y:76
 		{
 			switch v := string(yyDollar[1].bytes); v {
 			case ShowDatabasesStr, ShowPoolsStr:
@@ -489,7 +493,7 @@ yydefault:
 		}
 	case 9:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line shgoparser/sql.y:90
+//line shgoparser/sql.y:88
 		{
 			yyVAL.str = &Show{Cmd: yyDollar[1].bytes}
 		}

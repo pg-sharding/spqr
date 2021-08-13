@@ -1,7 +1,5 @@
 
-//package shgoparser
-
-package main
+package shgoparser
 
 type Show struct {
 	Cmd string

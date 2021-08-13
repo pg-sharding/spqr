@@ -6,9 +6,7 @@
 
 %{
 
-//package shgoparser
-
-package main
+package shgoparser
 
 import (
 	"bufio"
@@ -95,6 +93,13 @@ show_stmt:
 
 %%
 
-func main() {
-    yyParse(&yyLex{})
+func Parse(sql string) (Statement, error) {
+
+	tokenizer := NewStringTokenizer(sql)
+	if yyParse(tokenizer) != 0 {
+		return nil, errors.New(tokenizer.LastError)
+	}
+	ast := tokenizer.ParseTree
+	return ast, nil
 }
+
