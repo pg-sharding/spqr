@@ -30,43 +30,43 @@ state 2
 state 3
 	show_stmt:  SHOW show_statement_type.    (9)
 
-	.  reduce 9 (src line 86)
+	.  reduce 9 (src line 157)
 
 
 state 4
 	show_statement_type:  reserved_keyword.    (8)
 
-	.  reduce 8 (src line 74)
+	.  reduce 8 (src line 145)
 
 
 state 5
 	reserved_keyword:  POOLS.    (3)
 
-	.  reduce 3 (src line 66)
+	.  reduce 3 (src line 137)
 
 
 state 6
 	reserved_keyword:  DATABASES.    (4)
 
-	.  reduce 4 (src line 68)
+	.  reduce 4 (src line 139)
 
 
 state 7
 	reserved_keyword:  CLIENTS.    (5)
 
-	.  reduce 5 (src line 69)
+	.  reduce 5 (src line 140)
 
 
 state 8
 	reserved_keyword:  SERVERS.    (6)
 
-	.  reduce 6 (src line 70)
+	.  reduce 6 (src line 141)
 
 
 state 9
 	reserved_keyword:  STATS.    (7)
 
-	.  reduce 7 (src line 71)
+	.  reduce 7 (src line 142)
 
 Rule not reduced: string:  
 Rule not reduced: string:  LETTER string 

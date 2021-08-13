@@ -2,7 +2,7 @@ package shgo
 
 import (
 	"fmt"
-	shgoparser "github.com/shgo/genyacc"
+	shgop "github.com/shgo/genyacc"
 	"net"
 	"reflect"
 
@@ -172,12 +172,49 @@ func (sg *Shgo) Run(listener net.Listener) error {
 
 func (sg *Shgo) servAdm(netconn net.Conn) error {
 
-	cmngr, err := core.InitClConnection(client)
+	cl := core.NewClient(netconn)
+
+	if err := cl.Init(sg.Cfg.RouterCfg.TLSCfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
+		return err
+	}
+
+	_, err := core.InitClConnection(cl)
 	if err != nil {
 		return err
 	}
 
-	shgoparser.Parse()
+	for {
+
+		msg, err := cl.Receive()
+		if err != nil {
+			util.Fatal(err)
+			return err
+		}
+		tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+		tracelog.InfoLogger.Println(msg)
+
+		switch v := msg.(type) {
+		case *pgproto3.Query:
+
+			sql, err := shgop.Parse(v.String)
+
+			if err != nil {
+				tracelog.ErrorLogger.PrintError(err)
+				continue
+			}
+
+			switch stmt := sql.(type) {
+			case *shgop.Show:
+				tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
+			}
+
+			if err := cl.DefaultReply(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (sg *Shgo) RunAdm(listener net.Listener) error {

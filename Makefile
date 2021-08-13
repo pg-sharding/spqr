@@ -12,6 +12,7 @@ fmt:
 	ya tool yoimports -w ./
 
 compile:
+	goyacc -o genyacc/sql.go -p yy yacc/shgoparser/sql.y
 	go build src/main/shgo.go && mv shgo shgopg
 
 clean:
