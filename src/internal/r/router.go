@@ -14,7 +14,6 @@ type Qrouter interface {
 }
 type R struct {
 	Qrouter
-	shindx  int
 	SHCOLMP map[string]struct{}
 
 	LOCALS map[string]struct{}
@@ -38,7 +37,19 @@ var _ Qrouter = &R{
 
 func NewR() R {
 	return R{
-		shindx: NOSHARD,
+		SHCOLMP: map[string]struct{}{
+			"w_id":     {},
+			"d_w_id":   {},
+			"c_w_id":   {},
+			"h_c_w_id": {},
+			"o_w_id":   {},
+			"no_w_id":  {},
+			"ol_w_id":  {},
+			"s_w_id":   {},
+		},
+		LOCALS: map[string]struct{}{
+			"item1": {},
+		},
 	}
 }
 

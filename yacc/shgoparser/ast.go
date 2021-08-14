@@ -15,20 +15,18 @@ type Kill struct {
 
 // The frollowing constants represent SHOW statements.
 const (
-	ShowDatabasesStr     = "databases"
-	KillClientsStr       = "clients"
-	ShowPoolsStr         = "pools"
-	ShowUnsupportedStr   = "unsupported"
+	ShowDatabasesStr   = "databases"
+	KillClientsStr     = "clients"
+	ShowPoolsStr       = "pools"
+	ShowUnsupportedStr = "unsupported"
 )
-
 
 // Statement represents a statement.
 type Statement interface {
 	iStatement()
 }
 
-
-func (*Show) iStatement()          {}
+func (*Show) iStatement() {}
 
 var reserveds map[string]int = map[string]int{
 	"pools":     POOLS,
@@ -43,11 +41,11 @@ var reserveds map[string]int = map[string]int{
 // Tokenizer is the struct used to generate SQL
 // tokens for the parser.
 type Tokenizer struct {
-	s      string
-	pos    int
+	s   string
+	pos int
 
-	ParseTree     Statement
-	LastError     string
+	ParseTree Statement
+	LastError string
 }
 
 func (t *Tokenizer) Lex(lval *yySymType) int {
@@ -85,18 +83,12 @@ func (t *Tokenizer) Lex(lval *yySymType) int {
 func (t *Tokenizer) Error(s string) {
 	t.LastError = s
 }
-
-
 func NewStringTokenizer(sql string) *Tokenizer {
 	return &Tokenizer{s: sql}
 }
-
-
 func setParseTree(yylex interface{}, stmt Statement) {
 	yylex.(*Tokenizer).ParseTree = stmt
 }
-
-
 func Parse(sql string) (Statement, error) {
 
 	tokenizer := NewStringTokenizer(sql)
@@ -106,4 +98,3 @@ func Parse(sql string) (Statement, error) {
 	ast := tokenizer.ParseTree
 	return ast, nil
 }
-

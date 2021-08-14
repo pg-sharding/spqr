@@ -2,7 +2,6 @@ package shgo
 
 import (
 	"fmt"
-	"github.com/shgo/yacc/shgoparser"
 	"net"
 	"reflect"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
+	"github.com/shgo/yacc/shgoparser"
 	shgop "github.com/shgo/yacc/shgoparser"
 	"github.com/wal-g/tracelog"
 )
@@ -68,6 +68,8 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 				fmt.Printf("rerouting\n")
 				shindx := rt.Route(v.String)
+
+				tracelog.InfoLogger.Printf("parsed shindx %d", shindx)
 
 				if shindx == r.NOSHARD {
 					if err := cl.DefaultReply(); err != nil {
@@ -156,7 +158,6 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 }
 
 func (sg *Shgo) Run(listener net.Listener) error {
-	return nil
 	for {
 		conn, err := listener.Accept()
 

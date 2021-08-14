@@ -36,13 +36,11 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 
 		res := hash.Sum(nil)
 
-		res = append(res, v.Salt[0], v.Salt[1], v.Salt[2], v.Salt[3])
-		tracelog.InfoLogger.Println("authBackend bypass md5 %s", res)
-
-		str1 := hex.EncodeToString(res)
+		tracelog.InfoLogger.Println("passwd + username md5 %s", hex.EncodeToString(res))
 
 		hash2 := md5.New()
-		hash2.Write([]byte(str1))
+		hash2.Write([]byte(hex.EncodeToString(res)))
+		hash2.Write([]byte{v.Salt[0], v.Salt[1], v.Salt[2], v.Salt[3]})
 
 		res2 := hash2.Sum(nil)
 
