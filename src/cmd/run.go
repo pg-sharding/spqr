@@ -67,7 +67,7 @@ var runCmd = &cobra.Command{
 		}(wg)
 
 		wg.Add(1)
-		go func(wg * sync.WaitGroup) {
+		go func(wg *sync.WaitGroup) {
 			err := app.ProcADM()
 			if err != nil {
 				panic(err)

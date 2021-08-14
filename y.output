@@ -1,85 +1,107 @@
 
 state 0
-	$accept: .show_stmt $end 
+	$accept: .any_command $end 
 
-	SHOW  shift 2
+	SHOW  shift 3
 	.  error
 
-	show_stmt  goto 1
+	show_stmt  goto 2
+	any_command  goto 1
 
 state 1
-	$accept:  show_stmt.$end 
+	$accept:  any_command.$end 
 
 	$end  accept
 	.  error
 
 
 state 2
-	show_stmt:  SHOW.show_statement_type 
+	any_command:  show_stmt.semicolon_opt 
+	semicolon_opt: .    (2)
 
-	POOLS  shift 5
-	STATS  shift 9
-	SERVERS  shift 8
-	CLIENTS  shift 7
-	DATABASES  shift 6
-	.  error
+	';'  shift 5
+	.  reduce 2 (src line 59)
 
-	show_statement_type  goto 3
-	reserved_keyword  goto 4
+	semicolon_opt  goto 4
 
 state 3
-	show_stmt:  SHOW show_statement_type.    (9)
+	show_stmt:  SHOW.show_statement_type 
 
-	.  reduce 9 (src line 157)
+	POOLS  shift 8
+	STATS  shift 12
+	SERVERS  shift 11
+	CLIENTS  shift 10
+	DATABASES  shift 9
+	.  error
 
+	show_statement_type  goto 6
+	reserved_keyword  goto 7
 
 state 4
-	show_statement_type:  reserved_keyword.    (8)
+	any_command:  show_stmt semicolon_opt.    (1)
 
-	.  reduce 8 (src line 145)
+	.  reduce 1 (src line 53)
 
 
 state 5
-	reserved_keyword:  POOLS.    (3)
+	semicolon_opt:  ';'.    (3)
 
-	.  reduce 3 (src line 137)
+	.  reduce 3 (src line 61)
 
 
 state 6
-	reserved_keyword:  DATABASES.    (4)
+	show_stmt:  SHOW show_statement_type.    (11)
 
-	.  reduce 4 (src line 139)
+	.  reduce 11 (src line 95)
 
 
 state 7
-	reserved_keyword:  CLIENTS.    (5)
+	show_statement_type:  reserved_keyword.    (9)
 
-	.  reduce 5 (src line 140)
+	.  reduce 9 (src line 71)
 
 
 state 8
-	reserved_keyword:  SERVERS.    (6)
+	reserved_keyword:  POOLS.    (4)
 
-	.  reduce 6 (src line 141)
+	.  reduce 4 (src line 64)
 
 
 state 9
-	reserved_keyword:  STATS.    (7)
+	reserved_keyword:  DATABASES.    (5)
 
-	.  reduce 7 (src line 142)
+	.  reduce 5 (src line 66)
 
-Rule not reduced: string:  
-Rule not reduced: string:  LETTER string 
 
-19 terminals, 5 nonterminals
-10 grammar rules, 10/16000 states
+state 10
+	reserved_keyword:  CLIENTS.    (6)
+
+	.  reduce 6 (src line 67)
+
+
+state 11
+	reserved_keyword:  SERVERS.    (7)
+
+	.  reduce 7 (src line 68)
+
+
+state 12
+	reserved_keyword:  STATS.    (8)
+
+	.  reduce 8 (src line 69)
+
+Rule not reduced: kill_statement_type:  reserved_keyword 
+Rule not reduced: kill_stmt:  KILL kill_statement_type 
+
+22 terminals, 8 nonterminals
+13 grammar rules, 13/16000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-54 working sets used
-memory: parser 3/240000
+57 working sets used
+memory: parser 6/240000
 0 extra closures
-6 shift entries, 1 exceptions
-4 goto entries
--1 entries saved by goto default
-Optimizer space used: output 9/240000
-9 table entries, 0 zero
-maximum spread: 11, maximum offset: 6
+7 shift entries, 1 exceptions
+7 goto entries
+-2 entries saved by goto default
+Optimizer space used: output 12/240000
+12 table entries, 0 zero
+maximum spread: 22, maximum offset: 22

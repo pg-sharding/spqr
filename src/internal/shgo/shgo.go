@@ -2,7 +2,7 @@ package shgo
 
 import (
 	"fmt"
-	shgop "github.com/shgo/genyacc"
+	"github.com/shgo/yacc/shgoparser"
 	"net"
 	"reflect"
 
@@ -10,6 +10,7 @@ import (
 	"github.com/shgo/src/internal/core"
 	"github.com/shgo/src/internal/r"
 	"github.com/shgo/src/util"
+	shgop "github.com/shgo/yacc/shgoparser"
 	"github.com/wal-g/tracelog"
 )
 
@@ -155,6 +156,7 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 }
 
 func (sg *Shgo) Run(listener net.Listener) error {
+	return nil
 	for {
 		conn, err := listener.Accept()
 
@@ -168,8 +170,6 @@ func (sg *Shgo) Run(listener net.Listener) error {
 
 	return nil
 }
-
-
 func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 	cl := core.NewClient(netconn)
@@ -178,11 +178,25 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 		return err
 	}
 
-	_, err := core.InitClConnection(cl)
-	if err != nil {
-		return err
-	}
+	//_, err := core.InitClConnection(cl)
+	//if err != nil {
+	//	return err
+	//}
 
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err :=
+			cl.Send(msg); err != nil {
+
+			tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
+
+			return err
+		}
+	}
 	for {
 
 		msg, err := cl.Receive()
@@ -196,16 +210,72 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
-			sql, err := shgop.Parse(v.String)
+			tstmt, err := shgop.Parse(v.String)
 
 			if err != nil {
 				tracelog.ErrorLogger.PrintError(err)
-				continue
 			}
 
-			switch stmt := sql.(type) {
+			switch stmt := tstmt.(type) {
 			case *shgop.Show:
 				tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
+
+				switch stmt.Cmd {
+				case shgoparser.ShowPoolsStr:
+					for _, msg := range []pgproto3.BackendMessage{
+						&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+							{
+								Name:                 "fortune",
+								TableOID:             0,
+								TableAttributeNumber: 0,
+								DataTypeOID:          25,
+								DataTypeSize:         -1,
+								TypeModifier:         -1,
+								Format:               0,
+							},
+						},
+						},
+						&pgproto3.DataRow{Values: [][]byte{[]byte("show pools")}},
+						&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+						&pgproto3.ReadyForQuery{},
+					} {
+						if err := cl.Send(msg); err != nil {
+							tracelog.InfoLogger.Print(err)
+						}
+					}
+
+				case shgoparser.ShowDatabasesStr:
+					for _, msg := range []pgproto3.BackendMessage{
+						&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+							{
+								Name:                 "fortune",
+								TableOID:             0,
+								TableAttributeNumber: 0,
+								DataTypeOID:          25,
+								DataTypeSize:         -1,
+								TypeModifier:         -1,
+								Format:               0,
+							},
+						},
+						},
+						&pgproto3.DataRow{Values: [][]byte{[]byte("show dbs")}},
+						&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+						&pgproto3.ReadyForQuery{},
+					} {
+						if err := cl.Send(msg); err != nil {
+							tracelog.InfoLogger.Print(err)
+						}
+					}
+				default:
+					tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
+
+					cl.DefaultReply()
+				}
+
+			default:
+				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 			}
 
 			if err := cl.DefaultReply(); err != nil {

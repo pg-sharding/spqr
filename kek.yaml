@@ -1,4 +1,5 @@
-addr: 'localhost:6432'
+addr: 'localhost:7432'
+adm_addr: 'localhost:6432'
 proto: 'tcp'
 router:
     require_ssl: false
