@@ -58,6 +58,7 @@ func (t *TxConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 	fmt.Println("releasing tx\n")
 
 	cl.Route().Unroute(rst.ActiveShardIndx, cl)
+	rst.ActiveShardIndx = r.NOSHARD
 
 	return nil
 }

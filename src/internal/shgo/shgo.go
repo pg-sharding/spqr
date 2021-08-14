@@ -86,7 +86,7 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 				fmt.Printf("get conn to %d\n", shindx)
 
 				if rst.ActiveShardIndx != r.NOSHARD {
-					fmt.Printf("unrouted prev shard conn\n")
+					fmt.Printf("unrouted prev shard conn %d\n", rst.ActiveShardIndx)
 
 					if err := cl.Route().Unroute(rst.ActiveShardIndx, cl); err != nil {
 						return err
