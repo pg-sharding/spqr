@@ -9,6 +9,10 @@ type Show struct {
 	Cmd string
 }
 
+type ShardingColumn struct {
+	ColName string
+}
+
 type Kill struct {
 	Cmd string
 }
@@ -26,9 +30,10 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement() {}
+func (*Show) iStatement()           {}
+func (*ShardingColumn) iStatement() {}
 
-var reserveds map[string]int = map[string]int{
+var reservedWords = map[string]int{
 	"pools":     POOLS,
 	"servers":   SERVERS,
 	"clients":   CLIENTS,
@@ -36,6 +41,9 @@ var reserveds map[string]int = map[string]int{
 	"show":      SHOW,
 	"stats":     STATS,
 	"kill":      KILL,
+	"column":    COLUMN,
+	"sharding":  SHARDING,
+	"create":    CREATE,
 }
 
 // Tokenizer is the struct used to generate SQL
@@ -73,7 +81,7 @@ func (t *Tokenizer) Lex(lval *yySymType) int {
 	}
 	lval.str = tok
 
-	if tp, ok := reserveds[strings.ToLower(tok)]; ok {
+	if tp, ok := reservedWords[strings.ToLower(tok)]; ok {
 		return tp
 	}
 
@@ -83,12 +91,15 @@ func (t *Tokenizer) Lex(lval *yySymType) int {
 func (t *Tokenizer) Error(s string) {
 	t.LastError = s
 }
+
 func NewStringTokenizer(sql string) *Tokenizer {
 	return &Tokenizer{s: sql}
 }
+
 func setParseTree(yylex interface{}, stmt Statement) {
 	yylex.(*Tokenizer).ParseTree = stmt
 }
+
 func Parse(sql string) (Statement, error) {
 
 	tokenizer := NewStringTokenizer(sql)

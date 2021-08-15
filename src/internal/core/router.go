@@ -44,22 +44,26 @@ func NewRouter(cfg RouterConfig) (*Router, error) {
 		}] = e
 	}
 
-	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
-	if err != nil {
-		tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
-		return nil, err
-	}
-
-	tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-
-	return &Router{
+	router := &Router{
 		CFG:             cfg,
 		mu:              sync.Mutex{},
 		routePool:       map[routeKey][]*Route{},
 		mpFrontendRules: mp,
+	}
 
-		cfg: tlscfg,
-	}, nil
+	if cfg.ReqSSL {
+		cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
+		if err != nil {
+			tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
+			return nil, err
+		}
+
+		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
+		router.cfg = tlscfg
+	}
+
+	return router, nil
 }
 
 func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {

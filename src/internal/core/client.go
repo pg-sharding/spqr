@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
+	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -45,7 +46,7 @@ func (cl *ShClient) AssignRule(rule *FRRule) {
 // startup + ssl
 func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 
-	//tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
+	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
 
 	var backend *pgproto3.Backend
 

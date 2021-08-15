@@ -2,10 +2,10 @@
 state 0
 	$accept: .any_command $end 
 
-	SHOW  shift 3
+	CREATE  shift 3
 	.  error
 
-	show_stmt  goto 2
+	create_sharding_column_stmt  goto 2
 	any_command  goto 1
 
 state 1
@@ -16,92 +16,78 @@ state 1
 
 
 state 2
-	any_command:  show_stmt.semicolon_opt 
+	any_command:  create_sharding_column_stmt.semicolon_opt 
 	semicolon_opt: .    (2)
 
 	';'  shift 5
-	.  reduce 2 (src line 59)
+	.  reduce 2 (src line 70)
 
 	semicolon_opt  goto 4
 
 state 3
-	show_stmt:  SHOW.show_statement_type 
+	create_sharding_column_stmt:  CREATE.SHARDING COLUMN sharding_column_name 
 
-	POOLS  shift 8
-	STATS  shift 12
-	SERVERS  shift 11
-	CLIENTS  shift 10
-	DATABASES  shift 9
+	SHARDING  shift 6
 	.  error
 
-	show_statement_type  goto 6
-	reserved_keyword  goto 7
 
 state 4
-	any_command:  show_stmt semicolon_opt.    (1)
+	any_command:  create_sharding_column_stmt semicolon_opt.    (1)
 
-	.  reduce 1 (src line 53)
+	.  reduce 1 (src line 63)
 
 
 state 5
 	semicolon_opt:  ';'.    (3)
 
-	.  reduce 3 (src line 61)
+	.  reduce 3 (src line 72)
 
 
 state 6
-	show_stmt:  SHOW show_statement_type.    (11)
+	create_sharding_column_stmt:  CREATE SHARDING.COLUMN sharding_column_name 
 
-	.  reduce 11 (src line 95)
+	COLUMN  shift 7
+	.  error
 
 
 state 7
-	show_statement_type:  reserved_keyword.    (9)
+	create_sharding_column_stmt:  CREATE SHARDING COLUMN.sharding_column_name 
 
-	.  reduce 9 (src line 71)
+	STRING  shift 9
+	.  error
 
+	sharding_column_name  goto 8
 
 state 8
-	reserved_keyword:  POOLS.    (4)
+	create_sharding_column_stmt:  CREATE SHARDING COLUMN sharding_column_name.    (13)
 
-	.  reduce 4 (src line 64)
+	.  reduce 13 (src line 117)
 
 
 state 9
-	reserved_keyword:  DATABASES.    (5)
+	sharding_column_name:  STRING.    (12)
 
-	.  reduce 5 (src line 66)
+	.  reduce 12 (src line 112)
 
-
-state 10
-	reserved_keyword:  CLIENTS.    (6)
-
-	.  reduce 6 (src line 67)
-
-
-state 11
-	reserved_keyword:  SERVERS.    (7)
-
-	.  reduce 7 (src line 68)
-
-
-state 12
-	reserved_keyword:  STATS.    (8)
-
-	.  reduce 8 (src line 69)
-
+Rule not reduced: reserved_keyword:  POOLS 
+Rule not reduced: reserved_keyword:  DATABASES 
+Rule not reduced: reserved_keyword:  CLIENTS 
+Rule not reduced: reserved_keyword:  SERVERS 
+Rule not reduced: reserved_keyword:  STATS 
+Rule not reduced: show_statement_type:  reserved_keyword 
 Rule not reduced: kill_statement_type:  reserved_keyword 
+Rule not reduced: show_stmt:  SHOW show_statement_type 
 Rule not reduced: kill_stmt:  KILL kill_statement_type 
 
-22 terminals, 8 nonterminals
-13 grammar rules, 13/16000 states
+25 terminals, 10 nonterminals
+15 grammar rules, 10/16000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-57 working sets used
-memory: parser 6/240000
+59 working sets used
+memory: parser 3/240000
 0 extra closures
-7 shift entries, 1 exceptions
-7 goto entries
--2 entries saved by goto default
-Optimizer space used: output 12/240000
-12 table entries, 0 zero
-maximum spread: 22, maximum offset: 22
+5 shift entries, 1 exceptions
+9 goto entries
+-5 entries saved by goto default
+Optimizer space used: output 10/240000
+10 table entries, 1 zero
+maximum spread: 25, maximum offset: 25

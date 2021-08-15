@@ -14,6 +14,7 @@ type yySymType struct {
 	empty     struct{}
 	statement Statement
 	show      *Show
+	sh_col    *ShardingColumn
 	kill      *Kill
 	str       string
 	byte      byte
@@ -29,7 +30,10 @@ const LISTS = 57352
 const SERVERS = 57353
 const CLIENTS = 57354
 const DATABASES = 57355
-const UMINUS = 57356
+const CREATE = 57356
+const SHARDING = 57357
+const COLUMN = 57358
+const UMINUS = 57359
 
 var yyToknames = [...]string{
 	"$end",
@@ -45,6 +49,9 @@ var yyToknames = [...]string{
 	"SERVERS",
 	"CLIENTS",
 	"DATABASES",
+	"CREATE",
+	"SHARDING",
+	"COLUMN",
 	"'|'",
 	"'&'",
 	"'+'",
@@ -62,7 +69,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/shgoparser/sql.y:107
+//line yacc/shgoparser/sql.y:130
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -73,61 +80,57 @@ var yyExca = [...]int{
 
 const yyPrivate = 57344
 
-const yyLast = 12
+const yyLast = 10
 
 var yyAct = [...]int{
-	5, 8, 12, 3, 11, 10, 9, 4, 1, 7,
-	2, 6,
+	5, 7, 6, 3, 9, 4, 1, 8, 2, 0,
 }
 
 var yyPact = [...]int{
-	-3, -1000, -22, -7, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000,
+	-11, -1000, -25, -13, -1000, -1000, -15, 0, -1000, -1000,
 }
 
 var yyPgo = [...]int{
-	0, 11, 11, 10, 10, 9, 8, 7,
+	0, 9, 9, 9, 9, 8, 8, 7, 6, 5,
 }
 
 var yyR1 = [...]int{
-	0, 6, 7, 7, 5, 5, 5, 5, 5, 1,
-	2, 3, 4,
+	0, 8, 9, 9, 6, 6, 6, 6, 6, 1,
+	2, 3, 7, 5, 4,
 }
 
 var yyR2 = [...]int{
 	0, 2, 0, 1, 1, 1, 1, 1, 1, 1,
-	1, 2, 2,
+	1, 2, 1, 4, 2,
 }
 
 var yyChk = [...]int{
-	-1000, -6, -3, 6, -7, 22, -1, -5, 8, 13,
-	12, 11, 9,
+	-1000, -8, -5, 14, -9, 25, 15, 16, -7, 4,
 }
 
 var yyDef = [...]int{
-	0, -2, 2, 0, 1, 3, 11, 9, 4, 5,
-	6, 7, 8,
+	0, -2, 2, 0, 1, 3, 0, 0, 13, 12,
 }
 
 var yyTok1 = [...]int{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 20, 15, 3,
-	3, 3, 18, 16, 3, 17, 3, 19, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 22,
+	3, 3, 3, 3, 3, 3, 3, 23, 18, 3,
+	3, 3, 21, 19, 3, 20, 3, 22, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 25,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 14,
+	3, 3, 3, 3, 17,
 }
 
 var yyTok2 = [...]int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 21,
+	12, 13, 14, 15, 16, 24,
 }
 
 var yyTok3 = [...]int{
@@ -473,23 +476,23 @@ yydefault:
 
 	case 1:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:55
+//line yacc/shgoparser/sql.y:65
 		{
-			setParseTree(yylex, yyDollar[1].show)
+			setParseTree(yylex, yyDollar[1].sh_col)
 		}
 	case 2:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line yacc/shgoparser/sql.y:60
+//line yacc/shgoparser/sql.y:71
 		{
 		}
 	case 3:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:61
+//line yacc/shgoparser/sql.y:72
 		{
 		}
 	case 9:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:73
+//line yacc/shgoparser/sql.y:84
 		{
 			switch v := string(yyDollar[1].str); v {
 			case ShowDatabasesStr, ShowPoolsStr:
@@ -500,7 +503,7 @@ yydefault:
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:85
+//line yacc/shgoparser/sql.y:95
 		{
 			switch v := string(yyDollar[1].str); v {
 			case KillClientsStr:
@@ -511,15 +514,27 @@ yydefault:
 		}
 	case 11:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:97
+//line yacc/shgoparser/sql.y:107
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str}
 		}
 	case 12:
-		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:103
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/shgoparser/sql.y:114
 		{
-			yyVAL.kill = &Kill{Cmd: yyDollar[1].str}
+			yyVAL.str = string(yyDollar[1].str)
+		}
+	case 13:
+		yyDollar = yyS[yypt-4 : yypt+1]
+//line yacc/shgoparser/sql.y:119
+		{
+			yyVAL.sh_col = &ShardingColumn{ColName: yyDollar[4].str}
+		}
+	case 14:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line yacc/shgoparser/sql.y:126
+		{
+			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
 		}
 	}
 	goto yystack /* stack new state and value */

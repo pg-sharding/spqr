@@ -2,6 +2,7 @@ package shgo
 
 import (
 	"crypto/tls"
+	"fmt"
 	//"fmt"
 	"net"
 	//"reflect"
@@ -35,6 +36,9 @@ type Shgo struct {
 func NewShgo(Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
 
 	for _, be := range Cfg.RouterCfg.BackendRules {
+		if !be.SHStorage.ReqSSL {
+			continue
+		}
 
 		cert, err := tls.LoadX509KeyPair(be.TLSCfg.TLSSertPath, be.TLSCfg.ServPath)
 		if err != nil {
@@ -198,15 +202,21 @@ func (sg *Shgo) Run(listener net.Listener) error {
 
 	return nil
 }
+
 func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 	cl := core.NewClient(netconn)
-	cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
-	if err != nil {
-		return err
-	}
 
-	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	var cfg *tls.Config = nil
+
+	if sg.Cfg.RouterCfg.ReqSSL {
+		cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
+		if err != nil {
+			return err
+		}
+
+		cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	}
 
 	if err := cl.Init(cfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
 		return err
@@ -220,7 +230,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err :=
@@ -231,6 +241,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 			return err
 		}
 	}
+
 	for {
 
 		msg, err := cl.Receive()
@@ -247,7 +258,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 			tstmt, err := shgop.Parse(v.String)
 
 			if err != nil {
-				//tracelog.ErrorLogger.PrintError(err)
+				tracelog.ErrorLogger.PrintError(err)
 			}
 
 			switch stmt := tstmt.(type) {
@@ -299,17 +310,43 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 						&pgproto3.ReadyForQuery{},
 					} {
 						if err := cl.Send(msg); err != nil {
-							//tracelog.InfoLogger.Print(err)
+							tracelog.InfoLogger.Print(err)
 						}
 					}
 				default:
 					//tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
 
-					cl.DefaultReply()
+					_ = cl.DefaultReply()
 				}
+			case *shgoparser.ShardingColumn:
+				tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
+				err := sg.R.AddColumn(stmt.ColName)
+
+				for _, msg := range []pgproto3.BackendMessage{
+					&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 "fortune",
+							TableOID:             0,
+							TableAttributeNumber: 0,
+							DataTypeOID:          25,
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+					},
+					&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s, err %w", stmt.ColName, err))}},
+					&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+					&pgproto3.ReadyForQuery{},
+				} {
+					if err := cl.Send(msg); err != nil {
+						tracelog.InfoLogger.Print(err)
+					}
+				}
 			default:
-				//tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
+				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 			}
 
 			if err := cl.DefaultReply(); err != nil {

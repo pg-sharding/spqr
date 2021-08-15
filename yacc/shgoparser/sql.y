@@ -12,6 +12,7 @@ package shgoparser
   empty         struct{}
   statement     Statement
   show          *Show
+  sh_col        *ShardingColumn
   kill          *Kill
   str           string
   byte          byte
@@ -31,14 +32,17 @@ package shgoparser
 // CMDS
 //%type <statement> command
 
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
+%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN
 %type <str> show_statement_type
 %type <str> kill_statement_type
 
 %type <show> show_stmt
 %type <kill> kill_stmt
-%type <str> reserved_keyword
 
+%type <sh_col> create_sharding_column_stmt
+%type <str> reserved_keyword
+%type <str> sharding_column_name
+//%type <str> sh_col_name
 
 %left '|'
 %left '&'
@@ -50,11 +54,18 @@ package shgoparser
 
 %%
 
+
+ //show_stmt semicolon_opt
+ // {
+   // setParseTree(yylex, $1)
+ // } |
+
 any_command:
-  show_stmt semicolon_opt
-  {
-    setParseTree(yylex, $1)
-  }
+  create_sharding_column_stmt semicolon_opt
+    {
+      setParseTree(yylex, $1)
+    }
+
 
 semicolon_opt:
 /*empty*/ {}
@@ -79,7 +90,6 @@ reserved_keyword
     }
   }
 
-
 kill_statement_type:
 reserved_keyword
 {
@@ -98,10 +108,23 @@ show_stmt:
     $$ = &Show{Cmd: $2}
   }
 
+
+sharding_column_name:
+  STRING
+  {
+    $$ = string($1)
+  }
+create_sharding_column_stmt:
+    CREATE SHARDING COLUMN sharding_column_name
+      {
+        $$ = &ShardingColumn{ColName: $4}
+      }
+
+
 kill_stmt:
 KILL kill_statement_type
 {
-  $$ = &Kill{Cmd: $1}
+  $$ = &Kill{Cmd: $2}
 }
 
 %%

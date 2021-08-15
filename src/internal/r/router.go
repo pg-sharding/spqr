@@ -11,7 +11,11 @@ const NOSHARD = -1
 
 type Qrouter interface {
 	Route(q string) int
+
+	AddColumn(col string) error
+	AddLocalTable(tname string) error
 }
+
 type R struct {
 	Qrouter
 	SHCOLMP map[string]struct{}
@@ -20,19 +24,8 @@ type R struct {
 }
 
 var _ Qrouter = &R{
-	SHCOLMP: map[string]struct{}{
-		"w_id":     {},
-		"d_w_id":   {},
-		"c_w_id":   {},
-		"h_c_w_id": {},
-		"o_w_id":   {},
-		"no_w_id":  {},
-		"ol_w_id":  {},
-		"s_w_id":   {},
-	},
-	LOCALS: map[string]struct{}{
-		"item1": {},
-	},
+	SHCOLMP: map[string]struct{}{},
+	LOCALS:  map[string]struct{}{},
 }
 
 func NewR() R {
@@ -51,6 +44,16 @@ func NewR() R {
 			"item1": {},
 		},
 	}
+}
+
+func (r *R) AddColumn(col string) error {
+	r.SHCOLMP[col] = struct{}{}
+	return nil
+}
+
+func (r *R) AddLocalTable(tname string) error {
+	r.LOCALS[tname] = struct{}{}
+	return nil
 }
 
 func routeByIndx(i int) int {
