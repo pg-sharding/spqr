@@ -3,6 +3,10 @@
 
 package shgoparser
 
+import (
+
+	"strconv"
+)
 
 %}
 
@@ -12,10 +16,12 @@ package shgoparser
   empty         struct{}
   statement     Statement
   show          *Show
+  kr            *KeyRange
   sh_col        *ShardingColumn
   kill          *Kill
   str           string
   byte          byte
+  int           int
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -32,16 +38,21 @@ package shgoparser
 // CMDS
 //%type <statement> command
 
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN
+%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN ADD KEY RANGE
 %type <str> show_statement_type
+%type <str> kill_statement_type
 %type <str> kill_statement_type
 
 %type <show> show_stmt
 %type <kill> kill_stmt
 
 %type <sh_col> create_sharding_column_stmt
+%type <kr> add_key_range_stmt
 %type <str> reserved_keyword
 %type <str> sharding_column_name
+%type<int> key_range_spec_from
+%type<int> key_range_spec_shid
+%type<int> key_range_spec_to
 //%type <str> sh_col_name
 
 %left '|'
@@ -64,7 +75,19 @@ any_command:
   create_sharding_column_stmt semicolon_opt
     {
       setParseTree(yylex, $1)
-    }
+    } |
+    add_key_range_stmt  semicolon_opt
+   {
+     setParseTree(yylex, $1)
+   } |
+    show_stmt semicolon_opt
+   {
+     setParseTree(yylex, $1)
+   } |
+    kill_stmt semicolon_opt
+   {
+     setParseTree(yylex, $1)
+   }
 
 
 semicolon_opt:
@@ -114,12 +137,38 @@ sharding_column_name:
   {
     $$ = string($1)
   }
+
+key_range_spec_from:
+    STRING
+    {
+      $$, _ = strconv.Atoi(string($1))
+    }
+
+key_range_spec_to:
+    STRING
+    {
+      $$, _ = strconv.Atoi(string($1))
+    }
+
+key_range_spec_shid:
+    STRING
+    {
+      $$, _ = strconv.Atoi(string($1))
+    }
+
+
 create_sharding_column_stmt:
     CREATE SHARDING COLUMN sharding_column_name
       {
         $$ = &ShardingColumn{ColName: $4}
       }
 
+
+add_key_range_stmt:
+    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid
+      {
+        $$ = &KeyRange{From: $4, To: $5, ShardID: $6}
+      }
 
 kill_stmt:
 KILL kill_statement_type

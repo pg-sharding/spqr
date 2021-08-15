@@ -51,17 +51,15 @@ func NewRouter(cfg RouterConfig) (*Router, error) {
 		mpFrontendRules: mp,
 	}
 
-	if cfg.ReqSSL {
-		cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
-		if err != nil {
-			tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
-			return nil, err
-		}
-
-		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-
-		router.cfg = tlscfg
+	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
+	if err != nil {
+		tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
+		return nil, err
 	}
+
+	tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
+	router.cfg = tlscfg
 
 	return router, nil
 }

@@ -8,16 +8,22 @@ import __yyfmt__ "fmt"
 
 //line yacc/shgoparser/sql.y:4
 
-//line yacc/shgoparser/sql.y:11
+import (
+	"strconv"
+)
+
+//line yacc/shgoparser/sql.y:15
 type yySymType struct {
 	yys       int
 	empty     struct{}
 	statement Statement
 	show      *Show
+	kr        *KeyRange
 	sh_col    *ShardingColumn
 	kill      *Kill
 	str       string
 	byte      byte
+	int       int
 }
 
 const STRING = 57346
@@ -33,7 +39,10 @@ const DATABASES = 57355
 const CREATE = 57356
 const SHARDING = 57357
 const COLUMN = 57358
-const UMINUS = 57359
+const ADD = 57359
+const KEY = 57360
+const RANGE = 57361
+const UMINUS = 57362
 
 var yyToknames = [...]string{
 	"$end",
@@ -52,6 +61,9 @@ var yyToknames = [...]string{
 	"CREATE",
 	"SHARDING",
 	"COLUMN",
+	"ADD",
+	"KEY",
+	"RANGE",
 	"'|'",
 	"'&'",
 	"'+'",
@@ -69,7 +81,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/shgoparser/sql.y:130
+//line yacc/shgoparser/sql.y:179
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -80,57 +92,72 @@ var yyExca = [...]int{
 
 const yyPrivate = 57344
 
-const yyLast = 10
+const yyLast = 35
 
 var yyAct = [...]int{
-	5, 7, 6, 3, 9, 4, 1, 8, 2, 0,
+	11, 8, 9, 27, 16, 26, 15, 18, 35, 6,
+	19, 23, 7, 22, 21, 20, 10, 25, 33, 31,
+	12, 13, 14, 29, 1, 32, 34, 30, 28, 3,
+	2, 5, 4, 24, 17,
 }
 
 var yyPact = [...]int{
-	-11, -1000, -25, -13, -1000, -1000, -15, 0, -1000, -1000,
+	-5, -1000, -28, -28, -28, -28, -9, -14, 2, 2,
+	-1000, -1000, -1000, -1000, -1000, -11, -16, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, 19, 15, -1000, -1000,
+	14, -1000, 4, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int{
-	0, 9, 9, 9, 9, 8, 8, 7, 6, 5,
+	0, 34, 33, 32, 31, 30, 29, 7, 28, 27,
+	26, 25, 24, 16,
 }
 
 var yyR1 = [...]int{
-	0, 8, 9, 9, 6, 6, 6, 6, 6, 1,
-	2, 3, 7, 5, 4,
+	0, 12, 12, 12, 12, 13, 13, 7, 7, 7,
+	7, 7, 1, 2, 3, 8, 9, 11, 10, 5,
+	6, 4,
 }
 
 var yyR2 = [...]int{
-	0, 2, 0, 1, 1, 1, 1, 1, 1, 1,
-	1, 2, 1, 4, 2,
+	0, 2, 2, 2, 2, 0, 1, 1, 1, 1,
+	1, 1, 1, 1, 2, 1, 1, 1, 1, 4,
+	6, 2,
 }
 
 var yyChk = [...]int{
-	-1000, -8, -5, 14, -9, 25, 15, 16, -7, 4,
+	-1000, -12, -5, -6, -3, -4, 14, 17, 6, 7,
+	-13, 28, -13, -13, -13, 15, 18, -1, -7, 8,
+	13, 12, 11, 9, -2, -7, 16, 19, -8, 4,
+	-9, 4, -11, 4, -10, 4,
 }
 
 var yyDef = [...]int{
-	0, -2, 2, 0, 1, 3, 0, 0, 13, 12,
+	0, -2, 5, 5, 5, 5, 0, 0, 0, 0,
+	1, 6, 2, 3, 4, 0, 0, 14, 12, 7,
+	8, 9, 10, 11, 21, 13, 0, 0, 19, 15,
+	0, 16, 0, 17, 20, 18,
 }
 
 var yyTok1 = [...]int{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 23, 18, 3,
-	3, 3, 21, 19, 3, 20, 3, 22, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 25,
+	3, 3, 3, 3, 3, 3, 3, 26, 21, 3,
+	3, 3, 24, 22, 3, 23, 3, 25, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 28,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 17,
+	3, 3, 3, 3, 20,
 }
 
 var yyTok2 = [...]int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 24,
+	12, 13, 14, 15, 16, 17, 18, 19, 27,
 }
 
 var yyTok3 = [...]int{
@@ -476,23 +503,41 @@ yydefault:
 
 	case 1:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:65
+//line yacc/shgoparser/sql.y:76
 		{
 			setParseTree(yylex, yyDollar[1].sh_col)
 		}
 	case 2:
-		yyDollar = yyS[yypt-0 : yypt+1]
-//line yacc/shgoparser/sql.y:71
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line yacc/shgoparser/sql.y:80
 		{
+			setParseTree(yylex, yyDollar[1].kr)
 		}
 	case 3:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:72
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line yacc/shgoparser/sql.y:84
+		{
+			setParseTree(yylex, yyDollar[1].show)
+		}
+	case 4:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line yacc/shgoparser/sql.y:88
+		{
+			setParseTree(yylex, yyDollar[1].kill)
+		}
+	case 5:
+		yyDollar = yyS[yypt-0 : yypt+1]
+//line yacc/shgoparser/sql.y:94
 		{
 		}
-	case 9:
+	case 6:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:84
+//line yacc/shgoparser/sql.y:95
+		{
+		}
+	case 12:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/shgoparser/sql.y:107
 		{
 			switch v := string(yyDollar[1].str); v {
 			case ShowDatabasesStr, ShowPoolsStr:
@@ -501,9 +546,9 @@ yydefault:
 				yyVAL.str = ShowUnsupportedStr
 			}
 		}
-	case 10:
+	case 13:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:95
+//line yacc/shgoparser/sql.y:118
 		{
 			switch v := string(yyDollar[1].str); v {
 			case KillClientsStr:
@@ -512,27 +557,51 @@ yydefault:
 				yyVAL.str = "unsupp"
 			}
 		}
-	case 11:
+	case 14:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:107
+//line yacc/shgoparser/sql.y:130
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str}
 		}
-	case 12:
+	case 15:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/shgoparser/sql.y:114
+//line yacc/shgoparser/sql.y:137
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
-	case 13:
+	case 16:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/shgoparser/sql.y:143
+		{
+			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+		}
+	case 17:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/shgoparser/sql.y:149
+		{
+			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+		}
+	case 18:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/shgoparser/sql.y:155
+		{
+			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+		}
+	case 19:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/shgoparser/sql.y:119
+//line yacc/shgoparser/sql.y:162
 		{
 			yyVAL.sh_col = &ShardingColumn{ColName: yyDollar[4].str}
 		}
-	case 14:
+	case 20:
+		yyDollar = yyS[yypt-6 : yypt+1]
+//line yacc/shgoparser/sql.y:169
+		{
+			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].int}
+		}
+	case 21:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/shgoparser/sql.y:126
+//line yacc/shgoparser/sql.y:175
 		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
 		}

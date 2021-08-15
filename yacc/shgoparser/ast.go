@@ -13,6 +13,12 @@ type ShardingColumn struct {
 	ColName string
 }
 
+type KeyRange struct {
+	From    int
+	To      int
+	ShardID int
+}
+
 type Kill struct {
 	Cmd string
 }
@@ -32,6 +38,8 @@ type Statement interface {
 
 func (*Show) iStatement()           {}
 func (*ShardingColumn) iStatement() {}
+func (*KeyRange) iStatement() {}
+func (*Kill) iStatement() {}
 
 var reservedWords = map[string]int{
 	"pools":     POOLS,
@@ -44,6 +52,9 @@ var reservedWords = map[string]int{
 	"column":    COLUMN,
 	"sharding":  SHARDING,
 	"create":    CREATE,
+	"add":       ADD,
+	"key":       KEY,
+	"range":     RANGE,
 }
 
 // Tokenizer is the struct used to generate SQL

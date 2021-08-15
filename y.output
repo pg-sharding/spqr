@@ -2,10 +2,16 @@
 state 0
 	$accept: .any_command $end 
 
-	CREATE  shift 3
+	SHOW  shift 8
+	KILL  shift 9
+	CREATE  shift 6
+	ADD  shift 7
 	.  error
 
+	show_stmt  goto 4
+	kill_stmt  goto 5
 	create_sharding_column_stmt  goto 2
+	add_key_range_stmt  goto 3
 	any_command  goto 1
 
 state 1
@@ -17,77 +23,255 @@ state 1
 
 state 2
 	any_command:  create_sharding_column_stmt.semicolon_opt 
-	semicolon_opt: .    (2)
+	semicolon_opt: .    (5)
 
-	';'  shift 5
-	.  reduce 2 (src line 70)
+	';'  shift 11
+	.  reduce 5 (src line 93)
 
-	semicolon_opt  goto 4
+	semicolon_opt  goto 10
 
 state 3
-	create_sharding_column_stmt:  CREATE.SHARDING COLUMN sharding_column_name 
+	any_command:  add_key_range_stmt.semicolon_opt 
+	semicolon_opt: .    (5)
 
-	SHARDING  shift 6
-	.  error
+	';'  shift 11
+	.  reduce 5 (src line 93)
 
+	semicolon_opt  goto 12
 
 state 4
-	any_command:  create_sharding_column_stmt semicolon_opt.    (1)
+	any_command:  show_stmt.semicolon_opt 
+	semicolon_opt: .    (5)
 
-	.  reduce 1 (src line 63)
+	';'  shift 11
+	.  reduce 5 (src line 93)
 
+	semicolon_opt  goto 13
 
 state 5
-	semicolon_opt:  ';'.    (3)
+	any_command:  kill_stmt.semicolon_opt 
+	semicolon_opt: .    (5)
 
-	.  reduce 3 (src line 72)
+	';'  shift 11
+	.  reduce 5 (src line 93)
 
+	semicolon_opt  goto 14
 
 state 6
-	create_sharding_column_stmt:  CREATE SHARDING.COLUMN sharding_column_name 
+	create_sharding_column_stmt:  CREATE.SHARDING COLUMN sharding_column_name 
 
-	COLUMN  shift 7
+	SHARDING  shift 15
 	.  error
 
 
 state 7
-	create_sharding_column_stmt:  CREATE SHARDING COLUMN.sharding_column_name 
+	add_key_range_stmt:  ADD.KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid 
 
-	STRING  shift 9
+	KEY  shift 16
 	.  error
 
-	sharding_column_name  goto 8
 
 state 8
-	create_sharding_column_stmt:  CREATE SHARDING COLUMN sharding_column_name.    (13)
+	show_stmt:  SHOW.show_statement_type 
 
-	.  reduce 13 (src line 117)
+	POOLS  shift 19
+	STATS  shift 23
+	SERVERS  shift 22
+	CLIENTS  shift 21
+	DATABASES  shift 20
+	.  error
 
+	show_statement_type  goto 17
+	reserved_keyword  goto 18
 
 state 9
-	sharding_column_name:  STRING.    (12)
+	kill_stmt:  KILL.kill_statement_type 
 
-	.  reduce 12 (src line 112)
+	POOLS  shift 19
+	STATS  shift 23
+	SERVERS  shift 22
+	CLIENTS  shift 21
+	DATABASES  shift 20
+	.  error
 
-Rule not reduced: reserved_keyword:  POOLS 
-Rule not reduced: reserved_keyword:  DATABASES 
-Rule not reduced: reserved_keyword:  CLIENTS 
-Rule not reduced: reserved_keyword:  SERVERS 
-Rule not reduced: reserved_keyword:  STATS 
-Rule not reduced: show_statement_type:  reserved_keyword 
-Rule not reduced: kill_statement_type:  reserved_keyword 
-Rule not reduced: show_stmt:  SHOW show_statement_type 
-Rule not reduced: kill_stmt:  KILL kill_statement_type 
+	kill_statement_type  goto 24
+	reserved_keyword  goto 25
 
-25 terminals, 10 nonterminals
-15 grammar rules, 10/16000 states
+state 10
+	any_command:  create_sharding_column_stmt semicolon_opt.    (1)
+
+	.  reduce 1 (src line 74)
+
+
+state 11
+	semicolon_opt:  ';'.    (6)
+
+	.  reduce 6 (src line 95)
+
+
+state 12
+	any_command:  add_key_range_stmt semicolon_opt.    (2)
+
+	.  reduce 2 (src line 78)
+
+
+state 13
+	any_command:  show_stmt semicolon_opt.    (3)
+
+	.  reduce 3 (src line 82)
+
+
+state 14
+	any_command:  kill_stmt semicolon_opt.    (4)
+
+	.  reduce 4 (src line 86)
+
+
+state 15
+	create_sharding_column_stmt:  CREATE SHARDING.COLUMN sharding_column_name 
+
+	COLUMN  shift 26
+	.  error
+
+
+state 16
+	add_key_range_stmt:  ADD KEY.RANGE key_range_spec_from key_range_spec_to key_range_spec_shid 
+
+	RANGE  shift 27
+	.  error
+
+
+state 17
+	show_stmt:  SHOW show_statement_type.    (14)
+
+	.  reduce 14 (src line 128)
+
+
+state 18
+	show_statement_type:  reserved_keyword.    (12)
+
+	.  reduce 12 (src line 105)
+
+
+state 19
+	reserved_keyword:  POOLS.    (7)
+
+	.  reduce 7 (src line 98)
+
+
+state 20
+	reserved_keyword:  DATABASES.    (8)
+
+	.  reduce 8 (src line 100)
+
+
+state 21
+	reserved_keyword:  CLIENTS.    (9)
+
+	.  reduce 9 (src line 101)
+
+
+state 22
+	reserved_keyword:  SERVERS.    (10)
+
+	.  reduce 10 (src line 102)
+
+
+state 23
+	reserved_keyword:  STATS.    (11)
+
+	.  reduce 11 (src line 103)
+
+
+state 24
+	kill_stmt:  KILL kill_statement_type.    (21)
+
+	.  reduce 21 (src line 173)
+
+
+state 25
+	kill_statement_type:  reserved_keyword.    (13)
+
+	.  reduce 13 (src line 116)
+
+
+state 26
+	create_sharding_column_stmt:  CREATE SHARDING COLUMN.sharding_column_name 
+
+	STRING  shift 29
+	.  error
+
+	sharding_column_name  goto 28
+
+state 27
+	add_key_range_stmt:  ADD KEY RANGE.key_range_spec_from key_range_spec_to key_range_spec_shid 
+
+	STRING  shift 31
+	.  error
+
+	key_range_spec_from  goto 30
+
+state 28
+	create_sharding_column_stmt:  CREATE SHARDING COLUMN sharding_column_name.    (19)
+
+	.  reduce 19 (src line 160)
+
+
+state 29
+	sharding_column_name:  STRING.    (15)
+
+	.  reduce 15 (src line 135)
+
+
+state 30
+	add_key_range_stmt:  ADD KEY RANGE key_range_spec_from.key_range_spec_to key_range_spec_shid 
+
+	STRING  shift 33
+	.  error
+
+	key_range_spec_to  goto 32
+
+state 31
+	key_range_spec_from:  STRING.    (16)
+
+	.  reduce 16 (src line 141)
+
+
+state 32
+	add_key_range_stmt:  ADD KEY RANGE key_range_spec_from key_range_spec_to.key_range_spec_shid 
+
+	STRING  shift 35
+	.  error
+
+	key_range_spec_shid  goto 34
+
+state 33
+	key_range_spec_to:  STRING.    (17)
+
+	.  reduce 17 (src line 147)
+
+
+state 34
+	add_key_range_stmt:  ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid.    (20)
+
+	.  reduce 20 (src line 167)
+
+
+state 35
+	key_range_spec_shid:  STRING.    (18)
+
+	.  reduce 18 (src line 153)
+
+
+28 terminals, 14 nonterminals
+22 grammar rules, 36/16000 states
 0 shift/reduce, 0 reduce/reduce conflicts reported
-59 working sets used
-memory: parser 3/240000
+63 working sets used
+memory: parser 16/240000
 0 extra closures
-5 shift entries, 1 exceptions
-9 goto entries
--5 entries saved by goto default
-Optimizer space used: output 10/240000
-10 table entries, 1 zero
-maximum spread: 25, maximum offset: 25
+26 shift entries, 1 exceptions
+17 goto entries
+0 entries saved by goto default
+Optimizer space used: output 35/240000
+35 table entries, 0 zero
+maximum spread: 28, maximum offset: 28

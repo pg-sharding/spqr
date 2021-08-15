@@ -9,11 +9,19 @@ import ( //"fmt"
 
 const NOSHARD = -1
 
+type KeyRange struct {
+	From    int
+	To      int
+	ShardId int
+}
+
 type Qrouter interface {
 	Route(q string) int
 
 	AddColumn(col string) error
 	AddLocalTable(tname string) error
+
+	AddKeyRange(kr KeyRange) error
 }
 
 type R struct {
@@ -21,28 +29,23 @@ type R struct {
 	SHCOLMP map[string]struct{}
 
 	LOCALS map[string]struct{}
+
+	Ranges []KeyRange
 }
 
 var _ Qrouter = &R{
 	SHCOLMP: map[string]struct{}{},
 	LOCALS:  map[string]struct{}{},
+	Ranges:  []KeyRange{},
 }
 
 func NewR() R {
 	return R{
 		SHCOLMP: map[string]struct{}{
-			"w_id":     {},
-			"d_w_id":   {},
-			"c_w_id":   {},
-			"h_c_w_id": {},
-			"o_w_id":   {},
-			"no_w_id":  {},
-			"ol_w_id":  {},
-			"s_w_id":   {},
 		},
 		LOCALS: map[string]struct{}{
-			"item1": {},
 		},
+		Ranges: []KeyRange{},
 	}
 }
 
@@ -56,34 +59,18 @@ func (r *R) AddLocalTable(tname string) error {
 	return nil
 }
 
-func routeByIndx(i int) int {
-	////tracelog.InfoLogger.Println("routing to ", i)
-	if i <= 8000 {
-		return 0
-	}
-	if i <= 16000 {
-		return 1
-	}
-	if i <= 24000 {
-		return 2
-	}
-	if i <= 32000 {
-		return 3
-	}
-	if i <= 40000 {
-		return 4
-	}
-	if i <= 48000 {
-		return 5
-	}
-	if i <= 56000 {
-		return 6
-	}
-	if i <= 65000 {
-		return 7
-	}
-	if i <= 73000 {
-		return 8
+func (r *R) AddKeyRange(kr KeyRange) error {
+	r.Ranges = append(r.Ranges, kr)
+
+	return nil
+}
+
+func (r *R) routeByIndx(i int) int {
+
+	for _, kr := range r.Ranges {
+		if kr.From <= i && kr.To >= i {
+			return kr.ShardId
+		}
 	}
 
 	return NOSHARD
@@ -130,7 +117,7 @@ func (r *R) routeByExpr(expr sqlp.Expr) int {
 		if err != nil {
 			return NOSHARD
 		}
-		return routeByIndx(valInt)
+		return r.routeByIndx(valInt)
 	default:
 		//fmt.Printf("typ is %T\n", expr)
 	}

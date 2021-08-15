@@ -47,7 +47,7 @@ func (cl *ShClient) AssignRule(rule *FRRule) {
 func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
-
+	
 	var backend *pgproto3.Backend
 
 	cr := pgproto3.NewChunkReader(bufio.NewReader(cl.conn))

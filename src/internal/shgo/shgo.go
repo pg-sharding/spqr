@@ -2,7 +2,6 @@ package shgo
 
 import (
 	"crypto/tls"
-	"fmt"
 	//"fmt"
 	"net"
 	//"reflect"
@@ -209,14 +208,12 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 	var cfg *tls.Config = nil
 
-	if sg.Cfg.RouterCfg.ReqSSL {
-		cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
-		if err != nil {
-			return err
-		}
-
-		cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
+	if err != nil {
+		return err
 	}
+
+	cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
 	if err := cl.Init(cfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
 		return err
@@ -241,6 +238,8 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 			return err
 		}
 	}
+
+	console := core.NewConsole()
 
 	for {
 
@@ -267,84 +266,19 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 				switch stmt.Cmd {
 				case shgoparser.ShowPoolsStr:
-					for _, msg := range []pgproto3.BackendMessage{
-						&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-							{
-								Name:                 "fortune",
-								TableOID:             0,
-								TableAttributeNumber: 0,
-								DataTypeOID:          25,
-								DataTypeSize:         -1,
-								TypeModifier:         -1,
-								Format:               0,
-							},
-						},
-						},
-						&pgproto3.DataRow{Values: [][]byte{[]byte("show pools")}},
-						&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
-						&pgproto3.ReadyForQuery{},
-					} {
-						if err := cl.Send(msg); err != nil {
-							//tracelog.InfoLogger.Print(err)
-						}
-					}
-
+					console.Pools(cl)
 				case shgoparser.ShowDatabasesStr:
-					for _, msg := range []pgproto3.BackendMessage{
-						&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-							{
-								Name:                 "fortune",
-								TableOID:             0,
-								TableAttributeNumber: 0,
-								DataTypeOID:          25,
-								DataTypeSize:         -1,
-								TypeModifier:         -1,
-								Format:               0,
-							},
-						},
-						},
-						&pgproto3.DataRow{Values: [][]byte{[]byte("show dbs")}},
-						&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
-						&pgproto3.ReadyForQuery{},
-					} {
-						if err := cl.Send(msg); err != nil {
-							tracelog.InfoLogger.Print(err)
-						}
-					}
+					console.Databases(cl)
 				default:
 					//tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
 
 					_ = cl.DefaultReply()
 				}
 			case *shgoparser.ShardingColumn:
-				tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-				err := sg.R.AddColumn(stmt.ColName)
-
-				for _, msg := range []pgproto3.BackendMessage{
-					&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-						{
-							Name:                 "fortune",
-							TableOID:             0,
-							TableAttributeNumber: 0,
-							DataTypeOID:          25,
-							DataTypeSize:         -1,
-							TypeModifier:         -1,
-							Format:               0,
-						},
-					},
-					},
-					&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s, err %w", stmt.ColName, err))}},
-					&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
-					&pgproto3.ReadyForQuery{},
-				} {
-					if err := cl.Send(msg); err != nil {
-						tracelog.InfoLogger.Print(err)
-					}
-				}
+				console.AddShardingColumn(cl, stmt, &sg.R)
+			case *shgoparser.KeyRange:
+				console.AddKeyRange(cl, &sg.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
 			default:
 				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 			}
