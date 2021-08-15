@@ -12,8 +12,7 @@ type Storage struct {
 	cfg *tls.Config
 }
 
-
-func  (s *Storage)Init(cfg *tls.Config) error {
+func (s *Storage) Init(cfg *tls.Config) error {
 	s.cfg = cfg
 	return nil
 }

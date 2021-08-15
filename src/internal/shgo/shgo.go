@@ -2,8 +2,6 @@ package shgo
 
 import (
 	"crypto/tls"
-	"github.com/wal-g/tracelog"
-
 	//"fmt"
 	"net"
 	//"reflect"
@@ -15,6 +13,7 @@ import (
 	"github.com/shgo/yacc/shgoparser"
 	shgop "github.com/shgo/yacc/shgoparser"
 	//"github.com/wal-g/tracelog"
+	"github.com/wal-g/tracelog"
 )
 
 type GlobConfig struct {
@@ -33,7 +32,7 @@ type Shgo struct {
 	R      r.R
 }
 
-func NewShgo (Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
+func NewShgo(Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
 
 	for _, be := range Cfg.RouterCfg.BackendRules {
 
@@ -62,7 +61,7 @@ const TXREL = 73
 func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 	//for k, v := range cl.StartupMessage().Parameters {
-		//tracelog.InfoLogger.Println("log loh %v %v", k, v)
+	//tracelog.InfoLogger.Println("log loh %v %v", k, v)
 	//}
 
 	msgs := make([]pgproto3.Query, 0)
@@ -202,8 +201,6 @@ func (sg *Shgo) Run(listener net.Listener) error {
 func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 	cl := core.NewClient(netconn)
-
-
 	cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
 	if err != nil {
 		return err

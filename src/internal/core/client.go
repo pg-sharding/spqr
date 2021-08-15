@@ -122,7 +122,7 @@ func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	//tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
 	//for k, v := range sm.Parameters {
-		//tracelog.InfoLogger.Printf("%v %v\n", k, v)
+	//tracelog.InfoLogger.Printf("%v %v\n", k, v)
 	//}
 
 	return nil

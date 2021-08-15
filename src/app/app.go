@@ -1,12 +1,12 @@
 package app
 
 import (
-	"github.com/wal-g/tracelog"
 	"net"
 
 	shhttp "github.com/shgo/src/http"
 	"github.com/shgo/src/internal/shgo"
 	"github.com/shgo/src/util"
+	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -28,7 +28,7 @@ func (app *App) ProcPG() error {
 	defer func() {
 		err := listener.Close()
 		tracelog.InfoLogger.PrintError(err)
-	} ()
+	}()
 	return app.sg.Run(listener)
 }
 

@@ -1,8 +1,5 @@
 package util
 
-import (
-)
-
 func Fatal(err error) {
 	//tracelog.ErrorLogger.PrintError(err)
 }

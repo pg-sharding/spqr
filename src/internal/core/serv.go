@@ -71,7 +71,7 @@ func NewServer(rule *BERule, conn net.Conn) *ShServer {
 	}
 }
 
-func (srv *ShServer) ReqBackendSsl(cfg * tls.Config) error {
+func (srv *ShServer) ReqBackendSsl(cfg *tls.Config) error {
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)

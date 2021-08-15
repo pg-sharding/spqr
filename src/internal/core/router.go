@@ -2,11 +2,11 @@ package core
 
 import (
 	"crypto/tls"
-	"github.com/wal-g/tracelog"
 	"net"
 	"sync"
 
 	"github.com/jackc/pgproto3"
+	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 

@@ -1,8 +1,7 @@
 package core
 
 import (
-//	"fmt"
-
+	//	"fmt"
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/conn"
 	"github.com/shgo/src/internal/r"
