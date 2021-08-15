@@ -37,11 +37,18 @@ var runCmd = &cobra.Command{
 
 		fmt.Println("PARSED:", cfg.Addr)
 
-		app := app.NewApp(shgo.Shgo{
-			Cfg:    cfg,
-			Router: core.NewRouter(cfg.RouterCfg),
-			R:      r.NewR(),
-		})
+		rt, err := core.NewRouter(cfg.RouterCfg)
+
+		shgo, err := shgo.NewShgo(
+			cfg,
+			rt,
+			r.NewR(),
+		)
+		if err != nil {
+			return err
+		}
+
+		app := app.NewApp(shgo)
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)

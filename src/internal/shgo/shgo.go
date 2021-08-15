@@ -1,9 +1,12 @@
 package shgo
 
 import (
-	"fmt"
+	"crypto/tls"
+	"github.com/wal-g/tracelog"
+
+	//"fmt"
 	"net"
-	"reflect"
+	//"reflect"
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/core"
@@ -11,7 +14,7 @@ import (
 	"github.com/shgo/src/util"
 	"github.com/shgo/yacc/shgoparser"
 	shgop "github.com/shgo/yacc/shgoparser"
-	"github.com/wal-g/tracelog"
+	//"github.com/wal-g/tracelog"
 )
 
 type GlobConfig struct {
@@ -30,13 +33,37 @@ type Shgo struct {
 	R      r.R
 }
 
+func NewShgo (Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
+
+	for _, be := range Cfg.RouterCfg.BackendRules {
+
+		cert, err := tls.LoadX509KeyPair(be.TLSCfg.TLSSertPath, be.TLSCfg.ServPath)
+		if err != nil {
+			tracelog.InfoLogger.Printf("failed to init backend rule tls conf %w", err)
+			return nil, err
+		}
+
+		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
+		if err := be.SHStorage.Init(tlscfg); err != nil {
+			return nil, err
+		}
+	}
+
+	return &Shgo{
+		Cfg:    Cfg,
+		Router: Router,
+		R:      R,
+	}, nil
+}
+
 const TXREL = 73
 
 func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
-	for k, v := range cl.StartupMessage().Parameters {
-		tracelog.InfoLogger.Println("log loh %v %v", k, v)
-	}
+	//for k, v := range cl.StartupMessage().Parameters {
+		//tracelog.InfoLogger.Println("log loh %v %v", k, v)
+	//}
 
 	msgs := make([]pgproto3.Query, 0)
 
@@ -47,14 +74,14 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 	}
 
 	for {
-		tracelog.InfoLogger.Println("round")
+		//tracelog.InfoLogger.Println("round")
 		msg, err := cl.Receive()
 		if err != nil {
 			util.Fatal(err)
 			return err
 		}
-		tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-		tracelog.InfoLogger.Println(msg)
+		//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+		//tracelog.InfoLogger.Println(msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
@@ -66,10 +93,10 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 			// txactive == 0 || activeSh == r.NOSHARD
 			if cmngr.ValidateReRoute(rst) {
 
-				fmt.Printf("rerouting\n")
+				//fmt.Printf("rerouting\n")
 				shindx := rt.Route(v.String)
 
-				tracelog.InfoLogger.Printf("parsed shindx %d", shindx)
+				//tracelog.InfoLogger.Printf("parsed shindx %d", shindx)
 
 				if shindx == r.NOSHARD {
 					if err := cl.DefaultReply(); err != nil {
@@ -83,10 +110,10 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 				//	break
 				//}
 
-				fmt.Printf("get conn to %d\n", shindx)
+				//fmt.Printf("get conn to %d\n", shindx)
 
 				if rst.ActiveShardIndx != r.NOSHARD {
-					fmt.Printf("unrouted prev shard conn %d\n", rst.ActiveShardIndx)
+					//fmt.Printf("unrouted prev shard conn %d\n", rst.ActiveShardIndx)
 
 					if err := cl.Route().Unroute(rst.ActiveShardIndx, cl); err != nil {
 						return err
@@ -129,13 +156,13 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 				}
 			}
 
-			tracelog.InfoLogger.Printf(" relay state is %v\n", rst)
+			//tracelog.InfoLogger.Printf(" relay state is %v\n", rst)
 
 		default:
 			//msgs := append(msgs, msg)
 		}
 
-		//tracelog.InfoLogger.Printf("crnt msgs buff %+v\n", msgs)
+		////tracelog.InfoLogger.Printf("crnt msgs buff %+v\n", msgs)
 	}
 
 	return nil
@@ -145,7 +172,7 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(netconn)
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		//tracelog.ErrorLogger.PrintError(err)
 		return err
 	}
 
@@ -158,6 +185,7 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 }
 
 func (sg *Shgo) Run(listener net.Listener) error {
+
 	for {
 		conn, err := listener.Accept()
 
@@ -175,7 +203,15 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 
 	cl := core.NewClient(netconn)
 
-	if err := cl.Init(sg.Cfg.RouterCfg.TLSCfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
+
+	cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.TLSSertPath, sg.Cfg.RouterCfg.TLSCfg.ServPath)
+	if err != nil {
+		return err
+	}
+
+	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
+	if err := cl.Init(cfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
 		return err
 	}
 
@@ -193,7 +229,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 		if err :=
 			cl.Send(msg); err != nil {
 
-			tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
+			//tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
 
 			return err
 		}
@@ -205,8 +241,8 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 			util.Fatal(err)
 			return err
 		}
-		tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-		tracelog.InfoLogger.Println(msg)
+		//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+		//tracelog.InfoLogger.Println(msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
@@ -214,12 +250,12 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 			tstmt, err := shgop.Parse(v.String)
 
 			if err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+				//tracelog.ErrorLogger.PrintError(err)
 			}
 
 			switch stmt := tstmt.(type) {
 			case *shgop.Show:
-				tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
+				//tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
 
 				switch stmt.Cmd {
 				case shgoparser.ShowPoolsStr:
@@ -242,7 +278,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 						&pgproto3.ReadyForQuery{},
 					} {
 						if err := cl.Send(msg); err != nil {
-							tracelog.InfoLogger.Print(err)
+							//tracelog.InfoLogger.Print(err)
 						}
 					}
 
@@ -266,17 +302,17 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 						&pgproto3.ReadyForQuery{},
 					} {
 						if err := cl.Send(msg); err != nil {
-							tracelog.InfoLogger.Print(err)
+							//tracelog.InfoLogger.Print(err)
 						}
 					}
 				default:
-					tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
+					//tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
 
 					cl.DefaultReply()
 				}
 
 			default:
-				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
+				//tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 			}
 
 			if err := cl.DefaultReply(); err != nil {

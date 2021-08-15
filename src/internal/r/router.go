@@ -4,7 +4,7 @@ import ( //"fmt"
 	"strconv"
 
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
-	//"github.com/wal-g///tracelog"
+	//"github.com/wal-g/////tracelog"
 )
 
 const NOSHARD = -1
@@ -54,7 +54,7 @@ func NewR() R {
 }
 
 func routeByIndx(i int) int {
-	//tracelog.InfoLogger.Println("routing to ", i)
+	////tracelog.InfoLogger.Println("routing to ", i)
 	if i <= 8000 {
 		return 0
 	}

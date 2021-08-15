@@ -3,13 +3,11 @@ package core
 import (
 	"crypto/tls"
 	"encoding/binary"
-	"fmt"
 	"net"
-	"reflect"
+	//"reflect"
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
-	"github.com/wal-g/tracelog"
 )
 
 type ShServer struct {
@@ -33,18 +31,18 @@ func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
 	}
 
 	for {
-		//tracelog.InfoLogger.Println("round inner")
+		////tracelog.InfoLogger.Println("round inner")
 		msg, err := srv.fr.Receive()
 		if err != nil {
 			util.Fatal(err)
 			return err
 		}
-		tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-		tracelog.InfoLogger.Println(msg)
+		//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+		//tracelog.InfoLogger.Println(msg)
 		//fatal(backend.Send(msg))
 		switch v := msg.(type) {
 		case *pgproto3.ReadyForQuery:
-			//tracelog.InfoLogger.Println("inner ok")
+			////tracelog.InfoLogger.Println("inner ok")
 			return nil
 
 			//!! backend authBackend
@@ -73,7 +71,7 @@ func NewServer(rule *BERule, conn net.Conn) *ShServer {
 	}
 }
 
-func (srv *ShServer) ReqBackendSsl() error {
+func (srv *ShServer) ReqBackendSsl(cfg * tls.Config) error {
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
@@ -92,24 +90,17 @@ func (srv *ShServer) ReqBackendSsl() error {
 		return err
 	}
 
-	fmt.Printf("%v", resp)
+	//fmt.Printf("%v", resp)
 
 	sym := resp[0]
 
-	fmt.Printf("%v\n", sym)
+	//fmt.Printf("%v\n", sym)
 
 	if sym != 'S' {
 		panic("SSL SHOUD BE ENABLED")
 	}
 
-	tracelog.InfoLogger.Printf("%v %v\n", srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)
-
-	cert, err := tls.LoadX509KeyPair(srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)
-	if err != nil {
-		panic(err)
-	}
-
-	cfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	//tracelog.InfoLogger.Printf("%v %v\n", srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)
 
 	srv.conn = tls.Client(srv.conn, cfg)
 

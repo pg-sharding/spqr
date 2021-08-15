@@ -1,12 +1,12 @@
 package core
 
 import (
-	"fmt"
+//	"fmt"
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/internal/conn"
 	"github.com/shgo/src/internal/r"
-	"github.com/wal-g/tracelog"
+	//"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -55,7 +55,7 @@ func (t *TxConnManager) TXBeginCB(cl *ShClient, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 
-	fmt.Println("releasing tx\n")
+	//fmt.Println("releasing tx")
 
 	cl.Route().Unroute(rst.ActiveShardIndx, cl)
 	rst.ActiveShardIndx = r.NOSHARD
@@ -104,7 +104,7 @@ func InitClConnection(client *ShClient) (ConnManager, error) {
 
 	var cmngr ConnManager
 
-	tracelog.InfoLogger.Printf("pooling mode %v", client.Rule().PoolingMode)
+	//tracelog.InfoLogger.Printf("pooling mode %v", client.Rule().PoolingMode)
 
 	switch client.Rule().PoolingMode {
 	case conn.PoolingModeSession:

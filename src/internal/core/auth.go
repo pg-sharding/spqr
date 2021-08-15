@@ -3,10 +3,8 @@ package core
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/jackc/pgproto3"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -25,7 +23,7 @@ type AuthRule struct {
 
 func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 
-	fmt.Printf("Auth type proc %T\n", v)
+	//fmt.Printf("Auth type proc %T\n", v)
 	switch v.Type {
 	case pgproto3.AuthTypeOk:
 		return nil
@@ -36,7 +34,7 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 
 		res := hash.Sum(nil)
 
-		tracelog.InfoLogger.Println("passwd + username md5 %s", hex.EncodeToString(res))
+		//tracelog.InfoLogger.Println("passwd + username md5 %s", hex.EncodeToString(res))
 
 		hash2 := md5.New()
 		hash2.Write([]byte(hex.EncodeToString(res)))
@@ -46,14 +44,14 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 
 		psswd := hex.EncodeToString(res2)
 
-		tracelog.InfoLogger.Println("authBackend bypass md5 %s", psswd)
+		//tracelog.InfoLogger.Println("authBackend bypass md5 %s", psswd)
 
 		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
 			return err
 		}
 
 	case pgproto3.AuthTypeCleartextPassword:
-		tracelog.InfoLogger.Println("authBackend bypass %s", sh.rule.SHStorage.Passwd)
+		//tracelog.InfoLogger.Println("authBackend bypass %s", sh.rule.SHStorage.Passwd)
 		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: sh.rule.SHStorage.Passwd}); err != nil {
 			return err
 		}

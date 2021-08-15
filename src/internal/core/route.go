@@ -103,7 +103,7 @@ func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
 
 	srv := NewServer(r.beRule[indx], netconn)
 	if r.beRule[indx].SHStorage.ReqSSL {
-		if err := srv.ReqBackendSsl(); err != nil {
+		if err := srv.ReqBackendSsl(r.beRule[indx].SHStorage.cfg); err != nil {
 			return nil, err
 		}
 	}

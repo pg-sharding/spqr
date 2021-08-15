@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/binary"
-	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/shgo/src/util"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -45,9 +43,9 @@ func (cl *ShClient) AssignRule(rule *FRRule) {
 }
 
 // startup + ssl
-func (cl *ShClient) Init(tlscgf TLSConfig, reqssl bool) error {
+func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 
-	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
+	//tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
 
 	var backend *pgproto3.Backend
 
@@ -68,7 +66,7 @@ func (cl *ShClient) Init(tlscgf TLSConfig, reqssl bool) error {
 
 	protVer := binary.BigEndian.Uint32(buf)
 
-	tracelog.InfoLogger.Println("prot version %v", protVer)
+	//tracelog.InfoLogger.Println("prot version %v", protVer)
 
 	if protVer == sslproto {
 		_, err := cl.conn.Write([]byte{'S'})
@@ -76,16 +74,10 @@ func (cl *ShClient) Init(tlscgf TLSConfig, reqssl bool) error {
 			panic(err)
 		}
 
-		fmt.Printf("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
-		cert, err := tls.LoadX509KeyPair(tlscgf.TLSSertPath, tlscgf.ServPath)
-		if err != nil {
-			panic(err)
-		}
-
-		cfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+		//fmt.Printf("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
 		cl.conn = tls.Server(cl.conn, cfg)
 
-		fmt.Printf("%v\n", cl.conn)
+		//fmt.Printf("%v\n", cl.conn)
 
 		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 
@@ -128,16 +120,16 @@ func (cl *ShClient) Init(tlscgf TLSConfig, reqssl bool) error {
 		}
 	}
 
-	tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
-	for k, v := range sm.Parameters {
-		tracelog.InfoLogger.Printf("%v %v\n", k, v)
-	}
+	//tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
+	//for k, v := range sm.Parameters {
+		//tracelog.InfoLogger.Printf("%v %v\n", k, v)
+	//}
 
 	return nil
 }
 func (cl *ShClient) Auth() error {
 
-	tracelog.InfoLogger.Printf("processing auth for %v %v\n", cl.Usr(), cl.DB())
+	//tracelog.InfoLogger.Printf("processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.rule.AuthRule.Am {
@@ -169,13 +161,13 @@ func (cl *ShClient) Auth() error {
 		} {
 			if err :=
 				cl.Send(msg); err != nil {
-				tracelog.InfoLogger.Printf("server startup resp failed %v %v\n", msg, err)
+				//tracelog.InfoLogger.Printf("server startup resp failed %v %v\n", msg, err)
 			}
 		}
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("auth client ok")
+	//tracelog.InfoLogger.Printf("auth client ok")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
@@ -186,7 +178,7 @@ func (cl *ShClient) Auth() error {
 		if err :=
 			cl.Send(msg); err != nil {
 
-			tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
+			//tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
 
 			return err
 		}
@@ -284,8 +276,8 @@ func (cl *ShClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 		err = cl.Send(msg)
 		if err != nil {
-			//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-			//tracelog.InfoLogger.Println(msg)
+			////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+			////tracelog.InfoLogger.Println(msg)
 			return 0, err
 		}
 	}

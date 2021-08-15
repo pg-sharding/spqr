@@ -1,11 +1,12 @@
 package core
 
 import (
+	"crypto/tls"
+	"github.com/wal-g/tracelog"
 	"net"
 	"sync"
 
 	"github.com/jackc/pgproto3"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -27,37 +28,49 @@ type Router struct {
 	routePool map[routeKey][]*Route
 
 	mpFrontendRules map[routeKey]*FRRule
+
+	cfg *tls.Config
 }
 
-func NewRouter(cfg RouterConfig) *Router {
+func NewRouter(cfg RouterConfig) (*Router, error) {
 
 	mp := make(map[routeKey]*FRRule, 0)
 
 	for _, e := range cfg.FrontendRules {
-		tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
+		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
 		mp[routeKey{
 			usr: e.Usr,
 			db:  e.DB,
 		}] = e
 	}
 
+	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
+	if err != nil {
+		tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
+		return nil, err
+	}
+
+	tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
 	return &Router{
 		CFG:             cfg,
 		mu:              sync.Mutex{},
 		routePool:       map[routeKey][]*Route{},
 		mpFrontendRules: mp,
-	}
+
+		cfg: tlscfg,
+	}, nil
 }
 
 func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.CFG.TLSCfg, r.CFG.ReqSSL); err != nil {
+	if err := cl.Init(r.cfg, r.CFG.ReqSSL); err != nil {
 		return nil, err
 	}
 
-	tracelog.InfoLogger.Printf("routing %v %v", cl.Usr(), cl.DB())
+	//tracelog.InfoLogger.Printf("routing %v %v", cl.Usr(), cl.DB())
 
 	// match client frontend rule
 	key := routeKey{
@@ -76,7 +89,7 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 		} {
 			if err :=
 				cl.Send(msg); err != nil {
-				tracelog.InfoLogger.Printf("failed to make route failure resp")
+				//tracelog.InfoLogger.Printf("failed to make route failure resp")
 				return nil, err
 			}
 		}
@@ -126,7 +139,7 @@ func (r *Router) ListShards() []string {
 }
 
 func Connect(proto string, rule *BERule) (net.Conn, error) {
-	tracelog.InfoLogger.Printf("acquire backend connection on addr %v\n", rule.SHStorage.ConnAddr)
+	//tracelog.InfoLogger.Printf("acquire backend connection on addr %v\n", rule.SHStorage.ConnAddr)
 
 	return net.Dial(proto, rule.SHStorage.ConnAddr)
 }
