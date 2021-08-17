@@ -1,7 +1,7 @@
 
 %{
 
-package shgoparser
+package spqrparser
 
 import (
 

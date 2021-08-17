@@ -3,9 +3,9 @@ package app
 import (
 	"net"
 
-	shhttp "github.com/shgo/src/http"
-	"github.com/shgo/src/internal/shgo"
-	"github.com/shgo/src/util"
+	shhttp "github.com/spqr/src/http"
+	"github.com/spqr/src/internal/spqr"
+	"github.com/spqr/src/util"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -14,10 +14,10 @@ import (
 )
 
 type App struct {
-	sg *shgo.Shgo
+	sg *spqr.Spqr
 }
 
-func NewApp(sg *shgo.Shgo) *App {
+func NewApp(sg *spqr.Spqr) *App {
 	return &App{
 		sg: sg,
 	}

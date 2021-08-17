@@ -1,6 +1,6 @@
 package core
 
-import "github.com/shgo/src/internal/conn"
+import "github.com/spqr/src/internal/conn"
 
 type BERule struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`

@@ -1,4 +1,4 @@
-package shgo
+package spqr
 
 import (
 	"fmt"

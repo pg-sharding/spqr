@@ -3,8 +3,8 @@ package core
 import (
 	"fmt"
 	"github.com/jackc/pgproto3"
-	"github.com/shgo/src/internal/r"
-	"github.com/shgo/yacc/shgoparser"
+	"github.com/spqr/src/internal/r"
+	"github.com/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
 
@@ -66,7 +66,7 @@ func (c *Console) Pools(cl *ShClient) {
 }
 
 
-func (c *Console) AddShardingColumn(cl *ShClient, stmt  *shgoparser.ShardingColumn, r *r.R) {
+func (c *Console) AddShardingColumn(cl *ShClient, stmt  *spqrparser.ShardingColumn, r *r.R) {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 

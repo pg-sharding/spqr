@@ -1,14 +1,14 @@
-package shgo
+package spqr
 
 import (
 	"fmt"
 	"os"
 	"sync"
 
-	"github.com/shgo/src/app"
-	"github.com/shgo/src/internal/core"
-	"github.com/shgo/src/internal/r"
-	"github.com/shgo/src/internal/shgo"
+	"github.com/spqr/src/app"
+	"github.com/spqr/src/internal/core"
+	"github.com/spqr/src/internal/r"
+	"github.com/spqr/src/internal/spqr"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
@@ -28,7 +28,7 @@ var runCmd = &cobra.Command{
 
 		fmt.Println("i open file", cnfPath)
 
-		var cfg shgo.GlobConfig
+		var cfg spqr.GlobConfig
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(&cfg)
 		if err != nil {
@@ -39,7 +39,7 @@ var runCmd = &cobra.Command{
 
 		rt, err := core.NewRouter(cfg.RouterCfg)
 
-		shgo, err := shgo.NewShgo(
+		spqr, err := spqr.NewSpqr(
 			cfg,
 			rt,
 			r.NewR(),
@@ -48,7 +48,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		app := app.NewApp(shgo)
+		app := app.NewApp(spqr)
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)

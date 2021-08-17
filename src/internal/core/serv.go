@@ -7,7 +7,7 @@ import (
 	//"reflect"
 
 	"github.com/jackc/pgproto3"
-	"github.com/shgo/src/util"
+	"github.com/spqr/src/util"
 )
 
 type ShServer struct {

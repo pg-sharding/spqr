@@ -4,17 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	shards "github.com/shgo/genproto/protos"
+	shards "github.com/spqr/genproto/protos"
 	"google.golang.org/grpc"
 )
 
-type Shgoserver struct {
+type Spqrserver struct {
 	shards.UnimplementedShardServiceServer
 }
 
-var _ shards.ShardServiceServer = &Shgoserver{}
+var _ shards.ShardServiceServer = &Spqrserver{}
 
-func (*Shgoserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
+func (*Spqrserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
 	fmt.Print("repl")
 	return &shards.ShardReply{
 		Shards: []string{
@@ -25,7 +25,7 @@ func (*Shgoserver) ListShards(context.Context, *shards.ShardRequest) (*shards.Sh
 }
 
 func Register(server *grpc.Server) {
-	shards.RegisterShardServiceServer(server, &Shgoserver{})
+	shards.RegisterShardServiceServer(server, &Spqrserver{})
 }
 
 

@@ -1,4 +1,4 @@
-package shgoparser
+package spqrparser
 
 import (
 	"errors"

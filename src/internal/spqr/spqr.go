@@ -1,19 +1,19 @@
-package shgo
+package spqr
 
 import (
 	"crypto/tls"
-	shhttp "github.com/shgo/src/http"
+	shhttp "github.com/spqr/src/http"
 
 	//"fmt"
 	"net"
 	//"reflect"
 
 	"github.com/jackc/pgproto3"
-	"github.com/shgo/src/internal/core"
-	"github.com/shgo/src/internal/r"
-	"github.com/shgo/src/util"
-	"github.com/shgo/yacc/shgoparser"
-	shgop "github.com/shgo/yacc/shgoparser"
+	"github.com/spqr/src/internal/core"
+	"github.com/spqr/src/internal/r"
+	"github.com/spqr/src/util"
+	"github.com/spqr/yacc/spqrparser"
+	spqrp "github.com/spqr/yacc/spqrparser"
 	//"github.com/wal-g/tracelog"
 	"github.com/wal-g/tracelog"
 )
@@ -30,13 +30,13 @@ type GlobConfig struct {
 	HttpConfig shhttp.HttpConf `json:"http_conf" toml:"http_conf" yaml:"http_conf"`
 }
 
-type Shgo struct {
+type Spqr struct {
 	Cfg    GlobConfig
 	Router *core.Router
 	R      r.R
 }
 
-func NewShgo(Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
+func NewSpqr(Cfg GlobConfig, Router *core.Router, R r.R) (*Spqr, error) {
 
 	for _, be := range Cfg.RouterCfg.BackendRules {
 		if !be.SHStorage.ReqSSL {
@@ -56,7 +56,7 @@ func NewShgo(Cfg GlobConfig, Router *core.Router, R r.R) (*Shgo, error) {
 		}
 	}
 
-	return &Shgo{
+	return &Spqr{
 		Cfg:    Cfg,
 		Router: Router,
 		R:      R,
@@ -174,7 +174,7 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 	return nil
 }
 
-func (sg *Shgo) serv(netconn net.Conn) error {
+func (sg *Spqr) serv(netconn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(netconn)
 	if err != nil {
@@ -190,7 +190,7 @@ func (sg *Shgo) serv(netconn net.Conn) error {
 	return frontend(sg.R, client, cmngr)
 }
 
-func (sg *Shgo) Run(listener net.Listener) error {
+func (sg *Spqr) Run(listener net.Listener) error {
 
 	for {
 		conn, err := listener.Accept()
@@ -206,7 +206,7 @@ func (sg *Shgo) Run(listener net.Listener) error {
 	return nil
 }
 
-func (sg *Shgo) servAdm(netconn net.Conn) error {
+func (sg *Spqr) servAdm(netconn net.Conn) error {
 
 	cl := core.NewClient(netconn)
 
@@ -258,30 +258,30 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
-			tstmt, err := shgop.Parse(v.String)
+			tstmt, err := spqrp.Parse(v.String)
 
 			if err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 
 			switch stmt := tstmt.(type) {
-			case *shgop.Show:
+			case *spqrp.Show:
 				//tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
 
 				switch stmt.Cmd {
-				case shgoparser.ShowPoolsStr:
+				case spqrparser.ShowPoolsStr:
 					console.Pools(cl)
-				case shgoparser.ShowDatabasesStr:
+				case spqrparser.ShowDatabasesStr:
 					console.Databases(cl)
 				default:
 					//tracelog.InfoLogger.Printf("loh %s", stmt.Cmd)
 
 					_ = cl.DefaultReply()
 				}
-			case *shgoparser.ShardingColumn:
+			case *spqrparser.ShardingColumn:
 
 				console.AddShardingColumn(cl, stmt, &sg.R)
-			case *shgoparser.KeyRange:
+			case *spqrparser.KeyRange:
 				console.AddKeyRange(cl, &sg.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
 			default:
 				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
@@ -296,7 +296,7 @@ func (sg *Shgo) servAdm(netconn net.Conn) error {
 	return nil
 }
 
-func (sg *Shgo) RunAdm(listener net.Listener) error {
+func (sg *Spqr) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 
