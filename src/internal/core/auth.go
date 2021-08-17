@@ -56,7 +56,7 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 			return err
 		}
 	default:
-		return xerrors.Errorf("authBackend type %T not supportes", v.Type)
+		return xerrors.Errorf("authBackend type %T not supported", v.Type)
 	}
 
 	return nil

@@ -1,7 +1,9 @@
 package util
 
+import "github.com/wal-g/tracelog"
+
 func Fatal(err error) {
-	//tracelog.ErrorLogger.PrintError(err)
+	tracelog.ErrorLogger.PrintError(err)
 }
 
 func Info(err error) {

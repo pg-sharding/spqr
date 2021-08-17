@@ -9,6 +9,8 @@ import (
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	reuse "github.com/libp2p/go-reuseport"
 )
 
 type App struct {
@@ -23,7 +25,7 @@ func NewApp(sg *shgo.Shgo) *App {
 
 func (app *App) ProcPG() error {
 	////	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
-	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.Addr)
+	listener, err := reuse.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.Addr)
 	util.Fatal(err)
 	defer func() {
 		err := listener.Close()
@@ -50,7 +52,7 @@ func (app *App) ServHttp() error {
 
 	reflection.Register(serv)
 
-	lis, err := net.Listen("tcp", "localhost:7000")
+	lis, err := net.Listen("tcp", app.sg.Cfg.HttpConfig.Addr)
 	if err != nil {
 		return err
 	}

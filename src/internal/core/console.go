@@ -21,7 +21,7 @@ func (c *Console) Databases(cl *ShClient) {
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 "show dbs",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -32,7 +32,6 @@ func (c *Console) Databases(cl *ShClient) {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show dbs")}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -58,7 +57,6 @@ func (c *Console) Pools(cl *ShClient) {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show pools")}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -89,7 +87,6 @@ func (c *Console) AddShardingColumn(cl *ShClient, stmt  *shgoparser.ShardingColu
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s, err %w", stmt.ColName, err))}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -117,7 +114,6 @@ func (c *Console) AddKeyRange(cl *ShClient, r * r.R, kr r.KeyRange) {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %w", kr.From, kr.To, err))}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {

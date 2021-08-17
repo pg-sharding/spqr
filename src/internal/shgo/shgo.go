@@ -2,6 +2,8 @@ package shgo
 
 import (
 	"crypto/tls"
+	shhttp "github.com/shgo/src/http"
+
 	//"fmt"
 	"net"
 	//"reflect"
@@ -24,6 +26,8 @@ type GlobConfig struct {
 	Tlscfg core.TLSConfig `json:"tls_cfg" toml:"tls_cfg" yaml:"tls_cfg"`
 
 	RouterCfg core.RouterConfig `json:"router" toml:"router" yaml:"router"`
+
+	HttpConfig shhttp.HttpConf `json:"http_conf" toml:"http_conf" yaml:"http_conf"`
 }
 
 type Shgo struct {

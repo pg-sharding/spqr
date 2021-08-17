@@ -124,5 +124,6 @@ func (srv *ShServer) Cleanup() error {
 			return err
 		}
 	}
+
 	return nil
 }
