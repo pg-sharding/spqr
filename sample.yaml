@@ -1,0 +1,44 @@
+addr: '[localhost]:6432'
+adm_addr: '[localhost]:7432'
+proto: 'tcp6'
+http_conf:
+        addr: 'localhost:7000'
+ca_path: '/root/allCAs.pem'
+serv_key_path: '/root/server.key'
+tls_cert_path: '/root/cert.pem' 
+router:
+        frontend_rules:
+                - usr: user2
+                  db: dbtpcc
+                  pooling_mode: SESSION
+                  auth_rule:
+                          auth_method: 'notok'
+                - usr: user3
+                  db: dbtpcc
+                  pooling_mode: SESSION
+                  auth_rule:
+                          auth_method: 'clear_text'
+                          password: 'strong'
+                - usr: user1
+                  db: dbtpcc
+                  pooling_mode: TRANSACTION
+                  auth_rule:
+                          auth_method: 'ok'
+        require_ssl: false
+        proto: 'tcp6'
+        tls:
+                ca_path: '/root/allCAs.pem'
+                serv_key_path: '/root/server.key'
+                tls_cert_path: '/root/server.crt' 
+        backend_rules:
+                - tls:
+                        ca_path: '/root/allCAs.pem'
+                        serv_key_path: '/rootserver.key'
+                        tls_cert_path: '/root/server.crt' 
+                  storage_cfg:
+                        conn_addr: "localhost:6432"
+                        conn_db: "db1"
+                        conn_usr: "user1"
+                        require_ssl: true
+                        passwd: 12345678
+

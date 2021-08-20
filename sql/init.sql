@@ -1,4 +1,4 @@
-CREATE TABLE yyy(s_w_id int);
-CREATE TABLE yy(c_w_id int);
-CREATE TABLE y(w_id int);
 
+create sharding column id;
+           -- from to shard indx
+ADD KEY RANGE 1 8000 0;

@@ -1,4 +1,0 @@
-addr: [2a02:6b8:c25:abb:0:1589:9b42:d510]:6432
-shard_mapping: 
-    - localhost:5432
-    - localhost:5442
