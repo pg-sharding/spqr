@@ -12,8 +12,8 @@ import (
 	"github.com/spqr/src/internal/core"
 	"github.com/spqr/src/internal/r"
 	"github.com/spqr/src/util"
-	"github.com/spqr/yacc/spqrparser"
-	spqrp "github.com/spqr/yacc/spqrparser"
+	"github.com/spqr/spqrparser"
+	spqrp "github.com/spqr/spqrparser"
 	//"github.com/wal-g/tracelog"
 	"github.com/wal-g/tracelog"
 )

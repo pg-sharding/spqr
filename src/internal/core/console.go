@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgproto3"
 	"github.com/spqr/src/internal/r"
-	"github.com/spqr/yacc/spqrparser"
+	"github.com/spqr/spqrparser"
 	"github.com/wal-g/tracelog"
 )
 

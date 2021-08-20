@@ -6,4 +6,4 @@ gogen:
 	protos/shard.proto
 
 yaccgen:
-	goyacc -o yacc/spqrparser/sql.go -p yy yacc/spqrparser/sql.y
+	goyacc -o spqrparser/sql.go -p yy spqrparser/sql.y
