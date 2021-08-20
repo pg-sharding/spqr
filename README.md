@@ -4,6 +4,10 @@
 ![Github Repository Size](https://img.shields.io/github/repo-size/pg-sharding/spqr)
 ![Lines of code](https://img.shields.io/tokei/lines/github/pg-sharding/spqr)
 
-# shgo
+# Stateless Postgres Query Router
 
-### make yaccgen && make compile
+```
+go get golang.org/x/tools/cmd/goyacc
+make yaccgen
+make compile
+```
