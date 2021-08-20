@@ -38,8 +38,8 @@ type Statement interface {
 
 func (*Show) iStatement()           {}
 func (*ShardingColumn) iStatement() {}
-func (*KeyRange) iStatement() {}
-func (*Kill) iStatement() {}
+func (*KeyRange) iStatement()       {}
+func (*Kill) iStatement()           {}
 
 var reservedWords = map[string]int{
 	"pools":     POOLS,

@@ -9,7 +9,6 @@ import (
 )
 
 type Console struct {
-
 }
 
 func NewConsole() *Console {
@@ -40,7 +39,6 @@ func (c *Console) Databases(cl *ShClient) {
 	}
 }
 
-
 func (c *Console) Pools(cl *ShClient) {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
@@ -65,8 +63,7 @@ func (c *Console) Pools(cl *ShClient) {
 	}
 }
 
-
-func (c *Console) AddShardingColumn(cl *ShClient, stmt  *spqrparser.ShardingColumn, r *r.R) {
+func (c *Console) AddShardingColumn(cl *ShClient, stmt *spqrparser.ShardingColumn, r *r.R) {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
@@ -95,7 +92,7 @@ func (c *Console) AddShardingColumn(cl *ShClient, stmt  *spqrparser.ShardingColu
 	}
 }
 
-func (c *Console) AddKeyRange(cl *ShClient, r * r.R, kr r.KeyRange) {
+func (c *Console) AddKeyRange(cl *ShClient, r *r.R, kr r.KeyRange) {
 
 	err := r.AddKeyRange(kr)
 

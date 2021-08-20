@@ -41,11 +41,9 @@ var _ Qrouter = &R{
 
 func NewR() R {
 	return R{
-		SHCOLMP: map[string]struct{}{
-		},
-		LOCALS: map[string]struct{}{
-		},
-		Ranges: []KeyRange{},
+		SHCOLMP: map[string]struct{}{},
+		LOCALS:  map[string]struct{}{},
+		Ranges:  []KeyRange{},
 	}
 }
 

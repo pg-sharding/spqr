@@ -28,7 +28,6 @@ func Register(server *grpc.Server) {
 	shards.RegisterShardServiceServer(server, &Spqrserver{})
 }
 
-
 type HttpConf struct {
 	Addr string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
 }
