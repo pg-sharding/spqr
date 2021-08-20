@@ -21,18 +21,19 @@ sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/mai
 
 # Create databases
 for database_name in db1 dbtpcc; do
-    sudo -u postgres -p 6432 -h localhost createdb $database_name >> "$SETUP_LOG" 2>&1 || {
+    sudo -u postgres psql -p 6432 createdb $database_name >> "$SETUP_LOG" 2>&1 || {
         echo "ERROR: 'createdb $database_name' failed, examine the log"
         cat "$SETUP_LOG"
-        #exit 1
+        exit 1
     }
 done
+
 
 # Create users
 sudo -u postgres psql -p 6432 -h localhost -U postgres -c "create role user1 with login" -d postgres >> $SETUP_LOG 2>&1 || {
     echo "ERROR: users creation failed, examine the log"
     cat "$SETUP_LOG"
-    #exit 1
+    exit 1
 }
 
 sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop

@@ -3,7 +3,7 @@ version: '3'
 services:
     shard1:
         build:
-            dockerfile: ./docker/shard/Dockerfile
+            dockerfile: ./demo/Dockerfile
             context: .
         environment:
             CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
@@ -16,7 +16,7 @@ services:
                 ipv4_address: 192.168.233.03
     shard2:
         build:
-            dockerfile: ./docker/shard/Dockerfile
+            dockerfile: ./demo/Dockerfile
             context: .
         environment:
             CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
