@@ -3,33 +3,41 @@ version: '3'
 services:
     shard1:
         build:
-            dockerfile: ./demo/Dockerfile
+            dockerfile: ./docker/shard/Dockerfile
             context: .
         environment:
-            CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
-            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-shgo_shard1_1.shgo_shgo.}"
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard1_1.spqr_spqr.}"
         ports:
             - "7432:6432"
-        hostname: shgo_shard_1_1
+        hostname: spqr_shard_1_1
         networks:
-            shgo:
+            spqr:
                 ipv4_address: 192.168.233.03
     shard2:
         build:
-            dockerfile: ./demo/Dockerfile
+            dockerfile: ./docker/shard/Dockerfile
             context: .
         environment:
-            CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
-            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-shgo_shard2_1.shgo_shgo.}"
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard2_1.spqr_spqr.}"
         ports:
             - "7433:6432"
-        hostname: shgo_shard_2_1
+        hostname: spqr_shard_2_1
         networks:
-            shgo:
+            spqr:
                 ipv4_address: 192.168.233.02
+    router:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: .
+        ports:
+            - "8432:6432"
+        hostname: spqr_router_1_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.04
 
 networks:
-    shgo:
+    spqr:
         driver: bridge
         ipam:
             driver: default

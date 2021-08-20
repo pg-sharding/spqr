@@ -12,9 +12,7 @@ import (
 	"github.com/spqr/src/internal/core"
 	"github.com/spqr/src/internal/r"
 	"github.com/spqr/src/util"
-	"github.com/spqr/spqrparser"
-	spqrp "github.com/spqr/spqrparser"
-	//"github.com/wal-g/tracelog"
+	"github.com/spqr/src/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
 
@@ -258,14 +256,14 @@ func (sg *Spqr) servAdm(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
-			tstmt, err := spqrp.Parse(v.String)
+			tstmt, err := spqrparser.Parse(v.String)
 
 			if err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 
 			switch stmt := tstmt.(type) {
-			case *spqrp.Show:
+			case *spqrparser.Show:
 				//tracelog.InfoLogger.Print("jifjweoifjwioef %v", stmt.Cmd)
 
 				switch stmt.Cmd {
