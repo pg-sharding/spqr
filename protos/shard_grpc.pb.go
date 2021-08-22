@@ -31,7 +31,7 @@ func NewShardServiceClient(cc grpc.ClientConnInterface) ShardServiceClient {
 
 func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error) {
 	out := new(ShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.shgo.shards.ShardService/ListShards", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.shards.ShardService/ListShards", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.shgo.shards.ShardService/ListShards",
+		FullMethod: "/yandex.spqr.shards.ShardService/ListShards",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).ListShards(ctx, req.(*ShardRequest))
@@ -88,7 +88,7 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ShardService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.shgo.shards.ShardService",
+	ServiceName: "yandex.spqr.shards.ShardService",
 	HandlerType: (*ShardServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

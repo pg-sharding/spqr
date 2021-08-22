@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-package yandex.shgo.shards;
+package yandex.spqr.shards;
 
 option go_package = "yandex/app/shards";
 
-// The greeting service definition.
 service ShardService {
   rpc ListShards (ShardRequest) returns (ShardReply) {}
 }

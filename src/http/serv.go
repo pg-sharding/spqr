@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	shards "github.com/spqr/genproto/protos"
+	shards "github.com/spqr/protos"
 	"google.golang.org/grpc"
 )
 
