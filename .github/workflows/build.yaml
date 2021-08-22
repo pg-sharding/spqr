@@ -29,5 +29,5 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-    - name: Build
-      run: go build -v ./main/spqr.go
+    - name: Compile
+      run: make compile
