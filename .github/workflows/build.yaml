@@ -30,4 +30,4 @@ jobs:
             dep ensure
         fi
     - name: Build
-      run: go build -v ./src/main/spqr.go
+      run: go build -v ./main/spqr.go

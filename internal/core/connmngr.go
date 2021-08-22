@@ -1,10 +1,9 @@
 package core
 
-import ( //	"fmt"
+import (
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/src/internal/conn"
-	"github.com/spqr/src/internal/r"
-	//"github.com/wal-g/tracelog"
+	"github.com/spqr/internal/conn"
+	"github.com/spqr/internal/r"
 	"golang.org/x/xerrors"
 )
 

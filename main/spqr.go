@@ -1,7 +1,7 @@
 package main
 
 import (
-	spqr "github.com/spqr/src/cmd"
+	spqr "github.com/spqr/cmd"
 )
 
 func main() {

@@ -4,10 +4,9 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"net"
-	//"reflect"
 
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/src/util"
+	"github.com/spqr/util"
 )
 
 type ShServer struct {

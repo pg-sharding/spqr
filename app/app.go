@@ -3,9 +3,9 @@ package app
 import (
 	"net"
 
-	shhttp "github.com/spqr/src/http"
-	"github.com/spqr/src/internal/spqr"
-	"github.com/spqr/src/util"
+	shhttp "github.com/spqr/http"
+	"github.com/spqr/internal/spqr"
+	"github.com/spqr/util"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
