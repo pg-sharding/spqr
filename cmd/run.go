@@ -1,4 +1,4 @@
-package spqr
+package main
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"github.com/spqr/app"
 	"github.com/spqr/internal/core"
 	"github.com/spqr/internal/r"
-	"github.com/spqr/internal/spqr"
 	"gopkg.in/yaml.v2"
 )
 

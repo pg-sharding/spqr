@@ -4,7 +4,6 @@ import (
 	"net"
 
 	shhttp "github.com/spqr/http"
-	"github.com/spqr/internal/spqr"
 	"github.com/spqr/util"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
