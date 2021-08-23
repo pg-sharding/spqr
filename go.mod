@@ -8,6 +8,7 @@ require (
 	github.com/jackc/pgproto3 v1.1.0
 	github.com/libp2p/go-reuseport v0.0.2
 	github.com/spf13/cobra v1.2.1
+	github.com/spf13/viper v1.8.1 // indirect
 	github.com/wal-g/tracelog v0.0.0-20210121175938-897a155375e3
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/grpc v1.40.0
