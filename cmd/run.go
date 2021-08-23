@@ -10,11 +10,11 @@ import (
 	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pg-sharding/spqr/internal/spqr"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
-var cfgFile string
+var configPath string
+var config spqr.GlobConfig
 
 func init() {
 	cobra.OnInitialize(initConfig)
@@ -22,7 +22,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
 	
 	rootCmd.AddCommand(runCmd)
 }
@@ -32,31 +32,15 @@ var runCmd = &cobra.Command{
 	Short: "run sqpr",
 	Long:  `All software has versions. This is Hugo's`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("running!")
-		f, err := os.Open(cfgFile)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
 
-		fmt.Println("i open file", cfgFile)
 
-		var cfg spqr.GlobConfig
-		decoder := yaml.NewDecoder(f)
-		err = decoder.Decode(&cfg)
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("PARSED:", cfg.Addr)
-
-		rt, err := core.NewRouter(cfg.RouterCfg)
+		rt, err := core.NewRouter(config.RouterCfg)
 		if err != nil {
 			return err
 		}
 
 		spqr, err := spqr.NewSpqr(
-			cfg,
+			config,
 			rt,
 			r.NewR(),
 		)
@@ -105,17 +89,28 @@ var runCmd = &cobra.Command{
 	},
 }
 
-// initConfig reads in config file and ENV variables if set.
+// initConfig reads in config
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	// anyway viper is a dependency for cobra so why not
+	if configPath != "" {
+		fmt.Println("Parsing config from", configPath)
+		f, err := os.Open(configPath)
+		if err != nil {
+			fmt.Println(err) // TODO add normal error logging
+			os.Exit(1)
+		}
+		defer f.Close()
+
+		fmt.Println("Decoding config")
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(&config)
+		if err != nil {
+			fmt.Println(err) // TODO add normal error logging
+			os.Exit(1)
+		}
+		fmt.Println("PARSED:", config.Addr)
 	} else {
 		fmt.Println("Please pass config path with --config")
 		os.Exit(1)
-	}
-
-	viper.AutomaticEnv()
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
