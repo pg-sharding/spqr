@@ -6,10 +6,10 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
-	"github.com/spqr/app"
-	"github.com/spqr/internal/core"
-	"github.com/spqr/internal/r"
-	"github.com/spqr/internal/spqr"
+	"github.com/pg-sharding/spqr/app"
+	"github.com/pg-sharding/spqr/internal/core"
+	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/spqr"
 	"gopkg.in/yaml.v2"
 )
 

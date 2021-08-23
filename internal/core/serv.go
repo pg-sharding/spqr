@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/util"
+	"github.com/pg-sharding/spqr/util"
 )
 
 type ShServer struct {

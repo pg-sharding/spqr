@@ -2,8 +2,8 @@ package core
 
 import (
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/internal/conn"
-	"github.com/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/conn"
+	"github.com/pg-sharding/spqr/internal/r"
 	"golang.org/x/xerrors"
 )
 

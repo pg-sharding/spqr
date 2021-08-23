@@ -1,6 +1,6 @@
 package core
 
-import "github.com/spqr/internal/conn"
+import "github.com/pg-sharding/spqr/internal/conn"
 
 type BERule struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`

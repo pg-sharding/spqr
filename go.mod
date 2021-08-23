@@ -1,4 +1,4 @@
-module github.com/spqr
+module github.com/pg-sharding/spqr
 
 go 1.16
 

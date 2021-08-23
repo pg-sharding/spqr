@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/util"
+	"github.com/pg-sharding/spqr/util"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )

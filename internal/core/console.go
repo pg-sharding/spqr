@@ -3,8 +3,8 @@ package core
 import (
 	"fmt"
 	"github.com/jackc/pgproto3"
-	"github.com/spqr/internal/r"
-	"github.com/spqr/yacc/spqrparser"
+	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
 
