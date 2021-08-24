@@ -5,7 +5,6 @@ import (
 
 	shhttp "github.com/pg-sharding/spqr/http"
 	"github.com/pg-sharding/spqr/internal/spqr"
-	"github.com/pg-sharding/spqr/util"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -26,10 +25,10 @@ func NewApp(sg *spqr.Spqr) *App {
 func (app *App) ProcPG() error {
 	////	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
 	listener, err := reuse.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.Addr)
-	util.Fatal(err)
+	tracelog.ErrorLogger.FatalOnError(err)
 	defer func() {
 		err := listener.Close()
-		tracelog.InfoLogger.PrintError(err)
+		tracelog.ErrorLogger.FatalOnError(err)
 	}()
 	return app.sg.Run(listener)
 }
@@ -39,7 +38,9 @@ func (app *App) ProcADM() error {
 
 	//tracelog.InfoLogger.Print("listening adm   !!!")
 	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.ADMAddr)
-	util.Fatal(err)
+	if err != nil {
+		return err
+	}
 
 	defer listener.Close()
 	return app.sg.RunAdm(listener)

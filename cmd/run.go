@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"sync"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pg-sharding/spqr/internal/spqr"
 	"github.com/spf13/cobra"
+	"github.com/wal-g/tracelog"
 	"gopkg.in/yaml.v2"
 )
 
@@ -54,32 +54,21 @@ var runCmd = &cobra.Command{
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ProcPG()
-
-			if err != nil {
-				panic(err) // TODO remove panic
-			}
-
+			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServHttp()
-
-			if err != nil {
-				panic(err) // TODO remove panic
-			}
-
+			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ProcADM()
-			if err != nil {
-				panic(err) // TODO remove panic
-			}
-
+			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
@@ -93,24 +82,17 @@ var runCmd = &cobra.Command{
 func initConfig() {
 	// anyway viper is a dependency for cobra so why not
 	if configPath != "" {
-		fmt.Println("Parsing config from", configPath)
-		f, err := os.Open(configPath)
-		if err != nil {
-			fmt.Println(err) // TODO add normal error logging
-			os.Exit(1)
-		}
-		defer f.Close()
+		tracelog.InfoLogger.Println("Parsing config from", configPath)
+		file, err := os.Open(configPath)
+		tracelog.ErrorLogger.FatalOnError(err)
+		defer file.Close()
 
-		fmt.Println("Decoding config")
-		decoder := yaml.NewDecoder(f)
+		tracelog.InfoLogger.Println("Decoding config")
+		decoder := yaml.NewDecoder(file)
 		err = decoder.Decode(&config)
-		if err != nil {
-			fmt.Println(err) // TODO add normal error logging
-			os.Exit(1)
-		}
-		fmt.Println("PARSED:", config.Addr)
+		tracelog.ErrorLogger.FatalOnError(err)
+		tracelog.InfoLogger.Println("PARSED:", config.Addr)
 	} else {
-		fmt.Println("Please pass config path with --config")
-		os.Exit(1)
+		tracelog.ErrorLogger.Fatal("Please pass config path with --config")
 	}
 }

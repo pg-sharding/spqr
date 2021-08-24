@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
@@ -58,7 +59,7 @@ func (c *Console) Pools(cl *ShClient) {
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			//tracelog.InfoLogger.Print(err)
+			tracelog.InfoLogger.Print(err)
 		}
 	}
 }

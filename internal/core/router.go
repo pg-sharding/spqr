@@ -6,8 +6,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
+	"github.com/pkg/errors"
 )
 
 type RouterConfig struct {
@@ -34,7 +33,7 @@ type Router struct {
 
 func NewRouter(cfg RouterConfig) (*Router, error) {
 
-	mp := make(map[routeKey]*FRRule, 0)
+	mp := make(map[routeKey]*FRRule)
 
 	for _, e := range cfg.FrontendRules {
 		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
@@ -53,13 +52,9 @@ func NewRouter(cfg RouterConfig) (*Router, error) {
 
 	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
 	if err != nil {
-		tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
-		return nil, err
+		return nil, errors.Wrap(err, "failed to load frontend tls conf")
 	}
-
-	tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-
-	router.cfg = tlscfg
+	router.cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
 	return router, nil
 }
@@ -89,14 +84,12 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 				Message: "failed to route",
 			},
 		} {
-			if err :=
-				cl.Send(msg); err != nil {
-				//tracelog.InfoLogger.Printf("failed to make route failure resp")
-				return nil, err
+			if err := cl.Send(msg); err != nil {
+				return nil, errors.Wrap(err, "failed to make route failure resp")
 			}
 		}
 
-		return nil, xerrors.Errorf("failed to route cl")
+		return nil, errors.New("Failed to route client")
 	}
 
 	cl.AssignRule(frRule)

@@ -7,9 +7,8 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/util"
+	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type ShClient struct {
@@ -72,40 +71,34 @@ func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 	if protVer == sslproto {
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
-			panic(err)
+			return err
 		}
 
-		//fmt.Printf("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
+		//tracelog.InfoLogger.Println("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
 		cl.conn = tls.Server(cl.conn, cfg)
 
-		//fmt.Printf("%v\n", cl.conn)
+		//tracelog.InfoLogger.Println("%v\n", cl.conn)
 
 		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		sm, err = backend.ReceiveStartupMessage()
 
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 	} else if protVer == pgproto3.ProtocolVersionNumber {
 		// reuse
 		sm = &pgproto3.StartupMessage{}
 		err = sm.Decode(buf)
-		if err != nil {
-			util.Fatal(err)
-			return err
-		}
+		tracelog.ErrorLogger.FatalOnError(err)
 
 		backend, err = pgproto3.NewBackend(cr, cl.conn)
-		if err != nil {
-			util.Fatal(err)
-			return err
-		}
+		tracelog.ErrorLogger.FatalOnError(err)
 	}
 
 	cl.sm = sm
@@ -138,10 +131,10 @@ func (cl *ShClient) Auth() error {
 			return nil
 			// TODO:
 		case AuthNOTOK:
-			return xerrors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
+			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case AuthClearText:
 			if cl.PasswordCT() != cl.rule.AuthRule.Password {
-				return xerrors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
+				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 
 			return nil
@@ -150,7 +143,7 @@ func (cl *ShClient) Auth() error {
 		case AuthSASL:
 
 		default:
-			return xerrors.Errorf("invalid auth method %v", cl.rule.AuthRule.Am)
+			return errors.Errorf("invalid auth method %v", cl.rule.AuthRule.Am)
 		}
 
 		return nil
@@ -160,9 +153,8 @@ func (cl *ShClient) Auth() error {
 				Message: "auth failed",
 			},
 		} {
-			if err :=
-				cl.Send(msg); err != nil {
-				//tracelog.InfoLogger.Printf("server startup resp failed %v %v\n", msg, err)
+			if err := cl.Send(msg); err != nil {
+				return err
 			}
 		}
 		return err
@@ -176,11 +168,7 @@ func (cl *ShClient) Auth() error {
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
 		&pgproto3.ReadyForQuery{},
 	} {
-		if err :=
-			cl.Send(msg); err != nil {
-
-			//tracelog.InfoLogger.Printf("server starsup resp failed %v", msg)
-
+		if err := cl.Send(msg); err != nil {
 			return err
 		}
 	}
@@ -316,8 +304,4 @@ func (cl *ShClient) DefaultReply() error {
 	}
 
 	return nil
-}
-
-func (cl *ShClient) Rule() *FRRule {
-	return cl.rule
 }

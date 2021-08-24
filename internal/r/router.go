@@ -1,10 +1,9 @@
 package r
 
-import ( //"fmt"
+import (
 	"strconv"
 
-	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
-	//"github.com/wal-g/////tracelog"
+	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
 )
 
 const NOSHARD = -1
@@ -84,11 +83,11 @@ func (r *R) matchShkey(expr sqlp.Expr) bool {
 			}
 		}
 	case *sqlp.ColName:
-		//fmt.Printf("colanme is %s\n", texpr.Name.String())
+		//tracelog.InfoLogger.Println("colanme is %s\n", texpr.Name.String())
 		_, ok := r.SHCOLMP[texpr.Name.String()]
 		return ok
 	default:
-		//fmt.Printf("%T", texpr)
+		//tracelog.InfoLogger.Println("%T", texpr)
 	}
 
 	return false
@@ -99,15 +98,15 @@ func (r *R) routeByExpr(expr sqlp.Expr) int {
 	case *sqlp.AndExpr:
 		lft := r.routeByExpr(texpr.Left)
 		if lft == NOSHARD {
-			//fmt.Println("go right")
+			//tracelog.InfoLogger.Println("go right")
 			return r.routeByExpr(texpr.Right)
 		}
-		//fmt.Printf("go lft %d\n", lft)
+		//tracelog.InfoLogger.Println("go lft %d\n", lft)
 		return lft
 	case *sqlp.ComparisonExpr:
 		if r.matchShkey(texpr.Left) {
 			shindx := r.routeByExpr(texpr.Right)
-			//fmt.Printf("shkey mathed %d\n", shindx)
+			//tracelog.InfoLogger.Println("shkey mathed %d\n", shindx)
 			return shindx
 		}
 	case *sqlp.SQLVal:
@@ -117,7 +116,7 @@ func (r *R) routeByExpr(expr sqlp.Expr) int {
 		}
 		return r.routeByIndx(valInt)
 	default:
-		//fmt.Printf("typ is %T\n", expr)
+		//tracelog.InfoLogger.Println("typ is %T\n", expr)
 	}
 
 	return NOSHARD
@@ -128,25 +127,25 @@ func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 	for _, texpr := range frm {
 		switch tbltype := texpr.(type) {
 		case *sqlp.ParenTableExpr:
-			//fmt.Println("parent table")
-			//fmt.Println(tbltype.Exprs)
+			//tracelog.InfoLogger.Println("parent table")
+			//tracelog.InfoLogger.Println(tbltype.Exprs)
 		case *sqlp.JoinTableExpr:
-			//fmt.Println("join table")
-			//fmt.Println(tbltype.LeftExpr)
+			//tracelog.InfoLogger.Println("join table")
+			//tracelog.InfoLogger.Println(tbltype.LeftExpr)
 		case *sqlp.AliasedTableExpr:
-			//fmt.Println("aliased table")
-			//fmt.Println(tbltype.Expr)
+			//tracelog.InfoLogger.Println("aliased table")
+			//tracelog.InfoLogger.Println(tbltype.Expr)
 
 			switch tname := tbltype.Expr.(type) {
 			case sqlp.TableName:
-				//fmt.Printf("table name is %v\n", tname.Name)
+				//tracelog.InfoLogger.Println("table name is %v\n", tname.Name)
 				if _, ok := r.LOCALS[tname.Name.String()]; ok {
 					return true
 				}
 			case *sqlp.Subquery:
-				//fmt.Printf("sub table name is %v\n", tname.Select)
+				//tracelog.InfoLogger.Println("sub table name is %v\n", tname.Select)
 			default:
-				//fmt.Printf("typ is %T\n", tname)
+				//tracelog.InfoLogger.Println("typ is %T\n", tname)
 			}
 
 		}
@@ -162,11 +161,11 @@ func (r *R) getshindx(sql string) int {
 	if err != nil {
 		return NOSHARD
 	}
-	//fmt.Printf("stmt = %+v\n", parsedStmt)
+	//tracelog.InfoLogger.Println("stmt = %+v\n", parsedStmt)
 
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
-		//fmt.Println("select routing")
+		//tracelog.InfoLogger.Println("select routing")
 		if r.isLocalTbl(stmt.From) {
 			return 2
 		}
@@ -177,10 +176,10 @@ func (r *R) getshindx(sql string) int {
 		return NOSHARD
 
 	case *sqlp.Insert:
-		//fmt.Println("insert routing")
+		//tracelog.InfoLogger.Println("insert routing")
 		for i, c := range stmt.Columns {
 
-			//fmt.Printf("stmt = %+v\n", c)
+			//tracelog.InfoLogger.Println("stmt = %+v\n", c)
 			if _, ok := r.SHCOLMP[c.String()]; ok {
 
 				switch vals := stmt.Rows.(type) {
@@ -191,7 +190,7 @@ func (r *R) getshindx(sql string) int {
 			}
 		}
 	case *sqlp.Update:
-		//fmt.Println("updater routing")
+		//tracelog.InfoLogger.Println("updater routing")
 		if stmt.Where != nil {
 			shindx := r.routeByExpr(stmt.Where.Expr)
 			return shindx

@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/util"
+	"github.com/pkg/errors"
 )
 
 type ShServer struct {
@@ -25,7 +25,6 @@ func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
 
 	err = srv.fr.Send(sm)
 	if err != nil {
-		util.Fatal(err)
 		return err
 	}
 
@@ -33,7 +32,6 @@ func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
 		////tracelog.InfoLogger.Println("round inner")
 		msg, err := srv.fr.Receive()
 		if err != nil {
-			util.Fatal(err)
 			return err
 		}
 		//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
@@ -80,7 +78,7 @@ func (srv *ShServer) ReqBackendSsl(cfg *tls.Config) error {
 	_, err := srv.conn.Write(b)
 
 	if err != nil {
-		panic(err)
+		return errors.Wrap(err, "ReqBackendSsl")
 	}
 
 	resp := make([]byte, 1)
@@ -89,14 +87,14 @@ func (srv *ShServer) ReqBackendSsl(cfg *tls.Config) error {
 		return err
 	}
 
-	//fmt.Printf("%v", resp)
+	//tracelog.InfoLogger.Println("%v", resp)
 
 	sym := resp[0]
 
-	//fmt.Printf("%v\n", sym)
+	//tracelog.InfoLogger.Println("%v\n", sym)
 
 	if sym != 'S' {
-		panic("SSL SHOUD BE ENABLED")
+		return errors.New("SSL should be enabled")
 	}
 
 	//tracelog.InfoLogger.Printf("%v %v\n", srv.rule.TLSCfg.TLSSertPath, srv.rule.TLSCfg.ServPath)

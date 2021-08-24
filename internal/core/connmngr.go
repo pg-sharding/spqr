@@ -4,7 +4,7 @@ import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/pg-sharding/spqr/internal/r"
-	"golang.org/x/xerrors"
+	"github.com/pkg/errors"
 )
 
 type RelayState struct {
@@ -52,7 +52,7 @@ func (t *TxConnManager) TXBeginCB(cl *ShClient, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(cl *ShClient, rst *RelayState) error {
 
-	//fmt.Println("releasing tx")
+	//tracelog.InfoLogger.Println("releasing tx")
 
 	cl.Route().Unroute(rst.ActiveShardIndx, cl)
 	rst.ActiveShardIndx = r.NOSHARD
@@ -103,7 +103,7 @@ func InitClConnection(client *ShClient) (ConnManager, error) {
 
 	//tracelog.InfoLogger.Printf("pooling mode %v", client.Rule().PoolingMode)
 
-	switch client.Rule().PoolingMode {
+	switch client.rule.PoolingMode {
 	case conn.PoolingModeSession:
 		cmngr = NewSessConnManager()
 	case conn.PoolingModeTransaction:
@@ -119,7 +119,7 @@ func InitClConnection(client *ShClient) (ConnManager, error) {
 				return nil, err
 			}
 		}
-		return nil, xerrors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
+		return nil, errors.Errorf("unknown pooling mode %v", client.rule.PoolingMode)
 	}
 
 	return cmngr, nil
