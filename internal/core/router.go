@@ -51,7 +51,7 @@ func NewRouter(cfg RouterConfig) (*Router, error) {
 		mpFrontendRules: mp,
 	}
 
-	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.TLSSertPath, cfg.TLSCfg.ServPath)
+	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
 	if err != nil {
 		tracelog.InfoLogger.Printf("failed to load frontend tls conf: %w", err)
 		return nil, err

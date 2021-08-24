@@ -15,6 +15,8 @@ var rootCmd = &cobra.Command{
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd:   true,
 	},
+	SilenceUsage: true,
+	SilenceErrors: true,
 }
 
 func Execute() {
