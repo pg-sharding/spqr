@@ -13,50 +13,46 @@ import (
 )
 
 type App struct {
-	sg *spqr.Spqr
+	spqr *spqr.Spqr
 }
 
 func NewApp(sg *spqr.Spqr) *App {
 	return &App{
-		sg: sg,
+		spqr: sg,
 	}
 }
 
+// TODO split into separate apps?
 func (app *App) ProcPG() error {
 	////	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
-	listener, err := reuse.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.Addr)
-	tracelog.ErrorLogger.FatalOnError(err)
-	defer func() {
-		err := listener.Close()
-		tracelog.ErrorLogger.FatalOnError(err)
-	}()
-	return app.sg.Run(listener)
+	listener, err := reuse.Listen(app.spqr.Cfg.PROTO, app.spqr.Cfg.Addr)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+	tracelog.InfoLogger.Printf("ProcPG listening %s by %s", app.spqr.Cfg.Addr, app.spqr.Cfg.PROTO)
+	return app.spqr.Run(listener)
 }
 
 func (app *App) ProcADM() error {
 	//	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:7432")
-
-	//tracelog.InfoLogger.Print("listening adm   !!!")
-	listener, err := net.Listen(app.sg.Cfg.PROTO, app.sg.Cfg.ADMAddr)
+	listener, err := net.Listen(app.spqr.Cfg.PROTO, app.spqr.Cfg.ADMAddr)
 	if err != nil {
 		return err
 	}
-
 	defer listener.Close()
-	return app.sg.RunAdm(listener)
+	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", app.spqr.Cfg.ADMAddr, app.spqr.Cfg.PROTO)
+	return app.spqr.RunAdm(listener)
 }
 
 func (app *App) ServHttp() error {
-
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
-
 	reflection.Register(serv)
-
-	lis, err := net.Listen("tcp", app.sg.Cfg.HttpConfig.Addr)
+	listener, err := net.Listen("tcp", app.spqr.Cfg.HttpConfig.Addr)
 	if err != nil {
 		return err
 	}
-
-	return serv.Serve(lis)
+	tracelog.InfoLogger.Printf("ServHttp listening %s by tcp", app.spqr.Cfg.HttpConfig.Addr)
+	return serv.Serve(listener)
 }

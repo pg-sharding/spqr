@@ -91,7 +91,6 @@ func initConfig() {
 		decoder := yaml.NewDecoder(file)
 		err = decoder.Decode(&config)
 		tracelog.ErrorLogger.FatalOnError(err)
-		tracelog.InfoLogger.Println("PARSED:", config.Addr)
 	} else {
 		tracelog.ErrorLogger.Fatal("Please pass config path with --config")
 	}
