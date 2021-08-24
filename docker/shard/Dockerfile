@@ -35,9 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-common \
     postgresql-server-dev-13
 
-#COPY ./demo/pg_hba_test.conf /etc/postgresql/13/main/pg_hba.conf
 COPY ./docker/shard/bin/ /usr/local/bin/
-# COPY ./demo/bin/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 
