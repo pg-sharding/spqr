@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/app"
 	"github.com/pg-sharding/spqr/internal/core"
 	"github.com/pg-sharding/spqr/internal/r"
-	"github.com/pg-sharding/spqr/internal/spqr"
+	"github.com/pg-sharding/spqr/internal"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
 	"gopkg.in/yaml.v2"

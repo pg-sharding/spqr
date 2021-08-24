@@ -4,7 +4,7 @@ import (
 	"net"
 
 	shhttp "github.com/pg-sharding/spqr/http"
-	"github.com/pg-sharding/spqr/internal/spqr"
+	"github.com/pg-sharding/spqr/internal"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
