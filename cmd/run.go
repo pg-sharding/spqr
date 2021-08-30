@@ -5,25 +5,23 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/app"
+	"github.com/pg-sharding/spqr/internal"
 	"github.com/pg-sharding/spqr/internal/core"
 	"github.com/pg-sharding/spqr/internal/r"
-	"github.com/pg-sharding/spqr/internal"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
 	"gopkg.in/yaml.v2"
 )
 
-var configPath string
-var config spqr.GlobConfig
+var (
+	configPath string
+	config     spqr.GlobConfig
+)
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "path to config file")
-	
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -32,20 +30,14 @@ var runCmd = &cobra.Command{
 	Short: "run sqpr",
 	Long:  `All software has versions. This is Hugo's`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-
-		rt, err := core.NewRouter(config.RouterCfg)
+		router, err := core.NewRouter(config.RouterCfg)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "NewRouter")
 		}
 
-		spqr, err := spqr.NewSpqr(
-			config,
-			rt,
-			r.NewR(),
-		)
+		spqr, err := spqr.NewSpqr(config, router, r.NewR())
 		if err != nil {
-			return err
+			return errors.Wrap(err, "NewSpqr")
 		}
 
 		app := app.NewApp(spqr)

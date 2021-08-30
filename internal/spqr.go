@@ -183,7 +183,6 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 }
 
 func (sg *Spqr) Run(listener net.Listener) error {
-
 	for {
 		conn, err := listener.Accept()
 

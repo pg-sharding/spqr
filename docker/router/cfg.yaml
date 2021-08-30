@@ -1,3 +1,5 @@
+# TODO clean up in config
+
 addr: '[localhost]:6432'
 adm_addr: '[localhost]:7432'
 proto: 'tcp'
