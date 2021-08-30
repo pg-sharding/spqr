@@ -1,4 +1,4 @@
-package core
+package internal
 
 import (
 	"crypto/tls"
@@ -6,34 +6,25 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pkg/errors"
 )
 
-type RouterConfig struct {
-	BackendRules    []*BERule `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	FrontendRules   []*FRRule `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	MaxConnPerRoute int       `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
-	ReqSSL          bool      `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
 
-	// frontend tls settings
-	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-
-	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
-}
 
 type Router struct {
-	CFG       RouterConfig
+	CFG       config.RouterConfig
 	mu        sync.Mutex
 	routePool map[routeKey][]*Route
 
-	mpFrontendRules map[routeKey]*FRRule
+	mpFrontendRules map[routeKey]*config.FRRule
 
 	cfg *tls.Config
 }
 
-func NewRouter(cfg RouterConfig) (*Router, error) {
+func NewRouter(cfg config.RouterConfig) (*Router, error) {
 
-	mp := make(map[routeKey]*FRRule)
+	mp := make(map[routeKey]*config.FRRule)
 
 	for _, e := range cfg.FrontendRules {
 		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
@@ -59,7 +50,7 @@ func NewRouter(cfg RouterConfig) (*Router, error) {
 	return router, nil
 }
 
-func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
+func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 
 	cl := NewClient(conn)
 
@@ -75,7 +66,7 @@ func (r *Router) PreRoute(conn net.Conn) (*ShClient, error) {
 		db:  cl.DB(),
 	}
 
-	var frRule *FRRule
+	var frRule *config.FRRule
 	frRule, ok := r.mpFrontendRules[key]
 	if !ok {
 
@@ -133,7 +124,7 @@ func (r *Router) ListShards() []string {
 	return ret
 }
 
-func Connect(proto string, rule *BERule) (net.Conn, error) {
+func Connect(proto string, rule *config.BERule) (net.Conn, error) {
 	//tracelog.InfoLogger.Printf("acquire backend connection on addr %v\n", rule.SHStorage.ConnAddr)
 
 	return net.Dial(proto, rule.SHStorage.ConnAddr)

@@ -1,4 +1,4 @@
-package core
+package internal
 
 import (
 	"bufio"
@@ -7,43 +7,46 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
-type ShClient struct {
+const sslproto = 80877103 // TODO what the ?
+
+type SpqrClient struct {
+	Rule *config.FRRule
 	conn net.Conn
-	rule *FRRule
 
 	r *Route
 
 	be *pgproto3.Backend
 
 	sm     *pgproto3.StartupMessage
-	shconn *ShServer
+	shconn *SpqrServer
 }
 
-func (cl *ShClient) ShardConn() *ShServer {
-	return cl.shconn
-}
-
-func (cl *ShClient) Unroute() {
-	cl.shconn = nil
-}
-
-func NewClient(pgconn net.Conn) *ShClient {
-	return &ShClient{
+func NewClient(pgconn net.Conn) *SpqrClient {
+	return &SpqrClient{
 		conn: pgconn,
 		sm:   &pgproto3.StartupMessage{},
 	}
 }
 
-func (cl *ShClient) AssignRule(rule *FRRule) {
-	cl.rule = rule
+func (cl *SpqrClient) ShardConn() *SpqrServer {
+	return cl.shconn
+}
+
+func (cl *SpqrClient) Unroute() {
+	cl.shconn = nil
+}
+
+func (cl *SpqrClient) AssignRule(rule *config.FRRule) {
+	cl.Rule = rule
 }
 
 // startup + ssl
-func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
+func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
 
@@ -121,29 +124,28 @@ func (cl *ShClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	return nil
 }
-func (cl *ShClient) Auth() error {
-
-	//tracelog.InfoLogger.Printf("processing auth for %v %v\n", cl.Usr(), cl.DB())
+func (cl *SpqrClient) Auth() error {
+	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
-		switch cl.rule.AuthRule.Am {
-		case AuthOK:
+		switch cl.Rule.AuthRule.Method {
+		case config.AuthOK:
 			return nil
 			// TODO:
-		case AuthNOTOK:
+		case config.AuthNotok:
 			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
-		case AuthClearText:
-			if cl.PasswordCT() != cl.rule.AuthRule.Password {
+		case config.AuthClearText:
+			if cl.PasswordCT() != cl.Rule.AuthRule.Password {
 				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 
 			return nil
-		case AuthMD5:
+		case config.AuthMD5:
 
-		case AuthSASL:
+		case config.AuthScram:
 
 		default:
-			return errors.Errorf("invalid auth method %v", cl.rule.AuthRule.Am)
+			return errors.Errorf("invalid auth method %v", cl.Rule.AuthRule.Method)
 		}
 
 		return nil
@@ -176,13 +178,13 @@ func (cl *ShClient) Auth() error {
 	return nil
 }
 
-func (cl *ShClient) StartupMessage() *pgproto3.StartupMessage {
+func (cl *SpqrClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.sm
 }
 
 const defaultUsr = "default"
 
-func (cl *ShClient) Usr() string {
+func (cl *SpqrClient) Usr() string {
 	if usr, ok := cl.sm.Parameters["user"]; ok {
 		return usr
 	}
@@ -190,7 +192,7 @@ func (cl *ShClient) Usr() string {
 	return defaultUsr
 }
 
-func (cl *ShClient) DB() string {
+func (cl *SpqrClient) DB() string {
 	if db, ok := cl.sm.Parameters["database"]; ok {
 		return db
 	}
@@ -198,7 +200,7 @@ func (cl *ShClient) DB() string {
 	return defaultUsr
 }
 
-func (cl *ShClient) receivepasswd() string {
+func (cl *SpqrClient) receivepasswd() string {
 	msg, err := cl.be.Receive()
 
 	if err != nil {
@@ -214,7 +216,7 @@ func (cl *ShClient) receivepasswd() string {
 	}
 }
 
-func (cl *ShClient) PasswordCT() string {
+func (cl *SpqrClient) PasswordCT() string {
 	if db, ok := cl.sm.Parameters["password"]; ok {
 		return db
 	}
@@ -226,7 +228,7 @@ func (cl *ShClient) PasswordCT() string {
 	return cl.receivepasswd()
 }
 
-func (cl *ShClient) PasswordMD5() string {
+func (cl *SpqrClient) PasswordMD5() string {
 	_ = cl.be.Send(&pgproto3.Authentication{
 		Type: pgproto3.AuthTypeMD5Password,
 		Salt: [4]byte{1, 3, 3, 7},
@@ -235,19 +237,19 @@ func (cl *ShClient) PasswordMD5() string {
 	return cl.receivepasswd()
 }
 
-func (cl *ShClient) Receive() (pgproto3.FrontendMessage, error) {
+func (cl *SpqrClient) Receive() (pgproto3.FrontendMessage, error) {
 	return cl.be.Receive()
 }
 
-func (cl *ShClient) Send(msg pgproto3.BackendMessage) error {
+func (cl *SpqrClient) Send(msg pgproto3.BackendMessage) error {
 	return cl.be.Send(msg)
 }
 
-func (cl *ShClient) AssignRoute(r *Route) {
+func (cl *SpqrClient) AssignRoute(r *Route) {
 	cl.r = r
 }
 
-func (cl *ShClient) ProcQuery(query *pgproto3.Query) (byte, error) {
+func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 	if err := cl.shconn.Send(query); err != nil {
 		return 0, err
@@ -272,15 +274,15 @@ func (cl *ShClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	}
 }
 
-func (cl *ShClient) AssignShrdConn(srv *ShServer) {
+func (cl *SpqrClient) AssignShrdConn(srv *SpqrServer) {
 	cl.shconn = srv
 }
 
-func (cl *ShClient) Route() *Route {
+func (cl *SpqrClient) Route() *Route {
 	return cl.r
 }
 
-func (cl *ShClient) DefaultReply() error {
+func (cl *SpqrClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{

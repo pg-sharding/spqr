@@ -1,4 +1,4 @@
-package core
+package config
 
 import "crypto/tls"
 
@@ -8,11 +8,10 @@ type Storage struct {
 	ConnUsr  string `json:"conn_usr" toml:"conn_usr" yaml:"conn_usr"`
 	Passwd   string `json:"passwd" toml:"passwd" yaml:"passwd"`
 	ReqSSL   bool   `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
-
-	cfg *tls.Config
+	TLSConfig *tls.Config
 }
 
 func (s *Storage) Init(cfg *tls.Config) error {
-	s.cfg = cfg
+	s.TLSConfig = cfg
 	return nil
 }

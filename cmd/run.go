@@ -6,8 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/app"
 	"github.com/pg-sharding/spqr/internal"
-	"github.com/pg-sharding/spqr/internal/core"
-	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
@@ -16,7 +15,7 @@ import (
 
 var (
 	configPath string
-	config     spqr.GlobConfig
+	spqrConfig     *config.SpqrConfig
 )
 
 func init() {
@@ -30,12 +29,7 @@ var runCmd = &cobra.Command{
 	Short: "run sqpr",
 	Long:  `All software has versions. This is Hugo's`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		router, err := core.NewRouter(config.RouterCfg)
-		if err != nil {
-			return errors.Wrap(err, "NewRouter")
-		}
-
-		spqr, err := spqr.NewSpqr(config, router, r.NewR())
+		spqr, err := internal.NewSpqr(spqrConfig)
 		if err != nil {
 			return errors.Wrap(err, "NewSpqr")
 		}
@@ -81,7 +75,7 @@ func initConfig() {
 
 		tracelog.InfoLogger.Println("Decoding config")
 		decoder := yaml.NewDecoder(file)
-		err = decoder.Decode(&config)
+		err = decoder.Decode(spqrConfig)
 		tracelog.ErrorLogger.FatalOnError(err)
 	} else {
 		tracelog.ErrorLogger.Fatal("Please pass config path with --config")

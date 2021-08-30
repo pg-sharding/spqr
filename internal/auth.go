@@ -1,4 +1,4 @@
-package core
+package internal
 
 import (
 	"crypto/md5"
@@ -9,20 +9,7 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type AuthMethod string
-
-const AuthOK = AuthMethod("ok")
-const AuthNOTOK = AuthMethod("notok")
-const AuthClearText = AuthMethod("clear_text")
-const AuthMD5 = AuthMethod("md5")
-const AuthSASL = AuthMethod("scram")
-
-type AuthRule struct {
-	Am       AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
-	Password string     `json:"password" yaml:"password" toml:"password"`
-}
-
-func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
+func authBackend(sh *SpqrServer, v *pgproto3.Authentication) error {
 	tracelog.InfoLogger.Printf("Auth type proc %+v\n", v)
 	switch v.Type {
 	case pgproto3.AuthTypeOk:
@@ -38,12 +25,12 @@ func authBackend(sh *ShServer, v *pgproto3.Authentication) error {
 		res2 := hash2.Sum(nil)
 
 		psswd := hex.EncodeToString(res2)
-		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
+		if err := sh.frontend.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
 			return err
 		}
 
 	case pgproto3.AuthTypeCleartextPassword:
-		if err := sh.fr.Send(&pgproto3.PasswordMessage{Password: sh.rule.SHStorage.Passwd}); err != nil {
+		if err := sh.frontend.Send(&pgproto3.PasswordMessage{Password: sh.rule.SHStorage.Passwd}); err != nil {
 			return err
 		}
 	default:

@@ -1,4 +1,4 @@
-package core
+package internal
 
 import (
 	"crypto/tls"
@@ -6,31 +6,39 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pkg/errors"
 )
 
-type ShServer struct {
-	rule *BERule
-	conn net.Conn
-	fr   *pgproto3.Frontend
+type SpqrServer struct {
+	rule     *config.BERule
+	conn     net.Conn
+	frontend *pgproto3.Frontend
 }
 
-func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
+func NewServer(rule *config.BERule, conn net.Conn) *SpqrServer {
+	return &SpqrServer{
+		rule: rule,
+		conn: conn,
+	}
+}
+
+func (srv *SpqrServer) initConn(sm *pgproto3.StartupMessage) error {
 
 	var err error
-	srv.fr, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(srv.conn), srv.conn)
+	srv.frontend, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(srv.conn), srv.conn)
 	if err != nil {
 		return err
 	}
 
-	err = srv.fr.Send(sm)
+	err = srv.frontend.Send(sm)
 	if err != nil {
 		return err
 	}
 
 	for {
 		////tracelog.InfoLogger.Println("round inner")
-		msg, err := srv.fr.Receive()
+		msg, err := srv.frontend.Receive()
 		if err != nil {
 			return err
 		}
@@ -53,22 +61,15 @@ func (srv *ShServer) initConn(sm *pgproto3.StartupMessage) error {
 
 }
 
-func (srv *ShServer) Send(query pgproto3.FrontendMessage) error {
-	return srv.fr.Send(query)
+func (srv *SpqrServer) Send(query pgproto3.FrontendMessage) error {
+	return srv.frontend.Send(query)
 }
 
-func (srv *ShServer) Receive() (pgproto3.BackendMessage, error) {
-	return srv.fr.Receive()
+func (srv *SpqrServer) Receive() (pgproto3.BackendMessage, error) {
+	return srv.frontend.Receive()
 }
 
-func NewServer(rule *BERule, conn net.Conn) *ShServer {
-	return &ShServer{
-		rule: rule,
-		conn: conn,
-	}
-}
-
-func (srv *ShServer) ReqBackendSsl(cfg *tls.Config) error {
+func (srv *SpqrServer) ReqBackendSsl(cfg *tls.Config) error {
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
@@ -104,7 +105,7 @@ func (srv *ShServer) ReqBackendSsl(cfg *tls.Config) error {
 	return nil
 }
 
-func (srv *ShServer) Cleanup() error {
+func (srv *SpqrServer) Cleanup() error {
 
 	if srv.rule.PoolRollback {
 		if err := srv.Send(&pgproto3.Query{

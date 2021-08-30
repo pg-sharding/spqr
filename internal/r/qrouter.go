@@ -38,8 +38,8 @@ var _ Qrouter = &R{
 	Ranges:  []KeyRange{},
 }
 
-func NewR() R {
-	return R{
+func NewR() *R {
+	return &R{
 		SHCOLMP: map[string]struct{}{},
 		LOCALS:  map[string]struct{}{},
 		Ranges:  []KeyRange{},

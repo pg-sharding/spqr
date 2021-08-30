@@ -1,39 +1,33 @@
-package spqr
+package internal
 
 import (
 	"crypto/tls"
 	"net"
 
 	"github.com/jackc/pgproto3"
-	shhttp "github.com/pg-sharding/spqr/http"
-	"github.com/pg-sharding/spqr/internal/core"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
-type GlobConfig struct {
-	Addr    string `json:"addr" toml:"addr" yaml:"addr"`
-	ADMAddr string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
-	PROTO   string `json:"proto" toml:"proto" yaml:"proto"`
 
-	Tlscfg core.TLSConfig `json:"tls_cfg" toml:"tls_cfg" yaml:"tls_cfg"`
-
-	RouterCfg core.RouterConfig `json:"router" toml:"router" yaml:"router"`
-
-	HttpConfig shhttp.HttpConf `json:"http_conf" toml:"http_conf" yaml:"http_conf"`
-}
 
 type Spqr struct {
-	Cfg    GlobConfig
-	Router *core.Router
-	R      r.R
+	//TODO add some fiels from spqrconfig
+	Cfg *config.SpqrConfig
+	Router *Router
+	R      *r.R
 }
 
-func NewSpqr(Cfg GlobConfig, Router *core.Router, R r.R) (*Spqr, error) {
+func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
+	router, err := NewRouter(config.RouterCfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "NewRouter")
+	}
 
-	for _, be := range Cfg.RouterCfg.BackendRules {
+	for _, be := range config.RouterCfg.BackendRules {
 		if !be.SHStorage.ReqSSL {
 			continue
 		}
@@ -44,22 +38,21 @@ func NewSpqr(Cfg GlobConfig, Router *core.Router, R r.R) (*Spqr, error) {
 		}
 
 		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-
 		if err := be.SHStorage.Init(tlscfg); err != nil {
 			return nil, err
 		}
 	}
 
 	return &Spqr{
-		Cfg:    Cfg,
-		Router: Router,
-		R:      R,
+		Cfg:    config,
+		Router: router,
+		R:      r.NewR(),
 	}, nil
 }
 
 const TXREL = 73
 
-func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
+func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 
 	//for k, v := range cl.StartupMessage().Parameters {
 	//tracelog.InfoLogger.Println("log loh %v %v", k, v)
@@ -67,7 +60,7 @@ func frontend(rt r.R, cl *core.ShClient, cmngr core.ConnManager) error {
 
 	msgs := make([]pgproto3.Query, 0)
 
-	rst := &core.RelayState{
+	rst := &RelayState{
 		ActiveShardIndx: r.NOSHARD,
 		ActiveShardConn: nil,
 		TxActive:        false,
@@ -174,7 +167,7 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 		return err
 	}
 
-	cmngr, err := core.InitClConnection(client)
+	cmngr, err := InitClConnection(client)
 	if err != nil {
 		return err
 	}
@@ -197,7 +190,7 @@ func (sg *Spqr) Run(listener net.Listener) error {
 
 func (sg *Spqr) servAdm(netconn net.Conn) {
 
-	cl := core.NewClient(netconn)
+	cl := NewClient(netconn)
 
 	var cfg *tls.Config = nil
 
@@ -223,7 +216,7 @@ func (sg *Spqr) servAdm(netconn net.Conn) {
 		}
 	}
 
-	console := core.NewConsole()
+	console := NewConsole()
 
 	for {
 		msg, err := cl.Receive()
@@ -250,9 +243,9 @@ func (sg *Spqr) servAdm(netconn net.Conn) {
 				}
 			case *spqrparser.ShardingColumn:
 
-				console.AddShardingColumn(cl, stmt, &sg.R)
+				console.AddShardingColumn(cl, stmt, sg.R)
 			case *spqrparser.KeyRange:
-				console.AddKeyRange(cl, &sg.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
+				console.AddKeyRange(cl, sg.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
 			default:
 				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 			}

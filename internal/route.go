@@ -1,9 +1,10 @@
-package core
+package internal
 
 import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 )
 
 type routeKey struct {
@@ -20,21 +21,21 @@ type shardKey struct {
 }
 
 type Route struct {
-	beRule []*BERule
-	frRule *FRRule
+	beRule []*config.BERule
+	frRule *config.FRRule
 
 	mu sync.Mutex
 
-	servPoolPending map[shardKey][]*ShServer
+	servPoolPending map[shardKey][]*SpqrServer
 
-	client *ShClient
+	client *SpqrClient
 }
 
-func (r *Route) Client() *ShClient {
+func (r *Route) Client() *SpqrClient {
 	return r.client
 }
 
-func (r *Route) Unroute(i int, cl *ShClient) error {
+func (r *Route) Unroute(i int, cl *SpqrClient) error {
 	key := shardKey{
 		i: i,
 	}
@@ -54,11 +55,11 @@ func (r *Route) Unroute(i int, cl *ShClient) error {
 	return nil
 }
 
-func NewRoute(rules []*BERule, frRules *FRRule) *Route {
+func NewRoute(rules []*config.BERule, frRules *config.FRRule) *Route {
 	return &Route{
 		beRule:          rules,
 		frRule:          frRules,
-		servPoolPending: map[shardKey][]*ShServer{},
+		servPoolPending: map[shardKey][]*SpqrServer{},
 		mu:              sync.Mutex{},
 	}
 }
@@ -77,13 +78,13 @@ func (r *Route) smFromSh(i int) *pgproto3.StartupMessage {
 	return sm
 }
 
-func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
+func (r *Route) GetConn(proto string, indx int) (*SpqrServer, error) {
 
 	key := shardKey{
 		indx,
 	}
 
-	var ret *ShServer
+	var ret *SpqrServer
 
 	r.mu.Lock()
 
@@ -93,7 +94,7 @@ func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
 		r.mu.Unlock()
 		return ret, nil
 	} else if !ok {
-		r.servPoolPending[key] = make([]*ShServer, 0)
+		r.servPoolPending[key] = make([]*SpqrServer, 0)
 	}
 
 	netconn, err := Connect(proto, r.beRule[indx])
@@ -103,7 +104,7 @@ func (r *Route) GetConn(proto string, indx int) (*ShServer, error) {
 
 	srv := NewServer(r.beRule[indx], netconn)
 	if r.beRule[indx].SHStorage.ReqSSL {
-		if err := srv.ReqBackendSsl(r.beRule[indx].SHStorage.cfg); err != nil {
+		if err := srv.ReqBackendSsl(r.beRule[indx].SHStorage.TLSConfig); err != nil {
 			return nil, err
 		}
 	}
