@@ -77,10 +77,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 			return err
 		}
 
-		//tracelog.InfoLogger.Println("%v %v\n", tlscgf.TLSSertPath, tlscgf.ServPath)
 		cl.conn = tls.Server(cl.conn, cfg)
-
-		//tracelog.InfoLogger.Println("%v\n", cl.conn)
 
 		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 

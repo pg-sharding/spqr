@@ -9,11 +9,13 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pkg/errors"
 )
 
 type Router struct {
 	Cfg       config.RouterConfig
+	ConsoleDB Console
 	mu        sync.Mutex
 	routePool map[routeKey][]*Route
 
@@ -24,7 +26,11 @@ type Router struct {
 	lg  *log.Logger
 }
 
-func NewRouter(cfg config.RouterConfig) (*Router, error) {
+func (r *Router) ServeConsole(netconn net.Conn) error {
+	return r.ConsoleDB.Serve(netconn)
+}
+
+func NewRouter(cfg config.RouterConfig, qrouter r.Qrouter) (*Router, error) {
 
 	frs := make(map[routeKey]*config.FRRule)
 
@@ -42,6 +48,7 @@ func NewRouter(cfg config.RouterConfig) (*Router, error) {
 			db:  e.RK.DB,
 		}] = e
 	}
+
 	router := &Router{
 		Cfg:           cfg,
 		mu:            sync.Mutex{},
@@ -57,6 +64,10 @@ func NewRouter(cfg config.RouterConfig) (*Router, error) {
 		return nil, errors.Wrap(err, "failed to load frontend tls conf")
 	}
 	router.cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+
+	consoleDB := NewConsole(router.cfg, qrouter)
+
+	router.ConsoleDB = consoleDB
 
 	return router, nil
 }

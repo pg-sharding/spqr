@@ -7,7 +7,6 @@ import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/r"
-	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -20,7 +19,10 @@ type Spqr struct {
 }
 
 func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
-	router, err := NewRouter(config.RouterCfg)
+
+	qrouter := r.NewR()
+
+	router, err := NewRouter(config.RouterCfg, qrouter)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
@@ -44,7 +46,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 	return &Spqr{
 		Cfg:    config,
 		Router: router,
-		R:      r.NewR(),
+		R:      qrouter,
 	}, nil
 }
 
@@ -166,59 +168,7 @@ func (sg *Spqr) Run(listener net.Listener) error {
 }
 
 func (sg *Spqr) servAdm(netconn net.Conn) {
-
-	cl := NewClient(netconn)
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			tracelog.ErrorLogger.Fatal(err)
-		}
-	}
-
-	console := NewConsole()
-
-	for {
-		msg, err := cl.Receive()
-		tracelog.ErrorLogger.FatalOnError(err)
-
-		switch v := msg.(type) {
-		case *pgproto3.Query:
-
-			tstmt, err := spqrparser.Parse(v.String)
-			tracelog.ErrorLogger.FatalOnError(err)
-
-			switch stmt := tstmt.(type) {
-			case *spqrparser.Show:
-
-				switch stmt.Cmd {
-				case spqrparser.ShowPoolsStr: // TODO serv errors
-					console.Pools(cl)
-				case spqrparser.ShowDatabasesStr:
-					console.Databases(cl)
-				default:
-					tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
-
-					_ = cl.DefaultReply()
-				}
-			case *spqrparser.ShardingColumn:
-
-				console.AddShardingColumn(cl, stmt, sg.R)
-			case *spqrparser.KeyRange:
-				console.AddKeyRange(cl, sg.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
-			default:
-				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
-			}
-
-			if err := cl.DefaultReply(); err != nil {
-				tracelog.ErrorLogger.Fatal(err)
-			}
-		}
-	}
+	sg.Router.ServeConsole(netconn)
 }
 
 func (sg *Spqr) RunAdm(listener net.Listener) error {

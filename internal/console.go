@@ -1,7 +1,10 @@
 package internal
 
+import "C"
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/r"
@@ -9,14 +12,20 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type Console struct {
+type Console interface {
+	Serve(netconn net.Conn) error
 }
 
-func NewConsole() *Console {
-	return &Console{}
+type ConsoleImpl struct {
+	cfg *tls.Config
+	R   r.Qrouter
 }
 
-func (c *Console) Databases(cl *SpqrClient) {
+func NewConsole(cfg *tls.Config, R r.Qrouter) *ConsoleImpl {
+	return &ConsoleImpl{R: R, cfg: cfg}
+}
+
+func (c *ConsoleImpl) Databases(cl *SpqrClient) {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -40,7 +49,7 @@ func (c *Console) Databases(cl *SpqrClient) {
 	}
 }
 
-func (c *Console) Pools(cl *SpqrClient) {
+func (c *ConsoleImpl) Pools(cl *SpqrClient) {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -64,7 +73,7 @@ func (c *Console) Pools(cl *SpqrClient) {
 	}
 }
 
-func (c *Console) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.ShardingColumn, r *r.R) {
+func (c *ConsoleImpl) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.ShardingColumn, r r.Qrouter) {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
@@ -93,7 +102,7 @@ func (c *Console) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.ShardingCol
 	}
 }
 
-func (c *Console) AddKeyRange(cl *SpqrClient, r *r.R, kr r.KeyRange) {
+func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, r r.Qrouter, kr r.KeyRange) {
 
 	err := r.AddKeyRange(kr)
 
@@ -116,6 +125,61 @@ func (c *Console) AddKeyRange(cl *SpqrClient, r *r.R, kr r.KeyRange) {
 	} {
 		if err := cl.Send(msg); err != nil {
 			tracelog.InfoLogger.Print(err)
+		}
+	}
+}
+func (c *ConsoleImpl) Serve(netconn net.Conn) error {
+
+	cl := NewClient(netconn)
+	if err := cl.Init(c.cfg, false); err != nil {
+		return err
+	}
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.ErrorLogger.Fatal(err)
+		}
+	}
+
+	for {
+		msg, err := cl.Receive()
+		tracelog.ErrorLogger.FatalOnError(err)
+
+		switch v := msg.(type) {
+		case *pgproto3.Query:
+
+			tstmt, err := spqrparser.Parse(v.String)
+			tracelog.ErrorLogger.FatalOnError(err)
+
+			switch stmt := tstmt.(type) {
+			case *spqrparser.Show:
+
+				switch stmt.Cmd {
+				case spqrparser.ShowPoolsStr: // TODO serv errors
+					c.Pools(cl)
+				case spqrparser.ShowDatabasesStr:
+					c.Databases(cl)
+				default:
+					tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
+
+					_ = cl.DefaultReply()
+				}
+			case *spqrparser.ShardingColumn:
+
+				c.AddShardingColumn(cl, stmt, c.R)
+			case *spqrparser.KeyRange:
+				c.AddKeyRange(cl, c.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
+			default:
+				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
+			}
+
+			if err := cl.DefaultReply(); err != nil {
+				tracelog.ErrorLogger.Fatal(err)
+			}
 		}
 	}
 }
