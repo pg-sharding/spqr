@@ -39,9 +39,9 @@ func (sh *ShardImpl) Connect(proto string) (net.Conn, error) {
 
 var _ Shard = &ShardImpl{}
 
-func NewShard(name string, cfg config.ShardCfg) Shard {
+func NewShard(name string, cfg * config.ShardCfg) Shard {
 	return &ShardImpl{
-		cfg:  &cfg,
+		cfg:  cfg,
 		name: name,
 	}
 }

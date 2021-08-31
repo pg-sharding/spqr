@@ -1,6 +1,7 @@
 package r
 
 import (
+	"github.com/wal-g/tracelog"
 	"strconv"
 
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
@@ -18,7 +19,7 @@ type Qrouter interface {
 
 	AddKeyRange(kr *spqrparser.KeyRange) error
 	Shards() []string
-	AddShard(name string, cfg config.ShardCfg) error
+	AddShard(name string, cfg *config.ShardCfg) error
 }
 
 type R struct {
@@ -28,13 +29,13 @@ type R struct {
 
 	Ranges []*spqrparser.KeyRange
 
-	ShardCfgs []spqrparser.Shard
+	ShardCfgs map[string]*config.ShardCfg
 }
 
-func (r *R) AddShard(name string, cfg config.ShardCfg) error {
-	r.ShardCfgs = append(r.ShardCfgs, spqrparser.Shard{
-		Name: name,
-	})
+func (r *R) AddShard(name string, cfg *config.ShardCfg) error {
+
+	tracelog.InfoLogger.Printf("adding node %s", name)
+	r.ShardCfgs [name] = cfg
 
 	return nil
 }
@@ -43,8 +44,8 @@ func (r *R) Shards() []string {
 
 	var ret []string
 
-	for _, kr := range r.Ranges {
-		ret = append(ret, kr.ShardID)
+	for name := range r.ShardCfgs {
+		ret = append(ret, name)
 	}
 
 	return ret
@@ -54,7 +55,7 @@ var _ Qrouter = &R{
 	ColumnMapping: map[string]struct{}{},
 	LocalTables:   map[string]struct{}{},
 	Ranges:        []*spqrparser.KeyRange{},
-	ShardCfgs:     []spqrparser.Shard{},
+	ShardCfgs:     map[string]*config.ShardCfg{},
 }
 
 func NewR() *R {

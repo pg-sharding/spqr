@@ -10,7 +10,7 @@ type RelayState struct {
 	TxActive bool
 
 	ActiveBackendConn Server
-	ActiveShardName   string
+	ActiveShard       Shard
 }
 
 type ConnManager interface {
@@ -30,7 +30,7 @@ func NewTxConnManager() *TxConnManager {
 
 func (t *TxConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardName)
+	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (t *TxConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShardName == "" || !rst.TxActive
+	return rst.ActiveShard == nil || !rst.TxActive
 }
 
 func (t *TxConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
@@ -51,8 +51,8 @@ func (t *TxConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 
-	_ = client.Route().Unroute(rst.ActiveShardName, client)
-	rst.ActiveShardName = ""
+	_ = client.Route().Unroute(rst.ActiveShard.Name(), client)
+	rst.ActiveShard = nil
 
 	return nil
 }
@@ -70,7 +70,7 @@ func (s SessConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 
 func (s SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardName)
+	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (s SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 }
 
 func (s SessConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShardName == ""
+	return rst.ActiveShard == nil
 }
 
 func NewSessConnManager() *SessConnManager {

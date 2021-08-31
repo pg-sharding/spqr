@@ -26,22 +26,21 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
+	tracelog.InfoLogger.Printf("%v", config.RouterCfg.ShardMapping)
 
-	for name, shard := range config.RouterCfg.SQPRShards {
-		if !shard.TLSCfg.ReqSSL {
-			continue
-		}
+	for name, shard := range config.RouterCfg.ShardMapping {
 
-		cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to make route failure resp")
-		}
+		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
 
-		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
-
-		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-		if err := shard.Init(tlscfg); err != nil {
-			return nil, err
+		if shard.TLSCfg.ReqSSL {
+			cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to make route failure resp")
+			}
+			tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+			if err := shard.Init(tlscfg); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -59,7 +58,7 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 	msgs := make([]pgproto3.Query, 0)
 
 	rst := &RelayState{
-		ActiveShardName:   "",
+		ActiveShard:       nil,
 		ActiveBackendConn: nil,
 		TxActive:          false,
 	}
@@ -83,6 +82,9 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 
 				shardName := rt.Route(v.String)
 
+
+				shard := NewShard(shardName, rt.ShardCfgs[shardName])
+
 				if shardName == "" {
 					if err := cl.DefaultReply(); err != nil {
 						return err
@@ -91,14 +93,14 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 					break
 				}
 
-				if rst.ActiveShardName != "" {
+				if rst.ActiveShard != nil {
 
-					if err := cl.Route().Unroute(rst.ActiveShardName, cl); err != nil {
+					if err := cl.Route().Unroute(rst.ActiveShard.Name(), cl); err != nil {
 						return err
 					}
 				}
 
-				rst.ActiveShardName = shardName
+				rst.ActiveShard = shard
 
 				if err := cmngr.RouteCB(cl, rst); err != nil {
 					return err

@@ -130,7 +130,7 @@ func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, kr *spqrparser.KeyRange) {
 	}
 }
 
-func (c *ConsoleImpl) AddShard(cl *SpqrClient, shard *spqrparser.Shard, cfg config.ShardCfg) {
+func (c *ConsoleImpl) AddShard(cl *SpqrClient, shard *spqrparser.Shard, cfg *config.ShardCfg) {
 
 	err := c.R.AddShard(shard.Name, cfg)
 
@@ -206,7 +206,7 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 			case *spqrparser.KeyRange:
 				c.AddKeyRange(cl, stmt)
 			case *spqrparser.Shard:
-				c.AddShard(cl, stmt, config.ShardCfg{})
+				c.AddShard(cl, stmt, &config.ShardCfg{})
 			default:
 				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
 				if err := cl.DefaultReply(); err != nil {

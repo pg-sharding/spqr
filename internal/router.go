@@ -141,7 +141,7 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 func (r *Router) ListShards() []string {
 	var ret []string
 
-	for _, sh := range r.Cfg.SQPRShards {
+	for _, sh := range r.Cfg.ShardMapping {
 		ret = append(ret, sh.ConnAddr)
 	}
 

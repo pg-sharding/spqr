@@ -14,11 +14,6 @@ type ShardCfg struct {
 	TLSConfig *tls.Config
 }
 
-type ShardMapping struct {
-	// maps shard name to shard
-	SQPRShards map[string]ShardCfg `json:"storage_cfg" yaml:"storage_cfg" toml:"storage_cfg"`
-}
-
 func (s *ShardCfg) Init(cfg *tls.Config) error {
 	s.TLSConfig = cfg
 	return nil

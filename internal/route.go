@@ -29,7 +29,7 @@ type Route struct {
 	servPoolPending map[shardKey][]Server
 
 	client  *SpqrClient
-	mapping *config.ShardMapping
+	mapping map[string]*config.ShardCfg
 }
 
 func (r *Route) Client() *SpqrClient {
@@ -79,17 +79,16 @@ func (r *Route) starttupMsgFromSh(shard *config.ShardCfg) *pgproto3.StartupMessa
 	return sm
 }
 
-func (r *Route) GetConn(proto string, shardName string) (Server, error) {
+func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 
 	key := shardKey{
-		name: shardName,
+		name: shard.Name(),
 	}
 
 	var ret Server
 
 	r.mu.Lock()
 
-	shard := NewShard(shardName, r.mapping.SQPRShards[shardName])
 
 	if srv, ok := r.servPoolPending[key]; ok && len(srv) > 0 {
 		ret, r.servPoolPending[key] = r.servPoolPending[key][0], r.servPoolPending[key][1:]
