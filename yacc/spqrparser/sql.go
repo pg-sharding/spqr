@@ -42,7 +42,8 @@ const COLUMN = 57358
 const ADD = 57359
 const KEY = 57360
 const RANGE = 57361
-const UMINUS = 57362
+const SHARDS = 57362
+const UMINUS = 57363
 
 var yyToknames = [...]string{
 	"$end",
@@ -64,6 +65,7 @@ var yyToknames = [...]string{
 	"ADD",
 	"KEY",
 	"RANGE",
+	"SHARDS",
 	"'|'",
 	"'&'",
 	"'+'",
@@ -81,7 +83,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/spqrparser/sql.y:179
+//line yacc/spqrparser/sql.y:180
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -92,72 +94,72 @@ var yyExca = [...]int{
 
 const yyPrivate = 57344
 
-const yyLast = 35
+const yyLast = 36
 
 var yyAct = [...]int{
-	11, 8, 9, 27, 16, 26, 15, 18, 35, 6,
-	19, 23, 7, 22, 21, 20, 10, 25, 33, 31,
-	12, 13, 14, 29, 1, 32, 34, 30, 28, 3,
-	2, 5, 4, 24, 17,
+	11, 19, 24, 28, 22, 21, 20, 8, 9, 16,
+	27, 15, 18, 23, 36, 6, 34, 32, 7, 10,
+	30, 1, 26, 12, 13, 14, 33, 35, 31, 29,
+	3, 2, 5, 4, 25, 17,
 }
 
 var yyPact = [...]int{
-	-5, -1000, -28, -28, -28, -28, -9, -14, 2, 2,
-	-1000, -1000, -1000, -1000, -1000, -11, -16, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, 19, 15, -1000, -1000,
-	14, -1000, 4, -1000, -1000, -1000,
+	1, -1000, -29, -29, -29, -29, -4, -9, -7, -7,
+	-1000, -1000, -1000, -1000, -1000, -6, -16, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 16, 13, -1000,
+	-1000, 12, -1000, 10, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int{
-	0, 34, 33, 32, 31, 30, 29, 7, 28, 27,
-	26, 25, 24, 16,
+	0, 35, 34, 33, 32, 31, 30, 12, 29, 28,
+	27, 26, 21, 19,
 }
 
 var yyR1 = [...]int{
 	0, 12, 12, 12, 12, 13, 13, 7, 7, 7,
-	7, 7, 1, 2, 3, 8, 9, 11, 10, 5,
-	6, 4,
+	7, 7, 7, 1, 2, 3, 8, 9, 11, 10,
+	5, 6, 4,
 }
 
 var yyR2 = [...]int{
 	0, 2, 2, 2, 2, 0, 1, 1, 1, 1,
-	1, 1, 1, 1, 2, 1, 1, 1, 1, 4,
-	6, 2,
+	1, 1, 1, 1, 1, 2, 1, 1, 1, 1,
+	4, 6, 2,
 }
 
 var yyChk = [...]int{
 	-1000, -12, -5, -6, -3, -4, 14, 17, 6, 7,
-	-13, 28, -13, -13, -13, 15, 18, -1, -7, 8,
-	13, 12, 11, 9, -2, -7, 16, 19, -8, 4,
-	-9, 4, -11, 4, -10, 4,
+	-13, 29, -13, -13, -13, 15, 18, -1, -7, 8,
+	13, 12, 11, 20, 9, -2, -7, 16, 19, -8,
+	4, -9, 4, -11, 4, -10, 4,
 }
 
 var yyDef = [...]int{
 	0, -2, 5, 5, 5, 5, 0, 0, 0, 0,
-	1, 6, 2, 3, 4, 0, 0, 14, 12, 7,
-	8, 9, 10, 11, 21, 13, 0, 0, 19, 15,
-	0, 16, 0, 17, 20, 18,
+	1, 6, 2, 3, 4, 0, 0, 15, 13, 7,
+	8, 9, 10, 11, 12, 22, 14, 0, 0, 20,
+	16, 0, 17, 0, 18, 21, 19,
 }
 
 var yyTok1 = [...]int{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 26, 21, 3,
-	3, 3, 24, 22, 3, 23, 3, 25, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 28,
+	3, 3, 3, 3, 3, 3, 3, 27, 22, 3,
+	3, 3, 25, 23, 3, 24, 3, 26, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 29,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 20,
+	3, 3, 3, 3, 21,
 }
 
 var yyTok2 = [...]int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 17, 18, 19, 27,
+	12, 13, 14, 15, 16, 17, 18, 19, 20, 28,
 }
 
 var yyTok3 = [...]int{
@@ -535,20 +537,20 @@ yydefault:
 //line yacc/spqrparser/sql.y:95
 		{
 		}
-	case 12:
+	case 13:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:107
+//line yacc/spqrparser/sql.y:108
 		{
 			switch v := string(yyDollar[1].str); v {
-			case ShowDatabasesStr, ShowPoolsStr, ShowShards:
+			case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = ShowUnsupportedStr
 			}
 		}
-	case 13:
+	case 14:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:118
+//line yacc/spqrparser/sql.y:119
 		{
 			switch v := string(yyDollar[1].str); v {
 			case KillClientsStr:
@@ -557,51 +559,51 @@ yydefault:
 				yyVAL.str = "unsupp"
 			}
 		}
-	case 14:
+	case 15:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/spqrparser/sql.y:130
+//line yacc/spqrparser/sql.y:131
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str}
 		}
-	case 15:
+	case 16:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:137
+//line yacc/spqrparser/sql.y:138
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
-	case 16:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:143
-		{
-			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
-		}
 	case 17:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:149
+//line yacc/spqrparser/sql.y:144
 		{
 			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
 		}
 	case 18:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:155
+//line yacc/spqrparser/sql.y:150
+		{
+			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+		}
+	case 19:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/spqrparser/sql.y:156
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
-	case 19:
+	case 20:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/spqrparser/sql.y:162
+//line yacc/spqrparser/sql.y:163
 		{
 			yyVAL.sh_col = &ShardingColumn{ColName: yyDollar[4].str}
 		}
-	case 20:
+	case 21:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/spqrparser/sql.y:169
+//line yacc/spqrparser/sql.y:170
 		{
 			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].str}
 		}
-	case 21:
+	case 22:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/spqrparser/sql.y:175
+//line yacc/spqrparser/sql.y:176
 		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
 		}

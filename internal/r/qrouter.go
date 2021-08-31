@@ -4,15 +4,11 @@ import (
 	"strconv"
 
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
+	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/yacc/spqrparser"
 )
 
 const NOSHARD = ""
-
-type KeyRange struct {
-	From    int
-	To      int
-	ShardId string
-}
 
 type Qrouter interface {
 	Route(q string) string
@@ -20,23 +16,35 @@ type Qrouter interface {
 	AddColumn(col string) error
 	AddLocalTable(tname string) error
 
-	AddKeyRange(kr KeyRange) error
+	AddKeyRange(kr *spqrparser.KeyRange) error
 	Shards() []string
+	AddShard(name string, cfg config.ShardCfg) error
 }
+
 type R struct {
 	ColumnMapping map[string]struct{}
 
 	LocalTables map[string]struct{}
 
-	Ranges []KeyRange
+	Ranges []*spqrparser.KeyRange
+
+	ShardCfgs []spqrparser.Shard
+}
+
+func (r *R) AddShard(name string, cfg config.ShardCfg) error {
+	r.ShardCfgs = append(r.ShardCfgs, spqrparser.Shard{
+		Name: name,
+	})
+
+	return nil
 }
 
 func (r *R) Shards() []string {
 
-	ret := []string{}
+	var ret []string
 
 	for _, kr := range r.Ranges {
-		ret = append(ret, kr.ShardId)
+		ret = append(ret, kr.ShardID)
 	}
 
 	return ret
@@ -45,14 +53,15 @@ func (r *R) Shards() []string {
 var _ Qrouter = &R{
 	ColumnMapping: map[string]struct{}{},
 	LocalTables:   map[string]struct{}{},
-	Ranges:        []KeyRange{},
+	Ranges:        []*spqrparser.KeyRange{},
+	ShardCfgs:     []spqrparser.Shard{},
 }
 
 func NewR() *R {
 	return &R{
 		ColumnMapping: map[string]struct{}{},
 		LocalTables:   map[string]struct{}{},
-		Ranges:        []KeyRange{},
+		Ranges:        []*spqrparser.KeyRange{},
 	}
 }
 
@@ -66,7 +75,7 @@ func (r *R) AddLocalTable(tname string) error {
 	return nil
 }
 
-func (r *R) AddKeyRange(kr KeyRange) error {
+func (r *R) AddKeyRange(kr *spqrparser.KeyRange) error {
 	r.Ranges = append(r.Ranges, kr)
 
 	return nil
@@ -76,7 +85,7 @@ func (r *R) routeByIndx(i int) string {
 
 	for _, kr := range r.Ranges {
 		if kr.From <= i && kr.To >= i {
-			return kr.ShardId
+			return kr.ShardID
 		}
 	}
 
@@ -137,32 +146,21 @@ func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 	for _, texpr := range frm {
 		switch tbltype := texpr.(type) {
 		case *sqlp.ParenTableExpr:
-			//tracelog.InfoLogger.Println("parent table")
-			//tracelog.InfoLogger.Println(tbltype.Exprs)
 		case *sqlp.JoinTableExpr:
-			//tracelog.InfoLogger.Println("join table")
-			//tracelog.InfoLogger.Println(tbltype.LeftExpr)
 		case *sqlp.AliasedTableExpr:
-			//tracelog.InfoLogger.Println("aliased table")
-			//tracelog.InfoLogger.Println(tbltype.Expr)
 
 			switch tname := tbltype.Expr.(type) {
 			case sqlp.TableName:
-				//tracelog.InfoLogger.Println("table name is %v\n", tname.Name)
 				if _, ok := r.LocalTables[tname.Name.String()]; ok {
 					return true
 				}
 			case *sqlp.Subquery:
-				//tracelog.InfoLogger.Println("sub table name is %v\n", tname.Select)
 			default:
-				//tracelog.InfoLogger.Println("typ is %T\n", tname)
 			}
-
 		}
 
 	}
 	return false
-
 }
 
 func (r *R) getshindx(sql string) string {

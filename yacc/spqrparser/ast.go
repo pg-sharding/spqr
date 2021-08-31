@@ -18,8 +18,9 @@ type KeyRange struct {
 	To      int
 	ShardID string
 }
+
 type Shard struct {
-	name string
+	Name string
 }
 
 type Kill struct {
@@ -29,7 +30,7 @@ type Kill struct {
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr   = "databases"
-	ShowShards         = "shards"
+	ShowShardsStr      = "shards"
 	KillClientsStr     = "clients"
 	ShowPoolsStr       = "pools"
 	ShowUnsupportedStr = "unsupported"
@@ -43,6 +44,7 @@ type Statement interface {
 func (*Show) iStatement()           {}
 func (*ShardingColumn) iStatement() {}
 func (*KeyRange) iStatement()       {}
+func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 
 var reservedWords = map[string]int{
@@ -59,6 +61,7 @@ var reservedWords = map[string]int{
 	"add":       ADD,
 	"key":       KEY,
 	"range":     RANGE,
+	"shards":    SHARDS,
 }
 
 // Tokenizer is the struct used to generate SQL

@@ -27,7 +27,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
 
-	for _, shard := range config.RouterCfg.SQPRShards {
+	for name, shard := range config.RouterCfg.SQPRShards {
 		if !shard.TLSCfg.ReqSSL {
 			continue
 		}
@@ -36,6 +36,8 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to make route failure resp")
 		}
+
+		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
 
 		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 		if err := shard.Init(tlscfg); err != nil {

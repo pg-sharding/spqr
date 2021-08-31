@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
@@ -73,11 +74,11 @@ func (c *ConsoleImpl) Pools(cl *SpqrClient) {
 	}
 }
 
-func (c *ConsoleImpl) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.ShardingColumn, r r.Qrouter) {
+func (c *ConsoleImpl) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.ShardingColumn) {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-	err := r.AddColumn(stmt.ColName)
+	err := c.R.AddColumn(stmt.ColName)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
@@ -102,9 +103,9 @@ func (c *ConsoleImpl) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.Shardin
 	}
 }
 
-func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, r r.Qrouter, kr r.KeyRange) {
+func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, kr *spqrparser.KeyRange) {
 
-	err := r.AddKeyRange(kr)
+	err := c.R.AddKeyRange(kr)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
@@ -121,6 +122,33 @@ func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, r r.Qrouter, kr r.KeyRange) {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %w", kr.From, kr.To, err))}},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+}
+
+func (c *ConsoleImpl) AddShard(cl *SpqrClient, shard *spqrparser.Shard, cfg config.ShardCfg) {
+
+	err := c.R.AddShard(shard.Name, cfg)
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "fortune",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created shard with name %s, %w", shard.Name, err))}},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -154,16 +182,19 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 			tstmt, err := spqrparser.Parse(v.String)
 			tracelog.ErrorLogger.FatalOnError(err)
+			tracelog.InfoLogger.Printf("parsed %T", tstmt)
 
 			switch stmt := tstmt.(type) {
 			case *spqrparser.Show:
+
+				tracelog.InfoLogger.Printf("parsed %s", stmt.Cmd)
 
 				switch stmt.Cmd {
 				case spqrparser.ShowPoolsStr: // TODO serv errors
 					c.Pools(cl)
 				case spqrparser.ShowDatabasesStr:
 					c.Databases(cl)
-				case spqrparser.ShowShards:
+				case spqrparser.ShowShardsStr:
 					c.Shards(cl)
 				default:
 					tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
@@ -171,16 +202,16 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 					_ = cl.DefaultReply()
 				}
 			case *spqrparser.ShardingColumn:
-
-				c.AddShardingColumn(cl, stmt, c.R)
+				c.AddShardingColumn(cl, stmt)
 			case *spqrparser.KeyRange:
-				c.AddKeyRange(cl, c.R, r.KeyRange{From: stmt.From, To: stmt.To, ShardId: stmt.ShardID})
+				c.AddKeyRange(cl, stmt)
+			case *spqrparser.Shard:
+				c.AddShard(cl, stmt, config.ShardCfg{})
 			default:
 				tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
-			}
-
-			if err := cl.DefaultReply(); err != nil {
-				tracelog.ErrorLogger.Fatal(err)
+				if err := cl.DefaultReply(); err != nil {
+					tracelog.ErrorLogger.Fatal(err)
+				}
 			}
 		}
 	}
@@ -188,11 +219,12 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 func (c *ConsoleImpl) Shards(cl *SpqrClient) {
 
+	tracelog.InfoLogger.Printf("listing shards")
+
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr",
+				Name:                 "spqr shards",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -202,8 +234,6 @@ func (c *ConsoleImpl) Shards(cl *SpqrClient) {
 			},
 		},
 		},
-
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
 			tracelog.InfoLogger.Print(err)
@@ -217,8 +247,14 @@ func (c *ConsoleImpl) Shards(cl *SpqrClient) {
 			tracelog.InfoLogger.Print(err)
 		}
 	}
+	if err := cl.Send(&pgproto3.DataRow{
+		Values: [][]byte{[]byte(fmt.Sprintf("local node"))},
+	}); err != nil {
+		tracelog.InfoLogger.Print(err)
+	}
 
 	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
