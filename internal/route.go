@@ -45,10 +45,12 @@ func (r *Route) Unroute(shardName string, cl Client) error {
 	r.mu.Lock()
 
 	srv := cl.Server()
-	if err := srv.Cleanup(); err != nil {
-		return err
+	if srv != nil {
+		if err := srv.Cleanup(); err != nil {
+			return err
+		}
+		cl.Unroute()
 	}
-	cl.Unroute()
 
 	r.servPoolPending[key] = append(r.servPoolPending[key], srv)
 

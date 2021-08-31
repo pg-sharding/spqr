@@ -103,14 +103,14 @@ func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 func (s *SessConnManager) RouteCB(client Client, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
+	servConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
 	if err != nil {
 		return err
 	}
 
-	client.AssignServerConn(shConn)
-	rst.ActiveBackendConn = shConn
+	client.AssignServerConn(servConn)
+	rst.ActiveBackendConn = servConn
 
 	return nil
 }
