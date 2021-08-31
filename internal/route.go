@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/wal-g/tracelog"
 )
 
 type routeKey struct {
@@ -65,7 +66,7 @@ func NewRoute(rule *config.BERule, frRules *config.FRRule) *Route {
 	}
 }
 
-func (r *Route) starttupMsgFromSh(shard *config.ShardCfg) *pgproto3.StartupMessage {
+func (r *Route) startupMsgFromSh(shard *config.ShardCfg) *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -73,7 +74,7 @@ func (r *Route) starttupMsgFromSh(shard *config.ShardCfg) *pgproto3.StartupMessa
 			"application_name": "app",
 			"client_encoding":  "UTF8",
 			"user":             shard.ConnUsr,
-			"database":         shard.ConnUsr,
+			"database":         shard.ConnDB,
 		},
 	}
 	return sm
@@ -88,8 +89,6 @@ func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 	var ret Server
 
 	r.mu.Lock()
-
-
 	if srv, ok := r.servPoolPending[key]; ok && len(srv) > 0 {
 		ret, r.servPoolPending[key] = r.servPoolPending[key][0], r.servPoolPending[key][1:]
 
@@ -105,6 +104,7 @@ func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 	}
 
 	srv := NewServer(r.beRule, netconn, shard)
+	tracelog.InfoLogger.Printf("acquiring backend connection to shard %s", shard.Name())
 
 	if err := shard.ReqBackendSsl(srv); err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 
 	r.mu.Unlock()
 
-	if err := srv.initConn(r.starttupMsgFromSh(shard.Cfg())); err != nil {
+	if err := srv.initConn(r.startupMsgFromSh(shard.Cfg())); err != nil {
 		return nil, err
 	}
 

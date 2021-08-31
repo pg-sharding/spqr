@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -15,12 +15,12 @@ type Spqr struct {
 	//TODO add some fiels from spqrconfig
 	Cfg    *config.SpqrConfig
 	Router *Router
-	R      *r.R
+	R      *qrouter.QrouterImpl
 }
 
 func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 
-	qrouter := r.NewR()
+	qrouter := qrouter.NewR()
 
 	router, err := NewRouter(config.RouterCfg, qrouter)
 	if err != nil {
@@ -29,19 +29,20 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 	tracelog.InfoLogger.Printf("%v", config.RouterCfg.ShardMapping)
 
 	for name, shard := range config.RouterCfg.ShardMapping {
-
-		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
-
 		if shard.TLSCfg.ReqSSL {
 			cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to make route failure resp")
 			}
 			tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+			tracelog.InfoLogger.Printf("initialising shard tls config for %s", name)
+
 			if err := shard.Init(tlscfg); err != nil {
 				return nil, err
 			}
 		}
+
+		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
 	}
 
 	return &Spqr{
@@ -53,7 +54,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 
 const TXREL = 73
 
-func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
+func frontend(rt *qrouter.QrouterImpl, cl *SpqrClient, cmngr ConnManager) error {
 
 	msgs := make([]pgproto3.Query, 0)
 
@@ -66,7 +67,7 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			tracelog.ErrorLogger.Printf("failed to recieve msg %w", err)
 			return err
 		}
 
@@ -81,8 +82,6 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 			if cmngr.ValidateReRoute(rst) {
 
 				shardName := rt.Route(v.String)
-
-
 				shard := NewShard(shardName, rt.ShardCfgs[shardName])
 
 				if shardName == "" {
@@ -91,11 +90,13 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 					}
 
 					break
+				} else {
+					tracelog.InfoLogger.Printf("parsed shard name %s", shardName)
 				}
 
 				if rst.ActiveShard != nil {
 
-					if err := cl.Route().Unroute(rst.ActiveShard.Name(), cl); err != nil {
+					if err := cmngr.UnRouteWithError(cl, rst, errors.New("failed to match active shard")); err != nil {
 						return err
 					}
 				}
@@ -103,7 +104,7 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 				rst.ActiveShard = shard
 
 				if err := cmngr.RouteCB(cl, rst); err != nil {
-					return err
+					return cmngr.UnRouteWithError(cl, rst, err)
 				}
 			}
 
@@ -160,9 +161,8 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 
 func (sg *Spqr) Run(listener net.Listener) error {
 	for {
-		conn, err := listener.Accept()
+		conn, _ := listener.Accept()
 
-		tracelog.ErrorLogger.PrintError(err)
 		go func() {
 			if err := sg.serv(conn); err != nil {
 				tracelog.ErrorLogger.PrintError(err)
@@ -171,8 +171,8 @@ func (sg *Spqr) Run(listener net.Listener) error {
 	}
 }
 
-func (sg *Spqr) servAdm(netconn net.Conn) {
-	sg.Router.ServeConsole(netconn)
+func (sg *Spqr) servAdm(netconn net.Conn) error {
+	return sg.Router.ServeConsole(netconn)
 }
 
 func (sg *Spqr) RunAdm(listener net.Listener) error {
@@ -181,6 +181,10 @@ func (sg *Spqr) RunAdm(listener net.Listener) error {
 		if err != nil {
 			return errors.Wrap(err, "RunAdm failed")
 		}
-		go sg.servAdm(conn)
+		go func() {
+			if err := sg.servAdm(conn); err != nil {
+				tracelog.ErrorLogger.PrintError(err)
+			}
+		}()
 	}
 }

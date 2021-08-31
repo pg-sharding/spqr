@@ -1,10 +1,12 @@
 package internal
 
 import (
+	"errors"
 	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/wal-g/tracelog"
 )
 
 type Server interface {
@@ -51,13 +53,16 @@ func (srv *ServerImpl) initConn(sm *pgproto3.StartupMessage) error {
 		switch v := msg.(type) {
 		case *pgproto3.ReadyForQuery:
 			return nil
-
-			//!! backend authBackend
 		case *pgproto3.Authentication:
 			err := authBackend(srv, v)
 			if err != nil {
+				tracelog.InfoLogger.Printf("failed to perform backend auth %w", err)
 				return err
 			}
+		case *pgproto3.ErrorResponse:
+			return errors.New(v.Message)
+		default:
+			tracelog.InfoLogger.Printf("unexpected msg type received %T", v)
 		}
 	}
 }

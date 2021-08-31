@@ -18,10 +18,32 @@ type ConnManager interface {
 	TXEndCB(client *SpqrClient, rst *RelayState) error
 
 	RouteCB(client *SpqrClient, rst *RelayState) error
+	UnRouteCB(client *SpqrClient, rst *RelayState) error
+	UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error
 	ValidateReRoute(rst *RelayState) bool
 }
 
+func unRouteWithError(cmngr ConnManager, client *SpqrClient, rst *RelayState, err error) error {
+	_ = cmngr.UnRouteCB(client, rst)
+
+	return client.Send(&pgproto3.ErrorResponse{
+		Message:  err.Error(),
+		Severity: "FATAL",
+	})
+}
+
 type TxConnManager struct {
+}
+
+func (t *TxConnManager) UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error {
+	return unRouteWithError(t, client, rst, err)
+}
+
+func (t *TxConnManager) UnRouteCB(cl *SpqrClient, rst *RelayState) error {
+	if rst.ActiveShard != nil {
+		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
+	}
+	return nil
 }
 
 func NewTxConnManager() *TxConnManager {
@@ -60,15 +82,26 @@ func (t *TxConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 type SessConnManager struct {
 }
 
-func (s SessConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error {
+	return unRouteWithError(s, client, rst, err)
+}
+
+func (s *SessConnManager) UnRouteCB(cl *SpqrClient, rst *RelayState) error {
+	if rst.ActiveShard != nil {
+		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
+	}
 	return nil
 }
 
-func (s SessConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
 	return nil
 }
 
-func (s SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
+	return nil
+}
+
+func (s *SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 
 	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
@@ -82,7 +115,7 @@ func (s SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 	return nil
 }
 
-func (s SessConnManager) ValidateReRoute(rst *RelayState) bool {
+func (s *SessConnManager) ValidateReRoute(rst *RelayState) bool {
 	return rst.ActiveShard == nil
 }
 

@@ -1,12 +1,12 @@
-package r
+package qrouter
 
 import (
-	"github.com/wal-g/tracelog"
 	"strconv"
 
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
+	"github.com/wal-g/tracelog"
 )
 
 const NOSHARD = ""
@@ -22,7 +22,7 @@ type Qrouter interface {
 	AddShard(name string, cfg *config.ShardCfg) error
 }
 
-type R struct {
+type QrouterImpl struct {
 	ColumnMapping map[string]struct{}
 
 	LocalTables map[string]struct{}
@@ -32,15 +32,15 @@ type R struct {
 	ShardCfgs map[string]*config.ShardCfg
 }
 
-func (r *R) AddShard(name string, cfg *config.ShardCfg) error {
+func (r *QrouterImpl) AddShard(name string, cfg *config.ShardCfg) error {
 
 	tracelog.InfoLogger.Printf("adding node %s", name)
-	r.ShardCfgs [name] = cfg
+	r.ShardCfgs[name] = cfg
 
 	return nil
 }
 
-func (r *R) Shards() []string {
+func (r *QrouterImpl) Shards() []string {
 
 	var ret []string
 
@@ -51,38 +51,34 @@ func (r *R) Shards() []string {
 	return ret
 }
 
-var _ Qrouter = &R{
-	ColumnMapping: map[string]struct{}{},
-	LocalTables:   map[string]struct{}{},
-	Ranges:        []*spqrparser.KeyRange{},
-	ShardCfgs:     map[string]*config.ShardCfg{},
-}
+var _ Qrouter = &QrouterImpl{}
 
-func NewR() *R {
-	return &R{
+func NewR() *QrouterImpl {
+	return &QrouterImpl{
 		ColumnMapping: map[string]struct{}{},
 		LocalTables:   map[string]struct{}{},
 		Ranges:        []*spqrparser.KeyRange{},
+		ShardCfgs:     map[string]*config.ShardCfg{},
 	}
 }
 
-func (r *R) AddColumn(col string) error {
+func (r *QrouterImpl) AddColumn(col string) error {
 	r.ColumnMapping[col] = struct{}{}
 	return nil
 }
 
-func (r *R) AddLocalTable(tname string) error {
+func (r *QrouterImpl) AddLocalTable(tname string) error {
 	r.LocalTables[tname] = struct{}{}
 	return nil
 }
 
-func (r *R) AddKeyRange(kr *spqrparser.KeyRange) error {
+func (r *QrouterImpl) AddKeyRange(kr *spqrparser.KeyRange) error {
 	r.Ranges = append(r.Ranges, kr)
 
 	return nil
 }
 
-func (r *R) routeByIndx(i int) string {
+func (r *QrouterImpl) routeByIndx(i int) string {
 
 	for _, kr := range r.Ranges {
 		if kr.From <= i && kr.To >= i {
@@ -93,7 +89,7 @@ func (r *R) routeByIndx(i int) string {
 	return NOSHARD
 }
 
-func (r *R) matchShkey(expr sqlp.Expr) bool {
+func (r *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
 
 	switch texpr := expr.(type) {
 	case sqlp.ValTuple:
@@ -113,7 +109,7 @@ func (r *R) matchShkey(expr sqlp.Expr) bool {
 	return false
 }
 
-func (r *R) routeByExpr(expr sqlp.Expr) string {
+func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) string {
 	switch texpr := expr.(type) {
 	case *sqlp.AndExpr:
 		lft := r.routeByExpr(texpr.Left)
@@ -142,7 +138,7 @@ func (r *R) routeByExpr(expr sqlp.Expr) string {
 	return NOSHARD
 }
 
-func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
+func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 
 	for _, texpr := range frm {
 		switch tbltype := texpr.(type) {
@@ -164,7 +160,7 @@ func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 	return false
 }
 
-func (r *R) getshindx(sql string) string {
+func (r *QrouterImpl) getshindx(sql string) string {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
@@ -194,7 +190,6 @@ func (r *R) getshindx(sql string) string {
 			}
 		}
 	case *sqlp.Update:
-		//tracelog.InfoLogger.Println("updater routing")
 		if stmt.Where != nil {
 			shindx := r.routeByExpr(stmt.Where.Expr)
 			return shindx
@@ -207,6 +202,6 @@ func (r *R) getshindx(sql string) string {
 }
 
 // shard name
-func (r *R) Route(q string) string {
+func (r *QrouterImpl) Route(q string) string {
 	return r.getshindx(q)
 }

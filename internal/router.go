@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
 )
 
@@ -30,7 +30,7 @@ func (r *Router) ServeConsole(netconn net.Conn) error {
 	return r.ConsoleDB.Serve(netconn)
 }
 
-func NewRouter(cfg config.RouterConfig, qrouter r.Qrouter) (*Router, error) {
+func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error) {
 
 	frs := make(map[routeKey]*config.FRRule)
 

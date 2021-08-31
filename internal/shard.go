@@ -39,7 +39,7 @@ func (sh *ShardImpl) Connect(proto string) (net.Conn, error) {
 
 var _ Shard = &ShardImpl{}
 
-func NewShard(name string, cfg * config.ShardCfg) Shard {
+func NewShard(name string, cfg *config.ShardCfg) Shard {
 	return &ShardImpl{
 		cfg:  cfg,
 		name: name,
@@ -76,6 +76,5 @@ func (sh *ShardImpl) ReqBackendSsl(srv *ServerImpl) error {
 	}
 
 	srv.conn = tls.Client(srv.conn, sh.cfg.TLSConfig)
-
 	return nil
 }

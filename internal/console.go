@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/r"
+	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
@@ -19,16 +19,15 @@ type Console interface {
 
 type ConsoleImpl struct {
 	cfg *tls.Config
-	R   r.Qrouter
+	R   qrouter.Qrouter
 }
 
-func NewConsole(cfg *tls.Config, R r.Qrouter) *ConsoleImpl {
+func NewConsole(cfg *tls.Config, R qrouter.Qrouter) *ConsoleImpl {
 	return &ConsoleImpl{R: R, cfg: cfg}
 }
 
 func (c *ConsoleImpl) Databases(cl *SpqrClient) {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "show dbs",
@@ -52,7 +51,6 @@ func (c *ConsoleImpl) Databases(cl *SpqrClient) {
 
 func (c *ConsoleImpl) Pools(cl *SpqrClient) {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "fortune",
@@ -81,7 +79,6 @@ func (c *ConsoleImpl) AddShardingColumn(cl *SpqrClient, stmt *spqrparser.Shardin
 	err := c.R.AddColumn(stmt.ColName)
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "fortune",
@@ -108,7 +105,6 @@ func (c *ConsoleImpl) AddKeyRange(cl *SpqrClient, kr *spqrparser.KeyRange) {
 	err := c.R.AddKeyRange(kr)
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "fortune",
@@ -135,7 +131,6 @@ func (c *ConsoleImpl) AddShard(cl *SpqrClient, shard *spqrparser.Shard, cfg *con
 	err := c.R.AddShard(shard.Name, cfg)
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "fortune",
@@ -175,13 +170,18 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 	for {
 		msg, err := cl.Receive()
-		tracelog.ErrorLogger.FatalOnError(err)
+
+		if err != nil {
+			return err
+		}
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
 			tstmt, err := spqrparser.Parse(v.String)
-			tracelog.ErrorLogger.FatalOnError(err)
+			if err != nil {
+				return err
+			}
 			tracelog.InfoLogger.Printf("parsed %T", tstmt)
 
 			switch stmt := tstmt.(type) {

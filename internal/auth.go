@@ -16,7 +16,7 @@ func authBackend(srv *ServerImpl, v *pgproto3.Authentication) error {
 		return nil
 	case pgproto3.AuthTypeMD5Password:
 		hash := md5.New()
-		hash.Write([]byte(srv.shard.Cfg().Passwd + srv.shard.Cfg().Passwd))
+		hash.Write([]byte(srv.shard.Cfg().Passwd + srv.shard.Cfg().ConnUsr))
 		res := hash.Sum(nil)
 
 		hash2 := md5.New()
@@ -25,6 +25,9 @@ func authBackend(srv *ServerImpl, v *pgproto3.Authentication) error {
 		res2 := hash2.Sum(nil)
 
 		psswd := hex.EncodeToString(res2)
+
+		tracelog.InfoLogger.Printf("sending auth package %s plain passwd %s", psswd, srv.shard.Cfg().Passwd)
+
 		if err := srv.frontend.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
 			return err
 		}
