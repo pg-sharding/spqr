@@ -18,8 +18,6 @@ type KeyRange struct {
 	To      int
 	ShardID string
 }
-
-
 type Shard struct {
 	name string
 }

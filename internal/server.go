@@ -7,7 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 )
 
-
 type Server interface {
 	initConn(sm *pgproto3.StartupMessage) error
 	Send(query pgproto3.FrontendMessage) error
@@ -25,8 +24,8 @@ type ServerImpl struct {
 
 func NewServer(rule *config.BERule, conn net.Conn, shard Shard) *ServerImpl {
 	return &ServerImpl{
-		rule: rule,
-		conn: conn,
+		rule:  rule,
+		conn:  conn,
 		shard: shard,
 	}
 }
@@ -70,8 +69,6 @@ func (srv *ServerImpl) Send(query pgproto3.FrontendMessage) error {
 func (srv *ServerImpl) Receive() (pgproto3.BackendMessage, error) {
 	return srv.frontend.Receive()
 }
-
-
 func (srv *ServerImpl) Cleanup() error {
 
 	if srv.rule.PoolRollback {

@@ -3,13 +3,14 @@ package internal
 import (
 	"crypto/tls"
 	"encoding/binary"
-	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pkg/errors"
 	"log"
 	"net"
+
+	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pkg/errors"
 )
 
-type Shard interface{
+type Shard interface {
 	Connect(proto string) (net.Conn, error)
 	ReqBackendSsl(srv *ServerImpl) error
 	Cfg() *config.ShardCfg
@@ -36,23 +37,23 @@ func (sh *ShardImpl) Connect(proto string) (net.Conn, error) {
 	return net.Dial(proto, sh.cfg.ConnAddr)
 }
 
+var _ Shard = &ShardImpl{}
 
-var _ Shard =  &ShardImpl{}
-
-func NewShard(name string, cfg *config.ShardCfg) Shard {
+func NewShard(name string, cfg config.ShardCfg) Shard {
 	return &ShardImpl{
-		cfg:  cfg,
+		cfg:  &cfg,
 		name: name,
 	}
 }
 
 func (sh *ShardImpl) ReqBackendSsl(srv *ServerImpl) error {
-	if !sh.cfg.ReqSSL {
+	if !sh.cfg.TLSCfg.ReqSSL {
 		return nil
 	}
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
+	// Gen salt
 	b = append(b, 0, 0, 0, 0)
 	binary.BigEndian.PutUint32(b[4:], sslproto)
 

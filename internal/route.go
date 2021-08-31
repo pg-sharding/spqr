@@ -28,7 +28,7 @@ type Route struct {
 
 	servPoolPending map[shardKey][]Server
 
-	client *SpqrClient
+	client  *SpqrClient
 	mapping *config.ShardMapping
 }
 

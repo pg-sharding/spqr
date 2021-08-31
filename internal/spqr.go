@@ -12,11 +12,9 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-
-
 type Spqr struct {
 	//TODO add some fiels from spqrconfig
-	Cfg *config.SpqrConfig
+	Cfg    *config.SpqrConfig
 	Router *Router
 	R      *r.R
 }
@@ -28,7 +26,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 	}
 
 	for _, shard := range config.RouterCfg.SQPRShards {
-		if !shard.ReqSSL{
+		if !shard.TLSCfg.ReqSSL {
 			continue
 		}
 
@@ -178,7 +176,7 @@ func (sg *Spqr) servAdm(netconn net.Conn) {
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-		    tracelog.ErrorLogger.Fatal(err)
+			tracelog.ErrorLogger.Fatal(err)
 		}
 	}
 
@@ -217,7 +215,7 @@ func (sg *Spqr) servAdm(netconn net.Conn) {
 			}
 
 			if err := cl.DefaultReply(); err != nil {
-		        tracelog.ErrorLogger.Fatal(err)
+				tracelog.ErrorLogger.Fatal(err)
 			}
 		}
 	}

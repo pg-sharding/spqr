@@ -25,5 +25,3 @@ func (*Spqrserver) ListShards(context.Context, *shards.ShardRequest) (*shards.Sh
 func Register(server *grpc.Server) {
 	shards.RegisterShardServiceServer(server, &Spqrserver{})
 }
-
-

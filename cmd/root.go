@@ -5,15 +5,14 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-
 var rootCmd = &cobra.Command{
-	Use: "spqr run --config `config-path`",
+	Use:   "spqr run --config `config-path`",
 	Short: "SPQR",
-	Long: "Stateless Postgres Query Router",
+	Long:  "Stateless Postgres Query Router",
 	CompletionOptions: cobra.CompletionOptions{
-		DisableDefaultCmd:   true,
+		DisableDefaultCmd: true,
 	},
-	SilenceUsage: true,
+	SilenceUsage:  true,
 	SilenceErrors: true,
 }
 

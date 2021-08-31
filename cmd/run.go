@@ -15,7 +15,7 @@ import (
 
 var (
 	configPath string
-	spqrConfig     *config.SpqrConfig
+	spqrConfig config.SpqrConfig
 )
 
 func init() {
@@ -26,12 +26,11 @@ func init() {
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "run sqpr",
-	Long:  `All software has versions. This is Hugo's`,
+	Short: "run SPQR",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqr, err := internal.NewSpqr(spqrConfig)
+		spqr, err := internal.NewSpqr(&spqrConfig)
 		if err != nil {
-			return errors.Wrap(err, "NewSpqr")
+			return errors.Wrap(err, "SPQR creation failed")
 		}
 
 		app := app.NewApp(spqr)
@@ -75,7 +74,7 @@ func initConfig() {
 
 		tracelog.InfoLogger.Println("Decoding config")
 		decoder := yaml.NewDecoder(file)
-		err = decoder.Decode(spqrConfig)
+		err = decoder.Decode(&spqrConfig)
 		tracelog.ErrorLogger.FatalOnError(err)
 	} else {
 		tracelog.ErrorLogger.Fatal("Please pass config path with --config")

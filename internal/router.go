@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/jackc/pgproto3"
@@ -11,10 +12,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-
-
 type Router struct {
-	CFG       config.RouterConfig
+	Cfg       config.RouterConfig
 	mu        sync.Mutex
 	routePool map[routeKey][]*Route
 
@@ -22,7 +21,7 @@ type Router struct {
 	backendRules  map[routeKey]*config.BERule
 
 	cfg *tls.Config
-	lg log.Logger
+	lg  *log.Logger
 }
 
 func NewRouter(cfg config.RouterConfig) (*Router, error) {
@@ -30,34 +29,30 @@ func NewRouter(cfg config.RouterConfig) (*Router, error) {
 	frs := make(map[routeKey]*config.FRRule)
 
 	for _, e := range cfg.FrontendRules {
-		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
 		frs[routeKey{
-			usr: e.Usr,
-			db:  e.DB,
+			usr: e.RK.Usr,
+			db:  e.RK.DB,
 		}] = e
 	}
-
-
 	bes := make(map[routeKey]*config.BERule)
 
 	for _, e := range cfg.BackendRules {
-		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
 		bes[routeKey{
-			usr: e.Usr,
-			db:  e.DB,
+			usr: e.RK.Usr,
+			db:  e.RK.DB,
 		}] = e
 	}
-
-
 	router := &Router{
-		CFG:           cfg,
+		Cfg:           cfg,
 		mu:            sync.Mutex{},
 		routePool:     map[routeKey][]*Route{},
 		frontendRules: frs,
 		backendRules:  bes,
+		lg:            log.New(os.Stdout, "router", 0),
 	}
 
 	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
+	router.lg.Printf("loading tls cert file %s, key file %s", cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load frontend tls conf")
 	}
@@ -70,7 +65,7 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.cfg, r.CFG.ReqSSL); err != nil {
+	if err := cl.Init(r.cfg, r.Cfg.TLSCfg.ReqSSL); err != nil {
 		return nil, err
 	}
 
@@ -135,7 +130,7 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 func (r *Router) ListShards() []string {
 	var ret []string
 
-	for _, sh := range r.CFG.SQPRShards {
+	for _, sh := range r.Cfg.SQPRShards {
 		ret = append(ret, sh.ConnAddr)
 	}
 

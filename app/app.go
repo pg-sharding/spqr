@@ -3,13 +3,12 @@ package app
 import (
 	"net"
 
+	reuse "github.com/libp2p/go-reuseport"
 	shhttp "github.com/pg-sharding/spqr/http"
 	"github.com/pg-sharding/spqr/internal"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-
-	reuse "github.com/libp2p/go-reuseport"
 )
 
 type App struct {

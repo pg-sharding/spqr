@@ -14,24 +14,23 @@ type RouterConfig struct {
 	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
 
 	// listen cfg
-	ReqSSL          bool      `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
-	TLSCfg          TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
 	// shards
-	*ShardMapping `json:"shard_mapping" toml:"shard_mapping" yaml:"shard_mapping"`
+	ShardMapping `json:"shard_mapping" toml:"shard_mapping" yaml:"shard_mapping"`
 }
 
 type BERule struct {
-	RouteKeyCfg
+	RK RouteKeyCfg `json:"route_key_cfg" yaml:"route_key_cfg" toml:"route_key_cfg"`
 
 	PoolDiscard  bool `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
 	PoolRollback bool `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
 }
 
 type FRRule struct {
-	RouteKeyCfg
+	RK RouteKeyCfg `json:"route_key_cfg" yaml:"route_key_cfg" toml:"route_key_cfg"`
 
-	ClientMax int    `json:"client_max" yaml:"client_max" toml:"client_max"`
+	ClientMax int `json:"client_max" yaml:"client_max" toml:"client_max"`
 
 	PoolingMode PoolingMode `json:"pooling_mode" yaml:"pooling_mode" toml:"pooling_mode"`
 
