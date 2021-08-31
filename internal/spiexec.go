@@ -3,15 +3,15 @@ package internal
 import (
 	"bufio"
 	"crypto/tls"
+	"log"
+	"os"
+
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/wal-g/tracelog"
-	"log"
-	"os"
 )
 
 type FakeClient struct {
-
 }
 
 func NewFakeClient() *FakeClient {
@@ -87,13 +87,10 @@ func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
-	return &pgproto3.Query{
-
-	}, nil
+	return &pgproto3.Query{}, nil
 }
 
 var _ Client = &FakeClient{}
-
 
 type Executer struct {
 	cfg config.ExecuterCfg
@@ -127,7 +124,7 @@ func (e *Executer) SPIexec(console Console, cl Client) error {
 	for _, cmd := range e.ReadCmds() {
 		tracelog.InfoLogger.Printf("executing init sql cmd %s", cmd)
 		if err := console.processQ(cmd, cl); err != nil {
-			return err
+			tracelog.InfoLogger.PrintError(err)
 		}
 	}
 

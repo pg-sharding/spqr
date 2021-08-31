@@ -63,7 +63,6 @@ func (r *QrouterImpl) KeyRanges() []string {
 	return ret
 }
 
-
 var _ Qrouter = &QrouterImpl{}
 
 func NewR() *QrouterImpl {

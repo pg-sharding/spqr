@@ -110,6 +110,8 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 
 func (c *ConsoleImpl) AddKeyRange(cl Client, kr *spqrparser.KeyRange) error {
 
+	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
+
 	err := c.R.AddKeyRange(kr)
 
 	for _, msg := range []pgproto3.BackendMessage{
