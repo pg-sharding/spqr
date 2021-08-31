@@ -58,12 +58,14 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 		lg:            log.New(os.Stdout, "router", 0),
 	}
 
-	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
-	router.lg.Printf("loading tls cert file %s, key file %s", cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load frontend tls conf")
+	if cfg.TLSCfg.ReqSSL {
+		cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
+		router.lg.Printf("loading tls cert file %s, key file %s", cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load frontend tls conf")
+		}
+		router.cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	}
-	router.cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
 	consoleDB := NewConsole(router.cfg, qrouter)
 

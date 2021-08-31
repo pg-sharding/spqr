@@ -49,7 +49,7 @@ func NewTxConnManager() *TxConnManager {
 
 func (t *TxConnManager) RouteCB(client Client, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
+	shConn, err := client.Route().GetConn(rst.ActiveShard.Cfg().Proto, rst.ActiveShard)
 
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 func (s *SessConnManager) RouteCB(client Client, rst *RelayState) error {
 
-	servConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
+	servConn, err := client.Route().GetConn(rst.ActiveShard.Cfg().Proto, rst.ActiveShard)
 
 	if err != nil {
 		return err

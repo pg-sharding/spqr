@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -ex
+
+export SETUP_LOG=/var/log/postgresql/postgresql-13-main.log
+
+export PGAGGR=$PG_LISTEN_ADDR
+# Start postgresql
+
+cat >> /var/lib/postgresql/13/main/pg_hba.conf <<-EOF
+host   all       all       all           trust
+EOF
+
+cat >> /var/lib/postgresql/13/main/postgresql.conf <<-EOF
+listen_addresses = '*'
+port = 6432
+EOF
+
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ start
+
+# Create users
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "create role user1 with login" -d postgres >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: users creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
+
+
+# Create databases
+for database_name in db1 dbtpcc; do
+	sudo -u postgres psql -p 6432 -h localhost -U postgres -c "create database $database_name" -d postgres >> $SETUP_LOG 2>&1 || {
+		echo "ERROR: users creation failed, examine the log"
+		cat "$SETUP_LOG"
+		exit 1
+	}
+done
+
+sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop

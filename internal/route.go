@@ -102,6 +102,7 @@ func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 
 	netconn, err := shard.Connect(proto)
 	if err != nil {
+		tracelog.ErrorLogger.PrintError(err)
 		return nil, err
 	}
 

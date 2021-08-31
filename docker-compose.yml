@@ -1,33 +1,45 @@
 version: '3'
 
 services:
-    # see https://hub.docker.com/_/postgres
     shard1:
-        image: postgres:13.4
-        command: [ "postgres", "-c", "log_statement=all" ]
+        build:
+            dockerfile: ./docker/shard/Dockerfile
+            context: .
         environment:
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASSWORD=postgres
-            - POSTGRES_DB=dbtpcc
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard1_1.spqr_spqr.}"
         ports:
-            - "6432:5432"
-
+            - "7432:6432"
+        hostname: spqr_shard_1_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.03
     shard2:
-        image: postgres:13.4
-        command: [ "postgres", "-c", "log_statement=all" ]
+        build:
+            dockerfile: ./docker/shard/Dockerfile
+            context: .
         environment:
-            - POSTGRES_USER=postgres
-            - POSTGRES_PASSWORD=postgres
-            - POSTGRES_DB=dbtpcc
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard2_1.spqr_spqr.}"
         ports:
-            - "7432:5432"
-
-    spqr:
+            - "7433:6432"
+        hostname: spqr_shard_2_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.02
+    router:
         build:
             dockerfile: ./docker/router/Dockerfile
             context: .
         ports:
-            - "8432:7432"
-        depends_on:
-            - shard1
-            - shard2
+            - "8432:6432"
+        hostname: spqr_router_1_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.04
+
+networks:
+    spqr:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: 192.168.233.0/24

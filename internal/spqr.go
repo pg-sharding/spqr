@@ -21,6 +21,8 @@ type Spqr struct {
 	SPIexecuter *Executer
 }
 
+const defaultProto = "tcp"
+
 func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 
 	qrouter := qrouter.NewR()
@@ -44,6 +46,10 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 				return nil, err
 			}
 		}
+		if shard.Proto == "" {
+			shard.Proto = defaultProto
+		}
+
 		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
 	}
 
