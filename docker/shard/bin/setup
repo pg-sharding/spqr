@@ -2,7 +2,9 @@
 
 set -ex
 
-export SETUP_LOG=/var/log/postgresql/postgresql-13-main.log
+export SETUP_LOG=/var/log/setup.log
+
+touch $SETUP_LOG
 
 export PGAGGR=$PG_LISTEN_ADDR
 # Start postgresql
