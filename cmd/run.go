@@ -34,6 +34,7 @@ var runCmd = &cobra.Command{
 		}
 
 		app := app.NewApp(spqr)
+
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)

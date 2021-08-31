@@ -8,6 +8,8 @@ type SpqrConfig struct {
 	RouterCfg RouterConfig `json:"router" toml:"router" yaml:"router"`
 
 	HttpConfig HttpConf `json:"http_conf" toml:"http_conf" yaml:"http_conf"`
+
+	ExecuterCfg ExecuterCfg `json:"executer" toml:"executer" yaml:"executer"`
 }
 
 type HttpConf struct {

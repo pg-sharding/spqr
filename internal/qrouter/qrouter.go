@@ -19,6 +19,7 @@ type Qrouter interface {
 
 	AddKeyRange(kr *spqrparser.KeyRange) error
 	Shards() []string
+	KeyRanges() []string
 	AddShard(name string, cfg *config.ShardCfg) error
 }
 
@@ -50,6 +51,18 @@ func (r *QrouterImpl) Shards() []string {
 
 	return ret
 }
+
+func (r *QrouterImpl) KeyRanges() []string {
+
+	var ret []string
+
+	for _, kr := range r.Ranges {
+		ret = append(ret, kr.ShardID)
+	}
+
+	return ret
+}
+
 
 var _ Qrouter = &QrouterImpl{}
 

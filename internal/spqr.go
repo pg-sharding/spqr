@@ -13,9 +13,12 @@ import (
 
 type Spqr struct {
 	//TODO add some fiels from spqrconfig
-	Cfg    *config.SpqrConfig
-	Router *Router
-	R      *qrouter.QrouterImpl
+	Cfg *config.SpqrConfig
+
+	Router  *Router
+	Qrouter *qrouter.QrouterImpl
+
+	SPIexecuter *Executer
 }
 
 func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
@@ -41,20 +44,26 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 				return nil, err
 			}
 		}
-
 		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
 	}
 
+	executer := NewExecuter(config.ExecuterCfg)
+
+	executer.SPIexec(router.ConsoleDB, NewFakeClient())
+
 	return &Spqr{
-		Cfg:    config,
-		Router: router,
-		R:      qrouter,
+		Cfg:         config,
+		Router:      router,
+		Qrouter:     qrouter,
+		SPIexecuter: executer,
 	}, nil
 }
 
 const TXREL = 73
 
 func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
+
+	tracelog.InfoLogger.Printf("process frontend for user %s %s", cl.Usr(), cl.DB())
 
 	msgs := make([]pgproto3.Query, 0)
 
@@ -71,6 +80,8 @@ func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
 			return err
 		}
 
+		tracelog.InfoLogger.Printf("recieved msg %v", msg)
+
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 
@@ -85,18 +96,18 @@ func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
 				shard := NewShard(shardName, rt.ShardCfgs[shardName])
 
 				if shardName == "" {
-					if err := cl.DefaultReply(); err != nil {
+					if err := cl.ReplyErr(errors.New("failed to match shard")); err != nil {
 						return err
 					}
 
-					break
+					return nil
 				} else {
 					tracelog.InfoLogger.Printf("parsed shard name %s", shardName)
 				}
 
 				if rst.ActiveShard != nil {
 
-					if err := cmngr.UnRouteWithError(cl, rst, errors.New("failed to match active shard")); err != nil {
+					if err := cmngr.UnRouteCB(cl, rst); err != nil {
 						return err
 					}
 				}
@@ -155,7 +166,7 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 		return err
 	}
 
-	return frontend(sg.R, client, cmngr)
+	return frontend(sg.Qrouter, client, cmngr)
 }
 
 func (sg *Spqr) Run(listener net.Listener) error {

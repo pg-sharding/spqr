@@ -16,6 +16,7 @@ import (
 
 type Console interface {
 	Serve(netconn net.Conn) error
+	processQ(q string, cl Client) error
 }
 
 type ConsoleImpl struct {
@@ -162,6 +163,57 @@ func (c *ConsoleImpl) AddShard(cl Client, shard *spqrparser.Shard, cfg *config.S
 
 	return nil
 }
+
+func (c *ConsoleImpl) KeyRanges(cl Client) error {
+
+	tracelog.InfoLogger.Printf("listing key ranges")
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "spqr shards",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+			return err
+		}
+	}
+
+	for _, shard := range c.R.Shards() {
+		if err := cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{[]byte(fmt.Sprintf("key range for shard with ID %s", shard))},
+		}); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	if err := cl.Send(&pgproto3.DataRow{
+		Values: [][]byte{[]byte(fmt.Sprintf("local node"))},
+	}); err != nil {
+		tracelog.InfoLogger.Print(err)
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	return nil
+}
+
 func (c *ConsoleImpl) Shards(cl Client) error {
 
 	tracelog.InfoLogger.Printf("listing shards")
@@ -211,6 +263,7 @@ func (c *ConsoleImpl) Shards(cl Client) error {
 
 	return nil
 }
+
 func (c *ConsoleImpl) processQ(q string, cl Client) error {
 
 	tstmt, err := spqrparser.Parse(q)
@@ -233,6 +286,8 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 			return c.Databases(cl)
 		case spqrparser.ShowShardsStr:
 			return c.Shards(cl)
+		case spqrparser.ShowKeyRangesStr:
+			return c.KeyRanges(cl)
 		default:
 			tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 

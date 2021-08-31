@@ -31,6 +31,7 @@ type Kill struct {
 const (
 	ShowDatabasesStr   = "databases"
 	ShowShardsStr      = "shards"
+	ShowKeyRangesStr   = "key_ranges"
 	KillClientsStr     = "clients"
 	ShowPoolsStr       = "pools"
 	ShowUnsupportedStr = "unsupported"
@@ -48,20 +49,21 @@ func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 
 var reservedWords = map[string]int{
-	"pools":     POOLS,
-	"servers":   SERVERS,
-	"clients":   CLIENTS,
-	"databases": DATABASES,
-	"show":      SHOW,
-	"stats":     STATS,
-	"kill":      KILL,
-	"column":    COLUMN,
-	"sharding":  SHARDING,
-	"create":    CREATE,
-	"add":       ADD,
-	"key":       KEY,
-	"range":     RANGE,
-	"shards":    SHARDS,
+	"pools":      POOLS,
+	"servers":    SERVERS,
+	"clients":    CLIENTS,
+	"databases":  DATABASES,
+	"show":       SHOW,
+	"stats":      STATS,
+	"kill":       KILL,
+	"column":     COLUMN,
+	"sharding":   SHARDING,
+	"create":     CREATE,
+	"add":        ADD,
+	"key":        KEY,
+	"range":      RANGE,
+	"shards":     SHARDS,
+	"key_ranges": KEY_RANGES,
 }
 
 // Tokenizer is the struct used to generate SQL

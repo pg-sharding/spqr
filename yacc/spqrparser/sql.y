@@ -38,7 +38,7 @@ import (
 // CMDS
 //%type <statement> command
 
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN ADD KEY RANGE SHARDS
+%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES
 %type <str> show_statement_type
 %type <str> kill_statement_type
 %type <str> kill_statement_type
@@ -102,12 +102,13 @@ POOLS
 | SERVERS
 | SHARDS
 | STATS
+| KEY_RANGES
 
 show_statement_type:
 reserved_keyword
   {
     switch v := string($1); v {
-    case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr:
+    case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr:
       $$ = v
     default:
       $$ = ShowUnsupportedStr

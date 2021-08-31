@@ -26,10 +26,7 @@ type ConnManager interface {
 func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, err error) error {
 	_ = cmngr.UnRouteCB(client, rst)
 
-	return client.Send(&pgproto3.ErrorResponse{
-		Message:  err.Error(),
-		Severity: "FATAL",
-	})
+	return client.ReplyErr(err)
 }
 
 type TxConnManager struct {

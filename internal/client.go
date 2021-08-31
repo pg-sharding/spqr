@@ -209,6 +209,7 @@ func (cl *SpqrClient) StartupMessage() *pgproto3.StartupMessage {
 }
 
 const defaultUsr = "default"
+const defaultDB = "default"
 
 func (cl *SpqrClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
@@ -338,6 +339,8 @@ func (cl *SpqrClient) ReplyErr(err error) error {
 		&pgproto3.ErrorResponse{
 			Message: err.Error(),
 		},
+		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
