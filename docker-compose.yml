@@ -35,6 +35,14 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.04
+    client:
+        build:
+            dockerfile: ./docker/tests/Dockerfile
+            context: .
+        hostname: spqr_client_1_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.05
 
 networks:
     spqr:

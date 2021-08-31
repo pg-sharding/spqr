@@ -1,9 +1,9 @@
 
-addr: '[localhost]:6432'
-adm_addr: '[localhost]:7432'
+addr: '[spqr_router_1_1]:6432'
+adm_addr: '[spqr_router_1_1]:7432'
 proto: 'tcp'
 http_conf:
-        addr: 'localhost:7000'
+        addr: 'spqr_router_1_1:7000'
 
 executer:
         init_sql_path: "/router/docker/router/init.sql"

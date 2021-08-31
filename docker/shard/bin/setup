@@ -35,4 +35,15 @@ for database_name in db1 dbtpcc; do
 	}
 done
 
+cat >> ./init.sql <<-EOF
+CREATE TABLE x(w_id INT);
+EOF
+
+
+sudo -u postgres psql -p 6432 -h localhost -Uuser1 -ddb1 -f ./init.sql -d postgres >> $SETUP_LOG 2>&1 || {
+	echo "ERROR: schema creation failed, examine the log"
+	cat "$SETUP_LOG"
+	exit 1
+}
+
 sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop
