@@ -2,6 +2,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"log"
 	"net"
 	"sync"
 
@@ -17,28 +18,43 @@ type Router struct {
 	mu        sync.Mutex
 	routePool map[routeKey][]*Route
 
-	mpFrontendRules map[routeKey]*config.FRRule
+	frontendRules map[routeKey]*config.FRRule
+	backendRules  map[routeKey]*config.BERule
 
 	cfg *tls.Config
+	lg log.Logger
 }
 
 func NewRouter(cfg config.RouterConfig) (*Router, error) {
 
-	mp := make(map[routeKey]*config.FRRule)
+	frs := make(map[routeKey]*config.FRRule)
 
 	for _, e := range cfg.FrontendRules {
 		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
-		mp[routeKey{
+		frs[routeKey{
 			usr: e.Usr,
 			db:  e.DB,
 		}] = e
 	}
 
+
+	bes := make(map[routeKey]*config.BERule)
+
+	for _, e := range cfg.BackendRules {
+		//tracelog.InfoLogger.Printf("frontend rule for %v %v: auth method %v\n", e.DB, e.Usr, e.AuthRule.Am)
+		bes[routeKey{
+			usr: e.Usr,
+			db:  e.DB,
+		}] = e
+	}
+
+
 	router := &Router{
-		CFG:             cfg,
-		mu:              sync.Mutex{},
-		routePool:       map[routeKey][]*Route{},
-		mpFrontendRules: mp,
+		CFG:           cfg,
+		mu:            sync.Mutex{},
+		routePool:     map[routeKey][]*Route{},
+		frontendRules: frs,
+		backendRules:  bes,
 	}
 
 	cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
@@ -58,16 +74,13 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 		return nil, err
 	}
 
-	//tracelog.InfoLogger.Printf("routing %v %v", cl.Usr(), cl.DB())
-
 	// match client frontend rule
 	key := routeKey{
 		usr: cl.Usr(),
 		db:  cl.DB(),
 	}
 
-	var frRule *config.FRRule
-	frRule, ok := r.mpFrontendRules[key]
+	frRule, ok := r.frontendRules[key]
 	if !ok {
 
 		for _, msg := range []pgproto3.BackendMessage{
@@ -80,6 +93,11 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 			}
 		}
 
+		return nil, errors.New("Failed to route client")
+	}
+
+	beRule, ok := r.backendRules[key]
+	if !ok {
 		return nil, errors.New("Failed to route client")
 	}
 
@@ -102,7 +120,7 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 				r.routePool[key] = make([]*Route, 0)
 			}
 
-			route = NewRoute(r.CFG.BackendRules, frRule)
+			route = NewRoute(beRule, frRule)
 
 			r.routePool[key] = append(r.routePool[key], route)
 		}
@@ -117,15 +135,9 @@ func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
 func (r *Router) ListShards() []string {
 	var ret []string
 
-	for _, sh := range r.CFG.BackendRules {
-		ret = append(ret, sh.SHStorage.ConnAddr)
+	for _, sh := range r.CFG.SQPRShards {
+		ret = append(ret, sh.ConnAddr)
 	}
 
 	return ret
-}
-
-func Connect(proto string, rule *config.BERule) (net.Conn, error) {
-	//tracelog.InfoLogger.Printf("acquire backend connection on addr %v\n", rule.SHStorage.ConnAddr)
-
-	return net.Dial(proto, rule.SHStorage.ConnAddr)
 }

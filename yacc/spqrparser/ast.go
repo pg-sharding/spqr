@@ -16,7 +16,12 @@ type ShardingColumn struct {
 type KeyRange struct {
 	From    int
 	To      int
-	ShardID int
+	ShardID string
+}
+
+
+type Shard struct {
+	name string
 }
 
 type Kill struct {

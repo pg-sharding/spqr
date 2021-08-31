@@ -51,7 +51,7 @@ import (
 %type <str> reserved_keyword
 %type <str> sharding_column_name
 %type<int> key_range_spec_from
-%type<int> key_range_spec_shid
+%type<str> key_range_spec_shid
 %type<int> key_range_spec_to
 //%type <str> sh_col_name
 
@@ -153,7 +153,7 @@ key_range_spec_to:
 key_range_spec_shid:
     STRING
     {
-      $$, _ = strconv.Atoi(string($1))
+      $$ = string($1)
     }
 
 

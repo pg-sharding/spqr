@@ -3,15 +3,14 @@ package internal
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/r"
 	"github.com/pkg/errors"
 )
 
 type RelayState struct {
 	TxActive bool
 
-	ActiveShardConn *SpqrServer
-	ActiveShardIndx int
+	ActiveBackendConn Server
+	ActiveShardName   string
 }
 
 type ConnManager interface {
@@ -31,19 +30,19 @@ func NewTxConnManager() *TxConnManager {
 
 func (t *TxConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardIndx)
+	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardName)
 
 	if err != nil {
 		return err
 	}
 
-	client.AssignShrdConn(shConn)
+	client.AssignServerConn(shConn)
 
 	return nil
 }
 
 func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShardIndx == r.NOSHARD || !rst.TxActive
+	return rst.ActiveShardName == "" || !rst.TxActive
 }
 
 func (t *TxConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
@@ -52,10 +51,8 @@ func (t *TxConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 
-	//tracelog.InfoLogger.Println("releasing tx")
-
-	client.Route().Unroute(rst.ActiveShardIndx, client)
-	rst.ActiveShardIndx = r.NOSHARD
+	_ = client.Route().Unroute(rst.ActiveShardName, client)
+	rst.ActiveShardName = ""
 
 	return nil
 }
@@ -73,20 +70,20 @@ func (s SessConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 
 func (s SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
 
-	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardIndx)
+	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShardName)
 
 	if err != nil {
 		return err
 	}
 
-	client.AssignShrdConn(shConn)
-	rst.ActiveShardConn = shConn
+	client.AssignServerConn(shConn)
+	rst.ActiveBackendConn = shConn
 
 	return nil
 }
 
 func (s SessConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShardIndx == r.NOSHARD
+	return rst.ActiveShardName == ""
 }
 
 func NewSessConnManager() *SessConnManager {

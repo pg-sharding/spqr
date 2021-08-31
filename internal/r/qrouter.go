@@ -6,16 +6,16 @@ import (
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
 )
 
-const NOSHARD = -1
+const NOSHARD = ""
 
 type KeyRange struct {
 	From    int
 	To      int
-	ShardId int
+	ShardId string
 }
 
 type Qrouter interface {
-	Route(q string) int
+	Route(q string) string
 
 	AddColumn(col string) error
 	AddLocalTable(tname string) error
@@ -25,34 +25,34 @@ type Qrouter interface {
 
 type R struct {
 	Qrouter
-	SHCOLMP map[string]struct{}
+	ColumnMapping map[string]struct{}
 
-	LOCALS map[string]struct{}
+	LocalTables map[string]struct{}
 
 	Ranges []KeyRange
 }
 
 var _ Qrouter = &R{
-	SHCOLMP: map[string]struct{}{},
-	LOCALS:  map[string]struct{}{},
-	Ranges:  []KeyRange{},
+	ColumnMapping: map[string]struct{}{},
+	LocalTables:   map[string]struct{}{},
+	Ranges:        []KeyRange{},
 }
 
 func NewR() *R {
 	return &R{
-		SHCOLMP: map[string]struct{}{},
-		LOCALS:  map[string]struct{}{},
-		Ranges:  []KeyRange{},
+		ColumnMapping: map[string]struct{}{},
+		LocalTables:   map[string]struct{}{},
+		Ranges:        []KeyRange{},
 	}
 }
 
 func (r *R) AddColumn(col string) error {
-	r.SHCOLMP[col] = struct{}{}
+	r.ColumnMapping[col] = struct{}{}
 	return nil
 }
 
 func (r *R) AddLocalTable(tname string) error {
-	r.LOCALS[tname] = struct{}{}
+	r.LocalTables[tname] = struct{}{}
 	return nil
 }
 
@@ -62,7 +62,7 @@ func (r *R) AddKeyRange(kr KeyRange) error {
 	return nil
 }
 
-func (r *R) routeByIndx(i int) int {
+func (r *R) routeByIndx(i int) string {
 
 	for _, kr := range r.Ranges {
 		if kr.From <= i && kr.To >= i {
@@ -84,7 +84,7 @@ func (r *R) matchShkey(expr sqlp.Expr) bool {
 		}
 	case *sqlp.ColName:
 		//tracelog.InfoLogger.Println("colanme is %s\n", texpr.Name.String())
-		_, ok := r.SHCOLMP[texpr.Name.String()]
+		_, ok := r.ColumnMapping[texpr.Name.String()]
 		return ok
 	default:
 		//tracelog.InfoLogger.Println("%T", texpr)
@@ -93,7 +93,7 @@ func (r *R) matchShkey(expr sqlp.Expr) bool {
 	return false
 }
 
-func (r *R) routeByExpr(expr sqlp.Expr) int {
+func (r *R) routeByExpr(expr sqlp.Expr) string {
 	switch texpr := expr.(type) {
 	case *sqlp.AndExpr:
 		lft := r.routeByExpr(texpr.Left)
@@ -139,7 +139,7 @@ func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 			switch tname := tbltype.Expr.(type) {
 			case sqlp.TableName:
 				//tracelog.InfoLogger.Println("table name is %v\n", tname.Name)
-				if _, ok := r.LOCALS[tname.Name.String()]; ok {
+				if _, ok := r.LocalTables[tname.Name.String()]; ok {
 					return true
 				}
 			case *sqlp.Subquery:
@@ -155,19 +155,16 @@ func (r *R) isLocalTbl(frm sqlp.TableExprs) bool {
 
 }
 
-func (r *R) getshindx(sql string) int {
+func (r *R) getshindx(sql string) string {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
 		return NOSHARD
 	}
-	//tracelog.InfoLogger.Println("stmt = %+v\n", parsedStmt)
-
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
-		//tracelog.InfoLogger.Println("select routing")
 		if r.isLocalTbl(stmt.From) {
-			return 2
+			return NOSHARD
 		}
 		if stmt.Where != nil {
 			shindx := r.routeByExpr(stmt.Where.Expr)
@@ -176,11 +173,9 @@ func (r *R) getshindx(sql string) int {
 		return NOSHARD
 
 	case *sqlp.Insert:
-		//tracelog.InfoLogger.Println("insert routing")
 		for i, c := range stmt.Columns {
 
-			//tracelog.InfoLogger.Println("stmt = %+v\n", c)
-			if _, ok := r.SHCOLMP[c.String()]; ok {
+			if _, ok := r.ColumnMapping[c.String()]; ok {
 
 				switch vals := stmt.Rows.(type) {
 				case sqlp.Values:
@@ -202,6 +197,7 @@ func (r *R) getshindx(sql string) int {
 	return NOSHARD
 }
 
-func (r *R) Route(q string) int {
+// shard name
+func (r *R) Route(q string) string {
 	return r.getshindx(q)
 }

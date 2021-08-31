@@ -585,7 +585,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line yacc/spqrparser/sql.y:155
 		{
-			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 19:
 		yyDollar = yyS[yypt-4 : yypt+1]
@@ -597,7 +597,7 @@ yydefault:
 		yyDollar = yyS[yypt-6 : yypt+1]
 //line yacc/spqrparser/sql.y:169
 		{
-			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].int}
+			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].str}
 		}
 	case 21:
 		yyDollar = yyS[yypt-2 : yypt+1]

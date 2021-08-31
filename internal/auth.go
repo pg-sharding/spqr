@@ -9,14 +9,14 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-func authBackend(sh *SpqrServer, v *pgproto3.Authentication) error {
+func authBackend(srv *ServerImpl, v *pgproto3.Authentication) error {
 	tracelog.InfoLogger.Printf("Auth type proc %+v\n", v)
 	switch v.Type {
 	case pgproto3.AuthTypeOk:
 		return nil
 	case pgproto3.AuthTypeMD5Password:
 		hash := md5.New()
-		hash.Write([]byte(sh.rule.SHStorage.Passwd + sh.rule.SHStorage.ConnUsr))
+		hash.Write([]byte(srv.shard.Cfg().Passwd + srv.shard.Cfg().Passwd))
 		res := hash.Sum(nil)
 
 		hash2 := md5.New()
@@ -25,12 +25,12 @@ func authBackend(sh *SpqrServer, v *pgproto3.Authentication) error {
 		res2 := hash2.Sum(nil)
 
 		psswd := hex.EncodeToString(res2)
-		if err := sh.frontend.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
+		if err := srv.frontend.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
 			return err
 		}
 
 	case pgproto3.AuthTypeCleartextPassword:
-		if err := sh.frontend.Send(&pgproto3.PasswordMessage{Password: sh.rule.SHStorage.Passwd}); err != nil {
+		if err := srv.frontend.Send(&pgproto3.PasswordMessage{Password: srv.shard.Cfg().Passwd}); err != nil {
 			return err
 		}
 	default:

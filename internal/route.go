@@ -17,32 +17,33 @@ func (r *routeKey) String() string {
 }
 
 type shardKey struct {
-	i int
+	name string
 }
 
 type Route struct {
-	beRule []*config.BERule
+	beRule *config.BERule
 	frRule *config.FRRule
 
 	mu sync.Mutex
 
-	servPoolPending map[shardKey][]*SpqrServer
+	servPoolPending map[shardKey][]Server
 
 	client *SpqrClient
+	mapping *config.ShardMapping
 }
 
 func (r *Route) Client() *SpqrClient {
 	return r.client
 }
 
-func (r *Route) Unroute(i int, cl *SpqrClient) error {
+func (r *Route) Unroute(shardName string, cl *SpqrClient) error {
 	key := shardKey{
-		i: i,
+		name: shardName,
 	}
 
 	r.mu.Lock()
 
-	srv := cl.ShardConn()
+	srv := cl.Server()
 	if err := srv.Cleanup(); err != nil {
 		return err
 	}
@@ -55,38 +56,40 @@ func (r *Route) Unroute(i int, cl *SpqrClient) error {
 	return nil
 }
 
-func NewRoute(rules []*config.BERule, frRules *config.FRRule) *Route {
+func NewRoute(rule *config.BERule, frRules *config.FRRule) *Route {
 	return &Route{
-		beRule:          rules,
+		beRule:          rule,
 		frRule:          frRules,
-		servPoolPending: map[shardKey][]*SpqrServer{},
+		servPoolPending: map[shardKey][]Server{},
 		mu:              sync.Mutex{},
 	}
 }
 
-func (r *Route) smFromSh(i int) *pgproto3.StartupMessage {
+func (r *Route) starttupMsgFromSh(shard *config.ShardCfg) *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             r.beRule[i].SHStorage.ConnUsr,
-			"database":         r.beRule[i].SHStorage.ConnDB,
+			"user":             shard.ConnUsr,
+			"database":         shard.ConnUsr,
 		},
 	}
 	return sm
 }
 
-func (r *Route) GetConn(proto string, indx int) (*SpqrServer, error) {
+func (r *Route) GetConn(proto string, shardName string) (Server, error) {
 
 	key := shardKey{
-		indx,
+		name: shardName,
 	}
 
-	var ret *SpqrServer
+	var ret Server
 
 	r.mu.Lock()
+
+	shard := NewShard(shardName, r.mapping.SQPRShards[shardName])
 
 	if srv, ok := r.servPoolPending[key]; ok && len(srv) > 0 {
 		ret, r.servPoolPending[key] = r.servPoolPending[key][0], r.servPoolPending[key][1:]
@@ -94,24 +97,23 @@ func (r *Route) GetConn(proto string, indx int) (*SpqrServer, error) {
 		r.mu.Unlock()
 		return ret, nil
 	} else if !ok {
-		r.servPoolPending[key] = make([]*SpqrServer, 0)
+		r.servPoolPending[key] = make([]Server, 0)
 	}
 
-	netconn, err := Connect(proto, r.beRule[indx])
+	netconn, err := shard.Connect(proto)
 	if err != nil {
 		return nil, err
 	}
 
-	srv := NewServer(r.beRule[indx], netconn)
-	if r.beRule[indx].SHStorage.ReqSSL {
-		if err := srv.ReqBackendSsl(r.beRule[indx].SHStorage.TLSConfig); err != nil {
-			return nil, err
-		}
+	srv := NewServer(r.beRule, netconn, shard)
+
+	if err := shard.ReqBackendSsl(srv); err != nil {
+		return nil, err
 	}
 
 	r.mu.Unlock()
 
-	if err := srv.initConn(r.smFromSh(indx)); err != nil {
+	if err := srv.initConn(r.starttupMsgFromSh(shard.Cfg())); err != nil {
 		return nil, err
 	}
 

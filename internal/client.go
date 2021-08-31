@@ -22,23 +22,23 @@ type SpqrClient struct {
 
 	be *pgproto3.Backend
 
-	sm     *pgproto3.StartupMessage
-	shconn *SpqrServer
+	startupMsg *pgproto3.StartupMessage
+	server     Server
 }
 
 func NewClient(pgconn net.Conn) *SpqrClient {
 	return &SpqrClient{
-		conn: pgconn,
-		sm:   &pgproto3.StartupMessage{},
+		conn:       pgconn,
+		startupMsg: &pgproto3.StartupMessage{},
 	}
 }
 
-func (cl *SpqrClient) ShardConn() *SpqrServer {
-	return cl.shconn
+func (cl *SpqrClient) Server() Server {
+	return cl.server
 }
 
 func (cl *SpqrClient) Unroute() {
-	cl.shconn = nil
+	cl.server = nil
 }
 
 func (cl *SpqrClient) AssignRule(rule *config.FRRule) {
@@ -104,7 +104,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 		tracelog.ErrorLogger.FatalOnError(err)
 	}
 
-	cl.sm = sm
+	cl.startupMsg = sm
 	cl.be = backend
 
 	if reqssl && protVer != sslproto {
@@ -117,13 +117,9 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 		}
 	}
 
-	//tracelog.InfoLogger.Println("sm prot ver %v", sm.ProtocolVersion)
-	//for k, v := range sm.Parameters {
-	//tracelog.InfoLogger.Printf("%v %v\n", k, v)
-	//}
-
 	return nil
 }
+
 func (cl *SpqrClient) Auth() error {
 	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
@@ -179,13 +175,13 @@ func (cl *SpqrClient) Auth() error {
 }
 
 func (cl *SpqrClient) StartupMessage() *pgproto3.StartupMessage {
-	return cl.sm
+	return cl.startupMsg
 }
 
 const defaultUsr = "default"
 
 func (cl *SpqrClient) Usr() string {
-	if usr, ok := cl.sm.Parameters["user"]; ok {
+	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
 
@@ -193,7 +189,7 @@ func (cl *SpqrClient) Usr() string {
 }
 
 func (cl *SpqrClient) DB() string {
-	if db, ok := cl.sm.Parameters["database"]; ok {
+	if db, ok := cl.startupMsg.Parameters["database"]; ok {
 		return db
 	}
 
@@ -217,7 +213,7 @@ func (cl *SpqrClient) receivepasswd() string {
 }
 
 func (cl *SpqrClient) PasswordCT() string {
-	if db, ok := cl.sm.Parameters["password"]; ok {
+	if db, ok := cl.startupMsg.Parameters["password"]; ok {
 		return db
 	}
 
@@ -251,12 +247,12 @@ func (cl *SpqrClient) AssignRoute(r *Route) {
 
 func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
-	if err := cl.shconn.Send(query); err != nil {
+	if err := cl.server.Send(query); err != nil {
 		return 0, err
 	}
 
 	for {
-		msg, err := cl.shconn.Receive()
+		msg, err := cl.server.Receive()
 		if err != nil {
 			return 0, err
 		}
@@ -274,8 +270,8 @@ func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	}
 }
 
-func (cl *SpqrClient) AssignShrdConn(srv *SpqrServer) {
-	cl.shconn = srv
+func (cl *SpqrClient) AssignServerConn(srv Server) {
+	cl.server = srv
 }
 
 func (cl *SpqrClient) Route() *Route {
@@ -287,7 +283,7 @@ func (cl *SpqrClient) DefaultReply() error {
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 "spqr",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -296,7 +292,7 @@ func (cl *SpqrClient) DefaultReply() error {
 				Format:               0,
 			},
 		}},
-		&pgproto3.DataRow{Values: [][]byte{[]byte("loh")}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte("no data")}},
 		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {

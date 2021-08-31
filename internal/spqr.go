@@ -27,18 +27,18 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
 
-	for _, be := range config.RouterCfg.BackendRules {
-		if !be.SHStorage.ReqSSL {
+	for _, shard := range config.RouterCfg.SQPRShards {
+		if !shard.ReqSSL{
 			continue
 		}
 
-		cert, err := tls.LoadX509KeyPair(be.TLSCfg.CertFile, be.TLSCfg.KeyFile)
+		cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to make route failure resp")
 		}
 
 		tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-		if err := be.SHStorage.Init(tlscfg); err != nil {
+		if err := shard.Init(tlscfg); err != nil {
 			return nil, err
 		}
 	}
@@ -54,27 +54,20 @@ const TXREL = 73
 
 func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 
-	//for k, v := range cl.StartupMessage().Parameters {
-	//tracelog.InfoLogger.Println("log loh %v %v", k, v)
-	//}
-
 	msgs := make([]pgproto3.Query, 0)
 
 	rst := &RelayState{
-		ActiveShardIndx: r.NOSHARD,
-		ActiveShardConn: nil,
-		TxActive:        false,
+		ActiveShardName:   "",
+		ActiveBackendConn: nil,
+		TxActive:          false,
 	}
 
 	for {
-		//tracelog.InfoLogger.Println("round")
 		msg, err := cl.Receive()
 		if err != nil {
 			tracelog.ErrorLogger.PrintError(err)
 			return err
 		}
-		//tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-		//tracelog.InfoLogger.Println(msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
@@ -83,15 +76,12 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 				String: v.String,
 			})
 
-			// txactive == 0 || activeSh == r.NOSHARD
+			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
 
-				//tracelog.InfoLogger.Println("rerouting\n")
-				shindx := rt.Route(v.String)
+				shardName := rt.Route(v.String)
 
-				//tracelog.InfoLogger.Printf("parsed shindx %d", shindx)
-
-				if shindx == r.NOSHARD {
+				if shardName == "" {
 					if err := cl.DefaultReply(); err != nil {
 						return err
 					}
@@ -99,21 +89,14 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 					break
 				}
 
-				//if shindx == r.NOSHARD {
-				//	break
-				//}
+				if rst.ActiveShardName != "" {
 
-				//tracelog.InfoLogger.Println("get conn to %d\n", shindx)
-
-				if rst.ActiveShardIndx != r.NOSHARD {
-					//tracelog.InfoLogger.Println("unrouted prev shard conn %d\n", rst.ActiveShardIndx)
-
-					if err := cl.Route().Unroute(rst.ActiveShardIndx, cl); err != nil {
+					if err := cl.Route().Unroute(rst.ActiveShardName, cl); err != nil {
 						return err
 					}
 				}
 
-				rst.ActiveShardIndx = shindx
+				rst.ActiveShardName = shardName
 
 				if err := cmngr.RouteCB(cl, rst); err != nil {
 					return err
@@ -149,13 +132,9 @@ func frontend(rt *r.R, cl *SpqrClient, cmngr ConnManager) error {
 				}
 			}
 
-			//tracelog.InfoLogger.Printf(" relay state is %v\n", rst)
-
 		default:
 			//msgs := append(msgs, msg)
 		}
-
-		////tracelog.InfoLogger.Printf("crnt msgs buff %+v\n", msgs)
 	}
 }
 
@@ -191,19 +170,6 @@ func (sg *Spqr) Run(listener net.Listener) error {
 func (sg *Spqr) servAdm(netconn net.Conn) {
 
 	cl := NewClient(netconn)
-
-	var cfg *tls.Config = nil
-
-	cert, err := tls.LoadX509KeyPair(sg.Cfg.RouterCfg.TLSCfg.CertFile, sg.Cfg.RouterCfg.TLSCfg.KeyFile)
-	if err != nil {
-		tracelog.ErrorLogger.Fatal(err)
-	}
-
-	cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-
-	if err := cl.Init(cfg, sg.Cfg.RouterCfg.ReqSSL); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
-	}
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
