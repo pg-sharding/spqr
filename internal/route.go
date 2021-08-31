@@ -29,15 +29,15 @@ type Route struct {
 
 	servPoolPending map[shardKey][]Server
 
-	client  *SpqrClient
+	client  Client
 	mapping map[string]*config.ShardCfg
 }
 
-func (r *Route) Client() *SpqrClient {
+func (r *Route) Client() Client {
 	return r.client
 }
 
-func (r *Route) Unroute(shardName string, cl *SpqrClient) error {
+func (r *Route) Unroute(shardName string, cl Client) error {
 	key := shardKey{
 		name: shardName,
 	}

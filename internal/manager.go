@@ -14,16 +14,16 @@ type RelayState struct {
 }
 
 type ConnManager interface {
-	TXBeginCB(client *SpqrClient, rst *RelayState) error
-	TXEndCB(client *SpqrClient, rst *RelayState) error
+	TXBeginCB(client Client, rst *RelayState) error
+	TXEndCB(client Client, rst *RelayState) error
 
-	RouteCB(client *SpqrClient, rst *RelayState) error
-	UnRouteCB(client *SpqrClient, rst *RelayState) error
-	UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error
+	RouteCB(client Client, rst *RelayState) error
+	UnRouteCB(client Client, rst *RelayState) error
+	UnRouteWithError(client Client, rst *RelayState, err error) error
 	ValidateReRoute(rst *RelayState) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client *SpqrClient, rst *RelayState, err error) error {
+func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, err error) error {
 	_ = cmngr.UnRouteCB(client, rst)
 
 	return client.Send(&pgproto3.ErrorResponse{
@@ -35,11 +35,11 @@ func unRouteWithError(cmngr ConnManager, client *SpqrClient, rst *RelayState, er
 type TxConnManager struct {
 }
 
-func (t *TxConnManager) UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error {
+func (t *TxConnManager) UnRouteWithError(client Client, rst *RelayState, err error) error {
 	return unRouteWithError(t, client, rst, err)
 }
 
-func (t *TxConnManager) UnRouteCB(cl *SpqrClient, rst *RelayState) error {
+func (t *TxConnManager) UnRouteCB(cl Client, rst *RelayState) error {
 	if rst.ActiveShard != nil {
 		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
 	}
@@ -50,7 +50,7 @@ func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
-func (t *TxConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
+func (t *TxConnManager) RouteCB(client Client, rst *RelayState) error {
 
 	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
@@ -67,11 +67,11 @@ func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
 	return rst.ActiveShard == nil || !rst.TxActive
 }
 
-func (t *TxConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
+func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
+func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 	_ = client.Route().Unroute(rst.ActiveShard.Name(), client)
 	rst.ActiveShard = nil
@@ -82,26 +82,26 @@ func (t *TxConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
 type SessConnManager struct {
 }
 
-func (s *SessConnManager) UnRouteWithError(client *SpqrClient, rst *RelayState, err error) error {
+func (s *SessConnManager) UnRouteWithError(client Client, rst *RelayState, err error) error {
 	return unRouteWithError(s, client, rst, err)
 }
 
-func (s *SessConnManager) UnRouteCB(cl *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) UnRouteCB(cl Client, rst *RelayState) error {
 	if rst.ActiveShard != nil {
 		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
 	}
 	return nil
 }
 
-func (s *SessConnManager) TXBeginCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) TXBeginCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (s *SessConnManager) RouteCB(client *SpqrClient, rst *RelayState) error {
+func (s *SessConnManager) RouteCB(client Client, rst *RelayState) error {
 
 	shConn, err := client.Route().GetConn("tcp6", rst.ActiveShard)
 
@@ -123,10 +123,10 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
-func InitClConnection(client *SpqrClient) (ConnManager, error) {
+func InitClConnection(client Client) (ConnManager, error) {
 
 	var connmanager ConnManager
-	switch client.Rule.PoolingMode {
+	switch client.Rule().PoolingMode {
 	case config.PoolingModeSession:
 		connmanager = NewSessConnManager()
 	case config.PoolingModeTransaction:
@@ -142,7 +142,7 @@ func InitClConnection(client *SpqrClient) (ConnManager, error) {
 				return nil, err
 			}
 		}
-		return nil, errors.Errorf("unknown pooling mode %v", client.Rule.PoolingMode)
+		return nil, errors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
 	}
 
 	return connmanager, nil

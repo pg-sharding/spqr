@@ -13,9 +13,38 @@ import (
 )
 
 const sslproto = 80877103 // TODO what the ?
+type Client interface {
+	Server() Server
+	Unroute()
+
+	AssignRule(rule *config.FRRule)
+	AssignRoute(r *Route)
+	AssignServerConn(srv Server)
+
+	ReplyErr(err error) error
+
+	Init(cfg *tls.Config, reqssl bool) error
+	Auth() error
+	StartupMessage() *pgproto3.StartupMessage
+
+	Usr() string
+	DB() string
+
+	PasswordCT() string
+	PasswordMD5() string
+	DefaultReply() error
+
+	Route() *Route
+	Rule() *config.FRRule
+
+	ProcQuery(query *pgproto3.Query) (byte, error)
+
+	Send(msg pgproto3.BackendMessage) error
+	Receive() (pgproto3.FrontendMessage, error)
+}
 
 type SpqrClient struct {
-	Rule *config.FRRule
+	rule *config.FRRule
 	conn net.Conn
 
 	r *Route
@@ -26,11 +55,15 @@ type SpqrClient struct {
 	server     Server
 }
 
-func NewClient(pgconn net.Conn) *SpqrClient {
+func NewClient(pgconn net.Conn) Client {
 	return &SpqrClient{
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
 	}
+}
+
+func (cl *SpqrClient) Rule() *config.FRRule {
+	return cl.rule
 }
 
 func (cl *SpqrClient) Server() Server {
@@ -42,7 +75,7 @@ func (cl *SpqrClient) Unroute() {
 }
 
 func (cl *SpqrClient) AssignRule(rule *config.FRRule) {
-	cl.Rule = rule
+	cl.rule = rule
 }
 
 // startup + ssl
@@ -121,14 +154,14 @@ func (cl *SpqrClient) Auth() error {
 	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
-		switch cl.Rule.AuthRule.Method {
+		switch cl.Rule().AuthRule.Method {
 		case config.AuthOK:
 			return nil
 			// TODO:
 		case config.AuthNotok:
 			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case config.AuthClearText:
-			if cl.PasswordCT() != cl.Rule.AuthRule.Password {
+			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
 				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 
@@ -138,7 +171,7 @@ func (cl *SpqrClient) Auth() error {
 		case config.AuthScram:
 
 		default:
-			return errors.Errorf("invalid auth method %v", cl.Rule.AuthRule.Method)
+			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
 		}
 
 		return nil
@@ -277,7 +310,6 @@ func (cl *SpqrClient) Route() *Route {
 
 func (cl *SpqrClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
 				Name:                 "spqr",
@@ -292,6 +324,20 @@ func (cl *SpqrClient) DefaultReply() error {
 		&pgproto3.DataRow{Values: [][]byte{[]byte("no data")}},
 		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cl *SpqrClient) ReplyErr(err error) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ErrorResponse{
+			Message: err.Error(),
+		},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err

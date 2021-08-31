@@ -72,7 +72,7 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 	return router, nil
 }
 
-func (r *Router) PreRoute(conn net.Conn) (*SpqrClient, error) {
+func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 
 	cl := NewClient(conn)
 

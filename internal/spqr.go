@@ -54,7 +54,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 
 const TXREL = 73
 
-func frontend(rt *qrouter.QrouterImpl, cl *SpqrClient, cmngr ConnManager) error {
+func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
 
 	msgs := make([]pgproto3.Query, 0)
 
@@ -147,7 +147,6 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 
 	client, err := sg.Router.PreRoute(netconn)
 	if err != nil {
-		//tracelog.ErrorLogger.PrintError(err)
 		return err
 	}
 
