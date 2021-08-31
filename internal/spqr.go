@@ -102,11 +102,7 @@ func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
 				shard := NewShard(shardName, rt.ShardCfgs[shardName])
 
 				if shardName == "" {
-					if err := cl.ReplyErr(errors.New("failed to match shard")); err != nil {
-						return err
-					}
-
-					return nil
+					return cmngr.UnRouteWithError(cl, rst, "failed to match shard")
 				} else {
 					tracelog.InfoLogger.Printf("parsed shard name %s", shardName)
 				}
@@ -121,7 +117,7 @@ func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
 				rst.ActiveShard = shard
 
 				if err := cmngr.RouteCB(cl, rst); err != nil {
-					return cmngr.UnRouteWithError(cl, rst, err)
+					return cmngr.UnRouteWithError(cl, rst, err.Error())
 				}
 			}
 

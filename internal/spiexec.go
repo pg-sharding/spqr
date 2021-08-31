@@ -34,7 +34,7 @@ func (f FakeClient) AssignRoute(r *Route) {
 func (f FakeClient) AssignServerConn(srv Server) {
 }
 
-func (f FakeClient) ReplyErr(err error) error {
+func (f FakeClient) ReplyErr(errnsg string) error {
 	return nil
 }
 

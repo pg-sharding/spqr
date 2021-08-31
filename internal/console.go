@@ -338,7 +338,7 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 			if err := c.processQ(v.String, cl); err != nil {
-				cl.ReplyErr(err)
+				cl.ReplyErr(err.Error())
 				return err
 			}
 		}

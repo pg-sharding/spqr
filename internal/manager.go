@@ -19,21 +19,21 @@ type ConnManager interface {
 
 	RouteCB(client Client, rst *RelayState) error
 	UnRouteCB(client Client, rst *RelayState) error
-	UnRouteWithError(client Client, rst *RelayState, err error) error
+	UnRouteWithError(client Client, rst *RelayState, errmsg string) error
 	ValidateReRoute(rst *RelayState) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, err error) error {
+func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, errmsg string) error {
 	_ = cmngr.UnRouteCB(client, rst)
 
-	return client.ReplyErr(err)
+	return client.ReplyErr(errmsg)
 }
 
 type TxConnManager struct {
 }
 
-func (t *TxConnManager) UnRouteWithError(client Client, rst *RelayState, err error) error {
-	return unRouteWithError(t, client, rst, err)
+func (t *TxConnManager) UnRouteWithError(client Client, rst *RelayState, errmsg string) error {
+	return unRouteWithError(t, client, rst, errmsg)
 }
 
 func (t *TxConnManager) UnRouteCB(cl Client, rst *RelayState) error {
@@ -79,8 +79,8 @@ func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 type SessConnManager struct {
 }
 
-func (s *SessConnManager) UnRouteWithError(client Client, rst *RelayState, err error) error {
-	return unRouteWithError(s, client, rst, err)
+func (s *SessConnManager) UnRouteWithError(client Client, rst *RelayState, errmsg string) error {
+	return unRouteWithError(s, client, rst, errmsg)
 }
 
 func (s *SessConnManager) UnRouteCB(cl Client, rst *RelayState) error {

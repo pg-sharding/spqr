@@ -21,7 +21,7 @@ type Client interface {
 	AssignRoute(r *Route)
 	AssignServerConn(srv Server)
 
-	ReplyErr(err error) error
+	ReplyErr(errmsg string) error
 
 	Init(cfg *tls.Config, reqssl bool) error
 	Auth() error
@@ -334,10 +334,10 @@ func (cl *SpqrClient) DefaultReply() error {
 	return nil
 }
 
-func (cl *SpqrClient) ReplyErr(err error) error {
+func (cl *SpqrClient) ReplyErr(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: err.Error(),
+			Message: errmsg,
 		},
 		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
