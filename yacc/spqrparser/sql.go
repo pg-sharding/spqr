@@ -540,7 +540,7 @@ yydefault:
 //line yacc/spqrparser/sql.y:107
 		{
 			switch v := string(yyDollar[1].str); v {
-			case ShowDatabasesStr, ShowPoolsStr:
+			case ShowDatabasesStr, ShowPoolsStr, ShowShards:
 				yyVAL.str = v
 			default:
 				yyVAL.str = ShowUnsupportedStr

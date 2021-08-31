@@ -163,6 +163,8 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 					c.Pools(cl)
 				case spqrparser.ShowDatabasesStr:
 					c.Databases(cl)
+				case spqrparser.ShowShards:
+					c.Shards(cl)
 				default:
 					tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 
@@ -180,6 +182,47 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 			if err := cl.DefaultReply(); err != nil {
 				tracelog.ErrorLogger.Fatal(err)
 			}
+		}
+	}
+}
+
+func (c *ConsoleImpl) Shards(cl *SpqrClient) {
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "spqr",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	for _, shard := range c.R.Shards() {
+		if err := cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{[]byte(fmt.Sprintf("shard with ID %s", shard))},
+		}); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
 		}
 	}
 }

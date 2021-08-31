@@ -21,15 +21,25 @@ type Qrouter interface {
 	AddLocalTable(tname string) error
 
 	AddKeyRange(kr KeyRange) error
+	Shards() []string
 }
-
 type R struct {
-	Qrouter
 	ColumnMapping map[string]struct{}
 
 	LocalTables map[string]struct{}
 
 	Ranges []KeyRange
+}
+
+func (r *R) Shards() []string {
+
+	ret := []string{}
+
+	for _, kr := range r.Ranges {
+		ret = append(ret, kr.ShardId)
+	}
+
+	return ret
 }
 
 var _ Qrouter = &R{

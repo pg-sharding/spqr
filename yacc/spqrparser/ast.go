@@ -29,6 +29,7 @@ type Kill struct {
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr   = "databases"
+	ShowShards         = "shards"
 	KillClientsStr     = "clients"
 	ShowPoolsStr       = "pools"
 	ShowUnsupportedStr = "unsupported"
