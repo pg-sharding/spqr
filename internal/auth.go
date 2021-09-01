@@ -9,7 +9,7 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-func authBackend(srv *ServerImpl, v *pgproto3.Authentication) error {
+func authBackend(srv *PgConn, v *pgproto3.Authentication) error {
 	tracelog.InfoLogger.Printf("Auth type proc %+v\n", v)
 	switch v.Type {
 	case pgproto3.AuthTypeOk:

@@ -13,6 +13,7 @@ import (
 )
 
 const sslproto = 80877103 // TODO what the ?
+
 type Client interface {
 	Server() Server
 	Unroute()
@@ -102,8 +103,6 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	protVer := binary.BigEndian.Uint32(buf)
 
-	//tracelog.InfoLogger.Println("prot version %v", protVer)
-
 	if protVer == sslproto {
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
@@ -132,6 +131,9 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 
 		backend, err = pgproto3.NewBackend(cr, cl.conn)
 		tracelog.ErrorLogger.FatalOnError(err)
+	} else {
+		// report err to cl
+
 	}
 
 	cl.startupMsg = sm
@@ -239,7 +241,6 @@ func (cl *SpqrClient) receivepasswd() string {
 		return v.Password
 	default:
 		return ""
-
 	}
 }
 
@@ -339,7 +340,6 @@ func (cl *SpqrClient) ReplyErr(errmsg string) error {
 		&pgproto3.ErrorResponse{
 			Message: errmsg,
 		},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {

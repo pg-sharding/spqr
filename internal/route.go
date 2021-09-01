@@ -106,16 +106,18 @@ func (r *Route) GetConn(proto string, shard Shard) (Server, error) {
 		return nil, err
 	}
 
-	srv := NewServer(r.beRule, netconn, shard)
+	srv := NewShardServer(r.beRule, netconn, shard)
 	tracelog.InfoLogger.Printf("acquiring backend connection to shard %s", shard.Name())
 
-	if err := shard.ReqBackendSsl(srv); err != nil {
-		return nil, err
+	if shard.Cfg().TLSCfg.ReqSSL {
+		if err := srv.pgconn.ReqBackendSsl(shard.Cfg().TLSConfig); err != nil {
+			return nil, err
+		}
 	}
 
 	r.mu.Unlock()
 
-	if err := srv.initConn(r.startupMsgFromSh(shard.Cfg())); err != nil {
+	if err := srv.pgconn.initConn(r.startupMsgFromSh(shard.Cfg())); err != nil {
 		return nil, err
 	}
 

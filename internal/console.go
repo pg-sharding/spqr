@@ -20,12 +20,12 @@ type Console interface {
 }
 
 type ConsoleImpl struct {
-	cfg *tls.Config
-	R   qrouter.Qrouter
+	cfg     *tls.Config
+	Qrouter qrouter.Qrouter
 }
 
-func NewConsole(cfg *tls.Config, R qrouter.Qrouter) *ConsoleImpl {
-	return &ConsoleImpl{R: R, cfg: cfg}
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter) *ConsoleImpl {
+	return &ConsoleImpl{Qrouter: Qrouter, cfg: cfg}
 }
 
 func (c *ConsoleImpl) Databases(cl Client) error {
@@ -82,7 +82,7 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-	err := c.R.AddColumn(stmt.ColName)
+	err := c.Qrouter.AddColumn(stmt.ColName)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -112,7 +112,7 @@ func (c *ConsoleImpl) AddKeyRange(cl Client, kr *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
 
-	err := c.R.AddKeyRange(kr)
+	err := c.Qrouter.AddKeyRange(kr)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -140,7 +140,7 @@ func (c *ConsoleImpl) AddKeyRange(cl Client, kr *spqrparser.KeyRange) error {
 
 func (c *ConsoleImpl) AddShard(cl Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
 
-	err := c.R.AddShard(shard.Name, cfg)
+	err := c.Qrouter.AddShard(shard.Name, cfg)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -190,7 +190,7 @@ func (c *ConsoleImpl) KeyRanges(cl Client) error {
 		}
 	}
 
-	for _, shard := range c.R.Shards() {
+	for _, shard := range c.Qrouter.Shards() {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("key range for shard with ID %s", shard))},
 		}); err != nil {
@@ -240,7 +240,7 @@ func (c *ConsoleImpl) Shards(cl Client) error {
 		}
 	}
 
-	for _, shard := range c.R.Shards() {
+	for _, shard := range c.Qrouter.Shards() {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("shard with ID %s", shard))},
 		}); err != nil {
@@ -311,6 +311,7 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 
 	return nil
 }
+
 func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 	cl := NewClient(netconn)
