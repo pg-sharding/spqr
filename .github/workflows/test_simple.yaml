@@ -1,0 +1,20 @@
+name: Simple e2e
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Check out code
+      uses: actions/checkout@v2
+    
+    - name: Simple test
+      run: make test
