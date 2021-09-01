@@ -2,14 +2,12 @@ package internal
 
 import (
 	"crypto/tls"
+	"encoding/binary"
+	"net"
 
 	"github.com/jackc/pgproto3"
-	"encoding/binary"
-	"golang.org/x/xerrors"
-
 	"github.com/wal-g/tracelog"
-
-	"net"
+	"golang.org/x/xerrors"
 )
 
 type PgConn struct {

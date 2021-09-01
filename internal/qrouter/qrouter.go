@@ -19,6 +19,7 @@ type Qrouter interface {
 
 	AddKeyRange(kr *spqrparser.KeyRange) error
 	Shards() []string
+	ShardCfg(string) *config.ShardCfg
 	KeyRanges() []string
 
 	AddShard(name string, cfg *config.ShardCfg) error
@@ -32,6 +33,10 @@ type QrouterImpl struct {
 	Ranges []*spqrparser.KeyRange
 
 	ShardCfgs map[string]*config.ShardCfg
+}
+
+func (r *QrouterImpl) ShardCfg(s string) *config.ShardCfg {
+	return r.ShardCfgs[s]
 }
 
 func (r *QrouterImpl) AddShard(name string, cfg *config.ShardCfg) error {
@@ -112,11 +117,9 @@ func (r *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
 			}
 		}
 	case *sqlp.ColName:
-		//tracelog.InfoLogger.Println("colanme is %s\n", texpr.Name.String())
 		_, ok := r.ColumnMapping[texpr.Name.String()]
 		return ok
 	default:
-		//tracelog.InfoLogger.Println("%T", texpr)
 	}
 
 	return false
@@ -173,7 +176,7 @@ func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 	return false
 }
 
-func (r *QrouterImpl) getshindx(sql string) []string {
+func (r *QrouterImpl) matchShards(sql string) []string {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
@@ -215,7 +218,6 @@ func (r *QrouterImpl) getshindx(sql string) []string {
 			return []string{shname}
 		}
 		return nil
-
 	}
 
 	return nil
@@ -223,5 +225,5 @@ func (r *QrouterImpl) getshindx(sql string) []string {
 
 // shard name
 func (r *QrouterImpl) Route(q string) []string {
-	return r.getshindx(q)
+	return r.matchShards(q)
 }

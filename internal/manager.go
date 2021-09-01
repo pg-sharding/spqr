@@ -6,12 +6,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RelayState struct {
-	TxActive bool
-
-	ActiveShards      []Shard
-}
-
 type ConnManager interface {
 	TXBeginCB(client Client, rst *RelayState) error
 	TXEndCB(client Client, rst *RelayState) error
@@ -29,8 +23,7 @@ func unRouteWithError(cmngr ConnManager, client Client, sh Shard, errmsg string)
 	return client.ReplyErr(errmsg)
 }
 
-type TxConnManager struct {
-}
+type TxConnManager struct{}
 
 func (t *TxConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
 	return unRouteWithError(t, client, sh, errmsg)
@@ -79,8 +72,7 @@ func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-type SessConnManager struct {
-}
+type SessConnManager struct{}
 
 func (s *SessConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
 	return unRouteWithError(s, client, sh, errmsg)
@@ -123,8 +115,8 @@ func NewSessConnManager() *SessConnManager {
 }
 
 func InitClConnection(client Client) (ConnManager, error) {
-
 	var connmanager ConnManager
+
 	switch client.Rule().PoolingMode {
 	case config.PoolingModeSession:
 		connmanager = NewSessConnManager()
