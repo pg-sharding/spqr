@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
@@ -63,97 +62,6 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		Qrouter:     qrouter,
 		SPIexecuter: executer,
 	}, nil
-}
-
-const TXREL = 73
-
-func frontend(rt *qrouter.QrouterImpl, cl Client, cmngr ConnManager) error {
-
-	tracelog.InfoLogger.Printf("process frontend for user %s %s", cl.Usr(), cl.DB())
-
-	msgs := make([]pgproto3.Query, 0)
-
-	rst := &RelayState{
-		ActiveShard:       nil,
-		ActiveBackendConn: nil,
-		TxActive:          false,
-	}
-
-	for {
-		msg, err := cl.Receive()
-		if err != nil {
-			tracelog.ErrorLogger.Printf("failed to recieve msg %w", err)
-			return err
-		}
-
-		tracelog.InfoLogger.Printf("recieved msg %v", msg)
-
-		switch v := msg.(type) {
-		case *pgproto3.Query:
-
-			msgs = append(msgs, pgproto3.Query{
-				String: v.String,
-			})
-
-			// txactive == 0 || activeSh == nil
-			if cmngr.ValidateReRoute(rst) {
-
-				shardName := rt.Route(v.String)
-				shard := NewShard(shardName, rt.ShardCfgs[shardName])
-
-				if shardName == "" {
-					return cmngr.UnRouteWithError(cl, rst, "failed to match shard")
-				} else {
-					tracelog.InfoLogger.Printf("parsed shard name %s", shardName)
-				}
-
-				if rst.ActiveShard != nil {
-
-					if err := cmngr.UnRouteCB(cl, rst); err != nil {
-						return err
-					}
-				}
-
-				rst.ActiveShard = shard
-
-				if err := cmngr.RouteCB(cl, rst); err != nil {
-					return cmngr.UnRouteWithError(cl, rst, err.Error())
-				}
-			}
-
-			var txst byte
-			for _, msg := range msgs {
-				if txst, err = cl.ProcQuery(&msg); err != nil {
-					return err
-				}
-			}
-
-			msgs = make([]pgproto3.Query, 0)
-
-			if err := cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
-				return err
-			}
-
-			if txst == TXREL {
-				if rst.TxActive {
-					if err := cmngr.TXEndCB(cl, rst); err != nil {
-						return err
-					}
-					rst.TxActive = false
-				}
-			} else {
-				if !rst.TxActive {
-					if err := cmngr.TXBeginCB(cl, rst); err != nil {
-						return err
-					}
-					rst.TxActive = true
-				}
-			}
-
-		default:
-			//msgs := append(msgs, msg)
-		}
-	}
 }
 
 func (sg *Spqr) serv(netconn net.Conn) error {

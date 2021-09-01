@@ -9,22 +9,22 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveBackendConn Server
-	ActiveShard       Shard
+	ActiveShards      []Shard
 }
 
 type ConnManager interface {
 	TXBeginCB(client Client, rst *RelayState) error
 	TXEndCB(client Client, rst *RelayState) error
 
-	RouteCB(client Client, rst *RelayState) error
-	UnRouteCB(client Client, rst *RelayState) error
-	UnRouteWithError(client Client, rst *RelayState, errmsg string) error
+	RouteCB(client Client, sh Shard) error
+	UnRouteCB(client Client, sh Shard) error
+	UnRouteWithError(client Client, sh Shard, errmsg string) error
+
 	ValidateReRoute(rst *RelayState) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, errmsg string) error {
-	_ = cmngr.UnRouteCB(client, rst)
+func unRouteWithError(cmngr ConnManager, client Client, sh Shard, errmsg string) error {
+	_ = cmngr.UnRouteCB(client, sh)
 
 	return client.ReplyErr(errmsg)
 }
@@ -32,24 +32,24 @@ func unRouteWithError(cmngr ConnManager, client Client, rst *RelayState, errmsg 
 type TxConnManager struct {
 }
 
-func (t *TxConnManager) UnRouteWithError(client Client, rst *RelayState, errmsg string) error {
-	return unRouteWithError(t, client, rst, errmsg)
+func (t *TxConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
+	return unRouteWithError(t, client, sh, errmsg)
 }
 
-func (t *TxConnManager) UnRouteCB(cl Client, rst *RelayState) error {
-	if rst.ActiveShard != nil {
-		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
+func (t *TxConnManager) UnRouteCB(cl Client, sh Shard) error {
+	if sh == nil {
+		return nil
 	}
-	return nil
+	return cl.Route().Unroute(sh.Name(), cl)
 }
 
 func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
-func (t *TxConnManager) RouteCB(client Client, rst *RelayState) error {
+func (t *TxConnManager) RouteCB(client Client, sh Shard) error {
 
-	shConn, err := client.Route().GetConn(rst.ActiveShard.Cfg().Proto, rst.ActiveShard)
+	shConn, err := client.Route().GetConn(sh.Cfg().Proto, sh)
 
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (t *TxConnManager) RouteCB(client Client, rst *RelayState) error {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShard == nil || !rst.TxActive
+	return rst.ActiveShards == nil || !rst.TxActive
 }
 
 func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
@@ -70,8 +70,11 @@ func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
-	_ = client.Route().Unroute(rst.ActiveShard.Name(), client)
-	rst.ActiveShard = nil
+	for _, sh := range rst.ActiveShards {
+		_ = client.Route().Unroute(sh.Name(), client)
+	}
+
+	rst.ActiveShards = nil
 
 	return nil
 }
@@ -79,15 +82,15 @@ func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 type SessConnManager struct {
 }
 
-func (s *SessConnManager) UnRouteWithError(client Client, rst *RelayState, errmsg string) error {
-	return unRouteWithError(s, client, rst, errmsg)
+func (s *SessConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
+	return unRouteWithError(s, client, sh, errmsg)
 }
 
-func (s *SessConnManager) UnRouteCB(cl Client, rst *RelayState) error {
-	if rst.ActiveShard != nil {
-		return cl.Route().Unroute(rst.ActiveShard.Name(), cl)
+func (s *SessConnManager) UnRouteCB(cl Client, sh Shard) error {
+	if sh == nil {
+		return nil
 	}
-	return nil
+	return cl.Route().Unroute(sh.Name(), cl)
 }
 
 func (s *SessConnManager) TXBeginCB(client Client, rst *RelayState) error {
@@ -98,22 +101,21 @@ func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (s *SessConnManager) RouteCB(client Client, rst *RelayState) error {
+func (s *SessConnManager) RouteCB(client Client, sh Shard) error {
 
-	servConn, err := client.Route().GetConn(rst.ActiveShard.Cfg().Proto, rst.ActiveShard)
+	servConn, err := client.Route().GetConn(sh.Cfg().Proto, sh)
 
 	if err != nil {
 		return err
 	}
 
 	client.AssignServerConn(servConn)
-	rst.ActiveBackendConn = servConn
 
 	return nil
 }
 
 func (s *SessConnManager) ValidateReRoute(rst *RelayState) bool {
-	return rst.ActiveShard == nil
+	return rst.ActiveShards == nil
 }
 
 func NewSessConnManager() *SessConnManager {

@@ -12,7 +12,7 @@ import (
 const NOSHARD = ""
 
 type Qrouter interface {
-	Route(q string) string
+	Route(q string) []string
 
 	AddColumn(col string) error
 	AddLocalTable(tname string) error
@@ -20,6 +20,7 @@ type Qrouter interface {
 	AddKeyRange(kr *spqrparser.KeyRange) error
 	Shards() []string
 	KeyRanges() []string
+
 	AddShard(name string, cfg *config.ShardCfg) error
 }
 
@@ -172,22 +173,22 @@ func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 	return false
 }
 
-func (r *QrouterImpl) getshindx(sql string) string {
+func (r *QrouterImpl) getshindx(sql string) []string {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
-		return NOSHARD
+		return nil
 	}
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
 		if r.isLocalTbl(stmt.From) {
-			return NOSHARD
+			return nil
 		}
 		if stmt.Where != nil {
-			shindx := r.routeByExpr(stmt.Where.Expr)
-			return shindx
+			shname := r.routeByExpr(stmt.Where.Expr)
+			return []string{shname}
 		}
-		return NOSHARD
+		return nil
 
 	case *sqlp.Insert:
 		for i, c := range stmt.Columns {
@@ -197,23 +198,30 @@ func (r *QrouterImpl) getshindx(sql string) string {
 				switch vals := stmt.Rows.(type) {
 				case sqlp.Values:
 					valTyp := vals[0]
-					return r.routeByExpr(valTyp[i])
+					shname := r.routeByExpr(valTyp[i])
+					if shname == NOSHARD {
+						return nil
+					}
+					return []string{shname}
 				}
 			}
 		}
 	case *sqlp.Update:
 		if stmt.Where != nil {
-			shindx := r.routeByExpr(stmt.Where.Expr)
-			return shindx
+			shname := r.routeByExpr(stmt.Where.Expr)
+			if shname == NOSHARD {
+				return nil
+			}
+			return []string{shname}
 		}
-		return NOSHARD
+		return nil
 
 	}
 
-	return NOSHARD
+	return nil
 }
 
 // shard name
-func (r *QrouterImpl) Route(q string) string {
+func (r *QrouterImpl) Route(q string) []string {
 	return r.getshindx(q)
 }
