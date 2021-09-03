@@ -3,7 +3,7 @@ package qrouter
 import (
 	"strconv"
 
-	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser" // Is it OK?
+	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"

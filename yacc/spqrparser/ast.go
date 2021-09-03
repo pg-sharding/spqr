@@ -64,6 +64,9 @@ var reservedWords = map[string]int{
 	"range":      RANGE,
 	"shards":     SHARDS,
 	"key_ranges": KEY_RANGES,
+	"lock":       LOCK,
+	"unlock":     UNLOCK,
+	"drop":       DROP,
 }
 
 // Tokenizer is the struct used to generate SQL

@@ -22,6 +22,7 @@ import (
   str           string
   byte          byte
   int           int
+  bool          bool
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -36,63 +37,75 @@ import (
 
 
 // CMDS
-//%type <statement> command
+%type <statement> command
 
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES
+%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
+
+%token <str> CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES DROP LOCK UNLOCK
+
 %type <str> show_statement_type
-%type <str> kill_statement_type
 %type <str> kill_statement_type
 
 %type <show> show_stmt
 %type <kill> kill_stmt
 
 %type <sh_col> create_sharding_column_stmt
+
 %type <kr> add_key_range_stmt
+%type <str> drop_key_range_stmt
+%type <str> unlock_key_range_stmt
+%type <str> lock_key_range_stmt
+
 %type <str> reserved_keyword
 %type <str> sharding_column_name
+
 %type<int> key_range_spec_from
 %type<str> key_range_spec_shid
 %type<int> key_range_spec_to
-//%type <str> sh_col_name
-
-%left '|'
-%left '&'
-%left '+'  '-'
-%left '*'  '/'  '%'
-%left UMINUS      /*  supplies  precedence  for  unary  minus  */
+%type<string> key_range_id
 
 %start any_command
 
 %%
 
 
- //show_stmt semicolon_opt
- // {
-   // setParseTree(yylex, $1)
- // } |
-
 any_command:
-  create_sharding_column_stmt semicolon_opt
-    {
-      setParseTree(yylex, $1)
-    } |
-    add_key_range_stmt  semicolon_opt
-   {
-     setParseTree(yylex, $1)
-   } |
-    show_stmt semicolon_opt
-   {
-     setParseTree(yylex, $1)
-   } |
-    kill_stmt semicolon_opt
-   {
-     setParseTree(yylex, $1)
-   }
-
+    command semicolon_opt
 
 semicolon_opt:
 /*empty*/ {}
 | ';' {}
+
+
+command:
+    create_sharding_column_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | add_key_range_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | drop_key_range_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | lock_key_range_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | unlock_key_range_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | show_stmt
+       {
+         setParseTree(yylex, $1)
+       }
+    | kill_stmt
+       {
+         setParseTree(yylex, $1)
+       }
 
 
 reserved_keyword:
@@ -171,6 +184,32 @@ add_key_range_stmt:
       {
         $$ = &KeyRange{From: $4, To: $5, ShardID: $6}
       }
+
+
+key_range_id:
+  STRING
+  {
+    $$ = string($1)
+  }
+
+
+drop_key_range_stmt:
+  DROP KEY RANGE key_range_id
+  {
+    $$ = string($1)
+  }
+
+lock_key_range_stmt:
+  LOCK KEY RANGE key_range_id
+  {
+    $$ = string($1)
+  }
+
+unlock_key_range_stmt:
+  UNLOCK KEY RANGE key_range_id
+  {
+    $$ = string($1)
+  }
 
 kill_stmt:
 KILL kill_statement_type
