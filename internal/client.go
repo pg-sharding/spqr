@@ -10,17 +10,19 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 const sslproto = 80877103 // TODO what the ?
-
 type Client interface {
 	Server() Server
-	Unroute()
+	Unroute() error
 
-	AssignRule(rule *config.FRRule)
-	AssignRoute(r *Route)
-	AssignServerConn(srv Server)
+	ID() string
+
+	AssignRule(rule *config.FRRule) error
+	AssignRoute(r *Route) error
+	AssignServerConn(srv Server) error
 
 	ReplyErr(errmsg string) error
 
@@ -50,17 +52,26 @@ type SpqrClient struct {
 
 	r *Route
 
+	id string
+
 	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 	server     Server
 }
 
+func (cl *SpqrClient) ID() string {
+	return cl.id
+}
+
 func NewClient(pgconn net.Conn) Client {
-	return &SpqrClient{
+	cl := &SpqrClient{
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
 	}
+	cl.id = "dwoiewiwe"
+
+	return cl
 }
 
 func (cl *SpqrClient) Rule() *config.FRRule {
@@ -71,12 +82,22 @@ func (cl *SpqrClient) Server() Server {
 	return cl.server
 }
 
-func (cl *SpqrClient) Unroute() {
+func (cl *SpqrClient) Unroute() error {
+	if cl.server == nil {
+		return xerrors.New("client not routed")
+	}
 	cl.server = nil
+
+	return nil
 }
 
-func (cl *SpqrClient) AssignRule(rule *config.FRRule) {
+func (cl *SpqrClient) AssignRule(rule *config.FRRule) error {
+	if cl.rule != nil {
+		return xerrors.Errorf("client has active rule %s:%s", rule.RK.Usr, rule.RK.DB)
+	}
 	cl.rule = rule
+
+	return nil
 }
 
 // startup + ssl
@@ -160,7 +181,7 @@ func (cl *SpqrClient) Auth() error {
 		case config.AuthOK:
 			return nil
 			// TODO:
-		case config.AuthNotok:
+		case config.AuthNotOK:
 			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case config.AuthClearText:
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
@@ -170,7 +191,7 @@ func (cl *SpqrClient) Auth() error {
 			return nil
 		case config.AuthMD5:
 
-		case config.AuthScram:
+		case config.AuthSCRAM:
 
 		default:
 			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
@@ -189,8 +210,6 @@ func (cl *SpqrClient) Auth() error {
 		}
 		return err
 	}
-
-	//tracelog.InfoLogger.Printf("auth client ok")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
@@ -273,8 +292,13 @@ func (cl *SpqrClient) Send(msg pgproto3.BackendMessage) error {
 	return cl.be.Send(msg)
 }
 
-func (cl *SpqrClient) AssignRoute(r *Route) {
+func (cl *SpqrClient) AssignRoute(r *Route) error {
+	if cl.r != nil {
+		return xerrors.New("client already has assigned route")
+	}
+
 	cl.r = r
+	return nil
 }
 
 func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
@@ -302,8 +326,13 @@ func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	}
 }
 
-func (cl *SpqrClient) AssignServerConn(srv Server) {
+func (cl *SpqrClient) AssignServerConn(srv Server) error {
+	if cl.server != nil {
+		return xerrors.New("client already has active connection")
+	}
 	cl.server = srv
+
+	return nil
 }
 
 func (cl *SpqrClient) Route() *Route {

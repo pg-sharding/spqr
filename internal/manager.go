@@ -10,14 +10,14 @@ type ConnManager interface {
 	TXBeginCB(client Client, rst *RelayState) error
 	TXEndCB(client Client, rst *RelayState) error
 
-	RouteCB(client Client, sh Shard) error
-	UnRouteCB(client Client, sh Shard) error
-	UnRouteWithError(client Client, sh Shard, errmsg string) error
+	RouteCB(client Client, sh []ShardKey) error
+	UnRouteCB(client Client, sh []ShardKey) error
+	UnRouteWithError(client Client, sh []ShardKey, errmsg string) error
 
 	ValidateReRoute(rst *RelayState) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client Client, sh Shard, errmsg string) error {
+func unRouteWithError(cmngr ConnManager, client Client, sh []ShardKey, errmsg string) error {
 	_ = cmngr.UnRouteCB(client, sh)
 
 	return client.ReplyErr(errmsg)
@@ -25,30 +25,30 @@ func unRouteWithError(cmngr ConnManager, client Client, sh Shard, errmsg string)
 
 type TxConnManager struct{}
 
-func (t *TxConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
+func (t *TxConnManager) UnRouteWithError(client Client, sh []ShardKey, errmsg string) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
-func (t *TxConnManager) UnRouteCB(cl Client, sh Shard) error {
-	if sh == nil {
-		return nil
+func (t *TxConnManager) UnRouteCB(cl Client, sh []ShardKey) error {
+	for _, shkey := range sh {
+		if err := cl.Server().UnrouteShard(shkey); err != nil {
+			return err
+		}
 	}
-	return cl.Route().Unroute(sh.Name(), cl)
+	return nil
 }
 
 func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
-func (t *TxConnManager) RouteCB(client Client, sh Shard) error {
+func (t *TxConnManager) RouteCB(client Client, sh []ShardKey) error {
 
-	shConn, err := client.Route().GetConn(sh.Cfg().Proto, sh)
-
-	if err != nil {
-		return err
+	for _, shkey := range sh {
+		if err := client.Server().AddShard(shkey); err != nil {
+			return err
+		}
 	}
-
-	client.AssignServerConn(shConn)
 
 	return nil
 }
@@ -64,7 +64,7 @@ func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
 func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 	for _, sh := range rst.ActiveShards {
-		_ = client.Route().Unroute(sh.Name(), client)
+		_ = client.Server().UnrouteShard(sh)
 	}
 
 	rst.ActiveShards = nil
@@ -74,15 +74,18 @@ func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 type SessConnManager struct{}
 
-func (s *SessConnManager) UnRouteWithError(client Client, sh Shard, errmsg string) error {
+func (s *SessConnManager) UnRouteWithError(client Client, sh []ShardKey, errmsg string) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 
-func (s *SessConnManager) UnRouteCB(cl Client, sh Shard) error {
-	if sh == nil {
-		return nil
+func (s *SessConnManager) UnRouteCB(cl Client, sh []ShardKey) error {
+	for _, shkey := range sh {
+		if err := cl.Server().UnrouteShard(shkey); err != nil {
+			return err
+		}
 	}
-	return cl.Route().Unroute(sh.Name(), cl)
+
+	return nil
 }
 
 func (s *SessConnManager) TXBeginCB(client Client, rst *RelayState) error {
@@ -93,15 +96,12 @@ func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (s *SessConnManager) RouteCB(client Client, sh Shard) error {
-
-	servConn, err := client.Route().GetConn(sh.Cfg().Proto, sh)
-
-	if err != nil {
-		return err
+func (s *SessConnManager) RouteCB(client Client, sh []ShardKey) error {
+	for _, shkey := range sh {
+		if err := client.Server().AddShard(shkey); err != nil {
+			return err
+		}
 	}
-
-	client.AssignServerConn(servConn)
 
 	return nil
 }

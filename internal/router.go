@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
+	"github.com/wal-g/tracelog"
 )
 
 type Router struct {
@@ -115,10 +116,12 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 		return nil, err
 	}
 
-	var route *Route
+	route, err := func() (*Route, error) {
+		var route *Route
 
-	r.mu.Lock()
-	{
+		r.mu.Lock()
+		defer r.mu.Unlock()
+
 		if routes, ok := r.routePool[key]; ok && len(routes) > 0 {
 			route, routes = routes[0], routes[1:]
 
@@ -128,14 +131,17 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 				r.routePool[key] = make([]*Route, 0)
 			}
 
-			route = NewRoute(beRule, frRule)
-
-			r.routePool[key] = append(r.routePool[key], route)
+			route = NewRoute(beRule, frRule, r.Cfg.ShardMapping)
 		}
-	}
-	r.mu.Unlock()
 
-	cl.AssignRoute(route)
+		return route, nil
+	}()
+
+	if err != nil {
+		tracelog.ErrorLogger.Fatal(err)
+	}
+
+	_ = cl.AssignRoute(route)
 
 	return cl, nil
 }

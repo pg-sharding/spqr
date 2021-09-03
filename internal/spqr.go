@@ -49,12 +49,12 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 			shard.Proto = defaultProto
 		}
 
-		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, &shard))
+		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
 	}
 
 	executer := NewExecuter(config.ExecuterCfg)
 
-	executer.SPIexec(router.ConsoleDB, NewFakeClient())
+	_ = executer.SPIexec(router.ConsoleDB, NewFakeClient())
 
 	return &Spqr{
 		Cfg:         config,

@@ -22,16 +22,20 @@ func (f FakeClient) Server() Server {
 	return nil
 }
 
-func (f FakeClient) Unroute() {
+func (f FakeClient) Unroute() error {
+	return nil
 }
 
-func (f FakeClient) AssignRule(rule *config.FRRule) {
+func (f FakeClient) AssignRule(rule *config.FRRule) error {
+	return nil
 }
 
-func (f FakeClient) AssignRoute(r *Route) {
+func (f FakeClient) AssignRoute(r *Route) error {
+	return nil
 }
 
-func (f FakeClient) AssignServerConn(srv Server) {
+func (f FakeClient) AssignServerConn(srv Server) error {
+	return nil
 }
 
 func (f FakeClient) ReplyErr(errnsg string) error {
@@ -84,6 +88,10 @@ func (f FakeClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 	return nil
+}
+
+func (f FakeClient) ID() string {
+	return "fdijoidjs"
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {

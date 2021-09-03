@@ -9,40 +9,34 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveShards []Shard
+	ActiveShards []ShardKey
 }
 
 func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager, q *pgproto3.Query) error {
 
-	shardNames := rt.Route(q.String)
+	shardKeys := rt.Route(q.String)
 
-	var shards []Shard
+	var shards []ShardKey
 
-	for _, name := range shardNames {
-		shards = append(shards, NewShard(name, rt.ShardCfg(name)))
+	for _, name := range shardKeys {
+		shards = append(shards, NewSHKey(name))
 	}
 
-	if shardNames == nil {
+	if shardKeys == nil {
 		return cmngr.UnRouteWithError(cl, nil, "failed to match shard")
 	} else {
-		tracelog.InfoLogger.Printf("parsed shard name %s", shardNames)
+		tracelog.InfoLogger.Printf("parsed shard name %s", shardKeys)
 	}
 
 	if rst.ActiveShards != nil {
-
-		for _, shard := range rst.ActiveShards {
-			if err := cmngr.UnRouteCB(cl, shard); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
-			}
+		if err := cmngr.UnRouteCB(cl, rst.ActiveShards); err != nil {
+			tracelog.ErrorLogger.PrintError(err)
 		}
 	}
 
 	rst.ActiveShards = shards
-
-	for _, shard := range rst.ActiveShards {
-		if err := cmngr.RouteCB(cl, shard); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
-		}
+	if err := cmngr.RouteCB(cl, rst.ActiveShards); err != nil {
+		tracelog.ErrorLogger.PrintError(err)
 	}
 
 	return nil

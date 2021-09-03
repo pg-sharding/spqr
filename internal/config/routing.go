@@ -20,7 +20,7 @@ type RouterConfig struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
 	// shards
-	ShardMapping map[string]ShardCfg `json:"shard_mapping" toml:"shard_mapping" yaml:"shard_mapping"`
+	ShardMapping map[string]*ShardCfg `json:"shard_mapping" toml:"shard_mapping" yaml:"shard_mapping"`
 }
 
 type BERule struct {

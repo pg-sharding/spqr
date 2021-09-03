@@ -4,10 +4,10 @@ type AuthMethod string
 
 const (
 	AuthOK        = AuthMethod("ok")
-	AuthNotok     = AuthMethod("notok")
+	AuthNotOK     = AuthMethod("notok")
 	AuthClearText = AuthMethod("clear_text")
 	AuthMD5       = AuthMethod("md5")
-	AuthScram     = AuthMethod("scram")
+	AuthSCRAM     = AuthMethod("scram")
 )
 
 type AuthRule struct {

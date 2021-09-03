@@ -6,18 +6,45 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
-type PgConn struct {
-	conn     net.Conn
-	frontend *pgproto3.Frontend
+type PgConn interface {
+	Send(query pgproto3.FrontendMessage) error
+	Receive() (pgproto3.BackendMessage, error)
 
-	shard Shard
+	ReqBackendSsl(tlscfg *tls.Config) error
 }
 
-func (pgconn *PgConn) ReqBackendSsl(tlscfg *tls.Config) error {
+type PgConnImpl struct {
+	conn     net.Conn
+	frontend *pgproto3.Frontend
+}
+
+func (pgconn *PgConnImpl) Send(query pgproto3.FrontendMessage) error {
+	return pgconn.Send(query)
+}
+
+func (pgconn *PgConnImpl) Receive() (pgproto3.BackendMessage, error) {
+	return pgconn.Receive()
+}
+
+func NewPgConn(netconn net.Conn) (PgConn, error) {
+
+	pgconn := &PgConnImpl{
+		conn: netconn,
+	}
+
+	var err error
+	pgconn.frontend, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(pgconn.conn), pgconn.conn)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgconn, nil
+}
+
+func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
@@ -45,38 +72,4 @@ func (pgconn *PgConn) ReqBackendSsl(tlscfg *tls.Config) error {
 
 	pgconn.conn = tls.Client(pgconn.conn, tlscfg)
 	return nil
-}
-
-func (pgconn *PgConn) initConn(sm *pgproto3.StartupMessage) error {
-	var err error
-	pgconn.frontend, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(pgconn.conn), pgconn.conn)
-	if err != nil {
-		return err
-	}
-
-	err = pgconn.frontend.Send(sm)
-	if err != nil {
-		return err
-	}
-
-	for {
-		msg, err := pgconn.frontend.Receive()
-		if err != nil {
-			return err
-		}
-		switch v := msg.(type) {
-		case *pgproto3.ReadyForQuery:
-			return nil
-		case *pgproto3.Authentication:
-			err := authBackend(pgconn, v)
-			if err != nil {
-				tracelog.InfoLogger.Printf("failed to perform backend auth %w", err)
-				return err
-			}
-		case *pgproto3.ErrorResponse:
-			return xerrors.New(v.Message)
-		default:
-			tracelog.InfoLogger.Printf("unexpected msg type received %T", v)
-		}
-	}
 }
