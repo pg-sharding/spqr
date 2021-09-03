@@ -38,13 +38,14 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to make route failure resp")
 			}
+
 			tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
-			tracelog.InfoLogger.Printf("initialising shard tls config for %s", name)
 
 			if err := shard.Init(tlscfg); err != nil {
 				return nil, err
 			}
 		}
+
 		if shard.Proto == "" {
 			shard.Proto = defaultProto
 		}

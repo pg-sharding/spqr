@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -23,6 +24,23 @@ type Shard interface {
 	Receive() (pgproto3.BackendMessage, error)
 
 	ReqBackendSsl(tlscfg *tls.Config) error
+
+	ConstructSMh() *pgproto3.StartupMessage
+}
+
+
+func (s *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
+
+	sm := &pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersionNumber,
+		Parameters: map[string]string{
+			"application_name": "app",
+			"client_encoding":  "UTF8",
+			"user":             s.cfg.ConnUsr,
+			"database":         s.cfg.ConnDB,
+		},
+	}
+	return sm
 }
 
 type ShardImpl struct {
@@ -32,7 +50,7 @@ type ShardImpl struct {
 
 	name string
 
-	pgconn PgConn
+	pgconn conn.PgConn
 }
 
 func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
@@ -79,7 +97,7 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 		return nil, err
 	}
 
-	pgconn, err := NewPgConn(netconn)
+	pgconn, err := conn.NewPgConn(netconn)
 	if err != nil {
 		return nil, err
 	}

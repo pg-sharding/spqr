@@ -18,7 +18,7 @@ type Router struct {
 	Cfg       config.RouterConfig
 	ConsoleDB Console
 	mu        sync.Mutex
-	routePool map[routeKey][]*Route
+	routePool RoutePool
 
 	frontendRules map[routeKey]*config.FRRule
 	backendRules  map[routeKey]*config.BERule
@@ -53,7 +53,7 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 	router := &Router{
 		Cfg:           cfg,
 		mu:            sync.Mutex{},
-		routePool:     map[routeKey][]*Route{},
+		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
 		frontendRules: frs,
 		backendRules:  bes,
 		lg:            log.New(os.Stdout, "router", 0),
@@ -110,38 +110,20 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 		return nil, errors.New("Failed to route client")
 	}
 
-	cl.AssignRule(frRule)
+	_ = cl.AssignRule(frRule)
 
 	if err := cl.Auth(); err != nil {
 		return nil, err
 	}
 
-	route, err := func() (*Route, error) {
-		var route *Route
-
-		r.mu.Lock()
-		defer r.mu.Unlock()
-
-		if routes, ok := r.routePool[key]; ok && len(routes) > 0 {
-			route, routes = routes[0], routes[1:]
-
-			r.routePool[key] = routes
-		} else {
-			if !ok {
-				r.routePool[key] = make([]*Route, 0)
-			}
-
-			route = NewRoute(beRule, frRule, r.Cfg.ShardMapping)
-		}
-
-		return route, nil
-	}()
+	route, err := r.routePool.MatchRoute(key, beRule, frRule)
 
 	if err != nil {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 
-	_ = cl.AssignRoute(route)
+
+	_ = route.AddClient(cl)
 
 	return cl, nil
 }

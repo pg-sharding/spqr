@@ -1,4 +1,4 @@
-package internal
+package conn
 
 import (
 	"crypto/tls"
@@ -8,6 +8,9 @@ import (
 	"github.com/jackc/pgproto3"
 	"golang.org/x/xerrors"
 )
+
+
+const SSLPROTO = 80877103
 
 type PgConn interface {
 	Send(query pgproto3.FrontendMessage) error
@@ -50,7 +53,7 @@ func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 	binary.BigEndian.PutUint32(b, 8)
 	// Gen salt
 	b = append(b, 0, 0, 0, 0)
-	binary.BigEndian.PutUint32(b[4:], sslproto)
+	binary.BigEndian.PutUint32(b[4:], SSLPROTO)
 
 	_, err := pgconn.conn.Write(b)
 

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/binary"
+	"github.com/pg-sharding/spqr/internal/conn"
 	"net"
 
 	"github.com/jackc/pgproto3"
@@ -13,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const sslproto = 80877103 // TODO what the ?
 type Client interface {
 	Server() Server
 	Unroute() error
@@ -21,7 +21,6 @@ type Client interface {
 	ID() string
 
 	AssignRule(rule *config.FRRule) error
-	AssignRoute(r *Route) error
 	AssignServerConn(srv Server) error
 
 	ReplyErr(errmsg string) error
@@ -124,7 +123,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 
 	protVer := binary.BigEndian.Uint32(buf)
 
-	if protVer == sslproto {
+	if protVer == conn.SSLPROTO {
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
 			return err
@@ -160,7 +159,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 	cl.startupMsg = sm
 	cl.be = backend
 
-	if reqssl && protVer != sslproto {
+	if reqssl && protVer != conn.SSLPROTO {
 		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",
