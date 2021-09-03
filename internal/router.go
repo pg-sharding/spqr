@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"sync"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
@@ -17,7 +16,6 @@ import (
 type Router struct {
 	Cfg       config.RouterConfig
 	ConsoleDB Console
-	mu        sync.Mutex
 	routePool RoutePool
 
 	frontendRules map[routeKey]*config.FRRule
@@ -52,7 +50,6 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 
 	router := &Router{
 		Cfg:           cfg,
-		mu:            sync.Mutex{},
 		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
 		frontendRules: frs,
 		backendRules:  bes,
@@ -121,8 +118,6 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 	if err != nil {
 		tracelog.ErrorLogger.Fatal(err)
 	}
-
-
 	_ = route.AddClient(cl)
 
 	return cl, nil
@@ -136,4 +131,16 @@ func (r *Router) ListShards() []string {
 	}
 
 	return ret
+}
+
+func (r *Router) ObsoleteRoute(key routeKey) error {
+	route := r.routePool.Obsolete(key)
+
+	if err := route.NofityClients(func(cl Client) error {
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }

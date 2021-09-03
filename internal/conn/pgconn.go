@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-
 const SSLPROTO = 80877103
 
 type PgConn interface {

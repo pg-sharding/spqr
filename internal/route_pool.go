@@ -1,8 +1,9 @@
 package internal
 
 import (
-	"github.com/pg-sharding/spqr/internal/config"
 	"sync"
+
+	"github.com/pg-sharding/spqr/internal/config"
 )
 
 type RoutePool interface {
@@ -10,15 +11,27 @@ type RoutePool interface {
 		beRule *config.BERule,
 		frRule *config.FRRule,
 	) (*Route, error)
+
+	Obsolete(key routeKey) *Route
 }
-
-
 type RoutePoolImpl struct {
 	mu sync.Mutex
 
 	pool map[routeKey]*Route
 
 	mapping map[string]*config.ShardCfg
+}
+
+func (r *RoutePoolImpl) Obsolete(key routeKey) *Route {
+
+	r.mu.Lock()
+	r.mu.Unlock()
+
+	ret := r.pool[key]
+
+	delete(r.pool, key)
+
+	return ret
 }
 
 func (r *RoutePoolImpl) MatchRoute(key routeKey,
@@ -40,10 +53,9 @@ func (r *RoutePoolImpl) MatchRoute(key routeKey,
 	return route, nil
 }
 
-
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(	mapping map[string]*config.ShardCfg) *RoutePoolImpl {
+func NewRouterPoolImpl(mapping map[string]*config.ShardCfg) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		mapping: mapping,
 	}

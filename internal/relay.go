@@ -31,8 +31,6 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 	if err := cmngr.UnRouteCB(cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 	}
-
-
 	rst.ActiveShards = shards
 	if err := cmngr.RouteCB(cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.PrintError(err)

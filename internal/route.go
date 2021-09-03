@@ -39,6 +39,9 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 	}
 }
 
+func (r *Route) NofityClients(cb func(cl Client) error) error {
+	return r.clPool.ClientPoolForeach(cb)
+}
 
 func (r *Route) AddClient(cl Client) error {
 	return r.clPool.Put(cl)

@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/binary"
-	"github.com/pg-sharding/spqr/internal/conn"
 	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"

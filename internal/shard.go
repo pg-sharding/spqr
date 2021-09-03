@@ -28,7 +28,6 @@ type Shard interface {
 	ConstructSMh() *pgproto3.StartupMessage
 }
 
-
 func (s *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
