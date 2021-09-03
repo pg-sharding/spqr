@@ -19,6 +19,9 @@ import (
   kr            *KeyRange
   sh_col        *ShardingColumn
   kill          *Kill
+  drop          *Drop
+  lock          *Lock
+  unlock        *Unlock
   str           string
   byte          byte
   int           int
@@ -51,10 +54,10 @@ import (
 
 %type <sh_col> create_sharding_column_stmt
 
-%type <kr> add_key_range_stmt
-%type <str> drop_key_range_stmt
-%type <str> unlock_key_range_stmt
-%type <str> lock_key_range_stmt
+%type <kr> add_stmt add_key_range_stmt
+%type <drop> drop_stmt drop_key_range_stmt
+%type <unlock> unlock_stmt unlock_key_range_stmt
+%type <lock> lock_stmt lock_key_range_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
@@ -62,7 +65,7 @@ import (
 %type<int> key_range_spec_from
 %type<str> key_range_spec_shid
 %type<int> key_range_spec_to
-%type<string> key_range_id
+%type<str> key_range_id
 
 %start any_command
 
@@ -79,33 +82,33 @@ semicolon_opt:
 
 command:
     create_sharding_column_stmt
-       {
-         setParseTree(yylex, $1)
-       }
-    | add_key_range_stmt
-       {
-         setParseTree(yylex, $1)
-       }
-    | drop_key_range_stmt
-       {
-         setParseTree(yylex, $1)
-       }
-    | lock_key_range_stmt
-       {
-         setParseTree(yylex, $1)
-       }
-    | unlock_key_range_stmt
-       {
-         setParseTree(yylex, $1)
-       }
+    {
+        setParseTree(yylex, $1)
+    }
+    | add_stmt
+    {
+        setParseTree(yylex, $1)
+    }
+    | drop_stmt
+    {
+        setParseTree(yylex, $1)
+    }
+    | lock_stmt
+    {
+        setParseTree(yylex, $1)
+    }
+    | unlock_stmt
+    {
+        setParseTree(yylex, $1)
+    }
     | show_stmt
-       {
-         setParseTree(yylex, $1)
-       }
+    {
+        setParseTree(yylex, $1)
+    }
     | kill_stmt
-       {
-         setParseTree(yylex, $1)
-       }
+    {
+        setParseTree(yylex, $1)
+    }
 
 
 reserved_keyword:
@@ -171,20 +174,11 @@ key_range_spec_shid:
       $$ = string($1)
     }
 
-
 create_sharding_column_stmt:
     CREATE SHARDING COLUMN sharding_column_name
       {
         $$ = &ShardingColumn{ColName: $4}
       }
-
-
-add_key_range_stmt:
-    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid
-      {
-        $$ = &KeyRange{From: $4, To: $5, ShardID: $6}
-      }
-
 
 key_range_id:
   STRING
@@ -192,24 +186,41 @@ key_range_id:
     $$ = string($1)
   }
 
+drop_stmt:
+    drop_key_range_stmt
+
+lock_stmt:
+    lock_key_range_stmt
+
+add_stmt:
+    add_key_range_stmt
+
+unlock_stmt:
+    unlock_key_range_stmt
+
+add_key_range_stmt:
+    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid
+      {
+        $$ = &KeyRange{From: $4, To: $5, ShardID: $6}
+      }
 
 drop_key_range_stmt:
   DROP KEY RANGE key_range_id
   {
-    $$ = string($1)
+    $$ = &Drop{KeyRangeID: $4}
   }
 
 lock_key_range_stmt:
   LOCK KEY RANGE key_range_id
-  {
-    $$ = string($1)
-  }
+   {
+      $$ = &Lock{KeyRangeID: $4}
+   }
 
 unlock_key_range_stmt:
   UNLOCK KEY RANGE key_range_id
-  {
-    $$ = string($1)
-  }
+   {
+      $$ = &Unlock{KeyRangeID: $4}
+   }
 
 kill_stmt:
 KILL kill_statement_type

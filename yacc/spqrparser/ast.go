@@ -19,6 +19,23 @@ type KeyRange struct {
 	ShardID string
 }
 
+
+type Add struct {
+	KeyRangeID string
+}
+
+type Drop struct {
+	KeyRangeID string
+}
+
+type Lock struct {
+	KeyRangeID string
+}
+
+type Unlock struct {
+	KeyRangeID string
+}
+
 type Shard struct {
 	Name string
 }
@@ -43,6 +60,10 @@ type Statement interface {
 }
 
 func (*Show) iStatement()           {}
+func (*Add) iStatement()           {}
+func (*Drop) iStatement()           {}
+func (*Lock) iStatement()           {}
+func (*Unlock) iStatement()           {}
 func (*ShardingColumn) iStatement() {}
 func (*KeyRange) iStatement()       {}
 func (*Shard) iStatement()          {}
