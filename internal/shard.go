@@ -91,6 +91,7 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 		name: name,
 	}
 
+	// move to init
 	netconn, err := sh.connect(cfg.Hosts[0].Proto)
 	if err != nil {
 		return nil, err

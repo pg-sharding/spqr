@@ -180,6 +180,9 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 	if err != nil {
 		return nil
 	}
+
+	tracelog.InfoLogger.Printf("parsed qtype %T", parsedStmt)
+
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
 		if r.isLocalTbl(stmt.From) {
@@ -216,7 +219,8 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 			return []string{shname}
 		}
 		return nil
-	case *sqlp.DDL:
+	case *sqlp.CreateTable:
+		tracelog.InfoLogger.Printf("ddl routing excpands to every shard")
 		// route ddl to every shard
 		return r.Shards()
 	}
@@ -224,7 +228,6 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 	return nil
 }
 
-// shard name
 func (r *QrouterImpl) Route(q string) []string {
 	return r.matchShards(q)
 }

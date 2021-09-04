@@ -2,6 +2,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"sync"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
@@ -135,6 +136,7 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activePool.List() {
+		tracelog.InfoLogger.Printf("sending Q to sh %v", shard.Name())
 		err := shard.Send(msg)
 		if err != nil {
 			tracelog.InfoLogger.PrintError(err)
@@ -151,16 +153,36 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Values: [][]byte{},
 	}
 
-	for _, shard := range m.activePool.List() {
-		msg, err := shard.Receive()
-		if err != nil {
-			//
-		}
+	mu := sync.Mutex{}
 
-		switch v := msg.(type) {
-		case *pgproto3.DataRow:
-			ret.Values = append(ret.Values, v.Values...)
-		}
+	for _, shard := range m.activePool.List() {
+		tracelog.InfoLogger.Printf("recv mult resp from sh %s", shard.Name())
+
+		go func(shard Shard) error {
+
+			msg, err := shard.Receive()
+			if err != nil {
+				return err
+			}
+			tracelog.InfoLogger.Printf("got %v from %s", msg, shard.Name())
+
+			switch v := msg.(type) {
+			case *pgproto3.DataRow:
+				mu.Lock()
+				ret.Values = append(ret.Values, v.Values...)
+				mu.Unlock()
+			case *pgproto3.ReadyForQuery:
+				return nil
+			default:
+				tracelog.ErrorLogger.Printf("unexcepted msg from server %T", v)
+				return xerrors.New("unexcepted msg from server")
+			}
+			return nil
+		}(shard)
+	}
+
+	if len(ret.Values) == 0 {
+		return &pgproto3.ReadyForQuery{}, nil
 	}
 
 	return ret, nil
@@ -189,22 +211,11 @@ func (m *MultiShardServer) Cleanup() error {
 
 var _ Server = &MultiShardServer{}
 
-func NewMultiShardServer(rule *config.BERule, pool ShardPool, shards []ShardKey) (Server, error) {
+func NewMultiShardServer(rule *config.BERule, pool ShardPool) (Server, error) {
 	ret := &MultiShardServer{
 		rule:       rule,
 		pool:       pool,
 		activePool: NewShardPool(map[string]*config.ShardCfg{}),
-	}
-
-	for _, shkey := range shards {
-		shconn, err := pool.Connection(shkey)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := ret.activePool.Put(shconn); err != nil {
-			return nil, err
-		}
 	}
 
 	return ret, nil

@@ -16,15 +16,16 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 
 	shardKeys := rt.Route(q.String)
 
+	if shardKeys == nil || len(shardKeys) == 0 {
+		return cmngr.UnRouteWithError(cl, nil, "failed to match shard")
+	}
+
 	var shards []ShardKey
 
 	for _, name := range shardKeys {
 		shards = append(shards, NewSHKey(name))
 	}
 
-	if shardKeys == nil && len(shards) != 0 {
-		return cmngr.UnRouteWithError(cl, nil, "failed to match shard")
-	}
 	tracelog.InfoLogger.Printf("parsed shard names %s", shardKeys)
 
 	if err := cmngr.UnRouteCB(cl, rst.ActiveShards); err != nil {
@@ -36,7 +37,7 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 	var err error
 
 	if len(shards) > 1 {
-		serv, err = NewMultiShardServer(cl.Route().beRule, cl.Route().servPool, shards)
+		serv, err = NewMultiShardServer(cl.Route().beRule, cl.Route().servPool)
 		if err != nil {
 			return err
 		}

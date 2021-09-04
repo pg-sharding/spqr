@@ -313,6 +313,7 @@ func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 	for {
 		msg, err := cl.server.Receive()
+		tracelog.InfoLogger.Printf("recv msg from server %v", msg)
 		if err != nil {
 			return 0, err
 		}
