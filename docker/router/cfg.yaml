@@ -27,19 +27,21 @@ router:
                                 key_file: '/etc/odyssey/ssl/server.key'
                                 require_ssl: false 
                                 cert_file: '/etc/odyssey/ssl/server.crt' 
-                        conn_addr: "192.168.233.02:6432"
                         conn_db: "db1"
                         conn_usr: "user1"
                         passwd: 12345678
+                        hosts:
+                            - conn_addr: "192.168.233.02:6432"
                 sh2: 
                         tls:
                                 key_file: '/etc/odyssey/ssl/server.key'
                                 require_ssl: false
                                 cert_file: '/etc/odyssey/ssl/server.crt' 
-                        conn_addr: "192.168.233.03:6432"
                         conn_db: "db1"
                         conn_usr: "user1"
                         passwd: 12345678
+                        hosts:
+                            - conn_addr: "192.168.233.03:6432"
 
         backend_rules:
                 - route_key_cfg:

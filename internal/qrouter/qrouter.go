@@ -133,12 +133,10 @@ func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) string {
 			//tracelog.InfoLogger.Println("go right")
 			return r.routeByExpr(texpr.Right)
 		}
-		//tracelog.InfoLogger.Println("go lft %d\n", lft)
 		return lft
 	case *sqlp.ComparisonExpr:
 		if r.matchShkey(texpr.Left) {
 			shindx := r.routeByExpr(texpr.Right)
-			//tracelog.InfoLogger.Println("shkey mathed %d\n", shindx)
 			return shindx
 		}
 	case *sqlp.SQLVal:
@@ -218,6 +216,9 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 			return []string{shname}
 		}
 		return nil
+	case *sqlp.DDL:
+		// route ddl to every shard
+		return r.Shards()
 	}
 
 	return nil
