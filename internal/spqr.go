@@ -48,8 +48,8 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 			}
 		}
 
-		if shard.Proto == "" {
-			shard.Proto = defaultProto
+		if shard.Hosts[0].Proto == "" {
+			shard.Hosts[0].Proto = defaultProto
 		}
 
 		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
@@ -74,6 +74,8 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 	if err != nil {
 		return err
 	}
+
+	tracelog.InfoLogger.Printf("preroute ok")
 
 	cmngr, err := InitClConnection(client)
 	if err != nil {

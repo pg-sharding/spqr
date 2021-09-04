@@ -73,7 +73,7 @@ func (sh *ShardImpl) Cfg() *config.ShardCfg {
 }
 
 func (sh *ShardImpl) connect(proto string) (net.Conn, error) {
-	return net.Dial(proto, sh.cfg.ConnAddr)
+	return net.Dial(proto, sh.cfg.Hosts[0].ConnAddr)
 }
 
 var _ Shard = &ShardImpl{}
@@ -91,7 +91,7 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 		name: name,
 	}
 
-	netconn, err := sh.connect(cfg.Proto)
+	netconn, err := sh.connect(cfg.Hosts[0].Proto)
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,7 @@ type Client interface {
 
 	AssignRule(rule *config.FRRule) error
 	AssignServerConn(srv Server) error
+	AssignRoute(r *Route) error
 
 	ReplyErr(errmsg string) error
 

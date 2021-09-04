@@ -36,6 +36,7 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 		beRule:   beRule,
 		frRule:   frRule,
 		servPool: NewShardPool(mapping),
+		clPool: NewClientPool(),
 	}
 }
 

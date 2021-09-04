@@ -26,7 +26,7 @@ type Router struct {
 }
 
 func (r *Router) Shutdown() error {
-	return nil
+	return r.routePool.Shutdown()
 }
 
 func (r *Router) ServeConsole(netconn net.Conn) error {
@@ -116,6 +116,7 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 	if err := cl.Auth(); err != nil {
 		return nil, err
 	}
+	tracelog.InfoLogger.Printf("client auth OK")
 
 	route, err := r.routePool.MatchRoute(key, beRule, frRule)
 
@@ -123,6 +124,7 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 	_ = route.AddClient(cl)
+	_ = cl.AssignRoute(route)
 
 	return cl, nil
 }
@@ -131,7 +133,7 @@ func (r *Router) ListShards() []string {
 	var ret []string
 
 	for _, sh := range r.Cfg.ShardMapping {
-		ret = append(ret, sh.ConnAddr)
+		ret = append(ret, sh.Hosts[0].ConnAddr)
 	}
 
 	return ret

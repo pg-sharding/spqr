@@ -24,11 +24,11 @@ type PgConnImpl struct {
 }
 
 func (pgconn *PgConnImpl) Send(query pgproto3.FrontendMessage) error {
-	return pgconn.Send(query)
+	return pgconn.frontend.Send(query)
 }
 
 func (pgconn *PgConnImpl) Receive() (pgproto3.BackendMessage, error) {
-	return pgconn.Receive()
+	return pgconn.frontend.Receive()
 }
 
 func NewPgConn(netconn net.Conn) (PgConn, error) {
