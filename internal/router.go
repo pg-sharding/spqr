@@ -25,6 +25,10 @@ type Router struct {
 	lg  *log.Logger
 }
 
+func (r *Router) Shutdown() error {
+	return nil
+}
+
 func (r *Router) ServeConsole(netconn net.Conn) error {
 	return r.ConsoleDB.Serve(netconn)
 }

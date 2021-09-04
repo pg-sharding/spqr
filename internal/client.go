@@ -43,6 +43,8 @@ type Client interface {
 
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
+
+	Shutdown() error
 }
 
 type SpqrClient struct {
@@ -375,5 +377,23 @@ func (cl *SpqrClient) ReplyErr(errmsg string) error {
 		}
 	}
 
+	return nil
+}
+
+func (cl *SpqrClient) Shutdown() error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ErrorResponse{
+			Message: "spqr is shutdown, your connection closed",
+		},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	_ = cl.Unroute()
+
+	_ = cl.conn.Close()
 	return nil
 }

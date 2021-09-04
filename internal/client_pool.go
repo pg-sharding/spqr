@@ -11,6 +11,8 @@ type ClientPool interface {
 
 	Put(client Client) error
 	Pop(client Client) error
+
+	Shutdown() error
 }
 
 type ClientPoolImpl struct {
@@ -38,6 +40,19 @@ func (c *ClientPoolImpl) Pop(client Client) error {
 	return nil
 }
 
+func (c *ClientPoolImpl) Shutdown() error {
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, cl := range c.pool {
+		go func() {
+			tracelog.InfoLogger.PrintError(cl.Shutdown())
+		}()
+	}
+
+	return nil
+}
 func (c *ClientPoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 
 	c.mu.Lock()

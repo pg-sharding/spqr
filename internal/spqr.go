@@ -17,6 +17,8 @@ type Spqr struct {
 	Router  *Router
 	Qrouter *qrouter.QrouterImpl
 
+	stchan chan struct{}
+
 	SPIexecuter *Executer
 }
 
@@ -62,6 +64,7 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		Router:      router,
 		Qrouter:     qrouter,
 		SPIexecuter: executer,
+		stchan:      make(chan struct{}),
 	}, nil
 }
 
@@ -81,14 +84,37 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 }
 
 func (sg *Spqr) Run(listener net.Listener) error {
-	for {
-		conn, _ := listener.Accept()
+	cChan := make(chan net.Conn)
 
-		go func() {
-			if err := sg.serv(conn); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+	accept := func(l net.Listener) {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				// handle error (and then for example indicate acceptor is down)
+				cChan <- nil
+				return
 			}
-		}()
+			cChan <- c
+		}
+	}
+
+	go accept(listener)
+
+	for {
+
+		select {
+		case conn, _ := <-cChan:
+
+			go func() {
+				if err := sg.serv(conn); err != nil {
+					tracelog.ErrorLogger.PrintError(err)
+				}
+			}()
+
+		case <-sg.stchan:
+			sg.Router.Shutdown()
+			_ = listener.Close()
+		}
 	}
 }
 

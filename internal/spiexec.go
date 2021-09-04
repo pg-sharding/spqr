@@ -14,6 +14,10 @@ import (
 type FakeClient struct {
 }
 
+func (f FakeClient) Shutdown() error {
+	panic("implement me")
+}
+
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }

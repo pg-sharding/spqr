@@ -21,9 +21,7 @@ func NewApp(sg *internal.Spqr) *App {
 	}
 }
 
-// TODO split into separate apps?
 func (app *App) ProcPG() error {
-	////	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:6432")
 	listener, err := reuse.Listen(app.spqr.Cfg.PROTO, app.spqr.Cfg.Addr)
 	if err != nil {
 		return err
@@ -34,7 +32,6 @@ func (app *App) ProcPG() error {
 }
 
 func (app *App) ProcADM() error {
-	//	listener, err := net.Listen("tcp", "man-a6p8ynmq7hanpybg.db.yandex.net:7432")
 	listener, err := net.Listen(app.spqr.Cfg.PROTO, app.spqr.Cfg.ADMAddr)
 	if err != nil {
 		return err
