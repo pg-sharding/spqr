@@ -23,6 +23,7 @@ type yySymType struct {
 	kill      *Kill
 	drop      *Drop
 	lock      *Lock
+	shutdown  *Shutdown
 	unlock    *Unlock
 	str       string
 	byte      byte
@@ -51,6 +52,7 @@ const KEY_RANGES = 57363
 const DROP = 57364
 const LOCK = 57365
 const UNLOCK = 57366
+const SHUTDOWN = 57367
 
 var yyToknames = [...]string{
 	"$end",
@@ -77,6 +79,7 @@ var yyToknames = [...]string{
 	"DROP",
 	"LOCK",
 	"UNLOCK",
+	"SHUTDOWN",
 	"';'",
 }
 
@@ -86,7 +89,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/spqrparser/sql.y:231
+//line yacc/spqrparser/sql.y:242
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -97,62 +100,62 @@ var yyExca = [...]int{
 
 const yyPrivate = 57344
 
-const yyLast = 55
+const yyLast = 57
 
 var yyAct = [...]int{
-	48, 15, 16, 22, 43, 42, 41, 40, 38, 10,
-	26, 31, 17, 29, 28, 27, 37, 18, 19, 20,
-	25, 36, 30, 32, 35, 39, 23, 55, 53, 49,
-	47, 45, 21, 1, 52, 54, 46, 34, 44, 13,
-	6, 14, 7, 50, 51, 12, 5, 11, 4, 3,
-	9, 8, 33, 24, 2,
+	50, 16, 17, 24, 45, 44, 43, 42, 40, 11,
+	28, 33, 19, 31, 30, 29, 39, 20, 21, 22,
+	18, 38, 32, 34, 37, 27, 41, 25, 57, 55,
+	51, 49, 47, 23, 1, 54, 56, 48, 46, 10,
+	14, 6, 15, 36, 7, 52, 53, 13, 5, 12,
+	4, 3, 9, 8, 35, 26, 2,
 }
 
 var yyPact = [...]int{
-	-5, -1000, -22, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	11, -1000, -1000, -1000, -1000, 2, 2, 6, 3, -2,
-	-10, -1000, -1000, 9, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -12, -13, -14, -15, 27,
-	26, 25, 25, 25, -1000, -1000, 24, -1000, -1000, -1000,
-	-1000, -1000, 23, -1000, -1000, -1000,
+	-5, -1000, -23, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, 12, -1000, -1000, -1000, -1000, 2, 2, -1000, 6,
+	3, -2, -10, -1000, -1000, 10, -1000, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -12, -13, -14,
+	-15, 28, 27, 26, 26, 26, -1000, -1000, 25, -1000,
+	-1000, -1000, -1000, -1000, 24, -1000, -1000, -1000,
 }
 
 var yyPgo = [...]int{
-	0, 54, 53, 52, 51, 50, 49, 48, 47, 46,
-	45, 42, 41, 40, 39, 20, 38, 36, 35, 34,
-	0, 33, 32,
+	0, 56, 55, 54, 53, 52, 51, 50, 49, 48,
+	47, 44, 42, 41, 40, 39, 25, 38, 37, 36,
+	35, 0, 34, 33,
 }
 
 var yyR1 = [...]int{
-	0, 21, 22, 22, 1, 1, 1, 1, 1, 1,
-	1, 15, 15, 15, 15, 15, 15, 15, 2, 3,
-	4, 16, 17, 19, 18, 6, 20, 9, 13, 7,
-	11, 8, 10, 14, 12, 5,
+	0, 22, 23, 23, 1, 1, 1, 1, 1, 1,
+	1, 1, 16, 16, 16, 16, 16, 16, 16, 2,
+	3, 4, 17, 18, 20, 19, 6, 21, 9, 13,
+	7, 11, 8, 10, 14, 12, 5, 15,
 }
 
 var yyR2 = [...]int{
 	0, 2, 0, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	2, 1, 1, 1, 1, 4, 1, 1, 1, 1,
-	1, 6, 4, 4, 4, 2,
+	1, 2, 1, 1, 1, 1, 4, 1, 1, 1,
+	1, 1, 6, 4, 4, 4, 2, 1,
 }
 
 var yyChk = [...]int{
-	-1000, -21, -1, -6, -7, -9, -13, -11, -4, -5,
-	14, -8, -10, -14, -12, 6, 7, 17, 22, 23,
-	24, -22, 25, 15, -2, -15, 8, 13, 12, 11,
-	20, 9, 21, -3, -15, 18, 18, 18, 18, 16,
-	19, 19, 19, 19, -16, 4, -17, 4, -20, 4,
-	-20, -20, -19, 4, -18, 4,
+	-1000, -22, -1, -6, -7, -9, -13, -11, -4, -5,
+	-15, 14, -8, -10, -14, -12, 6, 7, 25, 17,
+	22, 23, 24, -23, 26, 15, -2, -16, 8, 13,
+	12, 11, 20, 9, 21, -3, -16, 18, 18, 18,
+	18, 16, 19, 19, 19, 19, -17, 4, -18, 4,
+	-21, 4, -21, -21, -20, 4, -19, 4,
 }
 
 var yyDef = [...]int{
 	0, -2, 2, 4, 5, 6, 7, 8, 9, 10,
-	0, 29, 27, 28, 30, 0, 0, 0, 0, 0,
-	0, 1, 3, 0, 20, 18, 11, 12, 13, 14,
-	15, 16, 17, 35, 19, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 25, 21, 0, 22, 32, 26,
-	33, 34, 0, 23, 31, 24,
+	11, 0, 30, 28, 29, 31, 0, 0, 37, 0,
+	0, 0, 0, 1, 3, 0, 21, 19, 12, 13,
+	14, 15, 16, 17, 18, 36, 20, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 26, 22, 0, 23,
+	33, 27, 34, 35, 0, 24, 32, 25,
 }
 
 var yyTok1 = [...]int{
@@ -161,13 +164,13 @@ var yyTok1 = [...]int{
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-	3, 3, 3, 3, 3, 3, 3, 3, 3, 25,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 26,
 }
 
 var yyTok2 = [...]int{
 	2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-	22, 23, 24,
+	22, 23, 24, 25,
 }
 
 var yyTok3 = [...]int{
@@ -513,59 +516,65 @@ yydefault:
 
 	case 2:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line yacc/spqrparser/sql.y:79
+//line yacc/spqrparser/sql.y:81
 		{
 		}
 	case 3:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:80
+//line yacc/spqrparser/sql.y:82
 		{
 		}
 	case 4:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:85
+//line yacc/spqrparser/sql.y:87
 		{
 			setParseTree(yylex, yyDollar[1].sh_col)
 		}
 	case 5:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:89
+//line yacc/spqrparser/sql.y:91
 		{
 			setParseTree(yylex, yyDollar[1].kr)
 		}
 	case 6:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:93
+//line yacc/spqrparser/sql.y:95
 		{
 			setParseTree(yylex, yyDollar[1].drop)
 		}
 	case 7:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:97
+//line yacc/spqrparser/sql.y:99
 		{
 			setParseTree(yylex, yyDollar[1].lock)
 		}
 	case 8:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:101
+//line yacc/spqrparser/sql.y:103
 		{
 			setParseTree(yylex, yyDollar[1].unlock)
 		}
 	case 9:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:105
+//line yacc/spqrparser/sql.y:107
 		{
 			setParseTree(yylex, yyDollar[1].show)
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:109
+//line yacc/spqrparser/sql.y:111
 		{
 			setParseTree(yylex, yyDollar[1].kill)
 		}
-	case 18:
+	case 11:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:125
+//line yacc/spqrparser/sql.y:115
+		{
+			setParseTree(yylex, yyDollar[1].shutdown)
+		}
+	case 19:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/spqrparser/sql.y:131
 		{
 			switch v := string(yyDollar[1].str); v {
 			case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr:
@@ -574,9 +583,9 @@ yydefault:
 				yyVAL.str = ShowUnsupportedStr
 			}
 		}
-	case 19:
+	case 20:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:136
+//line yacc/spqrparser/sql.y:142
 		{
 			switch v := string(yyDollar[1].str); v {
 			case KillClientsStr:
@@ -585,23 +594,17 @@ yydefault:
 				yyVAL.str = "unsupp"
 			}
 		}
-	case 20:
+	case 21:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/spqrparser/sql.y:148
+//line yacc/spqrparser/sql.y:154
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str}
-		}
-	case 21:
-		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:155
-		{
-			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line yacc/spqrparser/sql.y:161
 		{
-			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 23:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -613,49 +616,61 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line yacc/spqrparser/sql.y:173
 		{
-			yyVAL.str = string(yyDollar[1].str)
+			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
 		}
 	case 25:
-		yyDollar = yyS[yypt-4 : yypt+1]
+		yyDollar = yyS[yypt-1 : yypt+1]
 //line yacc/spqrparser/sql.y:179
+		{
+			yyVAL.str = string(yyDollar[1].str)
+		}
+	case 26:
+		yyDollar = yyS[yypt-4 : yypt+1]
+//line yacc/spqrparser/sql.y:185
 		{
 			yyVAL.sh_col = &ShardingColumn{ColName: yyDollar[4].str}
 		}
-	case 26:
+	case 27:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/spqrparser/sql.y:185
+//line yacc/spqrparser/sql.y:191
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
-	case 31:
-		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/spqrparser/sql.y:203
-		{
-			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].str}
-		}
 	case 32:
-		yyDollar = yyS[yypt-4 : yypt+1]
+		yyDollar = yyS[yypt-6 : yypt+1]
 //line yacc/spqrparser/sql.y:209
 		{
-			yyVAL.drop = &Drop{KeyRangeID: yyDollar[4].str}
+			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].str}
 		}
 	case 33:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line yacc/spqrparser/sql.y:215
 		{
-			yyVAL.lock = &Lock{KeyRangeID: yyDollar[4].str}
+			yyVAL.drop = &Drop{KeyRangeID: yyDollar[4].str}
 		}
 	case 34:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line yacc/spqrparser/sql.y:221
 		{
-			yyVAL.unlock = &Unlock{KeyRangeID: yyDollar[4].str}
+			yyVAL.lock = &Lock{KeyRangeID: yyDollar[4].str}
 		}
 	case 35:
-		yyDollar = yyS[yypt-2 : yypt+1]
+		yyDollar = yyS[yypt-4 : yypt+1]
 //line yacc/spqrparser/sql.y:227
 		{
+			yyVAL.unlock = &Unlock{KeyRangeID: yyDollar[4].str}
+		}
+	case 36:
+		yyDollar = yyS[yypt-2 : yypt+1]
+//line yacc/spqrparser/sql.y:233
+		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
+		}
+	case 37:
+		yyDollar = yyS[yypt-1 : yypt+1]
+//line yacc/spqrparser/sql.y:239
+		{
+			yyVAL.shutdown = &Shutdown{}
 		}
 	}
 	goto yystack /* stack new state and value */

@@ -21,6 +21,7 @@ import (
   kill          *Kill
   drop          *Drop
   lock          *Lock
+  shutdown      *Shutdown
   unlock        *Unlock
   str           string
   byte          byte
@@ -44,7 +45,7 @@ import (
 
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
-%token <str> CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES DROP LOCK UNLOCK
+%token <str> CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES DROP LOCK UNLOCK SHUTDOWN
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -58,6 +59,7 @@ import (
 %type <drop> drop_stmt drop_key_range_stmt
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
+%type <shutdown> shutdown_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
@@ -109,6 +111,10 @@ command:
     {
         setParseTree(yylex, $1)
     }
+    | shutdown_stmt
+     {
+         setParseTree(yylex, $1)
+     }
 
 
 reserved_keyword:
@@ -228,5 +234,10 @@ KILL kill_statement_type
   $$ = &Kill{Cmd: $2}
 }
 
+shutdown_stmt:
+    SHUTDOWN
+    {
+        $$ = &Shutdown{}
+    }
 %%
 
