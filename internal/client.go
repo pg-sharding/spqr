@@ -305,6 +305,8 @@ func (cl *SpqrClient) AssignRoute(r *Route) error {
 
 func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
+	tracelog.InfoLogger.Printf("process query %s", query)
+
 	if err := cl.server.Send(query); err != nil {
 		return 0, err
 	}

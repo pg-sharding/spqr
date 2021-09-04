@@ -53,7 +53,7 @@ type ShardImpl struct {
 }
 
 func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
-	return sh.ReqBackendSsl(tlscfg)
+	return sh.pgconn.ReqBackendSsl(tlscfg)
 }
 
 func (sh *ShardImpl) Send(query pgproto3.FrontendMessage) error {
@@ -96,12 +96,17 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 		return nil, err
 	}
 
-	pgconn, err := conn.NewPgConn(netconn)
+	pgconn, err := conn.NewPgConn(netconn, cfg.TLSConfig, cfg.TLSCfg.ReqSSL)
+
 	if err != nil {
 		return nil, err
 	}
 
 	sh.pgconn = pgconn
+
+	if err := sh.Auth(sh.ConstructSMh()); err != nil {
+		return nil, err
+	}
 
 	return sh, nil
 }

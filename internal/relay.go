@@ -22,7 +22,7 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 		shards = append(shards, NewSHKey(name))
 	}
 
-	if shardKeys == nil {
+	if shardKeys == nil && len(shards) != 0 {
 		return cmngr.UnRouteWithError(cl, nil, "failed to match shard")
 	}
 	tracelog.InfoLogger.Printf("parsed shard names %s", shardKeys)

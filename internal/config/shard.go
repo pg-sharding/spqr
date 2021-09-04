@@ -8,11 +8,10 @@ type PGConn struct {
 }
 
 type ShardCfg struct {
-
 	Hosts []*PGConn `json:"hosts" toml:"hosts" yaml:"hosts"`
 
-	ConnDB   string `json:"conn_db" toml:"conn_db" yaml:"conn_db"`
-	ConnUsr  string `json:"conn_usr" toml:"conn_usr" yaml:"conn_usr"`
+	ConnDB  string `json:"conn_db" toml:"conn_db" yaml:"conn_db"`
+	ConnUsr string `json:"conn_usr" toml:"conn_usr" yaml:"conn_usr"`
 
 	Passwd string `json:"passwd" toml:"passwd" yaml:"passwd"`
 

@@ -17,21 +17,15 @@ import (
 type Console interface {
 	Serve(netconn net.Conn) error
 	processQ(q string, cl Client) error
-
-
 	Shutdown() error
 }
-
-
 
 type ConsoleImpl struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
 }
 
-var _ Console = &ConsoleImpl{
-
-}
+var _ Console = &ConsoleImpl{}
 
 func (c *ConsoleImpl) Shutdown() error {
 	return nil

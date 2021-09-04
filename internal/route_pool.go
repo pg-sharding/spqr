@@ -1,10 +1,10 @@
 package internal
 
 import (
-	"github.com/wal-g/tracelog"
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/wal-g/tracelog"
 )
 
 type RoutePool interface {
@@ -38,7 +38,7 @@ func (r *RoutePoolImpl) Obsolete(key routeKey) *Route {
 	return ret
 }
 
-func (r * RoutePoolImpl) Shutdown() error {
+func (r *RoutePoolImpl) Shutdown() error {
 	for _, route := range r.pool {
 		go route.NofityClients(func(cl Client) error {
 			return cl.Shutdown()
@@ -74,6 +74,6 @@ var _ RoutePool = &RoutePoolImpl{}
 func NewRouterPoolImpl(mapping map[string]*config.ShardCfg) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		mapping: mapping,
-		pool: map[routeKey]*Route{},
+		pool:    map[routeKey]*Route{},
 	}
 }

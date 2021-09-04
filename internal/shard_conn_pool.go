@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/wal-g/tracelog"
 )
 
 type ShardPool interface {
@@ -57,8 +58,13 @@ func (s *ShardPoolImpl) Connection(key ShardKey) (Shard, error) {
 		sh, shds = shds[0], shds[1:]
 		s.pool[key] = shds
 	} else {
+
+		tracelog.InfoLogger.Printf("acquire new connection to %v", key)
+
+		cfg := s.mapping[key.name]
+
 		var err error
-		sh, err = NewShard(key.name, s.mapping[key.name])
+		sh, err = NewShard(key.name, cfg)
 		if err != nil {
 			return nil, err
 		}

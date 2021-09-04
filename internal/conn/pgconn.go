@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -31,10 +32,17 @@ func (pgconn *PgConnImpl) Receive() (pgproto3.BackendMessage, error) {
 	return pgconn.frontend.Receive()
 }
 
-func NewPgConn(netconn net.Conn) (PgConn, error) {
+func NewPgConn(netconn net.Conn, tlscfg *tls.Config, reqssl bool) (PgConn, error) {
 
 	pgconn := &PgConnImpl{
 		conn: netconn,
+	}
+
+	if reqssl {
+		err := pgconn.ReqBackendSsl(tlscfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var err error
@@ -67,6 +75,8 @@ func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 	}
 
 	sym := resp[0]
+
+	tracelog.InfoLogger.Printf("recv sym %v", sym)
 
 	if sym != 'S' {
 		return xerrors.New("SSL should be enabled")
