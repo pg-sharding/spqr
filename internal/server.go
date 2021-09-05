@@ -121,11 +121,9 @@ func (m *MultiShardServer) AddShard(shkey qrouterdb.ShardKey) error {
 }
 
 func (m *MultiShardServer) UnrouteShard(sh qrouterdb.ShardKey) error {
-
 	if !m.activePool.Check(sh) {
 		return xerrors.New("unrouted shard does not match any of active")
 	}
-
 	return nil
 }
 
@@ -196,7 +194,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		}
 	}
 
-	tracelog.InfoLogger.Printf("comping multi server msgs from %T", msgs[0])
+	tracelog.InfoLogger.Printf("compute multi server msgs from %T", msgs[0])
 
 	switch v := msgs[0].(type) {
 	case *pgproto3.CommandComplete:

@@ -5,6 +5,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/pkg/errors"
+	"github.com/wal-g/tracelog"
 )
 
 type ConnManager interface {
@@ -64,8 +65,10 @@ func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
 
 func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
-	for _, sh := range rst.ActiveShards {
-		_ = client.Server().UnrouteShard(sh)
+	tracelog.InfoLogger.Printf("end of tx unrouting from %v", rst.ActiveShards)
+
+	if err := t.UnRouteCB(client, rst.ActiveShards); err != nil {
+		return err
 	}
 
 	rst.ActiveShards = nil

@@ -35,6 +35,9 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 					continue
 				}
 			}
+			if err := rst.relayStep(cl, cmngr); err != nil {
+				return err
+			}
 
 			var txst byte
 			if txst, err = cl.ProcQuery(v); err != nil {
@@ -44,6 +47,8 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 			if err := rst.completeRelay(cl, cmngr, txst); err != nil {
 				return err
 			}
+
+			tracelog.InfoLogger.Printf("active shards are %v", rst.ActiveShards)
 
 		default:
 		}

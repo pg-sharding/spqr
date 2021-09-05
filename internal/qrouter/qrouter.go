@@ -251,7 +251,7 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 				RW:   true,
 			})
 		}
-		
+
 		return ret
 	}
 

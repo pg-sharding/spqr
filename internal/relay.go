@@ -55,7 +55,21 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 
 const TXREL = 73
 
+func (rst *RelayState) relayStep(cl Client, cmngr ConnManager) error {
+
+	if !rst.TxActive {
+		if err := cmngr.TXBeginCB(cl, rst); err != nil {
+			return err
+		}
+		rst.TxActive = true
+	}
+
+	return nil
+}
+
 func (rst *RelayState) completeRelay(cl Client, cmngr ConnManager, txst byte) error {
+
+	tracelog.InfoLogger.Printf("complete relay iter with TX status %v", txst)
 
 	if err := cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
 		return err

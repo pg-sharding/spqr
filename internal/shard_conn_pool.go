@@ -26,10 +26,13 @@ type ShardPoolImpl struct {
 }
 
 func (s *ShardPoolImpl) Check(key qrouterdb.ShardKey) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
-	return len(s.pool[key]) > 0
+	return true
+	//
+	//s.mu.Lock()
+	//defer s.mu.Unlock()
+	//
+	//return len(s.pool[key]) > 0
 }
 
 func (s *ShardPoolImpl) List() []Shard {
