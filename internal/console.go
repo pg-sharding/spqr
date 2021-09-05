@@ -115,6 +115,36 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 	return nil
 }
 
+func (c*ConsoleImpl) LockKeyRange(cl Client, krid string) error {
+	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
+	if err := c.Qrouter.Lock(krid); err != nil {
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "spqr",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("lock key range with id %v", krid))}},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	return nil
+}
+
 func (c *ConsoleImpl) AddKeyRange(cl Client, kr *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
@@ -302,8 +332,7 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 			return errors.New("Unknown default cmd: " + stmt.Cmd)
 		}
 	case *spqrparser.Lock:
-		_ = c.Qrouter.Lock(stmt.KeyRangeID)
-
+		return c.LockKeyRange(cl, stmt.KeyRangeID)
 	case *spqrparser.ShardingColumn:
 		return c.AddShardingColumn(cl, stmt)
 	case *spqrparser.KeyRange:

@@ -31,6 +31,7 @@ func (q *QrouterDBMem) Check(key int) bool {
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
 		freq: map[string]int{},
+		krs:  map[string]*spqrparser.KeyRange{},
 	}, nil
 }
 
