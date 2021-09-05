@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/conn"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -18,7 +19,7 @@ type Shard interface {
 	Cfg() *config.ShardCfg
 
 	Name() string
-	SHKey() ShardKey
+	SHKey() qrouterdb.ShardKey
 
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
@@ -28,15 +29,15 @@ type Shard interface {
 	ConstructSMh() *pgproto3.StartupMessage
 }
 
-func (s *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
+func (sh *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             s.cfg.ConnUsr,
-			"database":         s.cfg.ConnDB,
+			"user":             sh.cfg.ConnUsr,
+			"database":         sh.cfg.ConnDB,
 		},
 	}
 	return sm
@@ -78,9 +79,9 @@ func (sh *ShardImpl) connect(proto string) (net.Conn, error) {
 
 var _ Shard = &ShardImpl{}
 
-func (sh *ShardImpl) SHKey() ShardKey {
-	return ShardKey{
-		name: sh.name,
+func (sh *ShardImpl) SHKey() qrouterdb.ShardKey {
+	return qrouterdb.ShardKey{
+		Name: sh.name,
 	}
 }
 

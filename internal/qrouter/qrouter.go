@@ -5,6 +5,7 @@ import (
 
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
@@ -12,7 +13,7 @@ import (
 const NOSHARD = ""
 
 type Qrouter interface {
-	Route(q string) []string
+	Route(q string) []qrouterdb.ShardKey
 
 	AddColumn(col string) error
 	AddLocalTable(tname string) error
@@ -33,6 +34,8 @@ type QrouterImpl struct {
 	Ranges []*spqrparser.KeyRange
 
 	ShardCfgs map[string]*config.ShardCfg
+
+	qdb qrouterdb.QrouterDB
 }
 
 func (r *QrouterImpl) ShardCfg(s string) *config.ShardCfg {
@@ -125,11 +128,11 @@ func (r *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
 	return false
 }
 
-func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) string {
+func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) qrouterdb.ShardKey {
 	switch texpr := expr.(type) {
 	case *sqlp.AndExpr:
 		lft := r.routeByExpr(texpr.Left)
-		if lft == NOSHARD {
+		if lft.Name == NOSHARD {
 			return r.routeByExpr(texpr.Right)
 		}
 		return lft
@@ -141,14 +144,20 @@ func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) string {
 	case *sqlp.SQLVal:
 		valInt, err := strconv.Atoi(string(texpr.Val))
 		if err != nil {
-			return NOSHARD
+			return qrouterdb.ShardKey{Name: NOSHARD}
 		}
-		return r.routeByIndx(valInt)
+		shname := r.routeByIndx(valInt)
+		rw := r.qdb.Check(valInt)
+
+		return qrouterdb.ShardKey{
+			Name: shname,
+			RW:   rw,
+		}
 	default:
 		//tracelog.InfoLogger.Println("typ is %T\n", expr)
 	}
 
-	return NOSHARD
+	return qrouterdb.ShardKey{Name: NOSHARD}
 }
 
 func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
@@ -173,7 +182,7 @@ func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 	return false
 }
 
-func (r *QrouterImpl) matchShards(sql string) []string {
+func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
@@ -188,11 +197,11 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 			return nil
 		}
 		if stmt.Where != nil {
-			shname := r.routeByExpr(stmt.Where.Expr)
-			if shname == NOSHARD {
+			shkey := r.routeByExpr(stmt.Where.Expr)
+			if shkey.Name == NOSHARD {
 				return nil
 			}
-			return []string{shname}
+			return []qrouterdb.ShardKey{shkey}
 		}
 		return nil
 
@@ -204,32 +213,39 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 				switch vals := stmt.Rows.(type) {
 				case sqlp.Values:
 					valTyp := vals[0]
-					shname := r.routeByExpr(valTyp[i])
-					if shname == NOSHARD {
+					shkey := r.routeByExpr(valTyp[i])
+					if shkey.Name == NOSHARD {
 						return nil
 					}
-					return []string{shname}
+					return []qrouterdb.ShardKey{shkey}
 				}
 			}
 		}
 	case *sqlp.Update:
 		if stmt.Where != nil {
-			shname := r.routeByExpr(stmt.Where.Expr)
-			if shname == NOSHARD {
+			shkey := r.routeByExpr(stmt.Where.Expr)
+			if shkey.Name == NOSHARD {
 				return nil
 			}
-			return []string{shname}
+			return []qrouterdb.ShardKey{shkey}
 		}
 		return nil
 	case *sqlp.CreateTable:
 		tracelog.InfoLogger.Printf("ddl routing excpands to every shard")
 		// route ddl to every shard
-		return r.Shards()
+		shrds := r.Shards()
+		var ret []qrouterdb.ShardKey
+		for _, sh := range shrds {
+			ret = append(ret, qrouterdb.ShardKey{
+				Name: sh,
+				RW:   true,
+			})
+		}
 	}
 
 	return nil
 }
 
-func (r *QrouterImpl) Route(q string) []string {
+func (r *QrouterImpl) Route(q string) []qrouterdb.ShardKey {
 	return r.matchShards(q)
 }

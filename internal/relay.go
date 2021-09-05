@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/qrouter"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -10,25 +11,17 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveShards []ShardKey
+	ActiveShards []qrouterdb.ShardKey
 }
 
 func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager, q *pgproto3.Query) error {
 
-	shardKeys := rt.Route(q.String)
+	shards := rt.Route(q.String)
 
-	if len(shardKeys) == 0 {
+	if len(shards) == 0 {
 		_ = cmngr.UnRouteWithError(cl, nil, "failed to match shard")
 		return xerrors.New("failed to match shard")
 	}
-
-	var shards []ShardKey
-
-	for _, name := range shardKeys {
-		shards = append(shards, NewSHKey(name))
-	}
-
-	tracelog.InfoLogger.Printf("parsed shard keys %s", shardKeys)
 
 	if err := cmngr.UnRouteCB(cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.PrintError(err)

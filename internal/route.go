@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 )
 
 type routeKey struct {
@@ -13,13 +14,9 @@ func (r *routeKey) String() string {
 	return r.db + " " + r.usr
 }
 
-type ShardKey struct {
-	name string
-}
-
-func NewSHKey(name string) ShardKey {
-	return ShardKey{
-		name: name,
+func NewSHKey(name string) qrouterdb.ShardKey {
+	return qrouterdb.ShardKey{
+		Name: name,
 	}
 }
 

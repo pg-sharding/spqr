@@ -4,14 +4,15 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/wal-g/tracelog"
 )
 
 type ShardPool interface {
-	Connection(key ShardKey) (Shard, error)
+	Connection(key qrouterdb.ShardKey) (Shard, error)
 	Put(sh Shard) error
 
-	Check(key ShardKey) bool
+	Check(key qrouterdb.ShardKey) bool
 
 	List() []Shard
 }
@@ -19,12 +20,12 @@ type ShardPool interface {
 type ShardPoolImpl struct {
 	mu sync.Mutex
 
-	pool map[ShardKey][]Shard
+	pool map[qrouterdb.ShardKey][]Shard
 
 	mapping map[string]*config.ShardCfg
 }
 
-func (s *ShardPoolImpl) Check(key ShardKey) bool {
+func (s *ShardPoolImpl) Check(key qrouterdb.ShardKey) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -48,7 +49,7 @@ func (s *ShardPoolImpl) List() []Shard {
 
 var _ ShardPool = &ShardPoolImpl{}
 
-func (s *ShardPoolImpl) Connection(key ShardKey) (Shard, error) {
+func (s *ShardPoolImpl) Connection(key qrouterdb.ShardKey) (Shard, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -61,10 +62,10 @@ func (s *ShardPoolImpl) Connection(key ShardKey) (Shard, error) {
 
 		tracelog.InfoLogger.Printf("acquire new connection to %v", key)
 
-		cfg := s.mapping[key.name]
+		cfg := s.mapping[key.Name]
 
 		var err error
-		sh, err = NewShard(key.name, cfg)
+		sh, err = NewShard(key.Name, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -86,6 +87,6 @@ func NewShardPool(mapping map[string]*config.ShardCfg) ShardPool {
 	return &ShardPoolImpl{
 		mu:      sync.Mutex{},
 		mapping: mapping,
-		pool:    map[ShardKey][]Shard{},
+		pool:    map[qrouterdb.ShardKey][]Shard{},
 	}
 }
