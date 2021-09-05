@@ -27,10 +27,10 @@ func (q *QrouterDBMem) Check(key int) bool {
 	return false
 }
 
-func NewQrouterDBMem() *QrouterDBMem {
+func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
 		mp: map[spqrparser.KeyRange]int{},
-	}
+	}, nil
 }
 
 func (q *QrouterDBMem) Lock(keyRange spqrparser.KeyRange) error {

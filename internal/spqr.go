@@ -26,9 +26,12 @@ const defaultProto = "tcp"
 
 func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 
-	qrouter := qrouter.NewR()
+	qr, err := qrouter.NewQrouter()
+	if err != nil {
+		return nil, err
+	}
 
-	router, err := NewRouter(cfg.RouterCfg, qrouter)
+	router, err := NewRouter(cfg.RouterCfg, qr)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
@@ -52,7 +55,7 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 			shard.Hosts[0].Proto = defaultProto
 		}
 
-		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
+		tracelog.InfoLogger.FatalOnError(qr.AddShard(name, shard))
 	}
 
 	executer := NewExecuter(cfg.ExecuterCfg)
@@ -62,7 +65,7 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 	return &Spqr{
 		Cfg:         cfg,
 		Router:      router,
-		Qrouter:     qrouter,
+		Qrouter:     qr,
 		SPIexecuter: executer,
 		stchan:      make(chan struct{}),
 	}, nil

@@ -2,6 +2,8 @@
 
 sleep 20
 
+set -ex
+
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c 'CREATE TABLE x(w_id INT)' || {
 	echo "ERROR: tests failed"
 	exit 1

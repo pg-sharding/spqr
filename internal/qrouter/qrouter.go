@@ -6,6 +6,7 @@ import (
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouterdb"
+	"github.com/pg-sharding/spqr/internal/qrouterdb/mem"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
 )
@@ -74,13 +75,22 @@ func (r *QrouterImpl) KeyRanges() []string {
 
 var _ Qrouter = &QrouterImpl{}
 
-func NewR() *QrouterImpl {
+func NewQrouter() (*QrouterImpl, error) {
+
+	// acq conn to db
+	qdb, err := mem.NewQrouterDBMem()
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &QrouterImpl{
 		ColumnMapping: map[string]struct{}{},
 		LocalTables:   map[string]struct{}{},
 		Ranges:        []*spqrparser.KeyRange{},
 		ShardCfgs:     map[string]*config.ShardCfg{},
-	}
+		qdb:           qdb,
+	}, nil
 }
 
 func (r *QrouterImpl) AddColumn(col string) error {
@@ -241,6 +251,8 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 				RW:   true,
 			})
 		}
+		
+		return ret
 	}
 
 	return nil
