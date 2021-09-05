@@ -8,8 +8,8 @@ type ShardKey struct {
 }
 
 type QrouterDB interface {
-	Lock(keyRange spqrparser.KeyRange) error
-	UnLock(keyRange spqrparser.KeyRange) error
+	Lock(keyRange *spqrparser.KeyRange) error
+	UnLock(keyRange *spqrparser.KeyRange) error
 
 	Check(key int) bool
 }

@@ -14,10 +14,12 @@ type ShardingColumn struct {
 }
 
 type KeyRange struct {
-	From    int
-	To      int
-	ShardID string
+	From       int
+	To         int
+	ShardID    string
+	KeyRangeID string
 }
+
 type Add struct {
 	KeyRangeID string
 }

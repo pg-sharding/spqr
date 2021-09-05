@@ -11,14 +11,15 @@ import (
 type QrouterDBMem struct {
 	mu sync.Mutex
 
-	mp map[spqrparser.KeyRange]int
+	freq map[string]int
+	krs  map[string]*spqrparser.KeyRange
 }
 
 func (q *QrouterDBMem) Check(key int) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	for kr := range q.mp {
+	for _, kr := range q.krs {
 		if kr.From <= key && key <= kr.To {
 			return true
 		}
@@ -29,33 +30,36 @@ func (q *QrouterDBMem) Check(key int) bool {
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
-		mp: map[spqrparser.KeyRange]int{},
+		freq: map[string]int{},
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(keyRange spqrparser.KeyRange) error {
+func (q *QrouterDBMem) Lock(keyRange *spqrparser.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if cnt, ok := q.mp[keyRange]; ok {
-		q.mp[keyRange] = cnt + 1
+	if cnt, ok := q.freq[keyRange.KeyRangeID]; ok {
+		q.freq[keyRange.KeyRangeID] = cnt + 1
 	} else {
-		q.mp[keyRange] = 1
+		q.freq[keyRange.KeyRangeID] = 1
 	}
+
+	q.krs[keyRange.KeyRangeID] = keyRange
 
 	return nil
 }
 
-func (q *QrouterDBMem) UnLock(keyRange spqrparser.KeyRange) error {
+func (q *QrouterDBMem) UnLock(keyRange *spqrparser.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if cnt, ok := q.mp[keyRange]; !ok {
+	if cnt, ok := q.freq[keyRange.KeyRangeID]; !ok {
 		return xerrors.Errorf("key range %v not locked", keyRange)
 	} else if cnt > 1 {
-		q.mp[keyRange] = cnt - 1
+		q.freq[keyRange.KeyRangeID] = cnt - 1
 	} else {
-		delete(q.mp, keyRange)
+		delete(q.freq, keyRange.KeyRangeID)
+		delete(q.krs, keyRange.KeyRangeID)
 	}
 
 	return nil

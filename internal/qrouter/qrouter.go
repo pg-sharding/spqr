@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/qrouterdb/mem"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 const NOSHARD = ""
@@ -25,6 +26,9 @@ type Qrouter interface {
 	KeyRanges() []string
 
 	AddShard(name string, cfg *config.ShardCfg) error
+
+	Lock(krid string) error
+	UnLock(krid string) error
 }
 
 type QrouterImpl struct {
@@ -32,11 +36,33 @@ type QrouterImpl struct {
 
 	LocalTables map[string]struct{}
 
-	Ranges []*spqrparser.KeyRange
+	Ranges map[string]*spqrparser.KeyRange
 
 	ShardCfgs map[string]*config.ShardCfg
 
 	qdb qrouterdb.QrouterDB
+}
+
+func (r *QrouterImpl) Lock(krid string) error {
+	var kr *spqrparser.KeyRange
+	var ok bool
+
+	if kr, ok = r.Ranges[krid]; !ok {
+		return xerrors.Errorf("key range with id %v not found", krid)
+	}
+
+	return r.qdb.Lock(kr)
+}
+
+func (r *QrouterImpl) UnLock(krid string) error {
+	var kr *spqrparser.KeyRange
+	var ok bool
+
+	if kr, ok = r.Ranges[krid]; !ok {
+		return xerrors.Errorf("key range with id %v not found", krid)
+	}
+
+	return r.qdb.UnLock(kr)
 }
 
 func (r *QrouterImpl) ShardCfg(s string) *config.ShardCfg {
@@ -87,7 +113,7 @@ func NewQrouter() (*QrouterImpl, error) {
 	return &QrouterImpl{
 		ColumnMapping: map[string]struct{}{},
 		LocalTables:   map[string]struct{}{},
-		Ranges:        []*spqrparser.KeyRange{},
+		Ranges:        map[string]*spqrparser.KeyRange{},
 		ShardCfgs:     map[string]*config.ShardCfg{},
 		qdb:           qdb,
 	}, nil
@@ -104,8 +130,11 @@ func (r *QrouterImpl) AddLocalTable(tname string) error {
 }
 
 func (r *QrouterImpl) AddKeyRange(kr *spqrparser.KeyRange) error {
-	r.Ranges = append(r.Ranges, kr)
+	if _, ok := r.Ranges[kr.KeyRangeID]; ok {
+		return xerrors.Errorf("key range with ID already defined", kr.KeyRangeID)
+	}
 
+	r.Ranges[kr.KeyRangeID] = kr
 	return nil
 }
 

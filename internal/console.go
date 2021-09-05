@@ -274,7 +274,6 @@ func (c *ConsoleImpl) Shards(cl Client) error {
 }
 
 func (c *ConsoleImpl) processQ(q string, cl Client) error {
-
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -302,6 +301,8 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 
 			return errors.New("Unknown default cmd: " + stmt.Cmd)
 		}
+	case *spqrparser.Lock:
+		_ = c.Qrouter.Lock(stmt.KeyRangeID)
 
 	case *spqrparser.ShardingColumn:
 		return c.AddShardingColumn(cl, stmt)
@@ -320,11 +321,12 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 }
 
 func (c *ConsoleImpl) Serve(netconn net.Conn) error {
-
 	cl := NewClient(netconn)
+
 	if err := cl.Init(c.cfg, config.SSLMODEDISABLE); err != nil {
 		return err
 	}
+
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},

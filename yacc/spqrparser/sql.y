@@ -205,9 +205,9 @@ unlock_stmt:
     unlock_key_range_stmt
 
 add_key_range_stmt:
-    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid
+    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid key_range_id
       {
-        $$ = &KeyRange{From: $4, To: $5, ShardID: $6}
+        $$ = &KeyRange{From: $4, To: $5, ShardID: $6, KeyRangeID: $7}
       }
 
 drop_key_range_stmt:
@@ -239,5 +239,6 @@ shutdown_stmt:
     {
         $$ = &Shutdown{}
     }
+
 %%
 
