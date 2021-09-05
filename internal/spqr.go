@@ -24,18 +24,18 @@ type Spqr struct {
 
 const defaultProto = "tcp"
 
-func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
+func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 
 	qrouter := qrouter.NewR()
 
-	router, err := NewRouter(config.RouterCfg, qrouter)
+	router, err := NewRouter(cfg.RouterCfg, qrouter)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
-	tracelog.InfoLogger.Printf("%v", config.RouterCfg.ShardMapping)
+	tracelog.InfoLogger.Printf("%v", cfg.RouterCfg.ShardMapping)
 
-	for name, shard := range config.RouterCfg.ShardMapping {
-		if shard.TLSCfg.ReqSSL {
+	for name, shard := range cfg.RouterCfg.ShardMapping {
+		if shard.TLSCfg.SslMode != config.SSLMODEDISABLE {
 			cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to make route failure resp")
@@ -55,12 +55,12 @@ func NewSpqr(config *config.SpqrConfig) (*Spqr, error) {
 		tracelog.InfoLogger.FatalOnError(qrouter.AddShard(name, shard))
 	}
 
-	executer := NewExecuter(config.ExecuterCfg)
+	executer := NewExecuter(cfg.ExecuterCfg)
 
 	_ = executer.SPIexec(router.ConsoleDB, NewFakeClient())
 
 	return &Spqr{
-		Cfg:         config,
+		Cfg:         cfg,
 		Router:      router,
 		Qrouter:     qrouter,
 		SPIexecuter: executer,

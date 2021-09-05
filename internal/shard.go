@@ -97,7 +97,7 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 		return nil, err
 	}
 
-	pgconn, err := conn.NewPgConn(netconn, cfg.TLSConfig, cfg.TLSCfg.ReqSSL)
+	pgconn, err := conn.NewPgConn(netconn, cfg.TLSConfig, cfg.TLSCfg.SslMode)
 
 	if err != nil {
 		return nil, err

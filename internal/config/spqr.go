@@ -16,8 +16,13 @@ type HttpConf struct {
 	Addr string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
 }
 
+const (
+	SSLMODEDISABLE = "disable"
+	SSLMODEREQUIRE = "require"
+)
+
 type TLSConfig struct {
-	ReqSSL   bool   `json:"require_ssl" toml:"require_ssl" yaml:"require_ssl"`
+	SslMode  string `json:"sslmode" toml:"sslmode" yaml:"sslmode"`
 	KeyFile  string `json:"key_file" toml:"key_file" yaml:"key_file"`
 	CertFile string `json:"cert_file" toml:"cert_file" yaml:"cert_file"`
 }

@@ -46,7 +46,7 @@ func (f FakeClient) ReplyErr(errnsg string) error {
 	return nil
 }
 
-func (f FakeClient) Init(cfg *tls.Config, reqssl bool) error {
+func (f FakeClient) Init(cfg *tls.Config, reqssl string) error {
 	return nil
 }
 

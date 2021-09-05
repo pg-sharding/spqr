@@ -322,7 +322,7 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 	cl := NewClient(netconn)
-	if err := cl.Init(c.cfg, false); err != nil {
+	if err := cl.Init(c.cfg, config.SSLMODEDISABLE); err != nil {
 		return err
 	}
 	for _, msg := range []pgproto3.BackendMessage{

@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -32,13 +33,13 @@ func (pgconn *PgConnImpl) Receive() (pgproto3.BackendMessage, error) {
 	return pgconn.frontend.Receive()
 }
 
-func NewPgConn(netconn net.Conn, tlscfg *tls.Config, reqssl bool) (PgConn, error) {
+func NewPgConn(netconn net.Conn, tlscfg *tls.Config, sslmode string) (PgConn, error) {
 
 	pgconn := &PgConnImpl{
 		conn: netconn,
 	}
 
-	if reqssl {
+	if sslmode == config.SSLMODEREQUIRE {
 		err := pgconn.ReqBackendSsl(tlscfg)
 		if err != nil {
 			return nil, err

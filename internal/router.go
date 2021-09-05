@@ -60,7 +60,7 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 		lg:            log.New(os.Stdout, "router", 0),
 	}
 
-	if cfg.TLSCfg.ReqSSL {
+	if cfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
 		router.lg.Printf("loading tls cert file %s, key file %s", cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
 		if err != nil {
@@ -80,7 +80,7 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.cfg, r.Cfg.TLSCfg.ReqSSL); err != nil {
+	if err := cl.Init(r.cfg, r.Cfg.TLSCfg.SslMode); err != nil {
 		return nil, err
 	}
 

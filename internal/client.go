@@ -26,7 +26,7 @@ type Client interface {
 
 	ReplyErr(errmsg string) error
 
-	Init(cfg *tls.Config, reqssl bool) error
+	Init(cfg *tls.Config, reqssl string) error
 	Auth() error
 	StartupMessage() *pgproto3.StartupMessage
 
@@ -103,28 +103,30 @@ func (cl *SpqrClient) AssignRule(rule *config.FRRule) error {
 }
 
 // startup + ssl
-func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
+func (cl *SpqrClient) Init(cfg *tls.Config, sslmode string) error {
 
-	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", reqssl)
+	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", sslmode)
 
 	var backend *pgproto3.Backend
 
-	cr := pgproto3.NewChunkReader(bufio.NewReader(cl.conn))
-
 	var sm *pgproto3.StartupMessage
 
-	headerRaw, err := cr.Next(4)
+	headerRaw := make([]byte, 4)
+
+	_, err := cl.conn.Read(headerRaw)
 	if err != nil {
 		return err
 	}
 	msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
 
-	buf, err := cr.Next(msgSize)
+	msg := make([]byte, msgSize)
+
+	_, err = cl.conn.Read(msg)
 	if err != nil {
 		return err
 	}
 
-	protVer := binary.BigEndian.Uint32(buf)
+	protVer := binary.BigEndian.Uint32(msg)
 
 	if protVer == conn.SSLPROTO {
 		_, err := cl.conn.Write([]byte{'S'})
@@ -147,12 +149,13 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 		}
 
 	} else if protVer == pgproto3.ProtocolVersionNumber {
+
 		// reuse
 		sm = &pgproto3.StartupMessage{}
-		err = sm.Decode(buf)
+		err = sm.Decode(msg)
 		tracelog.ErrorLogger.FatalOnError(err)
 
-		backend, err = pgproto3.NewBackend(cr, cl.conn)
+		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 		tracelog.ErrorLogger.FatalOnError(err)
 	} else {
 		// report err to cl
@@ -162,7 +165,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, reqssl bool) error {
 	cl.startupMsg = sm
 	cl.be = backend
 
-	if reqssl && protVer != conn.SSLPROTO {
+	if sslmode == config.SSLMODEREQUIRE && protVer != conn.SSLPROTO {
 		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",
