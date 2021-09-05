@@ -12,7 +12,7 @@ router:
         tls:
                 key_file: '/etc/odyssey/ssl/server.key'
                 cert_file: '/etc/odyssey/ssl/server.crt' 
-                require_ssl: false 
+                sslmode: "disable" 
         frontend_rules:
                 - route_key_cfg:
                         usr: user1
@@ -25,7 +25,7 @@ router:
                 sh1: 
                         tls:
                                 key_file: '/etc/odyssey/ssl/server.key'
-                                require_ssl: false 
+                                sslmode: "disable" 
                                 cert_file: '/etc/odyssey/ssl/server.crt' 
                         conn_db: "db1"
                         conn_usr: "user1"
@@ -35,7 +35,7 @@ router:
                 sh2: 
                         tls:
                                 key_file: '/etc/odyssey/ssl/server.key'
-                                require_ssl: false
+                                sslmode: "disable"
                                 cert_file: '/etc/odyssey/ssl/server.crt' 
                         conn_db: "db1"
                         conn_usr: "user1"

@@ -35,7 +35,7 @@ func (t *TxConnManager) UnRouteCB(cl Client, sh []ShardKey) error {
 			return err
 		}
 	}
-	return nil
+	return cl.Unroute()
 }
 
 func NewTxConnManager() *TxConnManager {

@@ -47,7 +47,9 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 		serv = NewShardServer(cl.Route().beRule, cl.Route().servPool)
 	}
 
-	_ = cl.AssignServerConn(serv)
+	if err := cl.AssignServerConn(serv); err != nil {
+		return err
+	}
 
 	tracelog.InfoLogger.Printf("route cl %s:%s to %v", cl.Usr(), cl.DB(), shards)
 
