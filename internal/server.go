@@ -2,6 +2,8 @@ package internal
 
 import (
 	"crypto/tls"
+	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/jackc/pgproto3"
@@ -149,16 +151,18 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
-	ret := &pgproto3.DataRow{
-		Values: [][]byte{},
-	}
+	shrds := m.activePool.List()
 
-	mu := sync.Mutex{}
+	ch := make(chan pgproto3.BackendMessage, len(shrds))
 
-	for _, shard := range m.activePool.List() {
+	wg := sync.WaitGroup{}
+
+	wg.Add(len(shrds))
+	for _, shard := range shrds {
 		tracelog.InfoLogger.Printf("recv mult resp from sh %s", shard.Name())
 
-		go func(shard Shard) error {
+		go func(shard Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
+			defer wg.Done()
 
 			msg, err := shard.Receive()
 			if err != nil {
@@ -166,26 +170,57 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			}
 			tracelog.InfoLogger.Printf("got %v from %s", msg, shard.Name())
 
-			switch v := msg.(type) {
-			case *pgproto3.DataRow:
-				mu.Lock()
-				ret.Values = append(ret.Values, v.Values...)
-				mu.Unlock()
-			case *pgproto3.ReadyForQuery:
-				return nil
-			default:
-				tracelog.ErrorLogger.Printf("unexcepted msg from server %T", v)
-				return xerrors.New("unexcepted msg from server")
-			}
+			ch <- msg
+
 			return nil
-		}(shard)
+		}(shard, ch, &wg)
 	}
 
-	if len(ret.Values) == 0 {
-		return &pgproto3.ReadyForQuery{}, nil
+	wg.Wait()
+	close(ch)
+
+	msgs := make([]pgproto3.BackendMessage, 0, len(shrds))
+
+	for {
+		msg, ok := <-ch
+		if !ok {
+			break
+		}
+		msgs = append(msgs, msg)
 	}
 
-	return ret, nil
+	for i := range msgs {
+		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
+			return nil, xerrors.Errorf("got messages with different types from multiconnection %T, %T", msgs[0], msgs[i])
+		}
+	}
+
+	tracelog.InfoLogger.Printf("comping multi server msgs from %T", msgs[0])
+
+	switch v := msgs[0].(type) {
+	case *pgproto3.CommandComplete:
+		return v, nil
+	case *pgproto3.ErrorResponse:
+		return v, nil
+	case *pgproto3.ReadyForQuery:
+		return v, nil
+	case *pgproto3.DataRow:
+		ret := &pgproto3.DataRow{}
+
+		for i, msg := range msgs {
+			if i == 0 {
+				ret = msg.(*pgproto3.DataRow)
+				continue
+			}
+			drow := msg.(*pgproto3.DataRow)
+			ret.Values = append(ret.Values, drow.Values...)
+		}
+
+		return ret, nil
+
+	default:
+		return &pgproto3.ErrorResponse{Severity: "ERROR", Message: fmt.Sprintf("failed to conpose responce %T", v)}, nil
+	}
 }
 
 func (m *MultiShardServer) Cleanup() error {
