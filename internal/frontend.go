@@ -28,8 +28,11 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 		case *pgproto3.Query:
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
+				tracelog.InfoLogger.Printf("rerouting")
+
 				if err := rst.reroute(rt, cl, cmngr, v); err != nil {
-					return err
+					tracelog.InfoLogger.Printf("encounter %w", err)
+					continue
 				}
 			}
 

@@ -135,6 +135,12 @@ func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
 			}
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
+		case *pgproto3.ParameterStatus:
+
+			tracelog.InfoLogger.Printf("ignored paramtes status %v %v", v.Name, v.Value)
+
+		case *pgproto3.BackendKeyData:
+			tracelog.InfoLogger.Printf("ingored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
 			tracelog.InfoLogger.Printf("unexpected msg type received %T", v)
 		}

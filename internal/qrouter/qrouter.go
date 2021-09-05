@@ -130,7 +130,6 @@ func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) string {
 	case *sqlp.AndExpr:
 		lft := r.routeByExpr(texpr.Left)
 		if lft == NOSHARD {
-			//tracelog.InfoLogger.Println("go right")
 			return r.routeByExpr(texpr.Right)
 		}
 		return lft
@@ -190,6 +189,9 @@ func (r *QrouterImpl) matchShards(sql string) []string {
 		}
 		if stmt.Where != nil {
 			shname := r.routeByExpr(stmt.Where.Expr)
+			if shname == NOSHARD {
+				return nil
+			}
 			return []string{shname}
 		}
 		return nil
