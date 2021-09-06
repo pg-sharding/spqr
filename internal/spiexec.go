@@ -135,7 +135,7 @@ func (e *Executer) ReadCmds() []string {
 func (e *Executer) SPIexec(console Console, cl Client) error {
 	for _, cmd := range e.ReadCmds() {
 		tracelog.InfoLogger.Printf("executing init sql cmd %s", cmd)
-		if err := console.processQ(cmd, cl); err != nil {
+		if err := console.processQuery(cmd, cl); err != nil {
 			tracelog.InfoLogger.PrintError(err)
 		}
 	}

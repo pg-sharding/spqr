@@ -14,7 +14,7 @@ type Spqr struct {
 	//TODO add some fiels from spqrconfig
 	Cfg *config.SpqrConfig
 
-	Router  *Router
+	Router  Router
 	Qrouter *qrouter.QrouterImpl
 
 	stchan chan struct{}

@@ -16,13 +16,14 @@ import (
 
 type Console interface {
 	Serve(netconn net.Conn) error
-	processQ(q string, cl Client) error
+	processQuery(q string, cl Client) error
 	Shutdown() error
 }
 
 type ConsoleImpl struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
+	Router  RRouter
 }
 
 var _ Console = &ConsoleImpl{}
@@ -341,7 +342,7 @@ func (c *ConsoleImpl) Shards(cl Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) processQ(q string, cl Client) error {
+func (c *ConsoleImpl) processQuery(q string, cl Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -379,6 +380,9 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 		return c.AddKeyRange(cl, stmt)
 	case *spqrparser.Shard:
 		return c.AddShard(cl, stmt, &config.ShardCfg{})
+	case *spqrparser.Shutdown:
+		c.Router.Shutdown()
+		return nil
 	default:
 		tracelog.InfoLogger.Printf("got unexcepted console request %v %T", tstmt, tstmt)
 		if err := cl.DefaultReply(); err != nil {
@@ -416,10 +420,12 @@ func (c *ConsoleImpl) Serve(netconn net.Conn) error {
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := c.processQ(v.String, cl); err != nil {
-				cl.ReplyErr(err.Error())
+			if err := c.processQuery(v.String, cl); err != nil {
+				_ = cl.ReplyErr(err.Error())
 				return err
 			}
+		default:
+			tracelog.InfoLogger.Printf("got unexpected postgresql proto message with type %T", v)
 		}
 	}
 }

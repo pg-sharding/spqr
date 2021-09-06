@@ -14,7 +14,16 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type Router struct {
+
+type Router interface {
+	Shutdown() error
+	PreRoute(conn net.Conn) (Client, error)
+	ServeConsole(netconn net.Conn) error
+	ObsoleteRoute(key routeKey) error
+	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
+}
+
+type RRouter struct {
 	Cfg       config.RouterConfig
 	ConsoleDB Console
 	routePool RoutePool
@@ -28,16 +37,19 @@ type Router struct {
 	lg  *log.Logger
 }
 
-func (r *Router) Shutdown() error {
+var _ Router = &RRouter{
+
+}
+
+func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func (r *Router) ServeConsole(netconn net.Conn) error {
+func (r *RRouter) ServeConsole(netconn net.Conn) error {
 	return r.ConsoleDB.Serve(netconn)
 }
 
-func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error) {
-
+func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*RRouter, error) {
 	frs := make(map[routeKey]*config.FRRule)
 
 	for _, e := range cfg.FrontendRules {
@@ -47,7 +59,7 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 		}] = e
 	}
 
-	router := &Router{
+	router := &RRouter{
 		Cfg:           cfg,
 		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
 		frontendRules: map[routeKey]*config.FRRule{},
@@ -80,7 +92,7 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 	return router, nil
 }
 
-func (r *Router) PreRoute(conn net.Conn) (Client, error) {
+func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 
 	cl := NewClient(conn)
 
@@ -133,7 +145,7 @@ func (r *Router) PreRoute(conn net.Conn) (Client, error) {
 	return cl, nil
 }
 
-func (r *Router) ListShards() []string {
+func (r *RRouter) ListShards() []string {
 	var ret []string
 
 	for _, sh := range r.Cfg.ShardMapping {
@@ -143,7 +155,7 @@ func (r *Router) ListShards() []string {
 	return ret
 }
 
-func (r *Router) ObsoleteRoute(key routeKey) error {
+func (r *RRouter) ObsoleteRoute(key routeKey) error {
 	route := r.routePool.Obsolete(key)
 
 	if err := route.NofityClients(func(cl Client) error {
@@ -155,7 +167,7 @@ func (r *Router) ObsoleteRoute(key routeKey) error {
 	return nil
 }
 
-func (r *Router) AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error {
+func (r *RRouter) AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error {
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
