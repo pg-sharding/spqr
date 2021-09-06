@@ -29,6 +29,7 @@ type Qrouter interface {
 
 	Lock(krid string) error
 	UnLock(krid string) error
+	Split(req *spqrparser.SplitKeyRange) error
 }
 
 type QrouterImpl struct {
@@ -43,56 +44,80 @@ type QrouterImpl struct {
 	qdb qrouterdb.QrouterDB
 }
 
-func (r *QrouterImpl) Lock(krid string) error {
-	var kr *spqrparser.KeyRange
-	var ok bool
-
-	if kr, ok = r.Ranges[krid]; !ok {
-		return xerrors.Errorf("key range with id %v not found", krid)
+func (qr *QrouterImpl) Split(req *spqrparser.SplitKeyRange) error {
+	if err := qr.qdb.Begin(); err != nil {
+		return err
 	}
 
-	return r.qdb.Lock(kr)
-}
+	defer func() { _ = qr.qdb.Commit() }()
 
-func (r *QrouterImpl) UnLock(krid string) error {
-	var kr *spqrparser.KeyRange
-	var ok bool
-
-	if kr, ok = r.Ranges[krid]; !ok {
-		return xerrors.Errorf("key range with id %v not found", krid)
+	krOld := qr.Ranges[req.KeyRangeFromID]
+	krNew := &spqrparser.KeyRange{
+		From:       req.Border,
+		To:         krOld.To,
+		KeyRangeID: req.KeyRangeID,
 	}
 
-	return r.qdb.UnLock(kr)
-}
+	_ = qr.qdb.Add(krNew)
+	krOld.To = req.Border
+	_ = qr.qdb.Update(krOld)
 
-func (r *QrouterImpl) ShardCfg(s string) *config.ShardCfg {
-	return r.ShardCfgs[s]
-}
-
-func (r *QrouterImpl) AddShard(name string, cfg *config.ShardCfg) error {
-
-	tracelog.InfoLogger.Printf("adding node %s", name)
-	r.ShardCfgs[name] = cfg
+	qr.Ranges[krOld.KeyRangeID] = krOld
+	qr.Ranges[krNew.KeyRangeID] = krNew
 
 	return nil
 }
 
-func (r *QrouterImpl) Shards() []string {
+func (qr *QrouterImpl) Lock(krid string) error {
+	var kr *spqrparser.KeyRange
+	var ok bool
+
+	if kr, ok = qr.Ranges[krid]; !ok {
+		return xerrors.Errorf("key range with id %v not found", krid)
+	}
+
+	return qr.qdb.Lock(kr)
+}
+
+func (qr *QrouterImpl) UnLock(krid string) error {
+	var kr *spqrparser.KeyRange
+	var ok bool
+
+	if kr, ok = qr.Ranges[krid]; !ok {
+		return xerrors.Errorf("key range with id %v not found", krid)
+	}
+
+	return qr.qdb.UnLock(kr)
+}
+
+func (qr *QrouterImpl) ShardCfg(s string) *config.ShardCfg {
+	return qr.ShardCfgs[s]
+}
+
+func (qr *QrouterImpl) AddShard(name string, cfg *config.ShardCfg) error {
+
+	tracelog.InfoLogger.Printf("adding node %s", name)
+	qr.ShardCfgs[name] = cfg
+
+	return nil
+}
+
+func (qr *QrouterImpl) Shards() []string {
 
 	var ret []string
 
-	for name := range r.ShardCfgs {
+	for name := range qr.ShardCfgs {
 		ret = append(ret, name)
 	}
 
 	return ret
 }
 
-func (r *QrouterImpl) KeyRanges() []string {
+func (qr *QrouterImpl) KeyRanges() []string {
 
 	var ret []string
 
-	for _, kr := range r.Ranges {
+	for _, kr := range qr.Ranges {
 		ret = append(ret, kr.ShardID)
 	}
 
@@ -119,28 +144,28 @@ func NewQrouter() (*QrouterImpl, error) {
 	}, nil
 }
 
-func (r *QrouterImpl) AddColumn(col string) error {
-	r.ColumnMapping[col] = struct{}{}
+func (qr *QrouterImpl) AddColumn(col string) error {
+	qr.ColumnMapping[col] = struct{}{}
 	return nil
 }
 
-func (r *QrouterImpl) AddLocalTable(tname string) error {
-	r.LocalTables[tname] = struct{}{}
+func (qr *QrouterImpl) AddLocalTable(tname string) error {
+	qr.LocalTables[tname] = struct{}{}
 	return nil
 }
 
-func (r *QrouterImpl) AddKeyRange(kr *spqrparser.KeyRange) error {
-	if _, ok := r.Ranges[kr.KeyRangeID]; ok {
+func (qr *QrouterImpl) AddKeyRange(kr *spqrparser.KeyRange) error {
+	if _, ok := qr.Ranges[kr.KeyRangeID]; ok {
 		return xerrors.Errorf("key range with ID already defined", kr.KeyRangeID)
 	}
 
-	r.Ranges[kr.KeyRangeID] = kr
+	qr.Ranges[kr.KeyRangeID] = kr
 	return nil
 }
 
-func (r *QrouterImpl) routeByIndx(i int) string {
+func (qr *QrouterImpl) routeByIndx(i int) string {
 
-	for _, kr := range r.Ranges {
+	for _, kr := range qr.Ranges {
 		if kr.From <= i && kr.To >= i {
 			return kr.ShardID
 		}
@@ -149,17 +174,17 @@ func (r *QrouterImpl) routeByIndx(i int) string {
 	return NOSHARD
 }
 
-func (r *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
+func (qr *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
 
 	switch texpr := expr.(type) {
 	case sqlp.ValTuple:
 		for _, val := range texpr {
-			if r.matchShkey(val) {
+			if qr.matchShkey(val) {
 				return true
 			}
 		}
 	case *sqlp.ColName:
-		_, ok := r.ColumnMapping[texpr.Name.String()]
+		_, ok := qr.ColumnMapping[texpr.Name.String()]
 		return ok
 	default:
 	}
@@ -167,17 +192,17 @@ func (r *QrouterImpl) matchShkey(expr sqlp.Expr) bool {
 	return false
 }
 
-func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) qrouterdb.ShardKey {
+func (qr *QrouterImpl) routeByExpr(expr sqlp.Expr) qrouterdb.ShardKey {
 	switch texpr := expr.(type) {
 	case *sqlp.AndExpr:
-		lft := r.routeByExpr(texpr.Left)
+		lft := qr.routeByExpr(texpr.Left)
 		if lft.Name == NOSHARD {
-			return r.routeByExpr(texpr.Right)
+			return qr.routeByExpr(texpr.Right)
 		}
 		return lft
 	case *sqlp.ComparisonExpr:
-		if r.matchShkey(texpr.Left) {
-			shindx := r.routeByExpr(texpr.Right)
+		if qr.matchShkey(texpr.Left) {
+			shindx := qr.routeByExpr(texpr.Right)
 			return shindx
 		}
 	case *sqlp.SQLVal:
@@ -185,8 +210,8 @@ func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) qrouterdb.ShardKey {
 		if err != nil {
 			return qrouterdb.ShardKey{Name: NOSHARD}
 		}
-		shname := r.routeByIndx(valInt)
-		rw := r.qdb.Check(valInt)
+		shname := qr.routeByIndx(valInt)
+		rw := qr.qdb.Check(valInt)
 
 		return qrouterdb.ShardKey{
 			Name: shname,
@@ -199,7 +224,7 @@ func (r *QrouterImpl) routeByExpr(expr sqlp.Expr) qrouterdb.ShardKey {
 	return qrouterdb.ShardKey{Name: NOSHARD}
 }
 
-func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
+func (qr *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 
 	for _, texpr := range frm {
 		switch tbltype := texpr.(type) {
@@ -209,7 +234,7 @@ func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 
 			switch tname := tbltype.Expr.(type) {
 			case sqlp.TableName:
-				if _, ok := r.LocalTables[tname.Name.String()]; ok {
+				if _, ok := qr.LocalTables[tname.Name.String()]; ok {
 					return true
 				}
 			case *sqlp.Subquery:
@@ -221,7 +246,7 @@ func (r *QrouterImpl) isLocalTbl(frm sqlp.TableExprs) bool {
 	return false
 }
 
-func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
+func (qr *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 
 	parsedStmt, err := sqlp.Parse(sql)
 	if err != nil {
@@ -232,11 +257,11 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 
 	switch stmt := parsedStmt.(type) {
 	case *sqlp.Select:
-		if r.isLocalTbl(stmt.From) {
+		if qr.isLocalTbl(stmt.From) {
 			return nil
 		}
 		if stmt.Where != nil {
-			shkey := r.routeByExpr(stmt.Where.Expr)
+			shkey := qr.routeByExpr(stmt.Where.Expr)
 			if shkey.Name == NOSHARD {
 				return nil
 			}
@@ -247,12 +272,12 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 	case *sqlp.Insert:
 		for i, c := range stmt.Columns {
 
-			if _, ok := r.ColumnMapping[c.String()]; ok {
+			if _, ok := qr.ColumnMapping[c.String()]; ok {
 
 				switch vals := stmt.Rows.(type) {
 				case sqlp.Values:
 					valTyp := vals[0]
-					shkey := r.routeByExpr(valTyp[i])
+					shkey := qr.routeByExpr(valTyp[i])
 					if shkey.Name == NOSHARD {
 						return nil
 					}
@@ -262,7 +287,7 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 		}
 	case *sqlp.Update:
 		if stmt.Where != nil {
-			shkey := r.routeByExpr(stmt.Where.Expr)
+			shkey := qr.routeByExpr(stmt.Where.Expr)
 			if shkey.Name == NOSHARD {
 				return nil
 			}
@@ -272,7 +297,7 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 	case *sqlp.CreateTable:
 		tracelog.InfoLogger.Printf("ddl routing excpands to every shard")
 		// route ddl to every shard
-		shrds := r.Shards()
+		shrds := qr.Shards()
 		var ret []qrouterdb.ShardKey
 		for _, sh := range shrds {
 			ret = append(ret, qrouterdb.ShardKey{
@@ -287,6 +312,6 @@ func (r *QrouterImpl) matchShards(sql string) []qrouterdb.ShardKey {
 	return nil
 }
 
-func (r *QrouterImpl) Route(q string) []qrouterdb.ShardKey {
-	return r.matchShards(q)
+func (qr *QrouterImpl) Route(q string) []qrouterdb.ShardKey {
+	return qr.matchShards(q)
 }

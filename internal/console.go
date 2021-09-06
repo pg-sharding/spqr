@@ -115,6 +115,37 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 	return nil
 }
 
+func (c *ConsoleImpl) SplitKeyRange(cl Client, splitReq *spqrparser.SplitKeyRange) error {
+	if err := c.Qrouter.Split(splitReq); err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("splitted key range %v by %v", splitReq.KeyRangeID, splitReq.Border)
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "spqr",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range with id %v", splitReq.KeyRangeID))}},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	return nil
+}
+
 func (c *ConsoleImpl) LockKeyRange(cl Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
 	if err := c.Qrouter.Lock(krid); err != nil {
@@ -331,6 +362,8 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 
 			return errors.New("Unknown default cmd: " + stmt.Cmd)
 		}
+	case *spqrparser.SplitKeyRange:
+		return c.SplitKeyRange(cl, stmt)
 	case *spqrparser.Lock:
 		return c.LockKeyRange(cl, stmt.KeyRangeID)
 	case *spqrparser.ShardingColumn:
@@ -340,7 +373,7 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 	case *spqrparser.Shard:
 		return c.AddShard(cl, stmt, &config.ShardCfg{})
 	default:
-		tracelog.InfoLogger.Printf("jifjweoifjwioef %v %T", tstmt, tstmt)
+		tracelog.InfoLogger.Printf("got unexcepted console request %v %T", tstmt, tstmt)
 		if err := cl.DefaultReply(); err != nil {
 			tracelog.ErrorLogger.Fatal(err)
 		}

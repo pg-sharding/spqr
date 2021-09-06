@@ -10,9 +10,44 @@ import (
 
 type QrouterDBMem struct {
 	mu sync.Mutex
+	txmu sync.Mutex
 
 	freq map[string]int
 	krs  map[string]*spqrparser.KeyRange
+}
+
+func (q *QrouterDBMem) Begin() error {
+	q.txmu.Lock()
+
+	return nil
+}
+
+func (q *QrouterDBMem) Commit() error {
+	q.txmu.Unlock()
+	return nil
+}
+
+func (q *QrouterDBMem) Add(keyRange *spqrparser.KeyRange) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.krs[keyRange.KeyRangeID]; ok {
+		return xerrors.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
+	}
+
+	q.freq[keyRange.KeyRangeID] = 1
+	q.krs[keyRange.KeyRangeID] = keyRange
+
+	return nil
+}
+
+func (q *QrouterDBMem) Update(keyRange *spqrparser.KeyRange) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.krs[keyRange.KeyRangeID] = keyRange
+
+	return nil
 }
 
 func (q *QrouterDBMem) Check(key int) bool {
