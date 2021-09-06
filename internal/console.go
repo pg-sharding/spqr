@@ -115,7 +115,7 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 	return nil
 }
 
-func (c*ConsoleImpl) LockKeyRange(cl Client, krid string) error {
+func (c *ConsoleImpl) LockKeyRange(cl Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
 	if err := c.Qrouter.Lock(krid); err != nil {
 		return err

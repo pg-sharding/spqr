@@ -23,6 +23,7 @@ import (
   lock          *Lock
   shutdown      *Shutdown
   unlock        *Unlock
+  split         *SplitKeyRange
   str           string
   byte          byte
   int           int
@@ -45,7 +46,7 @@ import (
 
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
-%token <str> CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES DROP LOCK UNLOCK SHUTDOWN
+%token <str> CREATE SHARDING COLUMN ADD KEY RANGE SHARDS KEY_RANGES DROP LOCK UNLOCK SHUTDOWN SPLIT BY FROM
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -60,13 +61,13 @@ import (
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
 %type <shutdown> shutdown_stmt
+%type <split> split_key_range_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
 
-%type<int> key_range_spec_from
 %type<str> key_range_spec_shid
-%type<int> key_range_spec_to
+%type<int> key_range_spec_bound
 %type<str> key_range_id
 
 %start any_command
@@ -115,7 +116,10 @@ command:
      {
          setParseTree(yylex, $1)
      }
-
+    | split_key_range_stmt
+     {
+         setParseTree(yylex, $1)
+     }
 
 reserved_keyword:
 POOLS
@@ -162,13 +166,7 @@ sharding_column_name:
     $$ = string($1)
   }
 
-key_range_spec_from:
-    STRING
-    {
-      $$, _ = strconv.Atoi(string($1))
-    }
-
-key_range_spec_to:
+key_range_spec_bound:
     STRING
     {
       $$, _ = strconv.Atoi(string($1))
@@ -205,7 +203,7 @@ unlock_stmt:
     unlock_key_range_stmt
 
 add_key_range_stmt:
-    ADD KEY RANGE key_range_spec_from key_range_spec_to key_range_spec_shid key_range_id
+    ADD KEY RANGE key_range_spec_bound key_range_spec_bound key_range_spec_shid key_range_id
       {
         $$ = &KeyRange{From: $4, To: $5, ShardID: $6, KeyRangeID: $7}
       }
@@ -226,6 +224,13 @@ unlock_key_range_stmt:
   UNLOCK KEY RANGE key_range_id
    {
       $$ = &Unlock{KeyRangeID: $4}
+   }
+
+
+split_key_range_stmt:
+  SPLIT KEY RANGE key_range_id FROM key_range_id BY key_range_spec_bound
+   {
+      $$ = &SplitKeyRange{KeyRangeID: $4, KeyRangeFromID: $6, Border: $8}
    }
 
 kill_stmt:

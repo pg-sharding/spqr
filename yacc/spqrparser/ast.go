@@ -20,6 +20,11 @@ type KeyRange struct {
 	KeyRangeID string
 }
 
+type SplitKeyRange struct {
+	Border         int
+	KeyRangeFromID string
+	KeyRangeID     string
+}
 type Add struct {
 	KeyRangeID string
 }
@@ -67,6 +72,7 @@ func (*Drop) iStatement()           {}
 func (*Lock) iStatement()           {}
 func (*Unlock) iStatement()         {}
 func (*Shutdown) iStatement()       {}
+func (*SplitKeyRange) iStatement()  {}
 func (*ShardingColumn) iStatement() {}
 func (*KeyRange) iStatement()       {}
 func (*Shard) iStatement()          {}
@@ -92,6 +98,9 @@ var reservedWords = map[string]int{
 	"unlock":     UNLOCK,
 	"drop":       DROP,
 	"shitdown":   SHUTDOWN,
+	"split":      SPLIT,
+	"from":       FROM,
+	"by":         BY,
 }
 
 // Tokenizer is the struct used to generate SQL
