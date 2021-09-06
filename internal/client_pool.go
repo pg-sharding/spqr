@@ -46,9 +46,9 @@ func (c *ClientPoolImpl) Shutdown() error {
 	defer c.mu.Unlock()
 
 	for _, cl := range c.pool {
-		go func() {
+		go func(cl Client) {
 			tracelog.InfoLogger.PrintError(cl.Shutdown())
-		}()
+		}(cl)
 	}
 
 	return nil
