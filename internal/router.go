@@ -46,9 +46,12 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 			db:  e.RK.DB,
 		}] = e
 	}
+
 	router := &Router{
 		Cfg:           cfg,
 		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
+		frontendRules: map[routeKey]*config.FRRule{},
+		backendRules: map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
 	}
 

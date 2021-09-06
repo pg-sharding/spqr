@@ -35,6 +35,7 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 					continue
 				}
 			}
+
 			if err := rst.relayStep(cl, cmngr); err != nil {
 				return err
 			}
