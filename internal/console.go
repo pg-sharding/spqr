@@ -50,6 +50,7 @@ func (c *ConsoleImpl) Databases(cl Client) error {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show dbs")}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -75,6 +76,7 @@ func (c *ConsoleImpl) Pools(cl Client) error {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show pools")}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -105,6 +107,7 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s, err %w", stmt.ColName, err))}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -120,7 +123,7 @@ func (c *ConsoleImpl) SplitKeyRange(cl Client, splitReq *spqrparser.SplitKeyRang
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("splitted key range %v by %v", splitReq.KeyRangeID, splitReq.Border)
+	tracelog.InfoLogger.Printf("splitted key range %v by %v", splitReq.KeyRangeFromID, splitReq.Border)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -135,7 +138,8 @@ func (c *ConsoleImpl) SplitKeyRange(cl Client, splitReq *spqrparser.SplitKeyRang
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range with id %v", splitReq.KeyRangeID))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %v", splitReq.KeyRangeFromID, splitReq.Border))}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -166,6 +170,7 @@ func (c *ConsoleImpl) LockKeyRange(cl Client, krid string) error {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("lock key range with id %v", krid))}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -195,7 +200,8 @@ func (c *ConsoleImpl) AddKeyRange(cl Client, kr *spqrparser.KeyRange) error {
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %w", kr.From, kr.To, err))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %v", kr.From, kr.To, err))}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -224,6 +230,7 @@ func (c *ConsoleImpl) AddShard(cl Client, shard *spqrparser.Shard, cfg *config.S
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created shard with name %s, %w", shard.Name, err))}},
+		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -241,7 +248,7 @@ func (c *ConsoleImpl) KeyRanges(cl Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr shards",
+				Name:                 "spqr key ranges",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -258,9 +265,9 @@ func (c *ConsoleImpl) KeyRanges(cl Client) error {
 		}
 	}
 
-	for _, shard := range c.Qrouter.Shards() {
+	for _, kr := range c.Qrouter.KeyRanges() {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range for shard with ID %s", shard))},
+			Values: [][]byte{[]byte(fmt.Sprintf("key range %v for kr with %s", kr.KeyRangeID, kr.ShardID))},
 		}); err != nil {
 			tracelog.InfoLogger.Print(err)
 		}
@@ -350,7 +357,7 @@ func (c *ConsoleImpl) processQ(q string, cl Client) error {
 		switch stmt.Cmd {
 
 		case spqrparser.ShowPoolsStr: // TODO serv errors
-			c.Pools(cl)
+			return c.Pools(cl)
 		case spqrparser.ShowDatabasesStr:
 			return c.Databases(cl)
 		case spqrparser.ShowShardsStr:
