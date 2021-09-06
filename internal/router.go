@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
@@ -20,6 +21,8 @@ type Router struct {
 
 	frontendRules map[routeKey]*config.FRRule
 	backendRules  map[routeKey]*config.BERule
+
+	mu sync.Mutex
 
 	cfg *tls.Config
 	lg  *log.Logger
@@ -43,21 +46,19 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*Router, error
 			db:  e.RK.DB,
 		}] = e
 	}
-	bes := make(map[routeKey]*config.BERule)
-
-	for _, e := range cfg.BackendRules {
-		bes[routeKey{
-			usr: e.RK.Usr,
-			db:  e.RK.DB,
-		}] = e
-	}
-
 	router := &Router{
 		Cfg:           cfg,
 		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
-		frontendRules: frs,
-		backendRules:  bes,
 		lg:            log.New(os.Stdout, "router", 0),
+	}
+
+
+	for _, berule := range cfg.BackendRules {
+		key := routeKey{
+			usr: berule.RK.Usr,
+			db:  berule.RK.DB,
+		}
+		_ = router.AddRouteRule(key, berule, frs[key])
 	}
 
 	if cfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
@@ -147,6 +148,17 @@ func (r *Router) ObsoleteRoute(key routeKey) error {
 	}); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (r *Router) AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error {
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.backendRules[key] = befule
+	r.frontendRules[key] = frRule
 
 	return nil
 }
