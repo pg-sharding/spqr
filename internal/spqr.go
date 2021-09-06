@@ -17,6 +17,8 @@ type Spqr struct {
 	Router  Router
 	Qrouter *qrouter.QrouterImpl
 
+	ConsoleDB Console
+
 	stchan chan struct{}
 
 	SPIexecuter *Executer
@@ -31,7 +33,19 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 		return nil, err
 	}
 
-	router, err := NewRouter(cfg.RouterCfg, qr)
+
+	var tlscfg *tls.Config
+	if cfg.RouterCfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
+		cert, err := tls.LoadX509KeyPair(cfg.RouterCfg.TLSCfg.CertFile, cfg.RouterCfg.TLSCfg.KeyFile)
+		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", cfg.RouterCfg.TLSCfg.CertFile, cfg.RouterCfg.TLSCfg.KeyFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load frontend tls conf")
+		}
+		tlscfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+	}
+
+	router, err := NewRouter(cfg.RouterCfg, tlscfg)
+
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
@@ -58,17 +72,22 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 		tracelog.InfoLogger.FatalOnError(qr.AddShard(name, shard))
 	}
 
-	executer := NewExecuter(cfg.ExecuterCfg)
-
-	_ = executer.SPIexec(router.ConsoleDB, NewFakeClient())
-
-	return &Spqr{
+	spqr := &Spqr{
 		Cfg:         cfg,
 		Router:      router,
 		Qrouter:     qr,
-		SPIexecuter: executer,
 		stchan:      make(chan struct{}),
-	}, nil
+	}
+
+	spqr.ConsoleDB = NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
+
+	executer := NewExecuter(cfg.ExecuterCfg)
+
+	_ = executer.SPIexec(spqr.ConsoleDB, NewFakeClient())
+
+	spqr.SPIexecuter = executer
+
+	return spqr, nil
 }
 
 func (sg *Spqr) serv(netconn net.Conn) error {
@@ -117,14 +136,14 @@ func (sg *Spqr) Run(listener net.Listener) error {
 			}()
 
 		case <-sg.stchan:
-			sg.Router.Shutdown()
+			_ = sg.Router.Shutdown()
 			_ = listener.Close()
 		}
 	}
 }
 
 func (sg *Spqr) servAdm(netconn net.Conn) error {
-	return sg.Router.ServeConsole(netconn)
+	return sg.ConsoleDB.Serve(netconn)
 }
 
 func (sg *Spqr) RunAdm(listener net.Listener) error {

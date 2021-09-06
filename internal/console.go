@@ -23,7 +23,8 @@ type Console interface {
 type ConsoleImpl struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
-	Router  RRouter
+
+	stchan chan struct{}
 }
 
 var _ Console = &ConsoleImpl{}
@@ -32,8 +33,11 @@ func (c *ConsoleImpl) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter) *ConsoleImpl {
-	return &ConsoleImpl{Qrouter: Qrouter, cfg: cfg}
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter,stchan chan struct{}) *ConsoleImpl {
+	return &ConsoleImpl{
+		Qrouter: Qrouter,
+		cfg:     cfg,
+		stchan: stchan}
 }
 
 func (c *ConsoleImpl) Databases(cl Client) error {
@@ -381,7 +385,7 @@ func (c *ConsoleImpl) processQuery(q string, cl Client) error {
 	case *spqrparser.Shard:
 		return c.AddShard(cl, stmt, &config.ShardCfg{})
 	case *spqrparser.Shutdown:
-		c.Router.Shutdown()
+		c.stchan <- struct{}{}
 		return nil
 	default:
 		tracelog.InfoLogger.Printf("got unexcepted console request %v %T", tstmt, tstmt)

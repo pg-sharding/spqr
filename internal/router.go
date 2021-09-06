@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -18,14 +17,12 @@ import (
 type Router interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (Client, error)
-	ServeConsole(netconn net.Conn) error
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
 }
 
 type RRouter struct {
 	Cfg       config.RouterConfig
-	ConsoleDB Console
 	routePool RoutePool
 
 	frontendRules map[routeKey]*config.FRRule
@@ -45,11 +42,7 @@ func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func (r *RRouter) ServeConsole(netconn net.Conn) error {
-	return r.ConsoleDB.Serve(netconn)
-}
-
-func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*RRouter, error) {
+func NewRouter(cfg config.RouterConfig, tlscfg *tls.Config) (*RRouter, error) {
 	frs := make(map[routeKey]*config.FRRule)
 
 	for _, e := range cfg.FrontendRules {
@@ -77,17 +70,8 @@ func NewRouter(cfg config.RouterConfig, qrouter qrouter.Qrouter) (*RRouter, erro
 	}
 
 	if cfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
-		cert, err := tls.LoadX509KeyPair(cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
-		router.lg.Printf("loading tls cert file %s, key file %s", cfg.TLSCfg.CertFile, cfg.TLSCfg.KeyFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to load frontend tls conf")
-		}
-		router.cfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+		router.cfg = tlscfg
 	}
-
-	consoleDB := NewConsole(router.cfg, qrouter)
-
-	router.ConsoleDB = consoleDB
 
 	return router, nil
 }
