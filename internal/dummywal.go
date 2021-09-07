@@ -24,11 +24,13 @@ func NewDummyWal(dataFolder string) (*DummyWalImpl, error) {
 
 func (dw *DummyWalImpl) DumpQuery(q string) error {
 	walPath := filepath.Join(dw.dataFolder, "dummylog")
+
 	file, err := os.Create(walPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+
 	encoded := base64.StdEncoding.EncodeToString([]byte(q))
 	file.WriteString(encoded)
 	return nil
@@ -40,6 +42,7 @@ func (dw *DummyWalImpl) Recover(dataFolder string) ([]string, error) {
 		tracelog.InfoLogger.Println("dummy log does not exist")
 		return []string{}, nil
 	}
+
 	file, err := os.Open(walPath)
 	if err != nil {
 		return nil, err
@@ -48,6 +51,7 @@ func (dw *DummyWalImpl) Recover(dataFolder string) ([]string, error) {
 
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
+
 	var queries []string
 	for scanner.Scan() {
 		decoded, err := base64.StdEncoding.DecodeString(scanner.Text())
