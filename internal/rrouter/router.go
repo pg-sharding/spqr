@@ -9,7 +9,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -20,8 +20,8 @@ type Router interface {
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
 
-	AddShard(key qrouterdb.ShardKey) error
-	AddInstance(key qrouterdb.ShardKey, cfg *config.InstanceCFG)
+	AddShard(key qdb.ShardKey) error
+	AddInstance(key qdb.ShardKey, cfg *config.InstanceCFG)
 }
 
 type RRouter struct {
@@ -35,15 +35,15 @@ type RRouter struct {
 	cfg *tls.Config
 	lg  *log.Logger
 
-	wgs map[qrouterdb.ShardKey]Watchdog
+	wgs map[qdb.ShardKey]Watchdog
 }
 
-func (r *RRouter) AddInstance(key qrouterdb.ShardKey, cfg *config.InstanceCFG) {
+func (r *RRouter) AddInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
 
 	panic("implement me")
 }
 
-func (r *RRouter) AddShard(key qrouterdb.ShardKey) error {
+func (r *RRouter) AddShard(key qdb.ShardKey) error {
 	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
 
 	if err != nil {
@@ -81,7 +81,7 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 		frontendRules: map[routeKey]*config.FRRule{},
 		backendRules:  map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
-		wgs:           map[qrouterdb.ShardKey]Watchdog{},
+		wgs:           map[qdb.ShardKey]Watchdog{},
 	}
 
 	for _, berule := range config.Get().RouterConfig.BackendRules {

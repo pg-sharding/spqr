@@ -3,7 +3,7 @@ package mem
 import (
 	"sync"
 
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"golang.org/x/xerrors"
 )
@@ -101,4 +101,4 @@ func (q *QrouterDBMem) UnLock(keyRange *spqrparser.KeyRange) error {
 	return nil
 }
 
-var _ qrouterdb.QrouterDB = &QrouterDBMem{}
+var _ qdb.QrouterDB = &QrouterDBMem{}

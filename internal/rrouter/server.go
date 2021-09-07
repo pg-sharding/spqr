@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -17,8 +17,8 @@ type Server interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddShard(shkey qrouterdb.ShardKey) error
-	UnrouteShard(sh qrouterdb.ShardKey) error
+	AddShard(shkey qdb.ShardKey) error
+	UnrouteShard(sh qdb.ShardKey) error
 
 	AddTLSConf(cfg *tls.Config) error
 
@@ -33,7 +33,7 @@ type ShardServer struct {
 	shard Shard
 }
 
-func (srv *ShardServer) UnrouteShard(shkey qrouterdb.ShardKey) error {
+func (srv *ShardServer) UnrouteShard(shkey qdb.ShardKey) error {
 
 	if srv.shard.SHKey() != shkey {
 		return xerrors.New("active shard does not match unrouted")
@@ -48,7 +48,7 @@ func (srv *ShardServer) UnrouteShard(shkey qrouterdb.ShardKey) error {
 	return nil
 }
 
-func (srv *ShardServer) AddShard(shkey qrouterdb.ShardKey) error {
+func (srv *ShardServer) AddShard(shkey qdb.ShardKey) error {
 	if srv.shard != nil {
 		return xerrors.New("single shard server does not support more than 2 shard connection simultaneously")
 	}
@@ -114,7 +114,7 @@ type MultiShardServer struct {
 	pool ConnPool
 }
 
-func (m *MultiShardServer) AddShard(shkey qrouterdb.ShardKey) error {
+func (m *MultiShardServer) AddShard(shkey qdb.ShardKey) error {
 	pgi, err := m.pool.Connection(shkey)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (m *MultiShardServer) AddShard(shkey qrouterdb.ShardKey) error {
 	return nil
 }
 
-func (m *MultiShardServer) UnrouteShard(sh qrouterdb.ShardKey) error {
+func (m *MultiShardServer) UnrouteShard(sh qdb.ShardKey) error {
 
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {

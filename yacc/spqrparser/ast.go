@@ -25,6 +25,12 @@ type SplitKeyRange struct {
 	KeyRangeFromID string
 	KeyRangeID     string
 }
+
+type MoveKeyRange struct {
+	DestShardID string
+	KeyRangeID  string
+}
+
 type Add struct {
 	KeyRangeID string
 }
@@ -72,6 +78,7 @@ func (*Drop) iStatement()           {}
 func (*Lock) iStatement()           {}
 func (*Unlock) iStatement()         {}
 func (*Shutdown) iStatement()       {}
+func (*MoveKeyRange) iStatement()   {}
 func (*SplitKeyRange) iStatement()  {}
 func (*ShardingColumn) iStatement() {}
 func (*KeyRange) iStatement()       {}

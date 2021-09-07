@@ -1,4 +1,4 @@
-package qrouterdb
+package qdb
 
 import "github.com/pg-sharding/spqr/yacc/spqrparser"
 

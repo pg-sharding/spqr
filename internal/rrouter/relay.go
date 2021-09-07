@@ -2,8 +2,8 @@ package rrouter
 
 import (
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -11,7 +11,7 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveShards []qrouterdb.ShardKey
+	ActiveShards []qdb.ShardKey
 }
 
 func (rst *RelayState) Reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager, q *pgproto3.Query) error {

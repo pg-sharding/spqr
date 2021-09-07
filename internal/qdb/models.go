@@ -1,4 +1,4 @@
-package qrouterdb
+package qdb
 
 type ShardKey struct {
 	Name string

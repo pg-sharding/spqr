@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/console"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -79,7 +79,7 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 			}
 		}
 
-		_ = router.AddShard(qrouterdb.ShardKey{
+		_ = router.AddShard(qdb.ShardKey{
 			Name: name,
 		})
 
@@ -155,6 +155,7 @@ func (sg *Spqr) Run(listener net.Listener) error {
 		}
 	}
 }
+
 func (sg *Spqr) servAdm(netconn net.Conn) error {
 
 	cl := rrouter.NewClient(netconn)
@@ -176,6 +177,7 @@ func (sg *Spqr) servAdm(netconn net.Conn) error {
 
 	return sg.ConsoleDB.Serve(cl)
 }
+
 func (sg *Spqr) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
