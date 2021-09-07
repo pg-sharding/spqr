@@ -3,7 +3,7 @@ package rrouter
 import (
 	"crypto/tls"
 	"log"
-	"net"
+	"sync"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
@@ -50,19 +50,29 @@ type ShardImpl struct {
 
 	name string
 
-	pgconn conn.PgConn
+	mu sync.Mutex
+
+	dedicated conn.DBInstance
+
+	primary string
 }
 
 func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
-	return sh.pgconn.ReqBackendSsl(tlscfg)
+	if err := sh.dedicated.ReqBackendSsl(tlscfg); err != nil {
+		tracelog.InfoLogger.Printf("failed to init ssl on host %v of shard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
+
+		return err
+	}
+
+	return nil
 }
 
 func (sh *ShardImpl) Send(query pgproto3.FrontendMessage) error {
-	return sh.pgconn.Send(query)
+	return sh.dedicated.Send(query)
 }
 
 func (sh *ShardImpl) Receive() (pgproto3.BackendMessage, error) {
-	return sh.pgconn.Receive()
+	return sh.dedicated.Receive()
 }
 
 func (sh *ShardImpl) Name() string {
@@ -73,10 +83,6 @@ func (sh *ShardImpl) Cfg() *config.ShardCfg {
 	return sh.cfg
 }
 
-func (sh *ShardImpl) connect(proto string) (net.Conn, error) {
-	return net.Dial(proto, sh.cfg.Hosts[0].ConnAddr)
-}
-
 var _ Shard = &ShardImpl{}
 
 func (sh *ShardImpl) SHKey() qrouterdb.ShardKey {
@@ -85,26 +91,31 @@ func (sh *ShardImpl) SHKey() qrouterdb.ShardKey {
 	}
 }
 
-func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
+func NewShard(key qrouterdb.ShardKey, dedicatedHost string, cfg *config.ShardCfg) (Shard, error) {
 
 	sh := &ShardImpl{
 		cfg:  cfg,
-		name: name,
+		name: key.Name,
 	}
 
 	// move to init
-	netconn, err := sh.connect(cfg.Hosts[0].Proto)
+
+	var dedicatedCfg *config.InstanceCFG
+
+	for _, hostCfg := range cfg.Hosts {
+		if hostCfg.ConnAddr == dedicatedHost {
+			dedicatedCfg = hostCfg
+		}
+	}
+
+	pgi, err := conn.NewInstanceConn(dedicatedCfg, cfg.TLSConfig, cfg.TLSCfg.SslMode)
+
 	if err != nil {
 		return nil, err
 	}
 
-	pgconn, err := conn.NewPgConn(netconn, cfg.TLSConfig, cfg.TLSCfg.SslMode)
 
-	if err != nil {
-		return nil, err
-	}
-
-	sh.pgconn = pgconn
+	sh.dedicated = pgi
 
 	if err := sh.Auth(sh.ConstructSMh()); err != nil {
 		return nil, err
@@ -115,7 +126,7 @@ func NewShard(name string, cfg *config.ShardCfg) (Shard, error) {
 
 func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
 
-	err := sh.pgconn.Send(sm)
+	err := sh.dedicated.Send(sm)
 	if err != nil {
 		return err
 	}

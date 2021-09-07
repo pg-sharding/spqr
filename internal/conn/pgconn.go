@@ -13,58 +13,77 @@ import (
 
 const SSLPROTO = 80877103
 
-type PgConn interface {
+type DBInstance interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
+	CheckRW() (bool, error)
 	ReqBackendSsl(tlscfg *tls.Config) error
+
+	Hostname() string
 }
 
-type PgConnImpl struct {
+type PostgreSQLInstance struct {
 	conn     net.Conn
 	frontend *pgproto3.Frontend
+
+	hostname string
 }
 
-func (pgconn *PgConnImpl) Send(query pgproto3.FrontendMessage) error {
-	return pgconn.frontend.Send(query)
+func (pgi *PostgreSQLInstance) Hostname() string {
+	return pgi.hostname
 }
 
-func (pgconn *PgConnImpl) Receive() (pgproto3.BackendMessage, error) {
-	return pgconn.frontend.Receive()
+func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
+	return pgi.frontend.Send(query)
 }
 
-func NewPgConn(netconn net.Conn, tlscfg *tls.Config, sslmode string) (PgConn, error) {
+func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
+	return pgi.frontend.Receive()
+}
 
-	pgconn := &PgConnImpl{
-		conn: netconn,
+
+func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
+	return net.Dial(proto, addr)
+}
+
+func NewInstanceConn(cfg *config.InstanceCFG,  tlscfg *tls.Config, sslmode string) (DBInstance, error) {
+
+	instance := &PostgreSQLInstance{hostname: cfg.ConnAddr}
+
+	netconn, err := instance.connect(cfg.ConnAddr, cfg.Proto)
+	if err != nil {
+		return nil, err
 	}
 
+	instance.conn = netconn
+
 	if sslmode == config.SSLMODEREQUIRE {
-		err := pgconn.ReqBackendSsl(tlscfg)
+		err := instance.ReqBackendSsl(tlscfg)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	var err error
-	pgconn.frontend, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(pgconn.conn), pgconn.conn)
+	instance.frontend, err = pgproto3.NewFrontend(pgproto3.NewChunkReader(instance.conn), instance.conn)
 	if err != nil {
 		return nil, err
 	}
 
-	return pgconn, nil
+	return instance, nil
 }
-func (pgconn *PgConnImpl) CheckRW() (bool, error) {
+
+func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 
 	msg := &pgproto3.Query{
 		String: "SELECT pg_is_in_recovery()",
 	}
 
-	if err := pgconn.frontend.Send(msg); err != nil {
+	if err := pgi.frontend.Send(msg); err != nil {
 		return false, err
 	}
 
-	bmsg, err := pgconn.frontend.Receive()
+	bmsg, err := pgi.frontend.Receive()
 
 	if err != nil {
 		return false, err
@@ -82,9 +101,9 @@ func (pgconn *PgConnImpl) CheckRW() (bool, error) {
 	}
 }
 
-var _ PgConn = &PgConnImpl{}
+var _ DBInstance = &PostgreSQLInstance{}
 
-func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
+func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
@@ -92,7 +111,7 @@ func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 	b = append(b, 0, 0, 0, 0)
 	binary.BigEndian.PutUint32(b[4:], SSLPROTO)
 
-	_, err := pgconn.conn.Write(b)
+	_, err := pgi.conn.Write(b)
 
 	if err != nil {
 		return xerrors.Errorf("ReqBackendSsl: %w", err)
@@ -100,7 +119,7 @@ func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 
 	resp := make([]byte, 1)
 
-	if _, err := pgconn.conn.Read(resp); err != nil {
+	if _, err := pgi.conn.Read(resp); err != nil {
 		return err
 	}
 
@@ -112,6 +131,6 @@ func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 		return xerrors.New("SSL should be enabled")
 	}
 
-	pgconn.conn = tls.Client(pgconn.conn, tlscfg)
+	pgi.conn = tls.Client(pgi.conn, tlscfg)
 	return nil
 }

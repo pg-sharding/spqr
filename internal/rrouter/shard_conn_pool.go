@@ -20,7 +20,8 @@ type ShardPool interface {
 type ShardPoolImpl struct {
 	mu sync.Mutex
 
-	pool map[qrouterdb.ShardKey][]Shard
+	poolRW map[qrouterdb.ShardKey][]Shard
+	poolRO map[qrouterdb.ShardKey][]Shard
 
 	mapping map[string]*config.ShardCfg
 }
@@ -32,7 +33,7 @@ func (s *ShardPoolImpl) Check(key qrouterdb.ShardKey) bool {
 	//s.mu.Lock()
 	//defer s.mu.Unlock()
 	//
-	//return len(s.pool[key]) > 0
+	//return len(s.poolRW[key]) > 0
 }
 
 func (s *ShardPoolImpl) List() []Shard {
@@ -41,7 +42,7 @@ func (s *ShardPoolImpl) List() []Shard {
 
 	var ret []Shard
 
-	for _, shl := range s.pool {
+	for _, shl := range s.poolRW {
 		for _, sh := range shl {
 			ret = append(ret, sh)
 		}
@@ -58,13 +59,13 @@ func (s *ShardPoolImpl) Connection(key qrouterdb.ShardKey) (Shard, error) {
 
 	var sh Shard
 
-	if shds, ok := s.pool[key]; ok && len(shds) > 0 {
+	if shds, ok := s.poolRW[key]; ok && len(shds) > 0 {
 		sh, shds = shds[0], shds[1:]
-		s.pool[key] = shds
+		s.poolRW[key] = shds
 		return sh, nil
 	}
 
-	// do not hold lock on pool while allocate new connection
+	// do not hold lock on poolRW while allocate new connection
 	s.mu.Unlock()
 	{
 		tracelog.InfoLogger.Printf("acquire new connection to %v", key)
@@ -72,7 +73,7 @@ func (s *ShardPoolImpl) Connection(key qrouterdb.ShardKey) (Shard, error) {
 		cfg := s.mapping[key.Name]
 
 		var err error
-		sh, err = NewShard(key.Name, cfg)
+		sh, err = NewShard(key, cfg.Hosts[0].ConnAddr, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +87,7 @@ func (s *ShardPoolImpl) Put(sh Shard) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.pool[sh.SHKey()] = append(s.pool[sh.SHKey()], sh)
+	s.poolRW[sh.SHKey()] = append(s.poolRW[sh.SHKey()], sh)
 
 	return nil
 }
@@ -95,6 +96,6 @@ func NewShardPool(mapping map[string]*config.ShardCfg) ShardPool {
 	return &ShardPoolImpl{
 		mu:      sync.Mutex{},
 		mapping: mapping,
-		pool:    map[qrouterdb.ShardKey][]Shard{},
+		poolRW:  map[qrouterdb.ShardKey][]Shard{},
 	}
 }

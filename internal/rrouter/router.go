@@ -2,6 +2,7 @@ package rrouter
 
 import (
 	"crypto/tls"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"log"
 	"net"
 	"os"
@@ -18,6 +19,8 @@ type Router interface {
 	PreRoute(conn net.Conn) (Client, error)
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
+
+	AddShard(key qrouterdb.ShardKey, sh Shard) error
 }
 
 type RRouter struct {
@@ -30,6 +33,24 @@ type RRouter struct {
 
 	cfg *tls.Config
 	lg  *log.Logger
+
+	wgs map[qrouterdb.ShardKey]Watchdog
+}
+
+func (r *RRouter) AddShard(key qrouterdb.ShardKey, sh Shard) error {
+
+	r.mu.Lock()
+	r.mu.Unlock()
+
+	wg, err := NewShardWatchDog(config.Get().RouterConfig.ShardMapping[key.Name].Hosts, r.cfg, config.Get().RouterConfig.TLSCfg.SslMode)
+
+	if err != nil {
+		return err
+	}
+
+	r.wgs[key] = wg
+
+	return nil
 }
 
 var _ Router = &RRouter{}
