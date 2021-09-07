@@ -2,8 +2,7 @@
 addr: '[spqr_router_1_1]:6432'
 adm_addr: '[spqr_router_1_1]:7432'
 proto: 'tcp'
-http_conf:
-        addr: 'spqr_router_1_1:7000'
+http_addr: 'spqr_router_1_1:7000'
 
 executer:
         init_sql_path: "/router/docker/router/init.sql"
@@ -51,4 +50,3 @@ router:
                         db: db1
                   pool_discard: true
                   pool_rollback: true
-
