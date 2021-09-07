@@ -5,17 +5,19 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/console"
 	"github.com/pg-sharding/spqr/internal/qrouter"
+	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
 type Spqr struct {
-	Router  Router
+	Router  rrouter.Router
 	Qrouter qrouter.Qrouter
 
-	ConsoleDB Console
+	ConsoleDB console.Console
 
 	stchan chan struct{}
 
@@ -51,7 +53,7 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 		tlscfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	}
 
-	router, err := NewRouter(tlscfg)
+	router, err := rrouter.NewRouter(tlscfg)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
@@ -85,7 +87,7 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 		stchan:  make(chan struct{}),
 	}
 
-	spqr.ConsoleDB = NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
+	spqr.ConsoleDB = console.NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
 
 	executer := NewExecuter(config.Get().ExecuterCfg)
 
@@ -105,7 +107,7 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 
 	tracelog.InfoLogger.Printf("preroute ok")
 
-	cmngr, err := InitClConnection(client)
+	cmngr, err := rrouter.InitClConnection(client)
 	if err != nil {
 		return err
 	}

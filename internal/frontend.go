@@ -3,14 +3,15 @@ package internal
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/qrouter"
+	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/wal-g/tracelog"
 )
 
-func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
+func frontend(rt qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
 
 	tracelog.InfoLogger.Printf("process frontend for user %s %s", cl.Usr(), cl.DB())
 
-	rst := &RelayState{
+	rst := &rrouter.RelayState{
 		ActiveShards: nil,
 		TxActive:     false,
 	}
@@ -30,13 +31,13 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 			if cmngr.ValidateReRoute(rst) {
 				tracelog.InfoLogger.Printf("rerouting")
 
-				if err := rst.reroute(rt, cl, cmngr, v); err != nil {
+				if err := rst.Reroute(rt, cl, cmngr, v); err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)
 					continue
 				}
 			}
 
-			if err := rst.relayStep(cl, cmngr); err != nil {
+			if err := rst.RelayStep(cl, cmngr); err != nil {
 				return err
 			}
 
@@ -45,7 +46,7 @@ func frontend(rt qrouter.Qrouter, cl Client, cmngr ConnManager) error {
 				return err
 			}
 
-			if err := rst.completeRelay(cl, cmngr, txst); err != nil {
+			if err := rst.CompleteRelay(cl, cmngr, txst); err != nil {
 				return err
 			}
 

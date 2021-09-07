@@ -1,4 +1,4 @@
-package internal
+package rrouter
 
 import (
 	"bufio"
@@ -234,15 +234,15 @@ func (cl *SpqrClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.startupMsg
 }
 
-const defaultUsr = "default"
-const defaultDB = "default"
+const DefaultUsr = "default"
+const DefaultDB = "default"
 
 func (cl *SpqrClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
 
-	return defaultUsr
+	return DefaultUsr
 }
 
 func (cl *SpqrClient) DB() string {
@@ -250,7 +250,7 @@ func (cl *SpqrClient) DB() string {
 		return db
 	}
 
-	return defaultUsr
+	return DefaultUsr
 }
 
 func (cl *SpqrClient) receivepasswd() string {

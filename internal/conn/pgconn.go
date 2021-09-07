@@ -54,8 +54,6 @@ func NewPgConn(netconn net.Conn, tlscfg *tls.Config, sslmode string) (PgConn, er
 
 	return pgconn, nil
 }
-
-
 func (pgconn *PgConnImpl) CheckRW() (bool, error) {
 
 	msg := &pgproto3.Query{
@@ -84,9 +82,7 @@ func (pgconn *PgConnImpl) CheckRW() (bool, error) {
 	}
 }
 
-var _ PgConn = &PgConnImpl{
-
-}
+var _ PgConn = &PgConnImpl{}
 
 func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 

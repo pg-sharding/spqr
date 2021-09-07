@@ -1,4 +1,4 @@
-package internal
+package rrouter
 
 import (
 	"github.com/jackc/pgproto3"

@@ -1,4 +1,4 @@
-package internal
+package rrouter
 
 import (
 	"github.com/pg-sharding/spqr/internal/config"

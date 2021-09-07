@@ -1,4 +1,4 @@
-package internal
+package rrouter
 
 import (
 	"github.com/jackc/pgproto3"
@@ -14,7 +14,7 @@ type RelayState struct {
 	ActiveShards []qrouterdb.ShardKey
 }
 
-func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager, q *pgproto3.Query) error {
+func (rst *RelayState) Reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager, q *pgproto3.Query) error {
 
 	shards := rt.Route(q.String)
 
@@ -55,7 +55,7 @@ func (rst *RelayState) reroute(rt qrouter.Qrouter, cl Client, cmngr ConnManager,
 
 const TXREL = 73
 
-func (rst *RelayState) relayStep(cl Client, cmngr ConnManager) error {
+func (rst *RelayState) RelayStep(cl Client, cmngr ConnManager) error {
 
 	if !rst.TxActive {
 		if err := cmngr.TXBeginCB(cl, rst); err != nil {
@@ -67,7 +67,7 @@ func (rst *RelayState) relayStep(cl Client, cmngr ConnManager) error {
 	return nil
 }
 
-func (rst *RelayState) completeRelay(cl Client, cmngr ConnManager, txst byte) error {
+func (rst *RelayState) CompleteRelay(cl Client, cmngr ConnManager, txst byte) error {
 
 	tracelog.InfoLogger.Printf("complete relay iter with TX status %v", txst)
 
