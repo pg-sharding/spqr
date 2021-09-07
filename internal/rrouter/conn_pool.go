@@ -2,6 +2,7 @@ package rrouter
 
 import (
 	"crypto/tls"
+	"math/rand"
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/config"
@@ -11,9 +12,9 @@ import (
 )
 
 type Pool interface {
-	Connection(key string) (conn.DBInstance, error)
-	Cut(key string) []conn.DBInstance
-	Put(sh conn.DBInstance) error
+	Connection(host, shard string) (conn.DBInstance, error)
+	Cut(host string) []conn.DBInstance
+	Put(host conn.DBInstance) error
 	List() []conn.DBInstance
 }
 
@@ -24,17 +25,17 @@ type cPool struct {
 	mapping map[string]*config.ShardCfg
 }
 
-func (c *cPool) Cut(key string) []conn.DBInstance {
+func (c *cPool) Cut(host string) []conn.DBInstance {
 	var ret []conn.DBInstance
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, instance := range c.pool[key] {
+	for _, instance := range c.pool[host] {
 		ret = append(ret, instance)
 	}
 
-	c.pool[key] = nil
+	c.pool[host] = nil
 
 	return ret
 }
@@ -52,27 +53,32 @@ func (c *cPool) List() []conn.DBInstance {
 	return ret
 }
 
-func (c *cPool) Connection(key string) (conn.DBInstance, error) {
+func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	var sh conn.DBInstance
 
-	if shds, ok := c.pool[key]; ok && len(shds) > 0 {
+	if shds, ok := c.pool[host]; ok && len(shds) > 0 {
 		sh, shds = shds[0], shds[1:]
-		c.pool[key] = shds
+		c.pool[host] = shds
 		return sh, nil
 	}
 
 	// do not hold lock on poolRW while allocate new connection
 	c.mu.Unlock()
 	{
-		tracelog.InfoLogger.Printf("acquire new connection to %v", key)
+		tracelog.InfoLogger.Printf("acquire new connection to %v", host)
+		var hostCfg *config.InstanceCFG
 
-		cfg := c.mapping[key]
+		for _, h := range config.Get().RouterConfig.ShardMapping[shard].Hosts {
+			if h.ConnAddr == host {
+				hostCfg = h
+			}
+		}
 
 		var err error
-		sh, err = conn.NewInstanceConn(cfg.Hosts[0], c.mapping[key].TLSConfig, cfg.TLSCfg.SslMode)
+		sh, err = conn.NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
 		if err != nil {
 			return nil, err
 		}
@@ -166,9 +172,14 @@ func (s *InstancePoolImpl) Connection(key qrouterdb.ShardKey) (conn.DBInstance, 
 
 	switch key.RW {
 	case true:
-		return s.poolRW.Connection(key.Name)
+		pr := s.primaries[key.Name]
+		return s.poolRW.Connection(key.Name, pr)
 	case false:
-		return s.poolRO.Connection(key.Name)
+		hosts := config.Get().RouterConfig.ShardMapping[key.Name].Hosts
+		rand.Shuffle(len(hosts), func(i, j int) {
+			hosts[j], hosts[i] = hosts[i], hosts[j]
+		})
+		return s.poolRO.Connection(key.Name, hosts[0].ConnAddr)
 	default:
 		panic("never")
 	}

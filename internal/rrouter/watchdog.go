@@ -108,7 +108,7 @@ func (s *ShardPrimaryWatchdog) Run() {
 							return nil
 						})
 
-						break
+						return
 					} else if err != nil {
 						tracelog.InfoLogger.Printf("failed to check primary on %s", host.Hostname())
 					}

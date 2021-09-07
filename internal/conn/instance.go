@@ -85,12 +85,14 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 	}
 
 	if err := pgi.frontend.Send(msg); err != nil {
+		tracelog.InfoLogger.Printf("got error while checking rw %v", err)
 		return false, err
 	}
 
 	bmsg, err := pgi.frontend.Receive()
 
 	if err != nil {
+		tracelog.InfoLogger.Printf("got error while checking rw %v", err)
 		return false, err
 	}
 	tracelog.InfoLogger.Printf("got reply from %v: %T", pgi.hostname, bmsg)
