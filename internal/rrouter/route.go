@@ -32,7 +32,7 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 	return &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: NewShardPool(mapping),
+		servPool: NewConnPool(mapping),
 		clPool:   NewClientPool(),
 	}
 }

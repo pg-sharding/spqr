@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	dataFolder string
+	cfgPath string
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&dataFolder, "data", "d", "", "path to data folder")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/config.yaml", "path to data folder")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -24,10 +24,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run SPQR",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Load(dataFolder); err != nil {
+		if err := config.Load(cfgPath); err != nil {
 			return err
 		}
-		spqr, err := internal.NewSpqr(dataFolder)
+		spqr, err := internal.NewSpqr(cfgPath)
 		if err != nil {
 			return errors.Wrap(err, "SPQR creation failed")
 		}

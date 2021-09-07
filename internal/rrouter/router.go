@@ -2,7 +2,6 @@ package rrouter
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"log"
 	"net"
 	"os"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -79,7 +79,9 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 		frontendRules: map[routeKey]*config.FRRule{},
 		backendRules:  map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
+		wgs:           map[qrouterdb.ShardKey]Watchdog{},
 	}
+
 	for _, berule := range config.Get().RouterConfig.BackendRules {
 		key := routeKey{
 			usr: berule.RK.Usr,

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -23,9 +22,8 @@ type Spqr struct {
 
 var cfg Spqr
 
-func Load(dataFolder string) error {
-	configPath := filepath.Join(dataFolder, "cfg.yaml")
-	file, err := os.Open(configPath)
+func Load(cfgPath string) error {
+	file, err := os.Open(cfgPath)
 	if err != nil {
 		return err
 	}

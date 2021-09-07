@@ -2,11 +2,12 @@ package rrouter
 
 import (
 	"crypto/tls"
+	"sync"
+	"time"
+
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/wal-g/tracelog"
-	"sync"
-	"time"
 )
 
 type Watchdog interface {
@@ -31,14 +32,14 @@ func NewShardWatchDog(cfgs []*config.InstanceCFG, tlscfg *tls.Config, sslmode st
 
 	return &ShardPrimaryWatchdog{
 		hostConns: hostConns,
-		tlscfg: tlscfg,
-		sslmode: sslmode,
+		tlscfg:    tlscfg,
+		sslmode:   sslmode,
 	}, nil
 }
 
 type ShardPrimaryWatchdog struct {
-	mu sync.Mutex
-	tlscfg *tls.Config
+	mu      sync.Mutex
+	tlscfg  *tls.Config
 	sslmode string
 
 	hostConns []conn.DBInstance
@@ -57,7 +58,7 @@ func (s *ShardPrimaryWatchdog) AddInstance(cfg *config.InstanceCFG) error {
 	return nil
 }
 
-func (s *ShardPrimaryWatchdog) Run () {
+func (s *ShardPrimaryWatchdog) Run() {
 	go func() {
 
 		var prvMaster conn.DBInstance
@@ -93,11 +94,8 @@ func (s *ShardPrimaryWatchdog) Run () {
 	}()
 }
 
-
-
 func (s *ShardPrimaryWatchdog) Watch(sh Shard) {
 	// add to notify queue
 }
 
 var _ Watchdog = &ShardPrimaryWatchdog{}
-

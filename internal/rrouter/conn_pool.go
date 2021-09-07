@@ -2,17 +2,17 @@ package rrouter
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/internal/conn"
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/wal-g/tracelog"
 )
 
-
 type Pool interface {
-	Connection(key string, tlscfg *tls.Config) (conn.DBInstance, error)
+	Connection(key string) (conn.DBInstance, error)
+	Cut(key string) []conn.DBInstance
 	Put(sh conn.DBInstance) error
 	List() []conn.DBInstance
 }
@@ -22,6 +22,21 @@ type cPool struct {
 	pool map[string][]conn.DBInstance
 
 	mapping map[string]*config.ShardCfg
+}
+
+func (c *cPool) Cut(key string) []conn.DBInstance {
+	var ret []conn.DBInstance
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, instance := range c.pool[key] {
+		ret = append(ret, instance)
+	}
+
+	c.pool[key] = nil
+
+	return ret
 }
 
 func (c *cPool) List() []conn.DBInstance {
@@ -37,7 +52,7 @@ func (c *cPool) List() []conn.DBInstance {
 	return ret
 }
 
-func (c *cPool) Connection(key string, tlscfg *tls.Config) (conn.DBInstance, error) {
+func (c *cPool) Connection(key string) (conn.DBInstance, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -57,14 +72,14 @@ func (c *cPool) Connection(key string, tlscfg *tls.Config) (conn.DBInstance, err
 		cfg := c.mapping[key]
 
 		var err error
-		sh, err = conn.NewInstanceConn(cfg.Hosts[0], tlscfg, cfg.Hosts[0].ConnAddr)
+		sh, err = conn.NewInstanceConn(cfg.Hosts[0], c.mapping[key].TLSConfig, cfg.TLSCfg.SslMode)
 		if err != nil {
 			return nil, err
 		}
 	}
 	c.mu.Lock()
 
-	return nil, nil
+	return sh, nil
 }
 
 func (c *cPool) Put(sh conn.DBInstance) error {
@@ -78,15 +93,13 @@ func (c *cPool) Put(sh conn.DBInstance) error {
 
 func NewPool(mapping map[string]*config.ShardCfg) *cPool {
 	return &cPool{
-		mu: sync.Mutex{},
-		pool: map[string][]conn.DBInstance{},
+		mu:      sync.Mutex{},
+		pool:    map[string][]conn.DBInstance{},
 		mapping: mapping,
 	}
 }
 
-var _ Pool = &cPool{
-
-}
+var _ Pool = &cPool{}
 
 type ConnPool interface {
 	Connection(key qrouterdb.ShardKey) (conn.DBInstance, error)
@@ -94,15 +107,32 @@ type ConnPool interface {
 
 	Check(key qrouterdb.ShardKey) bool
 
+	UpdateHostStatus(hostname string, rw bool) error
+
 	List() []conn.DBInstance
 }
 
 type InstancePoolImpl struct {
-
 	poolRW Pool
 	poolRO Pool
 
 	tlscfg *tls.Config
+}
+
+func (s *InstancePoolImpl) UpdateHostStatus(hostname string, rw bool) error {
+
+	src := s.poolRW
+	dest := s.poolRO
+
+	if rw {
+		src, dest = dest, src
+	}
+
+	for _, instance := range src.Cut(hostname) {
+		_ = dest.Put(instance)
+	}
+
+	return nil
 }
 
 func (s *InstancePoolImpl) Check(key qrouterdb.ShardKey) bool {
@@ -126,9 +156,9 @@ func (s *InstancePoolImpl) Connection(key qrouterdb.ShardKey) (conn.DBInstance, 
 
 	switch key.RW {
 	case true:
-		return s.poolRO.Connection(key.Name, s.tlscfg)
+		return s.poolRW.Connection(key.Name)
 	case false:
-		return s.poolRO.Connection(key.Name, s.tlscfg)
+		return s.poolRO.Connection(key.Name)
 	default:
 		panic("never")
 	}
@@ -147,7 +177,7 @@ func (s *InstancePoolImpl) Put(shkey qrouterdb.ShardKey, sh conn.DBInstance) err
 	}
 }
 
-func NewShardPool(mapping map[string]*config.ShardCfg) ConnPool {
+func NewConnPool(mapping map[string]*config.ShardCfg) ConnPool {
 	return &InstancePoolImpl{
 		poolRW: NewPool(mapping),
 		poolRO: NewPool(mapping),

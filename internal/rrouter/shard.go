@@ -27,8 +27,6 @@ type Shard interface {
 	ReqBackendSsl(tlscfg *tls.Config) error
 
 	ConstructSMh() *pgproto3.StartupMessage
-
-
 	Instance() conn.DBInstance
 }
 

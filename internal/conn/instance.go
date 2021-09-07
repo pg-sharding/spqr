@@ -41,13 +41,11 @@ func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 	return pgi.frontend.Receive()
 }
-
-
 func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
 	return net.Dial(proto, addr)
 }
 
-func NewInstanceConn(cfg *config.InstanceCFG,  tlscfg *tls.Config, sslmode string) (DBInstance, error) {
+func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string) (DBInstance, error) {
 
 	instance := &PostgreSQLInstance{hostname: cfg.ConnAddr}
 
