@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 type Spqr struct {
@@ -15,7 +16,7 @@ type Spqr struct {
 	Cfg *config.SpqrConfig
 
 	Router  Router
-	Qrouter *qrouter.QrouterImpl
+	Qrouter qrouter.Qrouter
 
 	ConsoleDB Console
 
@@ -28,30 +29,39 @@ const defaultProto = "tcp"
 
 func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 
-	qr, err := qrouter.NewQrouter()
-	if err != nil {
-		return nil, err
+	var qr qrouter.Qrouter
+	var err error
+
+	switch cfg.QRouterCfg.Qtype {
+	case config.ShardQrouter:
+		qr, err = qrouter.NewQrouter()
+		if err != nil {
+			return nil, err
+		}
+
+	case config.LocalQrouter:
+		qr = qrouter.NewLocalQrouter(cfg.QRouterCfg.LocalShard)
+	default:
+		return nil, xerrors.Errorf("unknown qrouter type %v", cfg.QRouterCfg.Qtype)
 	}
-
-
 	var tlscfg *tls.Config
-	if cfg.RouterCfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
-		cert, err := tls.LoadX509KeyPair(cfg.RouterCfg.TLSCfg.CertFile, cfg.RouterCfg.TLSCfg.KeyFile)
-		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", cfg.RouterCfg.TLSCfg.CertFile, cfg.RouterCfg.TLSCfg.KeyFile)
+	if cfg.RRouterCfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
+		cert, err := tls.LoadX509KeyPair(cfg.RRouterCfg.TLSCfg.CertFile, cfg.RRouterCfg.TLSCfg.KeyFile)
+		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", cfg.RRouterCfg.TLSCfg.CertFile, cfg.RRouterCfg.TLSCfg.KeyFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load frontend tls conf")
 		}
 		tlscfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	}
 
-	router, err := NewRouter(cfg.RouterCfg, tlscfg)
+	router, err := NewRouter(cfg.RRouterCfg, tlscfg)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
-	tracelog.InfoLogger.Printf("%v", cfg.RouterCfg.ShardMapping)
+	tracelog.InfoLogger.Printf("%v", cfg.RRouterCfg.ShardMapping)
 
-	for name, shard := range cfg.RouterCfg.ShardMapping {
+	for name, shard := range cfg.RRouterCfg.ShardMapping {
 		if shard.TLSCfg.SslMode != config.SSLMODEDISABLE {
 			cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 			if err != nil {
@@ -73,10 +83,10 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 	}
 
 	spqr := &Spqr{
-		Cfg:         cfg,
-		Router:      router,
-		Qrouter:     qr,
-		stchan:      make(chan struct{}),
+		Cfg:     cfg,
+		Router:  router,
+		Qrouter: qr,
+		stchan:  make(chan struct{}),
 	}
 
 	spqr.ConsoleDB = NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)

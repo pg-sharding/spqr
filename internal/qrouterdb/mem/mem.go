@@ -9,7 +9,7 @@ import (
 )
 
 type QrouterDBMem struct {
-	mu sync.Mutex
+	mu   sync.Mutex
 	txmu sync.Mutex
 
 	freq map[string]int

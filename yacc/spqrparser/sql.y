@@ -171,7 +171,7 @@ key_range_spec_bound:
     {
       $$, _ = strconv.Atoi(string($1))
     }
-
+    
 key_range_spec_shid:
     STRING
     {

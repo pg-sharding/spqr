@@ -13,7 +13,6 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-
 type Router interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (Client, error)
@@ -22,7 +21,7 @@ type Router interface {
 }
 
 type RRouter struct {
-	Cfg       config.RouterConfig
+	RCfg      config.RouterConfig
 	routePool RoutePool
 
 	frontendRules map[routeKey]*config.FRRule
@@ -34,9 +33,7 @@ type RRouter struct {
 	lg  *log.Logger
 }
 
-var _ Router = &RRouter{
-
-}
+var _ Router = &RRouter{}
 
 func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
@@ -53,14 +50,12 @@ func NewRouter(cfg config.RouterConfig, tlscfg *tls.Config) (*RRouter, error) {
 	}
 
 	router := &RRouter{
-		Cfg:           cfg,
+		RCfg:          cfg,
 		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
 		frontendRules: map[routeKey]*config.FRRule{},
-		backendRules: map[routeKey]*config.BERule{},
+		backendRules:  map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
 	}
-
-
 	for _, berule := range cfg.BackendRules {
 		key := routeKey{
 			usr: berule.RK.Usr,
@@ -80,7 +75,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.cfg, r.Cfg.TLSCfg.SslMode); err != nil {
+	if err := cl.Init(r.cfg, r.RCfg.TLSCfg.SslMode); err != nil {
 		return nil, err
 	}
 
@@ -132,7 +127,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 func (r *RRouter) ListShards() []string {
 	var ret []string
 
-	for _, sh := range r.Cfg.ShardMapping {
+	for _, sh := range r.RCfg.ShardMapping {
 		ret = append(ret, sh.Hosts[0].ConnAddr)
 	}
 

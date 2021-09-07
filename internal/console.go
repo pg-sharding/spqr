@@ -33,11 +33,11 @@ func (c *ConsoleImpl) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter,stchan chan struct{}) *ConsoleImpl {
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) *ConsoleImpl {
 	return &ConsoleImpl{
 		Qrouter: Qrouter,
 		cfg:     cfg,
-		stchan: stchan}
+		stchan:  stchan}
 }
 
 func (c *ConsoleImpl) Databases(cl Client) error {
@@ -96,7 +96,7 @@ func (c *ConsoleImpl) AddShardingColumn(cl Client, stmt *spqrparser.ShardingColu
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-	err := c.Qrouter.AddColumn(stmt.ColName)
+	err := c.Qrouter.AddShardingColumn(stmt.ColName)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{

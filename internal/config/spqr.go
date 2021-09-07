@@ -5,7 +5,9 @@ type SpqrConfig struct {
 	ADMAddr string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"`
 	PROTO   string `json:"proto" toml:"proto" yaml:"proto"`
 
-	RouterCfg RouterConfig `json:"router" toml:"router" yaml:"router"`
+	RRouterCfg RouterConfig `json:"router" toml:"router" yaml:"router"`
+
+	QRouterCfg QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
 
 	HttpConfig HttpConf `json:"http_conf" toml:"http_conf" yaml:"http_conf"`
 
