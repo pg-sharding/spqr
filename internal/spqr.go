@@ -12,9 +12,6 @@ import (
 )
 
 type Spqr struct {
-	//TODO add some fiels from spqrconfig
-	Cfg *config.SpqrConfig
-
 	Router  Router
 	Qrouter qrouter.Qrouter
 
@@ -27,12 +24,12 @@ type Spqr struct {
 
 const defaultProto = "tcp"
 
-func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
+func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 
 	var qr qrouter.Qrouter
 	var err error
 
-	switch cfg.QRouterCfg.Qtype {
+	switch config.Get().QRouterCfg.Qtype {
 	case config.ShardQrouter:
 		qr, err = qrouter.NewQrouter()
 		if err != nil {
@@ -40,28 +37,28 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 		}
 
 	case config.LocalQrouter:
-		qr = qrouter.NewLocalQrouter(cfg.QRouterCfg.LocalShard)
+		qr = qrouter.NewLocalQrouter(config.Get().QRouterCfg.LocalShard)
 	default:
-		return nil, xerrors.Errorf("unknown qrouter type %v", cfg.QRouterCfg.Qtype)
+		return nil, xerrors.Errorf("unknown qrouter type %v", config.Get().QRouterCfg.Qtype)
 	}
 	var tlscfg *tls.Config
-	if cfg.RRouterCfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
-		cert, err := tls.LoadX509KeyPair(cfg.RRouterCfg.TLSCfg.CertFile, cfg.RRouterCfg.TLSCfg.KeyFile)
-		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", cfg.RRouterCfg.TLSCfg.CertFile, cfg.RRouterCfg.TLSCfg.KeyFile)
-		if err != nil {
+	if config.Get().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
+		cert, err := tls.LoadX509KeyPair(config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
+		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
+	if err != nil {
 			return nil, errors.Wrap(err, "failed to load frontend tls conf")
-		}
+	}
 		tlscfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	}
 
-	router, err := NewRouter(cfg.RRouterCfg, tlscfg)
+	router, err := NewRouter(config.Get().RouterConfig, tlscfg)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
-	tracelog.InfoLogger.Printf("%v", cfg.RRouterCfg.ShardMapping)
+	tracelog.InfoLogger.Printf("%v", config.Get().RouterConfig.ShardMapping)
 
-	for name, shard := range cfg.RRouterCfg.ShardMapping {
+	for name, shard := range config.Get().RouterConfig.ShardMapping {
 		if shard.TLSCfg.SslMode != config.SSLMODEDISABLE {
 			cert, err := tls.LoadX509KeyPair(shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 			if err != nil {
@@ -83,7 +80,6 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 	}
 
 	spqr := &Spqr{
-		Cfg:     cfg,
 		Router:  router,
 		Qrouter: qr,
 		stchan:  make(chan struct{}),
@@ -91,7 +87,7 @@ func NewSpqr(cfg *config.SpqrConfig) (*Spqr, error) {
 
 	spqr.ConsoleDB = NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
 
-	executer := NewExecuter(cfg.ExecuterCfg)
+	executer := NewExecuter(config.Get().ExecuterCfg)
 
 	_ = executer.SPIexec(spqr.ConsoleDB, NewFakeClient())
 
