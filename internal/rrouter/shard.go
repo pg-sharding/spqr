@@ -27,6 +27,9 @@ type Shard interface {
 	ReqBackendSsl(tlscfg *tls.Config) error
 
 	ConstructSMh() *pgproto3.StartupMessage
+
+
+	Instance() conn.DBInstance
 }
 
 func (sh *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
@@ -55,6 +58,10 @@ type ShardImpl struct {
 	dedicated conn.DBInstance
 
 	primary string
+}
+
+func (sh *ShardImpl) Instance() conn.DBInstance {
+	return sh.dedicated
 }
 
 func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
@@ -91,29 +98,12 @@ func (sh *ShardImpl) SHKey() qrouterdb.ShardKey {
 	}
 }
 
-func NewShard(key qrouterdb.ShardKey, dedicatedHost string, cfg *config.ShardCfg) (Shard, error) {
+func NewShard(key qrouterdb.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard, error) {
 
 	sh := &ShardImpl{
 		cfg:  cfg,
 		name: key.Name,
 	}
-
-	// move to init
-
-	var dedicatedCfg *config.InstanceCFG
-
-	for _, hostCfg := range cfg.Hosts {
-		if hostCfg.ConnAddr == dedicatedHost {
-			dedicatedCfg = hostCfg
-		}
-	}
-
-	pgi, err := conn.NewInstanceConn(dedicatedCfg, cfg.TLSConfig, cfg.TLSCfg.SslMode)
-
-	if err != nil {
-		return nil, err
-	}
-
 
 	sh.dedicated = pgi
 

@@ -5,13 +5,14 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/conn"
 	"github.com/wal-g/tracelog"
+	"sync"
 	"time"
 )
 
 type Watchdog interface {
 	Watch(sh Shard)
+	AddInstance(cfg *config.InstanceCFG) error
 }
-
 
 func NewShardWatchDog(cfgs []*config.InstanceCFG, tlscfg *tls.Config, sslmode string) (Watchdog, error) {
 
@@ -30,11 +31,30 @@ func NewShardWatchDog(cfgs []*config.InstanceCFG, tlscfg *tls.Config, sslmode st
 
 	return &ShardPrimaryWatchdog{
 		hostConns: hostConns,
+		tlscfg: tlscfg,
+		sslmode: sslmode,
 	}, nil
 }
 
 type ShardPrimaryWatchdog struct {
+	mu sync.Mutex
+	tlscfg *tls.Config
+	sslmode string
+
 	hostConns []conn.DBInstance
+}
+
+func (s *ShardPrimaryWatchdog) AddInstance(cfg *config.InstanceCFG) error {
+	instance, err := conn.NewInstanceConn(cfg, s.tlscfg, s.sslmode)
+	if err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.hostConns = append(s.hostConns, instance)
+	return nil
 }
 
 func (s *ShardPrimaryWatchdog) Run () {
@@ -72,6 +92,8 @@ func (s *ShardPrimaryWatchdog) Run () {
 
 	}()
 }
+
+
 
 func (s *ShardPrimaryWatchdog) Watch(sh Shard) {
 	// add to notify queue

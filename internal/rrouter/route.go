@@ -25,7 +25,7 @@ type Route struct {
 	frRule *config.FRRule
 
 	clPool   ClientPool
-	servPool ShardPool
+	servPool ConnPool
 }
 
 func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {

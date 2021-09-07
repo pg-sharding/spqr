@@ -20,7 +20,8 @@ type Router interface {
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
 
-	AddShard(key qrouterdb.ShardKey, sh Shard) error
+	AddShard(key qrouterdb.ShardKey) error
+	AddInstance(key qrouterdb.ShardKey, cfg *config.InstanceCFG)
 }
 
 type RRouter struct {
@@ -37,16 +38,20 @@ type RRouter struct {
 	wgs map[qrouterdb.ShardKey]Watchdog
 }
 
-func (r *RRouter) AddShard(key qrouterdb.ShardKey, sh Shard) error {
+func (r *RRouter) AddInstance(key qrouterdb.ShardKey, cfg *config.InstanceCFG) {
 
-	r.mu.Lock()
-	r.mu.Unlock()
+	panic("implement me")
+}
 
+func (r *RRouter) AddShard(key qrouterdb.ShardKey) error {
 	wg, err := NewShardWatchDog(config.Get().RouterConfig.ShardMapping[key.Name].Hosts, r.cfg, config.Get().RouterConfig.TLSCfg.SslMode)
 
 	if err != nil {
 		return err
 	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	r.wgs[key] = wg
 

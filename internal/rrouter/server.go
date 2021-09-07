@@ -28,7 +28,7 @@ type Server interface {
 type ShardServer struct {
 	rule *config.BERule
 
-	pool ShardPool
+	pool ConnPool
 
 	shard Shard
 }
@@ -39,7 +39,7 @@ func (srv *ShardServer) UnrouteShard(shkey qrouterdb.ShardKey) error {
 		return xerrors.New("active shard does not match unrouted")
 	}
 
-	if err := srv.pool.Put(srv.shard); err != nil {
+	if err := srv.pool.Put(shkey, srv.shard.Instance()); err != nil {
 		return err
 	}
 
@@ -53,10 +53,13 @@ func (srv *ShardServer) AddShard(shkey qrouterdb.ShardKey) error {
 		return xerrors.New("single shard server does not support more than 2 shard connection simultaneously")
 	}
 
-	if sh, err := srv.pool.Connection(shkey); err != nil {
+	if pgi, err := srv.pool.Connection(shkey); err != nil {
 		return err
 	} else {
-		srv.shard = sh
+		srv.shard, err = NewShard(shkey, pgi, config.Get().RouterConfig.ShardMapping[shkey.Name])
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -66,7 +69,7 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	return srv.shard.ReqBackendSsl(cfg)
 }
 
-func NewShardServer(rule *config.BERule, spool ShardPool) *ShardServer {
+func NewShardServer(rule *config.BERule, spool ConnPool) *ShardServer {
 	return &ShardServer{
 		rule: rule,
 		pool: spool,
@@ -105,30 +108,41 @@ func (srv *ShardServer) Cleanup() error {
 var _ Server = &ShardServer{}
 
 type MultiShardServer struct {
-	rule       *config.BERule
-	activePool ShardPool
+	rule         *config.BERule
+	activeShards []Shard
 
-	pool ShardPool
+	pool ConnPool
 }
 
 func (m *MultiShardServer) AddShard(shkey qrouterdb.ShardKey) error {
-	sh, err := m.pool.Connection(shkey)
+	pgi, err := m.pool.Connection(shkey)
 	if err != nil {
 		return err
 	}
 
-	return m.activePool.Put(sh)
-}
-
-func (m *MultiShardServer) UnrouteShard(sh qrouterdb.ShardKey) error {
-	if !m.activePool.Check(sh) {
-		return xerrors.New("unrouted shard does not match any of active")
+	sh, err := NewShard(shkey, pgi, config.Get().RouterConfig.ShardMapping[shkey.Name])
+	if err != nil {
+		return err
 	}
+
+	m.activeShards = append(m.activeShards, sh)
+
 	return nil
 }
 
+func (m *MultiShardServer) UnrouteShard(sh qrouterdb.ShardKey) error {
+
+	for _, activeShard := range m.activeShards {
+		if activeShard.Name() == sh.Name {
+			return nil
+		}
+	}
+
+	return xerrors.New("unrouted shard does not match any of active")
+}
+
 func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
-	for _, shard := range m.activePool.List() {
+	for _, shard := range m.activeShards {
 		_ = shard.ReqBackendSsl(cfg)
 	}
 
@@ -136,7 +150,7 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 }
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
-	for _, shard := range m.activePool.List() {
+	for _, shard := range m.activeShards {
 		tracelog.InfoLogger.Printf("sending Q to sh %v", shard.Name())
 		err := shard.Send(msg)
 		if err != nil {
@@ -149,15 +163,12 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 }
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
-
-	shrds := m.activePool.List()
-
-	ch := make(chan pgproto3.BackendMessage, len(shrds))
+	ch := make(chan pgproto3.BackendMessage, len(m.activeShards))
 
 	wg := sync.WaitGroup{}
 
-	wg.Add(len(shrds))
-	for _, shard := range shrds {
+	wg.Add(len(m.activeShards))
+	for _, shard := range m.activeShards {
 		tracelog.InfoLogger.Printf("recv mult resp from sh %s", shard.Name())
 
 		go func(shard Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
@@ -178,7 +189,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	wg.Wait()
 	close(ch)
 
-	msgs := make([]pgproto3.BackendMessage, 0, len(shrds))
+	msgs := make([]pgproto3.BackendMessage, 0, len(m.activeShards))
 
 	for {
 		msg, ok := <-ch
@@ -245,11 +256,11 @@ func (m *MultiShardServer) Cleanup() error {
 
 var _ Server = &MultiShardServer{}
 
-func NewMultiShardServer(rule *config.BERule, pool ShardPool) (Server, error) {
+func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
 	ret := &MultiShardServer{
-		rule:       rule,
-		pool:       pool,
-		activePool: NewShardPool(map[string]*config.ShardCfg{}),
+		rule:         rule,
+		pool:         pool,
+		activeShards: []Shard{},
 	}
 
 	return ret, nil
