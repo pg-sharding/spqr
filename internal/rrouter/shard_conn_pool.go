@@ -61,8 +61,12 @@ func (s *ShardPoolImpl) Connection(key qrouterdb.ShardKey) (Shard, error) {
 	if shds, ok := s.pool[key]; ok && len(shds) > 0 {
 		sh, shds = shds[0], shds[1:]
 		s.pool[key] = shds
-	} else {
+		return sh, nil
+	}
 
+	// do not hold lock on pool while allocate new connection
+	s.mu.Unlock()
+	{
 		tracelog.InfoLogger.Printf("acquire new connection to %v", key)
 
 		cfg := s.mapping[key.Name]
@@ -73,6 +77,7 @@ func (s *ShardPoolImpl) Connection(key qrouterdb.ShardKey) (Shard, error) {
 			return nil, err
 		}
 	}
+	s.mu.Lock()
 
 	return sh, nil
 }
