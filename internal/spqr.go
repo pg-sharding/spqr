@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 
+	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/console"
 	"github.com/pg-sharding/spqr/internal/qrouter"
@@ -23,6 +24,8 @@ type Spqr struct {
 	stchan chan struct{}
 
 	SPIexecuter *Executer
+
+	frTLS *tls.Config
 }
 
 func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
@@ -42,10 +45,13 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 	default:
 		return nil, xerrors.Errorf("unknown qrouter type %v", config.Get().QRouterCfg.Qtype)
 	}
+
 	var tlscfg *tls.Config
+
 	if config.Get().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		cert, err := tls.LoadX509KeyPair(config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
 		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
+
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load frontend tls conf")
 		}
@@ -66,9 +72,9 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 				return nil, errors.Wrap(err, "failed to make route failure resp")
 			}
 
-			tlscfg := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+			shardTLS := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
-			if err := shard.Init(tlscfg); err != nil {
+			if err := shard.Init(shardTLS); err != nil {
 				return nil, err
 			}
 		}
@@ -84,13 +90,14 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 		Router:  router,
 		Qrouter: qr,
 		stchan:  make(chan struct{}),
+		frTLS:   tlscfg,
 	}
 
 	spqr.ConsoleDB = console.NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
 
 	executer := NewExecuter(config.Get().ExecuterCfg)
 
-	_ = executer.SPIexec(spqr.ConsoleDB, NewFakeClient())
+	_ = executer.SPIexec(spqr.ConsoleDB, rrouter.NewFakeClient())
 
 	spqr.SPIexecuter = executer
 
@@ -148,7 +155,27 @@ func (sg *Spqr) Run(listener net.Listener) error {
 		}
 	}
 }
+func (sg *Spqr) servAdm(netconn net.Conn) error {
 
+	cl := rrouter.NewClient(netconn)
+
+	if err := cl.Init(sg.frTLS, config.SSLMODEDISABLE); err != nil {
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.ErrorLogger.Fatal(err)
+		}
+	}
+
+	return sg.ConsoleDB.Serve(cl)
+}
 func (sg *Spqr) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
@@ -156,7 +183,7 @@ func (sg *Spqr) RunAdm(listener net.Listener) error {
 			return errors.Wrap(err, "RunAdm failed")
 		}
 		go func() {
-			if err := sg.ConsoleDB.Serve(conn); err != nil {
+			if err := sg.servAdm(conn); err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 		}()

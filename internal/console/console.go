@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
@@ -16,33 +15,33 @@ import (
 )
 
 type Console interface {
-	Serve(netconn net.Conn) error
+	Serve(cl rrouter.Client) error
 	ProcessQuery(q string, cl rrouter.Client) error
 	Shutdown() error
 }
 
-type ConsoleImpl struct {
+type ConsoleDB struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
 
 	stchan chan struct{}
 }
 
-var _ Console = &ConsoleImpl{}
+var _ Console = &ConsoleDB{}
 
-func (c *ConsoleImpl) Shutdown() error {
+func (c *ConsoleDB) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) *ConsoleImpl {
-	return &ConsoleImpl{
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) *ConsoleDB {
+	return &ConsoleDB{
 		Qrouter: Qrouter,
 		cfg:     cfg,
 		stchan:  stchan,
 	}
 }
 
-func (c *ConsoleImpl) Databases(cl rrouter.Client) error {
+func (c *ConsoleDB) Databases(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -68,7 +67,7 @@ func (c *ConsoleImpl) Databases(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) Pools(cl rrouter.Client) error {
+func (c *ConsoleDB) Pools(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -94,7 +93,7 @@ func (c *ConsoleImpl) Pools(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingColumn) error {
+func (c *ConsoleDB) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingColumn) error {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
@@ -125,7 +124,7 @@ func (c *ConsoleImpl) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.Shar
 	return nil
 }
 
-func (c *ConsoleImpl) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRange) error {
+func (c *ConsoleDB) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRange) error {
 	if err := c.Qrouter.Split(splitReq); err != nil {
 		return err
 	}
@@ -157,7 +156,7 @@ func (c *ConsoleImpl) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.Spli
 	return nil
 }
 
-func (c *ConsoleImpl) LockKeyRange(cl rrouter.Client, krid string) error {
+func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
 	if err := c.Qrouter.Lock(krid); err != nil {
 		return err
@@ -188,7 +187,7 @@ func (c *ConsoleImpl) LockKeyRange(cl rrouter.Client, krid string) error {
 	return nil
 }
 
-func (c *ConsoleImpl) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) error {
+func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
 
@@ -219,7 +218,7 @@ func (c *ConsoleImpl) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) er
 	return nil
 }
 
-func (c *ConsoleImpl) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
+func (c *ConsoleDB) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
 
 	err := c.Qrouter.AddShard(shard.Name, cfg)
 
@@ -248,7 +247,7 @@ func (c *ConsoleImpl) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *
 	return nil
 }
 
-func (c *ConsoleImpl) KeyRanges(cl rrouter.Client) error {
+func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
@@ -298,7 +297,7 @@ func (c *ConsoleImpl) KeyRanges(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) Shards(cl rrouter.Client) error {
+func (c *ConsoleDB) Shards(cl rrouter.Client) error {
 
 	tracelog.InfoLogger.Printf("listing shards")
 
@@ -348,7 +347,7 @@ func (c *ConsoleImpl) Shards(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) ProcessQuery(q string, cl rrouter.Client) error {
+func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -399,24 +398,7 @@ func (c *ConsoleImpl) ProcessQuery(q string, cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleImpl) Serve(netconn net.Conn) error {
-	cl := rrouter.NewClient(netconn)
-
-	if err := cl.Init(c.cfg, config.SSLMODEDISABLE); err != nil {
-		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			tracelog.ErrorLogger.Fatal(err)
-		}
-	}
-
+func (c *ConsoleDB) Serve(cl rrouter.Client) error {
 	for {
 		msg, err := cl.Receive()
 
