@@ -21,7 +21,6 @@ type Router interface {
 }
 
 type RRouter struct {
-	RCfg      config.RouterConfig
 	routePool RoutePool
 
 	frontendRules map[routeKey]*config.FRRule
@@ -39,10 +38,10 @@ func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func NewRouter(cfg config.RouterConfig, tlscfg *tls.Config) (*RRouter, error) {
+func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	frs := make(map[routeKey]*config.FRRule)
 
-	for _, e := range cfg.FrontendRules {
+	for _, e := range config.Get().RouterConfig.FrontendRules {
 		frs[routeKey{
 			usr: e.RK.Usr,
 			db:  e.RK.DB,
@@ -50,13 +49,12 @@ func NewRouter(cfg config.RouterConfig, tlscfg *tls.Config) (*RRouter, error) {
 	}
 
 	router := &RRouter{
-		RCfg:          cfg,
-		routePool:     NewRouterPoolImpl(cfg.ShardMapping),
+		routePool:     NewRouterPoolImpl(config.Get().RouterConfig.ShardMapping),
 		frontendRules: map[routeKey]*config.FRRule{},
 		backendRules:  map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
 	}
-	for _, berule := range cfg.BackendRules {
+	for _, berule := range config.Get().RouterConfig.BackendRules {
 		key := routeKey{
 			usr: berule.RK.Usr,
 			db:  berule.RK.DB,
@@ -64,7 +62,7 @@ func NewRouter(cfg config.RouterConfig, tlscfg *tls.Config) (*RRouter, error) {
 		_ = router.AddRouteRule(key, berule, frs[key])
 	}
 
-	if cfg.TLSCfg.SslMode != config.SSLMODEDISABLE {
+	if config.Get().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		router.cfg = tlscfg
 	}
 
@@ -75,7 +73,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 
 	cl := NewClient(conn)
 
-	if err := cl.Init(r.cfg, r.RCfg.TLSCfg.SslMode); err != nil {
+	if err := cl.Init(r.cfg, config.Get().RouterConfig.TLSCfg.SslMode); err != nil {
 		return nil, err
 	}
 
@@ -127,7 +125,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 func (r *RRouter) ListShards() []string {
 	var ret []string
 
-	for _, sh := range r.RCfg.ShardMapping {
+	for _, sh := range config.Get().RouterConfig.ShardMapping {
 		ret = append(ret, sh.Hosts[0].ConnAddr)
 	}
 

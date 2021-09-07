@@ -45,13 +45,13 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 	if config.Get().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		cert, err := tls.LoadX509KeyPair(config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
 		tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", config.Get().RouterConfig.TLSCfg.CertFile, config.Get().RouterConfig.TLSCfg.KeyFile)
-	if err != nil {
+		if err != nil {
 			return nil, errors.Wrap(err, "failed to load frontend tls conf")
-	}
+		}
 		tlscfg = &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 	}
 
-	router, err := NewRouter(config.Get().RouterConfig, tlscfg)
+	router, err := NewRouter(tlscfg)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "NewRouter")
@@ -133,7 +133,7 @@ func (sg *Spqr) Run(listener net.Listener) error {
 	for {
 
 		select {
-		case conn, _ := <-cChan:
+		case conn := <-cChan:
 
 			go func() {
 				if err := sg.serv(conn); err != nil {
@@ -148,10 +148,6 @@ func (sg *Spqr) Run(listener net.Listener) error {
 	}
 }
 
-func (sg *Spqr) servAdm(netconn net.Conn) error {
-	return sg.ConsoleDB.Serve(netconn)
-}
-
 func (sg *Spqr) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
@@ -159,7 +155,7 @@ func (sg *Spqr) RunAdm(listener net.Listener) error {
 			return errors.Wrap(err, "RunAdm failed")
 		}
 		go func() {
-			if err := sg.servAdm(conn); err != nil {
+			if err := sg.ConsoleDB.Serve(conn); err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 		}()

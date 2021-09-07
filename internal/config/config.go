@@ -21,9 +21,7 @@ type Spqr struct {
 	RouterConfig RouterConfig  `json:"router" toml:"router" yaml:"router"`
 }
 
-var (
-	cfg Spqr
-)
+var cfg Spqr
 
 func Load(dataFolder string) error {
 	configPath := filepath.Join(dataFolder, "cfg.yaml")
