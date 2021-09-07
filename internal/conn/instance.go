@@ -41,7 +41,14 @@ func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 	return pgi.frontend.Receive()
 }
+
+const defaultProto = "tcp"
+
 func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
+	if proto == "" {
+		return net.Dial(defaultProto, addr)
+	}
+
 	return net.Dial(proto, addr)
 }
 
@@ -86,9 +93,13 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	tracelog.InfoLogger.Printf("got reply from %v: %T", pgi.hostname, bmsg)
 
 	switch v := bmsg.(type) {
 	case *pgproto3.DataRow:
+
+		tracelog.InfoLogger.Printf("got datarow %v", v.Values)
+
 		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
 			return true, nil
 		}

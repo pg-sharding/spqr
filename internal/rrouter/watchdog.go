@@ -13,9 +13,14 @@ import (
 type Watchdog interface {
 	Watch(sh Shard)
 	AddInstance(cfg *config.InstanceCFG) error
+	Run()
 }
 
-func NewShardWatchDog(cfgs []*config.InstanceCFG, tlscfg *tls.Config, sslmode string) (Watchdog, error) {
+func NewShardWatchDog(tlscfg *tls.Config, shname string, rp RoutePool) (Watchdog, error) {
+
+	cfgs := config.Get().RouterConfig.ShardMapping[shname].Hosts
+
+	sslmode := config.Get().RouterConfig.ShardMapping[shname].TLSCfg.SslMode
 
 	hostConns := make([]conn.DBInstance, 0, len(cfgs))
 
@@ -34,6 +39,8 @@ func NewShardWatchDog(cfgs []*config.InstanceCFG, tlscfg *tls.Config, sslmode st
 		hostConns: hostConns,
 		tlscfg:    tlscfg,
 		sslmode:   sslmode,
+		rp:        rp,
+		shname:    shname,
 	}, nil
 }
 
@@ -41,6 +48,10 @@ type ShardPrimaryWatchdog struct {
 	mu      sync.Mutex
 	tlscfg  *tls.Config
 	sslmode string
+
+	rp RoutePool
+
+	shname string
 
 	hostConns []conn.DBInstance
 }
@@ -63,6 +74,8 @@ func (s *ShardPrimaryWatchdog) Run() {
 
 		var prvMaster conn.DBInstance
 
+		tracelog.InfoLogger.Printf("shard watchdog %s started", s.shname)
+
 		for {
 
 			func() {
@@ -80,6 +93,20 @@ func (s *ShardPrimaryWatchdog) Run() {
 					if ok, err := host.CheckRW(); err == nil && ok && host.Hostname() != prvMaster.Hostname() {
 						prvMaster = host
 						// notify
+
+						tracelog.InfoLogger.Printf("notifying about new master %v", host.Hostname())
+
+						_ = s.rp.NotifyRoutes(func(route *Route) error {
+							if err := route.servPool.UpdateHostStatus(s.shname, prvMaster.Hostname(), false); err != nil {
+								return err
+							}
+
+							if err := route.servPool.UpdateHostStatus(s.shname, host.Hostname(), false); err != nil {
+								return err
+							}
+
+							return nil
+						})
 
 						break
 					} else if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/console"
 	"github.com/pg-sharding/spqr/internal/qrouter"
+	"github.com/pg-sharding/spqr/internal/qrouterdb"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -23,8 +24,6 @@ type Spqr struct {
 
 	SPIexecuter *Executer
 }
-
-const defaultProto = "tcp"
 
 func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 
@@ -74,9 +73,9 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 			}
 		}
 
-		if shard.Hosts[0].Proto == "" {
-			shard.Hosts[0].Proto = defaultProto
-		}
+		_ = router.AddShard(qrouterdb.ShardKey{
+			Name: name,
+		})
 
 		tracelog.InfoLogger.FatalOnError(qr.AddShard(name, shard))
 	}

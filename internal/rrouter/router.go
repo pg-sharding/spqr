@@ -44,11 +44,13 @@ func (r *RRouter) AddInstance(key qrouterdb.ShardKey, cfg *config.InstanceCFG) {
 }
 
 func (r *RRouter) AddShard(key qrouterdb.ShardKey) error {
-	wg, err := NewShardWatchDog(config.Get().RouterConfig.ShardMapping[key.Name].Hosts, r.cfg, config.Get().RouterConfig.TLSCfg.SslMode)
+	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
 
 	if err != nil {
 		return err
 	}
+
+	wg.Run()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -16,6 +16,8 @@ type RoutePool interface {
 	Obsolete(key routeKey) *Route
 
 	Shutdown() error
+
+	NotifyRoutes(func(route *Route) error) error
 }
 
 type RoutePoolImpl struct {
@@ -24,6 +26,21 @@ type RoutePoolImpl struct {
 	pool map[routeKey]*Route
 
 	mapping map[string]*config.ShardCfg
+}
+
+func (r *RoutePoolImpl) NotifyRoutes(cb func(route *Route) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, route := range r.pool {
+		go func(route *Route) {
+			if err := cb(route); err != nil {
+				tracelog.InfoLogger.Printf("error while notifying route %v", err)
+			}
+		}(route)
+	}
+
+	return nil
 }
 
 func (r *RoutePoolImpl) Obsolete(key routeKey) *Route {

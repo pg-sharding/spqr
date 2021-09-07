@@ -107,7 +107,7 @@ type ConnPool interface {
 
 	Check(key qrouterdb.ShardKey) bool
 
-	UpdateHostStatus(hostname string, rw bool) error
+	UpdateHostStatus(shard, hostname string, rw bool) error
 
 	List() []conn.DBInstance
 }
@@ -116,17 +116,28 @@ type InstancePoolImpl struct {
 	poolRW Pool
 	poolRO Pool
 
+	mu sync.Mutex
+
+	primaries map[string]string
+
 	tlscfg *tls.Config
 }
 
-func (s *InstancePoolImpl) UpdateHostStatus(hostname string, rw bool) error {
+func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) error {
+
+	s.mu.Lock()
 
 	src := s.poolRW
 	dest := s.poolRO
 
 	if rw {
 		src, dest = dest, src
+		s.primaries[shard] = hostname
+	} else {
+		delete(s.primaries, shard)
 	}
+
+	s.mu.Unlock()
 
 	for _, instance := range src.Cut(hostname) {
 		_ = dest.Put(instance)
@@ -146,7 +157,6 @@ func (s *InstancePoolImpl) Check(key qrouterdb.ShardKey) bool {
 }
 
 func (s *InstancePoolImpl) List() []conn.DBInstance {
-
 	return append(s.poolRO.List(), s.poolRW.List()...)
 }
 
@@ -179,7 +189,8 @@ func (s *InstancePoolImpl) Put(shkey qrouterdb.ShardKey, sh conn.DBInstance) err
 
 func NewConnPool(mapping map[string]*config.ShardCfg) ConnPool {
 	return &InstancePoolImpl{
-		poolRW: NewPool(mapping),
-		poolRO: NewPool(mapping),
+		poolRW:    NewPool(mapping),
+		poolRO:    NewPool(mapping),
+		primaries: map[string]string{},
 	}
 }
