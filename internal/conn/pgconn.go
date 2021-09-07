@@ -55,6 +55,39 @@ func NewPgConn(netconn net.Conn, tlscfg *tls.Config, sslmode string) (PgConn, er
 	return pgconn, nil
 }
 
+
+func (pgconn *PgConnImpl) CheckRW() (bool, error) {
+
+	msg := &pgproto3.Query{
+		String: "SELECT pg_is_in_recovery()",
+	}
+
+	if err := pgconn.frontend.Send(msg); err != nil {
+		return false, err
+	}
+
+	bmsg, err := pgconn.frontend.Receive()
+
+	if err != nil {
+		return false, err
+	}
+
+	switch v := bmsg.(type) {
+	case *pgproto3.DataRow:
+		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
+			return true, nil
+		}
+		return false, nil
+
+	default:
+		return false, xerrors.Errorf("unexcepted")
+	}
+}
+
+var _ PgConn = &PgConnImpl{
+
+}
+
 func (pgconn *PgConnImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 
 	b := make([]byte, 4)
