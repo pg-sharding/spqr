@@ -14,6 +14,9 @@ import (
 
 const NOSHARD = ""
 
+type ShardRoute struct {
+}
+
 type Qrouter interface {
 	Route(q string) []qdb.ShardKey
 
@@ -36,11 +39,11 @@ type LocalQrouter struct {
 }
 
 func (l *LocalQrouter) AddLocalTable(tname string) error {
-	return xerrors.New("Local qoruter does not supprort sharding")
+	return xerrors.New("Local qrouter does not support sharding")
 }
 
 func (l *LocalQrouter) AddKeyRange(kr *spqrparser.KeyRange) error {
-	return xerrors.New("Local qoruter does not supprort sharding")
+	return xerrors.New("Local qrouter does not support sharding")
 }
 
 func (l *LocalQrouter) Shards() []string {

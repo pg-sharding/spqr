@@ -7,14 +7,11 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-func frontend(rt qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
+func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
 
 	tracelog.InfoLogger.Printf("process frontend for user %s %s", cl.Usr(), cl.DB())
 
-	rst := &rrouter.RelayState{
-		ActiveShards: nil,
-		TxActive:     false,
-	}
+	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
 	for {
 		msg, err := cl.Receive()
@@ -23,7 +20,7 @@ func frontend(rt qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("recieved msg %v", msg)
+		tracelog.InfoLogger.Printf("received msg %v", msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
@@ -31,13 +28,13 @@ func frontend(rt qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 			if cmngr.ValidateReRoute(rst) {
 				tracelog.InfoLogger.Printf("rerouting")
 
-				if err := rst.Reroute(rt, cl, cmngr, v); err != nil {
+				if err := rst.Reroute(v); err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)
 					continue
 				}
 			}
 
-			if err := rst.RelayStep(cl, cmngr); err != nil {
+			if err := rst.RelayStep(); err != nil {
 				return err
 			}
 
@@ -46,7 +43,7 @@ func frontend(rt qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 				return err
 			}
 
-			if err := rst.CompleteRelay(cl, cmngr, txst); err != nil {
+			if err := rst.CompleteRelay(txst); err != nil {
 				return err
 			}
 

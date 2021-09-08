@@ -12,7 +12,7 @@ import (
 )
 
 type Pool interface {
-	Connection(host, shard string) (conn.DBInstance, error)
+	Connection(shard, host string) (conn.DBInstance, error)
 	Cut(host string) []conn.DBInstance
 	Put(host conn.DBInstance) error
 	List() []conn.DBInstance
@@ -55,36 +55,33 @@ func (c *cPool) List() []conn.DBInstance {
 
 func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	var sh conn.DBInstance
 
 	if shds, ok := c.pool[host]; ok && len(shds) > 0 {
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
+		c.mu.Unlock()
 		return sh, nil
 	}
+	c.mu.Unlock()
 
 	// do not hold lock on poolRW while allocate new connection
-	c.mu.Unlock()
-	{
-		tracelog.InfoLogger.Printf("acquire new connection to %v", host)
-		var hostCfg *config.InstanceCFG
 
-		for _, h := range config.Get().RouterConfig.ShardMapping[shard].Hosts {
-			if h.ConnAddr == host {
-				hostCfg = h
-			}
-		}
+	tracelog.InfoLogger.Printf("acquire new connection to %v", host)
+	var hostCfg *config.InstanceCFG
 
-		var err error
-		sh, err = conn.NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
-		if err != nil {
-			return nil, err
+	for _, h := range config.Get().RouterConfig.ShardMapping[shard].Hosts {
+		if h.ConnAddr == host {
+			hostCfg = h
 		}
 	}
-	c.mu.Lock()
 
+	var err error
+	sh, err = conn.NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
+	if err != nil {
+		return nil, err
+	}
 	return sh, nil
 }
 
@@ -172,7 +169,12 @@ func (s *InstancePoolImpl) Connection(key qdb.ShardKey) (conn.DBInstance, error)
 
 	switch key.RW {
 	case true:
-		pr := s.primaries[key.Name]
+		var pr string
+		var ok bool
+		pr, ok = s.primaries[key.Name]
+		if !ok {
+			pr = config.Get().RouterConfig.ShardMapping[key.Name].Hosts[0].ConnAddr
+		}
 		return s.poolRW.Connection(key.Name, pr)
 	case false:
 		hosts := config.Get().RouterConfig.ShardMapping[key.Name].Hosts
