@@ -32,10 +32,15 @@ type Qrouter interface {
 	Lock(krid string) error
 	UnLock(krid string) error
 	Split(req *spqrparser.SplitKeyRange) error
+	Unite(req *spqrparser.UniteKeyRange) error
 }
 
 type LocalQrouter struct {
 	shid string
+}
+
+func (l *LocalQrouter) Unite(req *spqrparser.UniteKeyRange) error {
+	panic("implement me")
 }
 
 func (l *LocalQrouter) AddLocalTable(tname string) error {
@@ -98,6 +103,10 @@ type ShardQrouter struct {
 	ShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
+}
+
+func (qr *ShardQrouter) Unite(req *spqrparser.UniteKeyRange) error {
+	panic("implement me")
 }
 
 func (qr *ShardQrouter) Split(req *spqrparser.SplitKeyRange) error {

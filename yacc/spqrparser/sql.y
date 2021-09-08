@@ -25,6 +25,7 @@ import (
   unlock        *Unlock
   split         *SplitKeyRange
   move          *MoveKeyRange
+  unite         *UniteKeyRange
   str           string
   byte          byte
   int           int
@@ -49,7 +50,7 @@ import (
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SHUTDOWN SPLIT MOVE
 %token <str>  SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
-%token <str>  BY FROM TO
+%token <str>  BY FROM TO WITH UNITE
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -66,6 +67,7 @@ import (
 %type <shutdown> shutdown_stmt
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
+%type <unite> unite_key_range_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
@@ -127,6 +129,10 @@ command:
     | move_key_range_stmt
     {
         setParseTree(yylex, $1)
+    }
+    | unite_key_range_stmt
+    {
+       setParseTree(yylex, $1)
     }
 
 reserved_keyword:
@@ -254,6 +260,13 @@ move_key_range_stmt:
     {
         $$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $5}
     }
+
+unite_key_range_stmt:
+    UNITE KEY RANGE key_range_id WITH key_range_id
+    {
+        $$ = &UniteKeyRange{KeyRangeIDL: $4, KeyRangeIDR: $5}
+    }
+
 
 shutdown_stmt:
     SHUTDOWN
