@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/app/spqr";
+
+service KeyRangeService {
+  rpc ListKeyRange (KeyRangeRequest) returns (KeyRangeReply) {}
+}
+
+message KeyRangeRequest {
+}
+
+message KeyRange {
+  bytes lower_bound = 1;
+  bytes upper_bound = 2;
+}
+
+message KeyRangeReply {
+	repeated KeyRange key_ranges = 1;
+}
+

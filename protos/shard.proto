@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package yandex.spqr.shards;
+package yandex.spqr;
 
-option go_package = "yandex/app/shards";
+option go_package = "yandex/app/spqr";
 
 service ShardService {
   rpc ListShards (ShardRequest) returns (ShardReply) {}

@@ -3,7 +3,7 @@ package shhttp
 import (
 	"context"
 
-	shards "github.com/pg-sharding/spqr/protos"
+	shards "github.com/pg-sharding/spqr/genproto/protos"
 	"google.golang.org/grpc"
 )
 
