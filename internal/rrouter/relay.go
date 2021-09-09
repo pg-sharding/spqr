@@ -47,8 +47,14 @@ func (rst *RelayState) Flush() {
 }
 
 func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
+	span := opentracing.StartSpan("reroute")
+	defer span.Finish()
+	span.SetTag("user", rst.cl.Usr())
+	span.SetTag("db", rst.cl.DB())
+	span.SetTag("query", q.String)
 
 	shardRoutes := rst.Qr.Route(q.String)
+	span.SetTag("shard_routes", shardRoutes)
 
 	if len(shardRoutes) == 0 {
 		_ = rst.manager.UnRouteWithError(rst.cl, nil, "failed to match shard")
