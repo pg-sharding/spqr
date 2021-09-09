@@ -19,6 +19,7 @@ type Spqr struct {
 	QRouterCfg   QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
 	ExecuterCfg  ExecuterCfg   `json:"executer" toml:"executer" yaml:"executer"`
 	RouterConfig RouterConfig  `json:"router" toml:"router" yaml:"router"`
+	JaegerConfig JaegerCfg     `json:"jaeger" toml:"jaeger" yaml:"jaeger"`
 }
 
 var cfg Spqr
