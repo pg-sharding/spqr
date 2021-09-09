@@ -2,6 +2,12 @@ package internal
 
 import (
 	"crypto/tls"
+	"fmt"
+	"github.com/opentracing/opentracing-go"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
+	"io"
 	"net"
 
 	"github.com/jackc/pgproto3"
@@ -128,6 +134,12 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 }
 
 func (sg *Spqr) Run(listener net.Listener) error {
+	closer, err := sg.initJaegerTracer()
+	if err != nil {
+		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
+	}
+	defer func() { _ = closer.Close() }()
+
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener) {
@@ -160,6 +172,34 @@ func (sg *Spqr) Run(listener net.Listener) error {
 			_ = listener.Close()
 		}
 	}
+}
+
+func (sg *Spqr) initJaegerTracer() (io.Closer, error) {
+	cfg := jaegercfg.Configuration{
+		ServiceName: "spqr",
+		Sampler: &jaegercfg.SamplerConfig{
+			Type:              "const",
+			Param:             1,
+			SamplingServerURL: config.Get().JaegerConfig.JaegerUrl,
+		},
+		Reporter: &jaegercfg.ReporterConfig{
+			LogSpans: false,
+		},
+		Gen128Bit: true,
+		Tags: []opentracing.Tag{
+			{Key: "span.kind", Value: "server"},
+		},
+	}
+
+	jLogger := jaegerlog.StdLogger //TODO: replace with tracelog logger
+	jMetricsFactory := metrics.NullFactory
+
+	// Initialize tracer with a logger and a metrics factory
+	return cfg.InitGlobalTracer(
+		"spqr",
+		jaegercfg.Logger(jLogger),
+		jaegercfg.Metrics(jMetricsFactory),
+	)
 }
 
 func (sg *Spqr) servAdm(netconn net.Conn) error {
