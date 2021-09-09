@@ -1,5 +1,3 @@
-#FROM golang:latest as base
-
 FROM ubuntu:focal
 
 ENV DEBIAN_FRONTEND=noninteractive

@@ -33,10 +33,11 @@ func (dw *DummyWal) DumpQuery(q string) error {
 func (dw *DummyWal) Recover(dataFolder string) ([]string, error) {
 	walPath := filepath.Join(dataFolder, "dummylog")
 	if _, err := os.Stat(walPath); os.IsNotExist(err) {
-		tracelog.InfoLogger.Println("dummy log does not exist")
+		tracelog.InfoLogger.Printf("%s log does not exist", walPath)
 		return []string{}, nil
 	}
 
+	tracelog.InfoLogger.Printf("%s found", walPath)
 	file, err := os.Open(walPath)
 	if err != nil {
 		return nil, err

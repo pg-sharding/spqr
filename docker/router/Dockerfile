@@ -1,9 +1,9 @@
-FROM golang:latest as base
+FROM golang:1.16
 
 
 RUN mkdir /router
 COPY ./ /router
-COPY ./docker/router/dummylog /etc/spqr
+COPY ./docker/router/dummylog /etc/spqr/dummylog
 
 RUN cd /router && make init && make build
 

@@ -356,7 +356,7 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("parsed %T", tstmt)
+	tracelog.InfoLogger.Printf("Get '%s', parsed %T", q, tstmt)
 
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Show:
@@ -422,17 +422,19 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 }
 
 func (c *ConsoleDB) Serve(cl rrouter.Client) error {
+	tracelog.InfoLogger.Print("console.Serve start")
 	queries, err := c.Wal.Recover(config.Get().DataFolder)
 	if err != nil {
 		return errors.Wrap(err, "Serve can't start")
 	}
 	for _, query := range queries {
 		if err := c.ProcessQuery(query, cl); err != nil {
-			return errors.Wrap(err, "Serve init fail")
+			continue // TODO fix 'syntax error'
+			// return errors.Wrap(err, "Serve init fail")
 		}
 	}
 
-	tracelog.InfoLogger.Print("Succesfully init %i queries", len(queries))
+	tracelog.InfoLogger.Printf("Succesfully init %d queries", len(queries))
 
 	for {
 		msg, err := cl.Receive()
