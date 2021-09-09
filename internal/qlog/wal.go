@@ -1,6 +1,6 @@
-package wal
+package qlog
 
-type Wal interface {
+type Qlog interface {
 	DumpQuery(q string) error
 	Recover(dataFolder string) ([]string, error)
 }

@@ -1,4 +1,4 @@
-package wal
+package qlog
 
 import (
 	"bufio"
@@ -9,15 +9,15 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type DummyWal struct {
+type DummyQlog struct {
 	dataFolder string
 }
 
-func NewDummyWal(dataFolder string) (*DummyWal, error) {
-	return &DummyWal{dataFolder}, nil
+func NewDummyQlog(dataFolder string) (*DummyQlog, error) {
+	return &DummyQlog{dataFolder}, nil
 }
 
-func (dw *DummyWal) DumpQuery(q string) error {
+func (dw *DummyQlog) DumpQuery(q string) error {
 	walPath := filepath.Join(dw.dataFolder, "dummylog")
 	file, err := os.OpenFile(walPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -30,7 +30,7 @@ func (dw *DummyWal) DumpQuery(q string) error {
 	return nil
 }
 
-func (dw *DummyWal) Recover(dataFolder string) ([]string, error) {
+func (dw *DummyQlog) Recover(dataFolder string) ([]string, error) {
 	walPath := filepath.Join(dataFolder, "dummylog")
 	if _, err := os.Stat(walPath); os.IsNotExist(err) {
 		tracelog.InfoLogger.Printf("%s log does not exist", walPath)

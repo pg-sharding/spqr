@@ -9,7 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
-	"github.com/pg-sharding/spqr/internal/wal"
+	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -24,7 +24,7 @@ type Console interface {
 type ConsoleDB struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
-	Wal wal.Wal
+	Qlog qlog.Qlog
 
 	stchan chan struct{}
 }
@@ -35,10 +35,10 @@ func (c *ConsoleDB) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, wal wal.Wal, stchan chan struct{}) *ConsoleDB {
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, wal qlog.Qlog, stchan chan struct{}) *ConsoleDB {
 	return &ConsoleDB{
 		Qrouter: Qrouter,
-		Wal: wal,
+		Qlog: wal,
 		cfg:     cfg,
 		stchan:  stchan,
 	}
@@ -381,31 +381,31 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	case *spqrparser.SplitKeyRange:
 		err := c.SplitKeyRange(cl, stmt)
 		if err != nil {
-		    c.Wal.DumpQuery(q)
+		    c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Lock:
 		err := c.LockKeyRange(cl, stmt.KeyRangeID)
 		if err != nil {
-		    c.Wal.DumpQuery(q)
+		    c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.ShardingColumn:
 		err := c.AddShardingColumn(cl, stmt)
 		if err != nil {
-			c.Wal.DumpQuery(q)
+			c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.KeyRange:
 		err := c.AddKeyRange(cl, stmt)
 		if err != nil {
-			c.Wal.DumpQuery(q)
+			c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Shard:
 		err := c.AddShard(cl, stmt, &config.ShardCfg{})
 		if err != nil {
-			c.Wal.DumpQuery(q)
+			c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Shutdown:
@@ -423,7 +423,7 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 
 func (c *ConsoleDB) Serve(cl rrouter.Client) error {
 	tracelog.InfoLogger.Print("console.Serve start")
-	queries, err := c.Wal.Recover(config.Get().DataFolder)
+	queries, err := c.Qlog.Recover(config.Get().DataFolder)
 	if err != nil {
 		return errors.Wrap(err, "Serve can't start")
 	}
