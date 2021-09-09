@@ -18,7 +18,7 @@ func NewDummyQlog(dataFolder string) (*DummyQlog, error) {
 }
 
 func (dw *DummyQlog) DumpQuery(q string) error {
-	walPath := filepath.Join(dw.dataFolder, "dummylog")
+	walPath := filepath.Join(dw.dataFolder, "qlog")
 	file, err := os.OpenFile(walPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func (dw *DummyQlog) DumpQuery(q string) error {
 }
 
 func (dw *DummyQlog) Recover(dataFolder string) ([]string, error) {
-	walPath := filepath.Join(dataFolder, "dummylog")
+	walPath := filepath.Join(dataFolder, "qlog")
 	if _, err := os.Stat(walPath); os.IsNotExist(err) {
 		tracelog.InfoLogger.Printf("%s log does not exist", walPath)
 		return []string{}, nil

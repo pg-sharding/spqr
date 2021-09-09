@@ -3,7 +3,7 @@ FROM golang:1.16
 
 RUN mkdir /router
 COPY ./ /router
-COPY ./docker/router/dummylog /etc/spqr/dummylog
+COPY ./docker/router/qlog /etc/spqr/qlog
 
 RUN cd /router && make init && make build
 
