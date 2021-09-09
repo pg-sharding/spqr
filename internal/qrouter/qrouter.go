@@ -6,6 +6,7 @@ import (
 	sqlp "github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qdb"
+	"github.com/pg-sharding/spqr/internal/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/internal/qdb/mem"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/wal-g/tracelog"
@@ -35,10 +36,17 @@ type Qrouter interface {
 	UnLock(krid string) error
 	Split(req *spqrparser.SplitKeyRange) error
 	Unite(req *spqrparser.UniteKeyRange) error
+
+	Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
 type LocalQrouter struct {
 	shid string
+}
+
+func (l *LocalQrouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
+
+	panic("implement me")
 }
 
 func (l *LocalQrouter) Unite(req *spqrparser.UniteKeyRange) error {
@@ -107,6 +115,10 @@ type ShardQrouter struct {
 	ShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
+}
+
+func (qr *ShardQrouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
+	return nil
 }
 
 func (qr *ShardQrouter) Unite(req *spqrparser.UniteKeyRange) error {
@@ -199,7 +211,14 @@ var _ Qrouter = &ShardQrouter{}
 func NewQrouter() (*ShardQrouter, error) {
 
 	// acq conn to db
-	db, err := mem.NewQrouterDBMem()
+	var db qdb.QrouterDB
+	var err error
+
+	if config.Get().QRouterCfg.Qtype == config.LocalQrouter {
+		db, err = mem.NewQrouterDBMem()
+	} else {
+		db = etcdcl.NewQDBETCD()
+	}
 
 	if err != nil {
 		return nil, err

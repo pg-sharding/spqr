@@ -13,6 +13,8 @@ type RelayState struct {
 
 	ActiveShards []qdb.ShardKey
 
+	targetKeyRange qdb.KeyRange
+
 	traceMsgs bool
 
 	qr      qrouter.Qrouter
@@ -104,6 +106,13 @@ func (rst *RelayState) RelayStep(cl Client, v *pgproto3.Query) (byte, error) {
 	var txst byte
 	var err error
 	if txst, err = cl.ProcQuery(v); err != nil {
+		ch := make(chan interface{})
+		if rst.ShouldRetry() {
+			rst.qr.Subscribe(rst.targetKeyRange.KeyRangeID, qdb.KRUnLocked, ch)
+
+			<-ch
+			// retry
+		}
 		return 0, err
 	}
 

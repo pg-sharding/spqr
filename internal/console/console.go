@@ -4,10 +4,10 @@ import "C"
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/internal/qdb"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
@@ -197,9 +197,9 @@ func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) erro
 
 	err := c.Qrouter.AddKeyRange(qdb.KeyRange{
 		KeyRangeID: kr.KeyRangeID,
-		ShardID: kr.KeyRangeID,
-		To: kr.To,
-		From: kr.From,
+		ShardID:    kr.KeyRangeID,
+		To:         kr.To,
+		From:       kr.From,
 	})
 
 	for _, msg := range []pgproto3.BackendMessage{

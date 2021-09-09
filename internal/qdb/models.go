@@ -11,3 +11,7 @@ type KeyRange struct {
 	ShardID    string
 	KeyRangeID string
 }
+type KeyRangeStatus string
+
+const KRLocked = KeyRangeStatus("LOCKED")
+const KRUnLocked = KeyRangeStatus("UNLOCKED")
