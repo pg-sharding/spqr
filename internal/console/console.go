@@ -3,14 +3,15 @@ package console
 import "C"
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
+	"github.com/pg-sharding/spqr/internal/wal"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
+	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
@@ -23,6 +24,7 @@ type Console interface {
 type ConsoleDB struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
+	Wal wal.Wal
 
 	stchan chan struct{}
 }
@@ -33,9 +35,10 @@ func (c *ConsoleDB) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) *ConsoleDB {
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, wal wal.Wal, stchan chan struct{}) *ConsoleDB {
 	return &ConsoleDB{
 		Qrouter: Qrouter,
+		Wal: wal,
 		cfg:     cfg,
 		stchan:  stchan,
 	}
@@ -362,7 +365,7 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 
 		switch stmt.Cmd {
 
-		case spqrparser.ShowPoolsStr: // TODO serv errors
+		case spqrparser.ShowPoolsStr:
 			return c.Pools(cl)
 		case spqrparser.ShowDatabasesStr:
 			return c.Databases(cl)
@@ -376,15 +379,35 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 			return errors.New("Unknown default cmd: " + stmt.Cmd)
 		}
 	case *spqrparser.SplitKeyRange:
-		return c.SplitKeyRange(cl, stmt)
+		err := c.SplitKeyRange(cl, stmt)
+		if err != nil {
+		    c.Wal.DumpQuery(q)
+		}
+		return err
 	case *spqrparser.Lock:
-		return c.LockKeyRange(cl, stmt.KeyRangeID)
+		err := c.LockKeyRange(cl, stmt.KeyRangeID)
+		if err != nil {
+		    c.Wal.DumpQuery(q)
+		}
+		return err
 	case *spqrparser.ShardingColumn:
-		return c.AddShardingColumn(cl, stmt)
+		err := c.AddShardingColumn(cl, stmt)
+		if err != nil {
+			c.Wal.DumpQuery(q)
+		}
+		return err
 	case *spqrparser.KeyRange:
-		return c.AddKeyRange(cl, stmt)
+		err := c.AddKeyRange(cl, stmt)
+		if err != nil {
+			c.Wal.DumpQuery(q)
+		}
+		return err
 	case *spqrparser.Shard:
-		return c.AddShard(cl, stmt, &config.ShardCfg{})
+		err := c.AddShard(cl, stmt, &config.ShardCfg{})
+		if err != nil {
+			c.Wal.DumpQuery(q)
+		}
+		return err
 	case *spqrparser.Shutdown:
 		c.stchan <- struct{}{}
 		return nil
@@ -399,6 +422,18 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 }
 
 func (c *ConsoleDB) Serve(cl rrouter.Client) error {
+	queries, err := c.Wal.Recover(config.Get().DataFolder)
+	if err != nil {
+		return errors.Wrap(err, "Serve can't start")
+	}
+	for _, query := range queries {
+		if err := c.ProcessQuery(query, cl); err != nil {
+			return errors.Wrap(err, "Serve init fail")
+		}
+	}
+
+	tracelog.InfoLogger.Print("Succesfully init %i queries", len(queries))
+
 	for {
 		msg, err := cl.Receive()
 

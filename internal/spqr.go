@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
+	"github.com/pg-sharding/spqr/internal/wal"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -93,7 +94,12 @@ func NewSpqr(dataFolder string) (*Spqr, error) { // TODO
 		frTLS:   tlscfg,
 	}
 
-	spqr.ConsoleDB = console.NewConsole(tlscfg, spqr.Qrouter, spqr.stchan)
+	dymmyWal, err := wal.NewDummyWal(config.Get().DataFolder)
+	if err != nil {
+		return nil, err
+	}
+
+	spqr.ConsoleDB = console.NewConsole(tlscfg, spqr.Qrouter, dymmyWal, spqr.stchan)
 
 	executer := NewExecuter(config.Get().ExecuterCfg)
 

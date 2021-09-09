@@ -1,4 +1,4 @@
-package internal
+package wal
 
 import (
 	"bufio"
@@ -9,20 +9,15 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type DummyWal interface {
-	DumpQuery(q string) error
-	Recover(dataFolder string) ([]string, error)
-}
-
-type DummyWalImpl struct {
+type DummyWal struct {
 	dataFolder string
 }
 
-func NewDummyWal(dataFolder string) (*DummyWalImpl, error) {
-	return &DummyWalImpl{dataFolder}, nil
+func NewDummyWal(dataFolder string) (*DummyWal, error) {
+	return &DummyWal{dataFolder}, nil
 }
 
-func (dw *DummyWalImpl) DumpQuery(q string) error {
+func (dw *DummyWal) DumpQuery(q string) error {
 	walPath := filepath.Join(dw.dataFolder, "dummylog")
 
 	file, err := os.Create(walPath)
@@ -36,7 +31,7 @@ func (dw *DummyWalImpl) DumpQuery(q string) error {
 	return nil
 }
 
-func (dw *DummyWalImpl) Recover(dataFolder string) ([]string, error) {
+func (dw *DummyWal) Recover(dataFolder string) ([]string, error) {
 	walPath := filepath.Join(dataFolder, "dummylog")
 	if _, err := os.Stat(walPath); os.IsNotExist(err) {
 		tracelog.InfoLogger.Println("dummy log does not exist")
