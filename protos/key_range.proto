@@ -5,10 +5,25 @@ package yandex.spqr;
 option go_package = "yandex/app/spqr";
 
 service KeyRangeService {
-  rpc ListKeyRange (KeyRangeRequest) returns (KeyRangeReply) {}
+  rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc LockKeyRange (LockKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc SplitKeyRange (SplitKeyRangeRequest) returns (KeyRangeReply) {}
 }
 
-message KeyRangeRequest {
+message ListKeyRangeRequest {
+}
+
+message SplitKeyRangeRequest {
+
+}
+
+message LockKeyRangeRequest {
+
+}
+
+message UnlockKeyRangeRequest {
+
 }
 
 message KeyRange {
