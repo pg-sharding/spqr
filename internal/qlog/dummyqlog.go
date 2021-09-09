@@ -52,7 +52,7 @@ func (dw *DummyQlog) Recover(dataFolder string) ([]string, error) {
 		line := scanner.Text()
 		query := strings.TrimSpace(line)
 		if len(query) > 0 {
-		    queries = append(queries, query)
+			queries = append(queries, query)
 		}
 	}
 

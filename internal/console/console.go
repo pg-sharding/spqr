@@ -4,12 +4,13 @@ import "C"
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/internal/qdb"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
-	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -24,7 +25,7 @@ type Console interface {
 type ConsoleDB struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
-	Qlog qlog.Qlog
+	Qlog    qlog.Qlog
 
 	stchan chan struct{}
 }
@@ -38,7 +39,7 @@ func (c *ConsoleDB) Shutdown() error {
 func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, wal qlog.Qlog, stchan chan struct{}) *ConsoleDB {
 	return &ConsoleDB{
 		Qrouter: Qrouter,
-		Qlog: wal,
+		Qlog:    wal,
 		cfg:     cfg,
 		stchan:  stchan,
 	}
@@ -194,7 +195,12 @@ func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) erro
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
 
-	err := c.Qrouter.AddKeyRange(kr)
+	err := c.Qrouter.AddKeyRange(qdb.KeyRange{
+		KeyRangeID: kr.KeyRangeID,
+		ShardID: kr.KeyRangeID,
+		To: kr.To,
+		From: kr.From,
+	})
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -381,13 +387,13 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	case *spqrparser.SplitKeyRange:
 		err := c.SplitKeyRange(cl, stmt)
 		if err != nil {
-		    c.Qlog.DumpQuery(q)
+			c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Lock:
 		err := c.LockKeyRange(cl, stmt.KeyRangeID)
 		if err != nil {
-		    c.Qlog.DumpQuery(q)
+			c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.ShardingColumn:

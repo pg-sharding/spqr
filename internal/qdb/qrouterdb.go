@@ -1,16 +1,14 @@
 package qdb
 
-import "github.com/pg-sharding/spqr/yacc/spqrparser"
-
 type QrouterDB interface {
-	Lock(keyRange *spqrparser.KeyRange) error
-	UnLock(keyRange *spqrparser.KeyRange) error
+	Lock(keyRange KeyRange) error
+	UnLock(keyRange KeyRange) error
 
-	Add(keyRange *spqrparser.KeyRange) error
-	Update(keyRange *spqrparser.KeyRange) error
+	Add(keyRange KeyRange) error
+	Update(keyRange KeyRange) error
 
 	Begin() error
 	Commit() error
 
-	Check(key int) bool
+	Check(kr KeyRange) bool
 }

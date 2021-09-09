@@ -19,7 +19,7 @@ type RelayState struct {
 	cl      Client
 	manager ConnManager
 
-	msgBuf []*pgproto3.BackendMessage
+	msgBuf []pgproto3.FrontendMessage
 }
 
 func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *RelayState {
@@ -34,6 +34,10 @@ func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *Rela
 	}
 }
 
+func (rst *RelayState) StartTrace() {
+	rst.traceMsgs = true
+}
+
 func (rst *RelayState) Flush() {
 	rst.msgBuf = nil
 	rst.traceMsgs = false
@@ -41,9 +45,9 @@ func (rst *RelayState) Flush() {
 
 func (rst *RelayState) Reroute(q *pgproto3.Query) error {
 
-	shards := rst.qr.Route(q.String)
+	shardRoutes := rst.qr.Route(q.String)
 
-	if len(shards) == 0 {
+	if len(shardRoutes) == 0 {
 		_ = rst.manager.UnRouteWithError(rst.cl, nil, "failed to match shard")
 		return xerrors.New("failed to match shard")
 	}
@@ -51,12 +55,16 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) error {
 	if err := rst.manager.UnRouteCB(rst.cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 	}
-	rst.ActiveShards = shards
+
+	rst.ActiveShards = nil
+	for _, shr := range shardRoutes {
+		rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
+	}
 
 	var serv Server
 	var err error
 
-	if len(shards) > 1 {
+	if len(shardRoutes) > 1 {
 		serv, err = NewMultiShardServer(rst.cl.Route().beRule, rst.cl.Route().servPool)
 		if err != nil {
 			return err
@@ -69,7 +77,7 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.cl.Usr(), rst.cl.DB(), shards)
+	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.cl.Usr(), rst.cl.DB(), shardRoutes)
 
 	if err := rst.manager.RouteCB(rst.cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.PrintError(err)
@@ -80,17 +88,28 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) error {
 
 const TXREL = 73
 
-func (rst *RelayState) RelayStep() error {
+func (rst *RelayState) RelayStep(cl Client, v *pgproto3.Query) (byte, error) {
 
 	if !rst.TxActive {
 		if err := rst.manager.TXBeginCB(rst.cl, rst); err != nil {
-			return err
+			return 0, err
 		}
 		rst.TxActive = true
 	}
 
-	return nil
+	if rst.traceMsgs {
+		rst.msgBuf = append(rst.msgBuf, v)
+	}
+
+	var txst byte
+	var err error
+	if txst, err = cl.ProcQuery(v); err != nil {
+		return 0, err
+	}
+
+	return txst, nil
 }
+
 func (rst *RelayState) ShouldRetry() bool {
 	return false
 }

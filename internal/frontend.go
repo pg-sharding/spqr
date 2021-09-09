@@ -34,12 +34,9 @@ func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 				}
 			}
 
-			if err := rst.RelayStep(); err != nil {
-				return err
-			}
-
 			var txst byte
-			if txst, err = cl.ProcQuery(v); err != nil {
+			var err error
+			if txst, err = rst.RelayStep(cl, v); err != nil {
 				return err
 			}
 

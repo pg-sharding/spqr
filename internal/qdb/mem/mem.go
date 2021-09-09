@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/internal/qdb"
-	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"golang.org/x/xerrors"
 )
 
@@ -13,7 +12,7 @@ type QrouterDBMem struct {
 	txmu sync.Mutex
 
 	freq map[string]int
-	krs  map[string]*spqrparser.KeyRange
+	krs  map[string]qdb.KeyRange
 }
 
 func (q *QrouterDBMem) Begin() error {
@@ -27,7 +26,7 @@ func (q *QrouterDBMem) Commit() error {
 	return nil
 }
 
-func (q *QrouterDBMem) Add(keyRange *spqrparser.KeyRange) error {
+func (q *QrouterDBMem) Add(keyRange qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -41,7 +40,7 @@ func (q *QrouterDBMem) Add(keyRange *spqrparser.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Update(keyRange *spqrparser.KeyRange) error {
+func (q *QrouterDBMem) Update(keyRange qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -50,27 +49,22 @@ func (q *QrouterDBMem) Update(keyRange *spqrparser.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Check(key int) bool {
+func (q *QrouterDBMem) Check(kr qdb.KeyRange) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	for _, kr := range q.krs {
-		if kr.From <= key && key <= kr.To {
-			return true
-		}
-	}
-
-	return false
+	_, ok := q.krs[kr.KeyRangeID]
+	return !ok
 }
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
 		freq: map[string]int{},
-		krs:  map[string]*spqrparser.KeyRange{},
+		krs:  map[string]qdb.KeyRange{},
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(keyRange *spqrparser.KeyRange) error {
+func (q *QrouterDBMem) Lock(keyRange qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -85,7 +79,7 @@ func (q *QrouterDBMem) Lock(keyRange *spqrparser.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) UnLock(keyRange *spqrparser.KeyRange) error {
+func (q *QrouterDBMem) UnLock(keyRange qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
