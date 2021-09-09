@@ -1,4 +1,4 @@
-name: Simple e2e
+name: tests
 
 on:
   push:
@@ -9,12 +9,12 @@ on:
 jobs:
 
   build:
-    name: Build
+    name: e2e
     runs-on: ubuntu-latest
     steps:
     
     - name: Check out code
       uses: actions/checkout@v2
     
-    - name: Simple test
+    - name: e2e tests
       run: make test
