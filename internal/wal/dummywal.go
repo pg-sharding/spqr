@@ -2,9 +2,9 @@ package wal
 
 import (
 	"bufio"
-	"encoding/base64"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wal-g/tracelog"
 )
@@ -19,15 +19,14 @@ func NewDummyWal(dataFolder string) (*DummyWal, error) {
 
 func (dw *DummyWal) DumpQuery(q string) error {
 	walPath := filepath.Join(dw.dataFolder, "dummylog")
-
-	file, err := os.Create(walPath)
+	file, err := os.OpenFile(walPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	encoded := base64.StdEncoding.EncodeToString([]byte(q))
-	file.WriteString(encoded)
+	file.WriteString(q)
+	file.WriteString("\n")
 	return nil
 }
 
@@ -49,12 +48,11 @@ func (dw *DummyWal) Recover(dataFolder string) ([]string, error) {
 
 	var queries []string
 	for scanner.Scan() {
-		decoded, err := base64.StdEncoding.DecodeString(scanner.Text())
-		if err != nil {
-			tracelog.ErrorLogger.Fatal("decode error:", err)
-			return nil, err
+		line := scanner.Text()
+		query := strings.TrimSpace(line)
+		if len(query) > 0 {
+		    queries = append(queries, query)
 		}
-		queries = append(queries, string(decoded))
 	}
 
 	if err := scanner.Err(); err != nil {
