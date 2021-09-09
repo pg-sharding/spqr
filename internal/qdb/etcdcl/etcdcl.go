@@ -51,7 +51,7 @@ func (q Qdbetcd) Commit() error {
 }
 
 func (q Qdbetcd) Check(kr qdb.KeyRange) bool {
-	panic("implement me")
+	return true
 }
 
 var _ qdb.QrouterDB = Qdbetcd{}

@@ -197,7 +197,7 @@ func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) erro
 
 	err := c.Qrouter.AddKeyRange(qdb.KeyRange{
 		KeyRangeID: kr.KeyRangeID,
-		ShardID:    kr.KeyRangeID,
+		ShardID:    kr.ShardID,
 		To:         kr.To,
 		From:       kr.From,
 	})
