@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/wal-g/tracelog"
@@ -28,8 +29,15 @@ func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 			if cmngr.ValidateReRoute(rst) {
 				tracelog.InfoLogger.Printf("rerouting")
 
-				if err := rst.Reroute(v); err != nil {
+				shrdRoutes, err := rst.Reroute(v)
+
+				if err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)
+					continue
+				}
+
+				if err := rst.Connect(shrdRoutes); err != nil {
+					tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
 					continue
 				}
 			}
@@ -37,6 +45,27 @@ func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 			var txst byte
 			var err error
 			if txst, err = rst.RelayStep(cl, v); err != nil {
+				if rst.ShouldRetry(err) {
+
+					ch := make(chan interface{})
+
+					_ = rst.Qr.Subscribe(rst.TargetKeyRange.KeyRangeID, qdb.KRUnLocked, ch)
+					<-ch
+					// retry on master
+
+					shrds, err := rst.Reroute(v)
+
+					if err != nil {
+						return err
+					}
+
+					if err := rst.Connect(shrds); err != nil {
+						return err
+					}
+
+					rst.ReplayBuff(cl)
+
+				}
 				return err
 			}
 

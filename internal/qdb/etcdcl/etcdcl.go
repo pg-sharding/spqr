@@ -10,6 +10,10 @@ type Qdbetcd struct {
 	cli *clientv3.Client
 }
 
+func (q Qdbetcd) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+	return nil
+}
+
 func NewQDBETCD() *Qdbetcd {
 
 	cli, _ := clientv3.New(clientv3.Config{

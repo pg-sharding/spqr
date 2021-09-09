@@ -13,15 +13,15 @@ type RelayState struct {
 
 	ActiveShards []qdb.ShardKey
 
-	targetKeyRange qdb.KeyRange
+	TargetKeyRange qdb.KeyRange
 
 	traceMsgs bool
 
-	qr      qrouter.Qrouter
+	Qr      qrouter.Qrouter
 	cl      Client
 	manager ConnManager
 
-	msgBuf []pgproto3.FrontendMessage
+	msgBuf []*pgproto3.Query
 }
 
 func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *RelayState {
@@ -30,7 +30,7 @@ func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *Rela
 		TxActive:     false,
 		msgBuf:       nil,
 		traceMsgs:    false,
-		qr:           qr,
+		Qr:           qr,
 		cl:           client,
 		manager:      manager,
 	}
@@ -45,13 +45,13 @@ func (rst *RelayState) Flush() {
 	rst.traceMsgs = false
 }
 
-func (rst *RelayState) Reroute(q *pgproto3.Query) error {
+func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
 
-	shardRoutes := rst.qr.Route(q.String)
+	shardRoutes := rst.Qr.Route(q.String)
 
 	if len(shardRoutes) == 0 {
 		_ = rst.manager.UnRouteWithError(rst.cl, nil, "failed to match shard")
-		return xerrors.New("failed to match shard")
+		return nil, xerrors.New("failed to match shard")
 	}
 
 	if err := rst.manager.UnRouteCB(rst.cl, rst.ActiveShards); err != nil {
@@ -62,6 +62,11 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) error {
 	for _, shr := range shardRoutes {
 		rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
 	}
+
+	return shardRoutes, nil
+}
+
+func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
 
 	var serv Server
 	var err error
@@ -106,20 +111,13 @@ func (rst *RelayState) RelayStep(cl Client, v *pgproto3.Query) (byte, error) {
 	var txst byte
 	var err error
 	if txst, err = cl.ProcQuery(v); err != nil {
-		ch := make(chan interface{})
-		if rst.ShouldRetry() {
-			rst.qr.Subscribe(rst.targetKeyRange.KeyRangeID, qdb.KRUnLocked, ch)
-
-			<-ch
-			// retry
-		}
 		return 0, err
 	}
 
 	return txst, nil
 }
 
-func (rst *RelayState) ShouldRetry() bool {
+func (rst *RelayState) ShouldRetry(err error) bool {
 	return false
 }
 
@@ -148,4 +146,15 @@ func (rst *RelayState) CompleteRelay(txst byte) error {
 	}
 
 	return nil
+}
+
+func (rst *RelayState) ReplayBuff(cl Client) pgproto3.FrontendMessage {
+	var frmsg pgproto3.FrontendMessage
+
+	for _, msg := range rst.msgBuf {
+		_, _ = cl.ProcQuery(msg)
+		frmsg, _ = cl.Receive()
+	}
+
+	return frmsg
 }

@@ -7,12 +7,70 @@ import (
 	"golang.org/x/xerrors"
 )
 
+type WaitPool struct {
+	stopCh    chan struct{}
+	publishCh chan interface{}
+	subCh     chan chan<- interface{}
+	unsubCh   chan chan<- interface{}
+}
+
+func NewWaitPool() *WaitPool {
+	return &WaitPool{
+		stopCh:    make(chan struct{}),
+		publishCh: make(chan interface{}, 1),
+		subCh:     make(chan chan<- interface{}, 1),
+		unsubCh:   make(chan chan<- interface{}, 1),
+	}
+}
+
+func (wp *WaitPool) Start() {
+	waiters := map[chan<- interface{}]struct{}{}
+
+	for {
+		select {
+		case <-wp.stopCh:
+			// notify all cl
+			return
+		case msgCh := <-wp.subCh:
+			waiters[msgCh] = struct{}{}
+		case msgCh := <-wp.unsubCh:
+			delete(waiters, msgCh)
+		case msg := <-wp.publishCh:
+			for msgCh := range waiters {
+				select {
+				case msgCh <- msg:
+				default:
+				}
+			}
+		}
+	}
+}
+
+func (wg *WaitPool) Subscribe(status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+	wg.subCh <- notifyio
+	return nil
+}
+
+func (wg *WaitPool) Unsubscribe(msgCh chan interface{}) {
+	wg.unsubCh <- msgCh
+}
+
+func (wg *WaitPool) Publish(msg interface{}) {
+	wg.publishCh <- msg
+}
+
 type QrouterDBMem struct {
 	mu   sync.Mutex
 	txmu sync.Mutex
 
 	freq map[string]int
 	krs  map[string]qdb.KeyRange
+
+	krWaiters map[string]*WaitPool
+}
+
+func (q *QrouterDBMem) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+	return q.krWaiters[krid].Subscribe(status, notifyio)
 }
 
 func (q *QrouterDBMem) Begin() error {
@@ -59,8 +117,9 @@ func (q *QrouterDBMem) Check(kr qdb.KeyRange) bool {
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
-		freq: map[string]int{},
-		krs:  map[string]qdb.KeyRange{},
+		freq:      map[string]int{},
+		krs:       map[string]qdb.KeyRange{},
+		krWaiters: map[string]*WaitPool{},
 	}, nil
 }
 

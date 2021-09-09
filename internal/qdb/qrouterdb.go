@@ -11,4 +11,6 @@ type QrouterDB interface {
 	Commit() error
 
 	Check(kr KeyRange) bool
+
+	Watch(krid string, status KeyRangeStatus, notifyio chan<- interface{}) error
 }

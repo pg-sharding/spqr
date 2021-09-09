@@ -118,7 +118,7 @@ type ShardQrouter struct {
 }
 
 func (qr *ShardQrouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-	return nil
+	return qr.qdb.Watch(krid, krst, noitfyio)
 }
 
 func (qr *ShardQrouter) Unite(req *spqrparser.UniteKeyRange) error {
