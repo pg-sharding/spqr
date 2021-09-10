@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/config.yaml", "path to data folder")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/config.yaml", "path to config file")
 	rootCmd.AddCommand(runCmd)
 }
 
