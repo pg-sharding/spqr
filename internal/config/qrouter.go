@@ -1,7 +1,11 @@
 package config
 
-const LocalQrouter = "LOCAL"
-const ShardQrouter = "SHARDING"
+type QrouterType string
+
+const (
+	LocalQrouter = QrouterType("LOCAL")
+	ShardQrouter = QrouterType("SHARDING")
+)
 
 type QrouterConfig struct {
 	Qtype      string `json:"qrouter_type" toml:"qrouter_type" yaml:"qrouter_type"`
