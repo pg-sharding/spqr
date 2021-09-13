@@ -14,18 +14,15 @@ func (q Qdbetcd) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- i
 	return nil
 }
 
-func NewQDBETCD() *Qdbetcd {
-
-	cli, _ := clientv3.New(clientv3.Config{
+func NewQDBETCD() (*Qdbetcd, error) {
+	cli, _ := clientv3.New(clientv3.Config{ // TODO error handling
 		DialTimeout: 10,
 		Endpoints:   []string{"127.0.0.1:2379"},
 	})
 
-	etcddb := &Qdbetcd{
-		cli: cli,
-	}
-
-	return etcddb
+	return &Qdbetcd{
+		cli,
+	}, nil
 }
 
 func (q Qdbetcd) Lock(keyRange qdb.KeyRange) error {

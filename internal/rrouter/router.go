@@ -47,7 +47,7 @@ func (r *RRouter) AddShard(key qdb.ShardKey) error {
 	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "NewShardWatchDog")
 	}
 
 	wg.Run()

@@ -36,13 +36,17 @@ func (c *ConsoleDB) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, wal qlog.Qlog, stchan chan struct{}) *ConsoleDB {
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) (*ConsoleDB, error) {
+	dummyQlog, err := qlog.NewDummyQlog(config.Get().DataFolder)
+	if err != nil {
+		return nil, err
+	}
 	return &ConsoleDB{
 		Qrouter: Qrouter,
-		Qlog:    wal,
+		Qlog:    dummyQlog,
 		cfg:     cfg,
 		stchan:  stchan,
-	}
+	}, nil
 }
 
 func (c *ConsoleDB) Databases(cl rrouter.Client) error {

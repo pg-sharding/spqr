@@ -19,8 +19,3 @@ type ShardCfg struct {
 
 	TLSConfig *tls.Config
 }
-
-func (s *ShardCfg) Init(cfg *tls.Config) error {
-	s.TLSConfig = cfg
-	return nil
-}
