@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/app/spqr";
+
+
+message ShardingKey {
+  string colname = 1;
+}
+
+
+service ShardingKeyService {
+  rpc AddShardingKey (AddShardingKeyRequest) returns (AddShardingKeyReply) {}
+}
+
+message AddShardingKeyReply {
+
+}
+
+message AddShardingKeyRequest {
+  ShardingKey shkey = 1;
+}

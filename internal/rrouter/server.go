@@ -266,12 +266,38 @@ func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
 	return ret, nil
 }
 
-
 type LoadMirroringServer struct {
+	main Server
+	mirror Server
+}
+
+func (s LoadMirroringServer) AddShard(shkey qdb.ShardKey) error {
+	panic("implement me")
+}
+
+func (s LoadMirroringServer) UnrouteShard(sh qdb.ShardKey) error {
+	panic("implement me")
+}
+
+func (s LoadMirroringServer) AddTLSConf(cfg *tls.Config) error {
+	panic("implement me")
+}
+
+func (s LoadMirroringServer) Cleanup() error {
+	panic("implement me")
 }
 
 var _ Server = &LoadMirroringServer{}
 
 func NewLoadMirroringServer(s1 Server, s2 Server) *LoadMirroringServer {
-	return &LoadMirroringServer{}
+	return &LoadMirroringServer{
+
+	}
+}
+
+func (LoadMirroringServer) Send(query pgproto3.FrontendMessage) error {
+	return nil
+}
+func (LoadMirroringServer) Receive() (pgproto3.BackendMessage, error) {
+	return nil, nil
 }
