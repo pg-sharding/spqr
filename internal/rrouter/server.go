@@ -265,3 +265,13 @@ func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
 
 	return ret, nil
 }
+
+
+type LoadMirroringServer struct {
+}
+
+var _ Server = &LoadMirroringServer{}
+
+func NewLoadMirroringServer(s1 Server, s2 Server) *LoadMirroringServer {
+	return &LoadMirroringServer{}
+}
