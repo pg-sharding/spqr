@@ -21,7 +21,6 @@ func NewLocalQrouter(shid string) (*LocalQrouter, error) {
 }
 
 func (l *LocalQrouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-
 	panic("implement me")
 }
 

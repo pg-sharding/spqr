@@ -25,6 +25,12 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.02
+    qdb01:
+        image: 'bitnami/etcd:latest'
+        hostname: spqr_qdb_0_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.06
     router:
         build:
             dockerfile: ./docker/router/Dockerfile
