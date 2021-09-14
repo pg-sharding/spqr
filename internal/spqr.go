@@ -6,28 +6,27 @@ import (
 	"io"
 	"net"
 
-	"github.com/opentracing/opentracing-go"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
-	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"github.com/uber/jaeger-lib/metrics"
-
 	"github.com/jackc/pgproto3"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/console"
 	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/pkg/errors"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
+	jaegerlog "github.com/uber/jaeger-client-go/log"
+	"github.com/uber/jaeger-lib/metrics"
 	"github.com/wal-g/tracelog"
 )
 
 type Spqr struct {
-	Router  rrouter.Router
-	Qrouter qrouter.Qrouter
-	ConsoleDB console.Console
+	Router      rrouter.Router
+	Qrouter     qrouter.Qrouter
+	ConsoleDB   console.Console
 	SPIexecuter *Executer
-	stchan chan struct{}
-	frTLS *tls.Config
+	stchan      chan struct{}
+	frTLS       *tls.Config
 }
 
 func NewSpqr(dataFolder string) (*Spqr, error) {
@@ -60,8 +59,7 @@ func NewSpqr(dataFolder string) (*Spqr, error) {
 			return nil, err
 		}
 	}
-	
-	stchan := make(chan struct{}) 
+	stchan := make(chan struct{})
 	cnsl, err := console.NewConsole(frTLS, qr, stchan)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewConsole")
@@ -70,12 +68,12 @@ func NewSpqr(dataFolder string) (*Spqr, error) {
 	_ = executer.SPIexec(cnsl, rrouter.NewFakeClient()) // TODO add error handling
 
 	return &Spqr{
-		Router:  rr,
-		Qrouter: qr,
-		ConsoleDB: cnsl,
+		Router:      rr,
+		Qrouter:     qr,
+		ConsoleDB:   cnsl,
 		SPIexecuter: executer,
-		stchan:  stchan,
-		frTLS:   frTLS,
+		stchan:      stchan,
+		frTLS:       frTLS,
 	}, nil
 }
 
