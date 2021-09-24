@@ -1,5 +1,7 @@
-build: gogen yaccgen
+build: 
 	go build -o spqr-pg main.go
+
+gen: gogen yaccgen
 
 gogen:
 	protoc --go_out=./genproto --go_opt=paths=source_relative --go-grpc_out=./genproto --go-grpc_opt=paths=source_relative \
@@ -14,3 +16,5 @@ test:
 
 yaccgen:
 	goyacc -o yacc/spqrparser/sql.go -p yy yacc/spqrparser/sql.y
+
+.PHONY: build gen
