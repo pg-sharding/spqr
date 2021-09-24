@@ -14,7 +14,7 @@ type ShardQrouter struct {
 
 var _ Qrouter = &ShardQrouter{}
 
-func NewLocalQrouter(shid string) (*ShardQrouter, error) {
+func NewShardQrouter(shid string) (*ShardQrouter, error) {
 	return &ShardQrouter{
 		shid,
 	}, nil
@@ -55,15 +55,12 @@ func (l *ShardQrouter) Lock(krid string) error {
 func (l *ShardQrouter) UnLock(krid string) error {
 	return errors.New("local qrouter does not support sharding")
 }
-
-func (l *LocalQrouter) Split(req *spqrparser.SplitKeyRange) error {
+func (l *ShardQrouter) Split(req *spqrparser.SplitKeyRange) error {
 	return errors.New("local qrouter does not support sharding")
 }
-
-func (l *LocalQrouter) AddShardingColumn(col string) error {
+func (l *ShardQrouter) AddShardingColumn(col string) error {
 	return errors.New("local qoruter does not supprort sharding")
 }
-
 func (l *ShardQrouter) Route(q string) []ShardRoute {
 	return []ShardRoute{{Shkey: qdb.ShardKey{
 		Name: l.shid,

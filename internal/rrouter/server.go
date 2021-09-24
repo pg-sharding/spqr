@@ -267,7 +267,7 @@ func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
 }
 
 type LoadMirroringServer struct {
-	main Server
+	main   Server
 	mirror Server
 }
 
@@ -290,9 +290,7 @@ func (s LoadMirroringServer) Cleanup() error {
 var _ Server = &LoadMirroringServer{}
 
 func NewLoadMirroringServer(s1 Server, s2 Server) *LoadMirroringServer {
-	return &LoadMirroringServer{
-
-	}
+	return &LoadMirroringServer{}
 }
 
 func (LoadMirroringServer) Send(query pgproto3.FrontendMessage) error {

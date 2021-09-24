@@ -1,5 +1,5 @@
-build:
-	go build -o spqr main.go
+build: gogen yaccgen
+	go build -o spqr-pg main.go
 
 gogen:
 	protoc --go_out=./genproto --go_opt=paths=source_relative --go-grpc_out=./genproto --go-grpc_opt=paths=source_relative \

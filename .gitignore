@@ -1,4 +1,5 @@
 .idea
 vendor
 tmp
+spqr-pg
 y.output

@@ -26,7 +26,7 @@ type ProxyRouter struct {
 
 var _ Qrouter = &ProxyRouter{}
 
-func NewShardQrouter() (*ProxyRouter, error) {
+func NewProxyRouter() (*ProxyRouter, error) {
 	db, err := etcdcl.NewQDBETCD()
 	if err != nil {
 		return nil, err

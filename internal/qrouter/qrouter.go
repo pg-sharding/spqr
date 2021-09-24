@@ -37,7 +37,7 @@ type Qrouter interface {
 func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
 	switch qtype {
 	case config.ShardQrouter:
-		return NewShardQrouter()
+		return NewShardQrouter("")
 	case config.LocalQrouter:
 		return NewLocalQrouter(config.Get().QRouterCfg.LocalShard)
 	default:
