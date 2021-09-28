@@ -177,6 +177,7 @@ func (s *InstancePoolImpl) Connection(key qdb.ShardKey) (conn.DBInstance, error)
 		}
 		return s.poolRW.Connection(key.Name, pr)
 	case false:
+		tracelog.InfoLogger.Printf("get conn to %s", key.Name)
 		hosts := config.Get().RouterConfig.ShardMapping[key.Name].Hosts
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[j], hosts[i] = hosts[i], hosts[j]

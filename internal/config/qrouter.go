@@ -4,6 +4,7 @@ type QrouterType string
 
 const (
 	LocalQrouter = QrouterType("LOCAL")
+	ProxyQrouter = QrouterType("PROXY")
 	ShardQrouter = QrouterType("SHARDING")
 )
 

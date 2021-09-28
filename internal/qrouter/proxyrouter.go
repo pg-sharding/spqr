@@ -180,6 +180,7 @@ func (qr *ProxyRouter) matchShkey(expr sqlparser.Expr) bool {
 }
 
 func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
+
 	switch texpr := expr.(type) {
 	case *sqlparser.AndExpr:
 		lft := qr.routeByExpr(texpr.Left)
@@ -188,10 +189,14 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 		}
 		return lft
 	case *sqlparser.ComparisonExpr:
+
 		if qr.matchShkey(texpr.Left) {
+			tracelog.InfoLogger.Printf("go right")
 			shindx := qr.routeByExpr(texpr.Right)
 			return shindx
 		}
+		tracelog.InfoLogger.Printf("go left")
+		return qr.routeByExpr(texpr.Left)
 	case *sqlparser.SQLVal:
 		valInt, err := strconv.Atoi(string(texpr.Val))
 		if err != nil {
@@ -201,6 +206,7 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 				},
 			}
 		}
+		tracelog.InfoLogger.Printf("parsed val %d", valInt)
 		kr := qr.routeByIndx(valInt)
 		rw := qr.qdb.Check(kr)
 
@@ -211,7 +217,6 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 			Matchedkr: kr,
 		}
 	default:
-		//tracelog.InfoLogger.Println("typ is %T\n", expr)
 	}
 
 	return ShardRoute{
@@ -301,5 +306,6 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 }
 
 func (qr *ProxyRouter) Route(q string) []ShardRoute {
+	tracelog.InfoLogger.Printf("routing by %s", q)
 	return qr.matchShards(q)
 }

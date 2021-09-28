@@ -55,6 +55,7 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) 
 
 	shardRoutes := rst.Qr.Route(q.String)
 	span.SetTag("shard_routes", shardRoutes)
+	tracelog.InfoLogger.Printf("parsed routes %v", shardRoutes)
 
 	if len(shardRoutes) == 0 {
 		_ = rst.manager.UnRouteWithError(rst.cl, nil, "failed to match shard")
@@ -84,6 +85,7 @@ func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
 			return err
 		}
 	} else {
+		tracelog.InfoLogger.Printf("initialize shard server conn")
 		serv = NewShardServer(rst.cl.Route().beRule, rst.cl.Route().servPool)
 	}
 

@@ -37,9 +37,11 @@ type Qrouter interface {
 func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
 	switch qtype {
 	case config.ShardQrouter:
-		return NewShardQrouter("")
+		return NewShardQrouter(config.Get().QRouterCfg.LocalShard)
 	case config.LocalQrouter:
 		return NewLocalQrouter(config.Get().QRouterCfg.LocalShard)
+	case config.ProxyQrouter:
+		return NewProxyRouter()
 	default:
 		return nil, errors.Errorf("unknown qrouter type %v", config.Get().QRouterCfg.Qtype)
 	}
