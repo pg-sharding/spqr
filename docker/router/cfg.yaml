@@ -9,7 +9,7 @@ executer:
         init_sql_path: "/router/docker/router/init.sql"
 
 qrouter:
-        qrouter_type: SHARDING
+        qrouter_type: PROXY
 router:
         tls:
                 key_file: '/etc/odyssey/ssl/server.key'
