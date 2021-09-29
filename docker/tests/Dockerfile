@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim 
 
 COPY ./docker/tests/bin/ /usr/local/bin/
+RUN mkdir /root/stress
+COPY ./docker/tests/stress /root/stress
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 

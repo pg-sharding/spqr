@@ -1,7 +1,8 @@
 #!/bin/bash
-set -ex
 
+set -ex
 
 simple.sh
 
 console.sh
+

@@ -22,5 +22,5 @@ make build
 Check it out
 
 ```
-docker-compose up
+make run
 ```
