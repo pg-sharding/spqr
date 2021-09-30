@@ -23,4 +23,15 @@ Check it out
 
 ```
 make run
+
+.......
+
+
+root@spqr_client_1_1:/# connect.sh
+psql (13.4 (Ubuntu 13.4-1.pgdg20.04+1), server lolkekcheburek)
+Type "help" for help.
+
+db1=?> \q
+root@spqr_client_1_1:/#
+
 ```

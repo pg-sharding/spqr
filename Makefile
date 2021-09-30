@@ -23,8 +23,8 @@ test:
 
 run:
 	docker-compose up -d --remove-orphans --build router shard1 shard2
-	docker run -it --entrypoint /bin/bash spqr_client
-
+	docker-compose build client
+	docker-compose run --entrypoint /bin/bash client
 
 yaccgen:
 	goyacc -o yacc/spqrparser/sql.go -p yy yacc/spqrparser/sql.y
