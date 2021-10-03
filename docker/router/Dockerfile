@@ -1,6 +1,5 @@
 FROM golang:1.16
 
-
 RUN mkdir /router
 COPY ./ /router
 COPY ./docker/router/qlog /etc/spqr/qlog

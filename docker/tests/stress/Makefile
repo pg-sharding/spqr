@@ -1,4 +1,8 @@
 build:
-	go build -o stress main.go
+	go build stress.go
+
+install:
+	mv stress /usr/local/bin/
+
 run:
 	./stress -p 10
