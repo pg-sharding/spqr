@@ -56,6 +56,9 @@ type Shard struct {
 	Name string
 }
 
+type Listen struct {
+	addr string
+}
 type Shutdown struct{}
 
 type Kill struct {
@@ -83,6 +86,7 @@ func (*Drop) iStatement()           {}
 func (*Lock) iStatement()           {}
 func (*Unlock) iStatement()         {}
 func (*Shutdown) iStatement()       {}
+func (*Listen) iStatement()       {}
 func (*MoveKeyRange) iStatement()   {}
 func (*SplitKeyRange) iStatement()  {}
 func (*UniteKeyRange) iStatement()  {}
@@ -116,6 +120,7 @@ var reservedWords = map[string]int{
 	"by":         BY,
 	"with":       WITH,
 	"unite":      UNITE,
+	"listen":     LISTEN,
 }
 
 // Tokenizer is the struct used to generate SQL

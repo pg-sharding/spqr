@@ -4,9 +4,13 @@ deps:
 	go get -u github.com/golang/protobuf/protoc-gen-go
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
+build_c: 
+	go build -o spqr-c coordinator/main.go
 
-build: 
-	go build -o spqr-pg main.go
+build_proxy: 
+	go build -o spqr-pg spqr/main.go
+
+build: build_c build_proxy
 
 gen: gogen yaccgen
 

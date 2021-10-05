@@ -22,6 +22,7 @@ import (
   drop          *Drop
   lock          *Lock
   shutdown      *Shutdown
+  listen        *Listen
   unlock        *Unlock
   split         *SplitKeyRange
   move          *MoveKeyRange
@@ -48,7 +49,9 @@ import (
 
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SHUTDOWN SPLIT MOVE
+%token <str> SHUTDOWN LISTEN
+
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str>  SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
 %token <str>  BY FROM TO WITH UNITE
 
@@ -65,6 +68,7 @@ import (
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
 %type <shutdown> shutdown_stmt
+%type <listen> listen_stmt
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
 %type <unite> unite_key_range_stmt
@@ -73,6 +77,7 @@ import (
 %type <str> sharding_column_name
 
 %type<str> shard_id
+%type<str> spqr_addr
 %type<int> key_range_spec_bound
 %type<str> key_range_id
 
@@ -118,6 +123,10 @@ command:
     {
         setParseTree(yylex, $1)
     }
+    | listen_stmt
+     {
+         setParseTree(yylex, $1)
+     }
     | shutdown_stmt
      {
          setParseTree(yylex, $1)
@@ -187,23 +196,29 @@ key_range_spec_bound:
     }
 
 create_sharding_column_stmt:
-    CREATE SHARDING COLUMN sharding_column_name
-      {
-        $$ = &ShardingColumn{ColName: $4}
-      }
+	CREATE SHARDING COLUMN sharding_column_name
+	{
+		$$ = &ShardingColumn{ColName: $4}
+	}
 
 key_range_id:
-  STRING
-  {
-    $$ = string($1)
-  }
+	STRING
+	{
+		$$ = string($1)
+	}
 
 
 shard_id:
-  STRING
-  {
-    $$ = string($1)
-  }
+	STRING
+	{
+		$$ = string($1)
+	}
+
+spqr_addr:
+	STRING
+	{
+		$$ = string($1)
+	}
 
 
 drop_stmt:
@@ -267,12 +282,16 @@ unite_key_range_stmt:
         $$ = &UniteKeyRange{KeyRangeIDL: $4, KeyRangeIDR: $5}
     }
 
+listen_stmt:
+	LISTEN spqr_addr
+	{
+		$$ = &Listen{addr: $2}
+	}
 
 shutdown_stmt:
-    SHUTDOWN
-    {
-        $$ = &Shutdown{}
-    }
-
+	SHUTDOWN
+	{
+		$$ = &Shutdown{}
+	}
 %%
 
