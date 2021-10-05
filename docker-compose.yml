@@ -25,6 +25,14 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.02
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: .
+        hostname: spqr_coordinator
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.07
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1
@@ -45,7 +53,7 @@ services:
         build:
             dockerfile: ./docker/tests/Dockerfile
             context: .
-        hostname: spqr_client_1_1
+        hostname: spqr_client
         networks:
             spqr:
                 ipv4_address: 192.168.233.05
