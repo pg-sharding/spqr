@@ -3,7 +3,7 @@ package etcdcl
 import (
 	"context"
 
-	"github.com/pg-sharding/spqr/internal/qdb"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
@@ -57,7 +57,7 @@ func (q Qdbetcd) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- i
 	return nil
 }
 
-const keyspace = "spqr"
+const keyspace = "router"
 
 func NewQDBETCD() (*Qdbetcd, error) {
 	cli, _ := clientv3.New(clientv3.Config{ // TODO error handling

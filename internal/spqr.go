@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/console"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/pkg/errors"
@@ -149,7 +149,7 @@ func (sg *Spqr) Run(listener net.Listener) error {
 
 func (sg *Spqr) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
-		ServiceName: "spqr",
+		ServiceName: "router",
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:              "const",
 			Param:             1,
@@ -169,7 +169,7 @@ func (sg *Spqr) initJaegerTracer() (io.Closer, error) {
 
 	// Initialize tracer with a logger and a metrics factory
 	return cfg.InitGlobalTracer(
-		"spqr",
+		"router",
 		jaegercfg.Logger(jLogger),
 		jaegercfg.Metrics(jMetricsFactory),
 	)

@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/internal/qdb"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
 	"github.com/wal-g/tracelog"

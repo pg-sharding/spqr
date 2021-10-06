@@ -2,8 +2,8 @@ package rrouter
 
 import (
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )

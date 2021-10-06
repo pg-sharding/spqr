@@ -352,7 +352,7 @@ func (cl *SpqrClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr",
+				Name:                 "router",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -391,7 +391,7 @@ func (cl *SpqrClient) ReplyErr(errmsg string) error {
 func (cl *SpqrClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: "spqr is shutdown, your connection closed",
+			Message: "router is shutdown, your connection closed",
 		},
 		&pgproto3.ReadyForQuery{},
 	} {

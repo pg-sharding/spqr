@@ -6,7 +6,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "spqr run --data `path-to-data-folder`",
+	Use:   "router run --data `path-to-data-folder`",
 	Short: "SPQR",
 	Long:  "Stateless Postgres Query Router",
 	CompletionOptions: cobra.CompletionOptions{

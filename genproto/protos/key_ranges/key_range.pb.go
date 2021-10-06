@@ -204,14 +204,14 @@ func file_protos_key_ranges_key_range_proto_rawDescGZIP() []byte {
 
 var file_protos_key_ranges_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_protos_key_ranges_key_range_proto_goTypes = []interface{}{
-	(*KeyRangeRequest)(nil), // 0: yandex.spqr.key_ranges.KeyRangeRequest
-	(*KeyRange)(nil),        // 1: yandex.spqr.key_ranges.KeyRange
-	(*KeyRangeReply)(nil),   // 2: yandex.spqr.key_ranges.KeyRangeReply
+	(*KeyRangeRequest)(nil), // 0: yandex.router.key_ranges.KeyRangeRequest
+	(*KeyRange)(nil),        // 1: yandex.router.key_ranges.KeyRange
+	(*KeyRangeReply)(nil),   // 2: yandex.router.key_ranges.KeyRangeReply
 }
 var file_protos_key_ranges_key_range_proto_depIdxs = []int32{
-	1, // 0: yandex.spqr.key_ranges.KeyRangeReply.key_ranges:type_name -> yandex.spqr.key_ranges.KeyRange
-	0, // 1: yandex.spqr.key_ranges.KeyRangeService.ListKeyRange:input_type -> yandex.spqr.key_ranges.KeyRangeRequest
-	2, // 2: yandex.spqr.key_ranges.KeyRangeService.ListKeyRange:output_type -> yandex.spqr.key_ranges.KeyRangeReply
+	1, // 0: yandex.router.key_ranges.KeyRangeReply.key_ranges:type_name -> yandex.router.key_ranges.KeyRange
+	0, // 1: yandex.router.key_ranges.KeyRangeService.ListKeyRange:input_type -> yandex.router.key_ranges.KeyRangeRequest
+	2, // 2: yandex.router.key_ranges.KeyRangeService.ListKeyRange:output_type -> yandex.router.key_ranges.KeyRangeReply
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

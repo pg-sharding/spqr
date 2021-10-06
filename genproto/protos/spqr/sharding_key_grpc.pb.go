@@ -31,7 +31,7 @@ func NewShardingKeyServiceClient(cc grpc.ClientConnInterface) ShardingKeyService
 
 func (c *shardingKeyServiceClient) AddShardingKey(ctx context.Context, in *AddShardingKeyRequest, opts ...grpc.CallOption) (*AddShardingKeyReply, error) {
 	out := new(AddShardingKeyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingKeyService/AddShardingKey", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.ShardingKeyService/AddShardingKey", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func _ShardingKeyService_AddShardingKey_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardingKeyService/AddShardingKey",
+		FullMethod: "/yandex.router.ShardingKeyService/AddShardingKey",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardingKeyServiceServer).AddShardingKey(ctx, req.(*AddShardingKeyRequest))
@@ -88,7 +88,7 @@ func _ShardingKeyService_AddShardingKey_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ShardingKeyService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.ShardingKeyService",
+	ServiceName: "yandex.router.ShardingKeyService",
 	HandlerType: (*ShardingKeyServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -97,5 +97,5 @@ var ShardingKeyService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/spqr/sharding_key.proto",
+	Metadata: "protos/router/sharding_key.proto",
 }

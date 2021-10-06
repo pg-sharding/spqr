@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )

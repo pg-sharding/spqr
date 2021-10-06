@@ -15,6 +15,8 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/wal-g/tracelog v0.0.0-20210121175938-897a155375e3
 	go.etcd.io/etcd/client/v3 v3.5.0
+	golang.org/x/net v0.0.0-20210805182204-aaa1db679c0d // indirect
+	golang.org/x/sys v0.0.0-20210809222454-d867a43fc93e // indirect
 	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	google.golang.org/grpc v1.41.0

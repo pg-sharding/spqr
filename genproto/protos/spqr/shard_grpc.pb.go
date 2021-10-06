@@ -32,7 +32,7 @@ func NewShardServiceClient(cc grpc.ClientConnInterface) ShardServiceClient {
 
 func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error) {
 	out := new(ShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/ListShards", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.ShardService/ListShards", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, o
 
 func (c *shardServiceClient) AddShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
 	out := new(AddShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddShard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.ShardService/AddShard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/ListShards",
+		FullMethod: "/yandex.router.ShardService/ListShards",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).ListShards(ctx, req.(*ShardRequest))
@@ -108,7 +108,7 @@ func _ShardService_AddShard_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/AddShard",
+		FullMethod: "/yandex.router.ShardService/AddShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).AddShard(ctx, req.(*AddShardRequest))
@@ -120,7 +120,7 @@ func _ShardService_AddShard_Handler(srv interface{}, ctx context.Context, dec fu
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ShardService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.ShardService",
+	ServiceName: "yandex.router.ShardService",
 	HandlerType: (*ShardServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -133,5 +133,5 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/spqr/shard.proto",
+	Metadata: "protos/router/shard.proto",
 }

@@ -34,7 +34,7 @@ func NewKeyRangeServiceClient(cc grpc.ClientConnInterface) KeyRangeServiceClient
 
 func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/ListKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.KeyRangeService/ListKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRan
 
 func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/LockKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.KeyRangeService/LockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRan
 
 func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/UnlockKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.KeyRangeService/UnlockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKe
 
 func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/SplitKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.KeyRangeService/SplitKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func _KeyRangeService_ListKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/ListKeyRange",
+		FullMethod: "/yandex.router.KeyRangeService/ListKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).ListKeyRange(ctx, req.(*ListKeyRangeRequest))
@@ -136,7 +136,7 @@ func _KeyRangeService_LockKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/LockKeyRange",
+		FullMethod: "/yandex.router.KeyRangeService/LockKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).LockKeyRange(ctx, req.(*LockKeyRangeRequest))
@@ -154,7 +154,7 @@ func _KeyRangeService_UnlockKeyRange_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/UnlockKeyRange",
+		FullMethod: "/yandex.router.KeyRangeService/UnlockKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).UnlockKeyRange(ctx, req.(*UnlockKeyRangeRequest))
@@ -172,7 +172,7 @@ func _KeyRangeService_SplitKeyRange_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/SplitKeyRange",
+		FullMethod: "/yandex.router.KeyRangeService/SplitKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).SplitKeyRange(ctx, req.(*SplitKeyRangeRequest))
@@ -184,7 +184,7 @@ func _KeyRangeService_SplitKeyRange_Handler(srv interface{}, ctx context.Context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.KeyRangeService",
+	ServiceName: "yandex.router.KeyRangeService",
 	HandlerType: (*KeyRangeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

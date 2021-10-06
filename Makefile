@@ -8,7 +8,7 @@ build_c:
 	go build -o spqr-c coordinator/main.go
 
 build_proxy: 
-	go build -o spqr-pg spqr/main.go
+	go build -o spqr-rr router/main.go
 
 build: build_c build_proxy
 

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.6.1
-// source: protos/spqr/shard.proto
+// source: protos/router/shard.proto
 
 package spqr
 
@@ -301,19 +301,19 @@ func file_protos_spqr_shard_proto_rawDescGZIP() []byte {
 
 var file_protos_spqr_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_protos_spqr_shard_proto_goTypes = []interface{}{
-	(*Shard)(nil),           // 0: yandex.spqr.Shard
-	(*ShardRequest)(nil),    // 1: yandex.spqr.ShardRequest
-	(*ShardReply)(nil),      // 2: yandex.spqr.ShardReply
-	(*AddShardRequest)(nil), // 3: yandex.spqr.AddShardRequest
-	(*AddShardReply)(nil),   // 4: yandex.spqr.AddShardReply
+	(*Shard)(nil),           // 0: yandex.router.Shard
+	(*ShardRequest)(nil),    // 1: yandex.router.ShardRequest
+	(*ShardReply)(nil),      // 2: yandex.router.ShardReply
+	(*AddShardRequest)(nil), // 3: yandex.router.AddShardRequest
+	(*AddShardReply)(nil),   // 4: yandex.router.AddShardReply
 }
 var file_protos_spqr_shard_proto_depIdxs = []int32{
-	0, // 0: yandex.spqr.ShardReply.shards:type_name -> yandex.spqr.Shard
-	0, // 1: yandex.spqr.AddShardRequest.shard:type_name -> yandex.spqr.Shard
-	1, // 2: yandex.spqr.ShardService.ListShards:input_type -> yandex.spqr.ShardRequest
-	3, // 3: yandex.spqr.ShardService.AddShard:input_type -> yandex.spqr.AddShardRequest
-	2, // 4: yandex.spqr.ShardService.ListShards:output_type -> yandex.spqr.ShardReply
-	4, // 5: yandex.spqr.ShardService.AddShard:output_type -> yandex.spqr.AddShardReply
+	0, // 0: yandex.router.ShardReply.shards:type_name -> yandex.router.Shard
+	0, // 1: yandex.router.AddShardRequest.shard:type_name -> yandex.router.Shard
+	1, // 2: yandex.router.ShardService.ListShards:input_type -> yandex.router.ShardRequest
+	3, // 3: yandex.router.ShardService.AddShard:input_type -> yandex.router.AddShardRequest
+	2, // 4: yandex.router.ShardService.ListShards:output_type -> yandex.router.ShardReply
+	4, // 5: yandex.router.ShardService.AddShard:output_type -> yandex.router.AddShardReply
 	4, // [4:6] is the sub-list for method output_type
 	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/pg-sharding/spqr/internal/conn"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/wal-g/tracelog"
 )
 

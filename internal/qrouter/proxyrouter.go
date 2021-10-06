@@ -4,9 +4,9 @@ import (
 	"strconv"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qdb"
-	"github.com/pg-sharding/spqr/internal/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"

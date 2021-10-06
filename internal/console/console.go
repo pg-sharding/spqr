@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
@@ -142,7 +142,7 @@ func (c *ConsoleDB) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitK
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr",
+				Name:                 "router",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -173,7 +173,7 @@ func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr",
+				Name:                 "router",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -267,7 +267,7 @@ func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr key ranges",
+				Name:                 "router key ranges",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -317,7 +317,7 @@ func (c *ConsoleDB) Shards(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "spqr shards",
+				Name:                 "router shards",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,

@@ -1,8 +1,8 @@
 package qrouter
 
 import (
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/internal/qdb"
 	"github.com/pg-sharding/spqr/yacc/spqrparser"
 	"github.com/pkg/errors"
 )

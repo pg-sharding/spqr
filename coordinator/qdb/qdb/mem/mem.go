@@ -3,7 +3,7 @@ package mem
 import (
 	"sync"
 
-	"github.com/pg-sharding/spqr/internal/qdb"
+	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"golang.org/x/xerrors"
 )
 

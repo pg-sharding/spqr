@@ -31,7 +31,7 @@ func NewKeyRangeServiceClient(cc grpc.ClientConnInterface) KeyRangeServiceClient
 
 func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *KeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.key_ranges.KeyRangeService/ListKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.router.key_ranges.KeyRangeService/ListKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func _KeyRangeService_ListKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.key_ranges.KeyRangeService/ListKeyRange",
+		FullMethod: "/yandex.router.key_ranges.KeyRangeService/ListKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).ListKeyRange(ctx, req.(*KeyRangeRequest))
@@ -88,7 +88,7 @@ func _KeyRangeService_ListKeyRange_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.key_ranges.KeyRangeService",
+	ServiceName: "yandex.router.key_ranges.KeyRangeService",
 	HandlerType: (*KeyRangeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

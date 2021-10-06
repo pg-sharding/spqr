@@ -137,12 +137,12 @@ func file_protos_shard_proto_rawDescGZIP() []byte {
 
 var file_protos_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_protos_shard_proto_goTypes = []interface{}{
-	(*ShardRequest)(nil), // 0: yandex.spqr.ShardRequest
-	(*ShardReply)(nil),   // 1: yandex.spqr.ShardReply
+	(*ShardRequest)(nil), // 0: yandex.router.ShardRequest
+	(*ShardReply)(nil),   // 1: yandex.router.ShardReply
 }
 var file_protos_shard_proto_depIdxs = []int32{
-	0, // 0: yandex.spqr.ShardService.ListShards:input_type -> yandex.spqr.ShardRequest
-	1, // 1: yandex.spqr.ShardService.ListShards:output_type -> yandex.spqr.ShardReply
+	0, // 0: yandex.router.ShardService.ListShards:input_type -> yandex.router.ShardRequest
+	1, // 1: yandex.router.ShardService.ListShards:output_type -> yandex.router.ShardReply
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
