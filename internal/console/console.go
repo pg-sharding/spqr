@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/internal/qlog"
 	"github.com/pg-sharding/spqr/internal/qrouter"
 	"github.com/pg-sharding/spqr/internal/rrouter"
-	"github.com/pg-sharding/spqr/yacc/console"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )

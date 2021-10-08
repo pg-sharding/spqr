@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/router/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "coordinator", "/etc/router/config.yaml", "path to config file")
 	rootCmd.AddCommand(runCmd)
 }
 

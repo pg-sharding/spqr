@@ -4,7 +4,7 @@ import (
 	"net"
 
 	reuse "github.com/libp2p/go-reuseport"
-	shhttp "github.com/pg-sharding/spqr/http"
+	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/internal"
 	"github.com/pg-sharding/spqr/internal/config"
 	"github.com/wal-g/tracelog"

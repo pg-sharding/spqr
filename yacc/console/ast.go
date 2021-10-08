@@ -86,7 +86,7 @@ func (*Drop) iStatement()           {}
 func (*Lock) iStatement()           {}
 func (*Unlock) iStatement()         {}
 func (*Shutdown) iStatement()       {}
-func (*Listen) iStatement()       {}
+func (*Listen) iStatement()         {}
 func (*MoveKeyRange) iStatement()   {}
 func (*SplitKeyRange) iStatement()  {}
 func (*UniteKeyRange) iStatement()  {}
