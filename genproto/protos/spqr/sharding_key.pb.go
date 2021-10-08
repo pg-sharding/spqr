@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.6.1
-// source: protos/router/sharding_key.proto
+// source: protos/spqr/sharding_key.proto
 
-package spqr
+package router
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -173,9 +173,9 @@ var file_protos_spqr_sharding_key_proto_rawDesc = []byte{
 	0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x4b, 0x65, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x1a, 0x20, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72,
 	0x2e, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x4b, 0x65, 0x79, 0x52,
-	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x11, 0x5a, 0x0f, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78,
-	0x2f, 0x61, 0x70, 0x70, 0x2f, 0x73, 0x70, 0x71, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x13, 0x5a, 0x11, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78,
+	0x2f, 0x61, 0x70, 0x70, 0x2f, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -192,14 +192,14 @@ func file_protos_spqr_sharding_key_proto_rawDescGZIP() []byte {
 
 var file_protos_spqr_sharding_key_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_protos_spqr_sharding_key_proto_goTypes = []interface{}{
-	(*ShardingKey)(nil),           // 0: yandex.router.ShardingKey
-	(*AddShardingKeyReply)(nil),   // 1: yandex.router.AddShardingKeyReply
-	(*AddShardingKeyRequest)(nil), // 2: yandex.router.AddShardingKeyRequest
+	(*ShardingKey)(nil),           // 0: yandex.spqr.ShardingKey
+	(*AddShardingKeyReply)(nil),   // 1: yandex.spqr.AddShardingKeyReply
+	(*AddShardingKeyRequest)(nil), // 2: yandex.spqr.AddShardingKeyRequest
 }
 var file_protos_spqr_sharding_key_proto_depIdxs = []int32{
-	0, // 0: yandex.router.AddShardingKeyRequest.shkey:type_name -> yandex.router.ShardingKey
-	2, // 1: yandex.router.ShardingKeyService.AddShardingKey:input_type -> yandex.router.AddShardingKeyRequest
-	1, // 2: yandex.router.ShardingKeyService.AddShardingKey:output_type -> yandex.router.AddShardingKeyReply
+	0, // 0: yandex.spqr.AddShardingKeyRequest.shkey:type_name -> yandex.spqr.ShardingKey
+	2, // 1: yandex.spqr.ShardingKeyService.AddShardingKey:input_type -> yandex.spqr.AddShardingKeyRequest
+	1, // 2: yandex.spqr.ShardingKeyService.AddShardingKey:output_type -> yandex.spqr.AddShardingKeyReply
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

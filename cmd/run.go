@@ -27,7 +27,7 @@ var runCmd = &cobra.Command{
 		if err := config.Load(cfgPath); err != nil {
 			return err
 		}
-		spqr, err := internal.NewSpqr(cfgPath)
+		spqr, err := internal.NewSpqr()
 		if err != nil {
 			return errors.Wrap(err, "SPQR creation failed")
 		}

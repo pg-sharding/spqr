@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package yandex.spqr;
 
-option go_package = "yandex/app/router";
+option go_package = "yandex/app/coordinator";
 
 service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}

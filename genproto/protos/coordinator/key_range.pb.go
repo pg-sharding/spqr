@@ -4,7 +4,7 @@
 // 	protoc        v3.6.1
 // source: protos/coordinator/key_range.proto
 
-package spqr
+package coordinator
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -317,8 +317,9 @@ var file_protos_coordinator_key_range_proto_rawDesc = []byte{
 	0x69, 0x74, 0x4b, 0x65, 0x79, 0x52, 0x61, 0x6e, 0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
 	0x74, 0x1a, 0x1a, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e,
 	0x4b, 0x65, 0x79, 0x52, 0x61, 0x6e, 0x67, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42,
-	0x11, 0x5a, 0x0f, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2f, 0x61, 0x70, 0x70, 0x2f, 0x73, 0x70,
-	0x71, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x18, 0x5a, 0x16, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2f, 0x61, 0x70, 0x70, 0x2f, 0x63, 0x6f,
+	0x6f, 0x72, 0x64, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -335,23 +336,23 @@ func file_protos_coordinator_key_range_proto_rawDescGZIP() []byte {
 
 var file_protos_coordinator_key_range_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_protos_coordinator_key_range_proto_goTypes = []interface{}{
-	(*ListKeyRangeRequest)(nil),   // 0: yandex.router.ListKeyRangeRequest
-	(*SplitKeyRangeRequest)(nil),  // 1: yandex.router.SplitKeyRangeRequest
-	(*LockKeyRangeRequest)(nil),   // 2: yandex.router.LockKeyRangeRequest
-	(*UnlockKeyRangeRequest)(nil), // 3: yandex.router.UnlockKeyRangeRequest
-	(*KeyRange)(nil),              // 4: yandex.router.KeyRange
-	(*KeyRangeReply)(nil),         // 5: yandex.router.KeyRangeReply
+	(*ListKeyRangeRequest)(nil),   // 0: yandex.spqr.ListKeyRangeRequest
+	(*SplitKeyRangeRequest)(nil),  // 1: yandex.spqr.SplitKeyRangeRequest
+	(*LockKeyRangeRequest)(nil),   // 2: yandex.spqr.LockKeyRangeRequest
+	(*UnlockKeyRangeRequest)(nil), // 3: yandex.spqr.UnlockKeyRangeRequest
+	(*KeyRange)(nil),              // 4: yandex.spqr.KeyRange
+	(*KeyRangeReply)(nil),         // 5: yandex.spqr.KeyRangeReply
 }
 var file_protos_coordinator_key_range_proto_depIdxs = []int32{
-	4, // 0: yandex.router.KeyRangeReply.key_ranges:type_name -> yandex.router.KeyRange
-	0, // 1: yandex.router.KeyRangeService.ListKeyRange:input_type -> yandex.router.ListKeyRangeRequest
-	2, // 2: yandex.router.KeyRangeService.LockKeyRange:input_type -> yandex.router.LockKeyRangeRequest
-	3, // 3: yandex.router.KeyRangeService.UnlockKeyRange:input_type -> yandex.router.UnlockKeyRangeRequest
-	1, // 4: yandex.router.KeyRangeService.SplitKeyRange:input_type -> yandex.router.SplitKeyRangeRequest
-	5, // 5: yandex.router.KeyRangeService.ListKeyRange:output_type -> yandex.router.KeyRangeReply
-	5, // 6: yandex.router.KeyRangeService.LockKeyRange:output_type -> yandex.router.KeyRangeReply
-	5, // 7: yandex.router.KeyRangeService.UnlockKeyRange:output_type -> yandex.router.KeyRangeReply
-	5, // 8: yandex.router.KeyRangeService.SplitKeyRange:output_type -> yandex.router.KeyRangeReply
+	4, // 0: yandex.spqr.KeyRangeReply.key_ranges:type_name -> yandex.spqr.KeyRange
+	0, // 1: yandex.spqr.KeyRangeService.ListKeyRange:input_type -> yandex.spqr.ListKeyRangeRequest
+	2, // 2: yandex.spqr.KeyRangeService.LockKeyRange:input_type -> yandex.spqr.LockKeyRangeRequest
+	3, // 3: yandex.spqr.KeyRangeService.UnlockKeyRange:input_type -> yandex.spqr.UnlockKeyRangeRequest
+	1, // 4: yandex.spqr.KeyRangeService.SplitKeyRange:input_type -> yandex.spqr.SplitKeyRangeRequest
+	5, // 5: yandex.spqr.KeyRangeService.ListKeyRange:output_type -> yandex.spqr.KeyRangeReply
+	5, // 6: yandex.spqr.KeyRangeService.LockKeyRange:output_type -> yandex.spqr.KeyRangeReply
+	5, // 7: yandex.spqr.KeyRangeService.UnlockKeyRange:output_type -> yandex.spqr.KeyRangeReply
+	5, // 8: yandex.spqr.KeyRangeService.SplitKeyRange:output_type -> yandex.spqr.KeyRangeReply
 	5, // [5:9] is the sub-list for method output_type
 	1, // [1:5] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

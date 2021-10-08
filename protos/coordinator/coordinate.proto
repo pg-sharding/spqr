@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/app/coordinator";
+
+service RoutersService {
+  rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
+  rpc AddRouters (AddRoutersRequest) returns (AddRoutersReply) {}
+}
+
+
+message ListRoutersRequest {
+
+}
+
+message AddRoutersRequest {
+
+}
+
+message ListRoutersReply {
+
+}
+
+message AddRoutersReply {
+  
+}

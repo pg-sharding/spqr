@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.6.1
-// source: protos/router/shard.proto
+// source: protos/spqr/shard.proto
 
-package spqr
+package router
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -282,9 +282,9 @@ var file_protos_spqr_shard_proto_rawDesc = []byte{
 	0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53, 0x68,
 	0x61, 0x72, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x79, 0x61, 0x6e,
 	0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72,
-	0x64, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x11, 0x5a, 0x0f, 0x79, 0x61, 0x6e, 0x64,
-	0x65, 0x78, 0x2f, 0x61, 0x70, 0x70, 0x2f, 0x73, 0x70, 0x71, 0x72, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x64, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x13, 0x5a, 0x11, 0x79, 0x61, 0x6e, 0x64,
+	0x65, 0x78, 0x2f, 0x61, 0x70, 0x70, 0x2f, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -301,19 +301,19 @@ func file_protos_spqr_shard_proto_rawDescGZIP() []byte {
 
 var file_protos_spqr_shard_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_protos_spqr_shard_proto_goTypes = []interface{}{
-	(*Shard)(nil),           // 0: yandex.router.Shard
-	(*ShardRequest)(nil),    // 1: yandex.router.ShardRequest
-	(*ShardReply)(nil),      // 2: yandex.router.ShardReply
-	(*AddShardRequest)(nil), // 3: yandex.router.AddShardRequest
-	(*AddShardReply)(nil),   // 4: yandex.router.AddShardReply
+	(*Shard)(nil),           // 0: yandex.spqr.Shard
+	(*ShardRequest)(nil),    // 1: yandex.spqr.ShardRequest
+	(*ShardReply)(nil),      // 2: yandex.spqr.ShardReply
+	(*AddShardRequest)(nil), // 3: yandex.spqr.AddShardRequest
+	(*AddShardReply)(nil),   // 4: yandex.spqr.AddShardReply
 }
 var file_protos_spqr_shard_proto_depIdxs = []int32{
-	0, // 0: yandex.router.ShardReply.shards:type_name -> yandex.router.Shard
-	0, // 1: yandex.router.AddShardRequest.shard:type_name -> yandex.router.Shard
-	1, // 2: yandex.router.ShardService.ListShards:input_type -> yandex.router.ShardRequest
-	3, // 3: yandex.router.ShardService.AddShard:input_type -> yandex.router.AddShardRequest
-	2, // 4: yandex.router.ShardService.ListShards:output_type -> yandex.router.ShardReply
-	4, // 5: yandex.router.ShardService.AddShard:output_type -> yandex.router.AddShardReply
+	0, // 0: yandex.spqr.ShardReply.shards:type_name -> yandex.spqr.Shard
+	0, // 1: yandex.spqr.AddShardRequest.shard:type_name -> yandex.spqr.Shard
+	1, // 2: yandex.spqr.ShardService.ListShards:input_type -> yandex.spqr.ShardRequest
+	3, // 3: yandex.spqr.ShardService.AddShard:input_type -> yandex.spqr.AddShardRequest
+	2, // 4: yandex.spqr.ShardService.ListShards:output_type -> yandex.spqr.ShardReply
+	4, // 5: yandex.spqr.ShardService.AddShard:output_type -> yandex.spqr.AddShardReply
 	4, // [4:6] is the sub-list for method output_type
 	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

@@ -29,7 +29,7 @@ type Spqr struct {
 	frTLS       *tls.Config
 }
 
-func NewSpqr(dataFolder string) (*Spqr, error) {
+func NewSpqr() (*Spqr, error) {
 	qtype := config.QrouterType(config.Get().QRouterCfg.Qtype)
 	tracelog.InfoLogger.Printf("create Qrouter with type %s", qtype)
 	qr, err := qrouter.NewQrouter(qtype)
@@ -60,12 +60,30 @@ func NewSpqr(dataFolder string) (*Spqr, error) {
 		}
 	}
 	stchan := make(chan struct{})
+
 	cnsl, err := console.NewConsole(frTLS, qr, stchan)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewConsole")
 	}
+
 	executer := NewExecuter(config.Get().ExecuterCfg)
 	_ = executer.SPIexec(cnsl, rrouter.NewFakeClient()) // TODO add error handling
+
+
+	queries, err := cnsl.Qlog.Recover(config.Get().DataFolder)
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(errors.Wrap(err, "Serve can't start"))
+	}
+
+	for _, query := range queries {
+		if err := cnsl.ProcessQuery(query, rrouter.NewFakeClient()); err != nil {
+			continue // TODO fix 'syntax error'
+			// return errors.Wrap(err, "Serve init fail")
+		}
+	}
+
+	tracelog.InfoLogger.Printf("Succesfully init %d queries", len(queries))
+
 
 	return &Spqr{
 		Router:      rr,

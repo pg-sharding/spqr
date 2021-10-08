@@ -433,18 +433,6 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 
 func (c *ConsoleDB) Serve(cl rrouter.Client) error {
 	tracelog.InfoLogger.Print("console.Serve start")
-	queries, err := c.Qlog.Recover(config.Get().DataFolder)
-	if err != nil {
-		return errors.Wrap(err, "Serve can't start")
-	}
-	for _, query := range queries {
-		if err := c.ProcessQuery(query, cl); err != nil {
-			continue // TODO fix 'syntax error'
-			// return errors.Wrap(err, "Serve init fail")
-		}
-	}
-
-	tracelog.InfoLogger.Printf("Succesfully init %d queries", len(queries))
 
 	for {
 		msg, err := cl.Receive()
