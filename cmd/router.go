@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	cfgPath string
+	rcfgPath string
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "coordinator", "/etc/router/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/router/config.yaml", "path to config file")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -24,7 +24,7 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run SPQR",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Load(cfgPath); err != nil {
+		if err := config.Load(rcfgPath); err != nil {
 			return err
 		}
 		spqr, err := internal.NewSpqr()
