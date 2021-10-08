@@ -5,11 +5,12 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/yacc/spqrparser"
+	"github.com/pg-sharding/spqr/yacc/console"
 )
 
 type ShardQrouter struct {
 	shid string
+
 }
 
 var _ Qrouter = &ShardQrouter{}

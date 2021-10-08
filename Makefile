@@ -32,6 +32,6 @@ run:
 	docker-compose run --entrypoint /bin/bash client
 
 yaccgen:
-	goyacc -o yacc/spqrparser/sql.go -p yy yacc/spqrparser/sql.y
+	goyacc -o yacc/console/sql.go -p yy yacc/console/sql.y
 
 .PHONY: build gen

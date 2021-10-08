@@ -3,13 +3,13 @@ package qrouter
 import (
 	"strconv"
 
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/internal/config"
-	"github.com/pg-sharding/spqr/yacc/spqrparser"
+	"github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
+	"github.com/blastrain/vitess-sqlparser/sqlparser"
 )
 
 type ProxyRouter struct {
