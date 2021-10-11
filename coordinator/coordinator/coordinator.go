@@ -63,5 +63,5 @@ func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 }
 
 func (d *dcoordinator) RegisterRouter(r router) error {
-
+	return nil
 }
