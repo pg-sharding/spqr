@@ -2,8 +2,7 @@ syntax = "proto3";
 
 package yandex.spqr;
 
-option go_package = "yandex/app/router";
-
+option go_package = "yandex/spqr/proto";
 
 message ShardingKey {
   string colname = 1;

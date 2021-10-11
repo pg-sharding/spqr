@@ -15,3 +15,8 @@ type KeyRangeStatus string
 
 const KRLocked = KeyRangeStatus("LOCKED")
 const KRUnLocked = KeyRangeStatus("UNLOCKED")
+
+
+type Router struct {
+	addr string
+}
