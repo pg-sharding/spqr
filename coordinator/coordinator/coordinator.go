@@ -20,8 +20,6 @@ type coordinator interface {
 	Unite(req *spqrparser.UniteKeyRange) error
 	RegisterRouter(r router) error
 }
-
-
 type dcoordinator struct {
 	db qdb.QrouterDB
 }

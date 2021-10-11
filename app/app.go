@@ -5,18 +5,18 @@ import (
 
 	reuse "github.com/libp2p/go-reuseport"
 	shhttp "github.com/pg-sharding/spqr/grpc"
-	"github.com/pg-sharding/spqr/internal"
-	"github.com/pg-sharding/spqr/internal/config"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 type App struct {
-	spqr *internal.Spqr
+	spqr *pkg.Spqr
 }
 
-func NewApp(sg *internal.Spqr) *App {
+func NewApp(sg *pkg.Spqr) *App {
 	return &App{
 		spqr: sg,
 	}

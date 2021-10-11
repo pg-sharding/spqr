@@ -3,7 +3,7 @@ package shhttp
 import (
 	"context"
 
-	shards "github.com/pg-sharding/spqr/genproto/protos"
+	shards "github.com/pg-sharding/spqr/router/protos"
 	"google.golang.org/grpc"
 )
 
@@ -15,10 +15,7 @@ var _ shards.ShardServiceServer = &Spqrserver{}
 
 func (*Spqrserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
 	return &shards.ShardReply{
-		Shards: []string{
-			"loh1",
-			"loh2",
-		},
+		Shards: nil,
 	}, nil
 }
 

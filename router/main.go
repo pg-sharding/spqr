@@ -1,4 +1,4 @@
-package main
+package router
 
 import "github.com/pg-sharding/spqr/cmd"
 
