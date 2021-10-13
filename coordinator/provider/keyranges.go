@@ -22,8 +22,6 @@ func (c KeyRangeService) UnlockKeyRange(ctx context.Context, request *shards.Unl
 	err := c.impl.UnLock(request.Krid)
 	return nil, err
 }
-
-
 func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.SplitKeyRangeReply, error) {
 	panic("implement me")
 }

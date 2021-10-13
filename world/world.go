@@ -41,7 +41,6 @@ func (w World) ListKeyRange(ctx context.Context, request *shards.ListKeyRangeReq
 	return nil, xerrors.New("not implemented for World")
 }
 
-
 var (
 	_ shards.KeyRangeServiceServer = World{}
 )

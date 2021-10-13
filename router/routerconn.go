@@ -15,7 +15,7 @@ type RouterConn struct {
 	Console console.Console
 }
 
-func NewSpqrConn(c console.Console) * RouterConn {
+func NewSpqrConn(c console.Console) *RouterConn {
 	return &RouterConn{
 		Console: c,
 	}
