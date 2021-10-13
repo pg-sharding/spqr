@@ -1,8 +1,6 @@
 
 deps:
-	go get golang.org/x/tools/cmd/goyacc
-	go get -u github.com/golang/protobuf/protoc-gen-go
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+	go mod download
 
 build_c: 
 	go build -o spqr-c cmd/coordinator/main.go
