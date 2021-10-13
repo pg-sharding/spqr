@@ -1,17 +1,18 @@
 package provider
 
 import (
+	"net"
+
+	"github.com/pg-sharding/spqr/coordinator"
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router"
 	"github.com/pg-sharding/spqr/world"
-	"github.com/pg-sharding/spqr/coordinator"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
 )
 
 type dcoordinator struct {
@@ -50,7 +51,7 @@ func (d *dcoordinator) Unite(req *spqrparser.UniteKeyRange) error {
 	panic("implement me")
 }
 
-var _ coordinator. Coordinator = &dcoordinator{}
+var _ coordinator.Coordinator = &dcoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 	return &dcoordinator{

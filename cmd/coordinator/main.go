@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "keyrangeservice --config `path-to-config`",
+	Use: "keyrangeservice --config `path-to-config`",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -20,23 +20,17 @@ var rootCmd = &cobra.Command{
 		_ = c.Run()
 	},
 }
-
-
 var cfgPath string
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/keyrangeservice/config.yaml", "path to config file")
 
 }
-
-
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 }
-
-
 func main() {
 	Execute()
 }

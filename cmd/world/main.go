@@ -11,8 +11,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "world run ",
-	Long:  "Stateless Postgres Query Rrouter",
+	Use:  "world run ",
+	Long: "Stateless Postgres Query Rrouter",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -41,7 +41,6 @@ var ctlCmd = &cobra.Command{
 		return err
 	},
 }
-
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/world/config.yaml", "path to config file")

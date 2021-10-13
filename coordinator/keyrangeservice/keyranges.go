@@ -2,8 +2,8 @@ package keyrangeservice
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/coordinator"
 
+	"github.com/pg-sharding/spqr/coordinator"
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
 

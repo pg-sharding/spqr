@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/router"
 	"sync"
 
 	"github.com/pg-sharding/spqr/app"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"

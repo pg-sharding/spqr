@@ -2,6 +2,8 @@ package world
 
 import (
 	context "context"
+	"net"
+
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	shards "github.com/pg-sharding/spqr/router/protos"
@@ -9,7 +11,6 @@ import (
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
 )
 
 type World struct {
@@ -35,9 +36,7 @@ func (w World) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeR
 var _ shards.KeyRangeServiceServer = World{}
 
 func NewWorld() *World {
-	return &World{
-
-	}
+	return &World{}
 }
 
 func (w *World) Run() error {

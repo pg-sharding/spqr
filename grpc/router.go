@@ -2,8 +2,8 @@ package shhttp
 
 import (
 	context "context"
-	"github.com/pg-sharding/spqr/router"
 
+	"github.com/pg-sharding/spqr/router"
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
 

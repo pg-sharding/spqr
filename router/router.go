@@ -3,7 +3,6 @@ package router
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/router/pkg"
 	"io"
 	"net"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
@@ -21,9 +21,7 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-
 type Router interface {
-
 }
 
 type RouterImpl struct {
