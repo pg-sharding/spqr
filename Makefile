@@ -11,7 +11,7 @@ build_proxy:
 	go build -o spqr-rr cmd/router/main.go
 
 build_world: 
-	go build -o spqr-rr cmd/world/main.go
+	go build -o spqr-world cmd/world/main.go
 
 build: build_c build_proxy build_world
 

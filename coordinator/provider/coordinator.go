@@ -1,4 +1,4 @@
-package coordinator
+package provider
 
 import (
 	"github.com/pg-sharding/spqr/qdb/qdb"
