@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/pg-sharding/spqr/router"
 	"sync"
 
 	"github.com/pg-sharding/spqr/app"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
@@ -44,7 +44,7 @@ var runCmd = &cobra.Command{
 		if err := config.Load(rcfgPath); err != nil {
 			return err
 		}
-		spqr, err := pkg.NewSpqr()
+		spqr, err := router.NewRouter()
 		if err != nil {
 			return errors.Wrap(err, "SPQR creation failed")
 		}

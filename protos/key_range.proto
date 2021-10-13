@@ -28,11 +28,11 @@ message SplitKeyRangeRequest {
 }
 
 message LockKeyRangeRequest {
-
+  string krid = 3;
 }
 
 message UnlockKeyRangeRequest {
-
+  string krid = 3;
 }
 
 

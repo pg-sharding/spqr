@@ -2,15 +2,15 @@ package shhttp
 
 import (
 	context "context"
+	"github.com/pg-sharding/spqr/router"
 
-	"github.com/pg-sharding/spqr/router/pkg"
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
 
 type Routerserver struct {
 	shards.UnimplementedRouterServer
 
-	pkg.RouterConn
+	router.RouterConn
 }
 
 func (r Routerserver) Process(ctx context.Context, request *shards.QueryExecuteRequest) (*shards.QueryExecuteResponse, error) {

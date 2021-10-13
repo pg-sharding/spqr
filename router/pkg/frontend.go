@@ -8,9 +8,9 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
+func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
 
-	tracelog.InfoLogger.Printf("process frontend for user %s %s", cl.Usr(), cl.DB())
+	tracelog.InfoLogger.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 

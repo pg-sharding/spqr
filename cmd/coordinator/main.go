@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "coordinator run --config `path-to-config`",
+	Use:   "keyrangeservice --config `path-to-config`",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -17,8 +17,16 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		db, _ := mem.NewQrouterDBMem()
 		c := provider.NewCoordinator(db)
-		c.Run()
+		_ = c.Run()
 	},
+}
+
+
+var cfgPath string
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/keyrangeservice/config.yaml", "path to config file")
+
 }
 
 
