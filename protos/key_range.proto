@@ -6,9 +6,27 @@ option go_package = "yandex/spqr/proto";
   
 service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
-  rpc LockKeyRange (LockKeyRangeRequest) returns (KeyRangeReply) {}
-  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc LockKeyRange (LockKeyRangeRequest) returns (LockKeyRangeReply) {}
+  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (UnlockKeyRangeReply) {}
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (SplitKeyRangeReply) {}
+  rpc AddShardingColumn(AddShardingColumnRequest) returns (AddShardingColumnReply) {}
+  rpc AddLocalTable(AddLocalTableRequest) returns (AddLocalTableReply) {}
+}
+
+message AddShardingColumnReply {
+
+}
+
+message AddLocalTableReply {
+
+}
+
+message AddLocalTableRequest {
+
+}
+
+message AddShardingColumnRequest {
+
 }
 
 enum KeyRangeStatus {
@@ -42,7 +60,15 @@ message LockKeyRangeRequest {
   string krid = 3;
 }
 
+message LockKeyRangeReply {
+  KeyRangeStatus status = 1;
+}
+
 message UnlockKeyRangeRequest {
+  string krid = 3;
+}
+
+message UnlockKeyRangeReply {
   KeyRangeStatus status = 1;
 }
 

@@ -17,23 +17,38 @@ type World struct {
 	shards.UnimplementedKeyRangeServiceServer
 }
 
+func (w World) LockKeyRange(ctx context.Context, request *shards.LockKeyRangeRequest) (*shards.LockKeyRangeReply, error) {
+	panic("implement me")
+}
+
+func (w World) UnlockKeyRange(ctx context.Context, request *shards.UnlockKeyRangeRequest) (*shards.UnlockKeyRangeReply, error) {
+	panic("implement me")
+}
+
+func (w World) mustEmbedUnimplementedKeyRangeServiceServer() {
+	panic("implement me")
+}
+
+func (w World) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.SplitKeyRangeReply, error) {
+	panic("implement me")
+}
+
+func (w World) AddShardingColumn(ctx context.Context, request *shards.AddShardingColumnRequest) (*shards.AddShardingColumnReply, error) {
+	panic("implement me")
+}
+
+func (w World) AddLocalTable(ctx context.Context, request *shards.AddLocalTableRequest) (*shards.AddLocalTableReply, error) {
+	panic("implement me")
+}
+
 func (w World) ListKeyRange(ctx context.Context, request *shards.ListKeyRangeRequest) (*shards.KeyRangeReply, error) {
 	return nil, xerrors.New("not implemented for World")
 }
 
-func (w World) LockKeyRange(ctx context.Context, request *shards.LockKeyRangeRequest) (*shards.KeyRangeReply, error) {
-	panic("implement me")
-}
 
-func (w World) UnlockKeyRange(ctx context.Context, request *shards.UnlockKeyRangeRequest) (*shards.KeyRangeReply, error) {
-	panic("implement me")
-}
-
-func (w World) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.KeyRangeReply, error) {
-	panic("implement me")
-}
-
-var _ shards.KeyRangeServiceServer = World{}
+var (
+	_ shards.KeyRangeServiceServer = World{}
+)
 
 func NewWorld() *World {
 	return &World{}

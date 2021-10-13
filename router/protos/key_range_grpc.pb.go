@@ -19,9 +19,11 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KeyRangeServiceClient interface {
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
-	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
-	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
+	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error)
+	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*UnlockKeyRangeReply, error)
 	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error)
+	AddShardingColumn(ctx context.Context, in *AddShardingColumnRequest, opts ...grpc.CallOption) (*AddShardingColumnReply, error)
+	AddLocalTable(ctx context.Context, in *AddLocalTableRequest, opts ...grpc.CallOption) (*AddLocalTableReply, error)
 }
 
 type keyRangeServiceClient struct {
@@ -41,8 +43,8 @@ func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRan
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
-	out := new(KeyRangeReply)
+func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error) {
+	out := new(LockKeyRangeReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/LockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -50,8 +52,8 @@ func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRan
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
-	out := new(KeyRangeReply)
+func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*UnlockKeyRangeReply, error) {
+	out := new(UnlockKeyRangeReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/UnlockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -68,14 +70,34 @@ func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyR
 	return out, nil
 }
 
+func (c *keyRangeServiceClient) AddShardingColumn(ctx context.Context, in *AddShardingColumnRequest, opts ...grpc.CallOption) (*AddShardingColumnReply, error) {
+	out := new(AddShardingColumnReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddShardingColumn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyRangeServiceClient) AddLocalTable(ctx context.Context, in *AddLocalTableRequest, opts ...grpc.CallOption) (*AddLocalTableReply, error) {
+	out := new(AddLocalTableReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddLocalTable", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyRangeServiceServer is the server API for KeyRangeService service.
 // All implementations must embed UnimplementedKeyRangeServiceServer
 // for forward compatibility
 type KeyRangeServiceServer interface {
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
-	LockKeyRange(context.Context, *LockKeyRangeRequest) (*KeyRangeReply, error)
-	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*KeyRangeReply, error)
+	LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error)
+	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error)
 	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error)
+	AddShardingColumn(context.Context, *AddShardingColumnRequest) (*AddShardingColumnReply, error)
+	AddLocalTable(context.Context, *AddLocalTableRequest) (*AddLocalTableReply, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -86,14 +108,20 @@ type UnimplementedKeyRangeServiceServer struct {
 func (UnimplementedKeyRangeServiceServer) ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*KeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LockKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*KeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlockKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SplitKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) AddShardingColumn(context.Context, *AddShardingColumnRequest) (*AddShardingColumnReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddShardingColumn not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) AddLocalTable(context.Context, *AddLocalTableRequest) (*AddLocalTableReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddLocalTable not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}
 
@@ -180,6 +208,42 @@ func _KeyRangeService_SplitKeyRange_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_AddShardingColumn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddShardingColumnRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).AddShardingColumn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.KeyRangeService/AddShardingColumn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).AddShardingColumn(ctx, req.(*AddShardingColumnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyRangeService_AddLocalTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddLocalTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).AddLocalTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.KeyRangeService/AddLocalTable",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).AddLocalTable(ctx, req.(*AddLocalTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyRangeService_ServiceDesc is the grpc.ServiceDesc for KeyRangeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,6 +266,14 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SplitKeyRange",
 			Handler:    _KeyRangeService_SplitKeyRange_Handler,
+		},
+		{
+			MethodName: "AddShardingColumn",
+			Handler:    _KeyRangeService_AddShardingColumn_Handler,
+		},
+		{
+			MethodName: "AddLocalTable",
+			Handler:    _KeyRangeService_AddLocalTable_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
