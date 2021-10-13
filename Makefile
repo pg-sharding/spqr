@@ -10,7 +10,10 @@ build_c:
 build_proxy: 
 	go build -o spqr-rr cmd/router/main.go
 
-build: build_c build_proxy
+build_world: 
+	go build -o spqr-rr cmd/world/main.go
+
+build: build_c build_proxy build_world
 
 gen: gogen yaccgen
 

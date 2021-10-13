@@ -133,5 +133,5 @@ var RoutersService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/coordinate.proto",
+	Metadata: "protos/coordinator.proto",
 }

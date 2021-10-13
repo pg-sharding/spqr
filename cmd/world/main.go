@@ -12,7 +12,6 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "[coordinator bin] ctl --config `path-to-data-folder`",
 	Short: "SPQR",
 	Long:  "Stateless Postgres Query Rrouter",
 	CompletionOptions: cobra.CompletionOptions{
@@ -27,14 +26,9 @@ func Execute() {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 }
-func init() {
-	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/coordinator/config.yaml", "path to config file")
-	rootCmd.AddCommand(ctlCmd)
-}
 
 var ctlCmd = &cobra.Command{
-	Use:   "ctl",
-	Short: "ctl SPQR",
+	Use:   "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("OK")
 		return nil

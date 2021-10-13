@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg/kr"
+	"github.com/pg-sharding/spqr/pkg/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
