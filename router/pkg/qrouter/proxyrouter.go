@@ -2,10 +2,10 @@ package qrouter
 
 import (
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/kr"
+	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb/qdb/etcdcl"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"

@@ -28,7 +28,7 @@ func Execute() {
 }
 
 var ctlCmd = &cobra.Command{
-	Use:   "run",
+	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("OK")
 		return nil

@@ -1,8 +1,8 @@
 package rrouter
 
 import (
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/qdb/qdb"
 )
 
 type routeKey struct {

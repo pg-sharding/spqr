@@ -2,7 +2,7 @@ package pkg
 
 import (
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"

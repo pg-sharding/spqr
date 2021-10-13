@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )

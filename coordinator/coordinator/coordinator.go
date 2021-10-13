@@ -1,7 +1,7 @@
 package coordinator
 
 import (
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 

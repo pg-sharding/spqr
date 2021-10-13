@@ -8,8 +8,8 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
