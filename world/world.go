@@ -25,10 +25,6 @@ func (w World) UnlockKeyRange(ctx context.Context, request *shards.UnlockKeyRang
 	panic("implement me")
 }
 
-func (w World) mustEmbedUnimplementedKeyRangeServiceServer() {
-	panic("implement me")
-}
-
 func (w World) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.SplitKeyRangeReply, error) {
 	panic("implement me")
 }
