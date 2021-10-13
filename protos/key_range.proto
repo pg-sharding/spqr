@@ -8,11 +8,17 @@ service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (KeyRangeReply) {}
   rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (KeyRangeReply) {}
-  rpc SplitKeyRange (SplitKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc SplitKeyRange (SplitKeyRangeRequest) returns (SplitKeyRangeReply) {}
+}
+
+enum KeyRangeStatus {
+  LOCKED = 0;
+  AVAILABLE = 1;
 }
 
 // key range is mapped to shard
 message KeyRange {
+
   bytes lower_bound = 1;
   bytes upper_bound = 2;
 
@@ -24,7 +30,12 @@ message ListKeyRangeRequest {
 }
 
 message SplitKeyRangeRequest {
+  string krid = 1;
+  bytes bound = 2;
+}
 
+message SplitKeyRangeReply {
+  string splitted_krid = 1;
 }
 
 message LockKeyRangeRequest {
@@ -32,9 +43,8 @@ message LockKeyRangeRequest {
 }
 
 message UnlockKeyRangeRequest {
-  string krid = 3;
+  KeyRangeStatus status = 1;
 }
-
 
 message KeyRangeReply {
 	repeated KeyRange key_ranges = 1;

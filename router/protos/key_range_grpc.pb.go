@@ -21,7 +21,7 @@ type KeyRangeServiceClient interface {
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
-	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
+	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error)
 }
 
 type keyRangeServiceClient struct {
@@ -59,8 +59,8 @@ func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKe
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
-	out := new(KeyRangeReply)
+func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error) {
+	out := new(SplitKeyRangeReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/SplitKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ type KeyRangeServiceServer interface {
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
 	LockKeyRange(context.Context, *LockKeyRangeRequest) (*KeyRangeReply, error)
 	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*KeyRangeReply, error)
-	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*KeyRangeReply, error)
+	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -92,7 +92,7 @@ func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKey
 func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*KeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlockKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*KeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SplitKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}

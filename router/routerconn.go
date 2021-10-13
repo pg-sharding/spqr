@@ -12,15 +12,17 @@ import (
 )
 
 type RouterConn struct {
-	ConsoleDB console.Console
+	Console console.Console
 }
 
-func newSpqrConn() {
-
+func NewSpqrConn(c console.Console) * RouterConn {
+	return &RouterConn{
+		Console: c,
+	}
 }
 
 func (s RouterConn) Process(ctx context.Context, in *proto.QueryExecuteRequest, opts ...grpc.CallOption) (*proto.QueryExecuteResponse, error) {
-	s.ConsoleDB.ProcessQuery(in.Query, rrouter.NewFakeClient())
+	_ = s.Console.ProcessQuery(in.Query, rrouter.NewFakeClient())
 
 	return &proto.QueryExecuteResponse{}, nil
 }
@@ -35,7 +37,7 @@ type KeyRangeService struct {
 }
 
 func (k KeyRangeService) ListKeyRange(ctx context.Context, in *proto.ListKeyRangeRequest, opts ...grpc.CallOption) (*proto.KeyRangeReply, error) {
-	krs := []*proto.KeyRange{}
+	var krs []*proto.KeyRange
 	for _, el := range k.qimpl.KeyRanges() {
 		krs = append(krs, el.ToProto())
 	}
@@ -45,7 +47,9 @@ func (k KeyRangeService) ListKeyRange(ctx context.Context, in *proto.ListKeyRang
 }
 
 func (k KeyRangeService) LockKeyRange(ctx context.Context, in *proto.LockKeyRangeRequest, opts ...grpc.CallOption) (*proto.KeyRangeReply, error) {
-	panic("implement me")
+	_ = k.qimpl.Lock(in.Krid)
+
+	return nil, nil
 }
 
 func (k KeyRangeService) UnlockKeyRange(ctx context.Context, in *proto.UnlockKeyRangeRequest, opts ...grpc.CallOption) (*proto.KeyRangeReply, error) {
