@@ -19,7 +19,7 @@ router:
                 - route_key_cfg:
                         usr: user1
                         db: db1
-                  pooling_mode: SESSION
+                  pooling_mode: TRANSACTION
                   auth_rule:
                           auth_method: 'ok'
         proto: 'tcp6'

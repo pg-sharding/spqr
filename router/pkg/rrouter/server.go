@@ -23,6 +23,7 @@ type Server interface {
 	AddTLSConf(cfg *tls.Config) error
 
 	Cleanup() error
+	Reset() error
 }
 
 type ShardServer struct {
@@ -33,10 +34,14 @@ type ShardServer struct {
 	shard Shard
 }
 
+func (srv *ShardServer) Reset() error {
+	return nil
+}
+
 func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 
-	if srv.shard.SHKey() != shkey {
-		return xerrors.New("active shard does not match unrouted")
+	if srv.shard.SHKey().Name != shkey.Name {
+		return xerrors.Errorf("active shard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
 	if err := srv.pool.Put(shkey, srv.shard.Instance()); err != nil {
@@ -100,6 +105,7 @@ func (srv *ShardServer) Cleanup() error {
 		}); err != nil {
 			return err
 		}
+
 	}
 
 	return nil
@@ -112,6 +118,10 @@ type MultiShardServer struct {
 	activeShards []Shard
 
 	pool ConnPool
+}
+
+func (m *MultiShardServer) Reset() error {
+	panic("implement me")
 }
 
 func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
@@ -269,6 +279,10 @@ func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
 type LoadMirroringServer struct {
 	main   Server
 	mirror Server
+}
+
+func (s LoadMirroringServer) Reset() error {
+	panic("implement me")
 }
 
 func (s LoadMirroringServer) AddShard(shkey kr.ShardKey) error {

@@ -21,6 +21,8 @@ type DBInstance interface {
 	ReqBackendSsl(tlscfg *tls.Config) error
 
 	Hostname() string
+
+	Close() error
 }
 
 type PostgreSQLInstance struct {
@@ -28,6 +30,10 @@ type PostgreSQLInstance struct {
 	frontend *pgproto3.Frontend
 
 	hostname string
+}
+
+func (pgi *PostgreSQLInstance) Close() error {
+	return pgi.conn.Close()
 }
 
 func (pgi *PostgreSQLInstance) Hostname() string {

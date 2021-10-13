@@ -33,6 +33,7 @@ func (t *TxConnManager) UnRouteWithError(client Client, sh []kr.ShardKey, errmsg
 
 func (t *TxConnManager) UnRouteCB(cl Client, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
+		tracelog.InfoLogger.Printf("unrouting from shard %v", shkey.Name)
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
 		}
@@ -47,6 +48,7 @@ func NewTxConnManager() *TxConnManager {
 func (t *TxConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
+		tracelog.InfoLogger.Printf("adding shard %v", shkey.Name)
 		if err := client.Server().AddShard(shkey); err != nil {
 			return err
 		}

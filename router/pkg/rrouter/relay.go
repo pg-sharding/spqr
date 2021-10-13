@@ -37,6 +37,14 @@ func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *Rela
 	}
 }
 
+func (rst *RelayState) Reset() error {
+	rst.ActiveShards = nil
+	rst.TxActive = false
+
+	rst.cl.Server().Reset()
+	return nil
+}
+
 func (rst *RelayState) StartTrace() {
 	rst.traceMsgs = true
 }
@@ -97,7 +105,8 @@ func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
 	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.cl.Usr(), rst.cl.DB(), shardRoutes)
 
 	if err := rst.manager.RouteCB(rst.cl, rst.ActiveShards); err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		tracelog.ErrorLogger.Printf("faield to route cl %w", err)
+		return err
 	}
 
 	return nil

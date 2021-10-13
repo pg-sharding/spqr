@@ -62,6 +62,7 @@ func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
 		c.mu.Unlock()
+		tracelog.InfoLogger.Printf("got cached connection from pool")
 		return sh, nil
 	}
 	c.mu.Unlock()

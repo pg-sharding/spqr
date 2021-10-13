@@ -33,11 +33,15 @@ func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 
 				if err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)
+					_ = cl.ReplyErr(err.Error())
+					_ = rst.Reset()
 					continue
 				}
 
 				if err := rst.Connect(shrdRoutes); err != nil {
 					tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
+					_ = rst.Reset()
+					_ = cl.ReplyErr(err.Error())
 					continue
 				}
 			}
