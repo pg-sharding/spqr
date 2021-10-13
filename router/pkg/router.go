@@ -20,16 +20,18 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type Spqr struct {
-	Router      rrouter.Router
-	Qrouter     qrouter.Qrouter
-	ConsoleDB   console.Console
+type Router struct {
+	Rrouter rrouter.Rrouter
+	Qrouter qrouter.Qrouter
+
+	ConsoleDB console.Console
+
 	SPIexecuter *Executer
 	stchan      chan struct{}
 	frTLS       *tls.Config
 }
 
-func NewSpqr() (*Spqr, error) {
+func NewSpqr() (*Router, error) {
 
 	qtype := config.QrouterType(config.Get().QRouterCfg.Qtype)
 	tracelog.InfoLogger.Printf("create Qrouter with type %s", qtype)
@@ -83,8 +85,9 @@ func NewSpqr() (*Spqr, error) {
 	}
 
 	tracelog.InfoLogger.Printf("Succesfully init %d queries", len(queries))
-	return &Spqr{
-		Router:      rr,
+
+	return &Router{
+		Rrouter:     rr,
 		Qrouter:     qr,
 		ConsoleDB:   cnsl,
 		SPIexecuter: executer,
@@ -105,9 +108,9 @@ func initTLS(sslMode, certFile, keyFile string) (*tls.Config, error) {
 	return nil, nil
 }
 
-func (sg *Spqr) serv(netconn net.Conn) error {
+func (sg *Router) serv(netconn net.Conn) error {
 
-	client, err := sg.Router.PreRoute(netconn)
+	client, err := sg.Rrouter.PreRoute(netconn)
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,7 @@ func (sg *Spqr) serv(netconn net.Conn) error {
 	return frontend(sg.Qrouter, client, cmngr)
 }
 
-func (sg *Spqr) Run(listener net.Listener) error {
+func (sg *Router) Run(listener net.Listener) error {
 	closer, err := sg.initJaegerTracer()
 	if err != nil {
 		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
@@ -157,13 +160,13 @@ func (sg *Spqr) Run(listener net.Listener) error {
 			}()
 
 		case <-sg.stchan:
-			_ = sg.Router.Shutdown()
+			_ = sg.Rrouter.Shutdown()
 			_ = listener.Close()
 		}
 	}
 }
 
-func (sg *Spqr) initJaegerTracer() (io.Closer, error) {
+func (sg *Router) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
 		ServiceName: "router",
 		Sampler: &jaegercfg.SamplerConfig{
@@ -191,7 +194,7 @@ func (sg *Spqr) initJaegerTracer() (io.Closer, error) {
 	)
 }
 
-func (sg *Spqr) servAdm(netconn net.Conn) error {
+func (sg *Router) servAdm(netconn net.Conn) error {
 
 	cl := rrouter.NewClient(netconn)
 
@@ -213,7 +216,7 @@ func (sg *Spqr) servAdm(netconn net.Conn) error {
 	return sg.ConsoleDB.Serve(cl)
 }
 
-func (sg *Spqr) RunAdm(listener net.Listener) error {
+func (sg *Router) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {

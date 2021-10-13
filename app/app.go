@@ -13,10 +13,10 @@ import (
 )
 
 type App struct {
-	spqr *pkg.Spqr
+	spqr *pkg.Router
 }
 
-func NewApp(sg *pkg.Spqr) *App {
+func NewApp(sg *pkg.Router) *App {
 	return &App{
 		spqr: sg,
 	}

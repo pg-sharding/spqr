@@ -14,7 +14,7 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type Router interface {
+type Rrouter interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (Client, error)
 	ObsoleteRoute(key routeKey) error
@@ -60,7 +60,7 @@ func (r *RRouter) AddShard(key qdb.ShardKey) error {
 	return nil
 }
 
-var _ Router = &RRouter{}
+var _ Rrouter = &RRouter{}
 
 func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()

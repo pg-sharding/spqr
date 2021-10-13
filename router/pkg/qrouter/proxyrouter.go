@@ -253,6 +253,9 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 		}
 		if stmt.Where != nil {
 			shroute := qr.routeByExpr(stmt.Where.Expr)
+			if shroute.Shkey.Name == NOSHARD {
+				return nil
+			}
 			return []ShardRoute{shroute}
 		}
 		return nil
@@ -266,6 +269,9 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 				case sqlparser.Values:
 					valTyp := vals[0]
 					shroute := qr.routeByExpr(valTyp[i])
+					if shroute.Shkey.Name == NOSHARD {
+						return nil
+					}
 					return []ShardRoute{shroute}
 				}
 			}
@@ -273,6 +279,9 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 	case *sqlparser.Update:
 		if stmt.Where != nil {
 			shroute := qr.routeByExpr(stmt.Where.Expr)
+			if shroute.Shkey.Name == NOSHARD {
+				return nil
+			}
 			return []ShardRoute{shroute}
 		}
 		return nil

@@ -18,7 +18,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "router run --config `path-to-data-folder`",
 	Short: "SPQR",
-	Long:  "Stateless Postgres Query Router",
+	Long:  "Stateless Postgres Query Rrouter",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

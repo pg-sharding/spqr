@@ -58,6 +58,7 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) 
 	tracelog.InfoLogger.Printf("parsed routes %v", shardRoutes)
 
 	if len(shardRoutes) == 0 {
+		tracelog.InfoLogger.Printf("failed to match shard")
 		_ = rst.manager.UnRouteWithError(rst.cl, nil, "failed to match shard")
 		return nil, xerrors.New("failed to match shard")
 	}

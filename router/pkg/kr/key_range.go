@@ -21,10 +21,10 @@ type KeyRange struct {
 
 func CmpRanges(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
-		return string(kr) < string(other)
+		return string(kr) <= string(other)
 	}
 
-	return len(kr) < len(other)
+	return len(kr) <= len(other)
 }
 
 func KeyRangeFromSQL(kr *qdb.KeyRange) KeyRange {
