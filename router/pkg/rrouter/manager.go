@@ -2,8 +2,8 @@ package rrouter
 
 import (
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
@@ -12,14 +12,14 @@ type ConnManager interface {
 	TXBeginCB(client Client, rst *RelayState) error
 	TXEndCB(client Client, rst *RelayState) error
 
-	RouteCB(client Client, sh []qdb.ShardKey) error
-	UnRouteCB(client Client, sh []qdb.ShardKey) error
-	UnRouteWithError(client Client, sh []qdb.ShardKey, errmsg string) error
+	RouteCB(client Client, sh []kr.ShardKey) error
+	UnRouteCB(client Client, sh []kr.ShardKey) error
+	UnRouteWithError(client Client, sh []kr.ShardKey, errmsg string) error
 
 	ValidateReRoute(rst *RelayState) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client Client, sh []qdb.ShardKey, errmsg string) error {
+func unRouteWithError(cmngr ConnManager, client Client, sh []kr.ShardKey, errmsg string) error {
 	_ = cmngr.UnRouteCB(client, sh)
 
 	return client.ReplyErr(errmsg)
@@ -27,11 +27,11 @@ func unRouteWithError(cmngr ConnManager, client Client, sh []qdb.ShardKey, errms
 
 type TxConnManager struct{}
 
-func (t *TxConnManager) UnRouteWithError(client Client, sh []qdb.ShardKey, errmsg string) error {
+func (t *TxConnManager) UnRouteWithError(client Client, sh []kr.ShardKey, errmsg string) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
-func (t *TxConnManager) UnRouteCB(cl Client, sh []qdb.ShardKey) error {
+func (t *TxConnManager) UnRouteCB(cl Client, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
@@ -44,7 +44,7 @@ func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
-func (t *TxConnManager) RouteCB(client Client, sh []qdb.ShardKey) error {
+func (t *TxConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
 		if err := client.Server().AddShard(shkey); err != nil {
@@ -78,11 +78,11 @@ func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
 
 type SessConnManager struct{}
 
-func (s *SessConnManager) UnRouteWithError(client Client, sh []qdb.ShardKey, errmsg string) error {
+func (s *SessConnManager) UnRouteWithError(client Client, sh []kr.ShardKey, errmsg string) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 
-func (s *SessConnManager) UnRouteCB(cl Client, sh []qdb.ShardKey) error {
+func (s *SessConnManager) UnRouteCB(cl Client, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
@@ -100,7 +100,7 @@ func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
 	return nil
 }
 
-func (s *SessConnManager) RouteCB(client Client, sh []qdb.ShardKey) error {
+func (s *SessConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		if err := client.Server().AddShard(shkey); err != nil {
 			return err

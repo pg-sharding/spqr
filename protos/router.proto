@@ -9,7 +9,7 @@ service Router {
 }
 
 message QueryExecuteRequest {
-  string query = 1; // sql
+  string query = 1; // sql, admin query only
 }
 
 message QueryExecuteResponse {

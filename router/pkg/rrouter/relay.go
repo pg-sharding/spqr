@@ -3,7 +3,7 @@ package rrouter
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -12,9 +12,9 @@ import (
 type RelayState struct {
 	TxActive bool
 
-	ActiveShards []qdb.ShardKey
+	ActiveShards []kr.ShardKey
 
-	TargetKeyRange qdb.KeyRange
+	TargetKeyRange kr.KeyRange
 
 	traceMsgs bool
 

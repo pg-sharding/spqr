@@ -14,14 +14,14 @@ type ShardingColumn struct {
 }
 
 type KeyRange struct {
-	From       int
-	To         int
+	From       []byte
+	To         []byte
 	ShardID    string
 	KeyRangeID string
 }
 
 type SplitKeyRange struct {
-	Border         int
+	Border         []byte
 	KeyRangeFromID string
 	KeyRangeID     string
 }

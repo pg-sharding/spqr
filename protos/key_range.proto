@@ -11,6 +11,15 @@ service KeyRangeService {
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (KeyRangeReply) {}
 }
 
+// key range is mapped to shard
+message KeyRange {
+  bytes lower_bound = 1;
+  bytes upper_bound = 2;
+
+  string krid = 3;
+  string shardId = 4;
+}
+
 message ListKeyRangeRequest {
 }
 
@@ -26,10 +35,6 @@ message UnlockKeyRangeRequest {
 
 }
 
-message KeyRange {
-  bytes lower_bound = 1;
-  bytes upper_bound = 2;
-}
 
 message KeyRangeReply {
 	repeated KeyRange key_ranges = 1;

@@ -3,6 +3,7 @@ package qrouter
 import (
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 )
@@ -10,8 +11,8 @@ import (
 const NOSHARD = ""
 
 type ShardRoute struct {
-	Shkey     qdb.ShardKey
-	Matchedkr qdb.KeyRange
+	Shkey     kr.ShardKey
+	Matchedkr kr.KeyRange
 }
 
 type Qrouter interface {
@@ -20,9 +21,9 @@ type Qrouter interface {
 	AddShardingColumn(col string) error
 	AddLocalTable(tname string) error
 
-	AddKeyRange(kr qdb.KeyRange) error
+	AddKeyRange(kr kr.KeyRange) error
 	Shards() []string
-	KeyRanges() []qdb.KeyRange
+	KeyRanges() []kr.KeyRange
 
 	AddShard(name string, cfg *config.ShardCfg) error
 

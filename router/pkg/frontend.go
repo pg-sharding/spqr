@@ -49,7 +49,7 @@ func frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 
 					ch := make(chan interface{})
 
-					_ = rst.Qr.Subscribe(rst.TargetKeyRange.KeyRangeID, qdb.KRUnLocked, ch)
+					_ = rst.Qr.Subscribe(rst.TargetKeyRange.ID, qdb.KRUnLocked, ch)
 					<-ch
 					// retry on master
 

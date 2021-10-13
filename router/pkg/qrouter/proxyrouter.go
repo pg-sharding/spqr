@@ -1,12 +1,11 @@
 package qrouter
 
 import (
-	"strconv"
-
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb/etcdcl"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -17,7 +16,7 @@ type ProxyRouter struct {
 
 	LocalTables map[string]struct{}
 
-	Ranges map[string]qdb.KeyRange
+	Ranges map[string]kr.KeyRange
 
 	ShardCfgs map[string]*config.ShardCfg
 
@@ -35,7 +34,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 	return &ProxyRouter{
 		ColumnMapping: map[string]struct{}{},
 		LocalTables:   map[string]struct{}{},
-		Ranges:        map[string]qdb.KeyRange{},
+		Ranges:        map[string]kr.KeyRange{},
 		ShardCfgs:     map[string]*config.ShardCfg{},
 		qdb:           db,
 	}, nil
@@ -57,42 +56,44 @@ func (qr *ProxyRouter) Split(req *spqrparser.SplitKeyRange) error {
 	defer func() { _ = qr.qdb.Commit() }()
 
 	krOld := qr.Ranges[req.KeyRangeFromID]
-	krNew := qdb.KeyRange{
-		From:       req.Border,
-		To:         krOld.To,
-		KeyRangeID: req.KeyRangeID,
-	}
+	krNew := kr.KeyRangeFromSQL(
+		&qdb.KeyRange{
+			From:       req.Border,
+			To:         krOld.UpperBound,
+			KeyRangeID: req.KeyRangeID,
+		},
+	)
 
-	_ = qr.qdb.Add(krNew)
-	krOld.To = req.Border
-	_ = qr.qdb.Update(krOld)
+	_ = qr.qdb.Add(krNew.ToSQL())
+	krOld.UpperBound = req.Border
+	_ = qr.qdb.Update(krOld.ToSQL())
 
-	qr.Ranges[krOld.KeyRangeID] = krOld
-	qr.Ranges[krNew.KeyRangeID] = krNew
+	qr.Ranges[krOld.ID] = krOld
+	qr.Ranges[krNew.ID] = krNew
 
 	return nil
 }
 
 func (qr *ProxyRouter) Lock(krid string) error {
-	var kr qdb.KeyRange
+	var keyRange kr.KeyRange
 	var ok bool
 
-	if kr, ok = qr.Ranges[krid]; !ok {
+	if keyRange, ok = qr.Ranges[krid]; !ok {
 		return errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.Lock(kr)
+	return qr.qdb.Lock(keyRange.ToSQL())
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
-	var kr qdb.KeyRange
+	var keyRange kr.KeyRange
 	var ok bool
 
-	if kr, ok = qr.Ranges[krid]; !ok {
+	if keyRange, ok = qr.Ranges[krid]; !ok {
 		return errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.UnLock(kr)
+	return qr.qdb.UnLock(keyRange.ToSQL())
 }
 
 func (qr *ProxyRouter) AddShard(name string, cfg *config.ShardCfg) error {
@@ -114,17 +115,12 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) KeyRanges() []qdb.KeyRange {
+func (qr *ProxyRouter) KeyRanges() []kr.KeyRange {
 
-	var ret []qdb.KeyRange
+	var ret []kr.KeyRange
 
-	for _, kr := range qr.Ranges {
-		ret = append(ret, qdb.KeyRange{
-			KeyRangeID: kr.KeyRangeID,
-			ShardID:    kr.ShardID,
-			To:         kr.To,
-			From:       kr.From,
-		})
+	for _, keyRange := range qr.Ranges {
+		ret = append(ret, keyRange)
 	}
 
 	return ret
@@ -140,25 +136,25 @@ func (qr *ProxyRouter) AddLocalTable(tname string) error {
 	return nil
 }
 
-func (qr *ProxyRouter) AddKeyRange(kr qdb.KeyRange) error {
-	if _, ok := qr.Ranges[kr.KeyRangeID]; ok {
-		return errors.Errorf("key range with ID already defined", kr.KeyRangeID)
+func (qr *ProxyRouter) AddKeyRange(kr kr.KeyRange) error {
+	if _, ok := qr.Ranges[kr.ID]; ok {
+		return errors.Errorf("key range with ID already defined", kr.ID)
 	}
 
-	qr.Ranges[kr.KeyRangeID] = kr
+	qr.Ranges[kr.ID] = kr
 	return nil
 }
 
-func (qr *ProxyRouter) routeByIndx(i int) qdb.KeyRange {
+func (qr *ProxyRouter) routeByIndx(i []byte) kr.KeyRange {
 
-	for _, kr := range qr.Ranges {
-		if kr.From <= i && kr.To >= i {
-			return kr
+	for _, keyRange := range qr.Ranges {
+		if kr.CmpRanges(keyRange.LowerBound, i) && kr.CmpRanges(i, keyRange.UpperBound) {
+			return keyRange
 		}
 	}
 
-	return qdb.KeyRange{
-		ShardID: NOSHARD,
+	return kr.KeyRange{
+		Shid: NOSHARD,
 	}
 }
 
@@ -198,29 +194,23 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 		tracelog.InfoLogger.Printf("go left")
 		return qr.routeByExpr(texpr.Left)
 	case *sqlparser.SQLVal:
-		valInt, err := strconv.Atoi(string(texpr.Val))
-		if err != nil {
-			return ShardRoute{
-				Shkey: qdb.ShardKey{
-					Name: NOSHARD,
-				},
-			}
-		}
-		tracelog.InfoLogger.Printf("parsed val %d", valInt)
-		kr := qr.routeByIndx(valInt)
-		rw := qr.qdb.Check(kr)
 
-		return ShardRoute{Shkey: qdb.ShardKey{
-			Name: kr.ShardID,
-			RW:   rw,
-		},
-			Matchedkr: kr,
+		tracelog.InfoLogger.Printf("parsed val %d", texpr.Val)
+		keyRange := qr.routeByIndx(texpr.Val)
+		rw := qr.qdb.Check(keyRange.ToSQL())
+
+		return ShardRoute{
+			Shkey: kr.ShardKey{
+				Name: keyRange.Shid,
+				RW:   rw,
+			},
+			Matchedkr: keyRange,
 		}
 	default:
 	}
 
 	return ShardRoute{
-		Shkey: qdb.ShardKey{
+		Shkey: kr.ShardKey{
 			Name: NOSHARD,
 		},
 	}
@@ -292,10 +282,11 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 		var ret []ShardRoute
 		for _, sh := range shrds {
 			ret = append(ret,
-				ShardRoute{Shkey: qdb.ShardKey{
-					Name: sh,
-					RW:   true,
-				},
+				ShardRoute{
+					Shkey: kr.ShardKey{
+						Name: sh,
+						RW:   true,
+					},
 				})
 		}
 

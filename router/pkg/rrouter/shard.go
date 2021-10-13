@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/conn"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -19,7 +19,7 @@ type Shard interface {
 	Cfg() *config.ShardCfg
 
 	Name() string
-	SHKey() qdb.ShardKey
+	SHKey() kr.ShardKey
 
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
@@ -90,13 +90,13 @@ func (sh *ShardImpl) Cfg() *config.ShardCfg {
 
 var _ Shard = &ShardImpl{}
 
-func (sh *ShardImpl) SHKey() qdb.ShardKey {
-	return qdb.ShardKey{
+func (sh *ShardImpl) SHKey() kr.ShardKey {
+	return kr.ShardKey{
 		Name: sh.name,
 	}
 }
 
-func NewShard(key qdb.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard, error) {
+func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard, error) {
 
 	sh := &ShardImpl{
 		cfg:  cfg,

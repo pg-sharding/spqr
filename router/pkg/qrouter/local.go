@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -32,7 +33,7 @@ func (l *LocalQrouter) AddLocalTable(tname string) error {
 	return errors.New("local qrouter does not support sharding")
 }
 
-func (l *LocalQrouter) AddKeyRange(kr qdb.KeyRange) error {
+func (l *LocalQrouter) AddKeyRange(kr kr.KeyRange) error {
 	return errors.New("local qrouter does not support sharding")
 }
 
@@ -40,7 +41,7 @@ func (l *LocalQrouter) Shards() []string {
 	return []string{l.shid}
 }
 
-func (l *LocalQrouter) KeyRanges() []qdb.KeyRange {
+func (l *LocalQrouter) KeyRanges() []kr.KeyRange {
 	return nil
 }
 
@@ -65,9 +66,11 @@ func (l *LocalQrouter) AddShardingColumn(col string) error {
 }
 
 func (l *LocalQrouter) Route(q string) []ShardRoute {
-	return []ShardRoute{{Shkey: qdb.ShardKey{
-		Name: l.shid,
-	},
-	},
+	return []ShardRoute{
+		{
+			Shkey: kr.ShardKey{
+				Name: l.shid,
+			},
+		},
 	}
 }

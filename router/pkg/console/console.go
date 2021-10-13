@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -196,15 +196,15 @@ func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
 	return nil
 }
 
-func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) error {
+func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange) error {
 
-	tracelog.InfoLogger.Printf("received create key range request %s for shard", kr.ShardID)
+	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
-	err := c.Qrouter.AddKeyRange(qdb.KeyRange{
-		KeyRangeID: kr.KeyRangeID,
-		ShardID:    kr.ShardID,
-		To:         kr.To,
-		From:       kr.From,
+	err := c.Qrouter.AddKeyRange(kr.KeyRange{
+		ID:         keyRange.KeyRangeID,
+		Shid:       keyRange.ShardID,
+		UpperBound: keyRange.To,
+		LowerBound: keyRange.From,
 	})
 
 	for _, msg := range []pgproto3.BackendMessage{
@@ -220,7 +220,7 @@ func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, kr *spqrparser.KeyRange) erro
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %v", kr.From, kr.To, err))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %v", keyRange.From, keyRange.To, err))}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -287,7 +287,7 @@ func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
 
 	for _, kr := range c.Qrouter.KeyRanges() {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range %v for kr with %s", kr.KeyRangeID, kr.ShardID))},
+			Values: [][]byte{[]byte(fmt.Sprintf("key range %v for kr with %s", kr.ID, kr.Shid))},
 		}); err != nil {
 			tracelog.InfoLogger.Print(err)
 		}
@@ -392,19 +392,19 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	case *spqrparser.SplitKeyRange:
 		err := c.SplitKeyRange(cl, stmt)
 		if err != nil {
-			c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Lock:
 		err := c.LockKeyRange(cl, stmt.KeyRangeID)
 		if err != nil {
-			c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.ShardingColumn:
 		err := c.AddShardingColumn(cl, stmt)
 		if err != nil {
-			c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.KeyRange:
@@ -416,7 +416,7 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	case *spqrparser.Shard:
 		err := c.AddShard(cl, stmt, &config.ShardCfg{})
 		if err != nil {
-			c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(q)
 		}
 		return err
 	case *spqrparser.Shutdown:

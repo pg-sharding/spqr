@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -17,8 +17,8 @@ type Server interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddShard(shkey qdb.ShardKey) error
-	UnrouteShard(sh qdb.ShardKey) error
+	AddShard(shkey kr.ShardKey) error
+	UnrouteShard(sh kr.ShardKey) error
 
 	AddTLSConf(cfg *tls.Config) error
 
@@ -33,7 +33,7 @@ type ShardServer struct {
 	shard Shard
 }
 
-func (srv *ShardServer) UnrouteShard(shkey qdb.ShardKey) error {
+func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 
 	if srv.shard.SHKey() != shkey {
 		return xerrors.New("active shard does not match unrouted")
@@ -48,7 +48,7 @@ func (srv *ShardServer) UnrouteShard(shkey qdb.ShardKey) error {
 	return nil
 }
 
-func (srv *ShardServer) AddShard(shkey qdb.ShardKey) error {
+func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
 		return xerrors.New("single shard server does not support more than 2 shard connection simultaneously")
 	}
@@ -114,7 +114,7 @@ type MultiShardServer struct {
 	pool ConnPool
 }
 
-func (m *MultiShardServer) AddShard(shkey qdb.ShardKey) error {
+func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 	pgi, err := m.pool.Connection(shkey)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (m *MultiShardServer) AddShard(shkey qdb.ShardKey) error {
 	return nil
 }
 
-func (m *MultiShardServer) UnrouteShard(sh qdb.ShardKey) error {
+func (m *MultiShardServer) UnrouteShard(sh kr.ShardKey) error {
 
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
@@ -271,11 +271,11 @@ type LoadMirroringServer struct {
 	mirror Server
 }
 
-func (s LoadMirroringServer) AddShard(shkey qdb.ShardKey) error {
+func (s LoadMirroringServer) AddShard(shkey kr.ShardKey) error {
 	panic("implement me")
 }
 
-func (s LoadMirroringServer) UnrouteShard(sh qdb.ShardKey) error {
+func (s LoadMirroringServer) UnrouteShard(sh kr.ShardKey) error {
 	panic("implement me")
 }
 

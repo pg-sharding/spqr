@@ -5,9 +5,9 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/pg-sharding/spqr/coordinator/qdb/qdb"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/conn"
+	"github.com/pg-sharding/spqr/router/pkg/kr"
 	"github.com/wal-g/tracelog"
 )
 
@@ -105,10 +105,10 @@ func NewPool(mapping map[string]*config.ShardCfg) *cPool {
 var _ Pool = &cPool{}
 
 type ConnPool interface {
-	Connection(key qdb.ShardKey) (conn.DBInstance, error)
-	Put(shkey qdb.ShardKey, sh conn.DBInstance) error
+	Connection(key kr.ShardKey) (conn.DBInstance, error)
+	Put(shkey kr.ShardKey, sh conn.DBInstance) error
 
-	Check(key qdb.ShardKey) bool
+	Check(key kr.ShardKey) bool
 
 	UpdateHostStatus(shard, hostname string, rw bool) error
 
@@ -149,7 +149,7 @@ func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) err
 	return nil
 }
 
-func (s *InstancePoolImpl) Check(key qdb.ShardKey) bool {
+func (s *InstancePoolImpl) Check(key kr.ShardKey) bool {
 
 	return true
 	//
@@ -165,7 +165,7 @@ func (s *InstancePoolImpl) List() []conn.DBInstance {
 
 var _ ConnPool = &InstancePoolImpl{}
 
-func (s *InstancePoolImpl) Connection(key qdb.ShardKey) (conn.DBInstance, error) {
+func (s *InstancePoolImpl) Connection(key kr.ShardKey) (conn.DBInstance, error) {
 
 	switch key.RW {
 	case true:
@@ -189,7 +189,7 @@ func (s *InstancePoolImpl) Connection(key qdb.ShardKey) (conn.DBInstance, error)
 
 }
 
-func (s *InstancePoolImpl) Put(shkey qdb.ShardKey, sh conn.DBInstance) error {
+func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh conn.DBInstance) error {
 
 	switch shkey.RW {
 	case true:

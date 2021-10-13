@@ -25,7 +25,7 @@ type QueryExecuteRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"` // sql
+	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"` // sql, admin query only
 }
 
 func (x *QueryExecuteRequest) Reset() {

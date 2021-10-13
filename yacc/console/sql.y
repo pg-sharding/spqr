@@ -3,10 +3,6 @@
 
 package spqrparser
 
-import (
-
-	"strconv"
-)
 
 %}
 
@@ -29,6 +25,7 @@ import (
   unite         *UniteKeyRange
   str           string
   byte          byte
+  bytes         []byte
   int           int
   bool          bool
 }
@@ -78,7 +75,7 @@ import (
 
 %type<str> shard_id
 %type<str> spqr_addr
-%type<int> key_range_spec_bound
+%type<bytes> key_range_spec_bound
 %type<str> key_range_id
 
 %start any_command
@@ -192,7 +189,7 @@ sharding_column_name:
 key_range_spec_bound:
     STRING
     {
-      $$, _ = strconv.Atoi(string($1))
+      $$ = []byte($1)
     }
 
 create_sharding_column_stmt:

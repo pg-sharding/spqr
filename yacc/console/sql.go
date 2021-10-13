@@ -8,11 +8,7 @@ import __yyfmt__ "fmt"
 
 //line yacc/console/sql.y:4
 
-import (
-	"strconv"
-)
-
-//line yacc/console/sql.y:15
+//line yacc/console/sql.y:11
 type yySymType struct {
 	yys       int
 	empty     struct{}
@@ -31,6 +27,7 @@ type yySymType struct {
 	unite     *UniteKeyRange
 	str       string
 	byte      byte
+	bytes     []byte
 	int       int
 	bool      bool
 }
@@ -109,7 +106,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/console/sql.y:296
+//line yacc/console/sql.y:293
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -551,89 +548,89 @@ yydefault:
 
 	case 2:
 		yyDollar = yyS[yypt-0 : yypt+1]
-//line yacc/console/sql.y:93
+//line yacc/console/sql.y:90
 		{
 		}
 	case 3:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:94
+//line yacc/console/sql.y:91
 		{
 		}
 	case 4:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:99
+//line yacc/console/sql.y:96
 		{
 			setParseTree(yylex, yyDollar[1].sh_col)
 		}
 	case 5:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:103
+//line yacc/console/sql.y:100
 		{
 			setParseTree(yylex, yyDollar[1].kr)
 		}
 	case 6:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:107
+//line yacc/console/sql.y:104
 		{
 			setParseTree(yylex, yyDollar[1].drop)
 		}
 	case 7:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:111
+//line yacc/console/sql.y:108
 		{
 			setParseTree(yylex, yyDollar[1].lock)
 		}
 	case 8:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:115
+//line yacc/console/sql.y:112
 		{
 			setParseTree(yylex, yyDollar[1].unlock)
 		}
 	case 9:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:119
+//line yacc/console/sql.y:116
 		{
 			setParseTree(yylex, yyDollar[1].show)
 		}
 	case 10:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:123
+//line yacc/console/sql.y:120
 		{
 			setParseTree(yylex, yyDollar[1].kill)
 		}
 	case 11:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:127
+//line yacc/console/sql.y:124
 		{
 			setParseTree(yylex, yyDollar[1].listen)
 		}
 	case 12:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:131
+//line yacc/console/sql.y:128
 		{
 			setParseTree(yylex, yyDollar[1].shutdown)
 		}
 	case 13:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:135
+//line yacc/console/sql.y:132
 		{
 			setParseTree(yylex, yyDollar[1].split)
 		}
 	case 14:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:139
+//line yacc/console/sql.y:136
 		{
 			setParseTree(yylex, yyDollar[1].move)
 		}
 	case 15:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:143
+//line yacc/console/sql.y:140
 		{
 			setParseTree(yylex, yyDollar[1].unite)
 		}
 	case 23:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:158
+//line yacc/console/sql.y:155
 		{
 			switch v := string(yyDollar[1].str); v {
 			case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr:
@@ -644,7 +641,7 @@ yydefault:
 		}
 	case 24:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:169
+//line yacc/console/sql.y:166
 		{
 			switch v := string(yyDollar[1].str); v {
 			case KillClientsStr:
@@ -655,103 +652,103 @@ yydefault:
 		}
 	case 25:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:181
+//line yacc/console/sql.y:178
 		{
 			yyVAL.show = &Show{Cmd: yyDollar[2].str}
 		}
 	case 26:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:188
+//line yacc/console/sql.y:185
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 27:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:194
+//line yacc/console/sql.y:191
 		{
-			yyVAL.int, _ = strconv.Atoi(string(yyDollar[1].str))
+			yyVAL.bytes = []byte(yyDollar[1].str)
 		}
 	case 28:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:200
+//line yacc/console/sql.y:197
 		{
 			yyVAL.sh_col = &ShardingColumn{ColName: yyDollar[4].str}
 		}
 	case 29:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:206
+//line yacc/console/sql.y:203
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 30:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:213
+//line yacc/console/sql.y:210
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 31:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:219
+//line yacc/console/sql.y:216
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 36:
 		yyDollar = yyS[yypt-7 : yypt+1]
-//line yacc/console/sql.y:238
+//line yacc/console/sql.y:235
 		{
-			yyVAL.kr = &KeyRange{From: yyDollar[4].int, To: yyDollar[5].int, ShardID: yyDollar[6].str, KeyRangeID: yyDollar[7].str}
+			yyVAL.kr = &KeyRange{From: yyDollar[4].bytes, To: yyDollar[5].bytes, ShardID: yyDollar[6].str, KeyRangeID: yyDollar[7].str}
 		}
 	case 37:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:244
+//line yacc/console/sql.y:241
 		{
 			yyVAL.drop = &Drop{KeyRangeID: yyDollar[4].str}
 		}
 	case 38:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:250
+//line yacc/console/sql.y:247
 		{
 			yyVAL.lock = &Lock{KeyRangeID: yyDollar[4].str}
 		}
 	case 39:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:256
+//line yacc/console/sql.y:253
 		{
 			yyVAL.unlock = &Unlock{KeyRangeID: yyDollar[4].str}
 		}
 	case 40:
 		yyDollar = yyS[yypt-8 : yypt+1]
-//line yacc/console/sql.y:263
+//line yacc/console/sql.y:260
 		{
-			yyVAL.split = &SplitKeyRange{KeyRangeID: yyDollar[4].str, KeyRangeFromID: yyDollar[6].str, Border: yyDollar[8].int}
+			yyVAL.split = &SplitKeyRange{KeyRangeID: yyDollar[4].str, KeyRangeFromID: yyDollar[6].str, Border: yyDollar[8].bytes}
 		}
 	case 41:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:269
+//line yacc/console/sql.y:266
 		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
 		}
 	case 42:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:275
+//line yacc/console/sql.y:272
 		{
 			yyVAL.move = &MoveKeyRange{KeyRangeID: yyDollar[4].str, DestShardID: yyDollar[5].str}
 		}
 	case 43:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:281
+//line yacc/console/sql.y:278
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[4].str, KeyRangeIDR: yyDollar[5].str}
 		}
 	case 44:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:287
+//line yacc/console/sql.y:284
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
 	case 45:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:293
+//line yacc/console/sql.y:290
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
