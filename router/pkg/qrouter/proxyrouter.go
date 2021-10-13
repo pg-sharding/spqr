@@ -148,6 +148,7 @@ func (qr *ProxyRouter) AddKeyRange(kr kr.KeyRange) error {
 func (qr *ProxyRouter) routeByIndx(i []byte) kr.KeyRange {
 
 	for _, keyRange := range qr.Ranges {
+		tracelog.InfoLogger.Printf("comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
 		if kr.CmpRanges(keyRange.LowerBound, i) && kr.CmpRanges(i, keyRange.UpperBound) {
 			return keyRange
 		}
