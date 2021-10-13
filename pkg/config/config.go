@@ -9,12 +9,14 @@ import (
 )
 
 type Spqr struct {
-	LogLevel   string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
-	HttpAddr   string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
-	Addr       string `json:"addr" toml:"addr" yaml:"addr"`
-	ADMAddr    string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"` // Console Addr
-	PROTO      string `json:"proto" toml:"proto" yaml:"proto"`
-	DataFolder string `json:"data_folder" toml:"data_folder" yaml:"data_folder"`
+	LogLevel            string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
+	HttpAddr            string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
+	WorldHttpAddr       string `json:"world_http_addr" toml:"world_http_addr" yaml:"world_http_addr"`
+	CoordinatorHttpAddr string `json:"coordinator_http_addr" toml:"coordinator_http_addr" yaml:"coordinator_http_addr"`
+	Addr                string `json:"addr" toml:"addr" yaml:"addr"`
+	ADMAddr             string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"` // Console Addr
+	PROTO               string `json:"proto" toml:"proto" yaml:"proto"`
+	DataFolder          string `json:"data_folder" toml:"data_folder" yaml:"data_folder"`
 
 	QRouterCfg   QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
 	ExecuterCfg  ExecuterCfg   `json:"executer" toml:"executer" yaml:"executer"`
