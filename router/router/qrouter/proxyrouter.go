@@ -3,7 +3,7 @@ package qrouter
 import (
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/kr"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/qdb/qdb/etcdcl"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -40,7 +40,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 	}, nil
 }
 
-func (qr *ProxyRouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
+func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	return qr.qdb.Watch(krid, krst, noitfyio)
 }
 

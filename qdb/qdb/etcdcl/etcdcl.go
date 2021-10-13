@@ -53,7 +53,7 @@ type Qdbetcd struct {
 	locks map[string]*notifier
 }
 
-func (q Qdbetcd) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+func (q Qdbetcd) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	return nil
 }
 
@@ -71,7 +71,7 @@ func NewQDBETCD() (*Qdbetcd, error) {
 	}, nil
 }
 
-func (q Qdbetcd) Lock(keyRange qdb.KeyRange) error {
+func (q Qdbetcd) Lock(keyRange *qdb.KeyRange) error {
 	sess, err := concurrency.NewSession(q.cli)
 	if err != nil {
 		return err
@@ -88,15 +88,15 @@ func (q Qdbetcd) Lock(keyRange qdb.KeyRange) error {
 	return err
 }
 
-func (q Qdbetcd) UnLock(keyRange qdb.KeyRange) error {
+func (q Qdbetcd) UnLock(keyRange *qdb.KeyRange) error {
 	panic("implement me")
 }
 
-func (q Qdbetcd) Add(keyRange qdb.KeyRange) error {
+func (q Qdbetcd) Add(keyRange *qdb.KeyRange) error {
 	panic("implement me")
 }
 
-func (q Qdbetcd) Update(keyRange qdb.KeyRange) error {
+func (q Qdbetcd) Update(keyRange *qdb.KeyRange) error {
 	panic("implement me")
 }
 
@@ -108,7 +108,7 @@ func (q Qdbetcd) Commit() error {
 	panic("implement me")
 }
 
-func (q Qdbetcd) Check(kr qdb.KeyRange) bool {
+func (q Qdbetcd) Check(kr *qdb.KeyRange) bool {
 	return true
 }
 

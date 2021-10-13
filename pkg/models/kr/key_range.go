@@ -36,12 +36,21 @@ func KeyRangeFromSQL(kr *qdb.KeyRange) KeyRange {
 	}
 }
 
-func (kr *KeyRange) ToSQL() qdb.KeyRange {
-	return qdb.KeyRange{
+func (kr *KeyRange) ToSQL() *qdb.KeyRange {
+	return &qdb.KeyRange{
 		From:       kr.LowerBound,
 		To:         kr.UpperBound,
 		ShardID:    kr.ID,
 		KeyRangeID: kr.ID,
+	}
+}
+
+func (kr *KeyRange) ToProto() *proto.KeyRange {
+	return &proto.KeyRange{
+		LowerBound: kr.LowerBound,
+		UpperBound: kr.UpperBound,
+		ShardId:    kr.ID,
+		Krid:       kr.ID,
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/kr"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -21,7 +21,7 @@ func NewLocalQrouter(shid string) (*LocalQrouter, error) {
 	}, nil
 }
 
-func (l *LocalQrouter) Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
+func (l *LocalQrouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	panic("implement me")
 }
 

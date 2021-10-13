@@ -2,7 +2,7 @@ package qrouter
 
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/kr"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
@@ -32,7 +32,7 @@ type Qrouter interface {
 	Split(req *spqrparser.SplitKeyRange) error
 	Unite(req *spqrparser.UniteKeyRange) error
 
-	Subscribe(krid string, krst qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
+	Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
 func NewQrouter(qtype config.QrouterType) (Qrouter, error) {

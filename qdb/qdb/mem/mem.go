@@ -46,7 +46,7 @@ func (wp *WaitPool) Start() {
 	}
 }
 
-func (wg *WaitPool) Subscribe(status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+func (wg *WaitPool) Subscribe(status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	wg.subCh <- notifyio
 	return nil
 }
@@ -64,12 +64,12 @@ type QrouterDBMem struct {
 	txmu sync.Mutex
 
 	freq map[string]int
-	krs  map[string]qdb.KeyRange
+	krs  map[string]*qdb.KeyRange
 
 	krWaiters map[string]*WaitPool
 }
 
-func (q *QrouterDBMem) Watch(krid string, status qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	return q.krWaiters[krid].Subscribe(status, notifyio)
 }
 
@@ -84,7 +84,7 @@ func (q *QrouterDBMem) Commit() error {
 	return nil
 }
 
-func (q *QrouterDBMem) Add(keyRange qdb.KeyRange) error {
+func (q *QrouterDBMem) Add(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -98,7 +98,7 @@ func (q *QrouterDBMem) Add(keyRange qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Update(keyRange qdb.KeyRange) error {
+func (q *QrouterDBMem) Update(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -107,7 +107,7 @@ func (q *QrouterDBMem) Update(keyRange qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Check(kr qdb.KeyRange) bool {
+func (q *QrouterDBMem) Check(kr *qdb.KeyRange) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -118,12 +118,12 @@ func (q *QrouterDBMem) Check(kr qdb.KeyRange) bool {
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
 		freq:      map[string]int{},
-		krs:       map[string]qdb.KeyRange{},
+		krs:       map[string]*qdb.KeyRange{},
 		krWaiters: map[string]*WaitPool{},
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(keyRange qdb.KeyRange) error {
+func (q *QrouterDBMem) Lock(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -138,7 +138,7 @@ func (q *QrouterDBMem) Lock(keyRange qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) UnLock(keyRange qdb.KeyRange) error {
+func (q *QrouterDBMem) UnLock(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

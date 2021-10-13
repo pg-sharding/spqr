@@ -7,7 +7,8 @@ import (
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/router"
+	shards "github.com/pg-sharding/spqr/router/protos"
+	router2 "github.com/pg-sharding/spqr/router/router"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"
@@ -59,15 +60,21 @@ func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 	}
 }
 
-func (d *dcoordinator) RegisterRouter(r router.Router) error {
+func (d *dcoordinator) RegisterRouter(r router2.Router) error {
 	return nil
 }
-
 func (d *dcoordinator) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
+
+	krserv := NewKeyRangeService(d)
+
+	shards.RegisterKeyRangeServiceServer(serv, krserv)
+
 	httpAddr := config.Get().CoordinatorHttpAddr
+	httpAddr = "localhost:7002"
+
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {
 		return err

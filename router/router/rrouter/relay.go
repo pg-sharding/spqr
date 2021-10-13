@@ -3,8 +3,8 @@ package rrouter
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
-	"github.com/pg-sharding/spqr/pkg/kr"
-	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/router/router/qrouter"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )

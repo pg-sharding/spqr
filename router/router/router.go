@@ -10,10 +10,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/router/pkg"
-	"github.com/pg-sharding/spqr/router/pkg/console"
-	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/router/console"
+	"github.com/pg-sharding/spqr/router/router/qrouter"
+	"github.com/pg-sharding/spqr/router/router/rrouter"
 	"github.com/pkg/errors"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
@@ -128,7 +127,7 @@ func (sg *RouterImpl) serv(netconn net.Conn) error {
 		return err
 	}
 
-	return pkg.Frontend(sg.Qrouter, client, cmngr)
+	return Frontend(sg.Qrouter, client, cmngr)
 }
 
 func (sg *RouterImpl) Run(listener net.Listener) error {

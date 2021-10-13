@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg/conn"
+	"github.com/pg-sharding/spqr/router/router/conn"
 	"github.com/wal-g/tracelog"
 )
 

@@ -1,10 +1,10 @@
-package pkg
+package router
 
 import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/router/qrouter"
+	"github.com/pg-sharding/spqr/router/router/rrouter"
 	"github.com/wal-g/tracelog"
 )
 
@@ -53,7 +53,8 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 
 					ch := make(chan interface{})
 
-					_ = rst.Qr.Subscribe(rst.TargetKeyRange.ID, qdb.KRUnLocked, ch)
+					status := qdb.KRUnLocked
+					_ = rst.Qr.Subscribe(rst.TargetKeyRange.ID, &status, ch)
 					<-ch
 					// retry on master
 

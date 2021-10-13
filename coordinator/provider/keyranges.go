@@ -1,4 +1,4 @@
-package keyrangeservice
+package provider
 
 import (
 	"context"
@@ -14,7 +14,17 @@ type KeyRangeService struct {
 }
 
 func (c KeyRangeService) ListKeyRange(ctx context.Context, request *shards.ListKeyRangeRequest) (*shards.KeyRangeReply, error) {
-	panic("implement me")
+
+	krs := []*shards.KeyRange{
+		{
+			Krid:    "1",
+			ShardId: "2",
+		},
+	}
+
+	return &shards.KeyRangeReply{
+		KeyRanges: krs,
+	}, nil
 }
 
 func (c KeyRangeService) LockKeyRange(ctx context.Context, request *shards.LockKeyRangeRequest) (*shards.KeyRangeReply, error) {
@@ -23,7 +33,8 @@ func (c KeyRangeService) LockKeyRange(ctx context.Context, request *shards.LockK
 }
 
 func (c KeyRangeService) UnlockKeyRange(ctx context.Context, request *shards.UnlockKeyRangeRequest) (*shards.KeyRangeReply, error) {
-	panic("implement me")
+	err := c.impl.UnLock(request.Krid)
+	return nil, err
 }
 
 func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.KeyRangeReply, error) {
@@ -31,3 +42,9 @@ func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *shards.Spli
 }
 
 var _ shards.KeyRangeServiceServer = KeyRangeService{}
+
+func NewKeyRangeService(impl coordinator.Coordinator) shards.KeyRangeServiceServer {
+	return &KeyRangeService{
+		impl: impl,
+	}
+}
