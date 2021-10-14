@@ -131,7 +131,7 @@ func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ReadyForQuery:
 			return nil
 		case *pgproto3.Authentication:
-			err := authBackend(sh, v)
+			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
 			if err != nil {
 				tracelog.InfoLogger.Printf("failed to perform backend auth %w", err)
 				return err

@@ -1,15 +1,16 @@
-package rrouter
+package conn
 
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
-func authBackend(shard Shard, v *pgproto3.Authentication) error {
+func AuthBackend(shard DBInstance, cfg *config.ShardCfg, v *pgproto3.Authentication) error {
 	tracelog.InfoLogger.Printf("Auth type proc %+v\n", v)
 
 	switch v.Type {
@@ -18,7 +19,7 @@ func authBackend(shard Shard, v *pgproto3.Authentication) error {
 	case pgproto3.AuthTypeMD5Password:
 
 		hash := md5.New()
-		hash.Write([]byte(shard.Cfg().Passwd + shard.Cfg().ConnUsr))
+		hash.Write([]byte(cfg.Passwd + cfg.ConnUsr))
 		res := hash.Sum(nil)
 
 		hash2 := md5.New()
@@ -28,14 +29,14 @@ func authBackend(shard Shard, v *pgproto3.Authentication) error {
 
 		psswd := hex.EncodeToString(res2)
 
-		tracelog.InfoLogger.Printf("sending auth package %s plain passwd %s", psswd, shard.Cfg().Passwd)
+		tracelog.InfoLogger.Printf("sending auth package %s plain passwd %s", psswd, cfg.Passwd)
 
 		if err := shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd}); err != nil {
 			return err
 		}
 
 	case pgproto3.AuthTypeCleartextPassword:
-		if err := shard.Send(&pgproto3.PasswordMessage{Password: shard.Cfg().Passwd}); err != nil {
+		if err := shard.Send(&pgproto3.PasswordMessage{Password: cfg.Passwd}); err != nil {
 			return err
 		}
 	default:
