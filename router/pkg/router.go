@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 
-	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
@@ -201,22 +200,10 @@ func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 }
 
 func (sg *RouterImpl) servAdm(netconn net.Conn) error {
-
 	cl := rrouter.NewClient(netconn)
 
 	if err := cl.Init(sg.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err
-	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			tracelog.ErrorLogger.Fatal(err)
-		}
 	}
 
 	return sg.ConsoleDB.Serve(cl)

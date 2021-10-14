@@ -11,14 +11,14 @@ import (
 )
 
 type ConnManager interface {
-	TXBeginCB(client Client, rst *RelayState) error
-	TXEndCB(client Client, rst *RelayState) error
+	TXBeginCB(client Client, rst *RelayStateImpl) error
+	TXEndCB(client Client, rst *RelayStateImpl) error
 
 	RouteCB(client Client, sh []kr.ShardKey) error
 	UnRouteCB(client Client, sh []kr.ShardKey) error
 	UnRouteWithError(client Client, sh []kr.ShardKey, errmsg string) error
 
-	ValidateReRoute(rst *RelayState) bool
+	ValidateReRoute(rst *RelayStateImpl) bool
 }
 
 func unRouteWithError(cmngr ConnManager, client Client, sh []kr.ShardKey, errmsg string) error {
@@ -61,15 +61,15 @@ func (t *TxConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 	return nil
 }
 
-func (t *TxConnManager) ValidateReRoute(rst *RelayState) bool {
+func (t *TxConnManager) ValidateReRoute(rst *RelayStateImpl) bool {
 	return rst.ActiveShards == nil || !rst.TxActive
 }
 
-func (t *TxConnManager) TXBeginCB(client Client, rst *RelayState) error {
+func (t *TxConnManager) TXBeginCB(client Client, rst *RelayStateImpl) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(client Client, rst *RelayState) error {
+func (t *TxConnManager) TXEndCB(client Client, rst *RelayStateImpl) error {
 
 	tracelog.InfoLogger.Printf("end of tx unrouting from %v", rst.ActiveShards)
 
@@ -98,11 +98,11 @@ func (s *SessConnManager) UnRouteCB(cl Client, sh []kr.ShardKey) error {
 	return nil
 }
 
-func (s *SessConnManager) TXBeginCB(client Client, rst *RelayState) error {
+func (s *SessConnManager) TXBeginCB(client Client, rst *RelayStateImpl) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(client Client, rst *RelayState) error {
+func (s *SessConnManager) TXEndCB(client Client, rst *RelayStateImpl) error {
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (s *SessConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 	return nil
 }
 
-func (s *SessConnManager) ValidateReRoute(rst *RelayState) bool {
+func (s *SessConnManager) ValidateReRoute(rst *RelayStateImpl) bool {
 	return rst.ActiveShards == nil
 }
 

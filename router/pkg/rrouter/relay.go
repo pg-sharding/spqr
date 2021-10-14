@@ -9,7 +9,16 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type RelayState struct {
+
+type RelayStateInteractor interface {
+	Reset() error
+	StartTrace()
+	Flush()
+	Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error)
+	ShouldRetry(err error) bool
+}
+
+type RelayStateImpl struct {
 	TxActive bool
 
 	ActiveShards []kr.ShardKey
@@ -25,8 +34,8 @@ type RelayState struct {
 	msgBuf []*pgproto3.Query
 }
 
-func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *RelayState {
-	return &RelayState{
+func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *RelayStateImpl {
+	return &RelayStateImpl{
 		ActiveShards: nil,
 		TxActive:     false,
 		msgBuf:       nil,
@@ -37,7 +46,7 @@ func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *Rela
 	}
 }
 
-func (rst *RelayState) Reset() error {
+func (rst *RelayStateImpl) Reset() error {
 	rst.ActiveShards = nil
 	rst.TxActive = false
 
@@ -45,16 +54,16 @@ func (rst *RelayState) Reset() error {
 	return nil
 }
 
-func (rst *RelayState) StartTrace() {
+func (rst *RelayStateImpl) StartTrace() {
 	rst.traceMsgs = true
 }
 
-func (rst *RelayState) Flush() {
+func (rst *RelayStateImpl) Flush() {
 	rst.msgBuf = nil
 	rst.traceMsgs = false
 }
 
-func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
+func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
 	span.SetTag("user", rst.cl.Usr())
@@ -83,7 +92,7 @@ func (rst *RelayState) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) 
 	return shardRoutes, nil
 }
 
-func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []qrouter.ShardRoute) error {
 
 	var serv Server
 	var err error
@@ -115,9 +124,10 @@ func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
 
 const TXREL = 73
 
-func (rst *RelayState) RelayStep(cl Client, v *pgproto3.Query) (byte, error) {
+func (rst *RelayStateImpl) RelayStep(v *pgproto3.Query) (byte, error) {
 
 	if !rst.TxActive {
+
 		if err := rst.manager.TXBeginCB(rst.cl, rst); err != nil {
 			return 0, err
 		}
@@ -130,18 +140,18 @@ func (rst *RelayState) RelayStep(cl Client, v *pgproto3.Query) (byte, error) {
 
 	var txst byte
 	var err error
-	if txst, err = cl.ProcQuery(v); err != nil {
+	if txst, err = rst.cl.ProcQuery(v); err != nil {
 		return 0, err
 	}
 
 	return txst, nil
 }
 
-func (rst *RelayState) ShouldRetry(err error) bool {
+func (rst *RelayStateImpl) ShouldRetry(err error) bool {
 	return false
 }
 
-func (rst *RelayState) CompleteRelay(txst byte) error {
+func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 
 	tracelog.InfoLogger.Printf("complete relay iter with TX status %v", txst)
 
@@ -168,13 +178,15 @@ func (rst *RelayState) CompleteRelay(txst byte) error {
 	return nil
 }
 
-func (rst *RelayState) ReplayBuff(cl Client) pgproto3.FrontendMessage {
+func (rst *RelayStateImpl) ReplayBuff() pgproto3.FrontendMessage {
 	var frmsg pgproto3.FrontendMessage
 
 	for _, msg := range rst.msgBuf {
-		_, _ = cl.ProcQuery(msg)
-		frmsg, _ = cl.Receive()
+		_, _ = rst.cl.ProcQuery(msg)
+		frmsg, _ = rst.cl.Receive()
 	}
 
 	return frmsg
 }
+
+var _ RelayStateInteractor = &RelayStateImpl{}

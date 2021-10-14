@@ -23,7 +23,7 @@ type Console interface {
 	Shutdown() error
 }
 
-type ConsoleDB struct {
+type Local struct {
 	cfg     *tls.Config
 	Qrouter qrouter.Qrouter
 	Qlog    qlog.Qlog
@@ -31,18 +31,18 @@ type ConsoleDB struct {
 	stchan chan struct{}
 }
 
-var _ Console = &ConsoleDB{}
+var _ Console = &Local{}
 
-func (c *ConsoleDB) Shutdown() error {
+func (c *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) (*ConsoleDB, error) {
+func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) (*Local, error) {
 	localQlog, err := qlogprovider.NewLocalQlog(config.Get().DataFolder)
 	if err != nil {
 		return nil, err
 	}
-	return &ConsoleDB{
+	return &Local{
 		Qrouter: Qrouter,
 		Qlog:    localQlog,
 		cfg:     cfg,
@@ -50,7 +50,7 @@ func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) 
 	}, nil
 }
 
-func (c *ConsoleDB) Databases(cl rrouter.Client) error {
+func (c *Local) Databases(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -76,7 +76,7 @@ func (c *ConsoleDB) Databases(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleDB) Pools(cl rrouter.Client) error {
+func (c *Local) Pools(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -102,7 +102,7 @@ func (c *ConsoleDB) Pools(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleDB) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingColumn) error {
+func (c *Local) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingColumn) error {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
@@ -133,7 +133,7 @@ func (c *ConsoleDB) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.Shardi
 	return nil
 }
 
-func (c *ConsoleDB) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRange) error {
+func (c *Local) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRange) error {
 	if err := c.Qrouter.Split(splitReq); err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (c *ConsoleDB) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitK
 	return nil
 }
 
-func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
+func (c *Local) LockKeyRange(cl rrouter.Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
 	if err := c.Qrouter.Lock(krid); err != nil {
 		return err
@@ -196,7 +196,7 @@ func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
 	return nil
 }
 
-func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange) error {
+func (c *Local) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
@@ -232,7 +232,7 @@ func (c *ConsoleDB) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange
 	return nil
 }
 
-func (c *ConsoleDB) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
+func (c *Local) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
 
 	err := c.Qrouter.AddShard(shard.Name, cfg)
 
@@ -261,7 +261,7 @@ func (c *ConsoleDB) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *co
 	return nil
 }
 
-func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
+func (c *Local) KeyRanges(cl rrouter.Client) error {
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
@@ -311,7 +311,7 @@ func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleDB) Shards(cl rrouter.Client) error {
+func (c *Local) Shards(cl rrouter.Client) error {
 
 	tracelog.InfoLogger.Printf("listing shards")
 
@@ -361,7 +361,7 @@ func (c *ConsoleDB) Shards(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
+func (c *Local) ProcessQuery(q string, cl rrouter.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -432,7 +432,36 @@ func (c *ConsoleDB) ProcessQuery(q string, cl rrouter.Client) error {
 	return nil
 }
 
-func (c *ConsoleDB) Serve(cl rrouter.Client) error {
+
+
+const greeting = `
+
+		SQPR router admin console
+
+	Here you can configure your routing rules
+------------------------------------------------
+
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/doc/router
+
+`
+
+func (c *Local) Serve(cl rrouter.Client) error {
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.NoticeResponse{
+			Message: greeting,
+		},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.ErrorLogger.Fatal(err)
+		}
+	}
+
 	tracelog.InfoLogger.Print("console.Serve start")
 
 	for {
