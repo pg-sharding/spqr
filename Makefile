@@ -1,6 +1,9 @@
 
 deps:
 	go mod download
+	go get -u google.golang.org/grpc
+	go get -u github.com/golang/protobuf/protoc-gen-go
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 build_c: 
 	go build -o spqr-c cmd/coordinator/main.go

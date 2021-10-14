@@ -106,7 +106,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/console/sql.y:293
+//line yacc/console/sql.y:294
 
 //line yacctab:1
 var yyExca = [...]int{

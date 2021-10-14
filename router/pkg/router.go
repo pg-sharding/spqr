@@ -59,8 +59,13 @@ func NewRouter() (*RouterImpl, error) {
 	for name, shard := range config.Get().RouterConfig.ShardMapping {
 
 		switch shard.ShType {
-		case config.DataShard:
 
+		case config.WorldShard:
+
+		case config.DataShard:
+			// data shard assumed by default
+			fallthrough
+		default:
 			shardTLSConfig, err := initTLS(shard.TLSCfg.SslMode, shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
 			if err != nil {
 				return nil, errors.Wrap(err, "init shard TLS")
@@ -70,9 +75,6 @@ func NewRouter() (*RouterImpl, error) {
 			if err := qr.AddShard(name, shard); err != nil {
 				return nil, err
 			}
-
-		case config.WorldShard:
-
 		}
 
 	}

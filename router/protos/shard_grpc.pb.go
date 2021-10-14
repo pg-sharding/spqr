@@ -19,7 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardServiceClient interface {
 	ListShards(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
-	AddShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
+	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
+	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
 }
 
 type shardServiceClient struct {
@@ -39,9 +40,18 @@ func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, o
 	return out, nil
 }
 
-func (c *shardServiceClient) AddShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
+func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
 	out := new(AddShardReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddDataShard", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
+	out := new(AddShardReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddWorldShard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +63,8 @@ func (c *shardServiceClient) AddShard(ctx context.Context, in *AddShardRequest, 
 // for forward compatibility
 type ShardServiceServer interface {
 	ListShards(context.Context, *ShardRequest) (*ShardReply, error)
-	AddShard(context.Context, *AddShardRequest) (*AddShardReply, error)
+	AddDataShard(context.Context, *AddShardRequest) (*AddShardReply, error)
+	AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error)
 	mustEmbedUnimplementedShardServiceServer()
 }
 
@@ -64,8 +75,11 @@ type UnimplementedShardServiceServer struct {
 func (UnimplementedShardServiceServer) ListShards(context.Context, *ShardRequest) (*ShardReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListShards not implemented")
 }
-func (UnimplementedShardServiceServer) AddShard(context.Context, *AddShardRequest) (*AddShardReply, error) {
+func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRequest) (*AddShardReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddDataShard not implemented")
+}
+func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddWorldShard not implemented")
 }
 func (UnimplementedShardServiceServer) mustEmbedUnimplementedShardServiceServer() {}
 
@@ -98,20 +112,38 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ShardService_AddShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ShardService_AddDataShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddShardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ShardServiceServer).AddShard(ctx, in)
+		return srv.(ShardServiceServer).AddDataShard(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
 		FullMethod: "/yandex.spqr.ShardService/AddDataShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShardServiceServer).AddShard(ctx, req.(*AddShardRequest))
+		return srv.(ShardServiceServer).AddDataShard(ctx, req.(*AddShardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ShardService_AddWorldShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddWorldShardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShardServiceServer).AddWorldShard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.ShardService/AddWorldShard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShardServiceServer).AddWorldShard(ctx, req.(*AddWorldShardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -129,7 +161,11 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 		},
 		{
 			MethodName: "AddDataShard",
-			Handler:    _ShardService_AddShard_Handler,
+			Handler:    _ShardService_AddDataShard_Handler,
+		},
+		{
+			MethodName: "AddWorldShard",
+			Handler:    _ShardService_AddWorldShard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

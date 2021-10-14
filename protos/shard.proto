@@ -11,7 +11,8 @@ message Shard {
 
 service ShardService {
   rpc ListShards (ShardRequest) returns (ShardReply) {}
-  rpc AddShard (AddShardRequest) returns (AddShardReply) {}
+  rpc AddDataShard (AddShardRequest) returns (AddShardReply) {}
+  rpc AddWorldShard (AddWorldShardRequest) returns (AddShardReply) {}
 }
 
 message ShardRequest {
@@ -27,4 +28,8 @@ message AddShardRequest {
 }
 
 message AddShardReply {
+}
+
+message AddWorldShardRequest {
+  Shard shard = 1;
 }
