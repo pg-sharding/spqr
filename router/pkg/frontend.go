@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -9,13 +10,10 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-
 type Qinteractor interface {
-
 }
 
 type QinteractorImpl struct {
-
 }
 
 func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {

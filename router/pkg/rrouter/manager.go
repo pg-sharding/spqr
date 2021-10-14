@@ -2,6 +2,7 @@ package rrouter
 
 import (
 	"fmt"
+
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"

@@ -13,6 +13,11 @@ import (
 
 const SSLPROTO = 80877103
 
+type InstanceStatus string
+
+const NotInitialized = InstanceStatus("NOT_INITIALIZED")
+const ACQUIRED = InstanceStatus("ACQUIRED")
+
 type DBInstance interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
@@ -23,6 +28,8 @@ type DBInstance interface {
 	Hostname() string
 
 	Close() error
+	Status() InstanceStatus
+	SetStatus(status InstanceStatus)
 }
 
 type PostgreSQLInstance struct {
@@ -30,6 +37,15 @@ type PostgreSQLInstance struct {
 	frontend *pgproto3.Frontend
 
 	hostname string
+	status   InstanceStatus
+}
+
+func (pgi *PostgreSQLInstance) SetStatus(status InstanceStatus) {
+	pgi.status = status
+}
+
+func (pgi *PostgreSQLInstance) Status() InstanceStatus {
+	return pgi.status
 }
 
 func (pgi *PostgreSQLInstance) Close() error {
@@ -62,7 +78,7 @@ func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string
 
 	tracelog.InfoLogger.Printf("initializing new postgresql instance connection", cfg.ConnAddr)
 
-	instance := &PostgreSQLInstance{hostname: cfg.ConnAddr}
+	instance := &PostgreSQLInstance{hostname: cfg.ConnAddr, status: NotInitialized}
 
 	netconn, err := instance.connect(cfg.ConnAddr, cfg.Proto)
 	if err != nil {

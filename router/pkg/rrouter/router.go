@@ -44,18 +44,18 @@ func (r *RRouter) AddInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
 }
 
 func (r *RRouter) AddShard(key qdb.ShardKey) error {
-	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
-
-	if err != nil {
-		return errors.Wrap(err, "NewShardWatchDog")
-	}
-
-	wg.Run()
+	//wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
+	//
+	//if err != nil {
+	//	return errors.Wrap(err, "NewShardWatchDog")
+	//}
+	//
+	////wg.Run()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.wgs[key] = wg
+	//r.wgs[key] = wg
 
 	return nil
 }

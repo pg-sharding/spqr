@@ -105,8 +105,11 @@ func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard
 
 	sh.dedicated = pgi
 
-	if err := sh.Auth(sh.ConstructSMh()); err != nil {
-		return nil, err
+	if sh.dedicated.Status() == conn.NotInitialized {
+		if err := sh.Auth(sh.ConstructSMh()); err != nil {
+			return nil, err
+		}
+		sh.dedicated.SetStatus(conn.ACQUIRED)
 	}
 
 	return sh, nil

@@ -44,7 +44,10 @@ func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 		return xerrors.Errorf("active shard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
-	if err := srv.pool.Put(shkey, srv.shard.Instance()); err != nil {
+	pgi := srv.shard.Instance()
+	fmt.Printf("put connection to %v back to pool\n", pgi.Hostname())
+
+	if err := srv.pool.Put(shkey, pgi); err != nil {
 		return err
 	}
 
@@ -61,6 +64,7 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if pgi, err := srv.pool.Connection(shkey); err != nil {
 		return err
 	} else {
+
 		srv.shard, err = NewShard(shkey, pgi, config.Get().RouterConfig.ShardMapping[shkey.Name])
 		if err != nil {
 			return err

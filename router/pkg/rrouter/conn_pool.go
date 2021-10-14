@@ -129,7 +129,6 @@ type InstancePoolImpl struct {
 }
 
 func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) error {
-
 	s.mu.Lock()
 
 	src := s.poolRW

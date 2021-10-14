@@ -106,7 +106,7 @@ func (rst *RelayState) Connect(shardRoutes []qrouter.ShardRoute) error {
 	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.cl.Usr(), rst.cl.DB(), shardRoutes)
 
 	if err := rst.manager.RouteCB(rst.cl, rst.ActiveShards); err != nil {
-		tracelog.ErrorLogger.Printf("faield to route cl %w", err)
+		tracelog.ErrorLogger.Printf("failed to route cl %w", err)
 		return err
 	}
 

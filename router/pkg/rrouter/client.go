@@ -66,7 +66,7 @@ type PsqlClient struct {
 func (cl *PsqlClient) ReplyNotice(msg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.NoticeResponse{
-			Message: msg,
+			Message: "ROUTER NOTICE: " + msg,
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -421,10 +421,7 @@ func (cl *PsqlClient) Shutdown() error {
 	return nil
 }
 
-
-var _ Client = &PsqlClient{
-
-}
+var _ Client = &PsqlClient{}
 
 type FakeClient struct {
 }

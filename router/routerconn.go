@@ -3,11 +3,11 @@ package router
 import (
 	context "context"
 
-	proto "github.com/pg-sharding/spqr/router/protos"
 	"github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	proto "github.com/pg-sharding/spqr/router/protos"
 	"google.golang.org/grpc"
 )
 
