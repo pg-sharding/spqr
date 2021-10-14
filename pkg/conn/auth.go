@@ -3,9 +3,9 @@ package conn
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )

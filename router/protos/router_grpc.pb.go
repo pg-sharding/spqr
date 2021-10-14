@@ -97,5 +97,5 @@ var Router_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/pkg.proto",
+	Metadata: "protos/worldmock.proto",
 }

@@ -139,7 +139,7 @@ func (sg *RouterImpl) Run(listener net.Listener) error {
 
 	cChan := make(chan net.Conn)
 
-	accept := func(l net.Listener) {
+	accept := func(l net.Listener, cChan chan net.Conn) {
 		for {
 			c, err := l.Accept()
 			if err != nil {
@@ -151,10 +151,9 @@ func (sg *RouterImpl) Run(listener net.Listener) error {
 		}
 	}
 
-	go accept(listener)
+	go accept(listener, cChan)
 
 	for {
-
 		select {
 		case conn := <-cChan:
 
@@ -173,7 +172,7 @@ func (sg *RouterImpl) Run(listener net.Listener) error {
 
 func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
-		ServiceName: "pkg",
+		ServiceName: "worldmock",
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:              "const",
 			Param:             1,
@@ -193,7 +192,7 @@ func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 
 	// Initialize tracer with a logger and a metrics factory
 	return cfg.InitGlobalTracer(
-		"pkg",
+		"worldmock",
 		jaegercfg.Logger(jLogger),
 		jaegercfg.Metrics(jMetricsFactory),
 	)

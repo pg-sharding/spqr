@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -377,7 +377,7 @@ func (cl *PsqlClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "pkg",
+				Name:                 "worldmock",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -416,7 +416,7 @@ func (cl *PsqlClient) ReplyErr(errmsg string) error {
 func (cl *PsqlClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: "pkg is shutdown, your connection closed",
+			Message: "worldmock is shutdown, your connection closed",
 		},
 		&pgproto3.ReadyForQuery{},
 	} {

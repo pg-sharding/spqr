@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 )
 
-
 type RelayStateInteractor interface {
 	Reset() error
 	StartTrace()

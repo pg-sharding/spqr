@@ -143,7 +143,7 @@ func (c *Local) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRa
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "pkg",
+				Name:                 "worldmock",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -174,7 +174,7 @@ func (c *Local) LockKeyRange(cl rrouter.Client, krid string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "pkg",
+				Name:                 "worldmock",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -268,7 +268,7 @@ func (c *Local) KeyRanges(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "pkg key ranges",
+				Name:                 "worldmock key ranges",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -318,7 +318,7 @@ func (c *Local) Shards(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "pkg shards",
+				Name:                 "worldmock shards",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -431,8 +431,6 @@ func (c *Local) ProcessQuery(q string, cl rrouter.Client) error {
 
 	return nil
 }
-
-
 
 const greeting = `
 

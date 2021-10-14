@@ -22,11 +22,11 @@ func NewExecuter(cfg config.ExecuterCfg) *Executer {
 }
 
 func (e *Executer) ReadCmds() []string {
-
 	f, err := os.Open(e.cfg.InitSQLPath)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer f.Close()
 
 	ret := make([]string, 0)

@@ -8,16 +8,15 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
-
-	_ "github.com/lib/pq"
 )
 
 const (
 	spqrPort = 6432
 )
-	
+
 var (
 	username string
 	dbname   string
