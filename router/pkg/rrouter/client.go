@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/router/conn"
+	"github.com/pg-sharding/spqr/router/pkg/conn"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -25,6 +25,7 @@ type Client interface {
 	AssignRoute(r *Route) error
 
 	ReplyErr(errmsg string) error
+	ReplyNotice(msg string) error
 
 	Init(cfg *tls.Config, reqssl string) error
 	Auth() error
@@ -48,7 +49,7 @@ type Client interface {
 	Shutdown() error
 }
 
-type SpqrClient struct {
+type PsqlClient struct {
 	rule *config.FRRule
 	conn net.Conn
 
@@ -62,12 +63,26 @@ type SpqrClient struct {
 	server     Server
 }
 
-func (cl *SpqrClient) ID() string {
+func (cl *PsqlClient) ReplyNotice(msg string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.NoticeResponse{
+			Message: msg,
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cl *PsqlClient) ID() string {
 	return cl.id
 }
 
 func NewClient(pgconn net.Conn) Client {
-	cl := &SpqrClient{
+	cl := &PsqlClient{
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
 	}
@@ -76,15 +91,15 @@ func NewClient(pgconn net.Conn) Client {
 	return cl
 }
 
-func (cl *SpqrClient) Rule() *config.FRRule {
+func (cl *PsqlClient) Rule() *config.FRRule {
 	return cl.rule
 }
 
-func (cl *SpqrClient) Server() Server {
+func (cl *PsqlClient) Server() Server {
 	return cl.server
 }
 
-func (cl *SpqrClient) Unroute() error {
+func (cl *PsqlClient) Unroute() error {
 	if cl.server == nil {
 		return xerrors.New("client not routed")
 	}
@@ -93,7 +108,7 @@ func (cl *SpqrClient) Unroute() error {
 	return nil
 }
 
-func (cl *SpqrClient) AssignRule(rule *config.FRRule) error {
+func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
 	if cl.rule != nil {
 		return xerrors.Errorf("client has active rule %s:%s", rule.RK.Usr, rule.RK.DB)
 	}
@@ -103,7 +118,7 @@ func (cl *SpqrClient) AssignRule(rule *config.FRRule) error {
 }
 
 // startup + ssl
-func (cl *SpqrClient) Init(cfg *tls.Config, sslmode string) error {
+func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", sslmode)
 
@@ -178,7 +193,7 @@ func (cl *SpqrClient) Init(cfg *tls.Config, sslmode string) error {
 	return nil
 }
 
-func (cl *SpqrClient) Auth() error {
+func (cl *PsqlClient) Auth() error {
 	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
@@ -230,14 +245,14 @@ func (cl *SpqrClient) Auth() error {
 	return nil
 }
 
-func (cl *SpqrClient) StartupMessage() *pgproto3.StartupMessage {
+func (cl *PsqlClient) StartupMessage() *pgproto3.StartupMessage {
 	return cl.startupMsg
 }
 
 const DefaultUsr = "default"
 const DefaultDB = "default"
 
-func (cl *SpqrClient) Usr() string {
+func (cl *PsqlClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
@@ -245,7 +260,7 @@ func (cl *SpqrClient) Usr() string {
 	return DefaultUsr
 }
 
-func (cl *SpqrClient) DB() string {
+func (cl *PsqlClient) DB() string {
 	if db, ok := cl.startupMsg.Parameters["database"]; ok {
 		return db
 	}
@@ -253,7 +268,7 @@ func (cl *SpqrClient) DB() string {
 	return DefaultUsr
 }
 
-func (cl *SpqrClient) receivepasswd() string {
+func (cl *PsqlClient) receivepasswd() string {
 	msg, err := cl.be.Receive()
 
 	if err != nil {
@@ -268,7 +283,7 @@ func (cl *SpqrClient) receivepasswd() string {
 	}
 }
 
-func (cl *SpqrClient) PasswordCT() string {
+func (cl *PsqlClient) PasswordCT() string {
 	if db, ok := cl.startupMsg.Parameters["password"]; ok {
 		return db
 	}
@@ -280,7 +295,7 @@ func (cl *SpqrClient) PasswordCT() string {
 	return cl.receivepasswd()
 }
 
-func (cl *SpqrClient) PasswordMD5() string {
+func (cl *PsqlClient) PasswordMD5() string {
 	_ = cl.be.Send(&pgproto3.Authentication{
 		Type: pgproto3.AuthTypeMD5Password,
 		Salt: [4]byte{1, 3, 3, 7},
@@ -289,15 +304,15 @@ func (cl *SpqrClient) PasswordMD5() string {
 	return cl.receivepasswd()
 }
 
-func (cl *SpqrClient) Receive() (pgproto3.FrontendMessage, error) {
+func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	return cl.be.Receive()
 }
 
-func (cl *SpqrClient) Send(msg pgproto3.BackendMessage) error {
+func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	return cl.be.Send(msg)
 }
 
-func (cl *SpqrClient) AssignRoute(r *Route) error {
+func (cl *PsqlClient) AssignRoute(r *Route) error {
 	if cl.r != nil {
 		return xerrors.New("client already has assigned route")
 	}
@@ -306,7 +321,7 @@ func (cl *SpqrClient) AssignRoute(r *Route) error {
 	return nil
 }
 
-func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
+func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 	tracelog.InfoLogger.Printf("process query %s", query)
 
@@ -335,7 +350,7 @@ func (cl *SpqrClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	}
 }
 
-func (cl *SpqrClient) AssignServerConn(srv Server) error {
+func (cl *PsqlClient) AssignServerConn(srv Server) error {
 	if cl.server != nil {
 		return xerrors.New("client already has active connection")
 	}
@@ -344,15 +359,15 @@ func (cl *SpqrClient) AssignServerConn(srv Server) error {
 	return nil
 }
 
-func (cl *SpqrClient) Route() *Route {
+func (cl *PsqlClient) Route() *Route {
 	return cl.r
 }
 
-func (cl *SpqrClient) DefaultReply() error {
+func (cl *PsqlClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "router",
+				Name:                 "pkg",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -373,7 +388,7 @@ func (cl *SpqrClient) DefaultReply() error {
 	return nil
 }
 
-func (cl *SpqrClient) ReplyErr(errmsg string) error {
+func (cl *PsqlClient) ReplyErr(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
 			Message: errmsg,
@@ -388,10 +403,10 @@ func (cl *SpqrClient) ReplyErr(errmsg string) error {
 	return nil
 }
 
-func (cl *SpqrClient) Shutdown() error {
+func (cl *PsqlClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: "router is shutdown, your connection closed",
+			Message: "pkg is shutdown, your connection closed",
 		},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -406,7 +421,16 @@ func (cl *SpqrClient) Shutdown() error {
 	return nil
 }
 
+
+var _ Client = &PsqlClient{
+
+}
+
 type FakeClient struct {
+}
+
+func (f FakeClient) ReplyNotice(msg string) error {
+	panic("implement me")
 }
 
 func (f FakeClient) Shutdown() error {

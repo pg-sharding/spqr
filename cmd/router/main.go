@@ -5,7 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/app"
 	"github.com/pg-sharding/spqr/pkg/config"
-	router2 "github.com/pg-sharding/spqr/router/router"
+	router "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
@@ -16,9 +16,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "router run --config `path-to-data-folder`",
-	Short: "SPQR",
-	Long:  "Stateless Postgres Query Rrouter",
+	Use:   "router run --config `path-to-config-folder`",
+	Short: "router",
+	Long:  "router",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -39,14 +39,14 @@ func init() {
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "run SPQR",
+	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := config.Load(rcfgPath); err != nil {
 			return err
 		}
-		spqr, err := router2.NewRouter()
+		spqr, err := router.NewRouter()
 		if err != nil {
-			return errors.Wrap(err, "SPQR creation failed")
+			return errors.Wrap(err, "router failed to start")
 		}
 
 		app := app.NewApp(spqr)

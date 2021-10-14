@@ -80,7 +80,7 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 		routePool:     NewRouterPoolImpl(config.Get().RouterConfig.ShardMapping),
 		frontendRules: map[routeKey]*config.FRRule{},
 		backendRules:  map[routeKey]*config.BERule{},
-		lg:            log.New(os.Stdout, "router", 0),
+		lg:            log.New(os.Stdout, "pkg", 0),
 		wgs:           map[qdb.ShardKey]Watchdog{},
 	}
 

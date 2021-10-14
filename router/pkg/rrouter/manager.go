@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"fmt"
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -49,6 +50,8 @@ func (t *TxConnManager) RouteCB(client Client, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
 		tracelog.InfoLogger.Printf("adding shard %v", shkey.Name)
+		_ = client.ReplyNotice(fmt.Sprintf("adding shard %v", shkey.Name))
+
 		if err := client.Server().AddShard(shkey); err != nil {
 			return err
 		}

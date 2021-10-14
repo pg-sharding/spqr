@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.6.1
-// source: protos/router.proto
+// source: protos/pkg.proto
 
 package proto
 

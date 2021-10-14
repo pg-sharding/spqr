@@ -1,4 +1,4 @@
-package router
+package pkg
 
 import (
 	"crypto/tls"
@@ -10,9 +10,9 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/router/router/console"
-	"github.com/pg-sharding/spqr/router/router/qrouter"
-	"github.com/pg-sharding/spqr/router/router/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/console"
+	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/pkg/errors"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	jaegerlog "github.com/uber/jaeger-client-go/log"
@@ -68,8 +68,8 @@ func NewRouter() (*RouterImpl, error) {
 			return nil, err
 		}
 	}
-	stchan := make(chan struct{})
 
+	stchan := make(chan struct{})
 	cnsl, err := console.NewConsole(frTLS, qr, stchan)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewConsole")
@@ -77,6 +77,7 @@ func NewRouter() (*RouterImpl, error) {
 
 	executer := NewExecuter(config.Get().ExecuterCfg)
 	_ = executer.SPIexec(cnsl, rrouter.NewFakeClient()) // TODO add error handling
+
 	queries, err := cnsl.Qlog.Recover(config.Get().DataFolder)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(errors.Wrap(err, "Serve can't start"))
@@ -173,7 +174,7 @@ func (sg *RouterImpl) Run(listener net.Listener) error {
 
 func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
-		ServiceName: "router",
+		ServiceName: "pkg",
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:              "const",
 			Param:             1,
@@ -193,7 +194,7 @@ func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 
 	// Initialize tracer with a logger and a metrics factory
 	return cfg.InitGlobalTracer(
-		"router",
+		"pkg",
 		jaegercfg.Logger(jLogger),
 		jaegercfg.Metrics(jMetricsFactory),
 	)

@@ -8,7 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	shards "github.com/pg-sharding/spqr/router/protos"
-	router2 "github.com/pg-sharding/spqr/router/router"
+	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"

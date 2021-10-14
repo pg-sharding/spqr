@@ -1,4 +1,4 @@
-package router
+package pkg
 
 import (
 	"bufio"
@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/router/console"
-	"github.com/pg-sharding/spqr/router/router/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/console"
+	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )
 

@@ -1,16 +1,28 @@
-package router
+package pkg
 
 import (
+	"fmt"
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/router/router/qrouter"
-	"github.com/pg-sharding/spqr/router/router/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )
+
+
+type Qinteractor interface {
+
+}
+
+type QinteractorImpl struct {
+
+}
 
 func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
 
 	tracelog.InfoLogger.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
+
+	_ = cl.ReplyNotice(fmt.Sprintf("process Frontend for user %s %s", cl.Usr(), cl.DB()))
 
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
@@ -28,8 +40,11 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
 				tracelog.InfoLogger.Printf("rerouting")
+				_ = cl.ReplyNotice(fmt.Sprintf("rerouting ypur connection"))
 
 				shrdRoutes, err := rst.Reroute(v)
+
+				_ = cl.ReplyNotice(fmt.Sprintf("mathed shard routes %v", shrdRoutes))
 
 				if err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)

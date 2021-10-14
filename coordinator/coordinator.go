@@ -2,7 +2,7 @@ package coordinator
 
 import (
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	router2 "github.com/pg-sharding/spqr/router/router"
+	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )

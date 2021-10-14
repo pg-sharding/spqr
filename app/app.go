@@ -6,7 +6,7 @@ import (
 	reuse "github.com/libp2p/go-reuseport"
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
-	router2 "github.com/pg-sharding/spqr/router/router"
+	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

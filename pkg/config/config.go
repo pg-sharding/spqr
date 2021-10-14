@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Spqr struct {
+type SpqrConfig struct {
 	LogLevel            string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 	HttpAddr            string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
 	WorldHttpAddr       string `json:"world_http_addr" toml:"world_http_addr" yaml:"world_http_addr"`
@@ -24,7 +24,7 @@ type Spqr struct {
 	JaegerConfig JaegerCfg     `json:"jaeger" toml:"jaeger" yaml:"jaeger"`
 }
 
-var cfg Spqr
+var cfg SpqrConfig
 
 func Load(cfgPath string) error {
 	file, err := os.Open(cfgPath)
@@ -44,6 +44,6 @@ func Load(cfgPath string) error {
 	return nil
 }
 
-func Get() *Spqr {
+func Get() *SpqrConfig {
 	return &cfg
 }

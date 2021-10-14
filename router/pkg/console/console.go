@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/router/qlog"
-	qlogprovider "github.com/pg-sharding/spqr/router/router/qlog/provider"
-	"github.com/pg-sharding/spqr/router/router/qrouter"
-	"github.com/pg-sharding/spqr/router/router/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/qlog"
+	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
+	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -143,7 +143,7 @@ func (c *ConsoleDB) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitK
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "router",
+				Name:                 "pkg",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -174,7 +174,7 @@ func (c *ConsoleDB) LockKeyRange(cl rrouter.Client, krid string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "router",
+				Name:                 "pkg",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -268,7 +268,7 @@ func (c *ConsoleDB) KeyRanges(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "router key ranges",
+				Name:                 "pkg key ranges",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -318,7 +318,7 @@ func (c *ConsoleDB) Shards(cl rrouter.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "router shards",
+				Name:                 "pkg shards",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,

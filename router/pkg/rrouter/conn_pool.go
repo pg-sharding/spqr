@@ -7,7 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/router/conn"
+	"github.com/pg-sharding/spqr/router/pkg/conn"
 	"github.com/wal-g/tracelog"
 )
 
@@ -79,6 +79,7 @@ func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
 	}
 
 	var err error
+
 	sh, err = conn.NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
 	if err != nil {
 		return nil, err

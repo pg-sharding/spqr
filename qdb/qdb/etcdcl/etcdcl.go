@@ -57,7 +57,7 @@ func (q Qdbetcd) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- 
 	return nil
 }
 
-const keyspace = "router"
+const keyspace = "pkg"
 
 func NewQDBETCD() (*Qdbetcd, error) {
 	cli, _ := clientv3.New(clientv3.Config{ // TODO error handling

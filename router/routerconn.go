@@ -4,10 +4,10 @@ import (
 	context "context"
 
 	proto "github.com/pg-sharding/spqr/router/protos"
-	"github.com/pg-sharding/spqr/router/router"
-	"github.com/pg-sharding/spqr/router/router/console"
-	"github.com/pg-sharding/spqr/router/router/qrouter"
-	"github.com/pg-sharding/spqr/router/router/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg"
+	"github.com/pg-sharding/spqr/router/pkg/console"
+	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"google.golang.org/grpc"
 )
 
@@ -32,7 +32,7 @@ var _ proto.RouterClient = RouterConn{}
 type KeyRangeService struct {
 	proto.UnimplementedKeyRangeServiceServer
 
-	impl  router.Router
+	impl  pkg.Router
 	qimpl qrouter.Qrouter
 }
 
