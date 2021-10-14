@@ -33,6 +33,14 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.07
+    world1:
+        build:
+            dockerfile: ./docker/world/Dockerfile
+            context: .
+        hostname: spqr_world_0_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.08
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1

@@ -64,10 +64,10 @@ db1=?>
 
 ```
 
-How yout sharding routes are configured
+How your sharding routes are configured
+You can execute some queries
 
 ```
-execute some queries
 
 
 
