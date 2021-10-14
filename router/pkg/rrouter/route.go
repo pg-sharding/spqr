@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/qdb/qdb"
@@ -38,10 +39,10 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 	}
 }
 
-func (r *Route) NofityClients(cb func(cl Client) error) error {
+func (r *Route) NofityClients(cb func(cl client.Client) error) error {
 	return r.clPool.ClientPoolForeach(cb)
 }
 
-func (r *Route) AddClient(cl Client) error {
+func (r *Route) AddClient(cl client.Client) error {
 	return r.clPool.Put(cl)
 }

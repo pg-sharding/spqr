@@ -3,6 +3,7 @@ package rrouter
 import (
 	"sync"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 )
@@ -57,7 +58,7 @@ func (r *RoutePoolImpl) Obsolete(key routeKey) *Route {
 
 func (r *RoutePoolImpl) Shutdown() error {
 	for _, route := range r.pool {
-		go route.NofityClients(func(cl Client) error {
+		go route.NofityClients(func(cl client.Client) error {
 			return cl.Shutdown()
 		})
 	}

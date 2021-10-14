@@ -3,26 +3,27 @@ package rrouter
 import (
 	"sync"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/wal-g/tracelog"
 )
 
 type ClientPool interface {
-	ClientPoolForeach(cb func(client Client) error) error
+	ClientPoolForeach(cb func(client client.Client) error) error
 
-	Put(client Client) error
-	Pop(client Client) error
+	Put(client client.Client) error
+	Pop(client client.Client) error
 
 	Shutdown() error
 }
 
 type ClientPoolImpl struct {
 	mu   sync.Mutex
-	pool map[string]Client
+	pool map[string]client.Client
 }
 
 var _ ClientPool = &ClientPoolImpl{}
 
-func (c *ClientPoolImpl) Put(client Client) error {
+func (c *ClientPoolImpl) Put(client client.Client) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -31,7 +32,7 @@ func (c *ClientPoolImpl) Put(client Client) error {
 	return nil
 }
 
-func (c *ClientPoolImpl) Pop(client Client) error {
+func (c *ClientPoolImpl) Pop(client client.Client) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -46,14 +47,14 @@ func (c *ClientPoolImpl) Shutdown() error {
 	defer c.mu.Unlock()
 
 	for _, cl := range c.pool {
-		go func(cl Client) {
+		go func(cl client.Client) {
 			tracelog.InfoLogger.PrintError(cl.Shutdown())
 		}(cl)
 	}
 
 	return nil
 }
-func (c *ClientPoolImpl) ClientPoolForeach(cb func(client Client) error) error {
+func (c *ClientPoolImpl) ClientPoolForeach(cb func(client client.Client) error) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -68,7 +69,7 @@ func (c *ClientPoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 }
 func NewClientPool() *ClientPoolImpl {
 	return &ClientPoolImpl{
-		pool: map[string]Client{},
+		pool: map[string]client.Client{},
 		mu:   sync.Mutex{},
 	}
 }

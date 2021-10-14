@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/console"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )
 
@@ -39,7 +39,7 @@ func (e *Executer) ReadCmds() []string {
 	return ret
 }
 
-func (e *Executer) SPIexec(console console.Console, cl rrouter.Client) error {
+func (e *Executer) SPIexec(console console.Console, cl client.Client) error {
 	for _, cmd := range e.ReadCmds() {
 		tracelog.InfoLogger.Printf("executing init sql cmd %s", cmd)
 		if err := console.ProcessQuery(cmd, cl); err != nil {

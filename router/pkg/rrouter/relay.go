@@ -27,13 +27,13 @@ type RelayStateImpl struct {
 	traceMsgs bool
 
 	Qr      qrouter.Qrouter
-	cl      Client
+	cl      RouterClient
 	manager ConnManager
 
 	msgBuf []*pgproto3.Query
 }
 
-func NewRelayState(qr qrouter.Qrouter, client Client, manager ConnManager) *RelayStateImpl {
+func NewRelayState(qr qrouter.Qrouter, client RouterClient, manager ConnManager) *RelayStateImpl {
 	return &RelayStateImpl{
 		ActiveShards: nil,
 		TxActive:     false,

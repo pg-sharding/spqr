@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pkg/errors"
@@ -14,40 +15,20 @@ import (
 	"golang.org/x/xerrors"
 )
 
-type Client interface {
+type RouterClient interface {
+	client.Client
+
 	Server() Server
 	Unroute() error
-
-	ID() string
 
 	AssignRule(rule *config.FRRule) error
 	AssignServerConn(srv Server) error
 	AssignRoute(r *Route) error
 
-	ReplyErr(errmsg string) error
-	ReplyNotice(msg string) error
-
-	Init(cfg *tls.Config, reqssl string) error
-	Auth() error
-	StartupMessage() *pgproto3.StartupMessage
-
-	Usr() string
-	DB() string
-
-	PasswordCT() string
-	PasswordMD5() string
-	DefaultReply() error
-
 	Route() *Route
 	Rule() *config.FRRule
 
 	ProcQuery(query *pgproto3.Query) (byte, error)
-
-	Send(msg pgproto3.BackendMessage) error
-	Receive() (pgproto3.FrontendMessage, error)
-
-	Shutdown() error
-	Reset() error
 }
 
 type PsqlClient struct {
@@ -89,7 +70,7 @@ func (cl *PsqlClient) ID() string {
 	return cl.id
 }
 
-func NewClient(pgconn net.Conn) Client {
+func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	cl := &PsqlClient{
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
@@ -140,8 +121,8 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	if err != nil {
 		return err
 	}
-	msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
 
+	msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
 	msg := make([]byte, msgSize)
 
 	_, err = cl.conn.Read(msg)
@@ -377,7 +358,7 @@ func (cl *PsqlClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "worldmock",
+				Name:                 "psql client",
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -431,7 +412,7 @@ func (cl *PsqlClient) Shutdown() error {
 	return nil
 }
 
-var _ Client = &PsqlClient{}
+var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
 }
@@ -532,4 +513,4 @@ func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
 }
 
-var _ Client = &FakeClient{}
+var _ RouterClient = &FakeClient{}

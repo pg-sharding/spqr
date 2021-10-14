@@ -199,7 +199,7 @@ func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 }
 
 func (sg *RouterImpl) servAdm(netconn net.Conn) error {
-	cl := rrouter.NewClient(netconn)
+	cl := rrouter.NewPsqlClient(netconn)
 
 	if err := cl.Init(sg.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err

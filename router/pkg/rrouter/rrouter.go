@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ import (
 
 type Rrouter interface {
 	Shutdown() error
-	PreRoute(conn net.Conn) (Client, error)
+	PreRoute(conn net.Conn) (RouterClient, error)
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
 
@@ -99,9 +100,9 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	return router, nil
 }
 
-func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
+func (r *RRouter) PreRoute(conn net.Conn) (RouterClient, error) {
 
-	cl := NewClient(conn)
+	cl := NewPsqlClient(conn)
 
 	if err := cl.Init(r.cfg, config.Get().RouterConfig.TLSCfg.SslMode); err != nil {
 		return nil, err
@@ -164,7 +165,7 @@ func (r *RRouter) ListShards() []string {
 func (r *RRouter) ObsoleteRoute(key routeKey) error {
 	route := r.routePool.Obsolete(key)
 
-	if err := route.NofityClients(func(cl Client) error {
+	if err := route.NofityClients(func(cl client.Client) error {
 		return nil
 	}); err != nil {
 		return err

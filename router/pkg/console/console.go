@@ -6,20 +6,20 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
 type Console interface {
-	Serve(cl rrouter.Client) error
-	ProcessQuery(q string, cl rrouter.Client) error
+	Serve(cl client.Client) error
+	ProcessQuery(q string, cl client.Client) error
 	Shutdown() error
 }
 
@@ -50,7 +50,7 @@ func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) 
 	}, nil
 }
 
-func (c *Local) Databases(cl rrouter.Client) error {
+func (c *Local) Databases(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -76,7 +76,7 @@ func (c *Local) Databases(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *Local) Pools(cl rrouter.Client) error {
+func (c *Local) Pools(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -102,7 +102,7 @@ func (c *Local) Pools(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *Local) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingColumn) error {
+func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingColumn) error {
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
@@ -133,7 +133,7 @@ func (c *Local) AddShardingColumn(cl rrouter.Client, stmt *spqrparser.ShardingCo
 	return nil
 }
 
-func (c *Local) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRange) error {
+func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRange) error {
 	if err := c.Qrouter.Split(splitReq); err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (c *Local) SplitKeyRange(cl rrouter.Client, splitReq *spqrparser.SplitKeyRa
 	return nil
 }
 
-func (c *Local) LockKeyRange(cl rrouter.Client, krid string) error {
+func (c *Local) LockKeyRange(cl client.Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
 	if err := c.Qrouter.Lock(krid); err != nil {
 		return err
@@ -196,7 +196,7 @@ func (c *Local) LockKeyRange(cl rrouter.Client, krid string) error {
 	return nil
 }
 
-func (c *Local) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange) error {
+func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
@@ -232,7 +232,7 @@ func (c *Local) AddKeyRange(cl rrouter.Client, keyRange *spqrparser.KeyRange) er
 	return nil
 }
 
-func (c *Local) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
+func (c *Local) AddShard(cl client.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
 
 	err := c.Qrouter.AddShard(shard.Name, cfg)
 
@@ -261,7 +261,7 @@ func (c *Local) AddShard(cl rrouter.Client, shard *spqrparser.Shard, cfg *config
 	return nil
 }
 
-func (c *Local) KeyRanges(cl rrouter.Client) error {
+func (c *Local) KeyRanges(cl client.Client) error {
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
@@ -311,7 +311,7 @@ func (c *Local) KeyRanges(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *Local) Shards(cl rrouter.Client) error {
+func (c *Local) Shards(cl client.Client) error {
 
 	tracelog.InfoLogger.Printf("listing shards")
 
@@ -361,7 +361,7 @@ func (c *Local) Shards(cl rrouter.Client) error {
 	return nil
 }
 
-func (c *Local) ProcessQuery(q string, cl rrouter.Client) error {
+func (c *Local) ProcessQuery(q string, cl client.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -444,7 +444,7 @@ https://github.com/pg-sharding/spqr/tree/master/doc/router
 
 `
 
-func (c *Local) Serve(cl rrouter.Client) error {
+func (c *Local) Serve(cl client.Client) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},

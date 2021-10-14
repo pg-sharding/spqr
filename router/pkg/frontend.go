@@ -16,7 +16,7 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
-func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) error {
+func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnManager) error {
 
 	tracelog.InfoLogger.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
