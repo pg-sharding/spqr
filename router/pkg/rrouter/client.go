@@ -47,6 +47,7 @@ type Client interface {
 	Receive() (pgproto3.FrontendMessage, error)
 
 	Shutdown() error
+	Reset() error
 }
 
 type PsqlClient struct {
@@ -61,6 +62,13 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     Server
+}
+
+func (cl *PsqlClient) Reset() error {
+	if cl.server == nil {
+		return nil
+	}
+	return cl.server.Reset()
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
@@ -426,6 +434,10 @@ func (cl *PsqlClient) Shutdown() error {
 var _ Client = &PsqlClient{}
 
 type FakeClient struct {
+}
+
+func (f FakeClient) Reset() error {
+	panic("implement me")
 }
 
 func (f FakeClient) ReplyNotice(msg string) error {

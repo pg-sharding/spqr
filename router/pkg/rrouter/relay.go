@@ -50,8 +50,9 @@ func (rst *RelayStateImpl) Reset() error {
 	rst.ActiveShards = nil
 	rst.TxActive = false
 
-	rst.cl.Server().Reset()
-	return nil
+	_ = rst.cl.Reset()
+
+	return rst.cl.Unroute()
 }
 
 func (rst *RelayStateImpl) StartTrace() {
