@@ -130,10 +130,15 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		return err
 	}
 
-	protVer := binary.BigEndian.Uint32(msg)
+	protoVer := binary.BigEndian.Uint32(msg)
 
-	switch protVer {
+	//tracelog.InfoLogger.Printf("prot version %s\n", protoVer)
+
+	switch protoVer {
 	case conn.SSLREQ:
+		if sslmode == config.SSLMODEDISABLE {
+			return xerrors.Errorf("ssl mode is requested bu ssl is disabled")
+		}
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
 			return err
@@ -165,13 +170,13 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	case conn.CANCELREQ:
 		fallthrough
 	default:
-		return xerrors.Errorf("protocol number %d not supported", protVer)
+		return xerrors.Errorf("protocol number %d not supported", protoVer)
 	}
 
 	cl.startupMsg = sm
 	cl.be = backend
 
-	if sslmode == config.SSLMODEREQUIRE && protVer != conn.SSLREQ {
+	if sslmode == config.SSLMODEREQUIRE && protoVer != conn.SSLREQ {
 		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",

@@ -124,7 +124,7 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
-func InitClConnection(client RouterClient) (ConnManager, error) {
+func MatchConnectionPooler(client RouterClient) (ConnManager, error) {
 	var connmanager ConnManager
 
 	switch client.Rule().PoolingMode {

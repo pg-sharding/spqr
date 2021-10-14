@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"net"
 	"os"
 
 	"github.com/jackc/pgproto3"
 	reuse "github.com/libp2p/go-reuseport"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )
@@ -19,7 +19,7 @@ func (w *WorldMock) Run() {
 
 	ctx := context.Background()
 
-	proto, addr := config.Get().PROTO, config.Get().Addr
+	proto, addr := "tcp", "localhost:6432"
 
 	listener, err := reuse.Listen(proto, addr)
 	if err != nil {
@@ -61,6 +61,24 @@ func (w *WorldMock) Run() {
 
 func (w *WorldMock) serv(conn net.Conn) error {
 	cl := rrouter.NewPsqlClient(conn)
+
+	err := cl.Init(nil, config.SSLMODEDISABLE)
+
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+
+	cl.AssignRule(&config.FRRule{
+		AuthRule: config.AuthRule{
+			Method: config.AuthOK,
+		},
+	})
+	if err := cl.Auth(); err != nil {
+		return err
+	}
+	tracelog.InfoLogger.Printf("client auth OK")
 
 	for {
 		msg, err := cl.Receive()

@@ -122,7 +122,7 @@ func (sg *RouterImpl) serv(netconn net.Conn) error {
 
 	tracelog.InfoLogger.Printf("preroute ok")
 
-	cmngr, err := rrouter.InitClConnection(client)
+	cmngr, err := rrouter.MatchConnectionPooler(client)
 	if err != nil {
 		return err
 	}

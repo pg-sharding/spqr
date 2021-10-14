@@ -11,7 +11,10 @@ build_proxy:
 build_world: 
 	go build -o spqr-world cmd/world/main.go
 
-build: build_c build_proxy build_world
+build_worldmock:
+	go build -o spqr-worldmock ./test/worldmock
+
+build: build_c build_proxy build_world build_worldmock
 
 gen: gogen yaccgen
 
