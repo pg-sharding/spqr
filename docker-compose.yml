@@ -1,10 +1,13 @@
 version: '3'
 
 services:
-    shard1:
+    shardbase:
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
+    shard1:
+        image:
+            spqr_shardbase
         environment:
             PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard1_1.spqr_spqr.}"
         ports:
@@ -14,9 +17,8 @@ services:
             spqr:
                 ipv4_address: 192.168.233.03
     shard2:
-        build:
-            dockerfile: ./docker/shard/Dockerfile
-            context: .
+        image:
+            spqr_shardbase
         environment:
             PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard2_1.spqr_spqr.}"
         ports:

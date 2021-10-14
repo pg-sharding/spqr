@@ -1,4 +1,5 @@
-FROM golang:1.16
+FROM shardbase
+FROM golang:1.17 as worldbase
 
 RUN mkdir /router
 COPY ./ /router
