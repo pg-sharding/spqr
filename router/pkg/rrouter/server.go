@@ -3,6 +3,7 @@ package rrouter
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/router/pkg/conn"
 	"reflect"
 	"sync"
 
@@ -29,7 +30,7 @@ type Server interface {
 type ShardServer struct {
 	rule *config.BERule
 
-	pool ConnPool
+	pool conn.ConnPool
 
 	shard Shard
 }
@@ -78,7 +79,7 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	return srv.shard.ReqBackendSsl(cfg)
 }
 
-func NewShardServer(rule *config.BERule, spool ConnPool) *ShardServer {
+func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
 	return &ShardServer{
 		rule: rule,
 		pool: spool,
@@ -121,7 +122,7 @@ type MultiShardServer struct {
 	rule         *config.BERule
 	activeShards []Shard
 
-	pool ConnPool
+	pool conn.ConnPool
 }
 
 func (m *MultiShardServer) Reset() error {
@@ -270,7 +271,7 @@ func (m *MultiShardServer) Cleanup() error {
 
 var _ Server = &MultiShardServer{}
 
-func NewMultiShardServer(rule *config.BERule, pool ConnPool) (Server, error) {
+func NewMultiShardServer(rule *config.BERule, pool conn.ConnPool) (Server, error) {
 	ret := &MultiShardServer{
 		rule:         rule,
 		pool:         pool,

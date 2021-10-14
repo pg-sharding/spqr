@@ -3,6 +3,7 @@ package rrouter
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/router/pkg/conn"
 )
 
 type routeKey struct {
@@ -25,14 +26,14 @@ type Route struct {
 	frRule *config.FRRule
 
 	clPool   ClientPool
-	servPool ConnPool
+	servPool conn.ConnPool
 }
 
 func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {
 	return &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: NewConnPool(mapping),
+		servPool: conn.NewConnPool(mapping),
 		clPool:   NewClientPool(),
 	}
 }

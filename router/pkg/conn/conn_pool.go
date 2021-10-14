@@ -1,4 +1,4 @@
-package rrouter
+package conn
 
 import (
 	"crypto/tls"
@@ -7,26 +7,25 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/pkg/conn"
 	"github.com/wal-g/tracelog"
 )
 
 type Pool interface {
-	Connection(shard, host string) (conn.DBInstance, error)
-	Cut(host string) []conn.DBInstance
-	Put(host conn.DBInstance) error
-	List() []conn.DBInstance
+	Connection(shard, host string) (DBInstance, error)
+	Cut(host string) []DBInstance
+	Put(host DBInstance) error
+	List() []DBInstance
 }
 
 type cPool struct {
 	mu   sync.Mutex
-	pool map[string][]conn.DBInstance
+	pool map[string][]DBInstance
 
 	mapping map[string]*config.ShardCfg
 }
 
-func (c *cPool) Cut(host string) []conn.DBInstance {
-	var ret []conn.DBInstance
+func (c *cPool) Cut(host string) []DBInstance {
+	var ret []DBInstance
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -40,11 +39,11 @@ func (c *cPool) Cut(host string) []conn.DBInstance {
 	return ret
 }
 
-func (c *cPool) List() []conn.DBInstance {
+func (c *cPool) List() []DBInstance {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var ret []conn.DBInstance
+	var ret []DBInstance
 
 	for _, llist := range c.pool {
 		ret = append(ret, llist...)
@@ -53,10 +52,10 @@ func (c *cPool) List() []conn.DBInstance {
 	return ret
 }
 
-func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
+func (c *cPool) Connection(shard, host string) (DBInstance, error) {
 	c.mu.Lock()
 
-	var sh conn.DBInstance
+	var sh DBInstance
 
 	if shds, ok := c.pool[host]; ok && len(shds) > 0 {
 		sh, shds = shds[0], shds[1:]
@@ -80,14 +79,14 @@ func (c *cPool) Connection(shard, host string) (conn.DBInstance, error) {
 
 	var err error
 
-	sh, err = conn.NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
+	sh, err = NewInstanceConn(hostCfg, c.mapping[shard].TLSConfig, c.mapping[shard].TLSCfg.SslMode)
 	if err != nil {
 		return nil, err
 	}
 	return sh, nil
 }
 
-func (c *cPool) Put(sh conn.DBInstance) error {
+func (c *cPool) Put(sh DBInstance) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -99,7 +98,7 @@ func (c *cPool) Put(sh conn.DBInstance) error {
 func NewPool(mapping map[string]*config.ShardCfg) *cPool {
 	return &cPool{
 		mu:      sync.Mutex{},
-		pool:    map[string][]conn.DBInstance{},
+		pool:    map[string][]DBInstance{},
 		mapping: mapping,
 	}
 }
@@ -107,14 +106,14 @@ func NewPool(mapping map[string]*config.ShardCfg) *cPool {
 var _ Pool = &cPool{}
 
 type ConnPool interface {
-	Connection(key kr.ShardKey) (conn.DBInstance, error)
-	Put(shkey kr.ShardKey, sh conn.DBInstance) error
+	Connection(key kr.ShardKey) (DBInstance, error)
+	Put(shkey kr.ShardKey, sh DBInstance) error
 
 	Check(key kr.ShardKey) bool
 
 	UpdateHostStatus(shard, hostname string, rw bool) error
 
-	List() []conn.DBInstance
+	List() []DBInstance
 }
 
 type InstancePoolImpl struct {
@@ -160,13 +159,13 @@ func (s *InstancePoolImpl) Check(key kr.ShardKey) bool {
 	//return len(s.poolRW[key]) > 0
 }
 
-func (s *InstancePoolImpl) List() []conn.DBInstance {
+func (s *InstancePoolImpl) List() []DBInstance {
 	return append(s.poolRO.List(), s.poolRW.List()...)
 }
 
 var _ ConnPool = &InstancePoolImpl{}
 
-func (s *InstancePoolImpl) Connection(key kr.ShardKey) (conn.DBInstance, error) {
+func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
 
 	switch key.RW {
 	case true:
@@ -190,7 +189,7 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey) (conn.DBInstance, error) 
 
 }
 
-func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh conn.DBInstance) error {
+func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh DBInstance) error {
 
 	switch shkey.RW {
 	case true:
