@@ -115,10 +115,9 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 
 	frRule, ok := r.frontendRules[key]
 	if !ok {
-
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: "failed to route",
+				Message: "failed to preroute",
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
@@ -126,7 +125,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (Client, error) {
 			}
 		}
 
-		return nil, errors.New("Failed to route client")
+		return nil, errors.New("Failed to preroute client")
 	}
 
 	beRule, ok := r.backendRules[key]

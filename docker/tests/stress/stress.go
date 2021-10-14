@@ -10,17 +10,24 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
+
+	_ "github.com/lib/pq"
 )
 
 const (
-	hostname = "spqr_router_1_1"
 	spqrPort = 6432
-	dbname   = "db1"
-	username = "user1"
+)
+	
+var (
+	username string
+	dbname   string
+	relation string
+	hostname string
 )
 
 func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error) {
-	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=disable user=%s", hostname, spqrPort, dbname, username)
+	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=require user=%s", hostname, spqrPort, dbname, username)
+	fmt.Printf("using connstring %s\n", pgConString)
 	for i := 0; i < retryCnt; i++ {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
 		if err != nil {
@@ -43,13 +50,13 @@ func simple(wg *sync.WaitGroup) {
 
 		time.Sleep(time.Duration(1+r.Intn(10)) * time.Second)
 
-		conn, err := getConn(ctx, "db1", 2)
+		conn, err := getConn(ctx, dbname, 2)
 		defer conn.Close()
 		if err != nil {
 			panic(err)
 		}
 
-		if _, err := conn.Query(fmt.Sprintf("SELECT * FROM x WHERE i = %d", r.Intn(10))); err != nil {
+		if _, err := conn.Query(fmt.Sprintf("SELECT * FROM %s WHERE i = %d", relation, r.Intn(10))); err != nil {
 			panic(err)
 		}
 
@@ -87,6 +94,10 @@ var cmd = &cobra.Command{
 
 func init() {
 	cmd.PersistentFlags().IntVarP(&par, "parallel", "p", 10, "# of workers")
+	cmd.PersistentFlags().StringVarP(&hostname, "host", "", "spqr_router_1_1", "")
+	cmd.PersistentFlags().StringVarP(&relation, "rel", "r", "x", "")
+	cmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "dbtpcc", "")
+	cmd.PersistentFlags().StringVarP(&username, "usename", "u", "user1", "")
 }
 
 func main() {

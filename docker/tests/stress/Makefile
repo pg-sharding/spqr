@@ -1,5 +1,5 @@
 build:
-	go build stress.go
+	go build -o spqr-stress stress.go
 
 install:
 	mv stress /usr/local/bin/
