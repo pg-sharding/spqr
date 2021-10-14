@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	hostname = "localhost"
+	hostname = "spqr_router_1_1"
 	spqrPort = 6432
 	dbname   = "db1"
 	username = "user1"
