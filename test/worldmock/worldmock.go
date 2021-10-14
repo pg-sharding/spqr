@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"net"
 	"os"
 
 	"github.com/jackc/pgproto3"
 	reuse "github.com/libp2p/go-reuseport"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )

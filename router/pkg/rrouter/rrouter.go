@@ -21,8 +21,9 @@ type Rrouter interface {
 	ObsoleteRoute(key routeKey) error
 	AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error
 
-	AddShard(key qdb.ShardKey) error
-	AddInstance(key qdb.ShardKey, cfg *config.InstanceCFG)
+	AddDataShard(key qdb.ShardKey) error
+	AddWorldShard(key qdb.ShardKey) error
+	AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG)
 }
 
 type RRouter struct {
@@ -39,24 +40,27 @@ type RRouter struct {
 	wgs map[qdb.ShardKey]Watchdog
 }
 
-func (r *RRouter) AddInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
-
+func (r *RRouter) AddWorldShard(key qdb.ShardKey) error {
 	panic("implement me")
 }
 
-func (r *RRouter) AddShard(key qdb.ShardKey) error {
-	//wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
-	//
-	//if err != nil {
-	//	return errors.Wrap(err, "NewShardWatchDog")
-	//}
-	//
-	////wg.Run()
+func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
+	panic("implement me")
+}
+
+func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
+	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
+
+	if err != nil {
+		return errors.Wrap(err, "NewShardWatchDog")
+	}
+
+	wg.Run()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	//r.wgs[key] = wg
+	r.wgs[key] = wg
 
 	return nil
 }
@@ -175,7 +179,6 @@ func (r *RRouter) ObsoleteRoute(key routeKey) error {
 }
 
 func (r *RRouter) AddRouteRule(key routeKey, befule *config.BERule, frRule *config.FRRule) error {
-
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

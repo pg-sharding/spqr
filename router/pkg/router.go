@@ -57,15 +57,24 @@ func NewRouter() (*RouterImpl, error) {
 	}
 
 	for name, shard := range config.Get().RouterConfig.ShardMapping {
-		shardTLSConfig, err := initTLS(shard.TLSCfg.SslMode, shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "init shard TLS")
+
+		switch shard.ShType {
+		case config.DataShard:
+
+			shardTLSConfig, err := initTLS(shard.TLSCfg.SslMode, shard.TLSCfg.CertFile, shard.TLSCfg.KeyFile)
+			if err != nil {
+				return nil, errors.Wrap(err, "init shard TLS")
+			}
+			shard.TLSConfig = shardTLSConfig
+			_ = rr.AddDataShard(qdb.ShardKey{Name: name}) // TODO error handling
+			if err := qr.AddShard(name, shard); err != nil {
+				return nil, err
+			}
+
+		case config.WorldShard:
+
 		}
-		shard.TLSConfig = shardTLSConfig
-		_ = rr.AddShard(qdb.ShardKey{Name: name}) // TODO error handling
-		if err := qr.AddShard(name, shard); err != nil {
-			return nil, err
-		}
+
 	}
 
 	stchan := make(chan struct{})

@@ -44,6 +44,8 @@ services:
             dockerfile: ./docker/world/Dockerfile
             context: .
         hostname: spqr_world_0_1
+        ports:
+            - "7434:6432"
         networks:
             spqr:
                 ipv4_address: 192.168.233.08

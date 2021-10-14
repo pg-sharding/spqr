@@ -41,7 +41,7 @@ func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, o
 
 func (c *shardServiceClient) AddShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
 	out := new(AddShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddShard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddDataShard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (UnimplementedShardServiceServer) ListShards(context.Context, *ShardRequest
 	return nil, status.Errorf(codes.Unimplemented, "method ListShards not implemented")
 }
 func (UnimplementedShardServiceServer) AddShard(context.Context, *AddShardRequest) (*AddShardReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddShard not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method AddDataShard not implemented")
 }
 func (UnimplementedShardServiceServer) mustEmbedUnimplementedShardServiceServer() {}
 
@@ -108,7 +108,7 @@ func _ShardService_AddShard_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/AddShard",
+		FullMethod: "/yandex.spqr.ShardService/AddDataShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).AddShard(ctx, req.(*AddShardRequest))
@@ -128,7 +128,7 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ShardService_ListShards_Handler,
 		},
 		{
-			MethodName: "AddShard",
+			MethodName: "AddDataShard",
 			Handler:    _ShardService_AddShard_Handler,
 		},
 	},

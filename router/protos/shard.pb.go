@@ -310,9 +310,9 @@ var file_protos_shard_proto_depIdxs = []int32{
 	0, // 0: yandex.spqr.ShardReply.shards:type_name -> yandex.spqr.Shard
 	0, // 1: yandex.spqr.AddShardRequest.shard:type_name -> yandex.spqr.Shard
 	1, // 2: yandex.spqr.ShardService.ListShards:input_type -> yandex.spqr.ShardRequest
-	3, // 3: yandex.spqr.ShardService.AddShard:input_type -> yandex.spqr.AddShardRequest
+	3, // 3: yandex.spqr.ShardService.AddDataShard:input_type -> yandex.spqr.AddShardRequest
 	2, // 4: yandex.spqr.ShardService.ListShards:output_type -> yandex.spqr.ShardReply
-	4, // 5: yandex.spqr.ShardService.AddShard:output_type -> yandex.spqr.AddShardReply
+	4, // 5: yandex.spqr.ShardService.AddDataShard:output_type -> yandex.spqr.AddShardReply
 	4, // [4:6] is the sub-list for method output_type
 	2, // [2:4] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
