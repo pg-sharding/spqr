@@ -5,6 +5,10 @@ services:
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
+    sqprbase:
+        build:
+            dockerfile: ./docker/shard/Dockerfile
+            context: .
     shard1:
         image:
             spqr_shardbase
