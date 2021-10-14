@@ -61,7 +61,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 
 			var txst byte
 			var err error
-			if txst, err = rst.RelayStep(cl, v); err != nil {
+			if txst, err = rst.RelayStep(v); err != nil {
 				if rst.ShouldRetry(err) {
 
 					ch := make(chan interface{})
@@ -81,7 +81,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.Client, cmngr rrouter.ConnManager) 
 						return err
 					}
 
-					rst.ReplayBuff(cl)
+					rst.ReplayBuff()
 
 				}
 				return err

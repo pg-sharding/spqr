@@ -143,7 +143,8 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 	protVer := binary.BigEndian.Uint32(msg)
 
-	if protVer == conn.SSLPROTO {
+	switch protVer {
+	case conn.SSLREQ:
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
 			return err
@@ -162,9 +163,8 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		if err != nil {
 			return err
 		}
-
-	} else if protVer == pgproto3.ProtocolVersionNumber {
-
+	//
+	case pgproto3.ProtocolVersionNumber:
 		// reuse
 		sm = &pgproto3.StartupMessage{}
 		err = sm.Decode(msg)
@@ -172,15 +172,17 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 		tracelog.ErrorLogger.FatalOnError(err)
-	} else {
-		// report err to cl
 
+	case conn.CANCELREQ:
+		fallthrough
+	default:
+		return xerrors.Errorf("protocol number %d not supported", protVer)
 	}
 
 	cl.startupMsg = sm
 	cl.be = backend
 
-	if sslmode == config.SSLMODEREQUIRE && protVer != conn.SSLPROTO {
+	if sslmode == config.SSLMODEREQUIRE && protVer != conn.SSLREQ {
 		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",

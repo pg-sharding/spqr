@@ -11,7 +11,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const SSLPROTO = 80877103
+const SSLREQ = 80877103
+const CANCELREQ = 80877102
 
 type InstanceStatus string
 
@@ -144,7 +145,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	binary.BigEndian.PutUint32(b, 8)
 	// Gen salt
 	b = append(b, 0, 0, 0, 0)
-	binary.BigEndian.PutUint32(b[4:], SSLPROTO)
+	binary.BigEndian.PutUint32(b[4:], SSLREQ)
 
 	_, err := pgi.conn.Write(b)
 

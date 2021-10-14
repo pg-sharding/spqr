@@ -2,7 +2,7 @@
 
 set -ex
 
-sleep 5
+sleep 25
 console.sh
 simple.sh
 
