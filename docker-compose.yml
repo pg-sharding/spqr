@@ -5,9 +5,9 @@ services:
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
-    sqprbase:
+    spqrbase:
         build:
-            dockerfile: ./docker/shard/Dockerfile
+            dockerfile: ./docker/spqr/Dockerfile
             context: .
     shard1:
         image:

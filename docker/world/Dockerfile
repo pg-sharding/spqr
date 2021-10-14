@@ -1,11 +1,6 @@
 
-FROM golang:1.17 as worldbase
-
-RUN mkdir /router
-COPY ./ /router
-
-RUN cd /router && make init && make build_world
-
 FROM spqr_shardbase
+
+COPY --from=sqpr_sqprbase /router/spqr-world /usr/local/spqr-world
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

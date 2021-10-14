@@ -24,7 +24,8 @@ init:
 	 go mod vendor
 
 test:
-	docker-compose up  --remove-orphans --exit-code-from client --build router shard1 shard2 client
+	docker-compose build spqrbase shardbase
+	docker-compose up --remove-orphans --exit-code-from client --build router shard1 shard2 client
 
 run:
 	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
