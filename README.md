@@ -6,6 +6,17 @@
 
 # Stateless Postgres Query Router
 
+## Overview
+SPQR is an OLTP sharding solution for PostgreSQL.
+
+PostgreSQL is awesome, but it's hard to manage single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical workloads. Also most of solutions neglect pains of monolith↔sharded transitions. That's why team of [Data Platform](https://yandex.ru/promo/data-platform/dp) team of Yandex.Cloud designed SPQR.
+
+###Core requirements that formed SPQR design
+1. Using highly available clusters as building blocks for sharding installations. These clusters can be based on Patroni, Stolon, Managed PostgreSQL or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle proven and we are reusing all their benefits. 
+2. Zero downtime for conversion from monolith to sharded cluster and vice versa. Your existing database if first shard o horizontal scaling. And if at some point you want to go back - you do not need to restore from a backup.
+3. SPQR dev environment should be installable on developers laptop or Raspberry Pi in minutes, not hours in a datacenter.
+4. SPQR is optimised for single-shard queries.
+
 ## Development
 
 How to build
