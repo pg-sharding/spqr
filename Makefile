@@ -15,7 +15,7 @@ build_world:
 	go build -o spqr-world cmd/world/main.go
 
 build_worldmock:
-	go build -o spqr-worldmock ./test/worldmock
+	go build -o spqr-worldmock ./cmd/worldmock/main.go
 
 build: build_c build_proxy build_world build_worldmock
 

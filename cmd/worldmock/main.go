@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/world"
+	"github.com/pg-sharding/spqr/test/worldmock"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
 )
@@ -23,12 +23,13 @@ func Execute() {
 }
 
 var cfgPath string
+var addr string
 
 var ctlCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		w := world.NewWorld()
+		w := worldmock.NewWorldMock(addr)
 		err := w.Run()
 		if err != nil {
 			tracelog.ErrorLogger.FatalOnError(err)
@@ -39,7 +40,8 @@ var ctlCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/world/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/worldmock/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", "localhost", "addr to listen")
 	rootCmd.AddCommand(ctlCmd)
 }
 
