@@ -6,7 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type RelayStateInteractor interface {
@@ -64,7 +63,7 @@ func (rst *RelayStateImpl) Flush() {
 }
 
 func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
-	span := opentracing.StartSpan("reroute")
+	span := opentracing.StartSpan("reroute to data shard")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
@@ -75,9 +74,35 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, err
 	tracelog.InfoLogger.Printf("parsed routes %v", shardRoutes)
 
 	if len(shardRoutes) == 0 {
-		tracelog.InfoLogger.Printf("failed to match shard")
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, "failed to match shard")
-		return nil, xerrors.New("failed to match shard")
+		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
+		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError.Error())
+		return nil, qrouter.ShardMatchError
+	}
+
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != nil {
+		tracelog.ErrorLogger.PrintError(err)
+	}
+
+	rst.ActiveShards = nil
+	for _, shr := range shardRoutes {
+		rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
+	}
+
+	return shardRoutes, nil
+}
+
+func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
+	span := opentracing.StartSpan("reroute to world")
+	defer span.Finish()
+	span.SetTag("user", rst.Cl.Usr())
+	span.SetTag("db", rst.Cl.DB())
+
+	shardRoutes := rst.Qr.WorldShardsRoutes()
+
+	if len(shardRoutes) == 0 {
+		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
+		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError.Error())
+		return nil, qrouter.ShardMatchError
 	}
 
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != nil {
@@ -113,6 +138,27 @@ func (rst *RelayStateImpl) Connect(shardRoutes []qrouter.ShardRoute) error {
 	}
 
 	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
+
+	if err := rst.manager.RouteCB(rst.Cl, rst.ActiveShards); err != nil {
+		tracelog.ErrorLogger.Printf("failed to route cl %w", err)
+		return err
+	}
+
+	return nil
+}
+
+func (rst *RelayStateImpl) ConnectWold() error {
+
+	tracelog.InfoLogger.Printf("initialize shard server conn")
+	_ = rst.Cl.ReplyNotice("initialize single shard server conn")
+
+	serv := NewShardServer(rst.Cl.Route().beRule, rst.Cl.Route().servPool)
+
+	if err := rst.Cl.AssignServerConn(serv); err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("route cl %s:%s to world shard", rst.Cl.Usr(), rst.Cl.DB())
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.Printf("failed to route cl %w", err)

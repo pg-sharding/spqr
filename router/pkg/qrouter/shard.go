@@ -13,6 +13,15 @@ type ShardQrouter struct {
 	shid string
 }
 
+func (l *ShardQrouter) WorldShardsRoutes() []ShardRoute {
+	panic("implement me")
+}
+
+func (l *ShardQrouter) WorldShards() []string {
+
+	panic("implement me")
+}
+
 var _ Qrouter = &ShardQrouter{}
 
 func NewShardQrouter(shid string) (*ShardQrouter, error) {

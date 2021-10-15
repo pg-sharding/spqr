@@ -124,9 +124,9 @@ func NewRouter() (*RouterImpl, error) {
 	}, nil
 }
 
-func (sg *RouterImpl) serv(netconn net.Conn) error {
+func (router *RouterImpl) serv(netconn net.Conn) error {
 
-	client, err := sg.Rrouter.PreRoute(netconn)
+	client, err := router.Rrouter.PreRoute(netconn)
 	if err != nil {
 		return err
 	}
@@ -138,11 +138,11 @@ func (sg *RouterImpl) serv(netconn net.Conn) error {
 		return err
 	}
 
-	return Frontend(sg.Qrouter, client, cmngr)
+	return Frontend(router.Qrouter, client, cmngr)
 }
 
-func (sg *RouterImpl) Run(listener net.Listener) error {
-	closer, err := sg.initJaegerTracer()
+func (router *RouterImpl) Run(listener net.Listener) error {
+	closer, err := router.initJaegerTracer()
 	if err != nil {
 		return xerrors.Errorf("could not initialize jaeger tracer: %s", err.Error())
 	}
@@ -169,19 +169,19 @@ func (sg *RouterImpl) Run(listener net.Listener) error {
 		case conn := <-cChan:
 
 			go func() {
-				if err := sg.serv(conn); err != nil {
+				if err := router.serv(conn); err != nil {
 					tracelog.ErrorLogger.PrintError(err)
 				}
 			}()
 
-		case <-sg.stchan:
-			_ = sg.Rrouter.Shutdown()
+		case <-router.stchan:
+			_ = router.Rrouter.Shutdown()
 			_ = listener.Close()
 		}
 	}
 }
 
-func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
+func (router *RouterImpl) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
 		ServiceName: "worldmock",
 		Sampler: &jaegercfg.SamplerConfig{
@@ -209,24 +209,24 @@ func (sg *RouterImpl) initJaegerTracer() (io.Closer, error) {
 	)
 }
 
-func (sg *RouterImpl) servAdm(netconn net.Conn) error {
+func (router *RouterImpl) servAdm(netconn net.Conn) error {
 	cl := rrouter.NewPsqlClient(netconn)
 
-	if err := cl.Init(sg.frTLS, config.SSLMODEDISABLE); err != nil {
+	if err := cl.Init(router.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err
 	}
 
-	return sg.AdmConsole.Serve(cl)
+	return router.AdmConsole.Serve(cl)
 }
 
-func (sg *RouterImpl) RunAdm(listener net.Listener) error {
+func (router *RouterImpl) RunAdm(listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return errors.Wrap(err, "RunAdm failed")
 		}
 		go func() {
-			if err := sg.servAdm(conn); err != nil {
+			if err := router.servAdm(conn); err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 		}()

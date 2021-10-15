@@ -51,6 +51,8 @@ func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
 }
 
 func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
+	return nil
+	// wait to shard to become available
 	wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
 
 	if err != nil {

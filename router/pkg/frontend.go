@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
@@ -22,7 +23,10 @@ func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
 
 	shrdRoutes, err := rst.Reroute(v)
 
-	_ = rst.Cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", shrdRoutes))
+	if err == qrouter.ShardMatchError {
+		// do not reset connection
+		return err
+	}
 
 	if err != nil {
 		tracelog.InfoLogger.Printf("encounter %w", err)
@@ -30,6 +34,8 @@ func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
 		_ = rst.Reset()
 		return err
 	}
+
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", shrdRoutes))
 
 	if err := rst.Connect(shrdRoutes); err != nil {
 		tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
@@ -62,7 +68,19 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 		case *pgproto3.Query:
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
-				if err := reroute(rst, q); err != nil {
+				if err := reroute(rst, q); err == qrouter.ShardMatchError {
+
+					if !config.Get().RouterConfig.WorldShardFallback {
+						return err
+					}
+					// fallback to execute query on wolrd shard (s)
+
+					//
+
+					_, _ = rst.RerouteWorld()
+					_ = rst.ConnectWold()
+
+				} else if err != nil {
 					continue
 				}
 			}

@@ -13,6 +13,15 @@ type LocalQrouter struct {
 	shid string
 }
 
+func (l *LocalQrouter) WorldShardsRoutes() []ShardRoute {
+
+	panic("implement me")
+}
+
+func (l *LocalQrouter) WorldShards() []string {
+	panic("implement me")
+}
+
 var _ Qrouter = &LocalQrouter{}
 
 func NewLocalQrouter(shid string) (*LocalQrouter, error) {

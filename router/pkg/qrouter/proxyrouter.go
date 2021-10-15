@@ -23,6 +23,16 @@ type ProxyRouter struct {
 	qdb qdb.QrouterDB
 }
 
+func (qr *ProxyRouter) WorldShardsRoutes() []ShardRoute {
+
+	panic("implement me")
+}
+
+func (qr *ProxyRouter) WorldShards() []string {
+
+	panic("implement me")
+}
+
 var _ Qrouter = &ProxyRouter{}
 
 func NewProxyRouter() (*ProxyRouter, error) {
