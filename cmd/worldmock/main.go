@@ -7,8 +7,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  "world run ",
-	Long: "Stateless Postgres Query Rrouter",
+	Use:  "worldmock run",
+	Long: "Stateless Postgres Query Router",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -25,7 +25,7 @@ func Execute() {
 var cfgPath string
 var addr string
 
-var ctlCmd = &cobra.Command{
+var runCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
@@ -42,7 +42,7 @@ var ctlCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/worldmock/config.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", "localhost", "addr to listen")
-	rootCmd.AddCommand(ctlCmd)
+	rootCmd.AddCommand(runCmd)
 }
 
 func main() {
