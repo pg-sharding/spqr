@@ -6,7 +6,7 @@ import (
 )
 
 func Register(server *grpc.Server) {
-	shards.RegisterRouterServer(server, &Routerserver{})
+	shards.RegisterQueryServiceServer(server, &Routerserver{})
 
 	shards.RegisterShardServiceServer(server, &Spqrserver{})
 }

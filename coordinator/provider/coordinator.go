@@ -7,7 +7,7 @@ import (
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	router2 "github.com/pg-sharding/spqr/router/pkg"
+	router "github.com/pg-sharding/spqr/router/pkg"
 	shards "github.com/pg-sharding/spqr/router/protos"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -60,7 +60,7 @@ func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 	}
 }
 
-func (d *dcoordinator) RegisterRouter(r router2.Router) error {
+func (d *dcoordinator) RegisterRouter(r router.Router) error {
 	return nil
 }
 func (d *dcoordinator) Run() error {
@@ -69,8 +69,10 @@ func (d *dcoordinator) Run() error {
 	reflection.Register(serv)
 
 	krserv := NewKeyRangeService(d)
+	rrserv := NewRoutersService(d)
 
 	shards.RegisterKeyRangeServiceServer(serv, krserv)
+	shards.RegisterRoutersServiceServer(serv, rrserv)
 
 	httpAddr := config.Get().CoordinatorHttpAddr
 	httpAddr = "localhost:7002"

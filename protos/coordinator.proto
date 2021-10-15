@@ -11,7 +11,7 @@ service RoutersService {
 }
 
 // key range is mapped to shard
-message RouterEndpoiny {
+message RouterEndpoint {
 
   string listenAddr = 1;
 
@@ -23,11 +23,11 @@ message ListRoutersRequest {
 }
 
 message AddRoutersRequest {
-  RouterEndpoiny router = 1;
+  RouterEndpoint router = 1;
 }
 
 message ListRoutersReply {
-  repeated RouterEndpoiny routers = 1;
+  repeated RouterEndpoint routers = 1;
 }
 
 message AddRoutersReply {

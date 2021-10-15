@@ -12,7 +12,15 @@ import (
 )
 
 type RouterConn struct {
+	proto.UnimplementedQueryServiceServer
+
 	Console console.Console
+}
+
+func (s RouterConn) Process(ctx context.Context, request *proto.QueryExecuteRequest) (*proto.QueryExecuteResponse, error) {
+	_ = s.Console.ProcessQuery(request.Query, rrouter.NewFakeClient())
+
+	return &proto.QueryExecuteResponse{}, nil
 }
 
 func NewSpqrConn(c console.Console) *RouterConn {
@@ -21,13 +29,7 @@ func NewSpqrConn(c console.Console) *RouterConn {
 	}
 }
 
-func (s RouterConn) Process(ctx context.Context, in *proto.QueryExecuteRequest, opts ...grpc.CallOption) (*proto.QueryExecuteResponse, error) {
-	_ = s.Console.ProcessQuery(in.Query, rrouter.NewFakeClient())
-
-	return &proto.QueryExecuteResponse{}, nil
-}
-
-var _ proto.RouterClient = RouterConn{}
+var _ proto.QueryServiceServer = RouterConn{}
 
 type KeyRangeService struct {
 	proto.UnimplementedKeyRangeServiceServer

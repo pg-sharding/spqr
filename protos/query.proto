@@ -4,7 +4,7 @@ package yandex.spqr;
 
 option go_package = "yandex/spqr/proto";
 
-service Router {
+service QueryService {
   rpc Process(QueryExecuteRequest) returns (QueryExecuteResponse) {};
 }
 

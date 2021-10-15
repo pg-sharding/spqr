@@ -14,7 +14,6 @@ service KeyRangeService {
 }
 
 message AddShardingColumnReply {
-
 }
 
 message AddLocalTableReply {
@@ -22,11 +21,11 @@ message AddLocalTableReply {
 }
 
 message AddLocalTableRequest {
-
+  string tname = 1;
 }
 
 message AddShardingColumnRequest {
-
+  repeated string colname = 1;
 }
 
 enum KeyRangeStatus {

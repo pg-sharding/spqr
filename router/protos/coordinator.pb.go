@@ -21,7 +21,7 @@ const (
 )
 
 // key range is mapped to shard
-type RouterEndpoiny struct {
+type RouterEndpoint struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -30,8 +30,8 @@ type RouterEndpoiny struct {
 	Id         string `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *RouterEndpoiny) Reset() {
-	*x = RouterEndpoiny{}
+func (x *RouterEndpoint) Reset() {
+	*x = RouterEndpoint{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_protos_coordinator_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -39,13 +39,13 @@ func (x *RouterEndpoiny) Reset() {
 	}
 }
 
-func (x *RouterEndpoiny) String() string {
+func (x *RouterEndpoint) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RouterEndpoiny) ProtoMessage() {}
+func (*RouterEndpoint) ProtoMessage() {}
 
-func (x *RouterEndpoiny) ProtoReflect() protoreflect.Message {
+func (x *RouterEndpoint) ProtoReflect() protoreflect.Message {
 	mi := &file_protos_coordinator_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,19 +57,19 @@ func (x *RouterEndpoiny) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RouterEndpoiny.ProtoReflect.Descriptor instead.
-func (*RouterEndpoiny) Descriptor() ([]byte, []int) {
+// Deprecated: Use RouterEndpoint.ProtoReflect.Descriptor instead.
+func (*RouterEndpoint) Descriptor() ([]byte, []int) {
 	return file_protos_coordinator_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RouterEndpoiny) GetListenAddr() string {
+func (x *RouterEndpoint) GetListenAddr() string {
 	if x != nil {
 		return x.ListenAddr
 	}
 	return ""
 }
 
-func (x *RouterEndpoiny) GetId() string {
+func (x *RouterEndpoint) GetId() string {
 	if x != nil {
 		return x.Id
 	}
@@ -119,7 +119,7 @@ type AddRoutersRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Router *RouterEndpoiny `protobuf:"bytes,1,opt,name=router,proto3" json:"router,omitempty"`
+	Router *RouterEndpoint `protobuf:"bytes,1,opt,name=router,proto3" json:"router,omitempty"`
 }
 
 func (x *AddRoutersRequest) Reset() {
@@ -154,7 +154,7 @@ func (*AddRoutersRequest) Descriptor() ([]byte, []int) {
 	return file_protos_coordinator_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AddRoutersRequest) GetRouter() *RouterEndpoiny {
+func (x *AddRoutersRequest) GetRouter() *RouterEndpoint {
 	if x != nil {
 		return x.Router
 	}
@@ -166,7 +166,7 @@ type ListRoutersReply struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Routers []*RouterEndpoiny `protobuf:"bytes,1,rep,name=routers,proto3" json:"routers,omitempty"`
+	Routers []*RouterEndpoint `protobuf:"bytes,1,rep,name=routers,proto3" json:"routers,omitempty"`
 }
 
 func (x *ListRoutersReply) Reset() {
@@ -201,7 +201,7 @@ func (*ListRoutersReply) Descriptor() ([]byte, []int) {
 	return file_protos_coordinator_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ListRoutersReply) GetRouters() []*RouterEndpoiny {
+func (x *ListRoutersReply) GetRouters() []*RouterEndpoint {
 	if x != nil {
 		return x.Routers
 	}
@@ -337,7 +337,7 @@ var file_protos_coordinator_proto_rawDesc = []byte{
 	0x0a, 0x18, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f, 0x63, 0x6f, 0x6f, 0x72, 0x64, 0x69, 0x6e,
 	0x61, 0x74, 0x6f, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x79, 0x61, 0x6e, 0x64,
 	0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x22, 0x40, 0x0a, 0x0e, 0x52, 0x6f, 0x75, 0x74, 0x65,
-	0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x79, 0x12, 0x1e, 0x0a, 0x0a, 0x6c, 0x69, 0x73,
+	0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x1e, 0x0a, 0x0a, 0x6c, 0x69, 0x73,
 	0x74, 0x65, 0x6e, 0x41, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6c,
 	0x69, 0x73, 0x74, 0x65, 0x6e, 0x41, 0x64, 0x64, 0x72, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18,
 	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x14, 0x0a, 0x12, 0x4c, 0x69, 0x73,
@@ -346,11 +346,11 @@ var file_protos_coordinator_proto_rawDesc = []byte{
 	0x75, 0x65, 0x73, 0x74, 0x12, 0x33, 0x0a, 0x06, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70,
 	0x71, 0x72, 0x2e, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e,
-	0x79, 0x52, 0x06, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x22, 0x49, 0x0a, 0x10, 0x4c, 0x69, 0x73,
+	0x74, 0x52, 0x06, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x22, 0x49, 0x0a, 0x10, 0x4c, 0x69, 0x73,
 	0x74, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x35, 0x0a,
 	0x07, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b,
 	0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x52, 0x6f, 0x75,
-	0x74, 0x65, 0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x79, 0x52, 0x07, 0x72, 0x6f, 0x75,
+	0x74, 0x65, 0x72, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x52, 0x07, 0x72, 0x6f, 0x75,
 	0x74, 0x65, 0x72, 0x73, 0x22, 0x11, 0x0a, 0x0f, 0x41, 0x64, 0x64, 0x52, 0x6f, 0x75, 0x74, 0x65,
 	0x72, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x33, 0x0a, 0x15, 0x53, 0x68, 0x75, 0x74, 0x64,
 	0x6f, 0x77, 0x6e, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
@@ -392,7 +392,7 @@ func file_protos_coordinator_proto_rawDescGZIP() []byte {
 
 var file_protos_coordinator_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_protos_coordinator_proto_goTypes = []interface{}{
-	(*RouterEndpoiny)(nil),        // 0: yandex.spqr.RouterEndpoiny
+	(*RouterEndpoint)(nil),        // 0: yandex.spqr.RouterEndpoint
 	(*ListRoutersRequest)(nil),    // 1: yandex.spqr.ListRoutersRequest
 	(*AddRoutersRequest)(nil),     // 2: yandex.spqr.AddRoutersRequest
 	(*ListRoutersReply)(nil),      // 3: yandex.spqr.ListRoutersReply
@@ -401,8 +401,8 @@ var file_protos_coordinator_proto_goTypes = []interface{}{
 	(*ShutdownRouterReply)(nil),   // 6: yandex.spqr.ShutdownRouterReply
 }
 var file_protos_coordinator_proto_depIdxs = []int32{
-	0, // 0: yandex.spqr.AddRoutersRequest.router:type_name -> yandex.spqr.RouterEndpoiny
-	0, // 1: yandex.spqr.ListRoutersReply.routers:type_name -> yandex.spqr.RouterEndpoiny
+	0, // 0: yandex.spqr.AddRoutersRequest.router:type_name -> yandex.spqr.RouterEndpoint
+	0, // 1: yandex.spqr.ListRoutersReply.routers:type_name -> yandex.spqr.RouterEndpoint
 	1, // 2: yandex.spqr.RoutersService.ListRouters:input_type -> yandex.spqr.ListRoutersRequest
 	2, // 3: yandex.spqr.RoutersService.AddRouters:input_type -> yandex.spqr.AddRoutersRequest
 	5, // 4: yandex.spqr.RoutersService.ShutdownRouter:input_type -> yandex.spqr.ShutdownRouterRequest
@@ -423,7 +423,7 @@ func file_protos_coordinator_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_protos_coordinator_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RouterEndpoiny); i {
+			switch v := v.(*RouterEndpoint); i {
 			case 0:
 				return &v.state
 			case 1:

@@ -8,7 +8,7 @@ import (
 )
 
 type Routerserver struct {
-	shards.UnimplementedRouterServer
+	shards.UnimplementedQueryServiceServer
 
 	router.RouterConn
 }
@@ -17,4 +17,4 @@ func (r Routerserver) Process(ctx context.Context, request *shards.QueryExecuteR
 	return r.RouterConn.Process(ctx, request)
 }
 
-var _ shards.RouterServer = &Routerserver{}
+var _ shards.QueryServiceServer = &Routerserver{}
