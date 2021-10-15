@@ -101,7 +101,7 @@ func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
 
 	if len(shardRoutes) == 0 {
 		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError.Error())
+		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError)
 		return nil, qrouter.ShardMatchError
 	}
 
@@ -235,9 +235,9 @@ func (rst *RelayStateImpl) ReplayBuff() pgproto3.FrontendMessage {
 	return frmsg
 }
 
-func (rst *RelayStateImpl) UnRouteWithError(cl RouterClient, shkey []kr.ShardKey, errmsg string) error {
+func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 
-	_ = rst.manager.UnRouteWithError(cl, shkey, errmsg)
+	_ = rst.manager.UnRouteWithError(rst.Cl, shkey, errmsg)
 
 	return rst.Reset()
 }

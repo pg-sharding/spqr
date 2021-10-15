@@ -16,20 +16,20 @@ type ConnManager interface {
 
 	RouteCB(client RouterClient, sh []kr.ShardKey) error
 	UnRouteCB(client RouterClient, sh []kr.ShardKey) error
-	UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg string) error
+	UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error
 
 	ValidateReRoute(rst *RelayStateImpl) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client RouterClient, sh []kr.ShardKey, errmsg string) error {
+func unRouteWithError(cmngr ConnManager, client RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 
-	return client.ReplyErr(errmsg)
+	return client.ReplyErr(errmsg.Error())
 }
 
 type TxConnManager struct{}
 
-func (t *TxConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg string) error {
+func (t *TxConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
@@ -84,7 +84,7 @@ func (t *TxConnManager) TXEndCB(client RouterClient, rst *RelayStateImpl) error 
 
 type SessConnManager struct{}
 
-func (s *SessConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg string) error {
+func (s *SessConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 

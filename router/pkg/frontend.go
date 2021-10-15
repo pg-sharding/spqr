@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"golang.org/x/xerrors"
 
 	"github.com/jackc/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -30,7 +31,7 @@ func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
 
 	if err != nil {
 		tracelog.InfoLogger.Printf("encounter %w", err)
-		_ = rst.UnRouteWithError(rst.Cl, nil, err.Error())
+		_ = rst.UnRouteWithError( nil, err)
 		return err
 	}
 
@@ -77,7 +78,10 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 					//
 
 					_, _ = rst.RerouteWorld()
-					_ = rst.ConnectWold()
+					if err := rst.ConnectWold(); err != nil {
+						_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world shard: %w", err))
+						continue
+					}
 
 				} else if err != nil {
 					continue

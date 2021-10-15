@@ -77,7 +77,7 @@ func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
 
 func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string) (DBInstance, error) {
 
-	tracelog.InfoLogger.Printf("initializing new postgresql instance connection", cfg.ConnAddr)
+	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
 
 	instance := &PostgreSQLInstance{hostname: cfg.ConnAddr, status: NotInitialized}
 

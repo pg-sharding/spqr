@@ -34,7 +34,7 @@ router:
                         conn_usr: "user1"
                         passwd: 12345678
                         hosts:
-                                - conn_addr: "192.168.233.02:6432"
+                                - conn_addr: "192.168.233.2:6432"
                 sh2: 
                         tls:
                                 key_file: '/etc/odyssey/ssl/server.key'
@@ -44,7 +44,7 @@ router:
                         conn_usr: "user1"
                         passwd: 12345678
                         hosts:
-                                - conn_addr: "192.168.233.03:6432"
+                                - conn_addr: "192.168.233.3:6432"
 
                 w1:
                         tls:
@@ -56,7 +56,7 @@ router:
                         passwd: 12345678
                         shard_type: 'WORLD'
                         hosts:
-                                - conn_addr: "192.168.233.08:6432"
+                                - conn_addr: "192.168.233.8:6432"
 
         backend_rules:
                 - route_key_cfg:

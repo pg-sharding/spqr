@@ -37,8 +37,7 @@ make run
 Configute routing rules
 
 
-docker-compose run --entrypoint /bin/bash client
-root@spqr_client:/go# connect_adm.sh
+root@spqr_client:/go# connect_adm.sh 
 
 
 		SQPR router admin console
@@ -46,42 +45,113 @@ root@spqr_client:/go# connect_adm.sh
 	Here you can configure your routing rules
 ------------------------------------------------
 
-	You can find documentation here
+	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/doc/router
 
 
 psql (13.4 (Debian 13.4-4.pgdg110+1), server console)
 Type "help" for help.
 
-db1=?> CREATE SHARDING COLUMN w_id;
-                   fortune
+db1=?> 
+db1=?> 
+db1=?> 
+db1=?> 
+db1=?> 
+db1=?> create sharding column w_id;
+                   fortune                    
 ----------------------------------------------
  created sharding column w_id, err %!w(<nil>)
 (1 row)
 
-db1=?> ADD KEY RANGE 1 10 sh1 krid1;
-                      fortune
+db1=?> add key range 1 10 sh1 krid1;
+                      fortune                      
 ---------------------------------------------------
  created key range from [49] to [49 48], err <nil>
 (1 row)
 
-db1=?> ADD KEY RANGE 11 20 sh2 krid2;
-                       fortune
+db1=?> add key range 11 20 sh2 krid2;
+                       fortune                        
 ------------------------------------------------------
  created key range from [49 49] to [50 48], err <nil>
 (1 row)
 
-db1=?>
-
-```
-
-Your sharding routes are configured. Now you can execute some DML queries.
-
-```
-root@spqr_client_1_1:/# connect.sh
-psql (13.4 (Ubuntu 13.4-1.pgdg20.04+1), server lolkekcheburek)
+db1=?> 
+\q
+root@spqr_client:/go# connect.sh 
+psql (13.4 (Debian 13.4-4.pgdg110+1), server lolkekcheburek)
 Type "help" for help.
 
-db1=?> \q
-root@spqr_client_1_1:/#
+db1=?> create table x (w_id int);
+ROUTER NOTICE: process Frontend for user user1 db1
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh2 true} {[] []  }} {{sh1 true} {[] []  }}]
+ROUTER NOTICE: adding shard sh2
+ROUTER NOTICE: adding shard sh1
+CREATE TABLE
+db1=?> select * from x where w_id <= 10; 
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh1 true} {[49] [49 48] sh1 krid1}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh1
+ w_id 
+------
+(0 rows)
+
+db1=?> insert into x (w_id) values(1);
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh1 true} {[49] [49 48] sh1 krid1}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh1
+INSERT 0 1
+db1=?> select * from x where w_id <= 10;
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh1 true} {[49] [49 48] sh1 krid1}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh1
+ w_id 
+------
+    1
+(1 row)
+
+db1=?> insert into x (w_id) values(11);
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh2 true} {[49 49] [50 48] sh2 krid2}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh2
+INSERT 0 1
+db1=?> select * from x where w_id <= 10;
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh1 true} {[49] [49 48] sh1 krid1}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh1
+ w_id 
+------
+    1
+(1 row)
+
+db1=?> select * from x where w_id <= 20;
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: matched shard routes [{{sh2 true} {[49 49] [50 48] sh2 krid2}}]
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard sh2
+ w_id 
+------
+   11
+(1 row)
+
+db1=?> select hello;
+ROUTER NOTICE: rerouting your connection
+ROUTER NOTICE: failed to match shard
+ROUTER NOTICE: initialize single shard server conn
+ROUTER NOTICE: adding shard w1
+ROUTER NOTICE: you are receiving message from mock world shard
+ worldmock 
+-----------
+ row1
+(1 row)
+
+db1=?> 
+
+
+
 ```
