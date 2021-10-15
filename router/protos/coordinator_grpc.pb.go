@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type RoutersServiceClient interface {
 	ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error)
 	AddRouters(ctx context.Context, in *AddRoutersRequest, opts ...grpc.CallOption) (*AddRoutersReply, error)
+	ShutdownRouter(ctx context.Context, in *ShutdownRouterRequest, opts ...grpc.CallOption) (*ShutdownRouterReply, error)
 }
 
 type routersServiceClient struct {
@@ -48,12 +49,22 @@ func (c *routersServiceClient) AddRouters(ctx context.Context, in *AddRoutersReq
 	return out, nil
 }
 
+func (c *routersServiceClient) ShutdownRouter(ctx context.Context, in *ShutdownRouterRequest, opts ...grpc.CallOption) (*ShutdownRouterReply, error) {
+	out := new(ShutdownRouterReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.RoutersService/ShutdownRouter", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoutersServiceServer is the server API for RoutersService service.
 // All implementations must embed UnimplementedRoutersServiceServer
 // for forward compatibility
 type RoutersServiceServer interface {
 	ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error)
 	AddRouters(context.Context, *AddRoutersRequest) (*AddRoutersReply, error)
+	ShutdownRouter(context.Context, *ShutdownRouterRequest) (*ShutdownRouterReply, error)
 	mustEmbedUnimplementedRoutersServiceServer()
 }
 
@@ -66,6 +77,9 @@ func (UnimplementedRoutersServiceServer) ListRouters(context.Context, *ListRoute
 }
 func (UnimplementedRoutersServiceServer) AddRouters(context.Context, *AddRoutersRequest) (*AddRoutersReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRouters not implemented")
+}
+func (UnimplementedRoutersServiceServer) ShutdownRouter(context.Context, *ShutdownRouterRequest) (*ShutdownRouterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShutdownRouter not implemented")
 }
 func (UnimplementedRoutersServiceServer) mustEmbedUnimplementedRoutersServiceServer() {}
 
@@ -116,6 +130,24 @@ func _RoutersService_AddRouters_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoutersService_ShutdownRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShutdownRouterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoutersServiceServer).ShutdownRouter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.RoutersService/ShutdownRouter",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoutersServiceServer).ShutdownRouter(ctx, req.(*ShutdownRouterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoutersService_ServiceDesc is the grpc.ServiceDesc for RoutersService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -130,6 +162,10 @@ var RoutersService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRouters",
 			Handler:    _RoutersService_AddRouters_Handler,
+		},
+		{
+			MethodName: "ShutdownRouter",
+			Handler:    _RoutersService_ShutdownRouter_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
