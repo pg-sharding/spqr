@@ -15,7 +15,7 @@ make
 make build
 ```
 
-Check it out
+Try it
 
 ```
 make run
@@ -64,18 +64,13 @@ db1=?>
 
 ```
 
-How your sharding routes are configured
-You can execute some queries
+Your sharding routes are configured. Now you can execute some DML queries.
 
 ```
-
-
-
 root@spqr_client_1_1:/# connect.sh
 psql (13.4 (Ubuntu 13.4-1.pgdg20.04+1), server lolkekcheburek)
 Type "help" for help.
 
 db1=?> \q
 root@spqr_client_1_1:/#
-
 ```

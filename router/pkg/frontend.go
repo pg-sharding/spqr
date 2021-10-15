@@ -27,7 +27,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			tracelog.ErrorLogger.Printf("failed to recieve msg %w", err)
+			tracelog.ErrorLogger.Printf("failed to receive msg %w", err)
 			return err
 		}
 
@@ -38,11 +38,11 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
 				tracelog.InfoLogger.Printf("rerouting")
-				_ = cl.ReplyNotice(fmt.Sprintf("rerouting ypur connection"))
+				_ = cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
 
 				shrdRoutes, err := rst.Reroute(v)
 
-				_ = cl.ReplyNotice(fmt.Sprintf("mathed shard routes %v", shrdRoutes))
+				_ = cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", shrdRoutes))
 
 				if err != nil {
 					tracelog.InfoLogger.Printf("encounter %w", err)
