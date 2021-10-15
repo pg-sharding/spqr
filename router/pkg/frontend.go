@@ -30,8 +30,7 @@ func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
 
 	if err != nil {
 		tracelog.InfoLogger.Printf("encounter %w", err)
-		_ = rst.Cl.ReplyErr(err.Error())
-		_ = rst.Reset()
+		_ = rst.UnRouteWithError(rst.Cl, nil, err.Error())
 		return err
 	}
 

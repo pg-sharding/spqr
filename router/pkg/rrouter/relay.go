@@ -75,7 +75,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, err
 
 	if len(shardRoutes) == 0 {
 		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError.Error())
+		_ = rst.Cl.ReplyNotice(qrouter.ShardMatchError.Error())
 		return nil, qrouter.ShardMatchError
 	}
 
@@ -233,6 +233,13 @@ func (rst *RelayStateImpl) ReplayBuff() pgproto3.FrontendMessage {
 	}
 
 	return frmsg
+}
+
+func (rst *RelayStateImpl) UnRouteWithError(cl RouterClient, shkey []kr.ShardKey, errmsg string) error {
+
+	_ = rst.manager.UnRouteWithError(cl, shkey, errmsg)
+
+	return rst.Reset()
 }
 
 var _ RelayStateInteractor = &RelayStateImpl{}

@@ -14,8 +14,8 @@ type InstanceCFG struct {
 type ShardType string
 
 const (
-	DataShard  = ShardType("data")
-	WorldShard = ShardType("world")
+	DataShard  = ShardType("DATA")
+	WorldShard = ShardType("WORLD")
 )
 
 type ShardCfg struct {

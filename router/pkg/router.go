@@ -65,7 +65,10 @@ func NewRouter() (*RouterImpl, error) {
 		switch shard.ShType {
 		case config.WorldShard:
 
-			if err := rr.AddDataShard(qdb.ShardKey{Name: name}); err != nil {
+			if err := rr.AddWorldShard(qdb.ShardKey{Name: name}); err != nil {
+				return nil, err
+			}
+			if err := qr.AddWorldShard(name, shard); err != nil {
 				return nil, err
 			}
 

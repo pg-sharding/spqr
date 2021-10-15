@@ -30,6 +30,7 @@ type Qrouter interface {
 	KeyRanges() []kr.KeyRange
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
+	AddWorldShard(name string, cfg *config.ShardCfg) error
 
 	Lock(krid string) error
 	UnLock(krid string) error

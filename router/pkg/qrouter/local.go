@@ -13,6 +13,11 @@ type LocalQrouter struct {
 	shid string
 }
 
+func (l *LocalQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
+
+	panic("implement me")
+}
+
 func (l *LocalQrouter) WorldShardsRoutes() []ShardRoute {
 
 	panic("implement me")
