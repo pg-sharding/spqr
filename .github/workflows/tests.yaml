@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  e2e:
     name: e2e
     runs-on: ubuntu-latest
     steps:
@@ -18,3 +18,14 @@ jobs:
     
     - name: e2e tests
       run: make test
+
+  stress:
+    name: stress
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: stress tests
+        run: make stress

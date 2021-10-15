@@ -22,10 +22,11 @@ var (
 	dbname   string
 	relation string
 	hostname string
+	sslmode  string
 )
 
 func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error) {
-	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=require user=%s", hostname, spqrPort, dbname, username)
+	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=%v user=%s", hostname, spqrPort, dbname, sslmode, username)
 	fmt.Printf("using connstring %s\n", pgConString)
 	for i := 0; i < retryCnt; i++ {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
@@ -97,6 +98,7 @@ func init() {
 	cmd.PersistentFlags().StringVarP(&relation, "rel", "r", "x", "")
 	cmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "dbtpcc", "")
 	cmd.PersistentFlags().StringVarP(&username, "usename", "u", "user1", "")
+	cmd.PersistentFlags().StringVarP(&sslmode, "sslmode", "s", "disable", "")
 }
 
 func main() {

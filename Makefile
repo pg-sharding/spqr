@@ -43,7 +43,12 @@ build_images:
 	docker-compose build spqrbase shardbase
 
 test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router shard1 shard2 client
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 client
+
+stress: build_images
+	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
+	docker-compose build client
+	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
 
 run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
