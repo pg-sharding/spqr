@@ -7,21 +7,37 @@ option go_package = "yandex/spqr/proto";
 service RoutersService {
   rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
   rpc AddRouters (AddRoutersRequest) returns (AddRoutersReply) {}
+  rpc ShutdownRouter (ShutdownRouterRequest) returns (ShutdownRouterReply) {}
 }
 
+// key range is mapped to shard
+message Router {
+
+  string listenAddr = 1;
+
+  string id = 2;
+}
 
 message ListRoutersRequest {
 
 }
 
 message AddRoutersRequest {
-
+  Router router = 1;
 }
 
 message ListRoutersReply {
-
+  repeated Router routers = 1;
 }
 
 message AddRoutersReply {
+
+}
+
+message ShutdownRouterRequest {
+  string routerID = 1;
+}
+
+message ShutdownRouterReply {
   
 }

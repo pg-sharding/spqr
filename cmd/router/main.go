@@ -16,9 +16,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "router run --config `path-to-config-folder`",
-	Short: "router",
-	Long:  "router",
+	Use:   "./spqr-rr run --config `path-to-config-folder`",
+	Short: "sqpr-rr",
+	Long:  "spqr-rr",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
