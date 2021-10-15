@@ -41,7 +41,9 @@ type RRouter struct {
 }
 
 func (r *RRouter) AddWorldShard(key qdb.ShardKey) error {
-	panic("implement me")
+	tracelog.InfoLogger.Printf("added world shard to rrouter %v", key.Name)
+
+	return nil
 }
 
 func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {

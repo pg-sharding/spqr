@@ -45,7 +45,7 @@ func (l *LocalQrouter) KeyRanges() []kr.KeyRange {
 	return nil
 }
 
-func (l *LocalQrouter) AddShard(name string, cfg *config.ShardCfg) error {
+func (l *LocalQrouter) AddDataShard(name string, cfg *config.ShardCfg) error {
 	return errors.New("local qrouter does not support sharding")
 }
 

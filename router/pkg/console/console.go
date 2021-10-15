@@ -234,7 +234,7 @@ func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) err
 
 func (c *Local) AddShard(cl client.Client, shard *spqrparser.Shard, cfg *config.ShardCfg) error {
 
-	err := c.Qrouter.AddShard(shard.Name, cfg)
+	err := c.Qrouter.AddDataShard(shard.Name, cfg)
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{

@@ -1,6 +1,10 @@
 package config
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+
+	"golang.org/x/xerrors"
+)
 
 type InstanceCFG struct {
 	ConnAddr string `json:"conn_addr" toml:"conn_addr" yaml:"conn_addr"`
@@ -26,4 +30,15 @@ type ShardCfg struct {
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
 	TLSConfig *tls.Config
+}
+
+func (sh *ShardCfg) InitShardTLS() error {
+
+	shardTLSConfig, err := InitTLS(sh.TLSCfg.SslMode, sh.TLSCfg.CertFile, sh.TLSCfg.KeyFile)
+	if err != nil {
+		return xerrors.Errorf("init shard TLS: %w", err)
+	}
+	sh.TLSConfig = shardTLSConfig
+
+	return nil
 }

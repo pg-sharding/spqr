@@ -25,7 +25,7 @@ type Qrouter interface {
 	Shards() []string
 	KeyRanges() []kr.KeyRange
 
-	AddShard(name string, cfg *config.ShardCfg) error
+	AddDataShard(name string, cfg *config.ShardCfg) error
 
 	Lock(krid string) error
 	UnLock(krid string) error

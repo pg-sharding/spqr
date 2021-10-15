@@ -16,6 +16,31 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
+func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
+	tracelog.InfoLogger.Printf("rerouting")
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
+
+	shrdRoutes, err := rst.Reroute(v)
+
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", shrdRoutes))
+
+	if err != nil {
+		tracelog.InfoLogger.Printf("encounter %w", err)
+		_ = rst.Cl.ReplyErr(err.Error())
+		_ = rst.Reset()
+		return err
+	}
+
+	if err := rst.Connect(shrdRoutes); err != nil {
+		tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
+		_ = rst.Reset()
+		_ = rst.Cl.ReplyErr(err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnManager) error {
 
 	tracelog.InfoLogger.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
@@ -33,37 +58,19 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 
 		tracelog.InfoLogger.Printf("received msg %v", msg)
 
-		switch v := msg.(type) {
+		switch q := msg.(type) {
 		case *pgproto3.Query:
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
-				tracelog.InfoLogger.Printf("rerouting")
-				_ = cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
-
-				shrdRoutes, err := rst.Reroute(v)
-
-				_ = cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", shrdRoutes))
-
-				if err != nil {
-					tracelog.InfoLogger.Printf("encounter %w", err)
-					_ = cl.ReplyErr(err.Error())
-					_ = rst.Reset()
-					continue
-				}
-
-				if err := rst.Connect(shrdRoutes); err != nil {
-					tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
-					_ = rst.Reset()
-					_ = cl.ReplyErr(err.Error())
+				if err := reroute(rst, q); err != nil {
 					continue
 				}
 			}
 
 			var txst byte
 			var err error
-			if txst, err = rst.RelayStep(v); err != nil {
+			if txst, err = rst.RelayStep(q); err != nil {
 				if rst.ShouldRetry(err) {
-
 					ch := make(chan interface{})
 
 					status := qdb.KRUnLocked
@@ -71,7 +78,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 					<-ch
 					// retry on master
 
-					shrds, err := rst.Reroute(v)
+					shrds, err := rst.Reroute(q)
 
 					if err != nil {
 						return err
@@ -82,7 +89,6 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 					}
 
 					rst.ReplayBuff()
-
 				}
 				return err
 			}

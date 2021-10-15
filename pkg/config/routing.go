@@ -14,7 +14,8 @@ type RouterConfig struct {
 
 	MaxConnPerRoute int `json:"max_conn_per_route" toml:"max_conn_per_route" yaml:"max_conn_per_route"`
 
-	PROTO string `json:"proto" toml:"proto" yaml:"proto"`
+	PROTO              string `json:"proto" toml:"proto" yaml:"proto"`
+	WorldShardFallback bool   `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 
 	// listen cfg
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`

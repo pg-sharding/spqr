@@ -96,7 +96,7 @@ func (qr *ProxyRouter) UnLock(krid string) error {
 	return qr.qdb.UnLock(keyRange.ToSQL())
 }
 
-func (qr *ProxyRouter) AddShard(name string, cfg *config.ShardCfg) error {
+func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {
 
 	tracelog.InfoLogger.Printf("adding node %s", name)
 	qr.ShardCfgs[name] = cfg
