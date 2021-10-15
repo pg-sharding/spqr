@@ -42,7 +42,7 @@ build_images:
 test: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router shard1 shard2 client
 
-run:
+run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
