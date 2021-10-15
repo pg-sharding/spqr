@@ -1,5 +1,6 @@
-#FROM ubuntu:focal
-FROM golang:1.16
+FROM spqr_spqrbase
+
+RUN mv /router/spqr-stress /usr/local/bin/spqr-stress
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
@@ -21,9 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim 
 
 COPY ./docker/tests/bin/ /usr/local/bin/
-RUN mkdir /root/stress
-COPY ./docker/tests/stress /root/stress
-RUN make -C /root/stress build install
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 

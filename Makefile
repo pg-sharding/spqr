@@ -18,10 +18,13 @@ build_proxy:
 build_world: 
 	go build -o spqr-world cmd/world/main.go
 
+build_stress:
+	go build -o spqr-stress test/stress/stress.go
+
 build_worldmock:
 	go build -o spqr-worldmock ./cmd/worldmock/main.go
 
-build: build_c build_proxy build_world build_worldmock
+build: build_c build_proxy build_world build_worldmock build_stress
 
 gogen:
 	protoc --go_out=./router --go_opt=paths=source_relative --go-grpc_out=./router --go-grpc_opt=paths=source_relative \
