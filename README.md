@@ -7,15 +7,26 @@
 # Stateless Postgres Query Router
 
 ## Overview
-SPQR is an OLTP sharding solution for PostgreSQL.
+SPQR is a liquid OLTP sharding for PostgreSQL.
 
 PostgreSQL is awesome, but it's hard to manage single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical workloads. Also most of solutions neglect pains of monolith<->sharded transitions. That's why [Data Platform](https://cloud.yandex.com/en-ru/services#data-platform) team of Yandex.Cloud designed SPQR.
 
-###Core requirements that formed SPQR design
+### Core requirements that formed SPQR design
 1. Using highly available clusters as building blocks for sharding installations. These clusters can be based on Patroni, Stolon, Managed PostgreSQL or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle proven and we are reusing all their benefits.
 2. Zero downtime for conversion from monolith to sharded cluster and vice versa. Your existing database if first shard o horizontal scaling. And if at some point you want to go back - you do not need to restore from a backup.
 3. SPQR dev environment should be installable on developers laptop or Raspberry Pi in minutes, not hours in a datacenter.
-4. SPQR is optimised for single-shard queries.
+4. SPQR is optimised for single-shard OLTP queries.
+5. Data migration between shards aims to proportionally balance workload across shards. Migrations must cause as little locking impact as possibly by reducing range size. Liquid migrations should allow transferring between clouds. But in this case high latencies are inevitable.
+
+### Why stateless?
+There are some good sharding solutions relying on Postgres codebase for routing. This is reliable and maintainable design decision. SQL grammar is always compatible between same versions of Postgres.
+
+Postgres, as any DBMS, solves hard problem of managing state. And the most important state is system catalog - metadata, data about your data. Postgres allows you to see a snapshot of structure of your data in the past. To make performance of system catalog acceptable it employs sophisticated system of caches with rather tricky invalidations.
+
+At the beginning of our jorney to sharding solutions we tried to implement FDW-based sharding and custom node based sharding.
+Both catalog and caches are redundant for task of query routing. At the time of query routing Postgres core will check that colum data types poses necessary casts, support functions, operators etc. Analyze and rewrite phase of query routing made latencies go unreasonably high.
+
+That's why we decided to make query routing that knows about data structure as little as possible. SPQR does not preserve any data besides routing rules.
 
 ## Development
 
