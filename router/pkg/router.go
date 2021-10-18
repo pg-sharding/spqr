@@ -20,6 +20,7 @@ import (
 )
 
 type Router interface {
+	Addr() string
 }
 
 type RouterImpl struct {
@@ -30,7 +31,12 @@ type RouterImpl struct {
 
 	SPIexecuter *Executer
 	stchan      chan struct{}
+	addr        string
 	frTLS       *tls.Config
+}
+
+func (r *RouterImpl) Addr() string {
+	return r.addr
 }
 
 var _ Router = &RouterImpl{}

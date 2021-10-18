@@ -18,6 +18,8 @@ import (
 
 type dcoordinator struct {
 	db qdb.QrouterDB
+
+	rmp map[string]router.Router
 }
 
 func (d *dcoordinator) RegisterWorld(w world.World) error {
@@ -61,8 +63,12 @@ func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 }
 
 func (d *dcoordinator) RegisterRouter(r router.Router) error {
+	d.rmp[r.Addr()] = r
+
 	return nil
 }
+
+
 func (d *dcoordinator) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)

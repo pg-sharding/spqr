@@ -16,7 +16,7 @@ type ShardRoute struct {
 	Matchedkr kr.KeyRange
 }
 
-var ShardMatchError = xerrors.New("failed to match shard")
+var MatchShardError = xerrors.New("failed to match shard")
 
 type Qrouter interface {
 	Route(q string) []ShardRoute

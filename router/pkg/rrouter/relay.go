@@ -74,9 +74,9 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, err
 	tracelog.InfoLogger.Printf("parsed routes %v", shardRoutes)
 
 	if len(shardRoutes) == 0 {
-		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
-		_ = rst.Cl.ReplyNotice(qrouter.ShardMatchError.Error())
-		return nil, qrouter.ShardMatchError
+		tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
+		_ = rst.Cl.ReplyNotice(qrouter.MatchShardError.Error())
+		return nil, qrouter.MatchShardError
 	}
 
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != nil {
@@ -100,9 +100,9 @@ func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
 	shardRoutes := rst.Qr.WorldShardsRoutes()
 
 	if len(shardRoutes) == 0 {
-		tracelog.InfoLogger.PrintError(qrouter.ShardMatchError)
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ShardMatchError)
-		return nil, qrouter.ShardMatchError
+		tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
+		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.MatchShardError)
+		return nil, qrouter.MatchShardError
 	}
 
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != nil {

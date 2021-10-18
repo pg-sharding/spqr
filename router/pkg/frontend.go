@@ -24,7 +24,7 @@ func reroute(rst *rrouter.RelayStateImpl, v *pgproto3.Query) error {
 
 	shrdRoutes, err := rst.Reroute(v)
 
-	if err == qrouter.ShardMatchError {
+	if err == qrouter.MatchShardError {
 		// do not reset connection
 		return err
 	}
@@ -68,7 +68,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 		case *pgproto3.Query:
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
-				if err := reroute(rst, q); err == qrouter.ShardMatchError {
+				if err := reroute(rst, q); err == qrouter.MatchShardError {
 
 					if !config.Get().RouterConfig.WorldShardFallback {
 						return err
