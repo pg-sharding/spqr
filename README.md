@@ -21,7 +21,7 @@ PostgreSQL is awesome, but it's hard to manage a single database with some terab
 ### Why stateless?
 There are some good sharding solutions relying on the Postgres codebase for routing. This is a reliable and maintainable design decision. One of the obvious benefits of this approach is that the SQL grammar is always compatible between the same versions of Postgres.
 
-Postgres, as any DBMS, solves the hard problem of state management. And the most important state is system catalog - metadata, data about your data. Postgres allows you to see a snapshot of structure of your data in the past. To make the performance of the system catalog acceptable it employs a sophisticated system of caches with rather tricky invalidations.
+Postgres, as any DBMS, solves the hard problem of state management. And the most important state is system catalog - metadata, data about your data. Postgres allows you to see a snapshot of the structure of your data in the past. To make the performance of the system catalog acceptable, it employs a sophisticated system of caches with rather tricky invalidations.
 
 At the beginning of our journey to sharding solutions, we tried to implement FDW-based sharding and custom node based sharding. Eventually, we concluded that both catalog and caches are excessive elements for the task of query routing. At query routing time, Postgres core checks that column data types pose necessary casts, support functions, operators, etc. The analyze and rewrite phases of the query routing made latencies go unreasonably high.
 
