@@ -13,8 +13,8 @@ PostgreSQL is awesome, but it's hard to manage a single database with some terab
 
 ### Core requirements and design concepts
 1. Use highly available clusters as building blocks for sharding installations. These clusters can be based on Patroni, Stolon, Managed PostgreSQL, or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle-proven, and we reuse all their benefits.
-2. Zero downtime for conversion from monolith to sharded cluster and vice versa. The existing database (monolith) is the initial shard for horizontal scaling. Then we add new nodes and move data to them without downtime, eventually having multiple shards. When needed, we repeat the process, adding more shards – again, without downtime. And if at some point we want to go back to the monolith, we use the same tooling for that, without downtime, and without the need to restore from backups.  
-3. SPQR dev/test environments should be installable on developers laptop or Raspberry Pi in minutes, not hours in a datacenter.
+2. Zero downtime for conversion from monolith to sharded cluster and vice versa. The existing database (monolith) is the initial shard for horizontal scaling. Then we add new nodes and move data to them without downtime, eventually having multiple shards. When needed, we repeat the process, adding more shards – again, without downtime. And if at some point we want to go back to the monolith, we use the same tooling for that, without downtime and without the need to restore from backups.  
+3. SPQR dev/test environments should be installable on a developer's laptop or Raspberry Pi in minutes, not hours in a datacenter.
 4. SPQR is optimized for single-shard OLTP queries. We aim to have a very low latency overhead (1-2 ms) introduced by SPQR for such queries.
 5. Data migration between shards aims to balance the workload across shards proportionally. Migrations must cause as little locking impact as possible. One of the ways to achieve that is to reduce range size. Liquid migrations should allow transferring between clouds. But in this case, temporary high latencies are inevitable.
 
