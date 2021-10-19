@@ -34,7 +34,7 @@ type RelayStateImpl struct {
 	Cl      RouterClient
 	manager ConnManager
 
-	msgBuf []*pgproto3.Query
+	msgBuf []pgproto3.Query
 }
 
 func NewRelayState(qr qrouter.Qrouter, client RouterClient, manager ConnManager) *RelayStateImpl {
@@ -236,7 +236,7 @@ func (rst *RelayStateImpl) RelayStep() (byte, error) {
 
 	for len(rst.msgBuf) > 0 {
 		var v *pgproto3.Query
-		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		v, rst.msgBuf = &rst.msgBuf[0], rst.msgBuf[1:]
 		if txst, err = rst.Cl.ProcQuery(v); err != nil {
 			return 0, err
 		}
@@ -283,7 +283,7 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 	return rst.Reset()
 }
 
-func (rst *RelayStateImpl) AddQuery(q *pgproto3.Query) {
+func (rst *RelayStateImpl) AddQuery(q pgproto3.Query) {
 	rst.msgBuf = append(rst.msgBuf, q)
 }
 

@@ -35,7 +35,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 		switch q := msg.(type) {
 		case *pgproto3.Query:
 
-			rst.AddQuery(q)
+			rst.AddQuery(*q)
 
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
