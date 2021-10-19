@@ -91,11 +91,10 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 
 		tracelog.InfoLogger.Printf("parsed routes %v", routingState)
 		//
-		//if len(v.Routes) == 0 {
-		//	tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
-		//	_ = rst.Cl.ReplyNotice(qrouter.MatchShardError.Error())
-		//	return qrouter.MatchShardError
-		//}
+		if len(v.Routes) == 0 {
+			tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
+			return qrouter.MatchShardError
+		}
 
 		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != ClientNotRouter {
 			tracelog.ErrorLogger.PrintError(err)
@@ -223,24 +222,24 @@ func (rst *RelayStateImpl) ConnectWold() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) RelayStep(v *pgproto3.Query) (byte, error) {
+func (rst *RelayStateImpl) RelayStep() (byte, error) {
 
 	if !rst.TxActive {
-
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 			return 0, err
 		}
 		rst.TxActive = true
 	}
 
-	if rst.traceMsgs {
-		rst.msgBuf = append(rst.msgBuf, v)
-	}
-
 	var txst byte
 	var err error
-	if txst, err = rst.Cl.ProcQuery(v); err != nil {
-		return 0, err
+
+	for len(rst.msgBuf) > 0 {
+		var v *pgproto3.Query
+		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		if txst, err = rst.Cl.ProcQuery(v); err != nil {
+			return 0, err
+		}
 	}
 
 	return txst, nil
@@ -277,22 +276,15 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) ReplayBuff() pgproto3.FrontendMessage {
-	var frmsg pgproto3.FrontendMessage
-
-	for _, msg := range rst.msgBuf {
-		_, _ = rst.Cl.ProcQuery(msg)
-		frmsg, _ = rst.Cl.Receive()
-	}
-
-	return frmsg
-}
-
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 
 	_ = rst.manager.UnRouteWithError(rst.Cl, shkey, errmsg)
 
 	return rst.Reset()
+}
+
+func (rst *RelayStateImpl) AddQuery(q *pgproto3.Query) {
+	rst.msgBuf = append(rst.msgBuf, q)
 }
 
 var _ RelayStateInteractor = &RelayStateImpl{}

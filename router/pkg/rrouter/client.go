@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3"
@@ -43,6 +44,31 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     Server
+}
+
+func (cl *PsqlClient) Reply(msg string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 "psql client",
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
+		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (cl *PsqlClient) Reset() error {
@@ -322,6 +348,7 @@ func (cl *PsqlClient) AssignRoute(r *Route) error {
 func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 	tracelog.InfoLogger.Printf("process query %s", query)
+	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
 		return 0, err
@@ -422,58 +449,7 @@ func (cl *PsqlClient) Shutdown() error {
 var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
-}
-
-func (f FakeClient) Reset() error {
-	panic("implement me")
-}
-
-func (f FakeClient) ReplyNotice(msg string) error {
-	panic("implement me")
-}
-
-func (f FakeClient) Shutdown() error {
-	panic("implement me")
-}
-
-func NewFakeClient() *FakeClient {
-	return &FakeClient{}
-}
-
-func (f FakeClient) Server() Server {
-	return nil
-}
-
-func (f FakeClient) Unroute() error {
-	return nil
-}
-
-func (f FakeClient) AssignRule(rule *config.FRRule) error {
-	return nil
-}
-
-func (f FakeClient) AssignRoute(r *Route) error {
-	return nil
-}
-
-func (f FakeClient) AssignServerConn(srv Server) error {
-	return nil
-}
-
-func (f FakeClient) ReplyErr(errnsg string) error {
-	return nil
-}
-
-func (f FakeClient) Init(cfg *tls.Config, reqssl string) error {
-	return nil
-}
-
-func (f FakeClient) Auth() error {
-	return nil
-}
-
-func (f FakeClient) StartupMessage() *pgproto3.StartupMessage {
-	return nil
+	RouterClient
 }
 
 func (f FakeClient) Usr() string {
@@ -484,32 +460,8 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) PasswordCT() string {
-	return ""
-}
-
-func (f FakeClient) PasswordMD5() string {
-	return ""
-}
-
-func (f FakeClient) DefaultReply() error {
-	return nil
-}
-
-func (f FakeClient) Route() *Route {
-	return nil
-}
-
-func (f FakeClient) Rule() *config.FRRule {
-	return nil
-}
-
-func (f FakeClient) ProcQuery(query *pgproto3.Query) (byte, error) {
-	return 0, nil
-}
-
-func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
-	return nil
+func NewFakeClient() *FakeClient {
+	return &FakeClient{}
 }
 
 func (f FakeClient) ID() string {
@@ -518,6 +470,10 @@ func (f FakeClient) ID() string {
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
 	return &pgproto3.Query{}, nil
+}
+
+func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
+	return nil
 }
 
 var _ RouterClient = &FakeClient{}

@@ -375,8 +375,14 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 			Routes: qr.DataShardsRoutes(),
 		}, nil
 	default:
+		routes := qr.matchShards(parsedStmt)
+
+		if routes == nil {
+			return SkipRoutingState{}, nil
+		}
+
 		return ShardMatchState{
-			Routes: qr.matchShards(parsedStmt),
+			Routes: routes,
 		}, nil
 	}
 

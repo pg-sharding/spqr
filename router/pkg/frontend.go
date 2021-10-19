@@ -34,15 +34,22 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 
 		switch q := msg.(type) {
 		case *pgproto3.Query:
+
+			rst.AddQuery(q)
+
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
 				switch err := rst.Reroute(q); err {
 				case rrouter.SkipQueryError:
-					fallthrough
+					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
+					_ = cl.Reply("ok")
+					continue
 				case qrouter.MatchShardError:
-					fallthrough
+					_ = cl.Reply(fmt.Sprintf("failed to match any shard"))
+					continue
 				case qrouter.ParseError:
-					_ = cl.DefaultReply()
+					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
+					_ = cl.Reply("ok")
 					continue
 				case nil:
 
@@ -55,7 +62,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 
 			var txst byte
 			var err error
-			if txst, err = rst.RelayStep(q); err != nil {
+			if txst, err = rst.RelayStep(); err != nil {
 				if rst.ShouldRetry(err) {
 					//ch := make(chan interface{})
 					//

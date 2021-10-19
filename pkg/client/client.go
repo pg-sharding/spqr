@@ -31,4 +31,6 @@ type Client interface {
 
 	Shutdown() error
 	Reset() error
+
+	Reply(msg string) error
 }
