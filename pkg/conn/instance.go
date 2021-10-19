@@ -13,6 +13,7 @@ import (
 
 const SSLREQ = 80877103
 const CANCELREQ = 80877102
+const TXREL = 73
 
 type InstanceStatus string
 

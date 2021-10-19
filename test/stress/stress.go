@@ -46,7 +46,7 @@ func simple() {
 
 	for {
 
-		func () {
+		func() {
 			time.Sleep(time.Duration(50+r.Intn(10)) * time.Microsecond)
 
 			conn, err := getConn(ctx, dbname, 2)
@@ -62,7 +62,7 @@ func simple() {
 			}
 
 			fmt.Printf("SELECT OK\n")
-		} ()
+		}()
 	}
 }
 
@@ -79,10 +79,10 @@ var cmd = &cobra.Command{
 
 		for i := 0; i < par; i++ {
 			wg.Add(1)
-			go func(wg * sync.WaitGroup) {
+			go func(wg *sync.WaitGroup) {
 				defer wg.Done()
 				simple()
-			} (wg)
+			}(wg)
 		}
 
 		wg.Wait()
@@ -93,7 +93,6 @@ var cmd = &cobra.Command{
 	SilenceErrors: true,
 }
 
-
 var cmdTest = &cobra.Command{
 	Use:   "test",
 	Short: "SPQR stress test tool",
@@ -102,8 +101,7 @@ var cmdTest = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-
-		ctx, f := context.WithTimeout(context.Background(), 10 * time.Second)
+		ctx, f := context.WithTimeout(context.Background(), 10*time.Second)
 		defer f()
 
 		go simple()
@@ -118,7 +116,6 @@ var cmdTest = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 }
-
 
 func init() {
 	cmd.PersistentFlags().IntVarP(&par, "parallel", "p", 10, "# of workers")

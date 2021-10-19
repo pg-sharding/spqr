@@ -88,9 +88,11 @@ func (cl *PsqlClient) Server() Server {
 	return cl.server
 }
 
+var ClientNotRouter = xerrors.New("client not routed")
+
 func (cl *PsqlClient) Unroute() error {
 	if cl.server == nil {
-		return xerrors.New("client not routed")
+		return ClientNotRouter
 	}
 	cl.server = nil
 

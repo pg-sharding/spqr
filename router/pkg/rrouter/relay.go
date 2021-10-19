@@ -1,18 +1,23 @@
 package rrouter
 
 import (
+	"fmt"
+
 	"github.com/jackc/pgproto3"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 type RelayStateInteractor interface {
 	Reset() error
 	StartTrace()
 	Flush()
-	Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error)
+	Reroute(q *pgproto3.Query) error
 	ShouldRetry(err error) bool
 }
 
@@ -62,33 +67,83 @@ func (rst *RelayStateImpl) Flush() {
 	rst.traceMsgs = false
 }
 
-func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) ([]qrouter.ShardRoute, error) {
-	span := opentracing.StartSpan("reroute to data shard")
+var SkipQueryError = xerrors.New("wait for next query")
+
+func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
+
+	tracelog.InfoLogger.Printf("rerouting")
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
+
+	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 	span.SetTag("query", q.String)
 
-	shardRoutes := rst.Qr.Route(q.String)
-	span.SetTag("shard_routes", shardRoutes)
-	tracelog.InfoLogger.Printf("parsed routes %v", shardRoutes)
-
-	if len(shardRoutes) == 0 {
-		tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
-		_ = rst.Cl.ReplyNotice(qrouter.MatchShardError.Error())
-		return nil, qrouter.MatchShardError
+	routingState, err := rst.Qr.Route(q.String)
+	rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
+	if err != nil {
+		return err
 	}
 
-	if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+	switch v := routingState.(type) {
+	case qrouter.ShardMatchState:
+
+		tracelog.InfoLogger.Printf("parsed routes %v", routingState)
+		//
+		//if len(v.Routes) == 0 {
+		//	tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
+		//	_ = rst.Cl.ReplyNotice(qrouter.MatchShardError.Error())
+		//	return qrouter.MatchShardError
+		//}
+
+		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != ClientNotRouter {
+			tracelog.ErrorLogger.PrintError(err)
+			return err
+		}
+
+		rst.ActiveShards = nil
+		for _, shr := range v.Routes {
+			rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
+		}
+		//
+		if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", v.Routes)); err != nil {
+			return err
+		}
+
+		if err := rst.Connect(v.Routes); err != nil {
+			tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
+			_ = rst.Reset()
+			_ = rst.Cl.ReplyErr(err.Error())
+			return err
+		}
+
+		return nil
+
+	case qrouter.SkipRoutingState:
+		return SkipQueryError
+	case qrouter.WolrdRouteState:
+
+		if !config.Get().RouterConfig.WorldShardFallback {
+			return err
+		}
+		// fallback to execute query on wolrd shard (s)
+
+		//
+
+		_, _ = rst.RerouteWorld()
+		if err := rst.ConnectWold(); err != nil {
+			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world shard: %w", err))
+			return err
+		}
+
+		return nil
+	default:
+		tracelog.ErrorLogger.PrintError(xerrors.Errorf("unexpected route state %T", v))
+		return xerrors.Errorf("unexpected route state %T", v)
 	}
 
-	rst.ActiveShards = nil
-	for _, shr := range shardRoutes {
-		rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
-	}
-
-	return shardRoutes, nil
+	//span.SetTag("shard_routes", routingState)
 }
 
 func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
@@ -168,8 +223,6 @@ func (rst *RelayStateImpl) ConnectWold() error {
 	return nil
 }
 
-const TXREL = 73
-
 func (rst *RelayStateImpl) RelayStep(v *pgproto3.Query) (byte, error) {
 
 	if !rst.TxActive {
@@ -205,7 +258,7 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 		return err
 	}
 
-	if txst == TXREL {
+	if txst == conn.TXREL {
 		if rst.TxActive {
 			if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
 				return err

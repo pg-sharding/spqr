@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgproto3"
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
 )
@@ -49,10 +50,10 @@ func (w *WorldMock) Run() error {
 		select {
 		case <-ctx.Done():
 			os.Exit(1)
-		case conn := <-cChan:
+		case c := <-cChan:
 
 			go func() {
-				if err := w.serv(conn); err != nil {
+				if err := w.serv(c); err != nil {
 					tracelog.ErrorLogger.PrintError(err)
 				}
 			}()
@@ -61,8 +62,8 @@ func (w *WorldMock) Run() error {
 	}
 }
 
-func (w *WorldMock) serv(conn net.Conn) error {
-	cl := rrouter.NewPsqlClient(conn)
+func (w *WorldMock) serv(netconn net.Conn) error {
+	cl := rrouter.NewPsqlClient(netconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
 
@@ -72,11 +73,14 @@ func (w *WorldMock) serv(conn net.Conn) error {
 
 	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
 
-	cl.AssignRule(&config.FRRule{
+	if err := cl.AssignRule(&config.FRRule{
 		AuthRule: config.AuthRule{
 			Method: config.AuthOK,
 		},
-	})
+	}); err != nil {
+		return err
+	}
+
 	if err := cl.Auth(); err != nil {
 		return err
 	}
@@ -113,7 +117,9 @@ func (w *WorldMock) serv(conn net.Conn) error {
 					}},
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
 					&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
-					&pgproto3.ReadyForQuery{},
+					&pgproto3.ReadyForQuery{
+						TxStatus: conn.TXREL,
+					},
 				} {
 					if err := cl.Send(msg); err != nil {
 						return err

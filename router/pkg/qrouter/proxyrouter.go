@@ -11,6 +11,7 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 )
 
 type ProxyRouter struct {
@@ -20,7 +21,7 @@ type ProxyRouter struct {
 
 	Ranges map[string]kr.KeyRange
 
-	ShardCfgs      map[string]*config.ShardCfg
+	DataShardCfgs  map[string]*config.ShardCfg
 	WorldShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
@@ -32,6 +33,22 @@ func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 	qr.WorldShardCfgs[name] = cfg
 
 	return nil
+}
+
+func (qr *ProxyRouter) DataShardsRoutes() []ShardRoute {
+
+	var ret []ShardRoute
+
+	for name := range qr.DataShardCfgs {
+		ret = append(ret, ShardRoute{
+			Shkey: kr.ShardKey{
+				Name: name,
+				RW:   true,
+			},
+		})
+	}
+
+	return ret
 }
 
 func (qr *ProxyRouter) WorldShardsRoutes() []ShardRoute {
@@ -72,7 +89,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 		ColumnMapping:  map[string]struct{}{},
 		LocalTables:    map[string]struct{}{},
 		Ranges:         map[string]kr.KeyRange{},
-		ShardCfgs:      map[string]*config.ShardCfg{},
+		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
 	}, nil
@@ -137,7 +154,7 @@ func (qr *ProxyRouter) UnLock(krid string) error {
 func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {
 
 	tracelog.InfoLogger.Printf("adding node %s", name)
-	qr.ShardCfgs[name] = cfg
+	qr.DataShardCfgs[name] = cfg
 
 	return nil
 }
@@ -146,7 +163,7 @@ func (qr *ProxyRouter) Shards() []string {
 
 	var ret []string
 
-	for name := range qr.ShardCfgs {
+	for name := range qr.DataShardCfgs {
 		ret = append(ret, name)
 	}
 
@@ -276,15 +293,11 @@ func (qr *ProxyRouter) isLocalTbl(from sqlparser.TableExprs) bool {
 	return false
 }
 
-func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
-	parsedStmt, err := sqlparser.Parse(sql)
-	if err != nil {
-		return nil
-	}
+func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []ShardRoute {
 
-	tracelog.InfoLogger.Printf("parsed qtype %T", parsedStmt)
+	tracelog.InfoLogger.Printf("parsed qtype %T", qstmt)
 
-	switch stmt := parsedStmt.(type) {
+	switch stmt := qstmt.(type) {
 	case *sqlparser.Select:
 		if qr.isLocalTbl(stmt.From) {
 			return nil
@@ -344,7 +357,27 @@ func (qr *ProxyRouter) matchShards(sql string) []ShardRoute {
 	return nil
 }
 
-func (qr *ProxyRouter) Route(q string) []ShardRoute {
+var ParseError = xerrors.New("parsing stmt error")
+
+func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 	tracelog.InfoLogger.Printf("routing by %s", q)
-	return qr.matchShards(q)
+
+	parsedStmt, err := sqlparser.Parse(q)
+	if err != nil {
+		return nil, ParseError
+	}
+
+	tracelog.InfoLogger.Printf("stmt type %T", parsedStmt)
+
+	switch parsedStmt.(type) {
+	case *sqlparser.DDL:
+		return ShardMatchState{
+			Routes: qr.DataShardsRoutes(),
+		}, nil
+	default:
+		return ShardMatchState{
+			Routes: qr.matchShards(parsedStmt),
+		}, nil
+	}
+
 }

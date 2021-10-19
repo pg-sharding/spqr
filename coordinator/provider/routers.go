@@ -2,6 +2,7 @@ package provider
 
 import (
 	context "context"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
@@ -23,7 +24,6 @@ func (r RouterService) AddRouters(ctx context.Context, request *shards.AddRouter
 func (r RouterService) ShutdownRouter(ctx context.Context, request *shards.ShutdownRouterRequest) (*shards.ShutdownRouterReply, error) {
 	panic("implement me")
 }
-
 
 func NewRoutersService(impl coordinator.Coordinator) *RouterService {
 	return &RouterService{

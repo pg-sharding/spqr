@@ -68,7 +68,6 @@ func (d *dcoordinator) RegisterRouter(r router.Router) error {
 	return nil
 }
 
-
 func (d *dcoordinator) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)

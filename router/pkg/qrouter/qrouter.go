@@ -18,8 +18,26 @@ type ShardRoute struct {
 
 var MatchShardError = xerrors.New("failed to match shard")
 
+type RoutingState interface {
+	iState()
+}
+
+type ShardMatchState struct {
+	RoutingState
+
+	Routes []ShardRoute
+}
+
+type SkipRoutingState struct {
+	RoutingState
+}
+
+type WolrdRouteState struct {
+	RoutingState
+}
+
 type Qrouter interface {
-	Route(q string) []ShardRoute
+	Route(q string) (RoutingState, error)
 
 	AddShardingColumn(col string) error
 	AddLocalTable(tname string) error
@@ -43,8 +61,6 @@ type Qrouter interface {
 
 func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
 	switch qtype {
-	case config.ShardQrouter:
-		return NewShardQrouter(config.Get().QRouterCfg.LocalShard)
 	case config.LocalQrouter:
 		return NewLocalQrouter(config.Get().QRouterCfg.LocalShard)
 	case config.ProxyQrouter:
