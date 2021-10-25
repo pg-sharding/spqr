@@ -473,7 +473,7 @@ func (c *Local) Serve(cl client.Client) error {
 		case *pgproto3.Query:
 			if err := c.ProcessQuery(v.String, cl); err != nil {
 				_ = cl.ReplyErr(err.Error())
-				return err
+				// continue to consume input
 			}
 		default:
 			tracelog.InfoLogger.Printf("got unexpected postgresql proto message with type %T", v)
