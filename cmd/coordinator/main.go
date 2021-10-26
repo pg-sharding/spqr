@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/pg-sharding/spqr/coordinator/provider"
+	capp "github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/qdb/qdb/mem"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
@@ -16,8 +17,11 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		db, _ := mem.NewQrouterDBMem()
-		c := provider.NewCoordinator(db)
-		_ = c.Run()
+		coordinator := provider.NewCoordinator(db)
+
+		app := capp.NewApp(coordinator)
+
+		tracelog.ErrorLogger.PrintError(app.Run())
 	},
 }
 var cfgPath string

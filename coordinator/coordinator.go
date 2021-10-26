@@ -5,6 +5,7 @@ import (
 	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"net"
 )
 
 type Coordinator interface {
@@ -19,4 +20,7 @@ type Coordinator interface {
 	Unite(req *spqrparser.UniteKeyRange) error
 	RegisterRouter(r router2.Router) error
 	RegisterWorld(w world.World) error
+
+	// cl interaction
+	Serve(netconn net.Conn) error
 }
