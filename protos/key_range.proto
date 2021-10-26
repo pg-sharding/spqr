@@ -36,8 +36,8 @@ enum KeyRangeStatus {
 
 // key range is mapped to shard
 message KeyRange {
-  bytes lower_bound = 1;
-  bytes upper_bound = 2;
+  string lower_bound = 1;
+  string upper_bound = 2;
 
   string krid = 3;
   string shardId = 4;

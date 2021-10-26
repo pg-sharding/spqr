@@ -1,11 +1,11 @@
 package app
 
 import (
-	"github.com/pg-sharding/spqr/router/grpcqrouter"
 	"net"
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/grpcqrouter"
 	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"

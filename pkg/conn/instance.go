@@ -3,9 +3,9 @@ package conn
 import (
 	"crypto/tls"
 	"encoding/binary"
-	"github.com/jackc/pgproto3/v2"
 	"net"
 
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -82,7 +82,7 @@ func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string
 
 	instance := &PostgreSQLInstance{
 		hostname: cfg.ConnAddr,
-		status: NotInitialized,
+		status:   NotInitialized,
 	}
 
 	netconn, err := instance.connect(cfg.ConnAddr, cfg.Proto)
@@ -171,11 +171,8 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	return nil
 }
 
-
 func (pgi *PostgreSQLInstance) Cancel() error {
-	msg := &pgproto3.CancelRequest{
-
-	}
+	msg := &pgproto3.CancelRequest{}
 
 	return pgi.frontend.Send(msg)
 }

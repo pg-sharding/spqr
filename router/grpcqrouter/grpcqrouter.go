@@ -2,6 +2,7 @@ package grpcqrouter
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	protos "github.com/pg-sharding/spqr/router/protos"
@@ -20,15 +21,11 @@ func (l LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Add
 		return nil, err
 	}
 
-	return &protos.AddKeyRangeReply{
-
-	}, nil
+	return &protos.AddKeyRangeReply{}, nil
 }
 
 func (l LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	krs := []*protos.KeyRange{
-
-	}
+	krs := []*protos.KeyRange{}
 
 	for _, kr := range l.qr.KeyRanges() {
 		krs = append(krs, kr.ToProto())
@@ -64,15 +61,12 @@ func (l LocalQrouterServer) AddLocalTable(ctx context.Context, request *protos.A
 		return nil, err
 	}
 
-	return &protos.AddLocalTableReply{
-
-	}, nil
+	return &protos.AddLocalTableReply{}, nil
 }
 
-func Register(server reflection.GRPCServer , qrouter qrouter.Qrouter) {
+func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {
 
 	reflection.Register(server)
-
 
 	lqr := LocalQrouterServer{
 		qr: qrouter,

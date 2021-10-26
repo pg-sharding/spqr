@@ -141,7 +141,7 @@ func (qr *ProxyRouter) Lock(krid string) error {
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
-	var keyRange * kr.KeyRange
+	var keyRange *kr.KeyRange
 	var ok bool
 
 	if keyRange, ok = qr.Ranges[krid]; !ok {

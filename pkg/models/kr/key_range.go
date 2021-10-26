@@ -47,8 +47,8 @@ func (kr *KeyRange) ToSQL() *qdb.KeyRange {
 
 func (kr *KeyRange) ToProto() *proto.KeyRange {
 	return &proto.KeyRange{
-		LowerBound: kr.LowerBound,
-		UpperBound: kr.UpperBound,
+		LowerBound: string(kr.LowerBound),
+		UpperBound: string(kr.UpperBound),
 		ShardId:    kr.Shid,
 		Krid:       kr.ID,
 	}
@@ -59,8 +59,8 @@ func KeyRangeFromProto(kr *proto.KeyRange) *KeyRange {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: kr.LowerBound,
-		UpperBound: kr.UpperBound,
+		LowerBound: []byte(kr.LowerBound),
+		UpperBound: []byte(kr.UpperBound),
 		Shid:       kr.ShardId,
 		ID:         kr.Krid,
 	}

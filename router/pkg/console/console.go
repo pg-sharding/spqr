@@ -268,7 +268,7 @@ func (c *Local) KeyRanges(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                []byte("key ranges"),
+				Name:                 []byte("key ranges"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
