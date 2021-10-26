@@ -5,7 +5,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -130,7 +130,7 @@ func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
 		switch v := msg.(type) {
 		case *pgproto3.ReadyForQuery:
 			return nil
-		case *pgproto3.Authentication:
+		case pgproto3.AuthenticationResponseMessage:
 			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
 			if err != nil {
 				tracelog.InfoLogger.Printf("failed to perform backend auth %w", err)

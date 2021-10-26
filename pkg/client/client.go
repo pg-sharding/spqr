@@ -3,7 +3,7 @@ package client
 import (
 	"crypto/tls"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 )
 
 type Client interface {

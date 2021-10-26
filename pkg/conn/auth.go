@@ -4,19 +4,19 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )
 
-func AuthBackend(shard DBInstance, cfg *config.ShardCfg, v *pgproto3.Authentication) error {
-	tracelog.InfoLogger.Printf("Auth type proc %+v\n", v)
+func AuthBackend(shard DBInstance, cfg *config.ShardCfg, msg pgproto3.BackendMessage) error {
+	tracelog.InfoLogger.Printf("Auth type proc %+v\n", msg)
 
-	switch v.Type {
-	case pgproto3.AuthTypeOk:
+	switch v := msg.(type) {
+	case *pgproto3.AuthenticationOk:
 		return nil
-	case pgproto3.AuthTypeMD5Password:
+	case *pgproto3.AuthenticationMD5Password:
 
 		hash := md5.New()
 		hash.Write([]byte(cfg.Passwd + cfg.ConnUsr))
@@ -35,12 +35,12 @@ func AuthBackend(shard DBInstance, cfg *config.ShardCfg, v *pgproto3.Authenticat
 			return err
 		}
 
-	case pgproto3.AuthTypeCleartextPassword:
+	case *pgproto3.AuthenticationCleartextPassword:
 		if err := shard.Send(&pgproto3.PasswordMessage{Password: cfg.Passwd}); err != nil {
 			return err
 		}
 	default:
-		return errors.Errorf("authBackend type %T not supported", v.Type)
+		return errors.Errorf("authBackend type %T not supported", msg)
 	}
 
 	return nil

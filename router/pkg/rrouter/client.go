@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -50,7 +50,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "psql client",
+				Name:                 []byte("psql client"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -60,7 +60,7 @@ func (cl *PsqlClient) Reply(msg string) error {
 			},
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -174,13 +174,16 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 		cl.conn = tls.Server(cl.conn, cfg)
 
-		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 
-		if err != nil {
-			return err
+		frsm, err := backend.ReceiveStartupMessage()
+
+		switch msg := frsm.(type) {
+		case *pgproto3.StartupMessage:
+			sm = msg
+		default:
+			return xerrors.Errorf("got unexpected message type %T", frsm)
 		}
-
-		sm, err = backend.ReceiveStartupMessage()
 
 		if err != nil {
 			return err
@@ -192,7 +195,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		err = sm.Decode(msg)
 		tracelog.ErrorLogger.FatalOnError(err)
 
-		backend, err = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 		tracelog.ErrorLogger.FatalOnError(err)
 
 	case conn.CANCELREQ:
@@ -256,7 +259,7 @@ func (cl *PsqlClient) Auth() error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.AuthenticationOk{},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
 		&pgproto3.ReadyForQuery{},
@@ -312,16 +315,13 @@ func (cl *PsqlClient) PasswordCT() string {
 		return db
 	}
 
-	_ = cl.be.Send(&pgproto3.Authentication{
-		Type: pgproto3.AuthTypeCleartextPassword,
-	})
+	_ = cl.be.Send(&pgproto3.AuthenticationCleartextPassword{})
 
 	return cl.receivepasswd()
 }
 
 func (cl *PsqlClient) PasswordMD5() string {
-	_ = cl.be.Send(&pgproto3.Authentication{
-		Type: pgproto3.AuthTypeMD5Password,
+	_ = cl.be.Send(&pgproto3.AuthenticationMD5Password{
 		Salt: [4]byte{1, 3, 3, 7},
 	})
 
@@ -392,7 +392,7 @@ func (cl *PsqlClient) DefaultReply() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "psql client",
+				Name:                 []byte("psql client"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -402,7 +402,7 @@ func (cl *PsqlClient) DefaultReply() error {
 			},
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("no data")}},
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
