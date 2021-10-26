@@ -13,7 +13,7 @@ const NOSHARD = ""
 
 type ShardRoute struct {
 	Shkey     kr.ShardKey
-	Matchedkr kr.KeyRange
+	Matchedkr *kr.KeyRange
 }
 
 var MatchShardError = xerrors.New("failed to match shard")
@@ -42,10 +42,10 @@ type Qrouter interface {
 	AddShardingColumn(col string) error
 	AddLocalTable(tname string) error
 
-	AddKeyRange(kr kr.KeyRange) error
+	AddKeyRange(kr *kr.KeyRange) error
 	Shards() []string
 	WorldShards() []string
-	KeyRanges() []kr.KeyRange
+	KeyRanges() []*kr.KeyRange
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
 	AddWorldShard(name string, cfg *config.ShardCfg) error

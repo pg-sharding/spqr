@@ -8,7 +8,7 @@ type ShardKey struct {
 type KeyRange struct {
 	From       []byte
 	To         []byte
-	ShardID    string
+	ShardId    string
 	KeyRangeID string
 }
 type KeyRangeStatus string

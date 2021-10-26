@@ -2,6 +2,7 @@ package grpcqrouter
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	protos "github.com/pg-sharding/spqr/router/protos"
 	"google.golang.org/grpc/reflection"
@@ -12,6 +13,17 @@ type LocalQrouterServer struct {
 	qr qrouter.Qrouter
 }
 
+func (l LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
+
+	err := l.qr.AddKeyRange(kr.KeyRangeFromProto(request.KeyRange))
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.AddKeyRangeReply{
+
+	}, nil
+}
 
 func (l LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	krs := []*protos.KeyRange{

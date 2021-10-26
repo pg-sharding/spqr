@@ -200,7 +200,7 @@ func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) err
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
-	err := c.Qrouter.AddKeyRange(kr.KeyRange{
+	err := c.Qrouter.AddKeyRange(&kr.KeyRange{
 		ID:         keyRange.KeyRangeID,
 		Shid:       keyRange.ShardID,
 		UpperBound: keyRange.To,

@@ -36,7 +36,6 @@ enum KeyRangeStatus {
 
 // key range is mapped to shard
 message KeyRange {
-
   bytes lower_bound = 1;
   bytes upper_bound = 2;
 
@@ -48,14 +47,11 @@ message ListKeyRangeRequest {
 }
 
 message AddKeyRangeRequest {
-  bytes boundFrom = 1;
-  bytes boundTo = 2;
-  string shid = 3;
-  string krid = 4;
+    KeyRange key_range = 1;
 }
 
 message AddKeyRangeReply {
-  
+
 }
 
 message SplitKeyRangeRequest {

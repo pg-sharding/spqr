@@ -19,7 +19,7 @@ type ProxyRouter struct {
 
 	LocalTables map[string]struct{}
 
-	Ranges map[string]kr.KeyRange
+	Ranges map[string]*kr.KeyRange
 
 	DataShardCfgs  map[string]*config.ShardCfg
 	WorldShardCfgs map[string]*config.ShardCfg
@@ -88,7 +88,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 	return &ProxyRouter{
 		ColumnMapping:  map[string]struct{}{},
 		LocalTables:    map[string]struct{}{},
-		Ranges:         map[string]kr.KeyRange{},
+		Ranges:         map[string]*kr.KeyRange{},
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
@@ -130,7 +130,7 @@ func (qr *ProxyRouter) Split(req *spqrparser.SplitKeyRange) error {
 }
 
 func (qr *ProxyRouter) Lock(krid string) error {
-	var keyRange kr.KeyRange
+	var keyRange *kr.KeyRange
 	var ok bool
 
 	if keyRange, ok = qr.Ranges[krid]; !ok {
@@ -141,7 +141,7 @@ func (qr *ProxyRouter) Lock(krid string) error {
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
-	var keyRange kr.KeyRange
+	var keyRange * kr.KeyRange
 	var ok bool
 
 	if keyRange, ok = qr.Ranges[krid]; !ok {
@@ -170,9 +170,9 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) KeyRanges() []kr.KeyRange {
+func (qr *ProxyRouter) KeyRanges() []*kr.KeyRange {
 
-	var ret []kr.KeyRange
+	var ret []*kr.KeyRange
 
 	for _, keyRange := range qr.Ranges {
 		ret = append(ret, keyRange)
@@ -191,7 +191,7 @@ func (qr *ProxyRouter) AddLocalTable(tname string) error {
 	return nil
 }
 
-func (qr *ProxyRouter) AddKeyRange(kr kr.KeyRange) error {
+func (qr *ProxyRouter) AddKeyRange(kr *kr.KeyRange) error {
 	if _, ok := qr.Ranges[kr.ID]; ok {
 		return errors.Errorf("key range with ID already defined", kr.ID)
 	}
@@ -200,7 +200,7 @@ func (qr *ProxyRouter) AddKeyRange(kr kr.KeyRange) error {
 	return nil
 }
 
-func (qr *ProxyRouter) routeByIndx(i []byte) kr.KeyRange {
+func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 
 	for _, keyRange := range qr.Ranges {
 		tracelog.InfoLogger.Printf("comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
@@ -209,7 +209,7 @@ func (qr *ProxyRouter) routeByIndx(i []byte) kr.KeyRange {
 		}
 	}
 
-	return kr.KeyRange{
+	return &kr.KeyRange{
 		Shid: NOSHARD,
 	}
 }

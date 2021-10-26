@@ -27,11 +27,11 @@ func CmpRanges(kr []byte, other []byte) bool {
 	return len(kr) <= len(other)
 }
 
-func KeyRangeFromSQL(kr *qdb.KeyRange) KeyRange {
-	return KeyRange{
+func KeyRangeFromSQL(kr *qdb.KeyRange) *KeyRange {
+	return &KeyRange{
 		LowerBound: kr.From,
 		UpperBound: kr.To,
-		Shid:       kr.ShardID,
+		Shid:       kr.ShardId,
 		ID:         kr.KeyRangeID,
 	}
 }
@@ -40,7 +40,7 @@ func (kr *KeyRange) ToSQL() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		From:       kr.LowerBound,
 		To:         kr.UpperBound,
-		ShardID:    kr.ID,
+		ShardId:    kr.Shid,
 		KeyRangeID: kr.ID,
 	}
 }
@@ -49,13 +49,16 @@ func (kr *KeyRange) ToProto() *proto.KeyRange {
 	return &proto.KeyRange{
 		LowerBound: kr.LowerBound,
 		UpperBound: kr.UpperBound,
-		ShardId:    kr.ID,
+		ShardId:    kr.Shid,
 		Krid:       kr.ID,
 	}
 }
 
-func KeyRangeFromProto(kr *proto.KeyRange) KeyRange {
-	return KeyRange{
+func KeyRangeFromProto(kr *proto.KeyRange) *KeyRange {
+	if kr == nil {
+		return nil
+	}
+	return &KeyRange{
 		LowerBound: kr.LowerBound,
 		UpperBound: kr.UpperBound,
 		Shid:       kr.ShardId,
