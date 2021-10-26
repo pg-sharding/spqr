@@ -26,6 +26,8 @@ func InitTLS(sslMode, certFile, keyFile string) (*tls.Config, error) {
 			return nil, xerrors.Errorf("failed to load tls conf: %w", err)
 		}
 		return &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}, nil
+	} else {
+		tracelog.InfoLogger.Printf("skip loading tls certs")
 	}
 	return nil, nil
 }

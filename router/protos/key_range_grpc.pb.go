@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type KeyRangeServiceClient interface {
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error)
+	AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*AddKeyRangeReply, error)
 	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*UnlockKeyRangeReply, error)
 	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error)
 	AddShardingColumn(ctx context.Context, in *AddShardingColumnRequest, opts ...grpc.CallOption) (*AddShardingColumnReply, error)
@@ -46,6 +47,15 @@ func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRan
 func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error) {
 	out := new(LockKeyRangeReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/LockKeyRange", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*AddKeyRangeReply, error) {
+	out := new(AddKeyRangeReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -94,6 +104,7 @@ func (c *keyRangeServiceClient) AddLocalTable(ctx context.Context, in *AddLocalT
 type KeyRangeServiceServer interface {
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
 	LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error)
+	AddKeyRange(context.Context, *AddKeyRangeRequest) (*AddKeyRangeReply, error)
 	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error)
 	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error)
 	AddShardingColumn(context.Context, *AddShardingColumnRequest) (*AddShardingColumnReply, error)
@@ -110,6 +121,9 @@ func (UnimplementedKeyRangeServiceServer) ListKeyRange(context.Context, *ListKey
 }
 func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LockKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) AddKeyRange(context.Context, *AddKeyRangeRequest) (*AddKeyRangeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlockKeyRange not implemented")
@@ -168,6 +182,24 @@ func _KeyRangeService_LockKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).LockKeyRange(ctx, req.(*LockKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _KeyRangeService_AddKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).AddKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.KeyRangeService/AddKeyRange",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).AddKeyRange(ctx, req.(*AddKeyRangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -258,6 +290,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LockKeyRange",
 			Handler:    _KeyRangeService_LockKeyRange_Handler,
+		},
+		{
+			MethodName: "AddKeyRange",
+			Handler:    _KeyRangeService_AddKeyRange_Handler,
 		},
 		{
 			MethodName: "UnlockKeyRange",

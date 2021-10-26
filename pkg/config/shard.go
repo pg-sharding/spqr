@@ -33,7 +33,6 @@ type ShardCfg struct {
 }
 
 func (sh *ShardCfg) InitShardTLS() error {
-
 	shardTLSConfig, err := InitTLS(sh.TLSCfg.SslMode, sh.TLSCfg.CertFile, sh.TLSCfg.KeyFile)
 	if err != nil {
 		return xerrors.Errorf("init shard TLS: %w", err)

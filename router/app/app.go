@@ -1,15 +1,14 @@
 package app
 
 import (
+	"github.com/pg-sharding/spqr/router/grpcqrouter"
 	"net"
 
 	reuse "github.com/libp2p/go-reuseport"
-	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 type App struct {
@@ -50,8 +49,9 @@ func (app *App) ProcADM() error {
 
 func (app *App) ServHttp() error {
 	serv := grpc.NewServer()
-	shhttp.Register(serv)
-	reflection.Register(serv)
+	//shhttp.Register(serv)
+	//reflection.Register(serv)
+	grpcqrouter.Register(serv, app.spqr.Qrouter)
 
 	httpAddr := config.Get().HttpAddr
 	listener, err := net.Listen("tcp", httpAddr)
