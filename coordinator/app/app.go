@@ -24,6 +24,8 @@ func NewApp(c coordinator.Coordinator) *App {
 
 func (a *App) Run() error {
 
+	tracelog.InfoLogger.Printf("running coordinator app\n")
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(2)
@@ -37,7 +39,7 @@ func (a *App) Run() error {
 
 func (a *App) ServePsql(wg *sync.WaitGroup) error {
 
-	wg.Done()
+	defer wg.Done()
 
 	listener, err := net.Listen("tcp", "localhost:7003")
 
@@ -54,7 +56,7 @@ func (a *App) ServePsql(wg *sync.WaitGroup) error {
 
 func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
 
-	wg.Done()
+	defer wg.Done()
 
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
