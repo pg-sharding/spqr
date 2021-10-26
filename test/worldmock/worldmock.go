@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -106,7 +106,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 				for _, msg := range []pgproto3.BackendMessage{
 					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 						{
-							Name:                 "worldmock",
+							Name:                 []byte("worldmock"),
 							TableOID:             0,
 							TableAttributeNumber: 0,
 							DataTypeOID:          25,
@@ -116,7 +116,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 						},
 					}},
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
-					&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 					&pgproto3.ReadyForQuery{
 						TxStatus: conn.TXREL,
 					},

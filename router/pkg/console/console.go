@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/jackc/pgproto3"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -54,7 +54,7 @@ func (c *Local) Databases(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "show dbs",
+				Name:                 []byte("show dbs"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -80,7 +80,7 @@ func (c *Local) Pools(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 []byte("show pools"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -111,7 +111,7 @@ func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingCol
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 []byte("fortune"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -143,7 +143,7 @@ func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRan
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "worldmock",
+				Name:                 []byte("split key range"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -174,7 +174,7 @@ func (c *Local) LockKeyRange(cl client.Client, krid string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "worldmock",
+				Name:                 []byte("lock key range"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -210,7 +210,7 @@ func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) err
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 []byte("add key range"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -239,7 +239,7 @@ func (c *Local) AddShard(cl client.Client, shard *spqrparser.Shard, cfg *config.
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "fortune",
+				Name:                 []byte("add shard"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -268,7 +268,7 @@ func (c *Local) KeyRanges(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "worldmock key ranges",
+				Name:                []byte("key ranges"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -300,7 +300,7 @@ func (c *Local) KeyRanges(cl client.Client) error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -318,7 +318,7 @@ func (c *Local) Shards(cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 "worldmock shards",
+				Name:                 []byte("shards"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -350,7 +350,7 @@ func (c *Local) Shards(cl client.Client) error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: "SELECT 1"},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -447,7 +447,7 @@ https://github.com/pg-sharding/spqr/tree/master/doc/router
 func (c *Local) Serve(cl client.Client) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.Authentication{Type: pgproto3.AuthTypeOk},
+		&pgproto3.AuthenticationOk{},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
 		&pgproto3.NoticeResponse{
