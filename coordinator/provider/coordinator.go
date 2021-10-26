@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -23,6 +24,15 @@ import (
 
 type routerconn struct {
 	routerproto.KeyRangeServiceClient
+	addr string
+}
+
+func (r routerconn) Addr() string {
+	return r.addr
+}
+
+var _ router.Router = &routerconn{
+
 }
 
 func DialRouter(r router.Router) (*grpc.ClientConn, error) {
@@ -125,6 +135,10 @@ func (d *dcoordinator) Serve(netconn net.Conn) error {
 			tracelog.InfoLogger.Printf("Get '%s', parsed %T", v.String, tstmt)
 
 			switch stmt := tstmt.(type) {
+			case *spqrparser.RegisterRouter:
+				d.rmp[stmt.ID] = &routerconn{
+					addr: stmt.Addr,
+				}
 			case *spqrparser.KeyRange:
 				for _, r := range d.rmp {
 					cc, err := DialRouter(r)
@@ -144,39 +158,35 @@ func (d *dcoordinator) Serve(netconn net.Conn) error {
 			}
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
-			//
-			//_ = cl.ReplyNotice("you are receiving message from mock world shard")
-			//
-			//err := func() error {
-			//	for _, msg := range []pgproto3.BackendMessage{
-			//		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			//			{
-			//				Name:                 []byte("worldmock"),
-			//				TableOID:             0,
-			//				TableAttributeNumber: 0,
-			//				DataTypeOID:          25,
-			//				DataTypeSize:         -1,
-			//				TypeModifier:         -1,
-			//				Format:               0,
-			//			},
-			//		}},
-			//		&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
-			//		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-			//		&pgproto3.ReadyForQuery{
-			//			TxStatus: conn.TXREL,
-			//		},
-			//	} {
-			//		if err := cl.Send(msg); err != nil {
-			//			return err
-			//		}
-			//	}
-			//
-			//	return nil
-			//}()
-			//
-			//if err != nil {
-			//	tracelog.ErrorLogger.PrintError(err)
-			//}
+
+			if err := func() error {
+				for _, msg := range []pgproto3.BackendMessage{
+					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("coordinator"),
+							TableOID:             0,
+							TableAttributeNumber: 0,
+							DataTypeOID:          25,
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					}},
+					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
+					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+					&pgproto3.ReadyForQuery{
+						TxStatus: conn.TXREL,
+					},
+				} {
+					if err := cl.Send(msg); err != nil {
+						return err
+					}
+				}
+
+				return nil
+			}(); err != nil {
+				tracelog.ErrorLogger.PrintError(err)
+			}
 
 		default:
 		}
