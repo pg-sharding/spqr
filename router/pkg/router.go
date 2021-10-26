@@ -21,6 +21,7 @@ import (
 
 type Router interface {
 	Addr() string
+	ID() string
 }
 
 type RouterImpl struct {
@@ -33,6 +34,10 @@ type RouterImpl struct {
 	stchan      chan struct{}
 	addr        string
 	frTLS       *tls.Config
+}
+
+func (r *RouterImpl) ID() string {
+	return "noid"
 }
 
 func (r *RouterImpl) Addr() string {

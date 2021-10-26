@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -22,10 +23,15 @@ import (
 type routerconn struct {
 	routerproto.KeyRangeServiceClient
 	addr string
+	id string
 }
 
-func (r routerconn) Addr() string {
+func (r* routerconn) Addr() string {
 	return r.addr
+}
+
+func (r*routerconn) ID() string {
+	return r.id
 }
 
 var _ router.Router = &routerconn{}
@@ -76,7 +82,8 @@ var _ coordinator.Coordinator = &dcoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 	return &dcoordinator{
-		db: db,
+		db:  db,
+		rmp: map[string]router.Router{},
 	}
 }
 
@@ -84,6 +91,11 @@ func (d *dcoordinator) RegisterRouter(r router.Router) error {
 	d.rmp[r.Addr()] = r
 
 	return nil
+}
+
+// call from grpc
+func proc() {
+
 }
 
 func (d *dcoordinator) Serve(netconn net.Conn) error {
@@ -127,60 +139,70 @@ func (d *dcoordinator) Serve(netconn net.Conn) error {
 				return err
 			}
 
-			tracelog.InfoLogger.Printf("Get '%s', parsed %T", v.String, tstmt)
-
-			switch stmt := tstmt.(type) {
-			case *spqrparser.RegisterRouter:
-				d.rmp[stmt.ID] = &routerconn{
-					addr: stmt.Addr,
-				}
-			case *spqrparser.KeyRange:
-				for _, r := range d.rmp {
-					cc, err := DialRouter(r)
-					if err != nil {
-						break
-					}
-					cl := routerproto.NewKeyRangeServiceClient(cc)
-					_, _ = cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
-						KeyRange: &routerproto.KeyRange{
-							LowerBound: string(stmt.From),
-							UpperBound: string(stmt.To),
-							Krid:       stmt.KeyRangeID,
-							ShardId:    stmt.ShardID,
-						},
-					})
-				}
-			}
-
-			tracelog.InfoLogger.Printf("received message %v", v.String)
+			tracelog.InfoLogger.Printf("parsed %T", v.String, tstmt)
 
 			if err := func() error {
-				for _, msg := range []pgproto3.BackendMessage{
-					&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-						{
-							Name:                 []byte("coordinator"),
-							TableOID:             0,
-							TableAttributeNumber: 0,
-							DataTypeOID:          25,
-							DataTypeSize:         -1,
-							TypeModifier:         -1,
-							Format:               0,
-						},
-					}},
-					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
-					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-					&pgproto3.ReadyForQuery{
-						TxStatus: conn.TXREL,
-					},
-				} {
-					if err := cl.Send(msg); err != nil {
-						return err
+				switch stmt := tstmt.(type) {
+				case *spqrparser.RegisterRouter:
+					tracelog.InfoLogger.Printf("register router %v %v", stmt.Addr, stmt.ID)
+					d.rmp[stmt.ID] = &routerconn{
+						addr: stmt.Addr,
 					}
-				}
+					return nil
+				case *spqrparser.KeyRange:
+					for _, r := range d.rmp {
+						cc, err := DialRouter(r)
 
+						tracelog.InfoLogger.Printf("dialing router %v, err %w", r.Addr(), err)
+						if err != nil {
+							return err
+						}
+						cl := routerproto.NewKeyRangeServiceClient(cc)
+						_, _ = cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
+							KeyRange: &routerproto.KeyRange{
+								LowerBound: string(stmt.From),
+								UpperBound: string(stmt.To),
+								Krid:       stmt.KeyRangeID,
+								ShardId:    stmt.ShardID,
+							},
+						})
+					}
+				default:
+					return xerrors.New("failed to proc");
+				}
 				return nil
 			}(); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+				_ = cl.ReplyErr(err.Error())
+			} else {
+
+				if err := func() error {
+					for _, msg := range []pgproto3.BackendMessage{
+						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+							{
+								Name:                 []byte("coordinator"),
+								TableOID:             0,
+								TableAttributeNumber: 0,
+								DataTypeOID:          25,
+								DataTypeSize:         -1,
+								TypeModifier:         -1,
+								Format:               0,
+							},
+						}},
+						&pgproto3.DataRow{Values: [][]byte{[]byte("query ok")}},
+						&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+						&pgproto3.ReadyForQuery{
+							TxStatus: conn.TXREL,
+						},
+					} {
+						if err := cl.Send(msg); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				}(); err != nil {
+					tracelog.ErrorLogger.PrintError(err)
+				}
 			}
 
 		default:
