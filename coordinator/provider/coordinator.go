@@ -2,12 +2,12 @@ package provider
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
@@ -28,9 +28,7 @@ func (r routerconn) Addr() string {
 	return r.addr
 }
 
-var _ router.Router = &routerconn{
-
-}
+var _ router.Router = &routerconn{}
 
 func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 	return grpcclient.Dial(r.Addr())

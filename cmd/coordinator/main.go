@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/coordinator/provider"
 	capp "github.com/pg-sharding/spqr/coordinator/app"
+	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/qdb/qdb/mem"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"

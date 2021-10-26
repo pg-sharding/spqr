@@ -1,22 +1,22 @@
 package app
 
 import (
+	"net"
+	"sync"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"net"
-	"sync"
 )
-
 
 type App struct {
 	c coordinator.Coordinator
 }
 
-func NewApp(c coordinator.Coordinator) *App{
+func NewApp(c coordinator.Coordinator) *App {
 	return &App{
 		c: c,
 	}
@@ -52,9 +52,7 @@ func (a *App) ServePsql(wg *sync.WaitGroup) error {
 	}
 }
 
-
 func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
-
 
 	wg.Done()
 

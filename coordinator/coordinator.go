@@ -1,11 +1,12 @@
 package coordinator
 
 import (
+	"net"
+
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-	"net"
 )
 
 type Coordinator interface {
