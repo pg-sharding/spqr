@@ -14,6 +14,7 @@ package spqrparser
   show          *Show
   kr            *KeyRange
   sh_col        *ShardingColumn
+  reg_router    *RegisterRouter
   kill          *Kill
   drop          *Drop
   lock          *Lock
@@ -46,7 +47,8 @@ package spqrparser
 
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
-%token <str> SHUTDOWN LISTEN
+// routers
+%token <str> SHUTDOWN LISTEN REGISTER ROUTER
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str>  SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
@@ -69,6 +71,7 @@ package spqrparser
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
 %type <unite> unite_key_range_stmt
+%type <reg_router> register_router_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
@@ -77,6 +80,8 @@ package spqrparser
 %type<str> spqr_addr
 %type<bytes> key_range_spec_bound
 %type<str> key_range_id
+%type<str> router_id
+%type<str> router_addr
 
 %start any_command
 
@@ -140,6 +145,10 @@ command:
     {
        setParseTree(yylex, $1)
     }
+    | register_router_stmt
+     {
+        setParseTree(yylex, $1)
+     }
 
 reserved_keyword:
 POOLS
@@ -290,6 +299,26 @@ shutdown_stmt:
 	{
 		$$ = &Shutdown{}
 	}
+
+// coordinator
+
+router_addr:
+    STRING
+    {
+        $$ = string($1)
+    }
+
+router_id:
+    STRING
+    {
+        $$ = string($1)
+    }
+
+register_router_stmt:
+    REGISTER ROUTER router_addr router_id
+    {
+        $$ = &RegisterRouter{Addr: $3, ID: $4}
+    }
 
 %%
 

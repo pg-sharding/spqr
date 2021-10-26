@@ -65,6 +65,13 @@ type Kill struct {
 	Cmd string
 }
 
+// coordinator
+
+type RegisterRouter struct {
+	Addr string
+	ID   string
+}
+
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr   = "databases"
@@ -95,6 +102,8 @@ func (*KeyRange) iStatement()       {}
 func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 
+func (*RegisterRouter) iStatement() {}
+
 var reservedWords = map[string]int{
 	"pools":      POOLS,
 	"servers":    SERVERS,
@@ -121,6 +130,8 @@ var reservedWords = map[string]int{
 	"with":       WITH,
 	"unite":      UNITE,
 	"listen":     LISTEN,
+	"register":   REGISTER,
+	"router":     ROUTER,
 }
 
 // Tokenizer is the struct used to generate SQL

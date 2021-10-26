@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	protos "github.com/pg-sharding/spqr/router/protos"
+	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -25,10 +26,12 @@ func (l LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (l LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	krs := []*protos.KeyRange{}
+	var krs []*protos.KeyRange
 
-	for _, kr := range l.qr.KeyRanges() {
-		krs = append(krs, kr.ToProto())
+	tracelog.InfoLogger.Printf("listing key ranges")
+
+	for _, keyRange := range l.qr.KeyRanges() {
+		krs = append(krs, keyRange.ToProto())
 	}
 
 	resp := &protos.KeyRangeReply{
@@ -51,7 +54,13 @@ func (l LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.S
 }
 
 func (l LocalQrouterServer) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
-	panic("implement me")
+	err := l.qr.AddShardingColumn(request.Colname[0])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.AddShardingColumnReply{}, nil
 }
 
 func (l LocalQrouterServer) AddLocalTable(ctx context.Context, request *protos.AddLocalTableRequest) (*protos.AddLocalTableReply, error) {
