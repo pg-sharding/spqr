@@ -77,7 +77,7 @@ func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
 	//shards.RegisterKeyRangeServiceServer(serv, krserv)
 	//shards.RegisterRoutersServiceServer(serv, rrserv)
 
-	httpAddr := config.RouterConfig().CoordinatorHttpAddr
+	httpAddr := config.CoordinatorConfig().HttpAddr	
 	httpAddr = "localhost:7002"
 
 	listener, err := net.Listen("tcp", httpAddr)

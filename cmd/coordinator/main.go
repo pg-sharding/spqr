@@ -42,11 +42,13 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr-coordinator/config.yaml", "path to config file")
 }
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 }
+
 func main() {
 	Execute()
 }
