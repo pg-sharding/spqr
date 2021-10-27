@@ -1,0 +1,3 @@
+addr: '[spqr_coordinator]:7002'
+http_addr: 'spqr_coordinator:7003'
+log_level: INFO

@@ -1,5 +1,7 @@
 FROM spqr_spqrbase
 
+COPY --from=networld/grpcurl /grpcurl /usr/bin/
+
 RUN mv /router/spqr-stress /usr/local/bin/spqr-stress
 
 ENV DEBIAN_FRONTEND=noninteractive

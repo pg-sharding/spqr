@@ -7,7 +7,6 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c '
     exit 1
 }
 
-
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'CREATE SHARDING COLUMN w_id;' || {
     echo "ERROR: tests failed"
     exit 1

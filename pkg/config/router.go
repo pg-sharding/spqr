@@ -31,11 +31,11 @@ func LoadRouterCfg(cfgPath string) error {
 		return err
 	}
 	defer file.Close()
-	if err := yaml.NewDecoder(file).Decode(&cfg); err != nil {
+	if err := yaml.NewDecoder(file).Decode(&cfgRouter); err != nil {
 		return err
 	}
 
-	configBytes, err := json.MarshalIndent(cfg, "", "  ")
+	configBytes, err := json.MarshalIndent(cfgRouter, "", "  ")
 	if err != nil {
 		return err
 	}

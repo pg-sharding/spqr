@@ -66,7 +66,7 @@ func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
 	case config.ProxyQrouter:
 		return NewProxyRouter()
 	default:
-		return nil, errors.Errorf("unknown qrouter type %v", config.RouterConfig().QRouterCfg.Qtype)
+		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().QRouterCfg.Qtype)
 	}
 
 }

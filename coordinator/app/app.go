@@ -46,9 +46,9 @@ func (a *App) ServePsql(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
 
-	tracelog.InfoLogger.Printf("serve psql on localhost 7003")
+	tracelog.InfoLogger.Printf("serve psql on %v", config.CoordinatorConfig().Addr)
 
-	listener, err := net.Listen("tcp", "localhost:7003")
+	listener, err := net.Listen("tcp", config.CoordinatorConfig().Addr)
 
 	if err != nil {
 		return err
@@ -65,8 +65,6 @@ func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
 
-	tracelog.InfoLogger.Printf("serve grpc on localhost 7002")
-
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
@@ -77,8 +75,9 @@ func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
 	//shards.RegisterKeyRangeServiceServer(serv, krserv)
 	//shards.RegisterRoutersServiceServer(serv, rrserv)
 
-	httpAddr := config.CoordinatorConfig().HttpAddr	
-	httpAddr = "localhost:7002"
+	httpAddr := config.CoordinatorConfig().HttpAddr
+
+	tracelog.InfoLogger.Printf("serve grpc on %v", httpAddr)
 
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {

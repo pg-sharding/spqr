@@ -261,7 +261,7 @@ func (cl *PsqlClient) Auth() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "lolkekcheburek"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "spqr"},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
