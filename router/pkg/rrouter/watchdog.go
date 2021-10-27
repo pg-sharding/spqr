@@ -18,9 +18,9 @@ type Watchdog interface {
 
 func NewShardWatchDog(tlscfg *tls.Config, shname string, rp RoutePool) (Watchdog, error) {
 
-	cfgs := config.Get().RouterConfig.ShardMapping[shname].Hosts
+	cfgs := config.RouterConfig().RouterConfig.ShardMapping[shname].Hosts
 
-	sslmode := config.Get().RouterConfig.ShardMapping[shname].TLSCfg.SslMode
+	sslmode := config.RouterConfig().RouterConfig.ShardMapping[shname].TLSCfg.SslMode
 
 	hostConns := make([]conn.DBInstance, 0, len(cfgs))
 

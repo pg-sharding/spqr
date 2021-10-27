@@ -10,7 +10,7 @@ deps:
 	go mod download
 
 build_c: 
-	go build -o spqr-c cmd/coordinator/main.go
+	go build -o spqr-coordinator cmd/coordinator/main.go
 
 build_proxy: 
 	go build -o spqr-rr cmd/router/main.go

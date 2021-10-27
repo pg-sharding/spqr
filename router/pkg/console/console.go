@@ -38,7 +38,7 @@ func (c *Local) Shutdown() error {
 }
 
 func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) (*Local, error) {
-	localQlog, err := qlogprovider.NewLocalQlog(config.Get().DataFolder)
+	localQlog, err := qlogprovider.NewLocalQlog(config.RouterConfig().DataFolder)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +367,7 @@ func (c *Local) ProcessQuery(q string, cl client.Client) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("Get '%s', parsed %T", q, tstmt)
+	tracelog.InfoLogger.Printf("RouterConfig '%s', parsed %T", q, tstmt)
 
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Show:

@@ -78,7 +78,7 @@ func (r *RRouter) Shutdown() error {
 func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	frs := make(map[routeKey]*config.FRRule)
 
-	for _, e := range config.Get().RouterConfig.FrontendRules {
+	for _, e := range config.RouterConfig().RouterConfig.FrontendRules {
 		frs[routeKey{
 			usr: e.RK.Usr,
 			db:  e.RK.DB,
@@ -86,14 +86,14 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	}
 
 	router := &RRouter{
-		routePool:     NewRouterPoolImpl(config.Get().RouterConfig.ShardMapping),
+		routePool:     NewRouterPoolImpl(config.RouterConfig().RouterConfig.ShardMapping),
 		frontendRules: map[routeKey]*config.FRRule{},
 		backendRules:  map[routeKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "worldmock", 0),
 		wgs:           map[qdb.ShardKey]Watchdog{},
 	}
 
-	for _, berule := range config.Get().RouterConfig.BackendRules {
+	for _, berule := range config.RouterConfig().RouterConfig.BackendRules {
 		key := routeKey{
 			usr: berule.RK.Usr,
 			db:  berule.RK.DB,
@@ -101,7 +101,7 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 		_ = router.AddRouteRule(key, berule, frs[key])
 	}
 
-	if config.Get().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
+	if config.RouterConfig().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		router.cfg = tlscfg
 	}
 
@@ -112,7 +112,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (RouterClient, error) {
 
 	cl := NewPsqlClient(conn)
 
-	if err := cl.Init(r.cfg, config.Get().RouterConfig.TLSCfg.SslMode); err != nil {
+	if err := cl.Init(r.cfg, config.RouterConfig().RouterConfig.TLSCfg.SslMode); err != nil {
 		return nil, err
 	}
 
@@ -163,7 +163,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (RouterClient, error) {
 func (r *RRouter) ListShards() []string {
 	var ret []string
 
-	for _, sh := range config.Get().RouterConfig.ShardMapping {
+	for _, sh := range config.RouterConfig().RouterConfig.ShardMapping {
 		ret = append(ret, sh.Hosts[0].ConnAddr)
 	}
 

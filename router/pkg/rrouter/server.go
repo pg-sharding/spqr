@@ -66,7 +66,7 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	} else {
 
-		srv.shard, err = NewShard(shkey, pgi, config.Get().RouterConfig.ShardMapping[shkey.Name])
+		srv.shard, err = NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	sh, err := NewShard(shkey, pgi, config.Get().RouterConfig.ShardMapping[shkey.Name])
+	sh, err := NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
 	if err != nil {
 		return err
 	}

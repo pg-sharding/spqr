@@ -41,9 +41,10 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Load(rcfgPath); err != nil {
+		if err := config.LoadRouterCfg(rcfgPath); err != nil {
 			return err
 		}
+
 		spqr, err := router.NewRouter()
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")

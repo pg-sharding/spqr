@@ -123,7 +123,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 		return SkipQueryError
 	case qrouter.WolrdRouteState:
 
-		if !config.Get().RouterConfig.WorldShardFallback {
+		if !config.RouterConfig().RouterConfig.WorldShardFallback {
 			return err
 		}
 		// fallback to execute query on wolrd shard (s)

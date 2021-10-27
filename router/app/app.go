@@ -22,7 +22,7 @@ func NewApp(sg *router2.RouterImpl) *App {
 }
 
 func (app *App) ProcPG() error {
-	proto, addr := config.Get().PROTO, config.Get().Addr
+	proto, addr := config.RouterConfig().Proto, config.RouterConfig().Addr
 
 	listener, err := reuse.Listen(proto, addr)
 	if err != nil {
@@ -35,7 +35,7 @@ func (app *App) ProcPG() error {
 }
 
 func (app *App) ProcADM() error {
-	proto, admaddr := config.Get().PROTO, config.Get().ADMAddr
+	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
 
 	listener, err := net.Listen(proto, admaddr)
 	if err != nil {
@@ -53,7 +53,7 @@ func (app *App) ServHttp() error {
 	//reflection.Register(serv)
 	grpcqrouter.Register(serv, app.spqr.Qrouter)
 
-	httpAddr := config.Get().HttpAddr
+	httpAddr := config.RouterConfig().HttpAddr
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {
 		return err

@@ -2,7 +2,7 @@
 vendor
 tmp
 spqr-rr
-spqr-c
+spqr-coordinator
 spqr-world
 spqr-stress
 spqr-worldmock

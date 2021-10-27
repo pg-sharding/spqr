@@ -53,7 +53,7 @@ func (w *World) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
-	httpAddr := config.Get().WorldHttpAddr
+	httpAddr := config.RouterConfig().WorldHttpAddr
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {
 		return err

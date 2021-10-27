@@ -1,4 +1,4 @@
 FROM spqr_spqrbase
 
-ENTRYPOINT /router/spqr-c || sleep 23233
+ENTRYPOINT /router/spqr-coordinator || sleep 23233
 

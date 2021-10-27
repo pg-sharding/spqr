@@ -49,7 +49,7 @@ var _ Router = &RouterImpl{}
 func NewRouter() (*RouterImpl, error) {
 
 	// qrouter init
-	qtype := config.QrouterType(config.Get().QRouterCfg.Qtype)
+	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
 	tracelog.InfoLogger.Printf("create Qrouter with type %s", qtype)
 
 	qr, err := qrouter.NewQrouter(qtype)
@@ -58,7 +58,7 @@ func NewRouter() (*RouterImpl, error) {
 	}
 
 	// frontend
-	frTlsCfg := config.Get().RouterConfig.TLSCfg
+	frTlsCfg := config.RouterConfig().RouterConfig.TLSCfg
 	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "init frontend TLS")
@@ -71,7 +71,7 @@ func NewRouter() (*RouterImpl, error) {
 	}
 
 	// data shards, world shard and sharding rules
-	for name, shard := range config.Get().RouterConfig.ShardMapping {
+	for name, shard := range config.RouterConfig().RouterConfig.ShardMapping {
 
 		switch shard.ShType {
 		case config.WorldShard:
@@ -109,12 +109,12 @@ func NewRouter() (*RouterImpl, error) {
 		return nil, err
 	}
 
-	executer := NewExecuter(config.Get().ExecuterCfg)
+	executer := NewExecuter(config.RouterConfig().ExecuterCfg)
 	if err := executer.SPIexec(cnsl, rrouter.NewFakeClient()); err != nil {
 		return nil, err
 	}
 
-	queries, err := cnsl.Qlog.Recover(config.Get().DataFolder)
+	queries, err := cnsl.Qlog.Recover(config.RouterConfig().DataFolder)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
 		return nil, err
@@ -201,7 +201,7 @@ func (r *RouterImpl) initJaegerTracer() (io.Closer, error) {
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:              "const",
 			Param:             1,
-			SamplingServerURL: config.Get().JaegerConfig.JaegerUrl,
+			SamplingServerURL: config.RouterConfig().JaegerConfig.JaegerUrl,
 		},
 		Reporter: &jaegercfg.ReporterConfig{
 			LogSpans: false,
