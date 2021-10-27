@@ -69,6 +69,14 @@ type QrouterDBMem struct {
 	krWaiters map[string]*WaitPool
 }
 
+func (q *QrouterDBMem) ListRouters() ([]*qdb.Router, error) {
+	panic("implement me")
+}
+
+func (q *QrouterDBMem) AddRouter(r *qdb.Router) error {
+	panic("implement me")
+}
+
 func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	return q.krWaiters[krid].Subscribe(status, notifyio)
 }

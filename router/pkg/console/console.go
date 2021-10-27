@@ -460,7 +460,7 @@ func (c *Local) Serve(cl client.Client) error {
 		}
 	}
 
-	tracelog.InfoLogger.Print("console.Serve start")
+	tracelog.InfoLogger.Print("console.ProcClient start")
 
 	for {
 		msg, err := cl.Receive()

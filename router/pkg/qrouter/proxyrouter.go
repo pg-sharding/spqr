@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	"github.com/pg-sharding/spqr/qdb/qdb/etcdcl"
+	"github.com/pg-sharding/spqr/qdb/qdb/mem"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -80,7 +80,7 @@ func (qr *ProxyRouter) WorldShards() []string {
 var _ Qrouter = &ProxyRouter{}
 
 func NewProxyRouter() (*ProxyRouter, error) {
-	db, err := etcdcl.NewQDBETCD()
+	db, err := mem.NewQrouterDBMem()
 	if err != nil {
 		return nil, err
 	}

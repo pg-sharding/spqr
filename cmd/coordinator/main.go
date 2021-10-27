@@ -1,25 +1,28 @@
 package main
 
 import (
-	capp "github.com/pg-sharding/spqr/coordinator/app"
+	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/coordinator/provider"
-	"github.com/pg-sharding/spqr/qdb/qdb/mem"
+	"github.com/pg-sharding/spqr/qdb/qdb/etcdqdb"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
 )
 
 var rootCmd = &cobra.Command{
-	Use: "keyrangeservice --config `path-to-config`",
+	Use: "spqr-c --config `path-to-config`",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		db, _ := mem.NewQrouterDBMem()
+		db, err := etcdqdb.NewEtcdQDB()
+		if err != nil {
+			tracelog.ErrorLogger.FatalError(err)
+		}
 		coordinator := provider.NewCoordinator(db)
 
-		app := capp.NewApp(coordinator)
+		app := app.NewApp(coordinator)
 
 		tracelog.ErrorLogger.PrintError(app.Run())
 	},

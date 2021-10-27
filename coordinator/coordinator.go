@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	router2 "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -19,9 +18,11 @@ type Coordinator interface {
 	UnLock(krid string) error
 	Split(req *spqrparser.SplitKeyRange) error
 	Unite(req *spqrparser.UniteKeyRange) error
-	RegisterRouter(r router2.Router) error
+
+	RegisterRouter(r *qdb.Router) error
+
 	RegisterWorld(w world.World) error
 
 	// cl interaction
-	Serve(netconn net.Conn) error
+	ProcClient(netconn net.Conn) error
 }

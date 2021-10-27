@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -17,20 +16,21 @@ import (
 	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 )
 
 type routerconn struct {
 	routerproto.KeyRangeServiceClient
 	addr string
-	id string
+	id   string
 }
 
-func (r* routerconn) Addr() string {
+func (r *routerconn) Addr() string {
 	return r.addr
 }
 
-func (r*routerconn) ID() string {
+func (r *routerconn) ID() string {
 	return r.id
 }
 
@@ -42,8 +42,6 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 
 type dcoordinator struct {
 	db qdb.QrouterDB
-
-	rmp map[string]router.Router
 }
 
 func (d *dcoordinator) RegisterWorld(w world.World) error {
@@ -82,15 +80,15 @@ var _ coordinator.Coordinator = &dcoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
 	return &dcoordinator{
-		db:  db,
-		rmp: map[string]router.Router{},
+		db: db,
 	}
 }
 
-func (d *dcoordinator) RegisterRouter(r router.Router) error {
-	d.rmp[r.Addr()] = r
+func (d *dcoordinator) RegisterRouter(r *qdb.Router) error {
 
-	return nil
+	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
+
+	return d.db.AddRouter(r)
 }
 
 // call from grpc
@@ -98,7 +96,7 @@ func proc() {
 
 }
 
-func (d *dcoordinator) Serve(netconn net.Conn) error {
+func (d *dcoordinator) ProcClient(netconn net.Conn) error {
 	cl := rrouter.NewPsqlClient(netconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
@@ -144,21 +142,25 @@ func (d *dcoordinator) Serve(netconn net.Conn) error {
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.RegisterRouter:
-					tracelog.InfoLogger.Printf("register router %v %v", stmt.Addr, stmt.ID)
-					d.rmp[stmt.ID] = &routerconn{
-						addr: stmt.Addr,
-					}
-					return nil
+					err := d.RegisterRouter(qdb.NewRouter(stmt.Addr, stmt.ID))
+					tracelog.ErrorLogger.PrintError(err)
+					return err
 				case *spqrparser.KeyRange:
-					for _, r := range d.rmp {
+					resp, err := d.db.ListRouters()
+					if err != nil {
+						return err
+					}
+					tracelog.InfoLogger.Printf("routers %v", resp)
+					for _, r := range resp {
 						cc, err := DialRouter(r)
 
-						tracelog.InfoLogger.Printf("dialing router %v, err %w", r.Addr(), err)
+						tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
 						if err != nil {
 							return err
 						}
+
 						cl := routerproto.NewKeyRangeServiceClient(cc)
-						_, _ = cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
+						resp, err := cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
 							KeyRange: &routerproto.KeyRange{
 								LowerBound: string(stmt.From),
 								UpperBound: string(stmt.To),
@@ -166,9 +168,17 @@ func (d *dcoordinator) Serve(netconn net.Conn) error {
 								ShardId:    stmt.ShardID,
 							},
 						})
+
+						if err != nil {
+							return err
+						}
+
+						tracelog.InfoLogger.Printf("got resp %v", resp)
 					}
+				case *spqrparser.Show:
+
 				default:
-					return xerrors.New("failed to proc");
+					return xerrors.New("failed to proc")
 				}
 				return nil
 			}(); err != nil {

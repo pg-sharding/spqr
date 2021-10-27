@@ -30,16 +30,23 @@ func (a *App) Run() error {
 
 	wg.Add(2)
 
-	go a.ServeGrpc(wg)
-	go a.ServePsql(wg)
+	go func(wg *sync.WaitGroup) {
+		tracelog.InfoLogger.PrintError(a.ServeGrpc(wg))
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		tracelog.InfoLogger.PrintError(a.ServePsql(wg))
+	}(wg)
 
 	wg.Wait()
+	tracelog.InfoLogger.Printf("exit")
 	return nil
 }
 
 func (a *App) ServePsql(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
+
+	tracelog.InfoLogger.Printf("serve psql on localhost 7003")
 
 	listener, err := net.Listen("tcp", "localhost:7003")
 
@@ -50,13 +57,15 @@ func (a *App) ServePsql(wg *sync.WaitGroup) error {
 	for {
 		c, err := listener.Accept()
 		tracelog.ErrorLogger.PrintError(err)
-		_ = a.c.Serve(c)
+		_ = a.c.ProcClient(c)
 	}
 }
 
 func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
+
+	tracelog.InfoLogger.Printf("serve grpc on localhost 7002")
 
 	serv := grpc.NewServer()
 	shhttp.Register(serv)

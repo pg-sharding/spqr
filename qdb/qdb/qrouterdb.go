@@ -10,7 +10,9 @@ type QrouterDB interface {
 	Begin() error
 	Commit() error
 
+	AddRouter(r *Router) error
 	Check(kr *KeyRange) bool
 
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
+	ListRouters() ([]*Router, error)
 }
