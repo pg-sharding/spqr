@@ -387,7 +387,7 @@ func (c *Local) ProcessQuery(q string, cl client.Client) error {
 		default:
 			tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 
-			return errors.New("Unknown default cmd: " + stmt.Cmd)
+			return errors.New("Unknown show statement: " + stmt.Cmd)
 		}
 	case *spqrparser.SplitKeyRange:
 		err := c.SplitKeyRange(cl, stmt)

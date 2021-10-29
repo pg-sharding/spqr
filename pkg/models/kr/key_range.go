@@ -31,7 +31,7 @@ func KeyRangeFromSQL(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: kr.From,
 		UpperBound: kr.To,
-		Shid:       kr.ShardId,
+		Shid:       kr.ShardID,
 		ID:         kr.KeyRangeID,
 	}
 }
@@ -40,7 +40,7 @@ func (kr *KeyRange) ToSQL() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		From:       kr.LowerBound,
 		To:         kr.UpperBound,
-		ShardId:    kr.Shid,
+		ShardID:    kr.Shid,
 		KeyRangeID: kr.ID,
 	}
 }

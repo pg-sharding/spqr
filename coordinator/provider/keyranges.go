@@ -4,53 +4,59 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/coordinator"
-	shards "github.com/pg-sharding/spqr/router/protos"
+	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
 type KeyRangeService struct {
-	shards.UnimplementedKeyRangeServiceServer
+	protos.UnimplementedKeyRangeServiceServer
 
 	impl coordinator.Coordinator
 }
 
-func (c KeyRangeService) LockKeyRange(ctx context.Context, request *shards.LockKeyRangeRequest) (*shards.LockKeyRangeReply, error) {
+func (c KeyRangeService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
 	err := c.impl.Lock(request.Krid)
 	return nil, err
 }
 
-func (c KeyRangeService) UnlockKeyRange(ctx context.Context, request *shards.UnlockKeyRangeRequest) (*shards.UnlockKeyRangeReply, error) {
+func (c KeyRangeService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
 	err := c.impl.UnLock(request.Krid)
 	return nil, err
 }
-func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *shards.SplitKeyRangeRequest) (*shards.SplitKeyRangeReply, error) {
+func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
 	panic("implement me")
 }
 
-func (c KeyRangeService) AddShardingColumn(ctx context.Context, request *shards.AddShardingColumnRequest) (*shards.AddShardingColumnReply, error) {
+func (c KeyRangeService) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
+	err := c.impl.AddShardingColumn(request.Colname[0])
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.AddShardingColumnReply{}, nil
+}
+
+func (c KeyRangeService) AddLocalTable(ctx context.Context, request *protos.AddLocalTableRequest) (*protos.AddLocalTableReply, error) {
 	panic("implement me")
 }
 
-func (c KeyRangeService) AddLocalTable(ctx context.Context, request *shards.AddLocalTableRequest) (*shards.AddLocalTableReply, error) {
-	panic("implement me")
-}
+func (c KeyRangeService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
-func (c KeyRangeService) ListKeyRange(ctx context.Context, request *shards.ListKeyRangeRequest) (*shards.KeyRangeReply, error) {
-
-	krs := []*shards.KeyRange{
+	krs := []*protos.KeyRange{
 		{
 			Krid:    "1",
 			ShardId: "2",
 		},
 	}
 
-	return &shards.KeyRangeReply{
+	return &protos.KeyRangeReply{
 		KeyRanges: krs,
 	}, nil
 }
 
-var _ shards.KeyRangeServiceServer = KeyRangeService{}
+var _ protos.KeyRangeServiceServer = KeyRangeService{}
 
-func NewKeyRangeService(impl coordinator.Coordinator) shards.KeyRangeServiceServer {
+func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
 	return &KeyRangeService{
 		impl: impl,
 	}

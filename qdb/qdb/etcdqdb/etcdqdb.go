@@ -83,7 +83,7 @@ func (q EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- 
 
 const keyspace = "worldmock"
 
-func NewEtcdQDB(addr string ) (*EtcdQDB, error) {
+func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{

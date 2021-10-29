@@ -106,7 +106,7 @@ func (*KeyRange) iStatement()       {}
 func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 
-func (*RegisterRouter) iStatement() {}
+func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
 
 var reservedWords = map[string]int{

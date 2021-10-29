@@ -49,7 +49,32 @@ func (d *dcoordinator) RegisterWorld(w world.World) error {
 }
 
 func (d *dcoordinator) AddShardingColumn(col string) error {
-	panic("implement me")
+	resp, err := d.db.ListRouters()
+	if err != nil {
+		return err
+	}
+	tracelog.InfoLogger.Printf("routers %v", resp)
+	for _, r := range resp {
+		cc, err := DialRouter(r)
+
+		tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
+		if err != nil {
+			return err
+		}
+
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.AddShardingColumn(context.TODO(), &routerproto.AddShardingColumnRequest{
+			Colname: []string{col},
+		})
+
+		if err != nil {
+			return err
+		}
+
+		tracelog.InfoLogger.Printf("got resp %v", resp)
+	}
+
+	return nil
 }
 
 func (d *dcoordinator) AddLocalTable(tname string) error {
@@ -57,7 +82,37 @@ func (d *dcoordinator) AddLocalTable(tname string) error {
 }
 
 func (d *dcoordinator) AddKeyRange(kr qdb.KeyRange) error {
-	panic("implement me")
+	resp, err := d.db.ListRouters()
+	if err != nil {
+		return err
+	}
+	tracelog.InfoLogger.Printf("routers %v", resp)
+	for _, r := range resp {
+		cc, err := DialRouter(r)
+
+		tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
+		if err != nil {
+			return err
+		}
+
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
+			KeyRange: &routerproto.KeyRange{
+				LowerBound: string(kr.From),
+				UpperBound: string(kr.To),
+				Krid:       kr.KeyRangeID,
+				ShardId:    kr.ShardID,
+			},
+		})
+
+		if err != nil {
+			return err
+		}
+
+		tracelog.InfoLogger.Printf("got resp %v", resp)
+	}
+
+	return nil
 }
 
 func (d *dcoordinator) Lock(krid string) error {
@@ -141,6 +196,15 @@ func (d *dcoordinator) ProcClient(netconn net.Conn) error {
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
+				case *spqrparser.ShardingColumn:
+					err := d.AddShardingColumn(stmt.ColName)
+					if err != nil {
+						cl.ReplyErr(err.Error())
+						tracelog.ErrorLogger.PrintError(err)
+						return err
+					}
+
+					return nil
 				case *spqrparser.RegisterRouter:
 					err := d.RegisterRouter(qdb.NewRouter(stmt.Addr, stmt.ID))
 					if err != nil {
@@ -151,35 +215,20 @@ func (d *dcoordinator) ProcClient(netconn net.Conn) error {
 
 					return nil
 				case *spqrparser.KeyRange:
-					resp, err := d.db.ListRouters()
-					if err != nil {
+					if err := d.AddKeyRange(
+						qdb.KeyRange{
+							From:       stmt.From,
+							To:         stmt.To,
+							KeyRangeID: stmt.KeyRangeID,
+							ShardID:    stmt.ShardID,
+						},
+					); err != nil {
+						cl.ReplyErr(err.Error())
+						tracelog.ErrorLogger.PrintError(err)
 						return err
 					}
-					tracelog.InfoLogger.Printf("routers %v", resp)
-					for _, r := range resp {
-						cc, err := DialRouter(r)
 
-						tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
-						if err != nil {
-							return err
-						}
-
-						cl := routerproto.NewKeyRangeServiceClient(cc)
-						resp, err := cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
-							KeyRange: &routerproto.KeyRange{
-								LowerBound: string(stmt.From),
-								UpperBound: string(stmt.To),
-								Krid:       stmt.KeyRangeID,
-								ShardId:    stmt.ShardID,
-							},
-						})
-
-						if err != nil {
-							return err
-						}
-
-						tracelog.InfoLogger.Printf("got resp %v", resp)
-					}
+					return nil
 				case *spqrparser.Show:
 
 				default:
