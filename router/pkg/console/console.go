@@ -285,9 +285,9 @@ func (c *Local) KeyRanges(cl client.Client) error {
 		}
 	}
 
-	for _, kr := range c.Qrouter.KeyRanges() {
+	for _, keyRange := range c.Qrouter.KeyRanges() {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range %v for kr with %s", kr.ID, kr.Shid))},
+			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to shard %s", keyRange.ID, keyRange.Shid))},
 		}); err != nil {
 			tracelog.InfoLogger.Print(err)
 		}
@@ -384,6 +384,8 @@ func (c *Local) ProcessQuery(q string, cl client.Client) error {
 			return c.Shards(cl)
 		case spqrparser.ShowKeyRangesStr:
 			return c.KeyRanges(cl)
+		case spqrparser.ShowShardingColumns:
+			return c.ShardingColumns(cl)
 		default:
 			tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 
@@ -479,4 +481,8 @@ func (c *Local) Serve(cl client.Client) error {
 			tracelog.InfoLogger.Printf("got unexpected postgresql proto message with type %T", v)
 		}
 	}
+}
+
+func (c *Local) ShardingColumns(cl client.Client) error {
+
 }

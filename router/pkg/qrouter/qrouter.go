@@ -4,7 +4,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 )
@@ -37,23 +36,23 @@ type WolrdRouteState struct {
 }
 
 type Qrouter interface {
+	kr.KeyRangeManager
+
 	Route(q string) (RoutingState, error)
 
+	//
 	AddShardingColumn(col string) error
+	ListShardingColumn(col string) error
 	AddLocalTable(tname string) error
 
-	AddKeyRange(kr *kr.KeyRange) error
+	// krs
+
 	Shards() []string
 	WorldShards() []string
-	KeyRanges() []*kr.KeyRange
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
-	Lock(krid string) error
-	UnLock(krid string) error
-	Split(req *spqrparser.SplitKeyRange) error
-	Unite(req *spqrparser.UniteKeyRange) error
 
 	Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 	WorldShardsRoutes() []ShardRoute

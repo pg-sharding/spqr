@@ -167,14 +167,14 @@ POOLS
 
 show_statement_type:
 reserved_keyword
-  {
+{
     switch v := string($1); v {
-    case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr:
+    case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
       $$ = v
     default:
       $$ = ShowUnsupportedStr
     }
-  }
+}
 
 kill_statement_type:
 reserved_keyword

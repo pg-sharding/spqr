@@ -69,6 +69,11 @@ type QrouterDBMem struct {
 	krWaiters map[string]*WaitPool
 }
 
+
+func (q *QrouterDBMem) DropKeyRange(krl *qdb.KeyRange) error {
+	panic("implement me")
+}
+
 func (q *QrouterDBMem) ListRouters() ([]*qdb.Router, error) {
 	panic("implement me")
 }
@@ -131,32 +136,32 @@ func NewQrouterDBMem() (*QrouterDBMem, error) {
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) Lock(KeyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if cnt, ok := q.freq[keyRange.KeyRangeID]; ok {
-		q.freq[keyRange.KeyRangeID] = cnt + 1
+	kr := q.krs[KeyRangeID]
+
+	if cnt, ok := q.freq[KeyRangeID]; ok {
+		q.freq[KeyRangeID] = cnt + 1
 	} else {
-		q.freq[keyRange.KeyRangeID] = 1
+		q.freq[KeyRangeID] = 1
 	}
 
-	q.krs[keyRange.KeyRangeID] = keyRange
-
-	return nil
+	return kr, nil
 }
 
-func (q *QrouterDBMem) UnLock(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) UnLock(KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if cnt, ok := q.freq[keyRange.KeyRangeID]; !ok {
-		return xerrors.Errorf("key range %v not locked", keyRange)
+	if cnt, ok := q.freq[KeyRangeID]; !ok {
+		return xerrors.Errorf("key range %v not locked", KeyRangeID)
 	} else if cnt > 1 {
-		q.freq[keyRange.KeyRangeID] = cnt - 1
+		q.freq[KeyRangeID] = cnt - 1
 	} else {
-		delete(q.freq, keyRange.KeyRangeID)
-		delete(q.krs, keyRange.KeyRangeID)
+		delete(q.freq, KeyRangeID)
+		delete(q.krs, KeyRangeID)
 	}
 
 	return nil

@@ -1,8 +1,8 @@
 package qdb
 
 type QrouterDB interface {
-	Lock(keyRange *KeyRange) error
-	UnLock(keyRange *KeyRange) error
+	Lock(keyRangeID string) (*KeyRange, error)
+	UnLock(keyRangeID string) error
 
 	Add(keyRange *KeyRange) error
 	Update(keyRange *KeyRange) error
@@ -15,4 +15,5 @@ type QrouterDB interface {
 
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
 	ListRouters() ([]*Router, error)
+	DropKeyRange(krl *KeyRange) error
 }

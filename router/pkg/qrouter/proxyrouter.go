@@ -2,13 +2,13 @@ package qrouter
 
 import (
 	"math/rand"
+	"sync"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/qdb/qdb/mem"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -25,6 +25,10 @@ type ProxyRouter struct {
 	WorldShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
+}
+
+func (qr *ProxyRouter) ListShardingColumn(col string) error {
+	panic("implement me")
 }
 
 func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
@@ -99,28 +103,49 @@ func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio
 	return qr.qdb.Watch(krid, krst, noitfyio)
 }
 
-func (qr *ProxyRouter) Unite(req *spqrparser.UniteKeyRange) error {
-	panic("implement me")
+func (qr *ProxyRouter) Unite(req *kr.UniteKeyRange) error {
+	var krr *qdb.KeyRange
+	var krl *qdb.KeyRange
+	var err error
+
+	if krl, err = qr.qdb.Lock(req.KeyRangeIDLeft); err != nil {
+		return err
+	}
+	defer qr.qdb.UnLock(req.KeyRangeIDLeft)
+
+	if krl, err = qr.qdb.Lock(req.KeyRangeIDRight); err != nil {
+		return err
+	}
+	defer qr.qdb.UnLock(req.KeyRangeIDRight)
+
+
+	if err = qr.qdb.DropKeyRange(krl); err != nil {
+		return err
+	}
+
+	krr.From = krl.From
+
+	return qr.qdb.Update(krr)
 }
 
-func (qr *ProxyRouter) Split(req *spqrparser.SplitKeyRange) error {
+func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
 	if err := qr.qdb.Begin(); err != nil {
 		return err
 	}
 
 	defer func() { _ = qr.qdb.Commit() }()
 
-	krOld := qr.Ranges[req.KeyRangeFromID]
+	krOld := qr.Ranges[req.SourceID]
 	krNew := kr.KeyRangeFromSQL(
 		&qdb.KeyRange{
-			From:       req.Border,
+			From:       req.Bound,
 			To:         krOld.UpperBound,
-			KeyRangeID: req.KeyRangeID,
+			KeyRangeID: req.SourceID,
 		},
 	)
 
 	_ = qr.qdb.Add(krNew.ToSQL())
-	krOld.UpperBound = req.Border
+	krOld.UpperBound = req.Bound
 	_ = qr.qdb.Update(krOld.ToSQL())
 
 	qr.Ranges[krOld.ID] = krOld
@@ -129,15 +154,15 @@ func (qr *ProxyRouter) Split(req *spqrparser.SplitKeyRange) error {
 	return nil
 }
 
-func (qr *ProxyRouter) Lock(krid string) error {
+func (qr *ProxyRouter) Lock(krid string) (*qdb.KeyRange, error) {
 	var keyRange *kr.KeyRange
 	var ok bool
 
 	if keyRange, ok = qr.Ranges[krid]; !ok {
-		return errors.Errorf("key range with id %v not found", krid)
+		return nil, errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.Lock(keyRange.ToSQL())
+	return qr.qdb.Lock(keyRange.ID)
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
@@ -148,7 +173,7 @@ func (qr *ProxyRouter) UnLock(krid string) error {
 		return errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.UnLock(keyRange.ToSQL())
+	return qr.qdb.UnLock(keyRange.ID)
 }
 
 func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {

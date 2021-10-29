@@ -80,6 +80,7 @@ type UnregisterRouter struct {
 const (
 	ShowDatabasesStr   = "databases"
 	ShowShardsStr      = "shards"
+	ShowShardingColumns      = "sharding_columns"
 	ShowKeyRangesStr   = "key_ranges"
 	KillClientsStr     = "clients"
 	ShowPoolsStr       = "pools"
