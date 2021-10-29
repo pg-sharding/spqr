@@ -7,3 +7,5 @@ spqr-world
 spqr-stress
 spqr-worldmock
 y.output
+*.swp
+*.swo
