@@ -72,6 +72,10 @@ type RegisterRouter struct {
 	ID   string
 }
 
+type UnregisterRouter struct {
+	ID string
+}
+
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr   = "databases"
@@ -103,6 +107,7 @@ func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 
 func (*RegisterRouter) iStatement() {}
+func (*UnregisterRouter) iStatement() {}
 
 var reservedWords = map[string]int{
 	"pools":      POOLS,
@@ -131,6 +136,7 @@ var reservedWords = map[string]int{
 	"unite":      UNITE,
 	"listen":     LISTEN,
 	"register":   REGISTER,
+	"unregister": UNREGISTER,
 	"router":     ROUTER,
 }
 

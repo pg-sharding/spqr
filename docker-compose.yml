@@ -52,6 +52,9 @@ services:
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1
+        environment:
+            ALLOW_NONE_AUTHENTICATION: "yes"
+            ETCD_LOG_LEVEL: "debug"
         networks:
             spqr:
                 ipv4_address: 192.168.233.06

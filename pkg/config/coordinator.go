@@ -11,7 +11,8 @@ import (
 var cfg CoordinatorCfg
 
 type CoordinatorCfg struct {
-	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
+	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	QdbAddr  string `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
 	HttpAddr string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
 	Addr     string `json:"addr" toml:"addr" yaml:"addr"`
 }

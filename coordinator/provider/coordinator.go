@@ -143,8 +143,13 @@ func (d *dcoordinator) ProcClient(netconn net.Conn) error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.RegisterRouter:
 					err := d.RegisterRouter(qdb.NewRouter(stmt.Addr, stmt.ID))
-					tracelog.ErrorLogger.PrintError(err)
-					return err
+					if err != nil {
+						cl.ReplyErr(err.Error())
+						tracelog.ErrorLogger.PrintError(err)
+						return err
+					}
+
+					return nil
 				case *spqrparser.KeyRange:
 					resp, err := d.db.ListRouters()
 					if err != nil {

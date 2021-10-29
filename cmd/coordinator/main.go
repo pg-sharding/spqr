@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := etcdqdb.NewEtcdQDB()
+		db, err := etcdqdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 		if err != nil {
 			tracelog.ErrorLogger.FatalError(err)
 			// exit

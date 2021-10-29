@@ -14,14 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	make \
 	ca-certificates \
 	gnupg \
-	openssl
+	openssl musl telnet host vim etcd-client
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-13 \
-    vim 
+    sudo postgresql-13 
 
 COPY ./docker/tests/bin/ /usr/local/bin/
 

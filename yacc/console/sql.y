@@ -9,26 +9,27 @@ package spqrparser
 // fields inside this union end up as the fields in a structure known
 // as ${PREFIX}SymType, of which a reference is passed to the lexer.
 %union {
-  empty         struct{}
-  statement     Statement
-  show          *Show
-  kr            *KeyRange
-  sh_col        *ShardingColumn
-  reg_router    *RegisterRouter
-  kill          *Kill
-  drop          *Drop
-  lock          *Lock
-  shutdown      *Shutdown
-  listen        *Listen
-  unlock        *Unlock
-  split         *SplitKeyRange
-  move          *MoveKeyRange
-  unite         *UniteKeyRange
-  str           string
-  byte          byte
-  bytes         []byte
-  int           int
-  bool          bool
+  empty                  struct{}
+  statement              Statement
+  show                   *Show
+  kr                     *KeyRange
+  sh_col                 *ShardingColumn
+  register_router        *RegisterRouter
+  unregister_router      *UnregisterRouter
+  kill                   *Kill
+  drop                   *Drop
+  lock                   *Lock
+  shutdown               *Shutdown
+  listen                 *Listen
+  unlock                 *Unlock
+  split                  *SplitKeyRange
+  move                   *MoveKeyRange
+  unite                  *UniteKeyRange
+  str                    string
+  byte                   byte
+  bytes                []byte
+  int                    int
+  bool                   bool
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -48,7 +49,7 @@ package spqrparser
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
 // routers
-%token <str> SHUTDOWN LISTEN REGISTER ROUTER
+%token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str>  SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
@@ -71,7 +72,8 @@ package spqrparser
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
 %type <unite> unite_key_range_stmt
-%type <reg_router> register_router_stmt
+%type <register_router> register_router_stmt
+%type <unregister_router> unregister_router_stmt
 
 %type <str> reserved_keyword
 %type <str> sharding_column_name
@@ -146,6 +148,10 @@ command:
        setParseTree(yylex, $1)
     }
     | register_router_stmt
+     {
+        setParseTree(yylex, $1)
+     }
+    | unregister_router_stmt
      {
         setParseTree(yylex, $1)
      }
@@ -319,6 +325,13 @@ register_router_stmt:
     {
         $$ = &RegisterRouter{Addr: $3, ID: $4}
     }
+
+unregister_router_stmt:
+    UNREGISTER ROUTER router_id
+    {
+        $$ = &UnregisterRouter{ID: $3}
+    }
+
 
 %%
 

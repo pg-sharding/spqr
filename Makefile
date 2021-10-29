@@ -6,6 +6,9 @@ proto-deps:
 	go get -u github.com/golang/protobuf/protoc-gen-go
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
+yacc-deps:
+	go get -u golang.org/x/tools/cmd/goyacc
+
 deps:
 	go mod download
 
@@ -43,15 +46,15 @@ build_images:
 	docker-compose build spqrbase shardbase
 
 test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 client
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 qdb01 client 
 
 stress: build_images
-	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
+	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
 
 run: build_images
-	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2
+	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
