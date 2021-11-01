@@ -1,6 +1,5 @@
 package kr
 
-
 type SplitKeyRange struct {
 	Bound    KeyRangeBound
 	SourceID string

@@ -54,7 +54,7 @@ func (l LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.S
 }
 
 func (l LocalQrouterServer) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
-	err := l.qr.AddShardingColumn(request.Colname[0])
+	err := l.qr.AddShardingRule(request.Colname[0])
 
 	if err != nil {
 		return nil, err

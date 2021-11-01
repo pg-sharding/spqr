@@ -2,7 +2,6 @@ package qrouter
 
 import (
 	"math/rand"
-	"sync"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -15,20 +14,24 @@ import (
 )
 
 type ProxyRouter struct {
+	Rules []*ShardingRule
+
 	ColumnMapping map[string]struct{}
 
 	LocalTables map[string]struct{}
 
+	// keyRange
 	Ranges map[string]*kr.KeyRange
 
+	// shards
 	DataShardCfgs  map[string]*config.ShardCfg
 	WorldShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
 }
 
-func (qr *ProxyRouter) ListShardingColumn(col string) error {
-	panic("implement me")
+func (qr *ProxyRouter) ListShardingRules() []*ShardingRule {
+	return qr.Rules
 }
 
 func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
@@ -96,6 +99,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
+		Rules:          []*ShardingRule{},
 	}, nil
 }
 
@@ -104,28 +108,27 @@ func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio
 }
 
 func (qr *ProxyRouter) Unite(req *kr.UniteKeyRange) error {
-	var krr *qdb.KeyRange
-	var krl *qdb.KeyRange
+	var krright *qdb.KeyRange
+	var krleft *qdb.KeyRange
 	var err error
 
-	if krl, err = qr.qdb.Lock(req.KeyRangeIDLeft); err != nil {
+	if krleft, err = qr.qdb.Lock(req.KeyRangeIDLeft); err != nil {
 		return err
 	}
 	defer qr.qdb.UnLock(req.KeyRangeIDLeft)
 
-	if krl, err = qr.qdb.Lock(req.KeyRangeIDRight); err != nil {
+	if krleft, err = qr.qdb.Lock(req.KeyRangeIDRight); err != nil {
 		return err
 	}
 	defer qr.qdb.UnLock(req.KeyRangeIDRight)
 
-
-	if err = qr.qdb.DropKeyRange(krl); err != nil {
+	if err = qr.qdb.DropKeyRange(krleft); err != nil {
 		return err
 	}
 
-	krr.From = krl.From
+	krright.From = krleft.From
 
-	return qr.qdb.Update(krr)
+	return qr.qdb.Update(krright)
 }
 
 func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
@@ -154,7 +157,7 @@ func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
 	return nil
 }
 
-func (qr *ProxyRouter) Lock(krid string) (*qdb.KeyRange, error) {
+func (qr *ProxyRouter) Lock(krid string) (*kr.KeyRange, error) {
 	var keyRange *kr.KeyRange
 	var ok bool
 
@@ -162,7 +165,11 @@ func (qr *ProxyRouter) Lock(krid string) (*qdb.KeyRange, error) {
 		return nil, errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.Lock(keyRange.ID)
+	keyRangeDB, err := qr.qdb.Lock(keyRange.ID)
+	if err != nil {
+		return nil, err
+	}
+	return kr.KeyRangeFromSQL(keyRangeDB), nil
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
@@ -206,8 +213,11 @@ func (qr *ProxyRouter) KeyRanges() []*kr.KeyRange {
 	return ret
 }
 
-func (qr *ProxyRouter) AddShardingColumn(col string) error {
-	qr.ColumnMapping[col] = struct{}{}
+func (qr *ProxyRouter) AddShardingRule(rule *ShardingRule) error {
+	if len(rule.colunms) != 0 {
+		return xerrors.New("on;y single column sharding rules are supported for now")
+	}
+	qr.ColumnMapping[rule.colunms[0]] = struct{}{}
 	return nil
 }
 

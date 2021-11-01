@@ -82,7 +82,7 @@ func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyR
 
 func (c *keyRangeServiceClient) AddShardingColumn(ctx context.Context, in *AddShardingColumnRequest, opts ...grpc.CallOption) (*AddShardingColumnReply, error) {
 	out := new(AddShardingColumnReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddShardingColumn", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddShardingRule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitK
 	return nil, status.Errorf(codes.Unimplemented, "method SplitKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) AddShardingColumn(context.Context, *AddShardingColumnRequest) (*AddShardingColumnReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddShardingColumn not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method AddShardingRule not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) AddLocalTable(context.Context, *AddLocalTableRequest) (*AddLocalTableReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddLocalTable not implemented")
@@ -250,7 +250,7 @@ func _KeyRangeService_AddShardingColumn_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/AddShardingColumn",
+		FullMethod: "/yandex.spqr.KeyRangeService/AddShardingRule",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).AddShardingColumn(ctx, req.(*AddShardingColumnRequest))
@@ -304,7 +304,7 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyRangeService_SplitKeyRange_Handler,
 		},
 		{
-			MethodName: "AddShardingColumn",
+			MethodName: "AddShardingRule",
 			Handler:    _KeyRangeService_AddShardingColumn_Handler,
 		},
 		{

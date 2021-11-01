@@ -106,7 +106,7 @@ func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingCol
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-	err := c.Qrouter.AddShardingColumn(stmt.ColName)
+	err := c.Qrouter.AddShardingRule(qrouter.NewShardingRule([]string{stmt.ColName}))
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -134,7 +134,11 @@ func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingCol
 }
 
 func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRange) error {
-	if err := c.Qrouter.Split(splitReq); err != nil {
+	if err := c.Qrouter.Split(&kr.SplitKeyRange{
+		Bound:    splitReq.Border,
+		SourceID: splitReq.KeyRangeFromID,
+		Krid:     splitReq.KeyRangeID,
+	}); err != nil {
 		return err
 	}
 
@@ -166,8 +170,9 @@ func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRan
 }
 
 func (c *Local) LockKeyRange(cl client.Client, krid string) error {
-	tracelog.InfoLogger.Printf("received lock key range req for id %v", krid)
-	if err := c.Qrouter.Lock(krid); err != nil {
+	tracelog.InfoLogger.Printf("received lock key range request for id %v", krid)
+
+	if _, err := c.Qrouter.Lock(krid); err != nil {
 		return err
 	}
 
@@ -184,7 +189,11 @@ func (c *Local) LockKeyRange(cl client.Client, krid string) error {
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("lock key range with id %v", krid))}},
+		&pgproto3.DataRow{Values: [][]byte{
+			[]byte(
+				fmt.Sprintf("lock key range with id %v", krid)),
+		},
+		},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -361,6 +370,35 @@ func (c *Local) Shards(cl client.Client) error {
 	return nil
 }
 
+func (c *Local) ShardingColumns(cl client.Client) error {
+	tracelog.InfoLogger.Printf("listing sharding columns")
+
+	for _, rule := range c.Qrouter.ListShardingRules() {
+		if err := cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{[]byte(fmt.Sprintf("colmns-match sharding rule with colmn set: %+v", rule.Columns()))},
+		}); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	if err := cl.Send(&pgproto3.DataRow{
+		Values: [][]byte{[]byte(fmt.Sprintf("local node"))},
+	}); err != nil {
+		tracelog.InfoLogger.Print(err)
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	return nil
+}
+
 func (c *Local) ProcessQuery(q string, cl client.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
@@ -481,8 +519,4 @@ func (c *Local) Serve(cl client.Client) error {
 			tracelog.InfoLogger.Printf("got unexpected postgresql proto message with type %T", v)
 		}
 	}
-}
-
-func (c *Local) ShardingColumns(cl client.Client) error {
-
 }

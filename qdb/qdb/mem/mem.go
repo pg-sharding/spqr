@@ -69,7 +69,6 @@ type QrouterDBMem struct {
 	krWaiters map[string]*WaitPool
 }
 
-
 func (q *QrouterDBMem) DropKeyRange(krl *qdb.KeyRange) error {
 	panic("implement me")
 }

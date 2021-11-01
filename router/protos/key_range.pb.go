@@ -913,14 +913,14 @@ var file_protos_key_range_proto_depIdxs = []int32{
 	7,  // 6: yandex.spqr.KeyRangeService.AddKeyRange:input_type -> yandex.spqr.AddKeyRangeRequest
 	13, // 7: yandex.spqr.KeyRangeService.UnlockKeyRange:input_type -> yandex.spqr.UnlockKeyRangeRequest
 	9,  // 8: yandex.spqr.KeyRangeService.SplitKeyRange:input_type -> yandex.spqr.SplitKeyRangeRequest
-	4,  // 9: yandex.spqr.KeyRangeService.AddShardingColumn:input_type -> yandex.spqr.AddShardingColumnRequest
+	4,  // 9: yandex.spqr.KeyRangeService.AddShardingRule:input_type -> yandex.spqr.AddShardingColumnRequest
 	3,  // 10: yandex.spqr.KeyRangeService.AddLocalTable:input_type -> yandex.spqr.AddLocalTableRequest
 	15, // 11: yandex.spqr.KeyRangeService.ListKeyRange:output_type -> yandex.spqr.KeyRangeReply
 	12, // 12: yandex.spqr.KeyRangeService.LockKeyRange:output_type -> yandex.spqr.LockKeyRangeReply
 	8,  // 13: yandex.spqr.KeyRangeService.AddKeyRange:output_type -> yandex.spqr.AddKeyRangeReply
 	14, // 14: yandex.spqr.KeyRangeService.UnlockKeyRange:output_type -> yandex.spqr.UnlockKeyRangeReply
 	10, // 15: yandex.spqr.KeyRangeService.SplitKeyRange:output_type -> yandex.spqr.SplitKeyRangeReply
-	1,  // 16: yandex.spqr.KeyRangeService.AddShardingColumn:output_type -> yandex.spqr.AddShardingColumnReply
+	1,  // 16: yandex.spqr.KeyRangeService.AddShardingRule:output_type -> yandex.spqr.AddShardingColumnReply
 	2,  // 17: yandex.spqr.KeyRangeService.AddLocalTable:output_type -> yandex.spqr.AddLocalTableReply
 	11, // [11:18] is the sub-list for method output_type
 	4,  // [4:11] is the sub-list for method input_type

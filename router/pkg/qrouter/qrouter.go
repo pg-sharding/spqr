@@ -35,26 +35,40 @@ type WolrdRouteState struct {
 	RoutingState
 }
 
+type ShardingRule struct {
+	colunms []string
+}
+
+// local table sharding rule -> route to world
+
+func NewShardingRule(cols []string) *ShardingRule {
+	return &ShardingRule{
+		colunms: cols,
+	}
+}
+
+func (s *ShardingRule) Columns() []string {
+	return s.colunms
+}
+
 type Qrouter interface {
 	kr.KeyRangeManager
 
 	Route(q string) (RoutingState, error)
 
-	//
-	AddShardingColumn(col string) error
-	ListShardingColumn(col string) error
+	// sharding rules
+	AddShardingRule(shrule *ShardingRule) error
+	ListShardingRules() []*ShardingRule
 	AddLocalTable(tname string) error
 
 	// krs
-
 	Shards() []string
 	WorldShards() []string
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
-
-	Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
+	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 	WorldShardsRoutes() []ShardRoute
 }
 

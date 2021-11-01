@@ -78,13 +78,13 @@ type UnregisterRouter struct {
 
 // The frollowing constants represent SHOW statements.
 const (
-	ShowDatabasesStr   = "databases"
-	ShowShardsStr      = "shards"
-	ShowShardingColumns      = "sharding_columns"
-	ShowKeyRangesStr   = "key_ranges"
-	KillClientsStr     = "clients"
-	ShowPoolsStr       = "pools"
-	ShowUnsupportedStr = "unsupported"
+	ShowDatabasesStr    = "databases"
+	ShowShardsStr       = "shards"
+	ShowShardingColumns = "sharding_columns"
+	ShowKeyRangesStr    = "key_ranges"
+	KillClientsStr      = "clients"
+	ShowPoolsStr        = "pools"
+	ShowUnsupportedStr  = "unsupported"
 )
 
 // Statement represents a statement.
