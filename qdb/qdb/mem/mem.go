@@ -60,6 +60,8 @@ func (wg *WaitPool) Publish(msg interface{}) {
 }
 
 type QrouterDBMem struct {
+	qdb.QrouterDB
+
 	mu   sync.Mutex
 	txmu sync.Mutex
 
@@ -67,18 +69,6 @@ type QrouterDBMem struct {
 	krs  map[string]*qdb.KeyRange
 
 	krWaiters map[string]*WaitPool
-}
-
-func (q *QrouterDBMem) DropKeyRange(krl *qdb.KeyRange) error {
-	panic("implement me")
-}
-
-func (q *QrouterDBMem) ListRouters() ([]*qdb.Router, error) {
-	panic("implement me")
-}
-
-func (q *QrouterDBMem) AddRouter(r *qdb.Router) error {
-	panic("implement me")
 }
 
 func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {

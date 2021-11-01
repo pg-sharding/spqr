@@ -15,4 +15,3 @@ func NewShardingRule(cols []string) *ShardingRule {
 func (s *ShardingRule) Columns() []string {
 	return s.colunms
 }
-

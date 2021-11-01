@@ -1,5 +1,9 @@
 package qdb
 
+import (
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
+)
+
 type QrouterDB interface {
 	Lock(keyRangeID string) (*KeyRange, error)
 	UnLock(keyRangeID string) error
@@ -16,4 +20,5 @@ type QrouterDB interface {
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
 	ListRouters() ([]*Router, error)
 	DropKeyRange(krl *KeyRange) error
+	ListShardingRules() ([]*shrule.ShardingRule, error)
 }

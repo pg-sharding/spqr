@@ -18,7 +18,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardingRulesServiceClient interface {
-	AddShardingColumn(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
 }
 
 type shardingRulesServiceClient struct {
@@ -29,9 +30,18 @@ func NewShardingRulesServiceClient(cc grpc.ClientConnInterface) ShardingRulesSer
 	return &shardingRulesServiceClient{cc}
 }
 
-func (c *shardingRulesServiceClient) AddShardingColumn(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
+func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
 	out := new(AddShardingRuleReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/AddShardingColumn", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/AddShardingRules", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
+	out := new(AddShardingRuleReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/ListShardingRules", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +52,8 @@ func (c *shardingRulesServiceClient) AddShardingColumn(ctx context.Context, in *
 // All implementations must embed UnimplementedShardingRulesServiceServer
 // for forward compatibility
 type ShardingRulesServiceServer interface {
-	AddShardingColumn(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	ListShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
 	mustEmbedUnimplementedShardingRulesServiceServer()
 }
 
@@ -50,8 +61,11 @@ type ShardingRulesServiceServer interface {
 type UnimplementedShardingRulesServiceServer struct {
 }
 
-func (UnimplementedShardingRulesServiceServer) AddShardingColumn(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddShardingColumn not implemented")
+func (UnimplementedShardingRulesServiceServer) AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddShardingRules not implemented")
+}
+func (UnimplementedShardingRulesServiceServer) ListShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListShardingRules not implemented")
 }
 func (UnimplementedShardingRulesServiceServer) mustEmbedUnimplementedShardingRulesServiceServer() {}
 
@@ -66,20 +80,38 @@ func RegisterShardingRulesServiceServer(s grpc.ServiceRegistrar, srv ShardingRul
 	s.RegisterService(&ShardingRulesService_ServiceDesc, srv)
 }
 
-func _ShardingRulesService_AddShardingColumn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ShardingRulesService_AddShardingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddShardingRuleRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ShardingRulesServiceServer).AddShardingColumn(ctx, in)
+		return srv.(ShardingRulesServiceServer).AddShardingRules(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardingRulesService/AddShardingColumn",
+		FullMethod: "/yandex.spqr.ShardingRulesService/AddShardingRules",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShardingRulesServiceServer).AddShardingColumn(ctx, req.(*AddShardingRuleRequest))
+		return srv.(ShardingRulesServiceServer).AddShardingRules(ctx, req.(*AddShardingRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ShardingRulesService_ListShardingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddShardingRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShardingRulesServiceServer).ListShardingRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.ShardingRulesService/ListShardingRules",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShardingRulesServiceServer).ListShardingRules(ctx, req.(*AddShardingRuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -92,8 +124,12 @@ var ShardingRulesService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ShardingRulesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "AddShardingColumn",
-			Handler:    _ShardingRulesService_AddShardingColumn_Handler,
+			MethodName: "AddShardingRules",
+			Handler:    _ShardingRulesService_AddShardingRules_Handler,
+		},
+		{
+			MethodName: "ListShardingRules",
+			Handler:    _ShardingRulesService_ListShardingRules_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -10,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
@@ -46,6 +46,10 @@ type qdbCoordinator struct {
 	db qdb.QrouterDB
 }
 
+func (d *qdbCoordinator) ListShardingRules() ([]*shrule.ShardingRule, error) {
+	return d.db.ListShardingRules()
+}
+
 func (d *qdbCoordinator) KeyRanges() []*kr.KeyRange {
 	panic("implement me")
 }
@@ -80,9 +84,9 @@ func (d *qdbCoordinator) AddShardingRule(rule *shrule.ShardingRule) error {
 			return err
 		}
 
-		cl := routerproto.NewShardingKeyServiceClient(cc)
-		resp, err := cl.AddShardingKey(context.TODO(), &routerproto.AddShardingRuleRequest{
-			Rules:
+		cl := routerproto.NewShardingRulesServiceClient(cc)
+		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
+			Rules: []*routerproto.ShardingRule{{Columns: rule.Columns()}},
 		})
 
 		if err != nil {
@@ -198,7 +202,7 @@ func (d *qdbCoordinator) ProcClient(netconn net.Conn) error {
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
-					err := d.AddShardingRule(stmt.ColName)
+					err := d.AddShardingRule(shrule.NewShardingRule([]string{stmt.ColName}))
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)

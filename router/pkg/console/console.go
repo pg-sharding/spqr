@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -106,7 +107,7 @@ func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingCol
 
 	tracelog.InfoLogger.Printf("received create column request %s", stmt.ColName)
 
-	err := c.Qrouter.AddShardingRule(qrouter.NewShardingRule([]string{stmt.ColName}))
+	err := c.Qrouter.AddShardingRule(shrule.NewShardingRule([]string{stmt.ColName}))
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{

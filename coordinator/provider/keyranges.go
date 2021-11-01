@@ -2,46 +2,54 @@ package provider
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
-type KeyRangeService struct {
+type CoordinatorService struct {
 	protos.UnimplementedKeyRangeServiceServer
+	protos.UnimplementedShardingRulesServiceServer
 
 	impl coordinator.Coordinator
 }
 
-func (c KeyRangeService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
+func (c CoordinatorService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+
+	for _, rule := range request.Rules {
+		err := c.impl.AddShardingRule(shrule.NewShardingRule(rule.Columns))
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &protos.AddShardingRuleReply{}, nil
+}
+
+func (c CoordinatorService) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+	panic("implement me")
+}
+
+func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
+	panic("implement me")
+}
+
+func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
 	_, err := c.impl.Lock(request.Krid)
 	return nil, err
 }
 
-func (c KeyRangeService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
+func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
 	err := c.impl.UnLock(request.Krid)
 	return nil, err
 }
-func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
+func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
 	panic("implement me")
 }
 
-func (c KeyRangeService) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
-	err := c.impl.AddShardingRule(shrule.NewShardingRule(request.Colname))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &protos.AddShardingColumnReply{}, nil
-}
-
-func (c KeyRangeService) AddLocalTable(ctx context.Context, request *protos.AddLocalTableRequest) (*protos.AddLocalTableReply, error) {
-	panic("implement me")
-}
-
-func (c KeyRangeService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
 	krs := []*protos.KeyRange{
 		{
@@ -55,10 +63,11 @@ func (c KeyRangeService) ListKeyRange(ctx context.Context, request *protos.ListK
 	}, nil
 }
 
-var _ protos.KeyRangeServiceServer = KeyRangeService{}
+var _ protos.KeyRangeServiceServer = CoordinatorService{}
+var _ protos.ShardingRulesServiceServer = CoordinatorService{}
 
 func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
-	return &KeyRangeService{
+	return &CoordinatorService{
 		impl: impl,
 	}
 }

@@ -1,12 +1,12 @@
 package qrouter
 
 import (
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/qdb/qdb/mem"
 	"github.com/pkg/errors"

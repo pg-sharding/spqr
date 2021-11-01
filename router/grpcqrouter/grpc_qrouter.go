@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	protos "github.com/pg-sharding/spqr/router/protos"
 	"github.com/wal-g/tracelog"
@@ -12,7 +13,25 @@ import (
 
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
+	protos.UnimplementedShardingRulesServiceServer
 	qr qrouter.Qrouter
+}
+
+func (l LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+
+	for _, rule := range request.Rules {
+		err := l.qr.AddShardingRule(shrule.NewShardingRule(rule.Columns))
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &protos.AddShardingRuleReply{}, nil
+}
+
+func (l LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+	panic("implement me")
 }
 
 func (l LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
@@ -53,26 +72,6 @@ func (l LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.S
 	panic("implement me")
 }
 
-func (l LocalQrouterServer) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
-	err := l.qr.AddShardingRule(request.Colname[0])
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &protos.AddShardingColumnReply{}, nil
-}
-
-func (l LocalQrouterServer) AddLocalTable(ctx context.Context, request *protos.AddLocalTableRequest) (*protos.AddLocalTableReply, error) {
-	err := l.qr.AddLocalTable(request.Tname)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &protos.AddLocalTableReply{}, nil
-}
-
 func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {
 
 	reflection.Register(server)
@@ -85,3 +84,4 @@ func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {
 }
 
 var _ protos.KeyRangeServiceServer = LocalQrouterServer{}
+var _ protos.ShardingRulesServiceServer = LocalQrouterServer{}

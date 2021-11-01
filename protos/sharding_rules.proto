@@ -5,17 +5,26 @@ package yandex.spqr;
 option go_package = "yandex/spqr/proto";
 
 
-message AddShardingRuleReply {
-}
-
 message ShardingRule {
-  repeated string colname = 1;
+  repeated string columns = 1;
 }
 
 message AddShardingRuleRequest {
   repeated ShardingRule rules = 1;
 }
 
+message AddShardingRuleReply {
+}
+
+message ListShardingRuleRequest {
+}
+
+message ListShardingRuleReply {
+  repeated ShardingRule rules = 1;
+}
+
+
 service ShardingRulesService {
-  rpc AddShardingColumn(AddShardingRuleRequest) returns (AddShardingRuleReply) {}
+  rpc AddShardingRules(AddShardingRuleRequest) returns (AddShardingRuleReply) {}
+  rpc ListShardingRules(AddShardingRuleRequest) returns (AddShardingRuleReply) {}
 }

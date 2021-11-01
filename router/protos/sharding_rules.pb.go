@@ -20,56 +20,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type AddShardingRuleReply struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-}
-
-func (x *AddShardingRuleReply) Reset() {
-	*x = AddShardingRuleReply{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_sharding_rules_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *AddShardingRuleReply) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AddShardingRuleReply) ProtoMessage() {}
-
-func (x *AddShardingRuleReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_sharding_rules_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AddShardingRuleReply.ProtoReflect.Descriptor instead.
-func (*AddShardingRuleReply) Descriptor() ([]byte, []int) {
-	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{0}
-}
-
 type ShardingRule struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Colname []string `protobuf:"bytes,1,rep,name=colname,proto3" json:"colname,omitempty"`
+	Columns []string `protobuf:"bytes,1,rep,name=columns,proto3" json:"columns,omitempty"`
 }
 
 func (x *ShardingRule) Reset() {
 	*x = ShardingRule{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_sharding_rules_proto_msgTypes[1]
+		mi := &file_protos_sharding_rules_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -82,7 +44,7 @@ func (x *ShardingRule) String() string {
 func (*ShardingRule) ProtoMessage() {}
 
 func (x *ShardingRule) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_sharding_rules_proto_msgTypes[1]
+	mi := &file_protos_sharding_rules_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -95,12 +57,12 @@ func (x *ShardingRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShardingRule.ProtoReflect.Descriptor instead.
 func (*ShardingRule) Descriptor() ([]byte, []int) {
-	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{1}
+	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ShardingRule) GetColname() []string {
+func (x *ShardingRule) GetColumns() []string {
 	if x != nil {
-		return x.Colname
+		return x.Columns
 	}
 	return nil
 }
@@ -116,7 +78,7 @@ type AddShardingRuleRequest struct {
 func (x *AddShardingRuleRequest) Reset() {
 	*x = AddShardingRuleRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_sharding_rules_proto_msgTypes[2]
+		mi := &file_protos_sharding_rules_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -129,7 +91,7 @@ func (x *AddShardingRuleRequest) String() string {
 func (*AddShardingRuleRequest) ProtoMessage() {}
 
 func (x *AddShardingRuleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_sharding_rules_proto_msgTypes[2]
+	mi := &file_protos_sharding_rules_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -142,10 +104,133 @@ func (x *AddShardingRuleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddShardingRuleRequest.ProtoReflect.Descriptor instead.
 func (*AddShardingRuleRequest) Descriptor() ([]byte, []int) {
-	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{2}
+	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AddShardingRuleRequest) GetRules() []*ShardingRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+type AddShardingRuleReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *AddShardingRuleReply) Reset() {
+	*x = AddShardingRuleReply{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_protos_sharding_rules_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *AddShardingRuleReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddShardingRuleReply) ProtoMessage() {}
+
+func (x *AddShardingRuleReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_sharding_rules_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddShardingRuleReply.ProtoReflect.Descriptor instead.
+func (*AddShardingRuleReply) Descriptor() ([]byte, []int) {
+	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{2}
+}
+
+type ListShardingRuleRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *ListShardingRuleRequest) Reset() {
+	*x = ListShardingRuleRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_protos_sharding_rules_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListShardingRuleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListShardingRuleRequest) ProtoMessage() {}
+
+func (x *ListShardingRuleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_sharding_rules_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListShardingRuleRequest.ProtoReflect.Descriptor instead.
+func (*ListShardingRuleRequest) Descriptor() ([]byte, []int) {
+	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{3}
+}
+
+type ListShardingRuleReply struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Rules []*ShardingRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+}
+
+func (x *ListShardingRuleReply) Reset() {
+	*x = ListShardingRuleReply{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_protos_sharding_rules_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ListShardingRuleReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListShardingRuleReply) ProtoMessage() {}
+
+func (x *ListShardingRuleReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_sharding_rules_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListShardingRuleReply.ProtoReflect.Descriptor instead.
+func (*ListShardingRuleReply) Descriptor() ([]byte, []int) {
+	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListShardingRuleReply) GetRules() []*ShardingRule {
 	if x != nil {
 		return x.Rules
 	}
@@ -157,25 +242,37 @@ var File_protos_sharding_rules_proto protoreflect.FileDescriptor
 var file_protos_sharding_rules_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f, 0x73, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e,
 	0x67, 0x5f, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x0b, 0x79,
-	0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x22, 0x16, 0x0a, 0x14, 0x41, 0x64,
-	0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x22, 0x28, 0x0a, 0x0c, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75,
-	0x6c, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6c, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20,
-	0x03, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6c, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x49, 0x0a, 0x16,
-	0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x2f, 0x0a, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x18,
-	0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73,
-	0x70, 0x71, 0x72, 0x2e, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65,
-	0x52, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x32, 0x75, 0x0a, 0x14, 0x53, 0x68, 0x61, 0x72, 0x64,
-	0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12,
-	0x5d, 0x0a, 0x11, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x43, 0x6f,
-	0x6c, 0x75, 0x6d, 0x6e, 0x12, 0x23, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70,
-	0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75,
-	0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x79, 0x61, 0x6e, 0x64,
+	0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x22, 0x28, 0x0a, 0x0c, 0x53, 0x68,
+	0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f,
+	0x6c, 0x75, 0x6d, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6c,
+	0x75, 0x6d, 0x6e, 0x73, 0x22, 0x49, 0x0a, 0x16, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64,
+	0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x2f,
+	0x0a, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e,
+	0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x53, 0x68, 0x61, 0x72,
+	0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x22,
+	0x16, 0x0a, 0x14, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75,
+	0x6c, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x19, 0x0a, 0x17, 0x4c, 0x69, 0x73, 0x74, 0x53,
+	0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x22, 0x48, 0x0a, 0x15, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69,
+	0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x2f, 0x0a, 0x05, 0x72,
+	0x75, 0x6c, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x79, 0x61, 0x6e,
+	0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e,
+	0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x05, 0x72, 0x75, 0x6c, 0x65, 0x73, 0x32, 0xd3, 0x01, 0x0a,
+	0x14, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x53, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x5c, 0x0a, 0x10, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72,
+	0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x12, 0x23, 0x2e, 0x79, 0x61, 0x6e, 0x64,
 	0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64,
-	0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x22, 0x00, 0x42, 0x13,
-	0x5a, 0x11, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2f, 0x73, 0x70, 0x71, 0x72, 0x2f, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21,
+	0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64,
+	0x53, 0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x70, 0x6c,
+	0x79, 0x22, 0x00, 0x12, 0x5d, 0x0a, 0x11, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x68, 0x61, 0x72, 0x64,
+	0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x73, 0x12, 0x23, 0x2e, 0x79, 0x61, 0x6e, 0x64, 0x65,
+	0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53, 0x68, 0x61, 0x72, 0x64, 0x69,
+	0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e,
+	0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2e, 0x73, 0x70, 0x71, 0x72, 0x2e, 0x41, 0x64, 0x64, 0x53,
+	0x68, 0x61, 0x72, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x75, 0x6c, 0x65, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x22, 0x00, 0x42, 0x13, 0x5a, 0x11, 0x79, 0x61, 0x6e, 0x64, 0x65, 0x78, 0x2f, 0x73, 0x70, 0x71,
+	0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -190,21 +287,26 @@ func file_protos_sharding_rules_proto_rawDescGZIP() []byte {
 	return file_protos_sharding_rules_proto_rawDescData
 }
 
-var file_protos_sharding_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_protos_sharding_rules_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_protos_sharding_rules_proto_goTypes = []interface{}{
-	(*AddShardingRuleReply)(nil),   // 0: yandex.spqr.AddShardingRuleReply
-	(*ShardingRule)(nil),           // 1: yandex.spqr.ShardingRule
-	(*AddShardingRuleRequest)(nil), // 2: yandex.spqr.AddShardingRuleRequest
+	(*ShardingRule)(nil),            // 0: yandex.spqr.ShardingRule
+	(*AddShardingRuleRequest)(nil),  // 1: yandex.spqr.AddShardingRuleRequest
+	(*AddShardingRuleReply)(nil),    // 2: yandex.spqr.AddShardingRuleReply
+	(*ListShardingRuleRequest)(nil), // 3: yandex.spqr.ListShardingRuleRequest
+	(*ListShardingRuleReply)(nil),   // 4: yandex.spqr.ListShardingRuleReply
 }
 var file_protos_sharding_rules_proto_depIdxs = []int32{
-	1, // 0: yandex.spqr.AddShardingRuleRequest.rules:type_name -> yandex.spqr.ShardingRule
-	2, // 1: yandex.spqr.ShardingRulesService.AddShardingColumn:input_type -> yandex.spqr.AddShardingRuleRequest
-	0, // 2: yandex.spqr.ShardingRulesService.AddShardingColumn:output_type -> yandex.spqr.AddShardingRuleReply
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // 0: yandex.spqr.AddShardingRuleRequest.rules:type_name -> yandex.spqr.ShardingRule
+	0, // 1: yandex.spqr.ListShardingRuleReply.rules:type_name -> yandex.spqr.ShardingRule
+	1, // 2: yandex.spqr.ShardingRulesService.AddShardingRules:input_type -> yandex.spqr.AddShardingRuleRequest
+	1, // 3: yandex.spqr.ShardingRulesService.ListShardingRules:input_type -> yandex.spqr.AddShardingRuleRequest
+	2, // 4: yandex.spqr.ShardingRulesService.AddShardingRules:output_type -> yandex.spqr.AddShardingRuleReply
+	2, // 5: yandex.spqr.ShardingRulesService.ListShardingRules:output_type -> yandex.spqr.AddShardingRuleReply
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_protos_sharding_rules_proto_init() }
@@ -214,18 +316,6 @@ func file_protos_sharding_rules_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_protos_sharding_rules_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddShardingRuleReply); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_protos_sharding_rules_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ShardingRule); i {
 			case 0:
 				return &v.state
@@ -237,8 +327,44 @@ func file_protos_sharding_rules_proto_init() {
 				return nil
 			}
 		}
-		file_protos_sharding_rules_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_protos_sharding_rules_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AddShardingRuleRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_protos_sharding_rules_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddShardingRuleReply); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_protos_sharding_rules_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListShardingRuleRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_protos_sharding_rules_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListShardingRuleReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -256,7 +382,7 @@ func file_protos_sharding_rules_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_protos_sharding_rules_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

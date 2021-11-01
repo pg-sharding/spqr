@@ -52,6 +52,8 @@ func (n *notifier) nofity(msg interface{}) {
 }
 
 type EtcdQDB struct {
+	qdb.QrouterDB
+
 	cli *clientv3.Client
 
 	locks map[string]*notifier
@@ -146,18 +148,6 @@ func (q EtcdQDB) AddKeyRange(keyRange *qdb.KeyRange) error {
 	resp, err := q.cli.Put(context.TODO(), "/keyranges/"+keyRange.KeyRangeID, string(rawKeyRange))
 	tracelog.InfoLogger.Printf("put resp %v", resp)
 	return err
-}
-
-func (q EtcdQDB) UpdateKeyRange(keyRange *qdb.KeyRange) error {
-	panic("implement me")
-}
-
-func (q EtcdQDB) Begin() error {
-	panic("implement me")
-}
-
-func (q EtcdQDB) Commit() error {
-	panic("implement me")
 }
 
 func (q EtcdQDB) Check(kr *qdb.KeyRange) bool {
