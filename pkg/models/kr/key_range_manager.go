@@ -11,10 +11,6 @@ type UniteKeyRange struct {
 	KeyRangeIDRight string
 }
 
-//func (u *UniteKeyRange) ValidateUnite() bool {
-//
-//}
-
 type KeyRangeManager interface {
 	KeyRanges() []*KeyRange
 

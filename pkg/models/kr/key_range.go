@@ -37,7 +37,6 @@ func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	}
 }
 
-
 func KeyRangeFromSQL(kr *spqrparser.KeyRange) *KeyRange {
 	if kr == nil {
 		return nil

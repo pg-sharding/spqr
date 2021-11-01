@@ -2,13 +2,13 @@ package provider
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"

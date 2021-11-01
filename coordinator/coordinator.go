@@ -13,7 +13,6 @@ type Coordinator interface {
 
 	AddShardingColumn(col string) error
 
-
 	RegisterRouter(r *qdb.Router) error
 	RegisterWorld(w world.World) error
 
