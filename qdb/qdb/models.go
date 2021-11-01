@@ -6,10 +6,10 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	From       []byte
-	To         []byte
-	ShardID    string
-	KeyRangeID string
+	From       []byte `json:"from"`
+	To         []byte `json:"to"`
+	ShardID    string `json:"shard_id"`
+	KeyRangeID string `json:"key_range_id"`
 }
 type KeyRangeStatus string
 

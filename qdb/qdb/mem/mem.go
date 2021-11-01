@@ -96,7 +96,7 @@ func (q *QrouterDBMem) Commit() error {
 	return nil
 }
 
-func (q *QrouterDBMem) Add(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) AddKeyRange(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -110,7 +110,7 @@ func (q *QrouterDBMem) Add(keyRange *qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Update(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) UpdateKeyRange(keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

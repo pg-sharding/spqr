@@ -128,7 +128,7 @@ func (qr *ProxyRouter) Unite(req *kr.UniteKeyRange) error {
 
 	krright.From = krleft.From
 
-	return qr.qdb.Update(krright)
+	return qr.qdb.UpdateKeyRange(krright)
 }
 
 func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
@@ -147,9 +147,9 @@ func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
 		},
 	)
 
-	_ = qr.qdb.Add(krNew.ToSQL())
+	_ = qr.qdb.AddKeyRange(krNew.ToSQL())
 	krOld.UpperBound = req.Bound
-	_ = qr.qdb.Update(krOld.ToSQL())
+	_ = qr.qdb.UpdateKeyRange(krOld.ToSQL())
 
 	qr.Ranges[krOld.ID] = krOld
 	qr.Ranges[krNew.ID] = krNew

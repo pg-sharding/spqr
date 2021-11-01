@@ -2,7 +2,8 @@ package etcdqdb
 
 import (
 	"context"
-	"strings"
+	"encoding/json"
+	"path"
 
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/wal-g/tracelog"
@@ -56,8 +57,18 @@ type EtcdQDB struct {
 	locks map[string]*notifier
 }
 
+const keyRangesNamespace = "/keyranges"
+const routersRangesNamespace = "/routers"
+
+func (q EtcdQDB) DropKeyRange(keyRange *qdb.KeyRange) error {
+	resp, err := q.cli.Delete(context.TODO(), path.Join(keyRangesNamespace, keyRange.KeyRangeID))
+
+	tracelog.InfoLogger.Printf("delete resp %v", resp)
+	return err
+}
+
 func (q EtcdQDB) ListRouters() ([]*qdb.Router, error) {
-	resp, err := q.cli.Get(context.TODO(), "/routers/", clientv3.WithPrefix())
+	resp, err := q.cli.Get(context.TODO(), routersRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +77,11 @@ func (q EtcdQDB) ListRouters() ([]*qdb.Router, error) {
 	var ret []*qdb.Router
 
 	for _, e := range resp.Kvs {
+		_, keyRangeID := path.Split(string(e.Key))
 		ret = append(ret,
 			qdb.NewRouter(
 				string(e.Value),
-				strings.TrimPrefix(string(e.Key), "/routers/"),
+				keyRangeID,
 			),
 		)
 	}
@@ -107,32 +119,36 @@ func (q EtcdQDB) AddRouter(r *qdb.Router) error {
 	return err
 }
 
-func (q EtcdQDB) Lock(keyRange *qdb.KeyRange) error {
+func (q EtcdQDB) Lock(keyRangeID string) (*qdb.KeyRange, error) {
 	sess, err := concurrency.NewSession(q.cli)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	mu := concurrency.NewMutex(sess, keyspace)
 
 	go func(mutex *concurrency.Mutex) {
 		mutex.Unlock(context.TODO())
-		q.locks[keyRange.KeyRangeID].nofity(struct {
+		q.locks[keyRangeID].nofity(struct {
 		}{})
 	}(mu)
 
+	return nil, err
+}
+
+func (q EtcdQDB) UnLock(keyRange string) error {
+	panic("implement me")
+}
+
+func (q EtcdQDB) AddKeyRange(keyRange *qdb.KeyRange) error {
+	rawKeyRange, err := json.Marshal(keyRange)
+
+	resp, err := q.cli.Put(context.TODO(), "/keyranges/"+keyRange.KeyRangeID, string(rawKeyRange))
+	tracelog.InfoLogger.Printf("put resp %v", resp)
 	return err
 }
 
-func (q EtcdQDB) UnLock(keyRange *qdb.KeyRange) error {
-	panic("implement me")
-}
-
-func (q EtcdQDB) Add(keyRange *qdb.KeyRange) error {
-	panic("implement me")
-}
-
-func (q EtcdQDB) Update(keyRange *qdb.KeyRange) error {
+func (q EtcdQDB) UpdateKeyRange(keyRange *qdb.KeyRange) error {
 	panic("implement me")
 }
 

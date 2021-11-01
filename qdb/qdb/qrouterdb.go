@@ -4,8 +4,8 @@ type QrouterDB interface {
 	Lock(keyRangeID string) (*KeyRange, error)
 	UnLock(keyRangeID string) error
 
-	Add(keyRange *KeyRange) error
-	Update(keyRange *KeyRange) error
+	AddKeyRange(keyRange *KeyRange) error
+	UpdateKeyRange(keyRange *KeyRange) error
 
 	Begin() error
 	Commit() error
