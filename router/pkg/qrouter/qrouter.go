@@ -3,6 +3,7 @@ package qrouter
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
@@ -35,21 +36,6 @@ type WolrdRouteState struct {
 	RoutingState
 }
 
-type ShardingRule struct {
-	colunms []string
-}
-
-// local table sharding rule -> route to world
-
-func NewShardingRule(cols []string) *ShardingRule {
-	return &ShardingRule{
-		colunms: cols,
-	}
-}
-
-func (s *ShardingRule) Columns() []string {
-	return s.colunms
-}
 
 type Qrouter interface {
 	kr.KeyRangeManager
@@ -57,8 +43,9 @@ type Qrouter interface {
 	Route(q string) (RoutingState, error)
 
 	// sharding rules
-	AddShardingRule(shrule *ShardingRule) error
-	ListShardingRules() []*ShardingRule
+	AddShardingRule(shrule *shrule.ShardingRule) error
+	ListShardingRules() []*shrule.ShardingRule
+	// do not use
 	AddLocalTable(tname string) error
 
 	// krs

@@ -1,6 +1,7 @@
 package qrouter
 
 import (
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
@@ -14,7 +15,7 @@ import (
 )
 
 type ProxyRouter struct {
-	Rules []*ShardingRule
+	Rules []*shrule.ShardingRule
 
 	ColumnMapping map[string]struct{}
 
@@ -30,7 +31,7 @@ type ProxyRouter struct {
 	qdb qdb.QrouterDB
 }
 
-func (qr *ProxyRouter) ListShardingRules() []*ShardingRule {
+func (qr *ProxyRouter) ListShardingRules() []*shrule.ShardingRule {
 	return qr.Rules
 }
 
@@ -99,7 +100,7 @@ func NewProxyRouter() (*ProxyRouter, error) {
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
-		Rules:          []*ShardingRule{},
+		Rules:          []*shrule.ShardingRule{},
 	}, nil
 }
 
@@ -213,11 +214,11 @@ func (qr *ProxyRouter) KeyRanges() []*kr.KeyRange {
 	return ret
 }
 
-func (qr *ProxyRouter) AddShardingRule(rule *ShardingRule) error {
-	if len(rule.colunms) != 0 {
+func (qr *ProxyRouter) AddShardingRule(rule *shrule.ShardingRule) error {
+	if len(rule.Columns()) != 0 {
 		return xerrors.New("on;y single column sharding rules are supported for now")
 	}
-	qr.ColumnMapping[rule.colunms[0]] = struct{}{}
+	qr.ColumnMapping[rule.Columns()[0]] = struct{}{}
 	return nil
 }
 

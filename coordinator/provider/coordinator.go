@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -65,7 +66,7 @@ func (d *qdbCoordinator) RegisterWorld(w world.World) error {
 	panic("implement me")
 }
 
-func (d *qdbCoordinator) AddShardingColumn(col string) error {
+func (d *qdbCoordinator) AddShardingRule(rule *shrule.ShardingRule) error {
 	resp, err := d.db.ListRouters()
 	if err != nil {
 		return err
@@ -79,9 +80,9 @@ func (d *qdbCoordinator) AddShardingColumn(col string) error {
 			return err
 		}
 
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.AddShardingColumn(context.TODO(), &routerproto.AddShardingColumnRequest{
-			Colname: []string{col},
+		cl := routerproto.NewShardingKeyServiceClient(cc)
+		resp, err := cl.AddShardingKey(context.TODO(), &routerproto.AddShardingRuleRequest{
+			Rules:
 		})
 
 		if err != nil {
@@ -197,7 +198,7 @@ func (d *qdbCoordinator) ProcClient(netconn net.Conn) error {
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
-					err := d.AddShardingColumn(stmt.ColName)
+					err := d.AddShardingRule(stmt.ColName)
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/spqr/proto";
+
+
+message AddShardingRuleReply {
+}
+
+message ShardingRule {
+  repeated string colname = 1;
+}
+
+message AddShardingRuleRequest {
+  repeated ShardingRule rules = 1;
+}
+
+service ShardingRulesService {
+  rpc AddShardingColumn(AddShardingRuleRequest) returns (AddShardingRuleReply) {}
+}

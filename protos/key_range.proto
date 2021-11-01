@@ -10,24 +10,8 @@ service KeyRangeService {
   rpc AddKeyRange(AddKeyRangeRequest) returns (AddKeyRangeReply) {}
   rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (UnlockKeyRangeReply) {}
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (SplitKeyRangeReply) {}
-  rpc AddShardingColumn(AddShardingColumnRequest) returns (AddShardingColumnReply) {}
-  rpc AddLocalTable(AddLocalTableRequest) returns (AddLocalTableReply) {}
 }
 
-message AddShardingColumnReply {
-}
-
-message AddLocalTableReply {
-
-}
-
-message AddLocalTableRequest {
-  string tname = 1;
-}
-
-message AddShardingColumnRequest {
-  repeated string colname = 1;
-}
 
 enum KeyRangeStatus {
   LOCKED = 0;

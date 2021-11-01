@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	protos "github.com/pg-sharding/spqr/router/protos"
@@ -27,7 +28,7 @@ func (c KeyRangeService) SplitKeyRange(ctx context.Context, request *protos.Spli
 }
 
 func (c KeyRangeService) AddShardingColumn(ctx context.Context, request *protos.AddShardingColumnRequest) (*protos.AddShardingColumnReply, error) {
-	err := c.impl.AddShardingColumn(request.Colname[0])
+	err := c.impl.AddShardingRule(shrule.NewShardingRule(request.Colname))
 
 	if err != nil {
 		return nil, err
