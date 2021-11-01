@@ -15,7 +15,8 @@ type RouterCfg struct {
 	Addr          string `json:"addr" toml:"addr" yaml:"addr"`
 	ADMAddr       string `json:"adm_addr" toml:"adm_addr" yaml:"adm_addr"` // Console Addr
 	Proto         string `json:"proto" toml:"proto" yaml:"proto"`
-	DataFolder    string `json:"data_folder" toml:"data_folder" yaml:"data_folder"`
+	AutoConf      string `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
+	InitSQL       string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 
 	QRouterCfg   QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
 	ExecuterCfg  ExecuterCfg   `json:"executer" toml:"executer" yaml:"executer"`

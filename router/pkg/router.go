@@ -1,20 +1,16 @@
 package pkg
 
 import (
+	"context"
 	"crypto/tls"
-	"io"
 	"net"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/pkg/errors"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
-	jaegerlog "github.com/uber/jaeger-client-go/log"
-	"github.com/uber/jaeger-lib/metrics"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -46,7 +42,7 @@ func (r *RouterImpl) Addr() string {
 
 var _ Router = &RouterImpl{}
 
-func NewRouter() (*RouterImpl, error) {
+func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
@@ -70,6 +66,48 @@ func NewRouter() (*RouterImpl, error) {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
 
+	if err := initShards(rr, qr); err != nil {
+		tracelog.InfoLogger.PrintError(err)
+	}
+
+	stchan := make(chan struct{})
+	localConsole, err := console.NewConsole(frTLS, qr, stchan)
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
+		return nil, err
+	}
+
+	executer := NewExecuter(config.RouterConfig().ExecuterCfg)
+
+	for _, fname := range []string{
+		config.RouterConfig().InitSQL,
+		config.RouterConfig().AutoConf,
+	} {
+		queries, err := localConsole.Qlog.Recover(ctx, fname)
+		if err != nil {
+			tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
+			return nil, err
+		}
+
+		if err := executer.SPIexec(context.TODO(), localConsole, rrouter.NewFakeClient(), queries); err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+
+		tracelog.InfoLogger.Printf("Successfully init %d queries from %s", len(queries), fname)
+	}
+
+	return &RouterImpl{
+		Rrouter:     rr,
+		Qrouter:     qr,
+		AdmConsole:  localConsole,
+		SPIexecuter: executer,
+		stchan:      stchan,
+		frTLS:       frTLS,
+	}, nil
+}
+
+func initShards(rr rrouter.Rrouter, qr qrouter.Qrouter) error {
+
 	// data shards, world shard and sharding rules
 	for name, shard := range config.RouterConfig().RouterConfig.ShardMapping {
 
@@ -77,10 +115,10 @@ func NewRouter() (*RouterImpl, error) {
 		case config.WorldShard:
 
 			if err := rr.AddWorldShard(qdb.ShardKey{Name: name}); err != nil {
-				return nil, err
+				return err
 			}
 			if err := qr.AddWorldShard(name, shard); err != nil {
-				return nil, err
+				return err
 			}
 
 		case config.DataShard:
@@ -89,53 +127,19 @@ func NewRouter() (*RouterImpl, error) {
 		default:
 
 			if err := shard.InitShardTLS(); err != nil {
-				return nil, err
+				return err
 			}
 
 			if err := rr.AddDataShard(qdb.ShardKey{Name: name}); err != nil {
-				return nil, err
+				return err
 			}
 			if err := qr.AddDataShard(name, shard); err != nil {
-				return nil, err
+				return err
 			}
 		}
-
 	}
 
-	stchan := make(chan struct{})
-	cnsl, err := console.NewConsole(frTLS, qr, stchan)
-	if err != nil {
-		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
-		return nil, err
-	}
-
-	executer := NewExecuter(config.RouterConfig().ExecuterCfg)
-	if err := executer.SPIexec(cnsl, rrouter.NewFakeClient()); err != nil {
-		return nil, err
-	}
-
-	queries, err := cnsl.Qlog.Recover(config.RouterConfig().DataFolder)
-	if err != nil {
-		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
-		return nil, err
-	}
-
-	for _, query := range queries {
-		if err := cnsl.ProcessQuery(query, rrouter.NewFakeClient()); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
-		}
-	}
-
-	tracelog.InfoLogger.Printf("Successfully init %d queries", len(queries))
-
-	return &RouterImpl{
-		Rrouter:     rr,
-		Qrouter:     qr,
-		AdmConsole:  cnsl,
-		SPIexecuter: executer,
-		stchan:      stchan,
-		frTLS:       frTLS,
-	}, nil
+	return nil
 }
 
 func (r *RouterImpl) serv(netconn net.Conn) error {
@@ -195,52 +199,24 @@ func (r *RouterImpl) Run(listener net.Listener) error {
 	}
 }
 
-func (r *RouterImpl) initJaegerTracer() (io.Closer, error) {
-	cfg := jaegercfg.Configuration{
-		ServiceName: "worldmock",
-		Sampler: &jaegercfg.SamplerConfig{
-			Type:              "const",
-			Param:             1,
-			SamplingServerURL: config.RouterConfig().JaegerConfig.JaegerUrl,
-		},
-		Reporter: &jaegercfg.ReporterConfig{
-			LogSpans: false,
-		},
-		Gen128Bit: true,
-		Tags: []opentracing.Tag{
-			{Key: "span.kind", Value: "server"},
-		},
-	}
-
-	jLogger := jaegerlog.StdLogger //TODO: replace with tracelog logger
-	jMetricsFactory := metrics.NullFactory
-
-	// Initialize tracer with a logger and a metrics factory
-	return cfg.InitGlobalTracer(
-		"worldmock",
-		jaegercfg.Logger(jLogger),
-		jaegercfg.Metrics(jMetricsFactory),
-	)
-}
-
-func (r *RouterImpl) servAdm(netconn net.Conn) error {
-	cl := rrouter.NewPsqlClient(netconn)
+func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
+	cl := rrouter.NewPsqlClient(conn)
 
 	if err := cl.Init(r.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err
 	}
 
-	return r.AdmConsole.Serve(cl)
+	return r.AdmConsole.Serve(ctx, cl)
 }
 
-func (r *RouterImpl) RunAdm(listener net.Listener) error {
+func (r *RouterImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			return errors.Wrap(err, "RunAdm failed")
 		}
 		go func() {
-			if err := r.servAdm(conn); err != nil {
+			if err := r.servAdm(ctx, conn); err != nil {
 				tracelog.ErrorLogger.PrintError(err)
 			}
 		}()

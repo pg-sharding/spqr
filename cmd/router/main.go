@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -45,7 +46,11 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		spqr, err := router.NewRouter()
+		ctx, cancelCtx := context.WithCancel(context.Background())
+
+		defer cancelCtx()
+
+		spqr, err := router.NewRouter(ctx)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
@@ -56,21 +61,22 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcPG()
+
+			err := app.ProcPG(ctx)
 			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServHttp()
+			err := app.ServGrpc(ctx)
 			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcADM()
+			err := app.ProcADM(ctx)
 			tracelog.ErrorLogger.FatalOnError(err)
 			wg.Done()
 		}(wg)

@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
+	"net"
 
 	"github.com/jackc/pgproto3/v2"
 )
@@ -33,4 +35,8 @@ type Client interface {
 	Reset() error
 
 	Reply(msg string) error
+}
+
+type InteractRunner interface {
+	ProcClient(ctx context.Context, conn net.Conn) error
 }

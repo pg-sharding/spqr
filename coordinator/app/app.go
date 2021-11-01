@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net"
 	"sync"
 
@@ -13,16 +14,16 @@ import (
 )
 
 type App struct {
-	c coordinator.Coordinator
+	coordiantor coordinator.Coordinator
 }
 
 func NewApp(c coordinator.Coordinator) *App {
 	return &App{
-		c: c,
+		coordiantor: c,
 	}
 }
 
-func (a *App) Run() error {
+func (app *App) Run() error {
 
 	tracelog.InfoLogger.Printf("running coordinator app\n")
 
@@ -31,10 +32,10 @@ func (a *App) Run() error {
 	wg.Add(2)
 
 	go func(wg *sync.WaitGroup) {
-		tracelog.InfoLogger.PrintError(a.ServeGrpc(wg))
+		tracelog.InfoLogger.PrintError(app.ServeGrpc(wg))
 	}(wg)
 	go func(wg *sync.WaitGroup) {
-		tracelog.InfoLogger.PrintError(a.ServePsql(wg))
+		tracelog.InfoLogger.PrintError(app.ServePsql(wg))
 	}(wg)
 
 	wg.Wait()
@@ -42,7 +43,7 @@ func (a *App) Run() error {
 	return nil
 }
 
-func (a *App) ServePsql(wg *sync.WaitGroup) error {
+func (app *App) ServePsql(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
 
@@ -55,13 +56,13 @@ func (a *App) ServePsql(wg *sync.WaitGroup) error {
 	}
 
 	for {
-		c, err := listener.Accept()
+		conn, err := listener.Accept()
 		tracelog.ErrorLogger.PrintError(err)
-		_ = a.c.ProcClient(c)
+		_ = app.coordiantor.ProcClient(context.TODO(), conn)
 	}
 }
 
-func (a *App) ServeGrpc(wg *sync.WaitGroup) error {
+func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 
 	defer wg.Done()
 

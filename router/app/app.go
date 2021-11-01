@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net"
 
 	reuse "github.com/libp2p/go-reuseport"
@@ -21,7 +22,7 @@ func NewApp(sg *router2.RouterImpl) *App {
 	}
 }
 
-func (app *App) ProcPG() error {
+func (app *App) ProcPG(ctx context.Context) error {
 	proto, addr := config.RouterConfig().Proto, config.RouterConfig().Addr
 
 	listener, err := reuse.Listen(proto, addr)
@@ -34,7 +35,7 @@ func (app *App) ProcPG() error {
 	return app.spqr.Run(listener)
 }
 
-func (app *App) ProcADM() error {
+func (app *App) ProcADM(ctx context.Context) error {
 	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
 
 	listener, err := net.Listen(proto, admaddr)
@@ -44,10 +45,10 @@ func (app *App) ProcADM() error {
 	defer listener.Close()
 
 	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
-	return app.spqr.RunAdm(listener)
+	return app.spqr.RunAdm(ctx, listener)
 }
 
-func (app *App) ServHttp() error {
+func (app *App) ServGrpc(ctx context.Context) error {
 	serv := grpc.NewServer()
 	//shhttp.Register(serv)
 	//reflection.Register(serv)
@@ -59,6 +60,6 @@ func (app *App) ServHttp() error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("ServHttp listening %s by tcp", httpAddr)
+	tracelog.InfoLogger.Printf("ServGrpc listening %s by tcp", httpAddr)
 	return serv.Serve(listener)
 }

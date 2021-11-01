@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -15,7 +16,6 @@ import (
 	router "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
-	"github.com/pg-sharding/spqr/world"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -43,31 +43,13 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 }
 
 type qdbCoordinator struct {
+	client.InteractRunner
+	coordinator.Coordinator
 	db qdb.QrouterDB
 }
 
 func (d *qdbCoordinator) ListShardingRules() ([]*shrule.ShardingRule, error) {
 	return d.db.ListShardingRules()
-}
-
-func (d *qdbCoordinator) KeyRanges() []*kr.KeyRange {
-	panic("implement me")
-}
-
-func (d *qdbCoordinator) Lock(krid string) (*kr.KeyRange, error) {
-	panic("implement me")
-}
-
-func (d *qdbCoordinator) Split(req *kr.SplitKeyRange) error {
-	panic("implement me")
-}
-
-func (d *qdbCoordinator) Unite(req *kr.UniteKeyRange) error {
-	panic("implement me")
-}
-
-func (d *qdbCoordinator) RegisterWorld(w world.World) error {
-	panic("implement me")
 }
 
 func (d *qdbCoordinator) AddShardingRule(rule *shrule.ShardingRule) error {
@@ -103,7 +85,7 @@ func (d *qdbCoordinator) AddLocalTable(tname string) error {
 	panic("implement me")
 }
 
-func (d *qdbCoordinator) AddKeyRange(keyRange *kr.KeyRange) error {
+func (d *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	resp, err := d.db.ListRouters()
 	if err != nil {
 		return err
@@ -132,10 +114,6 @@ func (d *qdbCoordinator) AddKeyRange(keyRange *kr.KeyRange) error {
 	return nil
 }
 
-func (d *qdbCoordinator) UnLock(krid string) error {
-	panic("implement me")
-}
-
 var _ coordinator.Coordinator = &qdbCoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
@@ -151,13 +129,8 @@ func (d *qdbCoordinator) RegisterRouter(r *qdb.Router) error {
 	return d.db.AddRouter(r)
 }
 
-// call from grpc
-func proc() {
-
-}
-
-func (d *qdbCoordinator) ProcClient(netconn net.Conn) error {
-	cl := rrouter.NewPsqlClient(netconn)
+func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
+	cl := rrouter.NewPsqlClient(nconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
 
@@ -220,7 +193,7 @@ func (d *qdbCoordinator) ProcClient(netconn net.Conn) error {
 
 					return nil
 				case *spqrparser.KeyRange:
-					if err := d.AddKeyRange(
+					if err := d.AddKeyRange(ctx,
 						kr.KeyRangeFromSQL(stmt),
 					); err != nil {
 						cl.ReplyErr(err.Error())

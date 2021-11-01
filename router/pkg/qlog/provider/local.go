@@ -2,43 +2,47 @@ package qlog
 
 import (
 	"bufio"
+	"context"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/wal-g/tracelog"
 )
 
-type LocalQlog struct {
-	dataFolder string
+type LocalQlog struct{}
+
+func NewLocalQlog() *LocalQlog {
+	return &LocalQlog{}
 }
 
-func NewLocalQlog(dataFolder string) (*LocalQlog, error) {
-	return &LocalQlog{dataFolder}, nil
-}
+func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
 
-func (dw *LocalQlog) DumpQuery(q string) error {
-	walPath := filepath.Join(dw.dataFolder, "qlog")
-	file, err := os.OpenFile(walPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// TODO: use
+	//ctxQLog, cf := context.WithTimeout(ctx, time.Second * 5)
+	//defer cf()
+	//
+	//ctxQLog.Deadline()
+
+	file, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	file.WriteString(q)
-	file.WriteString("\n")
+	_, _ = file.WriteString(q)
+	_, _ = file.WriteString("\n")
 	return nil
 }
 
-func (dw *LocalQlog) Recover(dataFolder string) ([]string, error) {
-	walPath := filepath.Join(dataFolder, "qlog")
-	if _, err := os.Stat(walPath); os.IsNotExist(err) {
-		tracelog.InfoLogger.Printf("%s log does not exist", walPath)
+func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		tracelog.InfoLogger.Printf("%s log does not exist", path)
 		return []string{}, nil
 	}
 
-	tracelog.InfoLogger.Printf("%s found", walPath)
-	file, err := os.Open(walPath)
+	tracelog.InfoLogger.Printf("%s found", path)
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

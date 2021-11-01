@@ -2,6 +2,7 @@ package console
 
 import "C"
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 
@@ -19,8 +20,8 @@ import (
 )
 
 type Console interface {
-	Serve(cl client.Client) error
-	ProcessQuery(q string, cl client.Client) error
+	Serve(ctx context.Context, cl client.Client) error
+	ProcessQuery(ctx context.Context, q string, cl client.Client) error
 	Shutdown() error
 }
 
@@ -39,13 +40,9 @@ func (c *Local) Shutdown() error {
 }
 
 func NewConsole(cfg *tls.Config, Qrouter qrouter.Qrouter, stchan chan struct{}) (*Local, error) {
-	localQlog, err := qlogprovider.NewLocalQlog(config.RouterConfig().DataFolder)
-	if err != nil {
-		return nil, err
-	}
 	return &Local{
 		Qrouter: Qrouter,
-		Qlog:    localQlog,
+		Qlog:    qlogprovider.NewLocalQlog(),
 		cfg:     cfg,
 		stchan:  stchan,
 	}, nil
@@ -134,8 +131,8 @@ func (c *Local) AddShardingColumn(cl client.Client, stmt *spqrparser.ShardingCol
 	return nil
 }
 
-func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRange) error {
-	if err := c.Qrouter.Split(&kr.SplitKeyRange{
+func (c *Local) SplitKeyRange(ctx context.Context, cl client.Client, splitReq *spqrparser.SplitKeyRange) error {
+	if err := c.Qrouter.Split(ctx, &kr.SplitKeyRange{
 		Bound:    splitReq.Border,
 		SourceID: splitReq.KeyRangeFromID,
 		Krid:     splitReq.KeyRangeID,
@@ -170,10 +167,10 @@ func (c *Local) SplitKeyRange(cl client.Client, splitReq *spqrparser.SplitKeyRan
 	return nil
 }
 
-func (c *Local) LockKeyRange(cl client.Client, krid string) error {
+func (c *Local) LockKeyRange(ctx context.Context, cl client.Client, krid string) error {
 	tracelog.InfoLogger.Printf("received lock key range request for id %v", krid)
 
-	if _, err := c.Qrouter.Lock(krid); err != nil {
+	if _, err := c.Qrouter.Lock(ctx, krid); err != nil {
 		return err
 	}
 
@@ -206,16 +203,11 @@ func (c *Local) LockKeyRange(cl client.Client, krid string) error {
 	return nil
 }
 
-func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) error {
+func (c *Local) AddKeyRange(ctx context.Context, cl client.Client, keyRange *spqrparser.KeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
-	err := c.Qrouter.AddKeyRange(&kr.KeyRange{
-		ID:         keyRange.KeyRangeID,
-		ShardID:    keyRange.ShardID,
-		UpperBound: keyRange.To,
-		LowerBound: keyRange.From,
-	})
+	err := c.Qrouter.AddKeyRange(ctx, kr.KeyRangeFromSQL(keyRange))
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -271,7 +263,7 @@ func (c *Local) AddShard(cl client.Client, shard *spqrparser.Shard, cfg *config.
 	return nil
 }
 
-func (c *Local) KeyRanges(cl client.Client) error {
+func (c *Local) KeyRanges(ctx context.Context, cl client.Client) error {
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
@@ -295,7 +287,7 @@ func (c *Local) KeyRanges(cl client.Client) error {
 		}
 	}
 
-	for _, keyRange := range c.Qrouter.KeyRanges() {
+	for _, keyRange := range c.Qrouter.KeyRanges(ctx) {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to shard %s", keyRange.ID, keyRange.ShardID))},
 		}); err != nil {
@@ -371,7 +363,7 @@ func (c *Local) Shards(cl client.Client) error {
 	return nil
 }
 
-func (c *Local) ShardingColumns(cl client.Client) error {
+func (c *Local) ShardingColumns(ctx context.Context, cl client.Client) error {
 	tracelog.InfoLogger.Printf("listing sharding columns")
 
 	for _, rule := range c.Qrouter.ListShardingRules() {
@@ -400,7 +392,7 @@ func (c *Local) ShardingColumns(cl client.Client) error {
 	return nil
 }
 
-func (c *Local) ProcessQuery(q string, cl client.Client) error {
+func (c *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -422,42 +414,42 @@ func (c *Local) ProcessQuery(q string, cl client.Client) error {
 		case spqrparser.ShowShardsStr:
 			return c.Shards(cl)
 		case spqrparser.ShowKeyRangesStr:
-			return c.KeyRanges(cl)
+			return c.KeyRanges(ctx, cl)
 		case spqrparser.ShowShardingColumns:
-			return c.ShardingColumns(cl)
+			return c.ShardingColumns(ctx, cl)
 		default:
 			tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 
 			return errors.New("Unknown show statement: " + stmt.Cmd)
 		}
 	case *spqrparser.SplitKeyRange:
-		err := c.SplitKeyRange(cl, stmt)
+		err := c.SplitKeyRange(ctx, cl, stmt)
 		if err != nil {
-			_ = c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
 	case *spqrparser.Lock:
-		err := c.LockKeyRange(cl, stmt.KeyRangeID)
+		err := c.LockKeyRange(ctx, cl, stmt.KeyRangeID)
 		if err != nil {
-			_ = c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
 	case *spqrparser.ShardingColumn:
 		err := c.AddShardingColumn(cl, stmt)
 		if err != nil {
-			_ = c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
 	case *spqrparser.KeyRange:
-		err := c.AddKeyRange(cl, stmt)
+		err := c.AddKeyRange(ctx, cl, stmt)
 		if err != nil {
-			c.Qlog.DumpQuery(q)
+			c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
 	case *spqrparser.Shard:
 		err := c.AddShard(cl, stmt, &config.ShardCfg{})
 		if err != nil {
-			_ = c.Qlog.DumpQuery(q)
+			_ = c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
 	case *spqrparser.Shutdown:
@@ -485,7 +477,7 @@ https://github.com/pg-sharding/spqr/tree/master/doc/router
 
 `
 
-func (c *Local) Serve(cl client.Client) error {
+func (c *Local) Serve(ctx context.Context, cl client.Client) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
@@ -512,7 +504,7 @@ func (c *Local) Serve(cl client.Client) error {
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := c.ProcessQuery(v.String, cl); err != nil {
+			if err := c.ProcessQuery(ctx, v.String, cl); err != nil {
 				_ = cl.ReplyErr(err.Error())
 				// continue to consume input
 			}

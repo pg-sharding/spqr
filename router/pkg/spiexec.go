@@ -1,9 +1,7 @@
 package pkg
 
 import (
-	"bufio"
-	"log"
-	"os"
+	"context"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -21,28 +19,10 @@ func NewExecuter(cfg config.ExecuterCfg) *Executer {
 	}
 }
 
-func (e *Executer) ReadCmds() []string {
-	f, err := os.Open(e.cfg.InitSQLPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer f.Close()
-
-	ret := make([]string, 0)
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		ret = append(ret, scanner.Text())
-	}
-
-	return ret
-}
-
-func (e *Executer) SPIexec(console console.Console, cl client.Client) error {
-	for _, cmd := range e.ReadCmds() {
+func (e *Executer) SPIexec(ctx context.Context, console console.Console, cl client.Client, cmds []string) error {
+	for _, cmd := range cmds {
 		tracelog.InfoLogger.Printf("executing init sql cmd %s", cmd)
-		if err := console.ProcessQuery(cmd, cl); err != nil {
+		if err := console.ProcessQuery(ctx, cmd, cl); err != nil {
 			tracelog.InfoLogger.PrintError(err)
 		}
 	}

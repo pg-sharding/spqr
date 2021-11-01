@@ -6,17 +6,17 @@ import (
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
 
-type Spqrserver struct {
+type ShardServer struct {
 	shards.UnimplementedShardServiceServer
 }
 
-func (s *Spqrserver) AddShard(ctx context.Context, request *shards.AddShardRequest) (*shards.AddShardReply, error) {
+func (s *ShardServer) AddShard(ctx context.Context, request *shards.AddShardRequest) (*shards.AddShardReply, error) {
 	panic("implement me")
 }
 
-var _ shards.ShardServiceServer = &Spqrserver{}
+var _ shards.ShardServiceServer = &ShardServer{}
 
-func (*Spqrserver) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
+func (*ShardServer) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
 	return &shards.ShardReply{
 		Shards: nil,
 	}, nil

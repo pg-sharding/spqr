@@ -1,8 +1,7 @@
 package coordinator
 
 import (
-	"net"
-
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb/qdb"
@@ -10,6 +9,7 @@ import (
 )
 
 type Coordinator interface {
+	client.InteractRunner
 	kr.KeyRangeManager
 
 	AddShardingRule(rule *shrule.ShardingRule) error
@@ -17,9 +17,6 @@ type Coordinator interface {
 
 	RegisterRouter(r *qdb.Router) error
 	RegisterWorld(w world.World) error
-
-	// cl interaction
-	ProcClient(netconn net.Conn) error
 
 	// deprecated
 	AddLocalTable(tname string) error

@@ -1,5 +1,7 @@
 package kr
 
+import "context"
+
 type SplitKeyRange struct {
 	Bound    KeyRangeBound
 	SourceID string
@@ -12,11 +14,13 @@ type UniteKeyRange struct {
 }
 
 type KeyRangeManager interface {
-	KeyRanges() []*KeyRange
+	KeyRanges(ctx context.Context) []*KeyRange
 
-	AddKeyRange(kr *KeyRange) error
-	Lock(krid string) (*KeyRange, error)
-	UnLock(krid string) error
-	Split(req *SplitKeyRange) error
-	Unite(req *UniteKeyRange) error
+	AddKeyRange(ctx context.Context, kr *KeyRange) error
+
+	Lock(ctx context.Context, krid string) (*KeyRange, error)
+	UnLock(ctx context.Context, krid string) error
+
+	Split(ctx context.Context, req *SplitKeyRange) error
+	Unite(ctx context.Context, req *UniteKeyRange) error
 }

@@ -37,12 +37,12 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
-	_, err := c.impl.Lock(request.Krid)
+	_, err := c.impl.Lock(ctx, request.Krid)
 	return nil, err
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	err := c.impl.UnLock(request.Krid)
+	err := c.impl.UnLock(ctx, request.Krid)
 	return nil, err
 }
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {

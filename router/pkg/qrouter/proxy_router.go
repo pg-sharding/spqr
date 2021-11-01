@@ -1,6 +1,7 @@
 package qrouter
 
 import (
+	"context"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
@@ -108,7 +109,7 @@ func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio
 	return qr.qdb.Watch(krid, krst, noitfyio)
 }
 
-func (qr *ProxyRouter) Unite(req *kr.UniteKeyRange) error {
+func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	var krright *qdb.KeyRange
 	var krleft *qdb.KeyRange
 	var err error
@@ -132,7 +133,7 @@ func (qr *ProxyRouter) Unite(req *kr.UniteKeyRange) error {
 	return qr.qdb.UpdateKeyRange(krright)
 }
 
-func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
+func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	if err := qr.qdb.Begin(); err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
 	return nil
 }
 
-func (qr *ProxyRouter) Lock(krid string) (*kr.KeyRange, error) {
+func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	var keyRange *kr.KeyRange
 	var ok bool
 
@@ -173,7 +174,7 @@ func (qr *ProxyRouter) Lock(krid string) (*kr.KeyRange, error) {
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
-func (qr *ProxyRouter) UnLock(krid string) error {
+func (qr *ProxyRouter) UnLock(ctx context.Context, krid string) error {
 	var keyRange *kr.KeyRange
 	var ok bool
 
@@ -203,7 +204,7 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) KeyRanges() []*kr.KeyRange {
+func (qr *ProxyRouter) KeyRanges(ctx context.Context) []*kr.KeyRange {
 
 	var ret []*kr.KeyRange
 
@@ -227,7 +228,7 @@ func (qr *ProxyRouter) AddLocalTable(tname string) error {
 	return nil
 }
 
-func (qr *ProxyRouter) AddKeyRange(kr *kr.KeyRange) error {
+func (qr *ProxyRouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	if _, ok := qr.Ranges[kr.ID]; ok {
 		return errors.Errorf("key range with ID already defined", kr.ID)
 	}

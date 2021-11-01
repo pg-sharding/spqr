@@ -36,7 +36,7 @@ func (l LocalQrouterServer) ListShardingRules(ctx context.Context, request *prot
 
 func (l LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
 
-	err := l.qr.AddKeyRange(kr.KeyRangeFromProto(request.KeyRange))
+	err := l.qr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRange))
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (l LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.Li
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	for _, keyRange := range l.qr.KeyRanges() {
+	for _, keyRange := range l.qr.KeyRanges(ctx) {
 		krs = append(krs, keyRange.ToProto())
 	}
 
@@ -61,7 +61,10 @@ func (l LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.Li
 }
 
 func (l LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
-	panic("implement me")
+	if _, err := l.qr.Lock(ctx, request.Krid); err != nil {
+		return nil, err
+	}
+	return &protos.LockKeyRangeReply{}, nil
 }
 
 func (l LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
