@@ -211,7 +211,7 @@ func (c *Local) AddKeyRange(cl client.Client, keyRange *spqrparser.KeyRange) err
 
 	err := c.Qrouter.AddKeyRange(&kr.KeyRange{
 		ID:         keyRange.KeyRangeID,
-		Shid:       keyRange.ShardID,
+		ShardID:    keyRange.ShardID,
 		UpperBound: keyRange.To,
 		LowerBound: keyRange.From,
 	})
@@ -296,7 +296,7 @@ func (c *Local) KeyRanges(cl client.Client) error {
 
 	for _, keyRange := range c.Qrouter.KeyRanges() {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to shard %s", keyRange.ID, keyRange.Shid))},
+			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to shard %s", keyRange.ID, keyRange.ShardID))},
 		}); err != nil {
 			tracelog.InfoLogger.Print(err)
 		}

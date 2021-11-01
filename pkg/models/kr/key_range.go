@@ -3,6 +3,7 @@ package kr
 import (
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	proto "github.com/pg-sharding/spqr/router/protos"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type KeyRangeBound []byte
@@ -15,7 +16,7 @@ type ShardKey struct {
 type KeyRange struct {
 	LowerBound []byte
 	UpperBound []byte
-	Shid       string
+	ShardID    string
 	ID         string
 }
 
@@ -27,30 +28,25 @@ func CmpRanges(kr []byte, other []byte) bool {
 	return len(kr) <= len(other)
 }
 
-func KeyRangeFromSQL(kr *qdb.KeyRange) *KeyRange {
+func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: kr.From,
 		UpperBound: kr.To,
-		Shid:       kr.ShardID,
+		ShardID:    kr.ShardID,
 		ID:         kr.KeyRangeID,
 	}
 }
 
-func (kr *KeyRange) ToSQL() *qdb.KeyRange {
-	return &qdb.KeyRange{
-		From:       kr.LowerBound,
-		To:         kr.UpperBound,
-		ShardID:    kr.Shid,
-		KeyRangeID: kr.ID,
-	}
-}
 
-func (kr *KeyRange) ToProto() *proto.KeyRange {
-	return &proto.KeyRange{
-		LowerBound: string(kr.LowerBound),
-		UpperBound: string(kr.UpperBound),
-		ShardId:    kr.Shid,
-		Krid:       kr.ID,
+func KeyRangeFromSQL(kr *spqrparser.KeyRange) *KeyRange {
+	if kr == nil {
+		return nil
+	}
+	return &KeyRange{
+		LowerBound: kr.From,
+		UpperBound: kr.To,
+		ShardID:    kr.ShardID,
+		ID:         kr.KeyRangeID,
 	}
 }
 
@@ -61,7 +57,25 @@ func KeyRangeFromProto(kr *proto.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: []byte(kr.LowerBound),
 		UpperBound: []byte(kr.UpperBound),
-		Shid:       kr.ShardId,
+		ShardID:    kr.ShardId,
 		ID:         kr.Krid,
+	}
+}
+
+func (kr *KeyRange) ToSQL() *qdb.KeyRange {
+	return &qdb.KeyRange{
+		From:       kr.LowerBound,
+		To:         kr.UpperBound,
+		ShardID:    kr.ShardID,
+		KeyRangeID: kr.ID,
+	}
+}
+
+func (kr *KeyRange) ToProto() *proto.KeyRange {
+	return &proto.KeyRange{
+		LowerBound: string(kr.LowerBound),
+		UpperBound: string(kr.UpperBound),
+		ShardId:    kr.ShardID,
+		Krid:       kr.ID,
 	}
 }

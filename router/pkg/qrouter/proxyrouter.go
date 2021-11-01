@@ -139,7 +139,7 @@ func (qr *ProxyRouter) Split(req *kr.SplitKeyRange) error {
 	defer func() { _ = qr.qdb.Commit() }()
 
 	krOld := qr.Ranges[req.SourceID]
-	krNew := kr.KeyRangeFromSQL(
+	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			From:       req.Bound,
 			To:         krOld.UpperBound,
@@ -169,7 +169,7 @@ func (qr *ProxyRouter) Lock(krid string) (*kr.KeyRange, error) {
 	if err != nil {
 		return nil, err
 	}
-	return kr.KeyRangeFromSQL(keyRangeDB), nil
+	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
 func (qr *ProxyRouter) UnLock(krid string) error {
@@ -245,7 +245,7 @@ func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 	}
 
 	return &kr.KeyRange{
-		Shid: NOSHARD,
+		ShardID: NOSHARD,
 	}
 }
 
@@ -292,7 +292,7 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 
 		return ShardRoute{
 			Shkey: kr.ShardKey{
-				Name: keyRange.Shid,
+				Name: keyRange.ShardID,
 				RW:   rw,
 			},
 			Matchedkr: keyRange,

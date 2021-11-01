@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -40,15 +41,31 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 	return grpcclient.Dial(r.Addr())
 }
 
-type dcoordinator struct {
+type qdbCoordinator struct {
 	db qdb.QrouterDB
 }
 
-func (d *dcoordinator) RegisterWorld(w world.World) error {
+func (d *qdbCoordinator) KeyRanges() []*kr.KeyRange {
 	panic("implement me")
 }
 
-func (d *dcoordinator) AddShardingColumn(col string) error {
+func (d *qdbCoordinator) Lock(krid string) (*kr.KeyRange, error) {
+	panic("implement me")
+}
+
+func (d *qdbCoordinator) Split(req *kr.SplitKeyRange) error {
+	panic("implement me")
+}
+
+func (d *qdbCoordinator) Unite(req *kr.UniteKeyRange) error {
+	panic("implement me")
+}
+
+func (d *qdbCoordinator) RegisterWorld(w world.World) error {
+	panic("implement me")
+}
+
+func (d *qdbCoordinator) AddShardingColumn(col string) error {
 	resp, err := d.db.ListRouters()
 	if err != nil {
 		return err
@@ -77,11 +94,11 @@ func (d *dcoordinator) AddShardingColumn(col string) error {
 	return nil
 }
 
-func (d *dcoordinator) AddLocalTable(tname string) error {
+func (d *qdbCoordinator) AddLocalTable(tname string) error {
 	panic("implement me")
 }
 
-func (d *dcoordinator) AddKeyRange(kr qdb.KeyRange) error {
+func (d *qdbCoordinator) AddKeyRange(keyRange *kr.KeyRange) error {
 	resp, err := d.db.ListRouters()
 	if err != nil {
 		return err
@@ -97,12 +114,7 @@ func (d *dcoordinator) AddKeyRange(kr qdb.KeyRange) error {
 
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
-			KeyRange: &routerproto.KeyRange{
-				LowerBound: string(kr.From),
-				UpperBound: string(kr.To),
-				Krid:       kr.KeyRangeID,
-				ShardId:    kr.ShardID,
-			},
+			KeyRange: keyRange.ToProto(),
 		})
 
 		if err != nil {
@@ -115,31 +127,19 @@ func (d *dcoordinator) AddKeyRange(kr qdb.KeyRange) error {
 	return nil
 }
 
-func (d *dcoordinator) Lock(krid string) error {
+func (d *qdbCoordinator) UnLock(krid string) error {
 	panic("implement me")
 }
 
-func (d *dcoordinator) UnLock(krid string) error {
-	panic("implement me")
-}
+var _ coordinator.Coordinator = &qdbCoordinator{}
 
-func (d *dcoordinator) Split(req *spqrparser.SplitKeyRange) error {
-	panic("implement me")
-}
-
-func (d *dcoordinator) Unite(req *spqrparser.UniteKeyRange) error {
-	panic("implement me")
-}
-
-var _ coordinator.Coordinator = &dcoordinator{}
-
-func NewCoordinator(db qdb.QrouterDB) *dcoordinator {
-	return &dcoordinator{
+func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
+	return &qdbCoordinator{
 		db: db,
 	}
 }
 
-func (d *dcoordinator) RegisterRouter(r *qdb.Router) error {
+func (d *qdbCoordinator) RegisterRouter(r *qdb.Router) error {
 
 	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
 
@@ -151,7 +151,7 @@ func proc() {
 
 }
 
-func (d *dcoordinator) ProcClient(netconn net.Conn) error {
+func (d *qdbCoordinator) ProcClient(netconn net.Conn) error {
 	cl := rrouter.NewPsqlClient(netconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
@@ -216,12 +216,7 @@ func (d *dcoordinator) ProcClient(netconn net.Conn) error {
 					return nil
 				case *spqrparser.KeyRange:
 					if err := d.AddKeyRange(
-						qdb.KeyRange{
-							From:       stmt.From,
-							To:         stmt.To,
-							KeyRangeID: stmt.KeyRangeID,
-							ShardID:    stmt.ShardID,
-						},
+						kr.KeyRangeFromSQL(stmt),
 					); err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)

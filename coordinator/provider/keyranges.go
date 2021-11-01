@@ -14,7 +14,7 @@ type KeyRangeService struct {
 }
 
 func (c KeyRangeService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
-	err := c.impl.Lock(request.Krid)
+	_, err := c.impl.Lock(request.Krid)
 	return nil, err
 }
 
