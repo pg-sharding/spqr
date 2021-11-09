@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"path"
+	"sync"
+	"time"
 
 	"github.com/pg-sharding/spqr/qdb/qdb"
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
+	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 )
 
@@ -56,21 +59,35 @@ type EtcdQDB struct {
 
 	cli *clientv3.Client
 
-	locks map[string]*notifier
+	mu        sync.Mutex
+	locks     map[string]*notifier
+	etcdLocks map[string]*concurrency.Mutex
 }
 
 const keyRangesNamespace = "/keyranges"
 const routersRangesNamespace = "/routers"
 
-func (q EtcdQDB) DropKeyRange(keyRange *qdb.KeyRange) error {
-	resp, err := q.cli.Delete(context.TODO(), path.Join(keyRangesNamespace, keyRange.KeyRangeID))
+func keyLockPath(key string) string {
+	return path.Join(key, "lock")
+}
+
+func keyRangeNodePath(key string) string {
+	return path.Join(keyRangesNamespace, key)
+}
+
+func routerNodePath(key string) string {
+	return path.Join(routersRangesNamespace, key)
+}
+
+func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+	resp, err := q.cli.Delete(ctx, keyRangeNodePath(keyRange.KeyRangeID))
 
 	tracelog.InfoLogger.Printf("delete resp %v", resp)
 	return err
 }
 
-func (q EtcdQDB) ListRouters() ([]*qdb.Router, error) {
-	resp, err := q.cli.Get(context.TODO(), routersRangesNamespace, clientv3.WithPrefix())
+func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
+	resp, err := q.cli.Get(ctx, routersRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -91,11 +108,11 @@ func (q EtcdQDB) ListRouters() ([]*qdb.Router, error) {
 	return ret, nil
 }
 
-func (q EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
+func (q *EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	return nil
 }
 
-const keyspace = "worldmock"
+const keyspace = "key_space"
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
@@ -115,43 +132,168 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	}, nil
 }
 
-func (q EtcdQDB) AddRouter(r *qdb.Router) error {
-	resp, err := q.cli.Put(context.TODO(), "/routers/"+r.ID(), r.Addr())
+func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
+	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), r.Addr())
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(err)
+		return err
+	}
+
 	tracelog.InfoLogger.Printf("put resp %v", resp)
-	return err
+	return nil
 }
 
-func (q EtcdQDB) Lock(keyRangeID string) (*qdb.KeyRange, error) {
+func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	sess, err := concurrency.NewSession(q.cli)
 	if err != nil {
 		return nil, err
 	}
 
-	mu := concurrency.NewMutex(sess, keyspace)
+	defer sess.Close()
 
-	go func(mutex *concurrency.Mutex) {
-		mutex.Unlock(context.TODO())
-		q.locks[keyRangeID].nofity(struct {
-		}{})
-	}(mu)
+	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*qdb.KeyRange, error) {
+		mu := concurrency.NewMutex(sess, keyspace)
+		err = mu.Lock(ctx)
+		if err != nil {
+			return nil, err
+		}
 
-	return nil, err
+		defer mu.Unlock(ctx)
+
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		if err != nil {
+			return nil, err
+		}
+		switch len(resp.Kvs) {
+		case 0:
+
+			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(keyRangeID)), "locked")
+			if err != nil {
+				return nil, err
+			}
+
+			return q.fetchKeyRange(ctx, keyRangeNodePath(keyRangeID))
+		case 1:
+			return nil, xerrors.Errorf("key range with id %v locked", keyRangeID)
+		default:
+			return nil, xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+		}
+	}
+
+	timer := time.NewTimer(time.Second)
+
+	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
+	defer cf()
+
+	for {
+		select {
+		case <-timer.C:
+			if val, err := fetcher(ctx, sess, keyRangeID); err != nil {
+				return val, nil
+			}
+		case <-fetchCtx.Done():
+			return nil, xerrors.Errorf("deadlines exceeded")
+		}
+	}
 }
 
-func (q EtcdQDB) UnLock(keyRange string) error {
-	panic("implement me")
+func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*qdb.KeyRange, error) {
+	// caller ensures key is locked
+	raw, err := q.cli.Get(ctx, nodePath)
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(raw.Kvs) {
+	case 1:
+
+		ret := qdb.KeyRange{}
+
+		if err := json.Unmarshal(raw.Kvs[0].Value, &ret); err != nil {
+			return nil, err
+		}
+		return &ret, nil
+
+	default:
+		return nil, xerrors.Errorf("failed to fetch key range with id %v", nodePath)
+	}
 }
 
-func (q EtcdQDB) AddKeyRange(keyRange *qdb.KeyRange) error {
+func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	sess, err := concurrency.NewSession(q.cli)
+	if err != nil {
+		return err
+	}
+
+	defer sess.Close()
+
+	unlocker := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) error {
+		mu := concurrency.NewMutex(sess, keyspace)
+		err = mu.Lock(ctx)
+		if err != nil {
+			return err
+		}
+
+		defer mu.Unlock(ctx)
+
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		if err != nil {
+			return err
+		}
+		switch len(resp.Kvs) {
+		case 0:
+
+			return xerrors.Errorf("key range with id %v unlocked", keyRangeID)
+
+		case 1:
+			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
+			return err
+		default:
+			return xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+		}
+	}
+
+	timer := time.NewTimer(time.Second)
+
+	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
+	defer cf()
+
+	for {
+		select {
+		case <-timer.C:
+			if err := unlocker(ctx, sess, keyRangeID); err != nil {
+				return nil
+			}
+		case <-fetchCtx.Done():
+			return xerrors.Errorf("deadlines exceeded")
+		}
+	}
+}
+
+func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
 	rawKeyRange, err := json.Marshal(keyRange)
 
-	resp, err := q.cli.Put(context.TODO(), "/keyranges/"+keyRange.KeyRangeID, string(rawKeyRange))
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return err
+	}
+
 	tracelog.InfoLogger.Printf("put resp %v", resp)
 	return err
 }
 
-func (q EtcdQDB) Check(kr *qdb.KeyRange) bool {
+func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
 }
 
-var _ qdb.QrouterDB = EtcdQDB{}
+var _ qdb.QrouterDB = &EtcdQDB{}

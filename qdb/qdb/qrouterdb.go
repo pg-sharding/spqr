@@ -1,24 +1,23 @@
 package qdb
 
 import (
+	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 )
 
 type QrouterDB interface {
-	Lock(keyRangeID string) (*KeyRange, error)
-	UnLock(keyRangeID string) error
+	Lock(ctx context.Context, keyRangeID string) (*KeyRange, error)
+	UnLock(ctx context.Context, keyRangeID string) error
 
-	AddKeyRange(keyRange *KeyRange) error
-	UpdateKeyRange(keyRange *KeyRange) error
+	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
+	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 
-	Begin() error
-	Commit() error
-
-	AddRouter(r *Router) error
-	Check(kr *KeyRange) bool
+	AddRouter(ctx context.Context, r *Router) error
+	Check(ctx context.Context, kr *KeyRange) bool
 
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
-	ListRouters() ([]*Router, error)
-	DropKeyRange(krl *KeyRange) error
-	ListShardingRules() ([]*shrule.ShardingRule, error)
+	ListRouters(ctx context.Context) ([]*Router, error)
+	DropKeyRange(ctx context.Context, krl *KeyRange) error
+	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
 }
