@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"

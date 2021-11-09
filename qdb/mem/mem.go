@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"golang.org/x/xerrors"
 )
 

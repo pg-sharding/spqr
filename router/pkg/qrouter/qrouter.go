@@ -4,7 +4,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 )

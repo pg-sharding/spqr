@@ -4,7 +4,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type routeKey struct {

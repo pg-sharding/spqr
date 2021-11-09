@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 )

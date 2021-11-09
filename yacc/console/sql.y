@@ -99,62 +99,62 @@ semicolon_opt:
 
 
 command:
-    create_sharding_column_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | add_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | drop_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | lock_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | unlock_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | show_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | kill_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | listen_stmt
-     {
-         setParseTree(yylex, $1)
-     }
-    | shutdown_stmt
-     {
-         setParseTree(yylex, $1)
-     }
-    | split_key_range_stmt
-     {
-         setParseTree(yylex, $1)
-     }
-    | move_key_range_stmt
-    {
-        setParseTree(yylex, $1)
-    }
-    | unite_key_range_stmt
-    {
-       setParseTree(yylex, $1)
-    }
-    | register_router_stmt
-     {
-        setParseTree(yylex, $1)
-     }
-    | unregister_router_stmt
-     {
-        setParseTree(yylex, $1)
-     }
+	create_sharding_column_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| add_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| drop_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| lock_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| unlock_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| show_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| kill_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| listen_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| shutdown_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| split_key_range_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| move_key_range_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| unite_key_range_stmt
+	{
+	   setParseTree(yylex, $1)
+	}
+	| register_router_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| unregister_router_stmt
+	{
+		setParseTree(yylex, $1)
+	}
 
 reserved_keyword:
 POOLS
@@ -166,40 +166,40 @@ POOLS
 | KEY_RANGES
 
 show_statement_type:
-reserved_keyword
-{
-    switch v := string($1); v {
-    case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
-      $$ = v
-    default:
-      $$ = ShowUnsupportedStr
-    }
-}
+	reserved_keyword
+	{
+		switch v := string($1); v {
+		case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+			$$ = v
+		default:
+			$$ = ShowUnsupportedStr
+		}
+	}
 
 kill_statement_type:
-reserved_keyword
-{
-  switch v := string($1); v {
-  case KillClientsStr:
-    $$ = v
-  default:
-    $$ = "unsupp"
-  }
-}
+	reserved_keyword
+	{
+		switch v := string($1); v {
+		case KillClientsStr:
+			$$ = v
+		default:
+			$$ = "unsupp"
+		}
+	}
 
 
 show_stmt:
-  SHOW show_statement_type
-  {
-    $$ = &Show{Cmd: $2}
-  }
+	SHOW show_statement_type
+	{
+		$$ = &Show{Cmd: $2}
+	}
 
 
 sharding_column_name:
-  STRING
-  {
-    $$ = string($1)
-  }
+	STRING
+	{
+		$$ = string($1)
+	}
 
 key_range_spec_bound:
     STRING
@@ -234,65 +234,65 @@ spqr_addr:
 
 
 drop_stmt:
-    drop_key_range_stmt
+	drop_key_range_stmt
 
 lock_stmt:
-    lock_key_range_stmt
+	lock_key_range_stmt
 
 add_stmt:
-    add_key_range_stmt
+	add_key_range_stmt
 
 unlock_stmt:
-    unlock_key_range_stmt
+	unlock_key_range_stmt
 
 add_key_range_stmt:
-    ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
-      {
-        $$ = &KeyRange{From: $4, To: $5, ShardID: $6, KeyRangeID: $7}
-      }
+	ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
+	{
+		$$ = &KeyRange{From: $4, To: $5, ShardID: $6, KeyRangeID: $7}
+	}
 
 drop_key_range_stmt:
-  DROP KEY RANGE key_range_id
-  {
-    $$ = &Drop{KeyRangeID: $4}
-  }
+	DROP KEY RANGE key_range_id
+	{
+		$$ = &Drop{KeyRangeID: $4}
+	}
 
 lock_key_range_stmt:
-  LOCK KEY RANGE key_range_id
-   {
-      $$ = &Lock{KeyRangeID: $4}
-   }
+	LOCK KEY RANGE key_range_id
+	{
+		$$ = &Lock{KeyRangeID: $4}
+	}
 
 unlock_key_range_stmt:
-  UNLOCK KEY RANGE key_range_id
-   {
-      $$ = &Unlock{KeyRangeID: $4}
-   }
+	UNLOCK KEY RANGE key_range_id
+	{
+		$$ = &Unlock{KeyRangeID: $4}
+	}
 
 
 split_key_range_stmt:
-  SPLIT KEY RANGE key_range_id FROM key_range_id BY key_range_spec_bound
-   {
-      $$ = &SplitKeyRange{KeyRangeID: $4, KeyRangeFromID: $6, Border: $8}
-   }
+	SPLIT KEY RANGE key_range_id FROM key_range_id BY key_range_spec_bound
+	{
+		$$ = &SplitKeyRange{KeyRangeID: $4, KeyRangeFromID: $6, Border: $8}
+	}
 
 kill_stmt:
 KILL kill_statement_type
-{
-  $$ = &Kill{Cmd: $2}
-}
+	{
+		$$ = &Kill{Cmd: $2}
+	}
 
 move_key_range_stmt:
-    MOVE KEY RANGE key_range_id TO shard_id
-    {
-        $$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $5}
-    }
+	MOVE KEY RANGE key_range_id TO shard_id
+	{
+		$$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $5}
+	}
 
 unite_key_range_stmt:
-    UNITE KEY RANGE key_range_id WITH key_range_id
-    {
-        $$ = &UniteKeyRange{KeyRangeIDL: $4, KeyRangeIDR: $5}
-    }
+	UNITE KEY RANGE key_range_id WITH key_range_id
+	{
+		$$ = &UniteKeyRange{KeyRangeIDL: $4, KeyRangeIDR: $5}
+	}
 
 listen_stmt:
 	LISTEN spqr_addr
@@ -309,28 +309,28 @@ shutdown_stmt:
 // coordinator
 
 router_addr:
-    STRING
-    {
-        $$ = string($1)
-    }
+	STRING
+	{
+		$$ = string($1)
+	}
 
 router_id:
-    STRING
-    {
-        $$ = string($1)
-    }
+	STRING
+	{
+		$$ = string($1)
+	}
 
 register_router_stmt:
-    REGISTER ROUTER router_addr router_id
-    {
-        $$ = &RegisterRouter{Addr: $3, ID: $4}
-    }
+	REGISTER ROUTER router_addr router_id
+	{
+		$$ = &RegisterRouter{Addr: $3, ID: $4}
+	}
 
 unregister_router_stmt:
-    UNREGISTER ROUTER router_id
-    {
-        $$ = &UnregisterRouter{ID: $3}
-    }
+	UNREGISTER ROUTER router_id
+	{
+		$$ = &UnregisterRouter{ID: $3}
+	}
 
 
 %%

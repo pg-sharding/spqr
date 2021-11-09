@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"

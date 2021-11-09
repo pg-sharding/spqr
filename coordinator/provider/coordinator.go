@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/pg-sharding/spqr/qdb/qdb"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
@@ -48,16 +48,18 @@ type qdbCoordinator struct {
 	db qdb.QrouterDB
 }
 
-func (d *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	return d.db.ListShardingRules(ctx)
+func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	return qc.db.ListShardingRules(ctx)
 }
 
-func (d *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	resp, err := d.db.ListRouters(ctx)
+func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
 	}
+	
 	tracelog.InfoLogger.Printf("routers %v", resp)
+	
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
@@ -81,16 +83,17 @@ func (d *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shard
 	return nil
 }
 
-func (d *qdbCoordinator) AddLocalTable(tname string) error {
+func (qc *qdbCoordinator) AddLocalTable(tname string) error {
 	panic("implement me")
 }
 
-func (d *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	resp, err := d.db.ListRouters(ctx)
+func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("routers %v", resp)
+
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
@@ -122,14 +125,14 @@ func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
 	}
 }
 
-func (d *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
+func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
 
 	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
 
-	return d.db.AddRouter(ctx, r)
+	return qc.db.AddRouter(ctx, r)
 }
 
-func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
+func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := rrouter.NewPsqlClient(nconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
@@ -175,7 +178,7 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
-					err := d.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
+					err := qc.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)
@@ -184,7 +187,7 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 
 					return nil
 				case *spqrparser.RegisterRouter:
-					err := d.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
+					err := qc.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)
@@ -193,7 +196,7 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 
 					return nil
 				case *spqrparser.KeyRange:
-					if err := d.AddKeyRange(ctx,
+					if err := qc.AddKeyRange(ctx,
 						kr.KeyRangeFromSQL(stmt),
 					); err != nil {
 						cl.ReplyErr(err.Error())
@@ -202,11 +205,19 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 					}
 
 					return nil
+				case *spqrparser.Lock:
+					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
+						cl.ReplyErr(err.Error())
+						tracelog.ErrorLogger.PrintError(err)
+						return err
+					}
+
 				case *spqrparser.Show:
 
 				default:
 					return xerrors.New("failed to proc")
 				}
+
 				return nil
 			}(); err != nil {
 				_ = cl.ReplyErr(err.Error())
