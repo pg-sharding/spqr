@@ -18,7 +18,7 @@ type CoordinatorService struct {
 func (c CoordinatorService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 
 	for _, rule := range request.Rules {
-		err := c.impl.AddShardingRule(shrule.NewShardingRule(rule.Columns))
+		err := c.impl.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
 
 		if err != nil {
 			return nil, err

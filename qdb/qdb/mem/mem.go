@@ -1,6 +1,7 @@
 package mem
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pg-sharding/spqr/qdb/qdb"
@@ -75,18 +76,7 @@ func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio c
 	return q.krWaiters[krid].Subscribe(status, notifyio)
 }
 
-func (q *QrouterDBMem) Begin() error {
-	q.txmu.Lock()
-
-	return nil
-}
-
-func (q *QrouterDBMem) Commit() error {
-	q.txmu.Unlock()
-	return nil
-}
-
-func (q *QrouterDBMem) AddKeyRange(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -100,7 +90,7 @@ func (q *QrouterDBMem) AddKeyRange(keyRange *qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) UpdateKeyRange(keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -109,7 +99,7 @@ func (q *QrouterDBMem) UpdateKeyRange(keyRange *qdb.KeyRange) error {
 	return nil
 }
 
-func (q *QrouterDBMem) Check(kr *qdb.KeyRange) bool {
+func (q *QrouterDBMem) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -125,7 +115,7 @@ func NewQrouterDBMem() (*QrouterDBMem, error) {
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(KeyRangeID string) (*qdb.KeyRange, error) {
+func (q *QrouterDBMem) Lock(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -140,7 +130,7 @@ func (q *QrouterDBMem) Lock(KeyRangeID string) (*qdb.KeyRange, error) {
 	return kr, nil
 }
 
-func (q *QrouterDBMem) UnLock(KeyRangeID string) error {
+func (q *QrouterDBMem) UnLock(ctx context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

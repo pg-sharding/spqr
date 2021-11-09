@@ -114,31 +114,26 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	var krleft *qdb.KeyRange
 	var err error
 
-	if krleft, err = qr.qdb.Lock(req.KeyRangeIDLeft); err != nil {
+	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDLeft); err != nil {
 		return err
 	}
-	defer qr.qdb.UnLock(req.KeyRangeIDLeft)
+	defer qr.qdb.UnLock(ctx, req.KeyRangeIDLeft)
 
-	if krleft, err = qr.qdb.Lock(req.KeyRangeIDRight); err != nil {
+	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
-	defer qr.qdb.UnLock(req.KeyRangeIDRight)
+	defer qr.qdb.UnLock(ctx, req.KeyRangeIDRight)
 
-	if err = qr.qdb.DropKeyRange(krleft); err != nil {
+	if err = qr.qdb.DropKeyRange(ctx, krleft); err != nil {
 		return err
 	}
 
 	krright.From = krleft.From
 
-	return qr.qdb.UpdateKeyRange(krright)
+	return qr.qdb.UpdateKeyRange(ctx, krright)
 }
 
 func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	if err := qr.qdb.Begin(); err != nil {
-		return err
-	}
-
-	defer func() { _ = qr.qdb.Commit() }()
 
 	krOld := qr.Ranges[req.SourceID]
 	krNew := kr.KeyRangeFromDB(
@@ -149,9 +144,9 @@ func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 		},
 	)
 
-	_ = qr.qdb.AddKeyRange(krNew.ToSQL())
+	_ = qr.qdb.AddKeyRange(ctx, krNew.ToSQL())
 	krOld.UpperBound = req.Bound
-	_ = qr.qdb.UpdateKeyRange(krOld.ToSQL())
+	_ = qr.qdb.UpdateKeyRange(ctx, krOld.ToSQL())
 
 	qr.Ranges[krOld.ID] = krOld
 	qr.Ranges[krNew.ID] = krNew
@@ -167,7 +162,7 @@ func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, err
 		return nil, errors.Errorf("key range with id %v not found", krid)
 	}
 
-	keyRangeDB, err := qr.qdb.Lock(keyRange.ID)
+	keyRangeDB, err := qr.qdb.Lock(ctx, keyRange.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +177,7 @@ func (qr *ProxyRouter) UnLock(ctx context.Context, krid string) error {
 		return errors.Errorf("key range with id %v not found", krid)
 	}
 
-	return qr.qdb.UnLock(keyRange.ID)
+	return qr.qdb.UnLock(ctx, keyRange.ID)
 }
 
 func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {
@@ -290,12 +285,12 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) ShardRoute {
 
 		tracelog.InfoLogger.Printf("parsed val %d", texpr.Val)
 		keyRange := qr.routeByIndx(texpr.Val)
-		rw := qr.qdb.Check(keyRange.ToSQL())
+		//rw := qr.qdb.Check(keyRange.ToSQL())
 
 		return ShardRoute{
 			Shkey: kr.ShardKey{
 				Name: keyRange.ShardID,
-				RW:   rw,
+				RW:   false,
 			},
 			Matchedkr: keyRange,
 		}

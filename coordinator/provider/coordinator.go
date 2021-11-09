@@ -48,12 +48,12 @@ type qdbCoordinator struct {
 	db qdb.QrouterDB
 }
 
-func (d *qdbCoordinator) ListShardingRules() ([]*shrule.ShardingRule, error) {
-	return d.db.ListShardingRules()
+func (d *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	return d.db.ListShardingRules(ctx)
 }
 
-func (d *qdbCoordinator) AddShardingRule(rule *shrule.ShardingRule) error {
-	resp, err := d.db.ListRouters()
+func (d *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	resp, err := d.db.ListRouters(ctx)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (d *qdbCoordinator) AddLocalTable(tname string) error {
 }
 
 func (d *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	resp, err := d.db.ListRouters()
+	resp, err := d.db.ListRouters(ctx)
 	if err != nil {
 		return err
 	}
@@ -122,11 +122,11 @@ func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
 	}
 }
 
-func (d *qdbCoordinator) RegisterRouter(r *qdb.Router) error {
+func (d *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
 
 	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
 
-	return d.db.AddRouter(r)
+	return d.db.AddRouter(ctx, r)
 }
 
 func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
@@ -175,7 +175,7 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
-					err := d.AddShardingRule(shrule.NewShardingRule([]string{stmt.ColName}))
+					err := d.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)
@@ -184,7 +184,7 @@ func (d *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 
 					return nil
 				case *spqrparser.RegisterRouter:
-					err := d.RegisterRouter(qdb.NewRouter(stmt.Addr, stmt.ID))
+					err := d.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
 					if err != nil {
 						cl.ReplyErr(err.Error())
 						tracelog.ErrorLogger.PrintError(err)
