@@ -5,11 +5,11 @@ import (
 )
 
 type LocalQrouter struct {
-	Qrouter
+	QueryRouter
 	shid string
 }
 
-var _ Qrouter = &LocalQrouter{}
+var _ QueryRouter = &LocalQrouter{}
 
 func NewLocalQrouter(shid string) (*LocalQrouter, error) {
 	return &LocalQrouter{

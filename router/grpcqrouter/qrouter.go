@@ -14,12 +14,12 @@ import (
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
 	protos.UnimplementedShardingRulesServiceServer
-	qr qrouter.Qrouter
+	qr qrouter.QueryRouter
 }
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := l.qr.AddShardingRule(shrule.NewShardingRule(rule.Columns))
+		err := l.qr.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
 
 		if err != nil {
 			return nil, err
@@ -62,7 +62,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	krsqdb, err := l.qr.KeyRanges(ctx)
+	krsqdb, err := l.qr.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 }
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	if err := l.qr.UnLock(ctx, request.Krid); err != nil {
+	if err := l.qr.Unlock(ctx, request.Krid); err != nil {
 		return nil, err
 	}
 	return &protos.UnlockKeyRangeReply{}, nil
@@ -104,7 +104,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.SplitKeyRangeReply{}, nil
 }
 
-func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {
+func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 
 	reflection.Register(server)
 

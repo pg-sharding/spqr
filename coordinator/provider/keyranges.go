@@ -35,7 +35,7 @@ func (c CoordinatorService) ListShardingRules(ctx context.Context, request *prot
 		return nil, err
 	}
 
-	shardingRules := []*protos.ShardingRule{}
+	var shardingRules []*protos.ShardingRule
 
 	for _, rule := range rules {
 		shardingRules = append(shardingRules, &protos.ShardingRule{
@@ -68,11 +68,20 @@ func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.Lo
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	err := c.impl.UnLock(ctx, request.Krid)
+	err := c.impl.Unlock(ctx, request.Krid)
 	return nil, err
 }
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
-	panic("implement me")
+	err := c.impl.Split(ctx, &kr.SplitKeyRange{
+		Bound:    request.Bound,
+		Krid:     request.Krid,
+		SourceID: request.SourceKrid,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.SplitKeyRangeReply{}, nil
 }
 
 func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
@@ -83,8 +92,8 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 
 	var krs []*protos.KeyRange
 
-	for _, kr := range krsqb {
-		krs = append(krs, kr.ToProto())
+	for _, keyRange := range krsqb {
+		krs = append(krs, keyRange.ToProto())
 	}
 
 	return &protos.KeyRangeReply{

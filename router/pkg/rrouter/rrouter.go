@@ -17,7 +17,7 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
-type Rrouter interface {
+type RequestRouter interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (client2.RouterClient, error)
 	ObsoleteRoute(key route.RouteKey) error
@@ -43,7 +43,7 @@ type RRouter struct {
 }
 
 func (r *RRouter) AddWorldShard(key qdb.ShardKey) error {
-	tracelog.InfoLogger.Printf("added world shard to rrouter %v", key.Name)
+	tracelog.InfoLogger.Printf("added world datashard to rrouter %v", key.Name)
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
 
 func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
 	return nil
-	// wait to shard to become available
+	// wait to datashard to become available
 	//wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
 	//
 	//if err != nil {
@@ -71,7 +71,7 @@ func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
 	//return nil
 }
 
-var _ Rrouter = &RRouter{}
+var _ RequestRouter = &RRouter{}
 
 func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()

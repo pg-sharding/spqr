@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -43,8 +42,8 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 }
 
 type qdbCoordinator struct {
-	client.InteractRunner
 	coordinator.Coordinator
+
 	db qdb.QrouterDB
 }
 
@@ -100,6 +99,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	if err != nil {
 		return err
 	}
+
 	tracelog.InfoLogger.Printf("routers %v", func() []string {
 		var strs []string
 
@@ -212,13 +212,16 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
 						return err
 					}
-
 					return nil
 				case *spqrparser.Lock:
 					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
 						return err
 					}
 				case *spqrparser.Show:
+
+					switch stmt.Cmd {
+
+					}
 
 				default:
 					return xerrors.New("failed to proc")

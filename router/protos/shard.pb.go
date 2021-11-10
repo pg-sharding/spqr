@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.6.1
-// source: protos/shard.proto
+// source: protos/datashard.proto
 
 package proto
 
@@ -174,7 +174,7 @@ type AddShardRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Shard *Shard `protobuf:"bytes,1,opt,name=shard,proto3" json:"shard,omitempty"`
+	Shard *Shard `protobuf:"bytes,1,opt,name=datashard,proto3" json:"datashard,omitempty"`
 }
 
 func (x *AddShardRequest) Reset() {
@@ -259,7 +259,7 @@ type AddWorldShardRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Shard *Shard `protobuf:"bytes,1,opt,name=shard,proto3" json:"shard,omitempty"`
+	Shard *Shard `protobuf:"bytes,1,opt,name=datashard,proto3" json:"datashard,omitempty"`
 }
 
 func (x *AddWorldShardRequest) Reset() {
@@ -366,8 +366,8 @@ var file_protos_shard_proto_goTypes = []interface{}{
 }
 var file_protos_shard_proto_depIdxs = []int32{
 	0, // 0: yandex.spqr.ShardReply.shards:type_name -> yandex.spqr.Shard
-	0, // 1: yandex.spqr.AddShardRequest.shard:type_name -> yandex.spqr.Shard
-	0, // 2: yandex.spqr.AddWorldShardRequest.shard:type_name -> yandex.spqr.Shard
+	0, // 1: yandex.spqr.AddShardRequest.datashard:type_name -> yandex.spqr.Shard
+	0, // 2: yandex.spqr.AddWorldShardRequest.datashard:type_name -> yandex.spqr.Shard
 	1, // 3: yandex.spqr.ShardService.ListShards:input_type -> yandex.spqr.ShardRequest
 	3, // 4: yandex.spqr.ShardService.AddDataShard:input_type -> yandex.spqr.AddShardRequest
 	5, // 5: yandex.spqr.ShardService.AddWorldShard:input_type -> yandex.spqr.AddWorldShardRequest

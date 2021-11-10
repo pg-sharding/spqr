@@ -8,7 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/pkg/shard"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"golang.org/x/xerrors"
 )
 
@@ -17,7 +17,7 @@ type ShardServer struct {
 
 	pool conn.ConnPool
 
-	shard shard.Shard
+	shard datashard.Shard
 }
 
 func (srv *ShardServer) Reset() error {
@@ -27,7 +27,7 @@ func (srv *ShardServer) Reset() error {
 func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 
 	if srv.shard.SHKey().Name != shkey.Name {
-		return xerrors.Errorf("active shard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
+		return xerrors.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
 	pgi := srv.shard.Instance()
@@ -44,14 +44,14 @@ func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 
 func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
-		return xerrors.New("single shard server does not support more than 2 shard connection simultaneously")
+		return xerrors.New("single datashard server does not support more than 2 datashard connection simultaneously")
 	}
 
 	if pgi, err := srv.pool.Connection(shkey); err != nil {
 		return err
 	} else {
 
-		srv.shard, err = shard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
 		if err != nil {
 			return err
 		}

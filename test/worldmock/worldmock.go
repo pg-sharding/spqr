@@ -100,7 +100,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
 
-			_ = cl.ReplyNotice("you are receiving message from mock world shard")
+			_ = cl.ReplyNotice("you are receiving message from mock world datashard")
 
 			err := func() error {
 				for _, msg := range []pgproto3.BackendMessage{

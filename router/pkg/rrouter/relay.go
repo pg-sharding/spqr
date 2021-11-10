@@ -32,14 +32,14 @@ type RelayStateImpl struct {
 
 	traceMsgs bool
 
-	Qr      qrouter.Qrouter
+	Qr      qrouter.QueryRouter
 	Cl      client.RouterClient
 	manager ConnManager
 
 	msgBuf []pgproto3.Query
 }
 
-func NewRelayState(qr qrouter.Qrouter, client client.RouterClient, manager ConnManager) *RelayStateImpl {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager ConnManager) *RelayStateImpl {
 	return &RelayStateImpl{
 		ActiveShards: nil,
 		TxActive:     false,
@@ -108,7 +108,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 			rst.ActiveShards = append(rst.ActiveShards, shr.Shkey)
 		}
 		//
-		if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched shard routes %v", v.Routes)); err != nil {
+		if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched datashard routes %v", v.Routes)); err != nil {
 			return err
 		}
 
@@ -128,13 +128,13 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 		if !config.RouterConfig().RouterConfig.WorldShardFallback {
 			return err
 		}
-		// fallback to execute query on wolrd shard (s)
+		// fallback to execute query on wolrd datashard (s)
 
 		//
 
 		_, _ = rst.RerouteWorld()
 		if err := rst.ConnectWold(); err != nil {
-			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world shard: %w", err))
+			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))
 			return err
 		}
 
@@ -184,8 +184,8 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 			return err
 		}
 	} else {
-		tracelog.InfoLogger.Printf("initialize shard server conn")
-		_ = rst.Cl.ReplyNotice("initialize single shard server conn")
+		tracelog.InfoLogger.Printf("initialize datashard server conn")
+		_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 		serv = server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 	}
 
@@ -205,8 +205,8 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
 func (rst *RelayStateImpl) ConnectWold() error {
 
-	tracelog.InfoLogger.Printf("initialize shard server conn")
-	_ = rst.Cl.ReplyNotice("initialize single shard server conn")
+	tracelog.InfoLogger.Printf("initialize datashard server conn")
+	_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 
 	serv := server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 
@@ -214,7 +214,7 @@ func (rst *RelayStateImpl) ConnectWold() error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("route cl %s:%s to world shard", rst.Cl.Usr(), rst.Cl.DB())
+	tracelog.InfoLogger.Printf("route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.ActiveShards); err != nil {
 		tracelog.ErrorLogger.Printf("failed to route cl %w", err)

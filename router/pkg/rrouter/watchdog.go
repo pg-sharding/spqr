@@ -7,13 +7,13 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	"github.com/pg-sharding/spqr/router/pkg/shard"
 	"github.com/wal-g/tracelog"
 )
 
 type Watchdog interface {
-	Watch(sh shard.Shard)
+	Watch(sh datashard.Shard)
 	AddInstance(cfg *config.InstanceCFG) error
 	Run()
 }
@@ -76,7 +76,7 @@ func (s *ShardPrimaryWatchdog) Run() {
 
 		var prvMaster conn.DBInstance
 
-		tracelog.InfoLogger.Printf("shard watchdog %s started", s.shname)
+		tracelog.InfoLogger.Printf("datashard watchdog %s started", s.shname)
 
 		for {
 
@@ -123,7 +123,7 @@ func (s *ShardPrimaryWatchdog) Run() {
 	}()
 }
 
-func (s *ShardPrimaryWatchdog) Watch(sh shard.Shard) {
+func (s *ShardPrimaryWatchdog) Watch(sh datashard.Shard) {
 	// add to notify queue
 }
 
