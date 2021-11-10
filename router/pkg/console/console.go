@@ -371,7 +371,14 @@ func (c *Local) Shards(cl client.Client) error {
 func (c *Local) ShardingColumns(ctx context.Context, cl client.Client) error {
 	tracelog.InfoLogger.Printf("listing sharding columns")
 
-	for _, rule := range c.Qrouter.ListShardingRules() {
+
+	rules, err := c.Qrouter.ListShardingRules(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	for _, rule := range rules {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("colmns-match sharding rule with colmn set: %+v", rule.Columns()))},
 		}); err != nil {

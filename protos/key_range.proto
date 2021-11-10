@@ -40,7 +40,8 @@ message AddKeyRangeReply {
 
 message SplitKeyRangeRequest {
   string krid = 1;
-  bytes bound = 2;
+  string source_krid = 2;
+  bytes bound = 3;
 }
 
 message SplitKeyRangeReply {

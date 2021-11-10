@@ -18,7 +18,6 @@ type LocalQrouterServer struct {
 }
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-
 	for _, rule := range request.Rules {
 		err := l.qr.AddShardingRule(shrule.NewShardingRule(rule.Columns))
 
@@ -30,12 +29,26 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 	return &protos.AddShardingRuleReply{}, nil
 }
 
-func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-	panic("implement me")
+func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
+	rules, err := l.qr.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var shardingRules []*protos.ShardingRule
+
+	for _, rule := range rules {
+		shardingRules = append(shardingRules, &protos.ShardingRule{
+			Columns: rule.Columns(),
+		})
+	}
+
+	return &protos.ListShardingRuleReply{
+		Rules: shardingRules,
+	}, nil
 }
 
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
-
 	err := l.qr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRange))
 	if err != nil {
 		return nil, err
@@ -73,11 +86,22 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 }
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	panic("implement me")
+	if err := l.qr.UnLock(ctx, request.Krid); err != nil {
+		return nil, err
+	}
+	return &protos.UnlockKeyRangeReply{}, nil
 }
 
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
-	panic("implement me")
+	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
+		Krid:     request.Krid,
+		SourceID: request.Krid,
+		Bound:    request.Bound,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &protos.SplitKeyRangeReply{}, nil
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {

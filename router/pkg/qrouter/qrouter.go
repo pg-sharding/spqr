@@ -1,6 +1,7 @@
 package qrouter
 
 import (
+	"context"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
@@ -43,7 +44,8 @@ type Qrouter interface {
 
 	// sharding rules
 	AddShardingRule(shrule *shrule.ShardingRule) error
-	ListShardingRules() []*shrule.ShardingRule
+	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
+
 	// do not use
 	AddLocalTable(tname string) error
 

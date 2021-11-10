@@ -16,6 +16,7 @@ type Coordinator interface {
 
 	AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error
 	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
+	ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error)
 
 	RegisterRouter(ctx context.Context, r *qdb.Router) error
 	RegisterWorld(ctx context.Context, w world.World) error

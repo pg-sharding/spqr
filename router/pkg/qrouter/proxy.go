@@ -27,8 +27,8 @@ type ProxyRouter struct {
 	qdb qdb.QrouterDB
 }
 
-func (qr *ProxyRouter) ListShardingRules() []*shrule.ShardingRule {
-	return qr.Rules
+func (qr *ProxyRouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	return qr.Rules, nil
 }
 
 func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {

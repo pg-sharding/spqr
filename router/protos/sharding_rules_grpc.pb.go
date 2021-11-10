@@ -19,7 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardingRulesServiceClient interface {
 	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
-	ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error)
 }
 
 type shardingRulesServiceClient struct {
@@ -39,8 +39,8 @@ func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *A
 	return out, nil
 }
 
-func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
-	out := new(AddShardingRuleReply)
+func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error) {
+	out := new(ListShardingRuleReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/ListShardingRules", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *
 // for forward compatibility
 type ShardingRulesServiceServer interface {
 	AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
-	ListShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	ListShardingRules(context.Context, *AddShardingRuleRequest) (*ListShardingRuleReply, error)
 	mustEmbedUnimplementedShardingRulesServiceServer()
 }
 
@@ -64,7 +64,7 @@ type UnimplementedShardingRulesServiceServer struct {
 func (UnimplementedShardingRulesServiceServer) AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddShardingRules not implemented")
 }
-func (UnimplementedShardingRulesServiceServer) ListShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
+func (UnimplementedShardingRulesServiceServer) ListShardingRules(context.Context, *AddShardingRuleRequest) (*ListShardingRuleReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListShardingRules not implemented")
 }
 func (UnimplementedShardingRulesServiceServer) mustEmbedUnimplementedShardingRulesServiceServer() {}
