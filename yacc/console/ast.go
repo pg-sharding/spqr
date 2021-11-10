@@ -13,9 +13,9 @@ type ShardingColumn struct {
 	ColName string
 }
 
-type KeyRange struct {
-	From       []byte
-	To         []byte
+type AddKeyRange struct {
+	LowerBound []byte
+	UpperBound []byte
 	ShardID    string
 	KeyRangeID string
 }
@@ -103,7 +103,7 @@ func (*MoveKeyRange) iStatement()   {}
 func (*SplitKeyRange) iStatement()  {}
 func (*UniteKeyRange) iStatement()  {}
 func (*ShardingColumn) iStatement() {}
-func (*KeyRange) iStatement()       {}
+func (*AddKeyRange) iStatement()    {}
 func (*Shard) iStatement()          {}
 func (*Kill) iStatement()           {}
 

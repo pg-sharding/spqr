@@ -145,7 +145,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 	//span.SetTag("shard_routes", routingState)
 }
 
-func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
+func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
 	span := opentracing.StartSpan("reroute to world")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -171,7 +171,7 @@ func (rst *RelayStateImpl) RerouteWorld() ([]qrouter.ShardRoute, error) {
 	return shardRoutes, nil
 }
 
-func (rst *RelayStateImpl) Connect(shardRoutes []qrouter.ShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
 	var serv Server
 	var err error
@@ -257,23 +257,32 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 		return err
 	}
 
-	if txst == conn.TXREL {
+	switch txst {
+	case conn.TXREL:
 		if rst.TxActive {
 			if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
 				return err
 			}
 			rst.TxActive = false
 		}
-	} else {
+
+		return nil
+	case conn.NOTXREL:
+
 		if !rst.TxActive {
 			if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 				return err
 			}
 			rst.TxActive = true
 		}
-	}
 
-	return nil
+		return nil
+	default:
+		err := xerrors.Errorf("unlnown tx status %v", txst)
+		tracelog.ErrorLogger.PrintError(err)
+
+		return err
+	}
 }
 
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {

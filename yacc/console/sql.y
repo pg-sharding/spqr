@@ -12,7 +12,7 @@ package spqrparser
   empty                  struct{}
   statement              Statement
   show                   *Show
-  kr                     *KeyRange
+  kr                     *AddKeyRange
   sh_col                 *ShardingColumn
   register_router        *RegisterRouter
   unregister_router      *UnregisterRouter
@@ -248,7 +248,7 @@ unlock_stmt:
 add_key_range_stmt:
 	ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
 	{
-		$$ = &KeyRange{From: $4, To: $5, ShardID: $6, KeyRangeID: $7}
+		$$ = &AddKeyRange{LowerBound: $4, UpperBound: $5, ShardID: $6, KeyRangeID: $7}
 	}
 
 drop_key_range_stmt:

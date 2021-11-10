@@ -37,13 +37,13 @@ func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	}
 }
 
-func KeyRangeFromSQL(kr *spqrparser.KeyRange) *KeyRange {
+func KeyRangeFromSQL(kr *spqrparser.AddKeyRange) *KeyRange {
 	if kr == nil {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: kr.From,
-		UpperBound: kr.To,
+		LowerBound: kr.LowerBound,
+		UpperBound: kr.UpperBound,
 		ShardID:    kr.ShardID,
 		ID:         kr.KeyRangeID,
 	}

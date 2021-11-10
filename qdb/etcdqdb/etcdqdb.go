@@ -292,6 +292,28 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error
 	return err
 }
 
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
+	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	tracelog.InfoLogger.Printf("got resp %v", resp)
+	var ret []*qdb.KeyRange
+
+	for _, e := range resp.Kvs {
+		var kr qdb.KeyRange
+
+		if err := json.Unmarshal(e.Value, &kr); err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, &kr)
+	}
+
+	return ret, nil
+}
+
 func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
 }

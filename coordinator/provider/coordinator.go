@@ -22,21 +22,21 @@ import (
 	"google.golang.org/grpc"
 )
 
-type routerconn struct {
+type routerConn struct {
 	routerproto.KeyRangeServiceClient
 	addr string
 	id   string
 }
 
-func (r *routerconn) Addr() string {
+func (r *routerConn) Addr() string {
 	return r.addr
 }
 
-func (r *routerconn) ID() string {
+func (r *routerConn) ID() string {
 	return r.id
 }
 
-var _ router.Router = &routerconn{}
+var _ router.Router = &routerConn{}
 
 func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 	return grpcclient.Dial(r.Addr())
@@ -92,7 +92,15 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	if err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("routers %v", resp)
+	tracelog.InfoLogger.Printf("routers %v", func() []string {
+		var strs []string
+
+		for _, el := range resp {
+			strs = append(strs, el.Addr())
+		}
+
+		return strs
+	})
 
 	for _, r := range resp {
 		cc, err := DialRouter(r)
@@ -173,15 +181,13 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				return err
 			}
 
-			tracelog.InfoLogger.Printf("parsed %T", v.String, tstmt)
+			tracelog.InfoLogger.Printf("parsed %v %T", v.String, tstmt)
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
 					err := qc.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 					if err != nil {
-						cl.ReplyErr(err.Error())
-						tracelog.ErrorLogger.PrintError(err)
 						return err
 					}
 
@@ -189,29 +195,20 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.RegisterRouter:
 					err := qc.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
 					if err != nil {
-						cl.ReplyErr(err.Error())
-						tracelog.ErrorLogger.PrintError(err)
 						return err
 					}
 
 					return nil
-				case *spqrparser.KeyRange:
-					if err := qc.AddKeyRange(ctx,
-						kr.KeyRangeFromSQL(stmt),
-					); err != nil {
-						cl.ReplyErr(err.Error())
-						tracelog.ErrorLogger.PrintError(err)
+				case *spqrparser.AddKeyRange:
+					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
 						return err
 					}
 
 					return nil
 				case *spqrparser.Lock:
 					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
-						cl.ReplyErr(err.Error())
-						tracelog.ErrorLogger.PrintError(err)
 						return err
 					}
-
 				case *spqrparser.Show:
 
 				default:
@@ -220,8 +217,12 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 				return nil
 			}(); err != nil {
+				tracelog.ErrorLogger.PrintError(err)
+
+				//
 				_ = cl.ReplyErr(err.Error())
 			} else {
+				tracelog.InfoLogger.Print("processed ok\n")
 
 				if err := func() error {
 					for _, msg := range []pgproto3.BackendMessage{
@@ -252,7 +253,6 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					tracelog.ErrorLogger.PrintError(err)
 				}
 			}
-
 		default:
 		}
 	}

@@ -14,7 +14,7 @@ type yySymType struct {
 	empty             struct{}
 	statement         Statement
 	show              *Show
-	kr                *KeyRange
+	kr                *AddKeyRange
 	sh_col            *ShardingColumn
 	register_router   *RegisterRouter
 	unregister_router *UnregisterRouter
@@ -723,7 +723,7 @@ yydefault:
 		yyDollar = yyS[yypt-7 : yypt+1]
 //line yacc/console/sql.y:250
 		{
-			yyVAL.kr = &KeyRange{From: yyDollar[4].bytes, To: yyDollar[5].bytes, ShardID: yyDollar[6].str, KeyRangeID: yyDollar[7].str}
+			yyVAL.kr = &AddKeyRange{LowerBound: yyDollar[4].bytes, UpperBound: yyDollar[5].bytes, ShardID: yyDollar[6].str, KeyRangeID: yyDollar[7].str}
 		}
 	case 39:
 		yyDollar = yyS[yypt-4 : yypt+1]

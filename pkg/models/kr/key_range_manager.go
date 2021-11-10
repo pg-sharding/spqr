@@ -14,7 +14,7 @@ type UniteKeyRange struct {
 }
 
 type KeyRangeManager interface {
-	KeyRanges(ctx context.Context) []*KeyRange
+	KeyRanges(ctx context.Context) ([]*KeyRange, error)
 
 	AddKeyRange(ctx context.Context, kr *KeyRange) error
 

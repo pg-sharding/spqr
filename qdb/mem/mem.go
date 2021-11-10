@@ -90,7 +90,7 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 	return nil
 }
 
-func (q *QrouterDBMem) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+func (q *QrouterDBMem) UpdateKeyRange(_ context.Context, keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -99,7 +99,7 @@ func (q *QrouterDBMem) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRang
 	return nil
 }
 
-func (q *QrouterDBMem) Check(ctx context.Context, kr *qdb.KeyRange) bool {
+func (q *QrouterDBMem) Check(_ context.Context, kr *qdb.KeyRange) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -115,7 +115,7 @@ func NewQrouterDBMem() (*QrouterDBMem, error) {
 	}, nil
 }
 
-func (q *QrouterDBMem) Lock(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
+func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -130,7 +130,7 @@ func (q *QrouterDBMem) Lock(ctx context.Context, KeyRangeID string) (*qdb.KeyRan
 	return kr, nil
 }
 
-func (q *QrouterDBMem) UnLock(ctx context.Context, KeyRangeID string) error {
+func (q *QrouterDBMem) UnLock(_ context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -144,6 +144,16 @@ func (q *QrouterDBMem) UnLock(ctx context.Context, KeyRangeID string) error {
 	}
 
 	return nil
+}
+
+func (q *QrouterDBMem) ListKeyRanges(_ context.Context) ([]*qdb.KeyRange, error) {
+	var ret []*qdb.KeyRange
+
+	for _, el := range q.krs {
+		ret = append(ret, el)
+	}
+
+	return ret, nil
 }
 
 var _ qdb.QrouterDB = &QrouterDBMem{}

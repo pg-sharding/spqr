@@ -25,7 +25,7 @@ type RoutingState interface {
 type ShardMatchState struct {
 	RoutingState
 
-	Routes []ShardRoute
+	Routes []*ShardRoute
 }
 
 type SkipRoutingState struct {
@@ -47,10 +47,10 @@ type Qrouter interface {
 	// do not use
 	AddLocalTable(tname string) error
 
-	// krs
+	// shards
 	Shards() []string
 	WorldShards() []string
-	WorldShardsRoutes() []ShardRoute
+	WorldShardsRoutes() []*ShardRoute
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
 	AddWorldShard(name string, cfg *config.ShardCfg) error

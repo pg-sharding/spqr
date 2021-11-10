@@ -19,7 +19,7 @@ func NewLocalQrouter(shid string) (*LocalQrouter, error) {
 
 func (l *LocalQrouter) Route(q string) (RoutingState, error) {
 	return ShardMatchState{
-		Routes: []ShardRoute{
+		Routes: []*ShardRoute{
 			{
 				Shkey: kr.ShardKey{
 					Name: l.shid,

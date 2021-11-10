@@ -203,7 +203,7 @@ func (c *Local) LockKeyRange(ctx context.Context, cl client.Client, krid string)
 	return nil
 }
 
-func (c *Local) AddKeyRange(ctx context.Context, cl client.Client, keyRange *spqrparser.KeyRange) error {
+func (c *Local) AddKeyRange(ctx context.Context, cl client.Client, keyRange *spqrparser.AddKeyRange) error {
 
 	tracelog.InfoLogger.Printf("received create key range request %s for shard", keyRange.ShardID)
 
@@ -222,7 +222,7 @@ func (c *Local) AddKeyRange(ctx context.Context, cl client.Client, keyRange *spq
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %v", keyRange.From, keyRange.To, err))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %d to %d, err %v", keyRange.LowerBound, keyRange.UpperBound, err))}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -287,7 +287,12 @@ func (c *Local) KeyRanges(ctx context.Context, cl client.Client) error {
 		}
 	}
 
-	for _, keyRange := range c.Qrouter.KeyRanges(ctx) {
+	krs, err := c.Qrouter.KeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, keyRange := range krs {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to shard %s", keyRange.ID, keyRange.ShardID))},
 		}); err != nil {
@@ -440,7 +445,7 @@ func (c *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) er
 			_ = c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		}
 		return err
-	case *spqrparser.KeyRange:
+	case *spqrparser.AddKeyRange:
 		err := c.AddKeyRange(ctx, cl, stmt)
 		if err != nil {
 			c.Qlog.DumpQuery(ctx, config.RouterConfig().AutoConf, q)

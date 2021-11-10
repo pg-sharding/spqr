@@ -49,7 +49,12 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	for _, keyRange := range l.qr.KeyRanges(ctx) {
+	krsqdb, err := l.qr.KeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, keyRange := range krsqdb {
 		krs = append(krs, keyRange.ToProto())
 	}
 
