@@ -11,14 +11,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/pkg/shard"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
 type MultiShardServer struct {
 	rule         *config.BERule
-	activeShards []shard.Shard
+	activeShards []datashard.Shard
 
 	pool conn.ConnPool
 }
@@ -33,7 +33,8 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	sh, err := shard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+
 	if err != nil {
 		return err
 	}
@@ -51,7 +52,7 @@ func (m *MultiShardServer) UnrouteShard(sh kr.ShardKey) error {
 		}
 	}
 
-	return xerrors.New("unrouted shard does not match any of active")
+	return xerrors.New("unrouted datashard does not match any of active")
 }
 
 func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
@@ -88,7 +89,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 		currshard := currshard
 		go func() {
-			err := func(shard shard.Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
+			err := func(shard datashard.Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
+
 				defer wg.Done()
 
 				msg, err := shard.Receive()

@@ -4,14 +4,14 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/router/pkg/shard"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
 func NewMultiShardServer(rule *config.BERule, pool conn.ConnPool) (Server, error) {
 	ret := &MultiShardServer{
 		rule:         rule,
 		pool:         pool,
-		activeShards: []shard.Shard{},
+		activeShards: []datashard.Shard{},
 	}
 
 	return ret, nil

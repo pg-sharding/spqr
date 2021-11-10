@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
@@ -18,7 +19,7 @@ type ShardRoute struct {
 	Matchedkr *kr.KeyRange
 }
 
-var MatchShardError = xerrors.New("failed to match shard")
+var MatchShardError = xerrors.New("failed to match datashard")
 
 type RoutingState interface {
 	iState()
@@ -38,14 +39,11 @@ type WolrdRouteState struct {
 	RoutingState
 }
 
-type Qrouter interface {
-	kr.KeyRangeManager
+type QueryRouter interface {
+	kr.KeyRangeMgr
+	shrule.ShardingRulesMgr
 
 	Route(q string) (RoutingState, error)
-
-	// sharding rules
-	AddShardingRule(shrule *shrule.ShardingRule) error
-	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
 
 	// do not use
 	AddLocalTable(tname string) error
@@ -55,13 +53,14 @@ type Qrouter interface {
 	WorldShards() []string
 	WorldShardsRoutes() []*ShardRoute
 
-	AddDataShard(name string, cfg *config.ShardCfg) error
+	AddDataShard(ctx context.Context, ds *datashards.DataShard) error
+	ListDataShards(ctx context.Context) []*datashards.DataShard
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
-func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
+func NewQrouter(qtype config.QrouterType) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalQrouter:
 		return NewLocalQrouter(config.RouterConfig().QRouterCfg.LocalShard)
@@ -70,5 +69,4 @@ func NewQrouter(qtype config.QrouterType) (Qrouter, error) {
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().QRouterCfg.Qtype)
 	}
-
 }

@@ -11,12 +11,9 @@ import (
 )
 
 type Coordinator interface {
-	client.InteractRunner
-	kr.KeyRangeManager
-
-	AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error
-	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
-	ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error)
+	client.Interactor
+	kr.KeyRangeMgr
+	shrule.ShardingRulesMgr
 
 	RegisterRouter(ctx context.Context, r *qdb.Router) error
 	RegisterWorld(ctx context.Context, w world.World) error

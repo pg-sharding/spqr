@@ -2,10 +2,11 @@ package qrouter
 
 import (
 	"context"
+	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"math/rand"
 
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
@@ -27,13 +28,17 @@ type ProxyRouter struct {
 	qdb qdb.QrouterDB
 }
 
+func (qr *ProxyRouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
+	panic("implement me")
+}
+
 func (qr *ProxyRouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	return qr.Rules, nil
 }
 
 func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 
-	tracelog.InfoLogger.Printf("adding world shard %s", name)
+	tracelog.InfoLogger.Printf("adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
 
 	return nil
@@ -79,7 +84,7 @@ func (qr *ProxyRouter) WorldShards() []string {
 	panic("implement me")
 }
 
-var _ Qrouter = &ProxyRouter{}
+var _ QueryRouter = &ProxyRouter{}
 
 func NewProxyRouter() (*ProxyRouter, error) {
 	db, err := mem.NewQrouterDBMem()
@@ -97,7 +102,8 @@ func NewProxyRouter() (*ProxyRouter, error) {
 }
 
 func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-	return qr.qdb.Watch(krid, krst, noitfyio)
+	//return qr.qdb.Watch(krid, krst, noitfyio)
+	return nil
 }
 
 func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
@@ -108,12 +114,22 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDLeft); err != nil {
 		return err
 	}
-	defer qr.qdb.UnLock(ctx, req.KeyRangeIDLeft)
+	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnLock(ctx, keyRangeID)
+		if err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
 	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
-	defer qr.qdb.UnLock(ctx, req.KeyRangeIDRight)
+	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnLock(ctx, keyRangeID)
+		if err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+	}(qr.qdb, ctx, req.KeyRangeIDRight)
 
 	if err = qr.qdb.DropKeyRange(ctx, krleft); err != nil {
 		return err
@@ -158,17 +174,16 @@ func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, err
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
-func (qr *ProxyRouter) UnLock(ctx context.Context, krid string) error {
+func (qr *ProxyRouter) Unlock(ctx context.Context, krid string) error {
 	return qr.qdb.UnLock(ctx, krid)
 }
 
-func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {
-
-	tracelog.InfoLogger.Printf("adding node %s", name)
-	qr.DataShardCfgs[name] = cfg
-
+func (qr *ProxyRouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
+	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
+	qr.DataShardCfgs[ds.ID] = ds.Cfg
 	return nil
 }
+
 
 func (qr *ProxyRouter) Shards() []string {
 	var ret []string
@@ -180,7 +195,7 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) KeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 
 	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
@@ -194,7 +209,7 @@ func (qr *ProxyRouter) KeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	return ret, nil
 }
 
-func (qr *ProxyRouter) AddShardingRule(rule *shrule.ShardingRule) error {
+func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	if len(rule.Columns()) != 0 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
@@ -351,8 +366,9 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 		}
 		return nil
 	case *sqlparser.CreateTable:
-		tracelog.InfoLogger.Printf("ddl routing excpands to every shard")
-		// route ddl to every shard
+		tracelog.InfoLogger.Printf("ddl routing excpands to every datashard")
+		// route ddl to every datashard
+
 		shrds := qr.Shards()
 		var ret []*ShardRoute
 		for _, sh := range shrds {
