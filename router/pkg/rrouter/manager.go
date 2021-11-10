@@ -2,26 +2,27 @@ package rrouter
 
 import (
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pkg/errors"
 )
 
 type ConnManager interface {
-	TXBeginCB(client RouterClient, rst *RelayStateImpl) error
-	TXEndCB(client RouterClient, rst *RelayStateImpl) error
+	TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error
+	TXEndCB(client client.RouterClient, rst *RelayStateImpl) error
 
-	RouteCB(client RouterClient, sh []kr.ShardKey) error
-	UnRouteCB(client RouterClient, sh []kr.ShardKey) error
-	UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error
+	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
+	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
+	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
 	ValidateReRoute(rst *RelayStateImpl) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client RouterClient, sh []kr.ShardKey, errmsg error) error {
+func unRouteWithError(cmngr ConnManager, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 
 	return client.ReplyErr(errmsg.Error())
@@ -29,11 +30,11 @@ func unRouteWithError(cmngr ConnManager, client RouterClient, sh []kr.ShardKey, 
 
 type TxConnManager struct{}
 
-func (t *TxConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
-func (t *TxConnManager) UnRouteCB(cl RouterClient, sh []kr.ShardKey) error {
+func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		asynctracelog.Printf("unrouting from shard %v", shkey.Name)
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
@@ -47,7 +48,7 @@ func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
-func (t *TxConnManager) RouteCB(client RouterClient, sh []kr.ShardKey) error {
+func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
 		asynctracelog.Printf("adding shard %v", shkey.Name)
@@ -65,11 +66,11 @@ func (t *TxConnManager) ValidateReRoute(rst *RelayStateImpl) bool {
 	return rst.ActiveShards == nil || !rst.TxActive
 }
 
-func (t *TxConnManager) TXBeginCB(client RouterClient, rst *RelayStateImpl) error {
+func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(client RouterClient, rst *RelayStateImpl) error {
+func (t *TxConnManager) TXEndCB(client client.RouterClient, rst *RelayStateImpl) error {
 
 	asynctracelog.Printf("end of tx unrouting from %v", rst.ActiveShards)
 
@@ -84,11 +85,11 @@ func (t *TxConnManager) TXEndCB(client RouterClient, rst *RelayStateImpl) error 
 
 type SessConnManager struct{}
 
-func (s *SessConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, errmsg error) error {
+func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 
-func (s *SessConnManager) UnRouteCB(cl RouterClient, sh []kr.ShardKey) error {
+func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
@@ -98,15 +99,15 @@ func (s *SessConnManager) UnRouteCB(cl RouterClient, sh []kr.ShardKey) error {
 	return nil
 }
 
-func (s *SessConnManager) TXBeginCB(client RouterClient, rst *RelayStateImpl) error {
+func (s *SessConnManager) TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(client RouterClient, rst *RelayStateImpl) error {
+func (s *SessConnManager) TXEndCB(client client.RouterClient, rst *RelayStateImpl) error {
 	return nil
 }
 
-func (s *SessConnManager) RouteCB(client RouterClient, sh []kr.ShardKey) error {
+func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		if err := client.Server().AddShard(shkey); err != nil {
 			return err
@@ -124,16 +125,16 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
-func MatchConnectionPooler(client RouterClient) (ConnManager, error) {
+func MatchConnectionPooler(client client.RouterClient) (ConnManager, error) {
 	switch client.Rule().PoolingMode {
 	case config.PoolingModeSession:
-		return  NewSessConnManager(), nil
+		return NewSessConnManager(), nil
 	case config.PoolingModeTransaction:
-		return  NewTxConnManager(), nil
+		return NewTxConnManager(), nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message:  fmt.Sprintf("unknown pooling mode for route %v", client.ID()) ,
+				Message:  fmt.Sprintf("unknown pooling mode for route %v", client.ID()),
 				Severity: "ERROR",
 			},
 		} {

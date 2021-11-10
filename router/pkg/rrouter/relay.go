@@ -8,7 +8,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -31,13 +33,13 @@ type RelayStateImpl struct {
 	traceMsgs bool
 
 	Qr      qrouter.Qrouter
-	Cl      RouterClient
+	Cl      client.RouterClient
 	manager ConnManager
 
 	msgBuf []pgproto3.Query
 }
 
-func NewRelayState(qr qrouter.Qrouter, client RouterClient, manager ConnManager) *RelayStateImpl {
+func NewRelayState(qr qrouter.Qrouter, client client.RouterClient, manager ConnManager) *RelayStateImpl {
 	return &RelayStateImpl{
 		ActiveShards: nil,
 		TxActive:     false,
@@ -96,7 +98,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 			return qrouter.MatchShardError
 		}
 
-		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != ClientNotRouter {
+		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != client.ClientNotRouter {
 			tracelog.ErrorLogger.PrintError(err)
 			return err
 		}
@@ -173,18 +175,18 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
 
 func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
-	var serv Server
+	var serv server.Server
 	var err error
 
 	if len(shardRoutes) > 1 {
-		serv, err = NewMultiShardServer(rst.Cl.Route().beRule, rst.Cl.Route().servPool)
+		serv, err = server.NewMultiShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 		if err != nil {
 			return err
 		}
 	} else {
 		tracelog.InfoLogger.Printf("initialize shard server conn")
 		_ = rst.Cl.ReplyNotice("initialize single shard server conn")
-		serv = NewShardServer(rst.Cl.Route().beRule, rst.Cl.Route().servPool)
+		serv = server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 	}
 
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
@@ -206,7 +208,7 @@ func (rst *RelayStateImpl) ConnectWold() error {
 	tracelog.InfoLogger.Printf("initialize shard server conn")
 	_ = rst.Cl.ReplyNotice("initialize single shard server conn")
 
-	serv := NewShardServer(rst.Cl.Route().beRule, rst.Cl.Route().servPool)
+	serv := server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
 		return err

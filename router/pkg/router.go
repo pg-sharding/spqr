@@ -7,6 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
@@ -89,7 +90,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 			return nil, err
 		}
 
-		if err := executer.SPIexec(context.TODO(), localConsole, rrouter.NewFakeClient(), queries); err != nil {
+		if err := executer.SPIexec(context.TODO(), localConsole, client.NewFakeClient(), queries); err != nil {
 			tracelog.ErrorLogger.PrintError(err)
 		}
 
@@ -200,7 +201,7 @@ func (r *RouterImpl) Run(listener net.Listener) error {
 }
 
 func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl := rrouter.NewPsqlClient(conn)
+	cl := client.NewPsqlClient(conn)
 
 	if err := cl.Init(r.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err

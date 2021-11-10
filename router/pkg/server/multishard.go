@@ -1,127 +1,24 @@
-package rrouter
+package server
 
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"reflect"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/router/pkg/shard"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
-type Server interface {
-	Send(query pgproto3.FrontendMessage) error
-	Receive() (pgproto3.BackendMessage, error)
-
-	AddShard(shkey kr.ShardKey) error
-	UnrouteShard(sh kr.ShardKey) error
-
-	AddTLSConf(cfg *tls.Config) error
-
-	Cleanup() error
-	Reset() error
-}
-
-type ShardServer struct {
-	rule *config.BERule
-
-	pool conn.ConnPool
-
-	shard Shard
-}
-
-func (srv *ShardServer) Reset() error {
-	return nil
-}
-
-func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
-
-	if srv.shard.SHKey().Name != shkey.Name {
-		return xerrors.Errorf("active shard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
-	}
-
-	pgi := srv.shard.Instance()
-	fmt.Printf("put connection to %v back to pool\n", pgi.Hostname())
-
-	if err := srv.pool.Put(shkey, pgi); err != nil {
-		return err
-	}
-
-	srv.shard = nil
-
-	return nil
-}
-
-func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
-	if srv.shard != nil {
-		return xerrors.New("single shard server does not support more than 2 shard connection simultaneously")
-	}
-
-	if pgi, err := srv.pool.Connection(shkey); err != nil {
-		return err
-	} else {
-
-		srv.shard, err = NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
-	return srv.shard.ReqBackendSsl(cfg)
-}
-
-func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
-	return &ShardServer{
-		rule: rule,
-		pool: spool,
-	}
-}
-
-func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	return srv.shard.Send(query)
-}
-
-func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
-	return srv.shard.Receive()
-}
-
-func (srv *ShardServer) Cleanup() error {
-
-	if srv.rule.PoolRollback {
-		if err := srv.Send(&pgproto3.Query{
-			String: "ROLLBACK",
-		}); err != nil {
-			return err
-		}
-	}
-
-	if srv.rule.PoolDiscard {
-		if err := srv.Send(&pgproto3.Query{
-			String: "DISCARD ALL",
-		}); err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-}
-
-var _ Server = &ShardServer{}
-
 type MultiShardServer struct {
 	rule         *config.BERule
-	activeShards []Shard
+	activeShards []shard.Shard
 
 	pool conn.ConnPool
 }
@@ -136,7 +33,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	sh, err := NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+	sh, err := shard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
 	if err != nil {
 		return err
 	}
@@ -186,12 +83,12 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	wg := sync.WaitGroup{}
 
 	wg.Add(len(m.activeShards))
-	for _, shard := range m.activeShards {
-		asynctracelog.Printf("recv mult resp from sh %s", shard.Name())
+	for _, currshard := range m.activeShards {
+		asynctracelog.Printf("recv mult resp from sh %s", currshard.Name())
 
-		shard := shard
+		currshard := currshard
 		go func() {
-			err := func(shard Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
+			err := func(shard shard.Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
 				defer wg.Done()
 
 				msg, err := shard.Receive()
@@ -203,7 +100,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				ch <- msg
 
 				return nil
-			}(shard, ch, &wg)
+			}(currshard, ch, &wg)
 
 			if err != nil {
 				errch <- err
@@ -216,7 +113,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 	msgs := make([]pgproto3.BackendMessage, 0, len(m.activeShards))
 
-	err := func () error {
+	err := func() error {
 		for {
 			select {
 			case msg, ok := <-ch:
@@ -229,12 +126,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				return err
 			}
 		}
-	} ()
+	}()
 
 	if err != nil {
 		return nil, err
 	}
-
 
 	for i := range msgs {
 		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
@@ -292,32 +188,3 @@ func (m *MultiShardServer) Cleanup() error {
 }
 
 var _ Server = &MultiShardServer{}
-
-func NewMultiShardServer(rule *config.BERule, pool conn.ConnPool) (Server, error) {
-	ret := &MultiShardServer{
-		rule:         rule,
-		pool:         pool,
-		activeShards: []Shard{},
-	}
-
-	return ret, nil
-}
-
-type LoadMirroringServer struct {
-	Server
-	main   Server
-	mirror Server
-}
-
-var _ Server = &LoadMirroringServer{}
-
-func NewLoadMirroringServer(s1 Server, s2 Server) *LoadMirroringServer {
-	return &LoadMirroringServer{}
-}
-
-func (LoadMirroringServer) Send(query pgproto3.FrontendMessage) error {
-	return nil
-}
-func (LoadMirroringServer) Receive() (pgproto3.BackendMessage, error) {
-	return nil, nil
-}

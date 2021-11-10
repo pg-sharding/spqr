@@ -9,7 +9,7 @@ import (
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/wal-g/tracelog"
 )
 
@@ -63,7 +63,7 @@ func (w *WorldMock) Run() error {
 }
 
 func (w *WorldMock) serv(netconn net.Conn) error {
-	cl := rrouter.NewPsqlClient(netconn)
+	cl := client.NewPsqlClient(netconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
 

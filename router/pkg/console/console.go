@@ -371,7 +371,6 @@ func (c *Local) Shards(cl client.Client) error {
 func (c *Local) ShardingColumns(ctx context.Context, cl client.Client) error {
 	tracelog.InfoLogger.Printf("listing sharding columns")
 
-
 	rules, err := c.Qrouter.ListShardingRules(ctx)
 
 	if err != nil {

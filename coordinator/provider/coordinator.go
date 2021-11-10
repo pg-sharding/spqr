@@ -14,7 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	client2 "github.com/pg-sharding/spqr/router/pkg/client"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/wal-g/tracelog"
@@ -150,7 +150,7 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) err
 }
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
-	cl := rrouter.NewPsqlClient(nconn)
+	cl := client2.NewPsqlClient(nconn)
 
 	err := cl.Init(nil, config.SSLMODEDISABLE)
 

@@ -3,8 +3,8 @@ package grpcclient
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	proto "github.com/pg-sharding/spqr/router/protos"
 	"google.golang.org/grpc"
 )
@@ -20,7 +20,7 @@ func Dial(addr string) (*grpc.ClientConn, error) {
 }
 
 func (s RouterQClient) Process(ctx context.Context, request *proto.QueryExecuteRequest) (*proto.QueryExecuteResponse, error) {
-	_ = s.Console.ProcessQuery(ctx, request.Query, rrouter.NewFakeClient())
+	_ = s.Console.ProcessQuery(ctx, request.Query, client.NewFakeClient())
 
 	return &proto.QueryExecuteResponse{}, nil
 }

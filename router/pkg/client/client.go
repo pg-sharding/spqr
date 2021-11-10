@@ -1,4 +1,4 @@
-package rrouter
+package client
 
 import (
 	"bufio"
@@ -11,6 +11,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/router/pkg/route"
+	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
@@ -19,14 +21,14 @@ import (
 type RouterClient interface {
 	client.Client
 
-	Server() Server
+	Server() server.Server
 	Unroute() error
 
 	AssignRule(rule *config.FRRule) error
-	AssignServerConn(srv Server) error
-	AssignRoute(r *Route) error
+	AssignServerConn(srv server.Server) error
+	AssignRoute(r *route.Route) error
 
-	Route() *Route
+	Route() *route.Route
 	Rule() *config.FRRule
 
 	ProcQuery(query *pgproto3.Query) (byte, error)
@@ -36,14 +38,14 @@ type PsqlClient struct {
 	rule *config.FRRule
 	conn net.Conn
 
-	r *Route
+	r *route.Route
 
 	id string
 
 	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
-	server     Server
+	server     server.Server
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -110,7 +112,7 @@ func (cl *PsqlClient) Rule() *config.FRRule {
 	return cl.rule
 }
 
-func (cl *PsqlClient) Server() Server {
+func (cl *PsqlClient) Server() server.Server {
 	return cl.server
 }
 
@@ -336,7 +338,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	return cl.be.Send(msg)
 }
 
-func (cl *PsqlClient) AssignRoute(r *Route) error {
+func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 	if cl.r != nil {
 		return xerrors.New("client already has assigned route")
 	}
@@ -375,7 +377,7 @@ func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	}
 }
 
-func (cl *PsqlClient) AssignServerConn(srv Server) error {
+func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
 	if cl.server != nil {
 		return xerrors.New("client already has active connection")
 	}
@@ -384,7 +386,7 @@ func (cl *PsqlClient) AssignServerConn(srv Server) error {
 	return nil
 }
 
-func (cl *PsqlClient) Route() *Route {
+func (cl *PsqlClient) Route() *route.Route {
 	return cl.r
 }
 

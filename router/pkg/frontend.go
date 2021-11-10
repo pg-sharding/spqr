@@ -2,9 +2,10 @@ package pkg
 
 import (
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/wal-g/tracelog"
@@ -16,7 +17,7 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
-func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnManager) error {
+func Frontend(qr qrouter.Qrouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 
 	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 

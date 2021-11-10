@@ -1,32 +1,32 @@
-package rrouter
+package route
 
 import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/qdb"
 )
 
-type routeKey struct {
+type RouteKey struct {
 	usr string
 	db  string
 }
 
-func (r *routeKey) String() string {
-	return r.db + " " + r.usr
+func NewRouteKey(usr, db string) *RouteKey {
+	return &RouteKey{
+		usr: usr,
+		db:  db,
+	}
 }
 
-func NewSHKey(name string) qdb.ShardKey {
-	return qdb.ShardKey{
-		Name: name,
-	}
+func (r *RouteKey) String() string {
+	return r.db + " " + r.usr
 }
 
 type Route struct {
 	beRule *config.BERule
 	frRule *config.FRRule
 
-	clPool   ClientPool
+	clPool   client.Pool
 	servPool conn.ConnPool
 }
 
@@ -35,8 +35,20 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 		beRule:   beRule,
 		frRule:   frRule,
 		servPool: conn.NewConnPool(mapping),
-		clPool:   NewClientPool(),
+		clPool:   client.NewClientPool(),
 	}
+}
+
+func (r *Route) ServPool() conn.ConnPool {
+	return r.servPool
+}
+
+func (r *Route) BeRule() *config.BERule {
+	return r.beRule
+}
+
+func (r *Route) FrRule() *config.FRRule {
+	return r.frRule
 }
 
 func (r *Route) NofityClients(cb func(cl client.Client) error) error {

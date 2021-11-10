@@ -7,11 +7,13 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/router/pkg/route"
+	"github.com/pg-sharding/spqr/router/pkg/shard"
 	"github.com/wal-g/tracelog"
 )
 
 type Watchdog interface {
-	Watch(sh Shard)
+	Watch(sh shard.Shard)
 	AddInstance(cfg *config.InstanceCFG) error
 	Run()
 }
@@ -96,12 +98,12 @@ func (s *ShardPrimaryWatchdog) Run() {
 
 						tracelog.InfoLogger.Printf("notifying about new master %v", host.Hostname())
 
-						_ = s.rp.NotifyRoutes(func(route *Route) error {
-							if err := route.servPool.UpdateHostStatus(s.shname, prvMaster.Hostname(), false); err != nil {
+						_ = s.rp.NotifyRoutes(func(route *route.Route) error {
+							if err := route.ServPool().UpdateHostStatus(s.shname, prvMaster.Hostname(), false); err != nil {
 								return err
 							}
 
-							if err := route.servPool.UpdateHostStatus(s.shname, host.Hostname(), false); err != nil {
+							if err := route.ServPool().UpdateHostStatus(s.shname, host.Hostname(), false); err != nil {
 								return err
 							}
 
@@ -121,7 +123,7 @@ func (s *ShardPrimaryWatchdog) Run() {
 	}()
 }
 
-func (s *ShardPrimaryWatchdog) Watch(sh Shard) {
+func (s *ShardPrimaryWatchdog) Watch(sh shard.Shard) {
 	// add to notify queue
 }
 
