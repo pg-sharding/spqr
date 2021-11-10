@@ -50,12 +50,12 @@ type Qrouter interface {
 	// krs
 	Shards() []string
 	WorldShards() []string
+	WorldShardsRoutes() []ShardRoute
 
 	AddDataShard(name string, cfg *config.ShardCfg) error
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
-	WorldShardsRoutes() []ShardRoute
 }
 
 func NewQrouter(qtype config.QrouterType) (Qrouter, error) {

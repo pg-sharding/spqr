@@ -30,8 +30,8 @@ func CmpRanges(kr []byte, other []byte) bool {
 
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
-		LowerBound: kr.From,
-		UpperBound: kr.To,
+		LowerBound: kr.LowerBound,
+		UpperBound: kr.UpperBound,
 		ShardID:    kr.ShardID,
 		ID:         kr.KeyRangeID,
 	}
@@ -63,8 +63,8 @@ func KeyRangeFromProto(kr *proto.KeyRange) *KeyRange {
 
 func (kr *KeyRange) ToSQL() *qdb.KeyRange {
 	return &qdb.KeyRange{
-		From:       kr.LowerBound,
-		To:         kr.UpperBound,
+		LowerBound: kr.LowerBound,
+		UpperBound: kr.UpperBound,
 		ShardID:    kr.ShardID,
 		KeyRangeID: kr.ID,
 	}

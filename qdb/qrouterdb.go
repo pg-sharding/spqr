@@ -20,4 +20,5 @@ type QrouterDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 	DropKeyRange(ctx context.Context, krl *KeyRange) error
 	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
+	ListKeyRanges() []*KeyRange
 }

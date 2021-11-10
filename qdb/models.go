@@ -6,8 +6,8 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	From       []byte `json:"from"`
-	To         []byte `json:"to"`
+	LowerBound []byte `json:"from"`
+	UpperBound []byte `json:"to"`
 	ShardID    string `json:"shard_id"`
 	KeyRangeID string `json:"key_range_id"`
 }

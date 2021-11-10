@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
-	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
@@ -21,9 +20,6 @@ type ProxyRouter struct {
 	ColumnMapping map[string]struct{}
 
 	LocalTables map[string]struct{}
-
-	// keyRange
-	Ranges map[string]*kr.KeyRange
 
 	// shards
 	DataShardCfgs  map[string]*config.ShardCfg
@@ -96,8 +92,6 @@ func NewProxyRouter() (*ProxyRouter, error) {
 
 	return &ProxyRouter{
 		ColumnMapping:  map[string]struct{}{},
-		LocalTables:    map[string]struct{}{},
-		Ranges:         map[string]*kr.KeyRange{},
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
@@ -128,56 +122,48 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 		return err
 	}
 
-	krright.From = krleft.From
+	krright.LowerBound = krleft.LowerBound
 
 	return qr.qdb.UpdateKeyRange(ctx, krright)
 }
 
 func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 
-	krOld := qr.Ranges[req.SourceID]
+	var krOld *qdb.KeyRange
+	var err error
+
+	if krOld, err = qr.qdb.Lock(ctx, req.SourceID); err != nil {
+		return err
+	}
+
+	defer qr.qdb.UnLock(ctx, req.SourceID)
+
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			From:       req.Bound,
-			To:         krOld.UpperBound,
+			LowerBound: req.Bound,
+			UpperBound: krOld.UpperBound,
 			KeyRangeID: req.SourceID,
 		},
 	)
 
 	_ = qr.qdb.AddKeyRange(ctx, krNew.ToSQL())
 	krOld.UpperBound = req.Bound
-	_ = qr.qdb.UpdateKeyRange(ctx, krOld.ToSQL())
-
-	qr.Ranges[krOld.ID] = krOld
-	qr.Ranges[krNew.ID] = krNew
+	_ = qr.qdb.UpdateKeyRange(ctx, krOld)
 
 	return nil
 }
 
 func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
-	var keyRange *kr.KeyRange
-	var ok bool
-
-	if keyRange, ok = qr.Ranges[krid]; !ok {
-		return nil, errors.Errorf("key range with id %v not found", krid)
-	}
-
-	keyRangeDB, err := qr.qdb.Lock(ctx, keyRange.ID)
+	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
 	if err != nil {
 		return nil, err
 	}
+
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
 func (qr *ProxyRouter) UnLock(ctx context.Context, krid string) error {
-	var keyRange *kr.KeyRange
-	var ok bool
-
-	if keyRange, ok = qr.Ranges[krid]; !ok {
-		return errors.Errorf("key range with id %v not found", krid)
-	}
-
-	return qr.qdb.UnLock(ctx, keyRange.ID)
+	return qr.qdb.UnLock(ctx, krid)
 }
 
 func (qr *ProxyRouter) AddDataShard(name string, cfg *config.ShardCfg) error {
@@ -199,12 +185,12 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) KeyRanges(ctx context.Context) []*kr.KeyRange {
+func (qr *ProxyRouter) KeyRanges(_ context.Context) []*kr.KeyRange {
 
 	var ret []*kr.KeyRange
 
-	for _, keyRange := range qr.Ranges {
-		ret = append(ret, keyRange)
+	for _, keyRange := range qr.qdb.ListKeyRanges() {
+		ret = append(ret, kr.KeyRangeFromDB(keyRange))
 	}
 
 	return ret
@@ -224,20 +210,15 @@ func (qr *ProxyRouter) AddLocalTable(tname string) error {
 }
 
 func (qr *ProxyRouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	if _, ok := qr.Ranges[kr.ID]; ok {
-		return errors.Errorf("key range with ID already defined", kr.ID)
-	}
-
-	qr.Ranges[kr.ID] = kr
-	return nil
+	return qr.qdb.AddKeyRange(ctx, kr.ToSQL())
 }
 
 func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 
-	for _, keyRange := range qr.Ranges {
+	for _, keyRange := range qr.qdb.ListKeyRanges() {
 		tracelog.InfoLogger.Printf("comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
 		if kr.CmpRanges(keyRange.LowerBound, i) && kr.CmpRanges(i, keyRange.UpperBound) {
-			return keyRange
+			return kr.KeyRangeFromDB(keyRange)
 		}
 	}
 

@@ -57,9 +57,9 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	if err != nil {
 		return err
 	}
-	
+
 	tracelog.InfoLogger.Printf("routers %v", resp)
-	
+
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
