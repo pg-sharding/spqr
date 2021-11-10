@@ -3,6 +3,7 @@ package rrouter
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"reflect"
 	"sync"
 
@@ -166,7 +167,7 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activeShards {
-		tracelog.InfoLogger.Printf("sending Q to sh %v", shard.Name())
+		asynctracelog.Printf("sending Q to sh %v", shard.Name())
 		err := shard.Send(msg)
 		if err != nil {
 			tracelog.InfoLogger.PrintError(err)
@@ -179,26 +180,35 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	ch := make(chan pgproto3.BackendMessage, len(m.activeShards))
+	errch := make(chan error, 0)
+	defer close(errch)
 
 	wg := sync.WaitGroup{}
 
 	wg.Add(len(m.activeShards))
 	for _, shard := range m.activeShards {
-		tracelog.InfoLogger.Printf("recv mult resp from sh %s", shard.Name())
+		asynctracelog.Printf("recv mult resp from sh %s", shard.Name())
 
-		go func(shard Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
-			defer wg.Done()
+		shard := shard
+		go func() {
+			err := func(shard Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
+				defer wg.Done()
 
-			msg, err := shard.Receive()
+				msg, err := shard.Receive()
+				if err != nil {
+					return err
+				}
+				asynctracelog.Printf("got %v from %s", msg, shard.Name())
+
+				ch <- msg
+
+				return nil
+			}(shard, ch, &wg)
+
 			if err != nil {
-				return err
+				errch <- err
 			}
-			tracelog.InfoLogger.Printf("got %v from %s", msg, shard.Name())
-
-			ch <- msg
-
-			return nil
-		}(shard, ch, &wg)
+		}()
 	}
 
 	wg.Wait()
@@ -206,13 +216,25 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 	msgs := make([]pgproto3.BackendMessage, 0, len(m.activeShards))
 
-	for {
-		msg, ok := <-ch
-		if !ok {
-			break
+	err := func () error {
+		for {
+			select {
+			case msg, ok := <-ch:
+				if !ok {
+					// all shards messages are collected
+					return nil
+				}
+				msgs = append(msgs, msg)
+			case err := <-errch:
+				return err
+			}
 		}
-		msgs = append(msgs, msg)
+	} ()
+
+	if err != nil {
+		return nil, err
 	}
+
 
 	for i := range msgs {
 		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
@@ -282,28 +304,9 @@ func NewMultiShardServer(rule *config.BERule, pool conn.ConnPool) (Server, error
 }
 
 type LoadMirroringServer struct {
+	Server
 	main   Server
 	mirror Server
-}
-
-func (s LoadMirroringServer) Reset() error {
-	panic("implement me")
-}
-
-func (s LoadMirroringServer) AddShard(shkey kr.ShardKey) error {
-	panic("implement me")
-}
-
-func (s LoadMirroringServer) UnrouteShard(sh kr.ShardKey) error {
-	panic("implement me")
-}
-
-func (s LoadMirroringServer) AddTLSConf(cfg *tls.Config) error {
-	panic("implement me")
-}
-
-func (s LoadMirroringServer) Cleanup() error {
-	panic("implement me")
 }
 
 var _ Server = &LoadMirroringServer{}

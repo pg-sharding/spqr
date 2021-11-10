@@ -2,12 +2,12 @@ package rrouter
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 )
 
 type ConnManager interface {
@@ -35,7 +35,7 @@ func (t *TxConnManager) UnRouteWithError(client RouterClient, sh []kr.ShardKey, 
 
 func (t *TxConnManager) UnRouteCB(cl RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
-		tracelog.InfoLogger.Printf("unrouting from shard %v", shkey.Name)
+		asynctracelog.Printf("unrouting from shard %v", shkey.Name)
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ func NewTxConnManager() *TxConnManager {
 func (t *TxConnManager) RouteCB(client RouterClient, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
-		tracelog.InfoLogger.Printf("adding shard %v", shkey.Name)
+		asynctracelog.Printf("adding shard %v", shkey.Name)
 		_ = client.ReplyNotice(fmt.Sprintf("adding shard %v", shkey.Name))
 
 		if err := client.Server().AddShard(shkey); err != nil {
@@ -71,7 +71,7 @@ func (t *TxConnManager) TXBeginCB(client RouterClient, rst *RelayStateImpl) erro
 
 func (t *TxConnManager) TXEndCB(client RouterClient, rst *RelayStateImpl) error {
 
-	tracelog.InfoLogger.Printf("end of tx unrouting from %v", rst.ActiveShards)
+	asynctracelog.Printf("end of tx unrouting from %v", rst.ActiveShards)
 
 	if err := t.UnRouteCB(client, rst.ActiveShards); err != nil {
 		return err
@@ -125,17 +125,15 @@ func NewSessConnManager() *SessConnManager {
 }
 
 func MatchConnectionPooler(client RouterClient) (ConnManager, error) {
-	var connmanager ConnManager
-
 	switch client.Rule().PoolingMode {
 	case config.PoolingModeSession:
-		connmanager = NewSessConnManager()
+		return  NewSessConnManager(), nil
 	case config.PoolingModeTransaction:
-		connmanager = NewTxConnManager()
+		return  NewTxConnManager(), nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message:  "unknown pooling mode for route",
+				Message:  fmt.Sprintf("unknown pooling mode for route %v", client.ID()) ,
 				Severity: "ERROR",
 			},
 		} {
@@ -143,8 +141,7 @@ func MatchConnectionPooler(client RouterClient) (ConnManager, error) {
 				return nil, err
 			}
 		}
+
 		return nil, errors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
 	}
-
-	return connmanager, nil
 }

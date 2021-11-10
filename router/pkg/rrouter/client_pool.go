@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -61,7 +62,7 @@ func (c *ClientPoolImpl) ClientPoolForeach(cb func(client client.Client) error) 
 
 	for _, cl := range c.pool {
 		if err := cb(cl); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			asynctracelog.PrintError(err)
 		}
 	}
 

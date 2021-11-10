@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -17,7 +18,7 @@ type QinteractorImpl struct {
 
 func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnManager) error {
 
-	tracelog.InfoLogger.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
+	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNotice(fmt.Sprintf("process Frontend for user %s %s", cl.Usr(), cl.DB()))
 
@@ -26,11 +27,11 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			tracelog.ErrorLogger.Printf("failed to receive msg %w", err)
+			asynctracelog.Printf("failed to receive msg %w", err)
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("received msg %v", msg)
+		asynctracelog.Printf("received msg %v", msg)
 
 		switch q := msg.(type) {
 		case *pgproto3.Query:
@@ -90,7 +91,7 @@ func Frontend(qr qrouter.Qrouter, cl rrouter.RouterClient, cmngr rrouter.ConnMan
 				return err
 			}
 
-			tracelog.InfoLogger.Printf("active shards are %v", rst.ActiveShards)
+			asynctracelog.Printf("active shards are %v", rst.ActiveShards)
 
 		default:
 		}

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/router/protos"
 )
@@ -47,7 +48,17 @@ func (c CoordinatorService) ListShardingRules(ctx context.Context, request *prot
 }
 
 func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
-	panic("implement me")
+	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
+		LowerBound: []byte(request.KeyRange.LowerBound),
+		UpperBound: []byte(request.KeyRange.UpperBound),
+		ID:         request.KeyRange.Krid,
+		ShardID:    request.KeyRange.ShardId,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.AddKeyRangeReply{}, nil
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
@@ -70,7 +81,7 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 	}
 
 	var krs []*protos.KeyRange
-	
+
 	for _, kr := range krsqb {
 		krs = append(krs, kr.ToProto())
 	}

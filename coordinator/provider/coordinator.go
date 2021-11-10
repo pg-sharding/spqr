@@ -88,6 +88,14 @@ func (qc *qdbCoordinator) AddLocalTable(tname string) error {
 }
 
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+
+	// add key range to metadb
+
+	err := qc.db.AddKeyRange(ctx, keyRange.ToSQL())
+	if err != nil {
+		return err
+	}
+
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
@@ -102,6 +110,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		return strs
 	})
 
+	// notify all routers
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
@@ -111,7 +120,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		}
 
 		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.AddKeyRange(context.TODO(), &routerproto.AddKeyRangeRequest{
+		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
 			KeyRange: keyRange.ToProto(),
 		})
 
