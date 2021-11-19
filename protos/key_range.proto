@@ -6,65 +6,62 @@ option go_package = "yandex/spqr/proto";
   
 service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
-  rpc LockKeyRange (LockKeyRangeRequest) returns (LockKeyRangeReply) {}
-  rpc AddKeyRange(AddKeyRangeRequest) returns (AddKeyRangeReply) {}
-  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (UnlockKeyRangeReply) {}
-  rpc SplitKeyRange (SplitKeyRangeRequest) returns (SplitKeyRangeReply) {}
+  rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
+  rpc AddKeyRange(AddKeyRangeRequest) returns (ModifyReply) {}
+  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (ModifyReply) {}
+  rpc SplitKeyRange (SplitKeyRangeRequest) returns (ModifyReply) {}
+  rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
 }
-
 
 enum KeyRangeStatus {
   LOCKED = 0;
   AVAILABLE = 1;
 }
 
-// key range is mapped to shard
 message KeyRange {
   string lower_bound = 1;
   string upper_bound = 2;
+}
 
-  string krid = 3;
-  string shardId = 4;
+// key range info is mapped to shard
+message KeyRangeInfo {
+  KeyRange key_range = 1;
+  string krid = 2;
+  string shardId = 3;
 }
 
 message ListKeyRangeRequest {
 }
 
 message AddKeyRangeRequest {
-    KeyRange key_range = 1;
-}
-
-message AddKeyRangeReply {
-
+  KeyRangeInfo key_range_info = 1;
 }
 
 message SplitKeyRangeRequest {
-  string krid = 1;
-  string source_krid = 2;
-  bytes bound = 3;
+  bytes bound = 1;
 }
 
-message SplitKeyRangeReply {
-  string splitted_krid = 1;
+message MergeKeyRangeRequest {
+  bytes bound = 1;
+}
+
+message MoveKeyRangeRequest {
+  KeyRange key_range = 1;
+  string toShardId = 2;
 }
 
 message LockKeyRangeRequest {
-  string krid = 3;
-}
-
-message LockKeyRangeReply {
-  KeyRangeStatus status = 1;
+  KeyRange key_range = 1;
 }
 
 message UnlockKeyRangeRequest {
-  string krid = 3;
-}
-
-message UnlockKeyRangeReply {
-  KeyRangeStatus status = 1;
+  KeyRange key_range = 1;
 }
 
 message KeyRangeReply {
-	repeated KeyRange key_ranges = 1;
+  repeated KeyRangeInfo key_ranges_info = 1;
 }
 
+message ModifyReply {
+  string operation_id = 1;
+}

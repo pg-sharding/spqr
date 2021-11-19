@@ -9,5 +9,6 @@ type CoordinatorInterface interface {
 
 	splitKeyRange(border *string) error
 	mergeKeyRanges(border *string) error
+	//TODO remove shardFrom from function
 	moveKeyRange(rng KeyRange, shardFrom, shardTo Shard) error
 }

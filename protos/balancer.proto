@@ -5,6 +5,7 @@ package yandex.spqr;
 option go_package = "yandex/app/spqr";
 
 service BalancerService {
+// Reload of balancer required when configuration of shards is changed, when new range was added, or when balancer not initialized yet
   rpc ReloadRequired (ReloadRequest) returns (ReloadReply) {}
 }
 
