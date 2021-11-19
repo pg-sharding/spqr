@@ -28,3 +28,19 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c '
 	echo "ERROR: tests failed"
 	exit 1
 }
+
+
+
+## tx
+
+
+psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" << EOH
+BEGIN;
+INSERT INTO x (w_id) VALUES(5);
+ROLLBACK;
+EOH
+
+#psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c 'select count(1) from x where w_id = 5' || {
+#	echo "ERROR: tests failed"
+#	exit 1
+#}

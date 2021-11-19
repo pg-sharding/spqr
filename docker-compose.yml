@@ -1,10 +1,17 @@
 version: '3'
 
 services:
-    shard1:
+    shardbase:
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
+    spqrbase:
+        build:
+            dockerfile: ./docker/spqr/Dockerfile
+            context: .
+    shard1:
+        image:
+            spqr_shardbase
         environment:
             PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard1_1.spqr_spqr.}"
         ports:
@@ -14,9 +21,8 @@ services:
             spqr:
                 ipv4_address: 192.168.233.03
     shard2:
-        build:
-            dockerfile: ./docker/shard/Dockerfile
-            context: .
+        image:
+            spqr_shardbase
         environment:
             PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard2_1.spqr_spqr.}"
         ports:
@@ -25,9 +31,30 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.02
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: .
+        hostname: spqr_coordinator
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.07
+    world1:
+        build:
+            dockerfile: ./docker/world/Dockerfile
+            context: .
+        hostname: spqr_world_0_1
+        ports:
+            - "7434:6432"
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.08
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1
+        environment:
+            ALLOW_NONE_AUTHENTICATION: "yes"
+            ETCD_LOG_LEVEL: "debug"
         networks:
             spqr:
                 ipv4_address: 192.168.233.06
@@ -45,7 +72,7 @@ services:
         build:
             dockerfile: ./docker/tests/Dockerfile
             context: .
-        hostname: spqr_client_1_1
+        hostname: spqr_client
         networks:
             spqr:
                 ipv4_address: 192.168.233.05
