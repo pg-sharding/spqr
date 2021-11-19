@@ -1,0 +1,45 @@
+addr: '[::1]:6432'
+adm_addr: '[::1]:7433'
+proto: 'tcp6'
+http_addr: '[::1]:7001'
+
+executer:
+    init_sql_path: "./test-init.sql"
+
+qrouter:
+    qrouter_type: PROXY
+router:
+    tls:
+        key_file: '/etc/odyssey/ssl/server.key'
+        cert_file: '/etc/odyssey/ssl/server.crt'
+        sslmode: "disable" 
+    frontend_rules:
+        - route_key_cfg:
+            usr: user1
+            db: db1
+            pooling_mode: 'TRANSACTION'
+            auth_rule:
+                auth_method: 'ok'
+                password: 'strong'
+    proto: 'tcp6'
+    world_shard_fallback: true
+    shard_mapping:
+        w1:
+            tls:
+                key_file: '/etc/odyssey/ssl/server.key'
+                sslmode: "disable" 
+                cert_file: '/etc/odyssey/ssl/server.crt' 
+            conn_db: "db1"
+            conn_usr: "user1"
+            passwd: 12345678
+            shard_type: 'WORLD'
+            hosts:
+                - conn_addr: "localhost:9432"
+
+    backend_rules:
+        - route_key_cfg:
+            usr: user3
+            db: dbtpcc
+            pool_discard: true
+            pool_rollback: true
+

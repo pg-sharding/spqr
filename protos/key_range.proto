@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/spqr/proto";
+  
+service KeyRangeService {
+  rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc LockKeyRange (LockKeyRangeRequest) returns (LockKeyRangeReply) {}
+  rpc AddKeyRange(AddKeyRangeRequest) returns (AddKeyRangeReply) {}
+  rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (UnlockKeyRangeReply) {}
+  rpc SplitKeyRange (SplitKeyRangeRequest) returns (SplitKeyRangeReply) {}
+}
+
+
+enum KeyRangeStatus {
+  LOCKED = 0;
+  AVAILABLE = 1;
+}
+
+// key range is mapped to shard
+message KeyRange {
+  string lower_bound = 1;
+  string upper_bound = 2;
+
+  string krid = 3;
+  string shardId = 4;
+}
+
+message ListKeyRangeRequest {
+}
+
+message AddKeyRangeRequest {
+    KeyRange key_range = 1;
+}
+
+message AddKeyRangeReply {
+
+}
+
+message SplitKeyRangeRequest {
+  string krid = 1;
+  string source_krid = 2;
+  bytes bound = 3;
+}
+
+message SplitKeyRangeReply {
+  string splitted_krid = 1;
+}
+
+message LockKeyRangeRequest {
+  string krid = 3;
+}
+
+message LockKeyRangeReply {
+  KeyRangeStatus status = 1;
+}
+
+message UnlockKeyRangeRequest {
+  string krid = 3;
+}
+
+message UnlockKeyRangeReply {
+  KeyRangeStatus status = 1;
+}
+
+message KeyRangeReply {
+	repeated KeyRange key_ranges = 1;
+}
+

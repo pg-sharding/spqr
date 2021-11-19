@@ -1,10 +1,3 @@
-FROM golang:1.16
+FROM spqr_spqrbase
 
-RUN mkdir /router
-COPY ./ /router
-COPY ./docker/router/qlog /etc/spqr/qlog
-
-RUN cd /router && make init && make build
-
-ENTRYPOINT /router/spqr-pg run -c /router/docker/router/cfg.yaml || sleep 2332233
-
+ENTRYPOINT /router/spqr-rr run -c /router/docker/router/cfg.yaml

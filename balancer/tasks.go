@@ -1,14 +1,12 @@
-package balancer
-
-import (
-	"sync"
-)
+package main
 
 type Task struct {
+	id int
 	keyRange KeyRange
 	shardFrom Shard
 	shardTo Shard
 
+	startKeyRange KeyRange
 	splitBy []string
 
 	oldKeyRangesOnShardFrom map[KeyRange]Stats
@@ -19,30 +17,7 @@ type Task struct {
 	profit float64
 }
 
-type TaskQueue struct {
-	queue []Task
-	mu sync.Mutex
-}
-
-func InitQueue() *TaskQueue {
-	q := TaskQueue{}
-	q.queue = []Task{}
-	return &q
-}
-
-func PopQueue(tq *TaskQueue) (Task, bool) {
-	defer tq.mu.Unlock()
-	tq.mu.Lock()
-	if len(tq.queue) == 0 {
-		return Task{}, false
-	}
-	t := tq.queue[0]
-	tq.queue = tq.queue[1:]
-	return t, true
-}
-
-func AddQueue(tq *TaskQueue, t Task) {
-	defer tq.mu.Unlock()
-	tq.mu.Lock()
-	tq.queue = append(tq.queue, t)
-}
+type TasksByProfitIncrease []Task
+func (a TasksByProfitIncrease) Len() int           { return len(a) }
+func (a TasksByProfitIncrease) Less(i, j int) bool { return a[i].profit < a[j].profit }
+func (a TasksByProfitIncrease) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

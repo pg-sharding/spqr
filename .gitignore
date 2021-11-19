@@ -1,5 +1,11 @@
 .idea
 vendor
 tmp
-spqr-pg
+spqr-rr
+spqr-coordinator
+spqr-world
+spqr-stress
+spqr-worldmock
 y.output
+*.swp
+*.swo

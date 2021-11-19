@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/spqr/proto";
+
+message Shard {
+  string addr = 1;
+  string id = 2;
+}
+
+service ShardService {
+  rpc ListShards (ShardRequest) returns (ShardReply) {}
+  rpc AddDataShard (AddShardRequest) returns (AddShardReply) {}
+  rpc AddWorldShard (AddWorldShardRequest) returns (AddShardReply) {}
+}
+
+message ShardRequest {
+  string id = 1;
+}
+
+message ShardReply {
+	repeated Shard shards = 1;
+}
+
+message AddShardRequest {
+  Shard shard = 1;
+}
+
+message AddShardReply {
+}
+
+message AddWorldShardRequest {
+  Shard shard = 1;
+}

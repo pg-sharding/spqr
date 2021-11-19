@@ -1,5 +1,8 @@
-#FROM ubuntu:focal
-FROM golang:1.16
+FROM spqr_spqrbase
+
+COPY --from=networld/grpcurl /grpcurl /usr/bin/
+
+RUN mv /router/spqr-stress /usr/local/bin/spqr-stress
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
@@ -11,19 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	make \
 	ca-certificates \
 	gnupg \
-	openssl
+	openssl musl telnet host vim etcd-client
 
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-13 \
-    vim 
+    sudo postgresql-13 
 
 COPY ./docker/tests/bin/ /usr/local/bin/
-RUN mkdir /root/stress
-COPY ./docker/tests/stress /root/stress
-RUN make -C /root/stress build install
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 
