@@ -42,10 +42,8 @@ type WolrdRouteState struct {
 type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
-
-	// sharding rules
+  
 	Route(q string) (RoutingState, error)
-
 	// do not use
 	AddLocalTable(tname string) error
 
@@ -70,5 +68,4 @@ func NewQrouter(qtype config.QrouterType) (QueryRouter, error) {
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().QRouterCfg.Qtype)
 	}
-
 }

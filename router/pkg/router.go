@@ -25,7 +25,6 @@ type Router interface {
 type RouterImpl struct {
 	Rrouter rrouter.RequestRouter
 	Qrouter qrouter.QueryRouter
-
 	AdmConsole console.Console
 
 	SPIexecuter *Executer
@@ -49,7 +48,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
 	tracelog.InfoLogger.Printf("create QueryRouter with type %s", qtype)
-
+  
 	qr, err := qrouter.NewQrouter(qtype)
 	if err != nil {
 		return nil, err
@@ -69,10 +68,11 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	}
 
 	if err := initShards(ctx, rr, qr); err != nil {
+
 		tracelog.InfoLogger.PrintError(err)
 	}
 
-	stchan := make(chan struct{})
+  stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
@@ -109,7 +109,6 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 }
 
 func initShards(ctx context.Context, rr rrouter.RequestRouter, qr qrouter.QueryRouter) error {
-
 	// data shards, world datashard and sharding rules
 	for name, shard := range config.RouterConfig().RouterConfig.ShardMapping {
 
@@ -124,7 +123,7 @@ func initShards(ctx context.Context, rr rrouter.RequestRouter, qr qrouter.QueryR
 			}
 
 		case config.DataShard:
-			// data datashard assumed by default
+			// datashard assumed by default
 			fallthrough
 		default:
 

@@ -130,8 +130,6 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 		}
 		// fallback to execute query on wolrd datashard (s)
 
-		//
-
 		_, _ = rst.RerouteWorld()
 		if err := rst.ConnectWold(); err != nil {
 			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))

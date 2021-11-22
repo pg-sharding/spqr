@@ -19,10 +19,11 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KeyRangeServiceClient interface {
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
-	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error)
-	AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*AddKeyRangeReply, error)
-	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*UnlockKeyRangeReply, error)
-	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error)
+	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	MergeKeyRange(ctx context.Context, in *MergeKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 }
 
 type keyRangeServiceClient struct {
@@ -42,8 +43,8 @@ func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRan
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*LockKeyRangeReply, error) {
-	out := new(LockKeyRangeReply)
+func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/LockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,8 +52,8 @@ func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRan
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*AddKeyRangeReply, error) {
-	out := new(AddKeyRangeReply)
+func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -60,8 +61,8 @@ func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRange
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*UnlockKeyRangeReply, error) {
-	out := new(UnlockKeyRangeReply)
+func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/UnlockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -69,9 +70,18 @@ func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKe
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*SplitKeyRangeReply, error) {
-	out := new(SplitKeyRangeReply)
+func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/SplitKeyRange", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *keyRangeServiceClient) MergeKeyRange(ctx context.Context, in *MergeKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/MergeKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +93,11 @@ func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyR
 // for forward compatibility
 type KeyRangeServiceServer interface {
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
-	LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error)
-	AddKeyRange(context.Context, *AddKeyRangeRequest) (*AddKeyRangeReply, error)
-	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error)
-	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error)
+	LockKeyRange(context.Context, *LockKeyRangeRequest) (*ModifyReply, error)
+	AddKeyRange(context.Context, *AddKeyRangeRequest) (*ModifyReply, error)
+	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*ModifyReply, error)
+	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*ModifyReply, error)
+	MergeKeyRange(context.Context, *MergeKeyRangeRequest) (*ModifyReply, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -97,17 +108,20 @@ type UnimplementedKeyRangeServiceServer struct {
 func (UnimplementedKeyRangeServiceServer) ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*LockKeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LockKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) AddKeyRange(context.Context, *AddKeyRangeRequest) (*AddKeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) AddKeyRange(context.Context, *AddKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*UnlockKeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlockKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*SplitKeyRangeReply, error) {
+func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SplitKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) MergeKeyRange(context.Context, *MergeKeyRangeRequest) (*ModifyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MergeKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}
 
@@ -212,6 +226,24 @@ func _KeyRangeService_SplitKeyRange_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_MergeKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MergeKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).MergeKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.KeyRangeService/MergeKeyRange",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).MergeKeyRange(ctx, req.(*MergeKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyRangeService_ServiceDesc is the grpc.ServiceDesc for KeyRangeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -238,6 +270,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SplitKeyRange",
 			Handler:    _KeyRangeService_SplitKeyRange_Handler,
+		},
+		{
+			MethodName: "MergeKeyRange",
+			Handler:    _KeyRangeService_MergeKeyRange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

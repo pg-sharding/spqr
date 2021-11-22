@@ -153,15 +153,11 @@ func (c *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) er
 }
 
 const greeting = `
-
 		SQPR router admin console
-
 	Here you can configure your routing rules
 ------------------------------------------------
-
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/doc/router
-
 `
 
 func (c *Local) Serve(ctx context.Context, cl client.Client) error {

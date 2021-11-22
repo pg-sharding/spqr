@@ -2,9 +2,9 @@ package qrouter
 
 import (
 	"context"
+	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"math/rand"
 
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -102,7 +102,8 @@ func NewProxyRouter() (*ProxyRouter, error) {
 }
 
 func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-	return qr.qdb.Watch(krid, krst, noitfyio)
+	//return qr.qdb.Watch(krid, krst, noitfyio)
+	return nil
 }
 
 func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
@@ -179,10 +180,10 @@ func (qr *ProxyRouter) Unlock(ctx context.Context, krid string) error {
 
 func (qr *ProxyRouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
-	qr.DataShardCfgs[ds.ID] = &config.ShardCfg{}
-
+	qr.DataShardCfgs[ds.ID] = ds.Cfg
 	return nil
 }
+
 
 func (qr *ProxyRouter) Shards() []string {
 	var ret []string

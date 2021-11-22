@@ -48,40 +48,38 @@ func (c CoordinatorService) ListShardingRules(ctx context.Context, request *prot
 	}, nil
 }
 
-func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
+func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
-		LowerBound: []byte(request.KeyRange.LowerBound),
-		UpperBound: []byte(request.KeyRange.UpperBound),
-		ID:         request.KeyRange.Krid,
-		ShardID:    request.KeyRange.ShardId,
+		LowerBound: []byte(request.KeyRangeInfo.KeyRange.LowerBound),
+		UpperBound: []byte(request.KeyRangeInfo.KeyRange.UpperBound),
+		ID:         request.KeyRangeInfo.Krid,
+		ShardID:    request.KeyRangeInfo.ShardId,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &protos.AddKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
-func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
-	_, err := c.impl.Lock(ctx, request.Krid)
+func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
+	_, err := c.impl.Lock(ctx, "xx")
 	return nil, err
 }
 
-func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	err := c.impl.Unlock(ctx, request.Krid)
+func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
+	err := c.impl.Unlock(ctx, "xx")
 	return nil, err
 }
-func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
+func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.Split(ctx, &kr.SplitKeyRange{
 		Bound:    request.Bound,
-		Krid:     request.Krid,
-		SourceID: request.SourceKrid,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &protos.SplitKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
 func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
@@ -90,14 +88,14 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 		return nil, err
 	}
 
-	var krs []*protos.KeyRange
+	var krs []*protos.KeyRangeInfo
 
 	for _, keyRange := range krsqb {
 		krs = append(krs, keyRange.ToProto())
 	}
 
 	return &protos.KeyRangeReply{
-		KeyRanges: krs,
+		KeyRangesInfo: krs,
 	}, nil
 }
 

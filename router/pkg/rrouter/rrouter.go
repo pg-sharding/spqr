@@ -44,7 +44,6 @@ type RRouter struct {
 
 func (r *RRouter) AddWorldShard(key qdb.ShardKey) error {
 	tracelog.InfoLogger.Printf("added world datashard to rrouter %v", key.Name)
-
 	return nil
 }
 

@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
