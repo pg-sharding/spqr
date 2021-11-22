@@ -368,7 +368,6 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 	case *sqlparser.CreateTable:
 		tracelog.InfoLogger.Printf("ddl routing excpands to every datashard")
 		// route ddl to every datashard
-
 		shrds := qr.Shards()
 		var ret []*ShardRoute
 		for _, sh := range shrds {

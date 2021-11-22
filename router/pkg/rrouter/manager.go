@@ -37,7 +37,6 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		asynctracelog.Printf("unrouting from datashard %v", shkey.Name)
-
 		if err := cl.Server().UnrouteShard(shkey); err != nil {
 			return err
 		}

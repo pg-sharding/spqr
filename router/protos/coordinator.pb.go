@@ -20,7 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// key range is mapped to shard
+// key range is mapped to datashard
 type RouterEndpoint struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

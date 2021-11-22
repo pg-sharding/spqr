@@ -66,6 +66,7 @@ func (KeyRangeStatus) EnumDescriptor() ([]byte, []int) {
 	return file_protos_key_range_proto_rawDescGZIP(), []int{0}
 }
 
+// key range is mapped to datashard
 type KeyRange struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

@@ -14,7 +14,6 @@ import (
 
 type Watchdog interface {
 	Watch(sh datashard.Shard)
-
 	AddInstance(cfg *config.InstanceCFG) error
 	Run()
 }

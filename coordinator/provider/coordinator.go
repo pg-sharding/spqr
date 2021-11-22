@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -43,8 +42,8 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 }
 
 type qdbCoordinator struct {
-	client.InteractRunner
 	coordinator.Coordinator
+
 	db qdb.QrouterDB
 }
 

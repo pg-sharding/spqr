@@ -48,7 +48,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					continue
 				case qrouter.MatchShardError:
 					_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
-
 					continue
 				case qrouter.ParseError:
 					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))

@@ -44,7 +44,6 @@ func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
 func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
 		return xerrors.New("single datashard server does not support more than 2 datashard connection simultaneously")
-
 	}
 
 	if pgi, err := srv.pool.Connection(shkey); err != nil {
@@ -52,7 +51,6 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	} else {
 
 		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
-
 		if err != nil {
 			return err
 		}

@@ -50,6 +50,7 @@ func KeyRangeFromSQL(kr *spqrparser.AddKeyRange) *KeyRange {
 }
 
 func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
+
 	if kr == nil {
 		return nil
 	}

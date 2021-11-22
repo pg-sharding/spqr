@@ -42,9 +42,8 @@ type WolrdRouteState struct {
 type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
-
+  
 	Route(q string) (RoutingState, error)
-
 	// do not use
 	AddLocalTable(tname string) error
 
