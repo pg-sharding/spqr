@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
+	"net"
 
 	"github.com/jackc/pgproto3/v2"
 )
