@@ -29,8 +29,13 @@ type ProxyRouter struct {
 }
 
 func (qr *ProxyRouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
-	panic("implement me")
+	var ret []*datashards.DataShard
+	for id, cfg := range qr.DataShardCfgs {
+		ret = append(ret, datashards.NewDataShard(id, cfg))
+	}
+	return ret
 }
+
 
 func (qr *ProxyRouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	return qr.Rules, nil

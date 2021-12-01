@@ -55,7 +55,7 @@ func NewConsole(cfg *tls.Config, qrouter qrouter.QueryRouter, rrouter rrouter.Re
 type TopoCntl interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
-	datashards.DataShardsMgr
+	datashards.ShardsMgr
 	kr.KeyRangeMgr
 }
 

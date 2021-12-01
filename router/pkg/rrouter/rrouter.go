@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb"
-	client2 "github.com/pg-sharding/spqr/router/pkg/client"
+	rclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pkg/errors"
 	"github.com/wal-g/tracelog"
@@ -19,7 +19,7 @@ import (
 
 type RequestRouter interface {
 	Shutdown() error
-	PreRoute(conn net.Conn) (client2.RouterClient, error)
+	PreRoute(conn net.Conn) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.RouteKey) error
 	AddRouteRule(key route.RouteKey, befule *config.BERule, frRule *config.FRRule) error
 
@@ -76,26 +76,36 @@ func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
+func (router *RRouter) initRules() error {
 	frs := make(map[route.RouteKey]*config.FRRule)
 
 	for _, frRule := range config.RouterConfig().RouterConfig.FrontendRules {
 		frs[*route.NewRouteKey(frRule.RK.Usr, frRule.RK.DB)] = frRule
 	}
 
-	router := &RRouter{
-		routePool:     NewRouterPoolImpl(config.RouterConfig().RouterConfig.ShardMapping),
-		frontendRules: map[route.RouteKey]*config.FRRule{},
-		backendRules:  map[route.RouteKey]*config.BERule{},
-		lg:            log.New(os.Stdout, "worldmock", 0),
-		wgs:           map[qdb.ShardKey]Watchdog{},
-	}
-
 	for _, berule := range config.RouterConfig().RouterConfig.BackendRules {
 		key := *route.NewRouteKey(
 			berule.RK.Usr, berule.RK.DB,
 		)
-		_ = router.AddRouteRule(key, berule, frs[key])
+		if err := router.AddRouteRule(key, berule, frs[key]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
+	router := &RRouter{
+		routePool:     NewRouterPoolImpl(config.RouterConfig().RouterConfig.ShardMapping),
+		frontendRules: map[route.RouteKey]*config.FRRule{},
+		backendRules:  map[route.RouteKey]*config.BERule{},
+		lg:            log.New(os.Stdout, "router", 0),
+		wgs:           map[qdb.ShardKey]Watchdog{},
+	}
+
+	if err := router.initRules(); err != nil {
+		return nil, err
 	}
 
 	if config.RouterConfig().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
@@ -105,9 +115,9 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	return router, nil
 }
 
-func (r *RRouter) PreRoute(conn net.Conn) (client2.RouterClient, error) {
+func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
-	cl := client2.NewPsqlClient(conn)
+	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.cfg, config.RouterConfig().RouterConfig.TLSCfg.SslMode); err != nil {
 		return nil, err
@@ -165,9 +175,9 @@ func (r *RRouter) ListShards() []string {
 }
 
 func (r *RRouter) ObsoleteRoute(key route.RouteKey) error {
-	route := r.routePool.Obsolete(key)
+	rt := r.routePool.Obsolete(key)
 
-	if err := route.NofityClients(func(cl client.Client) error {
+	if err := rt.NofityClients(func(cl client.Client) error {
 		return nil
 	}); err != nil {
 		return err

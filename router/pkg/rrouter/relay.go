@@ -98,7 +98,7 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 			return qrouter.MatchShardError
 		}
 
-		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != client.ClientNotRouter {
+		if err := rst.manager.UnRouteCB(rst.Cl, rst.ActiveShards); err != client.NotRouted {
 			tracelog.ErrorLogger.PrintError(err)
 			return err
 		}

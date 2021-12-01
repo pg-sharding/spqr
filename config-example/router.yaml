@@ -38,8 +38,8 @@ router:
 
     backend_rules:
         - route_key_cfg:
-            usr: user3
-            db: dbtpcc
+            usr: user1
+            db: db1
             pool_discard: true
             pool_rollback: true
 
