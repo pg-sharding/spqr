@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/jackc/pgproto3/v2"
-	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -21,9 +20,8 @@ func (w *WorldMock) Run() error {
 
 	ctx := context.Background()
 
-	proto := "tcp"
 
-	listener, err := reuse.Listen(proto, w.addr)
+	listener, err := net.Listen("tcp6", "[::1]:5433")
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 		return err
@@ -96,6 +94,9 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		tracelog.InfoLogger.Printf("received msg %v", msg)
 
 		switch v := msg.(type) {
+		case *pgproto3.Parse:
+			tracelog.InfoLogger.Printf("received prep stmt %v %v", v.Name, v.Query)
+			break;
 		case *pgproto3.Query:
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
