@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import (
 	"errors"
@@ -52,10 +52,10 @@ func (m *mock) init() {
 		}
 
 		s := Stats{
-			reads: (uint64)(rand.Intn(100)),
-			writes: (uint64)(rand.Intn(100)),
-			user_time: rand.Float64() * 10,
-			system_time: rand.Float64() * 10,
+			reads:      (uint64)(rand.Intn(100)),
+			writes:     (uint64)(rand.Intn(100)),
+			userTime:   rand.Float64() * 10,
+			systemTime: rand.Float64() * 10,
 		}
 
 		shard := _shards[rand.Intn(len(_shards))]
@@ -67,10 +67,10 @@ func (m *mock) init() {
 		j := i
 		for j < i + diff {
 			s1 := Stats{
-				reads: (uint64)(rand.Intn(10)) + s.reads,
-				writes: (uint64)(rand.Intn(10)) + s.writes,
-				user_time: rand.Float64() * 1 + s.user_time,
-				system_time: rand.Float64() * 1 + s.system_time,
+				reads:      (uint64)(rand.Intn(10)) + s.reads,
+				writes:     (uint64)(rand.Intn(10)) + s.writes,
+				userTime:   rand.Float64() * 1 + s.userTime,
+				systemTime: rand.Float64() * 1 + s.systemTime,
 			}
 
 			s1 = DivideStats(s1, 1/float64(shard.id + 1)/float64(shard.id + 1))
@@ -84,7 +84,7 @@ func (m *mock) init() {
 	m.foo()
 }
 
-func (m *mock) getShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
+func (m *mock) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
@@ -99,7 +99,7 @@ func (m *mock) getShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[
 	}
 	sort.Sort(LikeNumbers(_leftBorders))
 	for key, stats := range m.stats[shard] {
-		i := findRange(&key, &_leftBorders)
+		i := findRange(&key, 0 , len(m.leftBorders), &m.leftBorders)
 		right := leftToRight[_leftBorders[i]]
 		if less(&key, &right) {
 			res[_leftBorders[i]][key] = stats
@@ -109,14 +109,14 @@ func (m *mock) getShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[
 	return res, nil
 }
 
-func (m *mock) startTransfer(task Action) error {
+func (m *mock) StartTransfer(task Action) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
 	return nil
 }
 
-func (m *mock) removeRange(keyRange KeyRange, shard Shard) error {
+func (m *mock) RemoveRange(keyRange KeyRange, shard Shard) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
@@ -158,7 +158,7 @@ func (m *mock) foo() {
 		}
 	}
 	for r := range m.ranges {
-		i := findRange(&r.left, &m.leftBorders)
+		i := findRange(&r.left, 0 , len(m.leftBorders), &m.leftBorders)
 		if m.leftBorders[i] != r.left {
 			fmt.Println("foo")
 		}
@@ -199,7 +199,7 @@ func (m *mock) initKeyRanges() (map[Shard][]KeyRange, error) {
 	return shardToRanges, nil
 }
 
-func (m *mock) getKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[string]*big.Int, error) {
+func (m *mock) GetKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[string]*big.Int, error) {
 	_l := "10000"
 	_r := "20000"
 	dist := new(big.Int).Sub(keyToBigInt(&_r), keyToBigInt(&_l))
@@ -218,11 +218,11 @@ func (m *mock) splitKeyRange(border *string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
-	leftInd := findRange(border, &m.leftBorders)
+	leftInd := findRange(border, 0 , len(m.leftBorders), &m.leftBorders)
 
 	if leftInd == len(m.leftBorders) - 1 {
 		if m.leftBorders[leftInd] == *border {
-			// not a problem, we just try to split by right border of all ranges
+			// not a problem, we just try to actionStageSplit by right border of all ranges
 			return nil
 		} else {
 			// border greater than all ranges. TODO something here?
@@ -265,17 +265,17 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
-	rightInd := findRange(border, &m.leftBorders)
+	rightInd := findRange(border, 0 , len(m.leftBorders), &m.leftBorders)
 	if rightInd == 0 || rightInd == len(m.leftBorders) - 1 {
 		if rightInd == 0 {
-			// it's ok, just ignore split by left border
+			// it's ok, just ignore actionStageSplit by left border
 			return nil
 		}
 		if *border == m.leftBorders[rightInd] {
-			// it's ok, just ignore split by right border
+			// it's ok, just ignore actionStageSplit by right border
 			return nil
 		}
-		// split by border greater than all ranges
+		// actionStageSplit by border greater than all ranges
 		return errors.New(fmt.Sprint("Split by border greater than all ranges ", border))
 	}
 	leftRng := KeyRange{m.leftBorders[rightInd - 1], m.leftBorders[rightInd]}
@@ -284,7 +284,7 @@ func (m *mock) mergeKeyRanges(border *string) error {
 		return errors.New(fmt.Sprint("Something goes wrong..."))
 	}
 	if m.keyRangeToShard[leftRng] != m.keyRangeToShard[rightRng] {
-		// it's ok, because we try merge by every transfered border
+		// it's ok, because we try actionStageMerge by every transfered border
 		return nil
 	}
 	newRng := KeyRange{left: leftRng.left, right: rightRng.right}
@@ -365,14 +365,18 @@ func (m *mock) isReloadRequired() (bool, error) {
 	return false, nil
 }
 
-func main() {
+func (m *mock) Init(_, _ string, _ *map[int]ClusterWithUserCredentials, _ int) error {
+	return nil
+}
+
+func local_test() {
 	fmt.Println("1")
 	m := mock{}
 	fmt.Println("2")
 	m.init()
 	fmt.Println("3")
 	db := MockDb{}
-	_ = db.Init()
+	_ = db.Init([]string{}, 0, 0, "", "", "")
 	_main(&m, &m, &db)
 	fmt.Println("4")
 }

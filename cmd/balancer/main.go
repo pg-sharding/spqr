@@ -1,0 +1,53 @@
+package main
+
+import (
+	"context"
+	"github.com/pg-sharding/spqr/balancer/app"
+	"github.com/pg-sharding/spqr/balancer/pkg"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/spf13/cobra"
+	"github.com/wal-g/tracelog"
+)
+
+var cfgPath string
+
+var rootCmd = &cobra.Command{
+	Use: "spqr-balancer --config `path-to-config`",
+	CompletionOptions: cobra.CompletionOptions{
+		DisableDefaultCmd: true,
+	},
+	SilenceUsage:  false,
+	SilenceErrors: false,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := config.LoadBalancerCfg(cfgPath); err != nil {
+			return err
+		}
+
+		ctx, cancelCtx := context.WithCancel(context.Background())
+
+		defer cancelCtx()
+		// init db-,coordinator- and installation-class
+		balancer := pkg.Balancer{}
+
+		app := app.NewApp(&balancer)
+
+		err := app.ProcBalancer(ctx)
+		tracelog.ErrorLogger.PrintError(err)
+
+		return err
+	},
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/Users/munakoiso/work/balancer_config.yaml", "path to config file")
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		tracelog.ErrorLogger.Fatal(err)
+	}
+}
+
+func main() {
+	Execute()
+}
