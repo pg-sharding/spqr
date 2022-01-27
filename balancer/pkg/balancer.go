@@ -596,7 +596,7 @@ func (b *Balancer) runTask(task *Action) error {
 			}
 			task.actionStage = actionStageTransfer
 		case actionStageTransfer:
-			err = b.coordinator.moveKeyRange(task.keyRange, task.fromShard, task.toShard)
+			err = b.coordinator.moveKeyRange(task.keyRange, task.toShard)
 			if err != nil {
 				fmt.Println("Error: actionStageMove problems with range ", task.keyRange, err)
 				return err
