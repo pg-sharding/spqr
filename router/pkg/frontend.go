@@ -17,7 +17,7 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
-func Frontend(qr qrouter.Qrouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 
 	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
@@ -47,7 +47,7 @@ func Frontend(qr qrouter.Qrouter, cl client.RouterClient, cmngr rrouter.ConnMana
 					_ = cl.Reply("ok")
 					continue
 				case qrouter.MatchShardError:
-					_ = cl.Reply(fmt.Sprintf("failed to match any shard"))
+					_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
 					continue
 				case qrouter.ParseError:
 					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))

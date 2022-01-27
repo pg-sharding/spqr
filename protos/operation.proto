@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package yandex.spqr;
+
+option go_package = "yandex/spqr/proto";
+
+service OperationService {
+  rpc GetOperation (GetOperationRequest) returns (GetOperationReply) {}
+}
+
+enum OperationStatus {
+  PLANNED = 0;
+  RUNNING = 1;
+  DONE = 2;
+}
+
+message Operation {
+    string id = 1;
+    OperationStatus status = 2;
+}
+
+message GetOperationRequest {
+    string operation_id = 1;
+}
+
+message GetOperationReply {
+    Operation operation = 1;
+}

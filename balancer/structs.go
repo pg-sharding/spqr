@@ -1,9 +1,8 @@
-package balancer
+package main
 
 import (
 	"math"
 	"math/big"
-	"sync"
 )
 
 type Shard struct {
@@ -40,7 +39,7 @@ func bigIntToKey(num *big.Int) *string {
 		charsArr = append(charsArr, byte(mod.Int64()))
 	}
 	for i := 0; i < len(charsArr) / 2; i++ {
-		charsArr[i], charsArr[len(charsArr) - i] = charsArr[len(charsArr) - i], charsArr[i]
+		charsArr[i], charsArr[len(charsArr) - i - 1] = charsArr[len(charsArr) - i - 1], charsArr[i]
 	}
 	res := string(charsArr)
 	return &res
@@ -62,17 +61,21 @@ func less(s1, s2 *string) bool {
 	return false
 }
 
+// можно придумать отображение получше, если знать максимальную длину ренджа, то есть если знать максимальный ключ.
+// пока оставим так, мб потом поменяем...
 func logLength(keyRange KeyRange) float64 {
-	//TODO check is order right
 	var diff float64
-	for i := 0; i <= len(keyRange.right); i++ {
+	k := math.Pow(2, 8)
+	lenDiff := len(keyRange.right) - len(keyRange.left)
+	for i := 0; i < len(keyRange.right); i++ {
 		diff += (float64)(keyRange.right[i])
-		if i < len(keyRange.left) {
-			diff -= (float64)(keyRange.left[i])
+		if i >= lenDiff {
+			diff -= (float64)(keyRange.left[i - lenDiff])
 		}
-		diff *= math.Pow(2, 8)
+		diff *= k
 	}
-	return math.Pow(2 - math.Log2(-diff), 2)
+
+	return 1.0 / diff
 }
 
 type Stats struct {
@@ -84,86 +87,56 @@ type Stats struct {
 	user_time float64
 	// total system CPU time used
 	system_time float64
-	// total size in bytes
-	size uint64
 }
 
-func AddStats(a, b Stats) {
+func AddStats(a, b Stats) Stats {
 	a.reads += b.reads
 	a.writes += b.writes
 	a.user_time += b.user_time
-	a.system_time += a.system_time
-	a.size += b.size
+	a.system_time += b.system_time
+	return a
 }
 
-func SubtractStats(a, b Stats) {
+func SubtractStats(a, b Stats) Stats {
 	a.reads -= b.reads
 	a.writes -= b.writes
 	a.user_time -= b.user_time
-	a.system_time -= a.system_time
-	a.size -= b.size
+	a.system_time -= b.system_time
+	return a
 }
 
-func DivideStats(a Stats, k float64) {
-	a.reads /= (uint64)(k)
-	a.writes /= (uint64)(k)
+func DivideStats(a Stats, k float64) Stats {
+	a.reads = uint64(float64(a.reads) / k)
+	a.writes = uint64(float64(a.writes) / k)
 	a.system_time /= k
 	a.user_time /= k
-	a.size /= (uint64)(k)
+	return a
 }
-
-type ShardTransfers struct {
-	mu sync.Mutex
-	// shard name to count of transfers from/to this shard
-	transfers map[string]int
-}
-
-type LockedKRIds struct {
-	mu sync.Mutex
-	locks map[KeyRange]bool
-}
-
-type AllStats struct {
-	mu sync.Mutex
-	kRIdsStats map[KeyRange]Stats
-}
-
-type SpqrInterface interface {
-	lockKeyRange(rng KeyRange) error
-	unlockKeyRange(rng KeyRange) error
-	initKeyRanges() error
-	splitKeyRange(rng KeyRange, border string) error
-	mergeKeyRanges(leftRng, rightRng KeyRange) error
-	moveKeyRange(rng KeyRange, shardFrom, shardTo Shard) error
-}
-
-type DatabaseInterface interface {
-	getShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error)
-	startTransfer(task Task) error
-}
-
 
 type LikeNumbers []string
 func (a LikeNumbers) Len() int           { return len(a) }
 func (a LikeNumbers) Less(i, j int) bool { return less(&a[i], &a[j]) }
 func (a LikeNumbers) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
-type TasksByProfitIncrease []Task
-func (a TasksByProfitIncrease) Len() int           { return len(a) }
-func (a TasksByProfitIncrease) Less(i, j int) bool { return a[i].profit < a[j].profit }
-func (a TasksByProfitIncrease) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 type KeysByFoo []string
 func (a KeysByFoo) Len() int           { return len(a) }
 func (a KeysByFoo) Less(i, j int) bool {
 	defer muKeyStats.Unlock()
 	muKeyStats.Lock()
-	return getFooByStats(keyStats[a[i]]) < getFooByStats(keyStats[a[j]]) }
+	return getFooByStats(keyStats[a[i]], false) < getFooByStats(keyStats[a[j]], false) }
 func (a KeysByFoo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
+func getFooOfShardSize(shard Shard, useAbs bool) float64 {
+	return getFoo(float64(keysOnShard[shard]), float64(avgKeysOnShard), useAbs)
+}
+
+func getFooByShard(shard Shard, useAbs bool) float64 {
+	return getFooByStats(allShardsStats[shard], useAbs) + getFooOfShardSize(shard, useAbs)
+}
 
 type ShardsByFoo []Shard
 func (a ShardsByFoo) Len() int           { return len(a) }
 func (a ShardsByFoo) Less(i, j int) bool {
-	return getFooByStats(allShardsStats[a[i]]) < getFooByStats(allShardsStats[a[j]])
+	return getFooByShard(a[i], false) < getFooByShard(a[j], false)
 }
 func (a ShardsByFoo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

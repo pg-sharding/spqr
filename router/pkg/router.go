@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
@@ -22,9 +23,8 @@ type Router interface {
 }
 
 type RouterImpl struct {
-	Rrouter rrouter.Rrouter
-	Qrouter qrouter.Qrouter
-
+	Rrouter rrouter.RequestRouter
+	Qrouter qrouter.QueryRouter
 	AdmConsole console.Console
 
 	SPIexecuter *Executer
@@ -47,8 +47,8 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
-	tracelog.InfoLogger.Printf("create Qrouter with type %s", qtype)
-
+	tracelog.InfoLogger.Printf("create QueryRouter with type %s", qtype)
+  
 	qr, err := qrouter.NewQrouter(qtype)
 	if err != nil {
 		return nil, err
@@ -67,12 +67,13 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
 
-	if err := initShards(rr, qr); err != nil {
+	if err := initShards(ctx, rr, qr); err != nil {
+
 		tracelog.InfoLogger.PrintError(err)
 	}
 
-	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(frTLS, qr, stchan)
+  stchan := make(chan struct{})
+	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
 		return nil, err
@@ -107,9 +108,8 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	}, nil
 }
 
-func initShards(rr rrouter.Rrouter, qr qrouter.Qrouter) error {
-
-	// data shards, world shard and sharding rules
+func initShards(ctx context.Context, rr rrouter.RequestRouter, qr qrouter.QueryRouter) error {
+	// data shards, world datashard and sharding rules
 	for name, shard := range config.RouterConfig().RouterConfig.ShardMapping {
 
 		switch shard.ShType {
@@ -123,7 +123,7 @@ func initShards(rr rrouter.Rrouter, qr qrouter.Qrouter) error {
 			}
 
 		case config.DataShard:
-			// data shard assumed by default
+			// datashard assumed by default
 			fallthrough
 		default:
 
@@ -134,7 +134,7 @@ func initShards(rr rrouter.Rrouter, qr qrouter.Qrouter) error {
 			if err := rr.AddDataShard(qdb.ShardKey{Name: name}); err != nil {
 				return err
 			}
-			if err := qr.AddDataShard(name, shard); err != nil {
+			if err := qr.AddDataShard(ctx, datashards.NewDataShard(name, shard)); err != nil {
 				return err
 			}
 		}
@@ -145,19 +145,19 @@ func initShards(rr rrouter.Rrouter, qr qrouter.Qrouter) error {
 
 func (r *RouterImpl) serv(netconn net.Conn) error {
 
-	client, err := r.Rrouter.PreRoute(netconn)
+	psqlclient, err := r.Rrouter.PreRoute(netconn)
 	if err != nil {
 		return err
 	}
 
 	tracelog.InfoLogger.Printf("preroute ok")
 
-	cmngr, err := rrouter.MatchConnectionPooler(client)
+	cmngr, err := rrouter.MatchConnectionPooler(psqlclient)
 	if err != nil {
 		return err
 	}
 
-	return Frontend(r.Qrouter, client, cmngr)
+	return Frontend(r.Qrouter, psqlclient, cmngr)
 }
 
 func (r *RouterImpl) Run(listener net.Listener) error {

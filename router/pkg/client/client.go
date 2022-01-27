@@ -18,6 +18,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+var NotRouted = xerrors.New("client not routed")
+
 type RouterClient interface {
 	client.Client
 
@@ -116,11 +118,9 @@ func (cl *PsqlClient) Server() server.Server {
 	return cl.server
 }
 
-var ClientNotRouter = xerrors.New("client not routed")
-
 func (cl *PsqlClient) Unroute() error {
 	if cl.server == nil {
-		return ClientNotRouter
+		return NotRouted
 	}
 	cl.server = nil
 

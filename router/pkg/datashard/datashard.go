@@ -1,4 +1,4 @@
-package shard
+package datashard
 
 import (
 	"crypto/tls"
@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -30,7 +31,7 @@ type Shard interface {
 	Instance() conn.DBInstance
 }
 
-func (sh *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
+func (sh *DataShardConn) ConstructSMh() *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -44,7 +45,7 @@ func (sh *ShardImpl) ConstructSMh() *pgproto3.StartupMessage {
 	return sm
 }
 
-type ShardImpl struct {
+type DataShardConn struct {
 	cfg *config.ShardCfg
 
 	lg log.Logger
@@ -58,13 +59,13 @@ type ShardImpl struct {
 	primary string
 }
 
-func (sh *ShardImpl) Instance() conn.DBInstance {
+func (sh *DataShardConn) Instance() conn.DBInstance {
 	return sh.dedicated
 }
 
-func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
+func (sh *DataShardConn) ReqBackendSsl(tlscfg *tls.Config) error {
 	if err := sh.dedicated.ReqBackendSsl(tlscfg); err != nil {
-		tracelog.InfoLogger.Printf("failed to init ssl on host %v of shard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
+		tracelog.InfoLogger.Printf("failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
 
 		return err
 	}
@@ -72,25 +73,25 @@ func (sh *ShardImpl) ReqBackendSsl(tlscfg *tls.Config) error {
 	return nil
 }
 
-func (sh *ShardImpl) Send(query pgproto3.FrontendMessage) error {
+func (sh *DataShardConn) Send(query pgproto3.FrontendMessage) error {
 	return sh.dedicated.Send(query)
 }
 
-func (sh *ShardImpl) Receive() (pgproto3.BackendMessage, error) {
+func (sh *DataShardConn) Receive() (pgproto3.BackendMessage, error) {
 	return sh.dedicated.Receive()
 }
 
-func (sh *ShardImpl) Name() string {
+func (sh *DataShardConn) Name() string {
 	return sh.name
 }
 
-func (sh *ShardImpl) Cfg() *config.ShardCfg {
+func (sh *DataShardConn) Cfg() *config.ShardCfg {
 	return sh.cfg
 }
 
-var _ Shard = &ShardImpl{}
+var _ Shard = &DataShardConn{}
 
-func (sh *ShardImpl) SHKey() kr.ShardKey {
+func (sh *DataShardConn) SHKey() kr.ShardKey {
 	return kr.ShardKey{
 		Name: sh.name,
 	}
@@ -98,7 +99,7 @@ func (sh *ShardImpl) SHKey() kr.ShardKey {
 
 func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard, error) {
 
-	sh := &ShardImpl{
+	sh := &DataShardConn{
 		cfg:  cfg,
 		name: key.Name,
 	}
@@ -115,7 +116,7 @@ func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard
 	return sh, nil
 }
 
-func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
+func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
 
 	err := sh.dedicated.Send(sm)
 	if err != nil {
@@ -133,19 +134,17 @@ func (sh *ShardImpl) Auth(sm *pgproto3.StartupMessage) error {
 		case pgproto3.AuthenticationResponseMessage:
 			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
 			if err != nil {
-				tracelog.InfoLogger.Printf("failed to perform backend auth %w", err)
+				asynctracelog.Printf("failed to perform backend auth %w", err)
 				return err
 			}
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		case *pgproto3.ParameterStatus:
-
-			tracelog.InfoLogger.Printf("ignored paramtes status %v %v", v.Name, v.Value)
-
+			asynctracelog.Printf("ignored paramtes status %v %v", v.Name, v.Value)
 		case *pgproto3.BackendKeyData:
-			tracelog.InfoLogger.Printf("ingored backend key data %v %v", v.ProcessID, v.SecretKey)
+			asynctracelog.Printf("ingored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
-			tracelog.InfoLogger.Printf("unexpected msg type received %T", v)
+			asynctracelog.Printf("unexpected msg type received %T", v)
 		}
 	}
 }

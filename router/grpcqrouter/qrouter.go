@@ -14,12 +14,12 @@ import (
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
 	protos.UnimplementedShardingRulesServiceServer
-	qr qrouter.Qrouter
+	qr qrouter.QueryRouter
 }
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := l.qr.AddShardingRule(shrule.NewShardingRule(rule.Columns))
+		err := l.qr.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
 
 		if err != nil {
 			return nil, err
@@ -48,21 +48,21 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 	}, nil
 }
 
-func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.AddKeyRangeReply, error) {
-	err := l.qr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRange))
+func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
+	err := l.qr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
 		return nil, err
 	}
 
-	return &protos.AddKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	var krs []*protos.KeyRange
+	var krs []*protos.KeyRangeInfo
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	krsqdb, err := l.qr.KeyRanges(ctx)
+	krsqdb, err := l.qr.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -72,39 +72,39 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 	}
 
 	resp := &protos.KeyRangeReply{
-		KeyRanges: krs,
+		KeyRangesInfo: krs,
 	}
 
 	return resp, nil
 }
 
-func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.LockKeyRangeReply, error) {
-	if _, err := l.qr.Lock(ctx, request.Krid); err != nil {
+func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
+	if _, err := l.qr.Lock(ctx, "x"); err != nil {
 		return nil, err
 	}
-	return &protos.LockKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
-func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.UnlockKeyRangeReply, error) {
-	if err := l.qr.UnLock(ctx, request.Krid); err != nil {
+func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
+	if err := l.qr.Unlock(ctx, "xx"); err != nil {
 		return nil, err
 	}
-	return &protos.UnlockKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
-func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.SplitKeyRangeReply, error) {
+func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
-		Krid:     request.Krid,
-		SourceID: request.Krid,
+		//Krid:     request.Bound,
+		//SourceID: request.K
 		Bound:    request.Bound,
 	}); err != nil {
 		return nil, err
 	}
 
-	return &protos.SplitKeyRangeReply{}, nil
+	return &protos.ModifyReply{}, nil
 }
 
-func Register(server reflection.GRPCServer, qrouter qrouter.Qrouter) {
+func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 
 	reflection.Register(server)
 

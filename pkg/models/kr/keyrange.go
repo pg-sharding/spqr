@@ -49,13 +49,14 @@ func KeyRangeFromSQL(kr *spqrparser.AddKeyRange) *KeyRange {
 	}
 }
 
-func KeyRangeFromProto(kr *proto.KeyRange) *KeyRange {
+func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
+
 	if kr == nil {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: []byte(kr.LowerBound),
-		UpperBound: []byte(kr.UpperBound),
+		LowerBound: []byte(kr.KeyRange.LowerBound),
+		UpperBound: []byte(kr.KeyRange.UpperBound),
 		ShardID:    kr.ShardId,
 		ID:         kr.Krid,
 	}
@@ -70,11 +71,13 @@ func (kr *KeyRange) ToSQL() *qdb.KeyRange {
 	}
 }
 
-func (kr *KeyRange) ToProto() *proto.KeyRange {
-	return &proto.KeyRange{
-		LowerBound: string(kr.LowerBound),
-		UpperBound: string(kr.UpperBound),
-		ShardId:    kr.ShardID,
-		Krid:       kr.ID,
+func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
+	return &proto.KeyRangeInfo{
+		KeyRange: &proto.KeyRange{
+			LowerBound: string(kr.LowerBound),
+			UpperBound: string(kr.UpperBound),
+		},
+		ShardId: kr.ShardID,
+		Krid:    kr.ID,
 	}
 }
