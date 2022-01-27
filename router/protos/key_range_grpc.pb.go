@@ -28,6 +28,7 @@ type KeyRangeServiceClient interface {
 	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 	SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 	MergeKeyRange(ctx context.Context, in *MergeKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	MoveKeyRange(ctx context.Context, in *MoveKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 }
 
 type keyRangeServiceClient struct {
@@ -92,6 +93,15 @@ func (c *keyRangeServiceClient) MergeKeyRange(ctx context.Context, in *MergeKeyR
 	return out, nil
 }
 
+func (c *keyRangeServiceClient) MoveKeyRange(ctx context.Context, in *MoveKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+	out := new(ModifyReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/MoveKeyRange", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyRangeServiceServer is the server API for KeyRangeService service.
 // All implementations must embed UnimplementedKeyRangeServiceServer
 // for forward compatibility
@@ -102,6 +112,7 @@ type KeyRangeServiceServer interface {
 	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*ModifyReply, error)
 	SplitKeyRange(context.Context, *SplitKeyRangeRequest) (*ModifyReply, error)
 	MergeKeyRange(context.Context, *MergeKeyRangeRequest) (*ModifyReply, error)
+	MoveKeyRange(context.Context, *MoveKeyRangeRequest) (*ModifyReply, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -126,6 +137,9 @@ func (UnimplementedKeyRangeServiceServer) SplitKeyRange(context.Context, *SplitK
 }
 func (UnimplementedKeyRangeServiceServer) MergeKeyRange(context.Context, *MergeKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MergeKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) MoveKeyRange(context.Context, *MoveKeyRangeRequest) (*ModifyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MoveKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}
 
@@ -248,6 +262,24 @@ func _KeyRangeService_MergeKeyRange_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_MoveKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).MoveKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.KeyRangeService/MoveKeyRange",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).MoveKeyRange(ctx, req.(*MoveKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyRangeService_ServiceDesc is the grpc.ServiceDesc for KeyRangeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -278,6 +310,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MergeKeyRange",
 			Handler:    _KeyRangeService_MergeKeyRange_Handler,
+		},
+		{
+			MethodName: "MoveKeyRange",
+			Handler:    _KeyRangeService_MoveKeyRange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

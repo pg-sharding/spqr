@@ -333,15 +333,24 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	return nil
 }
 
-func (m *mock) moveKeyRange(rng KeyRange, shardFrom, shardTo Shard) error {
+func (m *mock) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
-	_, ok := m.shardToKeyRanges[shardFrom][rng]
-	if !ok {
-		m.foo()
-		return errors.New("Key ranges not in shardFrom")
+	var shardFrom Shard
+	found := false
+	for shard := range m.shardToKeyRanges {
+		_, ok := m.shardToKeyRanges[shard][rng]
+		if ok {
+			found = true
+			shardFrom = shard
+		}
 	}
+	if !found {
+		m.foo()
+		return errors.New("key ranges not found")
+	}
+
 	for key := range m.keys {
 		if !less(&key, &rng.left) && less(&key, &rng.right) {
 			m.stats[shardTo][key] = m.stats[shardFrom][key]
