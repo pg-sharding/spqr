@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -29,9 +30,12 @@ var rootCmd = &cobra.Command{
 		// init db-,coordinator- and installation-class
 		balancer := pkg.Balancer{}
 
-		app := app.NewApp(&balancer)
+		app, err := app.NewApp(&balancer, *config.BalancerConfig())
+		if err != nil {
+			return fmt.Errorf("error while creating balancer app: %s", err)
+		}
 
-		err := app.ProcBalancer(ctx)
+		err = app.ProcBalancer(ctx)
 		tracelog.ErrorLogger.PrintError(err)
 
 		return err

@@ -59,12 +59,6 @@ type Column struct {
 	colName string `db:"column_name"`
 }
 
-type ClusterWithUserCredentials struct {
-	cluster *hasql.Cluster
-	user string
-	password string
-}
-
 type Key struct {
 	key string `db:"key"`
 }
@@ -84,7 +78,7 @@ func (s *DBStats) toStats() Stats {
 }
 
 type InstallationInterface interface {
-	Init(dbName, tableName string, shardClusters *map[int]ClusterWithUserCredentials, retriesCount int) error
+	Init(dbName, tableName, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error
 	GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error)
 	StartTransfer(task Action) error
 	RemoveRange(keyRange KeyRange, shard Shard) error
@@ -94,17 +88,21 @@ type InstallationInterface interface {
 type Installation struct {
 	dbName string
 	tableName string
-	shardClusters *map[int]ClusterWithUserCredentials
+	username string
+	password string
+	shardClusters *map[int]*hasql.Cluster
 	retriesCount int
 }
 
-func (i *Installation) Init(dbName, tableName string, shardClusters *map[int]ClusterWithUserCredentials, retriesCount int) error {
+func (i *Installation) Init(dbName, tableName, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error {
 	i.shardClusters = shardClusters
 	i.retriesCount = retriesCount
 	i.dbName = dbName
+	i.username = username
 	i.tableName = tableName
+	i.password = password
 	for _, shardCluster := range *shardClusters {
-		conn, err := GetMasterConn(shardCluster.cluster, retriesCount, defaultSleepMS)
+		conn, err := GetMasterConn(shardCluster, retriesCount, defaultSleepMS)
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -197,7 +195,7 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 		return nil, errors.New(fmt.Sprintf("Not known shard %d", shard.id))
 	}
 
-	nodes := cluster.cluster.Nodes()
+	nodes := cluster.Nodes()
 	var res map[string]map[string]Stats
 	for _, node := range nodes {
 		hostStats, err := i.GetHostStats(node, keyRanges)
@@ -213,11 +211,11 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond * time.Duration(defaultSleepMS))
 	defer cancel()
-	sourceMaster, err := (*i.shardClusters)[fromShard.id].cluster.WaitForPrimary(ctx)
+	sourceMaster, err := (*i.shardClusters)[fromShard.id].WaitForPrimary(ctx)
 	if err != nil {
 		return err
 	}
-	conn, err := GetMasterConn((*i.shardClusters)[toShard.id].cluster, i.retriesCount, defaultSleepMS)
+	conn, err := GetMasterConn((*i.shardClusters)[toShard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Can't find master of shard %d: %s", fromShard.id, err))
 	}
@@ -245,10 +243,10 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 	}
 
 	_, err = tx.Exec(createUserMapping,
-		(*i.shardClusters)[fromShard.id].user,
+		i.username,
 		serverName,
-		(*i.shardClusters)[toShard.id].user,
-		(*i.shardClusters)[toShard.id].user)
+		i.username,
+		i.password)
 
 	err = tx.Commit()
 	if err != nil {
@@ -260,7 +258,7 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 }
 
 func (i *Installation) GetTableSchema(shard Shard) ([]Column, error) {
-	conn, err := GetMasterConn((*i.shardClusters)[shard.id].cluster, i.retriesCount, defaultSleepMS)
+	conn, err := GetMasterConn((*i.shardClusters)[shard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Can't find master of shard %d: %s", shard.id, err))
 	}
@@ -306,7 +304,7 @@ func (i *Installation) StartTransfer(task Action) error {
 		schemaStr += fmt.Sprintf("%s %s", col.colName, col.colType)
 	}
 
-	conn, err := GetMasterConn((*i.shardClusters)[task.toShard.id].cluster, i.retriesCount, defaultSleepMS)
+	conn, err := GetMasterConn((*i.shardClusters)[task.toShard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		return err
 	}
@@ -331,7 +329,7 @@ func (i *Installation) StartTransfer(task Action) error {
 }
 
 func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
-	conn, err := GetMasterConn((*i.shardClusters)[shard.id].cluster, i.retriesCount, defaultSleepMS)
+	conn, err := GetMasterConn((*i.shardClusters)[shard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		return err
 	}
@@ -390,7 +388,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.DB, keyRange KeyRange) (*
 func (i *Installation) GetKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[string]*big.Int, error) {
 	res := map[string]*big.Int{}
 
-	conn, err := GetMasterConn((*i.shardClusters)[shard.id].cluster, i.retriesCount, defaultSleepMS)
+	conn, err := GetMasterConn((*i.shardClusters)[shard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		return nil, err
 	}

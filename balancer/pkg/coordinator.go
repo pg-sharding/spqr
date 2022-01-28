@@ -25,7 +25,7 @@ type Coordinator struct {
 	maxRetriesCount int
 	addr string
 	balancerServiceClient routerproto.BalancerServiceClient
-	routersServiceClient routerproto.RoutersServiceClient
+	shardServiceClient routerproto.ShardServiceClient
 	keyRangeServiceClient routerproto.KeyRangeServiceClient
 	operationServiceClient routerproto.OperationServiceClient
 }
@@ -43,7 +43,7 @@ func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
 	if err != nil {
 		return err
 	}
-	c.routersServiceClient = routerproto.NewRoutersServiceClient(connect)
+	c.shardServiceClient = routerproto.NewShardServiceClient(connect)
 
 	connect, err = grpcclient.Dial(addr)
 	if err != nil {
@@ -57,6 +57,30 @@ func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
 	}
 	c.operationServiceClient = routerproto.NewOperationServiceClient(connect)
 	return nil
+}
+
+func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
+	respList, err := c.shardServiceClient.ListShards(context.Background(), &routerproto.ShardRequest{})
+	if err != nil {
+		return nil, err
+	}
+	res := map[int]routerproto.ShardInfo{}
+	for _, shard := range respList.Shards {
+		respShard, err := c.shardServiceClient.GetShardInfo(context.Background(), &routerproto.ShardRequest{
+			Id: shard.Id,
+		})
+		if err != nil {
+			return nil, err
+		}
+		id, err := strconv.Atoi(shard.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		res[id] = routerproto.ShardInfo{ Hosts: respShard.ShardInfo.Hosts, Port: respShard.ShardInfo.Port }
+	}
+
+	return &res, nil
 }
 
 func (c *Coordinator) waitTilDone(operationID string) error {

@@ -19,6 +19,7 @@ import (
 //TODO tests
 type dbAction struct {
 	id uint64				`db:"id"`
+	tableName string		`db:"table_name"`
 	dbname string			`db:"dbname"`
 	actionStage ActionStage	`db:"action_stage"`
 	isRunning bool			`db:"is_running"`
@@ -40,7 +41,7 @@ func (a *dbAction) toAction() Action {
 }
 
 type DatabaseInterface interface {
-	Init(addrs []string, retriesCount, port int, dbname, username, tableName string) error
+	Init(addrs []string, retriesCount int, dbname, tableName, actionsDBPassword string) error
 	Insert(action *Action) error
 	Update(action *Action) error
 	Delete(action *Action) error
@@ -63,6 +64,7 @@ var (
 	tableActionsCreate = `
 	create table if not exists actions (
 		id SERIAL,
+		table_name varchar(64),
 		dbname varchar(64),
 		action_stage INTEGER,
 		is_running BOOLEAN,
@@ -74,6 +76,7 @@ var (
 
 	insertAction = `
 	insert into actions (
+	    table_name,
 		dbname,
 		action_stage,
 		is_running,
@@ -88,14 +91,15 @@ var (
 		?,
 		?,
 		?,
+		?,
 		?
 	)`
 
-	updateAction = `update actions set action_stage = ?, is_running = ? where id = ?`
-	markAllAsNotRunning = `update actions set is_running = false where dbname = ?`
-	deleteAction = `delete from actions where id = ?`
-	selectOneAction = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to`
-	actionsCount = `select count(*) from actions where is_running = false`
+	updateAction = `update actions set action_stage = ?, is_running = ? where id = ? and table_name = ? and dbname = ?`
+	markAllAsNotRunning = `update actions set is_running = false where table_name = ? and dbname = ?`
+	deleteAction = `delete from actions where id = ? and table_name = ? and dbname = ?`
+	selectOneAction = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to where is_running = FALSE and table_name = ? and dbname = ?`
+	actionsCount = `select count(*) from actions where is_running = false and table_name = ? and dbname = ?`
 )
 
 type Database struct{
@@ -118,10 +122,10 @@ func AddrToHostPort(addr string) (string, int) {
 	return s[0], port
 }
 
-func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert string) (*hasql.Cluster, error) {
+func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert string, port int) (*hasql.Cluster, error) {
 	nodes := make([]hasql.Node, 0, len(addrs))
 	for _, addr := range addrs {
-		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert)
+		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert, port)
 		node, err := sql.Open("pgx", connString)
 		if err != nil {
 			return nil, err
@@ -133,15 +137,16 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }
 
-func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) string {
+func ConnString(addr, dbname, user, password, sslMode, sslRootCert string, port int) string {
 	var connParams []string
 
-	host, port, err := net.SplitHostPort(addr)
+	host, portFromAddr, err := net.SplitHostPort(addr)
 	if err == nil {
 		connParams = append(connParams, "host="+host)
-		connParams = append(connParams, "port="+port)
+		connParams = append(connParams, "port="+portFromAddr)
 	} else {
 		connParams = append(connParams, "host="+addr)
+		connParams = append(connParams, "port="+strconv.Itoa(port))
 	}
 
 	if dbname != "" {
@@ -199,7 +204,7 @@ func GetNodeConn(node hasql.Node, retries int, sleepMS int) (*sql.DB, error) {
 	return nil, fmt.Errorf("failed to get connection with master node")
 }
 
-func (d *Database) Init(addrs []string, retriesCount, port int, dbname, username, tableName string) error {
+func (d *Database) Init(addrs []string, retriesCount int, dbname, tableName, actionsDBPassword string) error {
 	cluster, err :=
 		NewCluster(
 			addrs,
@@ -208,6 +213,7 @@ func (d *Database) Init(addrs []string, retriesCount, port int, dbname, username
 			actionsDBPassword,
 			actionsDBSslMode,
 			actionsDBSslRootCert,
+			6432,
 		)
 	if err != nil {
 		return err
@@ -215,6 +221,7 @@ func (d *Database) Init(addrs []string, retriesCount, port int, dbname, username
 
 	d.cluster = cluster
 	d.dbname = dbname
+	d.tableName = tableName
 	d.retriesCount = retriesCount
 	conn, err := GetMasterConn(d.cluster, d.retriesCount, defaultSleepMS)
 	if err != nil {
@@ -255,6 +262,7 @@ func (d *Database) Insert(action *Action) error {
 		return err
 	}
 	_, err = tx.Exec(insertAction,
+		d.tableName,
 		d.dbname,
 		action.actionStage,
 		action.isRunning,
@@ -288,7 +296,7 @@ func (d *Database) Update(action *Action) error {
 		fmt.Println(err)
 		return err
 	}
-	_, err = tx.Exec(updateAction, action.actionStage, action.isRunning, action.id)
+	_, err = tx.Exec(updateAction, action.actionStage, action.isRunning, action.id, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
@@ -315,7 +323,7 @@ func (d *Database) Delete(action *Action) error {
 		fmt.Println(err)
 		return err
 	}
-	_, err = tx.Exec(deleteAction, action.id)
+	_, err = tx.Exec(deleteAction, action.id, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
@@ -343,7 +351,7 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		fmt.Println(err)
 		return Action{}, false, err
 	}
-	rows, err := tx.QueryContext(ctx, selectOneAction)
+	rows, err := tx.QueryContext(ctx, selectOneAction, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		return Action{}, false, err
@@ -359,7 +367,7 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		break
 	}
 
-	_, err = tx.Exec(updateAction, act.actionStage, true, act.id)
+	_, err = tx.Exec(updateAction, act.actionStage, true, act.id, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
@@ -387,7 +395,7 @@ func (d *Database) MarkAllNotRunning() error {
 		fmt.Println(err)
 		return err
 	}
-	_, err = tx.Exec(markAllAsNotRunning)
+	_, err = tx.Exec(markAllAsNotRunning, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
@@ -409,7 +417,7 @@ func (d *Database) Len() (uint64, error) {
 	}
 	defer conn.Close()
 	count := uint64(0)
-	err = conn.QueryRow(actionsCount).Scan(&count)
+	err = conn.QueryRow(actionsCount, d.tableName, d.dbname).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -437,7 +445,7 @@ func (m *MockDb) MarkAllNotRunning() error {
 	return nil
 }
 
-func (m *MockDb) Init(addrs []string, retriesCount, port int, dbname, username, tableName string) error {
+func (m *MockDb) Init(addrs []string, retriesCount int, _, _, _ string) error {
 	defer m.lock.Unlock()
 	m.lock.Lock()
 	m.actions = map[uint64]Action{}

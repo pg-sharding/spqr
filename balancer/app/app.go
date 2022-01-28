@@ -2,25 +2,82 @@ package app
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/balancer/pkg"
+	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"golang.yandex/hasql"
+	"strconv"
 )
 
 type App struct {
-	balancer *pkg.Balancer
+	coordinator *balancerPkg.Coordinator
+	database *balancerPkg.Database
+	installation *balancerPkg.Installation
+
+	balancer *balancerPkg.Balancer
 }
 
-func NewApp(balancer *pkg.Balancer) *App {
-	return &App{
-		balancer: balancer,
+func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error) {
+	coordinator := balancerPkg.Coordinator{}
+	err := coordinator.Init(cfg.CoordinatorAddress, 3)
+	if err != nil {
+		return nil, err
 	}
-}
+	shards, err := coordinator.ShardsList()
+	if err != nil {
+		return nil, err
+	}
+	shardClusters := map[int]*hasql.Cluster{}
 
-func (app *App) GetShardsConnStrings(ctx context.Context) (map[int]string, error) {
-	return nil, nil
-}
+	for id, shard := range *shards {
+		port, err := strconv.Atoi(shard.Port)
+		if err != nil {
+			return nil, err
+		}
+		shardClusters[id], err = balancerPkg.NewCluster(
+			shard.Hosts,
+			cfg.InstallationDBName,
+			cfg.InstallationTableName,
+			cfg.InstallationPassword,
+			"",
+			"",
+			port)
+		if err != nil {
+			return nil, err
+		}
+	}
+	installation := balancerPkg.Installation{}
 
-//TODO
+	err = installation.Init(
+		cfg.InstallationDBName,
+		cfg.InstallationTableName,
+		cfg.InstallationUserName,
+		cfg.InstallationPassword,
+		&shardClusters,
+		cfg.InstallationMaxRetries,
+		)
+	if err != nil {
+		return nil, err
+	}
+
+	db := balancerPkg.Database{}
+	err = db.Init(cfg.DatabaseHosts, cfg.DatabaseMaxRetries, cfg.InstallationDBName, cfg.InstallationTableName, cfg.DatabasePassword)
+	if err != nil {
+		return nil, err
+	}
+
+	balancer.Init(&installation, &coordinator, &db)
+
+	return &App{
+		coordinator: &coordinator,
+		installation: &installation,
+		database: &db,
+		balancer: balancer,
+	}, nil
+}
 
 func (app *App) ProcBalancer(ctx context.Context) error {
+
+	//TODO return error
+	app.balancer.BrutForceStrategy()
 	return nil
 }

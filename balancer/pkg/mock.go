@@ -3,6 +3,7 @@ package pkg
 import (
 	"errors"
 	"fmt"
+	"golang.yandex/hasql"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -374,7 +375,7 @@ func (m *mock) isReloadRequired() (bool, error) {
 	return false, nil
 }
 
-func (m *mock) Init(_, _ string, _ *map[int]ClusterWithUserCredentials, _ int) error {
+func (m *mock) Init(_, _, _, _ string, _ *map[int]*hasql.Cluster, _ int) error {
 	return nil
 }
 
@@ -385,7 +386,9 @@ func local_test() {
 	m.init()
 	fmt.Println("3")
 	db := MockDb{}
-	_ = db.Init([]string{}, 0, 0, "", "", "")
-	_main(&m, &m, &db)
+	_ = db.Init([]string{}, 0, "", "", "")
+	b := Balancer{}
+	b.Init(&m, &m, &db)
+	b.BrutForceStrategy()
 	fmt.Println("4")
 }

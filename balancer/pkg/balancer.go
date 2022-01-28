@@ -60,6 +60,8 @@ type Balancer struct {
 	plannerCount int
 }
 
+//TODO think about schema changing
+
 func (b *Balancer) Init(installation InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
 	//TODO actionStageMove constants somewhere, get values from config
 	b.retryTime = time.Second * 5
@@ -753,15 +755,16 @@ func (b *Balancer) getFooByShard(shard Shard, useAbs bool) float64 {
 	return b.getFooByStats(b.allShardsStats[shard], useAbs) + b.getFooOfShardSize(shard, useAbs)
 }
 
-func justBrutForceStrategy(installation InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
+//TODO add function MoveAllDataFromShard
+
+
+func (b *Balancer) BrutForceStrategy() {
 	var err error
 
 	// TODO: actionStageMerge all possible kr's? Or not.
 
 	// TODO: mb we should wait til new stats is going to be collected.
 	// If not, after actionStageTransfer we will see, that transfered range is not loaded, but it might be not true
-	b := Balancer{}
-	b.Init(installation, coordinator, db)
 
 	b.muReload.Lock()
 	b.reloadRequired = true
@@ -798,7 +801,7 @@ func justBrutForceStrategy(installation InstallationInterface, coordinator Coord
 				continue
 			}
 			fmt.Println("Reload, tasks ", len)
-			b.Init(installation, coordinator, db)
+			b.Init(b.installation, b.coordinator, b.db)
 			b.updateAllStats()
 			fmt.Println("Reload actionStageDone")
 		}
@@ -824,8 +827,4 @@ func justBrutForceStrategy(installation InstallationInterface, coordinator Coord
 		}
 
 	}
-}
-
-func _main(shards InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
-	justBrutForceStrategy(shards, coordinator, db)
 }
