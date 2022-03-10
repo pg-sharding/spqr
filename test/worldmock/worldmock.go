@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/client"
-	"github.com/wal-g/tracelog"
 )
 
 type WorldMock struct {
@@ -20,8 +21,7 @@ func (w *WorldMock) Run() error {
 
 	ctx := context.Background()
 
-
-	listener, err := net.Listen("tcp6", "[::1]:5433")
+	listener, err := net.Listen("tcp", w.addr)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 		return err
@@ -96,7 +96,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
 			tracelog.InfoLogger.Printf("received prep stmt %v %v", v.Name, v.Query)
-			break;
+			break
 		case *pgproto3.Query:
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
