@@ -215,7 +215,7 @@ func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error
 }
 
 func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if len(rule.Columns()) != 0 {
+	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
