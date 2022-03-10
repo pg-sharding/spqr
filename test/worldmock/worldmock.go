@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/jackc/pgproto3/v2"
+	reuse "github.com/libp2p/go-reuseport"
 	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -21,7 +22,7 @@ func (w *WorldMock) Run() error {
 
 	ctx := context.Background()
 
-	listener, err := net.Listen("tcp", w.addr)
+	listener, err := reuse.Listen("tcp", w.addr)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 		return err
