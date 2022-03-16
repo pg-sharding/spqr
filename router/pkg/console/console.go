@@ -6,6 +6,10 @@ import (
 	"crypto/tls"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pkg/errors"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -16,9 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type Console interface {
@@ -116,6 +117,7 @@ var intf = func(qlogger qlog.Qlog, t TopoCntl, cli client.PSQLInteractor, ctx co
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.ShardingColumn:
+		tracelog.InfoLogger.Printf("ShardingColumn %s", stmt.ColName)
 		err := t.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 		if err != nil {
 			_ = qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
