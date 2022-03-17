@@ -398,6 +398,7 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 
 	parsedStmt, err := sqlparser.Parse(q)
 	if err != nil {
+		tracelog.ErrorLogger.Printf("parsing stmt error: %v", err)
 		return nil, ParseError
 	}
 

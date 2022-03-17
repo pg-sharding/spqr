@@ -370,7 +370,7 @@ func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 		case *pgproto3.RowDescription:
 			tracelog.InfoLogger.Printf("row description: %#v", v.Fields)
 		case *pgproto3.CommandComplete:
-			tracelog.InfoLogger.Printf("command complete (tag - %s): %s", string(v.CommandTag), query)
+			tracelog.InfoLogger.Printf("command complete (%s): %s", string(v.CommandTag), query)
 		default:
 			tracelog.InfoLogger.Printf("unknown msg type: %T", v)
 		}

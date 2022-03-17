@@ -1,15 +1,21 @@
 \set aid random(1, 100000)
-
-\set abalance random(1, 1000)
-
+-- \setrandom bid 1 :nbranches
+\set bid random(1, 100000)
+-- \setrandom tid 1 :ntellers
+\set tid random(1, 100000)
+-- \setrandom delta -5000 5000
 \set delta random(-5000,5000)
 
 BEGIN;
 
-INSERT INTO x (w_id, abalance) VALUES (:aid, :abalance);
+UPDATE pgbench_accounts SET abalance = abalance + :delta WHERE aid = :aid;
 
-UPDATE x SET abalance = abalance + :delta  WHERE w_id = :aid;
+SELECT abalance FROM pgbench_accounts WHERE aid = :aid;
 
-SELECT abalance FROM x WHERE w_id = :aid;
+UPDATE pgbench_tellers SET tbalance = tbalance + :delta WHERE tid = :tid;
+
+UPDATE pgbench_branches SET bbalance = bbalance + :delta WHERE bid = :bid;
+
+INSERT INTO pgbench_history (tid, bid, aid, delta, mtime) VALUES (:tid, :bid, :aid, :delta, CURRENT_TIMESTAMP);
 
 END;
