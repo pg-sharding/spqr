@@ -117,7 +117,6 @@ var intf = func(qlogger qlog.Qlog, t TopoCntl, cli client.PSQLInteractor, ctx co
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.ShardingColumn:
-		tracelog.InfoLogger.Printf("ShardingColumn %s", stmt.ColName)
 		err := t.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 		if err != nil {
 			_ = qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
