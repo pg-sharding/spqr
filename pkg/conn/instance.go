@@ -6,14 +6,16 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
+
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 const SSLREQ = 80877103
 const CANCELREQ = 80877102
 const TXREL = 73
+const TXCMDCOMPL = 84
 const NOTXREL = 86
 
 type InstanceStatus string

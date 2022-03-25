@@ -8,14 +8,15 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pkg/errors"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pg-sharding/spqr/router/pkg/server"
-	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 var NotRouted = xerrors.New("client not routed")
@@ -366,6 +367,12 @@ func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 		switch v := msg.(type) {
 		case *pgproto3.ReadyForQuery:
 			return v.TxStatus, nil
+		case *pgproto3.RowDescription:
+			tracelog.InfoLogger.Printf("row description: %#v", v.Fields)
+		case *pgproto3.CommandComplete:
+			tracelog.InfoLogger.Printf("command complete (%s): %s", string(v.CommandTag), query)
+		default:
+			tracelog.InfoLogger.Printf("unknown msg type: %T", v)
 		}
 
 		err = cl.Send(msg)

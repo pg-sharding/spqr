@@ -17,18 +17,18 @@ router:
         - route_key_cfg:
             usr: user1
             db: db1
-            pooling_mode: 'TRANSACTION'
-            auth_rule:
-                auth_method: 'ok'
-                password: 'strong'
+          pooling_mode: 'TRANSACTION'
+          auth_rule:
+            auth_method: 'ok'
+            password: 'strong'
     proto: 'tcp6'
     world_shard_fallback: true
     shard_mapping:
         w1:
             tls:
                 key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable" 
-                cert_file: '/etc/odyssey/ssl/server.crt' 
+                sslmode: "disable"
+                cert_file: '/etc/odyssey/ssl/server.crt'
             conn_db: "db1"
             conn_usr: "user1"
             passwd: 12345678

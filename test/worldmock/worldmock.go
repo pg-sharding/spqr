@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/client"
-	"github.com/wal-g/tracelog"
 )
 
 type WorldMock struct {
@@ -21,7 +22,7 @@ func (w *WorldMock) Run() error {
 	ctx := context.Background()
 
 
-	listener, err := net.Listen("tcp6", "[::1]:5433")
+	listener, err := net.Listen("tcp", ":6432")
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
 		return err

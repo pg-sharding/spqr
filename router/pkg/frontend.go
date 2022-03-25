@@ -2,13 +2,15 @@ package pkg
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
-	"github.com/wal-g/tracelog"
 )
 
 type Qinteractor interface {
@@ -28,6 +30,10 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+
 			asynctracelog.Printf("failed to receive msg %w", err)
 			return err
 		}
@@ -95,6 +101,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			asynctracelog.Printf("active shards are %v", rst.ActiveShards)
 
 		default:
+			asynctracelog.Printf("received msg type %T", q)
 		}
 	}
 }

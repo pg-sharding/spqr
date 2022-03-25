@@ -2,8 +2,12 @@ package qrouter
 
 import (
 	"context"
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"math/rand"
+
+	"github.com/blastrain/vitess-sqlparser/sqlparser"
+
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -11,8 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type ProxyRouter struct {
@@ -347,9 +349,7 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 	case *sqlparser.Insert:
 		for i, c := range stmt.Columns {
-
 			if _, ok := qr.ColumnMapping[c.String()]; ok {
-
 				switch vals := stmt.Rows.(type) {
 				case sqlparser.Values:
 					valTyp := vals[0]
@@ -370,7 +370,7 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 			return []*ShardRoute{shroute}
 		}
 		return nil
-	case *sqlparser.CreateTable:
+	case *sqlparser.TruncateTable, *sqlparser.CreateTable:
 		tracelog.InfoLogger.Printf("ddl routing excpands to every datashard")
 		// route ddl to every datashard
 		shrds := qr.Shards()
@@ -398,6 +398,7 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 
 	parsedStmt, err := sqlparser.Parse(q)
 	if err != nil {
+		tracelog.ErrorLogger.Printf("parsing stmt error: %v", err)
 		return nil, ParseError
 	}
 

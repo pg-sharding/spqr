@@ -4,11 +4,12 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pkg/errors"
+
 	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/client"
-	"github.com/pkg/errors"
 )
 
 type ConnManager interface {
