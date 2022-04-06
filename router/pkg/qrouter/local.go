@@ -1,20 +1,50 @@
 package qrouter
 
 import (
+	"context"
+	"github.com/juju/errors"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/wal-g/tracelog"
 )
 
 type LocalQrouter struct {
 	QueryRouter
-	shid string
+	ds *datashards.DataShard
 }
 
 var _ QueryRouter = &LocalQrouter{}
 
-func NewLocalQrouter(shid string) (*LocalQrouter, error) {
-	return &LocalQrouter{
-		shid: shid,
-	}, nil
+func NewLocalQrouter(rules config.RulesCfg) (*LocalQrouter, error) {
+	if len(rules.ShardMapping) != 1 {
+		errmsg := "local router support only single-datashard routing"
+		tracelog.ErrorLogger.Printf(errmsg)
+		return nil, errors.New(errmsg)
+	}
+
+	l := &LocalQrouter{}
+
+	var name string
+	var cfg *config.ShardCfg
+
+	for k, v := range rules.ShardMapping {
+		name = k
+		cfg = v
+	}
+
+	l.ds = &datashards.DataShard{
+		ID:  name,
+		Cfg: cfg,
+	}
+
+	return l, nil
+}
+
+func (qr *LocalQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
+	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
+	qr.ds = ds
+	return nil
 }
 
 func (l *LocalQrouter) Route(q string) (RoutingState, error) {
@@ -22,7 +52,7 @@ func (l *LocalQrouter) Route(q string) (RoutingState, error) {
 		Routes: []*ShardRoute{
 			{
 				Shkey: kr.ShardKey{
-					Name: l.shid,
+					Name: l.ds.ID,
 				},
 			},
 		},

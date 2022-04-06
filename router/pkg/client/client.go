@@ -35,6 +35,7 @@ type RouterClient interface {
 	Rule() *config.FRRule
 
 	ProcQuery(query *pgproto3.Query) (byte, error)
+	ReplyParseComplete() error
 }
 
 type PsqlClient struct {
@@ -66,6 +67,19 @@ func (cl *PsqlClient) Reply(msg string) error {
 		}},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
 		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cl *PsqlClient) ReplyParseComplete() error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ParseComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {

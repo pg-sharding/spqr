@@ -33,7 +33,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name])
 	if err != nil {
 		return err
 	}

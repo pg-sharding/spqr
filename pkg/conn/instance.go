@@ -80,7 +80,6 @@ func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
 }
 
 func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string) (DBInstance, error) {
-
 	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
 
 	instance := &PostgreSQLInstance{
@@ -107,7 +106,6 @@ func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string
 }
 
 func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
-
 	msg := &pgproto3.Query{
 		String: "SELECT pg_is_in_recovery()",
 	}
@@ -127,14 +125,12 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 
 	switch v := bmsg.(type) {
 	case *pgproto3.DataRow:
-
 		tracelog.InfoLogger.Printf("got datarow %v", v.Values)
 
 		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
 			return true, nil
 		}
 		return false, nil
-
 	default:
 		return false, xerrors.Errorf("unexcepted")
 	}
@@ -143,7 +139,6 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 var _ DBInstance = &PostgreSQLInstance{}
 
 func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
-
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
 	// Gen salt

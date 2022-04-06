@@ -17,7 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb/mem"
 )
 
-type ProxyRouter struct {
+type ProxyQrouter struct {
 	Rules []*shrule.ShardingRule
 
 	ColumnMapping map[string]struct{}
@@ -30,7 +30,7 @@ type ProxyRouter struct {
 	qdb qdb.QrouterDB
 }
 
-func (qr *ProxyRouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
+func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	var ret []*datashards.DataShard
 	for id, cfg := range qr.DataShardCfgs {
 		ret = append(ret, datashards.NewDataShard(id, cfg))
@@ -38,12 +38,11 @@ func (qr *ProxyRouter) ListDataShards(ctx context.Context) []*datashards.DataSha
 	return ret
 }
 
-
-func (qr *ProxyRouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	return qr.Rules, nil
 }
 
-func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
+func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 
 	tracelog.InfoLogger.Printf("adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
@@ -51,7 +50,7 @@ func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 	return nil
 }
 
-func (qr *ProxyRouter) DataShardsRoutes() []*ShardRoute {
+func (qr *ProxyQrouter) DataShardsRoutes() []*ShardRoute {
 	var ret []*ShardRoute
 
 	for name := range qr.DataShardCfgs {
@@ -66,7 +65,7 @@ func (qr *ProxyRouter) DataShardsRoutes() []*ShardRoute {
 	return ret
 }
 
-func (qr *ProxyRouter) WorldShardsRoutes() []*ShardRoute {
+func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
 	var ret []*ShardRoute
 
 	for name := range qr.WorldShardCfgs {
@@ -86,34 +85,48 @@ func (qr *ProxyRouter) WorldShardsRoutes() []*ShardRoute {
 	return ret
 }
 
-func (qr *ProxyRouter) WorldShards() []string {
+func (qr *ProxyQrouter) WorldShards() []string {
 
 	panic("implement me")
 }
 
-var _ QueryRouter = &ProxyRouter{}
+var _ QueryRouter = &ProxyQrouter{}
 
-func NewProxyRouter() (*ProxyRouter, error) {
+func NewProxyRouter(rules config.RulesCfg) (*ProxyQrouter, error) {
 	db, err := mem.NewQrouterDBMem()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ProxyRouter{
+	proxy := &ProxyQrouter{
 		ColumnMapping:  map[string]struct{}{},
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
 		Rules:          []*shrule.ShardingRule{},
-	}, nil
+	}
+
+	for name, shardCfg := range rules.ShardMapping {
+		switch shardCfg.ShType {
+		case config.WorldShard:
+		case config.DataShard:
+			if err := proxy.AddDataShard(context.TODO(), &datashards.DataShard{
+				ID:  name,
+				Cfg: shardCfg,
+			}); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return proxy, nil
 }
 
-func (qr *ProxyRouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
+func (qr *ProxyQrouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	//return qr.qdb.Watch(krid, krst, noitfyio)
 	return nil
 }
 
-func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
+func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	var krRight *qdb.KeyRange
 	var krleft *qdb.KeyRange
 	var err error
@@ -147,7 +160,7 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	return qr.qdb.UpdateKeyRange(ctx, krRight)
 }
 
-func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 
 	var krOld *qdb.KeyRange
 	var err error
@@ -172,7 +185,7 @@ func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	return nil
 }
 
-func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
+func (qr *ProxyQrouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
 	if err != nil {
 		return nil, err
@@ -181,18 +194,17 @@ func (qr *ProxyRouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, err
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
-func (qr *ProxyRouter) Unlock(ctx context.Context, krid string) error {
+func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
 	return qr.qdb.UnLock(ctx, krid)
 }
 
-func (qr *ProxyRouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
+func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
 	qr.DataShardCfgs[ds.ID] = ds.Cfg
 	return nil
 }
 
-
-func (qr *ProxyRouter) Shards() []string {
+func (qr *ProxyQrouter) Shards() []string {
 	var ret []string
 
 	for name := range qr.DataShardCfgs {
@@ -202,7 +214,7 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 
 	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
@@ -216,7 +228,7 @@ func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error
 	return ret, nil
 }
 
-func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
@@ -225,16 +237,16 @@ func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.Shardin
 	return nil
 }
 
-func (qr *ProxyRouter) AddLocalTable(tname string) error {
+func (qr *ProxyQrouter) AddLocalTable(tname string) error {
 	qr.LocalTables[tname] = struct{}{}
 	return nil
 }
 
-func (qr *ProxyRouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return qr.qdb.AddKeyRange(ctx, kr.ToSQL())
 }
 
-func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
+func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 
 	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
 
@@ -250,7 +262,7 @@ func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 	}
 }
 
-func (qr *ProxyRouter) matchShkey(expr sqlparser.Expr) bool {
+func (qr *ProxyQrouter) matchShkey(expr sqlparser.Expr) bool {
 	switch texpr := expr.(type) {
 	case sqlparser.ValTuple:
 		for _, val := range texpr {
@@ -267,7 +279,7 @@ func (qr *ProxyRouter) matchShkey(expr sqlparser.Expr) bool {
 	return false
 }
 
-func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) *ShardRoute {
+func (qr *ProxyQrouter) routeByExpr(expr sqlparser.Expr) *ShardRoute {
 
 	switch texpr := expr.(type) {
 	case *sqlparser.AndExpr:
@@ -308,7 +320,7 @@ func (qr *ProxyRouter) routeByExpr(expr sqlparser.Expr) *ShardRoute {
 	}
 }
 
-func (qr *ProxyRouter) isLocalTbl(from sqlparser.TableExprs) bool {
+func (qr *ProxyQrouter) isLocalTbl(from sqlparser.TableExprs) bool {
 	for _, texpr := range from {
 		switch tbltype := texpr.(type) {
 		case *sqlparser.ParenTableExpr:
@@ -329,7 +341,7 @@ func (qr *ProxyRouter) isLocalTbl(from sqlparser.TableExprs) bool {
 	return false
 }
 
-func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
+func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 	tracelog.InfoLogger.Printf("parsed qtype %T", qstmt)
 
@@ -393,7 +405,7 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 var ParseError = xerrors.New("parsing stmt error")
 
-func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
+func (qr *ProxyQrouter) Route(q string) (RoutingState, error) {
 	tracelog.InfoLogger.Printf("routing by %s", q)
 
 	parsedStmt, err := sqlparser.Parse(q)

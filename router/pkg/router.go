@@ -6,8 +6,6 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -23,11 +21,11 @@ type Router interface {
 }
 
 type RouterImpl struct {
-	Rrouter rrouter.RequestRouter
-	Qrouter qrouter.QueryRouter
+	Rrouter    rrouter.RequestRouter
+	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 
-	SPIexecuter *Executer
+	SPIExecuter *Executer
 	stchan      chan struct{}
 	addr        string
 	frTLS       *tls.Config
@@ -45,17 +43,23 @@ var _ Router = &RouterImpl{}
 
 func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
+	// init tls
+	if err := initShards(config.RouterConfig().RulesConfig); err != nil {
+		tracelog.InfoLogger.PrintError(err)
+	}
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
-	tracelog.InfoLogger.Printf("create QueryRouter with type %s", qtype)
-  
-	qr, err := qrouter.NewQrouter(qtype)
+	tracelog.DebugLogger.Printf("creating QueryRouter with type %s", qtype)
+
+	rules := config.RouterConfig().RulesConfig
+
+	qr, err := qrouter.NewQrouter(qtype, rules)
 	if err != nil {
 		return nil, err
 	}
 
 	// frontend
-	frTlsCfg := config.RouterConfig().RouterConfig.TLSCfg
+	frTlsCfg := rules.TLSCfg
 	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "init frontend TLS")
@@ -67,12 +71,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		return nil, errors.Wrap(err, "NewRouter")
 	}
 
-	if err := initShards(ctx, rr, qr); err != nil {
-
-		tracelog.InfoLogger.PrintError(err)
-	}
-
-  stchan := make(chan struct{})
+	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
@@ -102,39 +101,22 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		Rrouter:     rr,
 		Qrouter:     qr,
 		AdmConsole:  localConsole,
-		SPIexecuter: executer,
+		SPIExecuter: executer,
 		stchan:      stchan,
 		frTLS:       frTLS,
 	}, nil
 }
 
-func initShards(ctx context.Context, rr rrouter.RequestRouter, qr qrouter.QueryRouter) error {
-	// data shards, world datashard and sharding rules
-	for name, shard := range config.RouterConfig().RouterConfig.ShardMapping {
-
+func initShards(rules config.RulesCfg) error {
+	for _, shard := range rules.ShardMapping {
 		switch shard.ShType {
 		case config.WorldShard:
-
-			if err := rr.AddWorldShard(qdb.ShardKey{Name: name}); err != nil {
-				return err
-			}
-			if err := qr.AddWorldShard(name, shard); err != nil {
-				return err
-			}
-
+			// nothing
 		case config.DataShard:
 			// datashard assumed by default
 			fallthrough
 		default:
-
 			if err := shard.InitShardTLS(); err != nil {
-				return err
-			}
-
-			if err := rr.AddDataShard(qdb.ShardKey{Name: name}); err != nil {
-				return err
-			}
-			if err := qr.AddDataShard(ctx, datashards.NewDataShard(name, shard)); err != nil {
 				return err
 			}
 		}

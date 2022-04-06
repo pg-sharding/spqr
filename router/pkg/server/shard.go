@@ -50,7 +50,7 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	} else {
 
-		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name])
 		if err != nil {
 			return err
 		}
