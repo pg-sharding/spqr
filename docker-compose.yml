@@ -40,9 +40,13 @@ services:
             spqr:
                 ipv4_address: 192.168.233.07
     world1:
-        build:
-            dockerfile: ./docker/world/Dockerfile
-            context: .
+        image:
+            spqr_shardbase
+#        build:
+#            dockerfile: ./docker/world/Dockerfile
+#            context: .
+        environment:
+            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_world1_1.spqr_spqr.}"
         hostname: spqr_world_0_1
         ports:
             - "7434:6432"

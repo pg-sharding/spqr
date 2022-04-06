@@ -87,8 +87,13 @@ func (qr *ProxyRouter) WorldShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyRouter) WorldShards() []string {
+	var ret []string
 
-	panic("implement me")
+	for name := range qr.WorldShardCfgs {
+		ret = append(ret, name)
+	}
+
+	return ret
 }
 
 var _ QueryRouter = &ProxyRouter{}
@@ -374,8 +379,9 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 		tracelog.InfoLogger.Printf("ddl routing excpands to every datashard")
 		// route ddl to every datashard
 		shrds := qr.Shards()
+		worldShards := qr.WorldShards()
 		var ret []*ShardRoute
-		for _, sh := range shrds {
+		for _, sh := range append(shrds, worldShards...) {
 			ret = append(ret,
 				&ShardRoute{
 					Shkey: kr.ShardKey{
@@ -384,6 +390,8 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 					},
 				})
 		}
+
+
 
 		return ret
 	}
@@ -413,7 +421,8 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 		routes := qr.matchShards(parsedStmt)
 
 		if routes == nil {
-			return SkipRoutingState{}, nil
+			return WorldRouteState{}, nil
+			//return SkipRoutingState{}, nil
 		}
 
 		return ShardMatchState{

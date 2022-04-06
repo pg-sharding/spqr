@@ -124,15 +124,15 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
-	case qrouter.WolrdRouteState:
+	case qrouter.WorldRouteState:
 
 		if !config.RouterConfig().RouterConfig.WorldShardFallback {
 			return err
 		}
-		// fallback to execute query on wolrd datashard (s)
+		// fallback to execute query on world datashard (s)
 
 		_, _ = rst.RerouteWorld()
-		if err := rst.ConnectWold(); err != nil {
+		if err := rst.ConnectWorld(); err != nil {
 			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))
 			return err
 		}
@@ -202,8 +202,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) ConnectWold() error {
-
+func (rst *RelayStateImpl) ConnectWorld() error {
 	tracelog.InfoLogger.Printf("initialize datashard server conn")
 	_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 

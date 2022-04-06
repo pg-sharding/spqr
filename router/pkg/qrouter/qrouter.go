@@ -3,13 +3,14 @@ package qrouter
 import (
 	"context"
 
+	"github.com/pkg/errors"
+	"golang.org/x/xerrors"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 )
 
 const NOSHARD = ""
@@ -35,7 +36,7 @@ type SkipRoutingState struct {
 	RoutingState
 }
 
-type WolrdRouteState struct {
+type WorldRouteState struct {
 	RoutingState
 }
 
