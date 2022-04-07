@@ -35,6 +35,9 @@ services:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
             context: .
+        ports:
+            - "7002:7002"
+            - "7003:7003"
         hostname: spqr_coordinator
         networks:
             spqr:
