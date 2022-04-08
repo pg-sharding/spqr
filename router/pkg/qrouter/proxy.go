@@ -420,8 +420,8 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 		routes := qr.matchShards(parsedStmt)
 
 		if routes == nil {
-			return WorldRouteState{}, nil
-			//return SkipRoutingState{}, nil
+			//return WorldRouteState{}, nil
+			return SkipRoutingState{}, nil
 		}
 
 		return ShardMatchState{
