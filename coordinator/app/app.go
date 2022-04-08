@@ -5,12 +5,13 @@ import (
 	"net"
 	"sync"
 
-	"github.com/pg-sharding/spqr/coordinator"
-	shhttp "github.com/pg-sharding/spqr/grpc"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	"github.com/pg-sharding/spqr/coordinator"
+	shhttp "github.com/pg-sharding/spqr/grpc"
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 type App struct {

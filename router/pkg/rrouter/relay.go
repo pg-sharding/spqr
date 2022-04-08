@@ -5,14 +5,15 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/server"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type RelayStateInteractor interface {
@@ -123,15 +124,15 @@ func (rst *RelayStateImpl) Reroute(q *pgproto3.Query) error {
 
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
-	case qrouter.WolrdRouteState:
+	case qrouter.WorldRouteState:
 
 		if !config.RouterConfig().RouterConfig.WorldShardFallback {
 			return err
 		}
-		// fallback to execute query on wolrd datashard (s)
+		// fallback to execute query on world datashard (s)
 
 		_, _ = rst.RerouteWorld()
-		if err := rst.ConnectWold(); err != nil {
+		if err := rst.ConnectWorld(); err != nil {
 			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))
 			return err
 		}
@@ -201,8 +202,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) ConnectWold() error {
-
+func (rst *RelayStateImpl) ConnectWorld() error {
 	tracelog.InfoLogger.Printf("initialize datashard server conn")
 	_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 
@@ -267,6 +267,10 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 		}
 
 		return nil
+
+	case conn.TXCMDCOMPL:
+		return nil
+
 	case conn.NOTXREL:
 
 		if !rst.TxActive {
@@ -278,7 +282,7 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 
 		return nil
 	default:
-		err := xerrors.Errorf("unlnown tx status %v", txst)
+		err := xerrors.Errorf("unknown tx status %v", txst)
 		tracelog.ErrorLogger.PrintError(err)
 
 		return err

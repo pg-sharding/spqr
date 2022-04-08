@@ -2,8 +2,12 @@ package qrouter
 
 import (
 	"context"
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"math/rand"
+
+	"github.com/blastrain/vitess-sqlparser/sqlparser"
+
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -11,8 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type ProxyRouter struct {
@@ -85,8 +87,13 @@ func (qr *ProxyRouter) WorldShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyRouter) WorldShards() []string {
+	var ret []string
 
-	panic("implement me")
+	for name := range qr.WorldShardCfgs {
+		ret = append(ret, name)
+	}
+
+	return ret
 }
 
 var _ QueryRouter = &ProxyRouter{}
@@ -215,7 +222,7 @@ func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error
 }
 
 func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if len(rule.Columns()) != 0 {
+	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
@@ -347,9 +354,7 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 	case *sqlparser.Insert:
 		for i, c := range stmt.Columns {
-
 			if _, ok := qr.ColumnMapping[c.String()]; ok {
-
 				switch vals := stmt.Rows.(type) {
 				case sqlparser.Values:
 					valTyp := vals[0]
@@ -370,8 +375,8 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 			return []*ShardRoute{shroute}
 		}
 		return nil
-	case *sqlparser.CreateTable:
-		tracelog.InfoLogger.Printf("ddl routing excpands to every datashard")
+	case *sqlparser.TruncateTable, *sqlparser.CreateTable:
+		tracelog.InfoLogger.Printf("ddl routing expands to every datashard")
 		// route ddl to every datashard
 		shrds := qr.Shards()
 		var ret []*ShardRoute
@@ -384,6 +389,8 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 					},
 				})
 		}
+
+
 
 		return ret
 	}
@@ -398,6 +405,7 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 
 	parsedStmt, err := sqlparser.Parse(q)
 	if err != nil {
+		tracelog.ErrorLogger.Printf("parsing stmt error: %v", err)
 		return nil, ParseError
 	}
 
@@ -412,6 +420,7 @@ func (qr *ProxyRouter) Route(q string) (RoutingState, error) {
 		routes := qr.matchShards(parsedStmt)
 
 		if routes == nil {
+			//return WorldRouteState{}, nil
 			return SkipRoutingState{}, nil
 		}
 
