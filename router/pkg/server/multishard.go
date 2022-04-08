@@ -7,13 +7,14 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+
 	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type MultiShardServer struct {
@@ -24,7 +25,7 @@ type MultiShardServer struct {
 }
 
 func (m *MultiShardServer) Reset() error {
-	panic("implement me")
+	return nil
 }
 
 func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
