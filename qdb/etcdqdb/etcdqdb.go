@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type notifier struct {
@@ -140,6 +141,17 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
 	}
 
 	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) DeleteRouter(ctx context.Context, rID string) error {
+	resp, err := q.cli.Delete(ctx, routerNodePath(rID))
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(err)
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("del resp %v", resp)
 	return nil
 }
 

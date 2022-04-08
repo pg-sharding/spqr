@@ -5,6 +5,10 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+	"google.golang.org/grpc"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -16,9 +20,6 @@ import (
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
-	"google.golang.org/grpc"
 )
 
 type routerConn struct {
@@ -149,6 +150,12 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) err
 	return qc.db.AddRouter(ctx, r)
 }
 
+func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
+	tracelog.InfoLogger.Printf("unregister router %v", rID)
+
+	return qc.db.DeleteRouter(ctx, rID)
+}
+
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := psqlclient.NewPsqlClient(nconn)
 
@@ -208,6 +215,14 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					}
 
 					return nil
+
+				case *spqrparser.UnregisterRouter:
+					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
+						return err
+					}
+
+					return nil
+
 				case *spqrparser.AddKeyRange:
 					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
 						return err
