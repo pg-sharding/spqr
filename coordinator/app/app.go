@@ -10,8 +10,10 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/coordinator/provider"
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
+	shards "github.com/pg-sharding/spqr/router/protos"
 )
 
 type App struct {
@@ -71,11 +73,14 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	shhttp.Register(serv)
 	reflection.Register(serv)
 
-	//krserv := NewKeyRangeService(d)
-	//rrserv := NewRoutersService(d)
+	krserv := provider.NewKeyRangeService(app.coordiantor)
+	rrserv := provider.NewRoutersService(app.coordiantor)
+	shrserv := provider.NewShardingRules(app.coordiantor)
 
-	//shards.RegisterKeyRangeServiceServer(serv, krserv)
-	//shards.RegisterRoutersServiceServer(serv, rrserv)
+
+	shards.RegisterKeyRangeServiceServer(serv, krserv)
+	shards.RegisterRoutersServiceServer(serv, rrserv)
+	shards.RegisterShardingRulesServiceServer(serv, shrserv)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
 
