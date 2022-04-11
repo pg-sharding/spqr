@@ -5,7 +5,6 @@ import (
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
-
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 

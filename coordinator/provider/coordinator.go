@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	"github.com/jackc/pgproto3/v2"
+	pgproto3 "github.com/jackc/pgproto3/v2"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
@@ -135,6 +135,37 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return nil
 }
 
+func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {
+	cc, err := DialRouter(qRouter)
+
+	tracelog.InfoLogger.Printf("dialing router %v, err %w", qRouter, err)
+	if err != nil {
+		return err
+	}
+
+	// TODO: configure sharding rules (for example, create sharding column)
+
+	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+
+	cl := routerproto.NewKeyRangeServiceClient(cc)
+	for _, keyRange := range keyRanges {
+		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
+			KeyRangeInfo: kr.KeyRangeFromDB(keyRange).ToProto(),
+		})
+
+		if err != nil {
+			return err
+		}
+
+		tracelog.InfoLogger.Printf("got resp %v", resp.String())
+	}
+
+	return nil
+}
+
 var _ coordinator.Coordinator = &qdbCoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
@@ -209,8 +240,13 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 					return nil
 				case *spqrparser.RegisterRouter:
-					err := qc.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
-					if err != nil {
+					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
+
+					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
+						return err
+					}
+
+					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
 						return err
 					}
 
