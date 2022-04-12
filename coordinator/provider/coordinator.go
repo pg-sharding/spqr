@@ -5,6 +5,10 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+	"google.golang.org/grpc"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -16,9 +20,6 @@ import (
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
-	"google.golang.org/grpc"
 )
 
 type routerConn struct {
@@ -48,10 +49,25 @@ type qdbCoordinator struct {
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	return qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		shRules = append(shRules, shrule.NewShardingRule(rule.Columns))
+	}
+
+	return shRules, nil
 }
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	// Store sharding rule to metadb.
+	if err := qc.db.AddShardingRule(ctx, rule.ToSQL()); err != nil {
+		return err
+	}
+
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
@@ -134,6 +150,58 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return nil
 }
 
+func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {
+	cc, err := DialRouter(qRouter)
+
+	tracelog.InfoLogger.Printf("dialing router %v, err %w", qRouter, err)
+	if err != nil {
+		return err
+	}
+
+	// Configure sharding rules.
+	shardingRules, err := qc.db.ListShardingRules(ctx)
+	if err != nil {
+		return err
+	}
+
+	protoShardingRules := []*routerproto.ShardingRule{}
+	shClient := routerproto.NewShardingRulesServiceClient(cc)
+	for _, shRule := range shardingRules {
+		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns})
+	}
+
+	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
+		Rules: protoShardingRules,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("got sharding rules response %v", resp.String())
+
+	// Configure key ranges.
+	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+
+	cl := routerproto.NewKeyRangeServiceClient(cc)
+	for _, keyRange := range keyRanges {
+		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
+			KeyRangeInfo: kr.KeyRangeFromDB(keyRange).ToProto(),
+		})
+
+		if err != nil {
+			return err
+		}
+
+		tracelog.InfoLogger.Printf("got resp %v", resp.String())
+	}
+
+	return nil
+}
+
 var _ coordinator.Coordinator = &qdbCoordinator{}
 
 func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
@@ -147,6 +215,12 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) err
 	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
 
 	return qc.db.AddRouter(ctx, r)
+}
+
+func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
+	tracelog.InfoLogger.Printf("unregister router %v", rID)
+
+	return qc.db.DeleteRouter(ctx, rID)
 }
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
@@ -202,12 +276,25 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 					return nil
 				case *spqrparser.RegisterRouter:
-					err := qc.RegisterRouter(ctx, qdb.NewRouter(stmt.Addr, stmt.ID))
-					if err != nil {
+					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
+
+					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
+						return err
+					}
+
+					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
 						return err
 					}
 
 					return nil
+
+				case *spqrparser.UnregisterRouter:
+					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
+						return err
+					}
+
+					return nil
+
 				case *spqrparser.AddKeyRange:
 					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
 						return err

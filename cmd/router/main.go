@@ -4,12 +4,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/app"
-	router "github.com/pg-sharding/spqr/router/pkg"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
+
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/app"
+	router "github.com/pg-sharding/spqr/router/pkg"
 )
 
 var (
@@ -45,6 +46,8 @@ var runCmd = &cobra.Command{
 		if err := config.LoadRouterCfg(rcfgPath); err != nil {
 			return err
 		}
+
+		// tracelog.UpdateLogLevel(tracelog.ErrorLogLevel)
 
 		ctx, cancelCtx := context.WithCancel(context.Background())
 

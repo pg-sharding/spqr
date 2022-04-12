@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/world"
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
+
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/world"
 )
 
 var rootCmd = &cobra.Command{
@@ -27,6 +29,9 @@ var cfgPath string
 var ctlCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := config.LoadRouterCfg(cfgPath); err != nil {
+			tracelog.ErrorLogger.FatalOnError(err)
+		}
 
 		w := world.NewWorld()
 		err := w.Run()

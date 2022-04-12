@@ -26,5 +26,5 @@ message ListShardingRuleReply {
 
 service ShardingRulesService {
   rpc AddShardingRules(AddShardingRuleRequest) returns (AddShardingRuleReply) {}
-  rpc ListShardingRules(AddShardingRuleRequest) returns (ListShardingRuleReply) {}
+  rpc ListShardingRules(ListShardingRuleRequest) returns (ListShardingRuleReply) {}
 }

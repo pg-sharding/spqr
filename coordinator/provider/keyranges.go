@@ -5,47 +5,13 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
 type CoordinatorService struct {
 	protos.UnimplementedKeyRangeServiceServer
-	protos.UnimplementedShardingRulesServiceServer
 
 	impl coordinator.Coordinator
-}
-
-func (c CoordinatorService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-
-	for _, rule := range request.Rules {
-		err := c.impl.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &protos.AddShardingRuleReply{}, nil
-}
-
-func (c CoordinatorService) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := c.impl.ListShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var shardingRules []*protos.ShardingRule
-
-	for _, rule := range rules {
-		shardingRules = append(shardingRules, &protos.ShardingRule{
-			Columns: rule.Columns(),
-		})
-	}
-
-	return &protos.ListShardingRuleReply{
-		Rules: shardingRules,
-	}, nil
 }
 
 func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -100,7 +66,6 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 }
 
 var _ protos.KeyRangeServiceServer = CoordinatorService{}
-var _ protos.ShardingRulesServiceServer = CoordinatorService{}
 
 func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
 	return &CoordinatorService{
