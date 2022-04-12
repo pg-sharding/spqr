@@ -4,7 +4,7 @@ import (
 	"context"
 	"net"
 
-	pgproto3 "github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
@@ -49,10 +49,25 @@ type qdbCoordinator struct {
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	return qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		shRules = append(shRules, shrule.NewShardingRule(rule.Columns))
+	}
+
+	return shRules, nil
 }
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	// Store sharding rule to metadb.
+	if err := qc.db.AddShardingRule(ctx, rule.ToSQL()); err != nil {
+		return err
+	}
+
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return err
@@ -143,8 +158,29 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 		return err
 	}
 
-	// TODO: configure sharding rules (for example, create sharding column)
+	// Configure sharding rules.
+	shardingRules, err := qc.db.ListShardingRules(ctx)
+	if err != nil {
+		return err
+	}
 
+	protoShardingRules := []*routerproto.ShardingRule{}
+	shClient := routerproto.NewShardingRulesServiceClient(cc)
+	for _, shRule := range shardingRules {
+		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns})
+	}
+
+	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
+		Rules: protoShardingRules,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("got sharding rules response %v", resp.String())
+
+	// Configure key ranges.
 	keyRanges, err := qc.db.ListKeyRanges(ctx)
 	if err != nil {
 		return err

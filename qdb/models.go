@@ -35,3 +35,7 @@ func (r Router) Addr() string {
 func (r Router) ID() string {
 	return r.id
 }
+
+type ShardingRule struct {
+	Columns []string `json:"columns"`
+}

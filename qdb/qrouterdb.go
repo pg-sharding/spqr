@@ -2,8 +2,6 @@ package qdb
 
 import (
 	"context"
-
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 )
 
 type QrouterDB interface {
@@ -22,7 +20,8 @@ type QrouterDB interface {
 
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
 
-	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
+	AddShardingRule(ctx context.Context, shRules *ShardingRule) error
+	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	ListKeyRanges(ctx context.Context) ([]*KeyRange, error)
 }

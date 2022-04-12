@@ -17,8 +17,6 @@ import (
 )
 
 type ProxyRouter struct {
-	Rules []*shrule.ShardingRule
-
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
 
@@ -35,11 +33,6 @@ func (qr *ProxyRouter) ListDataShards(ctx context.Context) []*datashards.DataSha
 		ret = append(ret, datashards.NewDataShard(id, cfg))
 	}
 	return ret
-}
-
-
-func (qr *ProxyRouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	return qr.Rules, nil
 }
 
 func (qr *ProxyRouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
@@ -108,7 +101,6 @@ func NewProxyRouter() (*ProxyRouter, error) {
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
-		Rules:          []*shrule.ShardingRule{},
 	}, nil
 }
 
@@ -227,6 +219,16 @@ func (qr *ProxyRouter) AddShardingRule(ctx context.Context, rule *shrule.Shardin
 
 	qr.ColumnMapping[rule.Columns()[0]] = struct{}{}
 	return nil
+}
+
+func (qr *ProxyRouter) ListShardingRules(_ context.Context) ([]*shrule.ShardingRule, error) {
+	rules := make([]*shrule.ShardingRule, 0, len(qr.ColumnMapping))
+
+	for rule := range qr.ColumnMapping {
+		rules = append(rules, shrule.NewShardingRule([]string{rule}))
+	}
+
+	return rules, nil
 }
 
 func (qr *ProxyRouter) AddLocalTable(tname string) error {

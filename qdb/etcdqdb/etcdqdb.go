@@ -1,6 +1,7 @@
 package etcdqdb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"path"
@@ -65,8 +66,11 @@ type EtcdQDB struct {
 	etcdLocks map[string]*concurrency.Mutex
 }
 
-const keyRangesNamespace = "/keyranges"
-const routersRangesNamespace = "/routers"
+const (
+	keyRangesNamespace = "/keyranges"
+ 	routersRangesNamespace = "/routers"
+ 	shardingRulesNamespace = "/sharding_rules"
+)
 
 func keyLockPath(key string) string {
 	return path.Join(key, "lock")
@@ -78,6 +82,10 @@ func keyRangeNodePath(key string) string {
 
 func routerNodePath(key string) string {
 	return path.Join(routersRangesNamespace, key)
+}
+
+func shardingRuleNodePath(key string) string {
+	return path.Join(shardingRulesNamespace, key)
 }
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
@@ -328,6 +336,42 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 
 func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
+}
+
+func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *qdb.ShardingRule) error {
+	ops := make([]clientv3.Op, len(shRule.Columns))
+	for i, key := range shRule.Columns {
+		ops[i] = clientv3.OpPut(shardingRuleNodePath(key), "")
+	}
+
+	resp, err := q.cli.Txn(ctx).Then(ops...).Commit()
+
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put sharding rules resp %v", resp)
+	return err
+}
+
+func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
+	namespacePrefix := shardingRulesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*qdb.ShardingRule, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// A sharding rule supports no more than one column for a while.
+		rules = append(rules, &qdb.ShardingRule{
+			Columns: []string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))},
+		})
+	}
+
+	tracelog.InfoLogger.Printf("list sharding rules resp %v", resp)
+	return rules, nil
 }
 
 var _ qdb.QrouterDB = &EtcdQDB{}
