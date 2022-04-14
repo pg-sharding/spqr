@@ -24,4 +24,8 @@ type QrouterDB interface {
 	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	ListKeyRanges(ctx context.Context) ([]*KeyRange, error)
+
+	AddShard(ctx context.Context, shard *Shard) error
+	ListShards(ctx context.Context) ([]*Shard, error)
+	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
 }

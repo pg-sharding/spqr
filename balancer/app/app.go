@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"strconv"
+
+	"golang.yandex/hasql"
+
 	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"golang.yandex/hasql"
-	"strconv"
 )
 
 type App struct {
@@ -36,7 +38,7 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 		shardClusters[id], err = balancerPkg.NewCluster(
 			shard.Hosts,
 			cfg.InstallationDBName,
-			cfg.InstallationTableName,
+			cfg.InstallationUserName,
 			cfg.InstallationPassword,
 			"",
 			"",

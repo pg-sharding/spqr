@@ -3,10 +3,11 @@ package pkg
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/router/grpcclient"
-	routerproto "github.com/pg-sharding/spqr/router/protos"
 	"strconv"
 	"time"
+
+	"github.com/pg-sharding/spqr/router/grpcclient"
+	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
 
 type CoordinatorInterface interface {
@@ -64,6 +65,12 @@ func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: debug.
+	for _, shard := range respList.Shards {
+		fmt.Printf("ListShards: %#v\n", shard)
+	}
+
 	res := map[int]routerproto.ShardInfo{}
 	for _, shard := range respList.Shards {
 		respShard, err := c.shardServiceClient.GetShardInfo(context.Background(), &routerproto.ShardRequest{

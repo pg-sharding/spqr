@@ -39,3 +39,21 @@ func (r Router) ID() string {
 type ShardingRule struct {
 	Columns []string `json:"columns"`
 }
+
+type Shard struct {
+	ID   string
+	Addr string
+}
+
+func NewShard(ID string, addr string) *Shard {
+	return &Shard{
+		ID:   ID,
+		Addr: addr,
+	}
+}
+
+type ShardInfo struct {
+	ID    string
+	Hosts []string
+	Port  string
+}

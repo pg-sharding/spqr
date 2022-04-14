@@ -11,7 +11,6 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/coordinator/provider"
-	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	shards "github.com/pg-sharding/spqr/router/protos"
 )
@@ -70,17 +69,19 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	serv := grpc.NewServer()
-	shhttp.Register(serv)
+	//shhttp.Register(serv)
 	reflection.Register(serv)
 
 	krserv := provider.NewKeyRangeService(app.coordiantor)
 	rrserv := provider.NewRoutersService(app.coordiantor)
-	shrserv := provider.NewShardingRules(app.coordiantor)
+	shardingRulesServ := provider.NewShardingRules(app.coordiantor)
+	shardServ := provider.NewShardServer(app.coordiantor)
 
 
 	shards.RegisterKeyRangeServiceServer(serv, krserv)
 	shards.RegisterRoutersServiceServer(serv, rrserv)
-	shards.RegisterShardingRulesServiceServer(serv, shrserv)
+	shards.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
+	shards.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
 

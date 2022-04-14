@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
@@ -46,6 +47,14 @@ type qdbCoordinator struct {
 	coordinator.Coordinator
 
 	db qdb.QrouterDB
+}
+
+var _ coordinator.Coordinator = &qdbCoordinator{}
+
+func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
+	return &qdbCoordinator{
+		db: db,
+	}
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -202,13 +211,6 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	return nil
 }
 
-var _ coordinator.Coordinator = &qdbCoordinator{}
-
-func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
-	return &qdbCoordinator{
-		db: db,
-	}
-}
 
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
 
@@ -354,4 +356,42 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		default:
 		}
 	}
+}
+
+func (qc *qdbCoordinator) AddDataShard(ctx context.Context, newShard *datashards.Shard) error {
+	return qc.db.AddShard(ctx, qdb.NewShard(newShard.ID, newShard.Addr))
+}
+
+func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.Shard) error {
+	panic("implement me")
+}
+
+func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.Shard, error) {
+	shardList, err := qc.db.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shards := make([]*datashards.Shard, 0, len(shardList))
+
+	for _, shard := range shardList {
+		shards = append(shards, &datashards.Shard{
+			Addr: shard.Addr,
+			ID:   shard.ID,
+		})
+	}
+
+	return shards, nil
+}
+
+func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.ShardInfo, error) {
+	shardInfo, err := qc.db.GetShardInfo(ctx, shardID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &datashards.ShardInfo{
+		Hosts: shardInfo.Hosts,
+		Port:  shardInfo.Port,
+	}, nil
 }

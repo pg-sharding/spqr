@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+
+	"github.com/spf13/cobra"
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 )
 
 var cfgPath string
@@ -43,7 +45,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/Users/munakoiso/work/balancer_config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/balancer/config.yaml", "path to config file")
 }
 
 func Execute() {

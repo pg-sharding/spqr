@@ -3,11 +3,12 @@ package pkg
 import (
 	"errors"
 	"fmt"
-	"golang.yandex/hasql"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
+
+	"golang.yandex/hasql"
 )
 
 type mock struct {

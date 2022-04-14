@@ -5,16 +5,16 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	shards "github.com/pg-sharding/spqr/router/protos"
+	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
 type ShardingRulesService struct {
-	shards.UnimplementedShardingRulesServiceServer
+	protos.UnimplementedShardingRulesServiceServer
 
 	impl coordinator.Coordinator
 }
 
-func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *shards.AddShardingRuleRequest) (*shards.AddShardingRuleReply, error) {
+func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
 		err := s.impl.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
 
@@ -23,24 +23,24 @@ func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *sha
 		}
 	}
 
-	return &shards.AddShardingRuleReply{}, nil
+	return &protos.AddShardingRuleReply{}, nil
 }
 
-func (s ShardingRulesService) ListShardingRules(ctx context.Context, request *shards.ListShardingRuleRequest) (*shards.ListShardingRuleReply, error) {
+func (s ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	rules, err := s.impl.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var shardingRules []*shards.ShardingRule
+	var shardingRules []*protos.ShardingRule
 
 	for _, rule := range rules {
-		shardingRules = append(shardingRules, &shards.ShardingRule{
+		shardingRules = append(shardingRules, &protos.ShardingRule{
 			Columns: rule.Columns(),
 		})
 	}
 
-	return &shards.ListShardingRuleReply{
+	return &protos.ListShardingRuleReply{
 		Rules: shardingRules,
 	}, nil
 }

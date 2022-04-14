@@ -67,9 +67,10 @@ type EtcdQDB struct {
 }
 
 const (
-	keyRangesNamespace = "/keyranges"
- 	routersRangesNamespace = "/routers"
- 	shardingRulesNamespace = "/sharding_rules"
+	keyRangesNamespace     = "/keyranges"
+	routersRangesNamespace = "/routers"
+	shardingRulesNamespace = "/sharding_rules"
+	shardsNamespace        = "/shards"
 )
 
 func keyLockPath(key string) string {
@@ -86,6 +87,10 @@ func routerNodePath(key string) string {
 
 func shardingRuleNodePath(key string) string {
 	return path.Join(shardingRulesNamespace, key)
+}
+
+func shardNodePath(key string) string {
+	return path.Join(shardsNamespace, key)
 }
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
@@ -372,6 +377,55 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, e
 
 	tracelog.InfoLogger.Printf("list sharding rules resp %v", resp)
 	return rules, nil
+}
+
+func (q *EtcdQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
+	resp, err := q.cli.Put(ctx, keyRangeNodePath(shard.ID), shard.Addr)
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
+	namespacePrefix := shardsNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*qdb.Shard, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		rules = append(rules, &qdb.Shard{
+			ID:   string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix))),
+			Addr: string(kv.Value),
+		})
+	}
+
+	return rules, nil
+}
+
+func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
+	nodePath := shardNodePath(shardID)
+
+	resp, err := q.cli.Get(ctx, nodePath)
+	if err != nil {
+		return nil, err
+	}
+
+	shardInfo := &qdb.ShardInfo{
+		ID: shardID,
+	}
+
+	for _, shard := range resp.Kvs {
+		// The Port field is always for a while.
+		shardInfo.Hosts = append(shardInfo.Hosts, string(shard.Value))
+	}
+
+	return shardInfo, nil
 }
 
 var _ qdb.QrouterDB = &EtcdQDB{}

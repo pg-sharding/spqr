@@ -14,6 +14,7 @@ import (
 
 	"golang.yandex/hasql"
 	checkers "golang.yandex/hasql/checkers"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 //TODO tests
