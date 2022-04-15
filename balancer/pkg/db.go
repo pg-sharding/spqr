@@ -12,32 +12,33 @@ import (
 	"sync"
 	"time"
 
-	"golang.yandex/hasql"
-	checkers "golang.yandex/hasql/checkers"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/wal-g/tracelog"
+	"golang.yandex/hasql"
+	"golang.yandex/hasql/checkers"
 )
 
 //TODO tests
 type dbAction struct {
-	id uint64				`db:"id"`
-	tableName string		`db:"table_name"`
-	dbname string			`db:"dbname"`
-	actionStage ActionStage	`db:"action_stage"`
-	isRunning bool			`db:"is_running"`
-	leftBound string		`db:"left_bound"`
-	rightBound string		`db:"right_bound"`
-	shardFrom int			`db:"shard_from"`
-	shardTo int				`db:"shard_to"`
+	id          uint64      `db:"id"`
+	tableName   string      `db:"table_name"`
+	dbname      string      `db:"dbname"`
+	actionStage ActionStage `db:"action_stage"`
+	isRunning   bool        `db:"is_running"`
+	leftBound   string      `db:"left_bound"`
+	rightBound  string      `db:"right_bound"`
+	shardFrom   int         `db:"shard_from"`
+	shardTo     int         `db:"shard_to"`
 }
 
 func (a *dbAction) toAction() Action {
 	return Action{
-		id: a.id,
+		id:          a.id,
 		actionStage: a.actionStage,
-		isRunning: a.isRunning,
-		keyRange: KeyRange{left: a.leftBound, right: a.rightBound},
-		fromShard: Shard{id: a.shardFrom},
-		toShard: Shard{id: a.shardTo},
+		isRunning:   a.isRunning,
+		keyRange:    KeyRange{left: a.leftBound, right: a.rightBound},
+		fromShard:   Shard{id: a.shardFrom},
+		toShard:     Shard{id: a.shardTo},
 	}
 }
 
@@ -50,16 +51,19 @@ type DatabaseInterface interface {
 	MarkAllNotRunning() error
 	Len() (uint64, error)
 }
+
 //TODO retries? not sure if required
 
 var (
-	actionsDBName = "actions"
 	actionsDBUser = "balancer"
-	actionsDBPassword = ""
-	actionsDBSslMode = ""
+	actionsDBName = "actions"
+	//actionsDBName        = "postgres"
+	//actionsDBUser        = "user1"
+	actionsDBPassword    = ""
+	actionsDBSslMode     = "disable"
 	actionsDBSslRootCert = ""
-	defaultSleepMS = 1000
-	defaultPort = 5432
+	defaultSleepMS       = 1000
+	defaultPort          = 5432
 
 	//TODO add table and db to actions table? Current configuration will crash on many installation with many tables/databases
 	tableActionsCreate = `
@@ -96,18 +100,18 @@ var (
 		?
 	)`
 
-	updateAction = `update actions set action_stage = ?, is_running = ? where id = ? and table_name = ? and dbname = ?`
+	updateAction        = `update actions set action_stage = ?, is_running = ? where id = ? and table_name = ? and dbname = ?`
 	markAllAsNotRunning = `update actions set is_running = false where table_name = ? and dbname = ?`
-	deleteAction = `delete from actions where id = ? and table_name = ? and dbname = ?`
-	selectOneAction = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to where is_running = FALSE and table_name = ? and dbname = ?`
-	actionsCount = `select count(*) from actions where is_running = false and table_name = ? and dbname = ?`
+	deleteAction        = `delete from actions where id = ? and table_name = ? and dbname = ?`
+	selectOneAction     = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to where is_running = FALSE and table_name = ? and dbname = ?`
+	actionsCount        = `select count(*) from actions where is_running = false and table_name = ? and dbname = ?`
 )
 
-type Database struct{
+type Database struct {
 	cluster *hasql.Cluster
 
-	dbname string
-	tableName string
+	dbname       string
+	tableName    string
 	retriesCount int
 }
 
@@ -127,14 +131,18 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 	nodes := make([]hasql.Node, 0, len(addrs))
 	for _, addr := range addrs {
 		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert, port)
+		tracelog.InfoLogger.Printf("Connection string: %v", connString)
 		node, err := sql.Open("pgx", connString)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to open pgx connection %v: %v", connString, err)
 		}
 		// TODO may be some connections settings here?
 
 		nodes = append(nodes, hasql.NewNode(addr, node))
 	}
+
+	tracelog.InfoLogger.Printf("Nodes: %v", nodes)
+
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }
 
@@ -180,7 +188,7 @@ func ConnString(addr, dbname, user, password, sslMode, sslRootCert string, port 
 }
 
 func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.DB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond * time.Duration(defaultSleepMS))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(defaultSleepMS))
 	defer cancel()
 	node, err := cluster.WaitForPrimary(ctx)
 	if err != nil {
@@ -190,7 +198,7 @@ func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.DB, e
 }
 
 func GetNodeConn(node hasql.Node, retries int, sleepMS int) (*sql.DB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond * time.Duration(sleepMS))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(sleepMS))
 	defer cancel()
 	for i := 0; i < retries; i++ {
 
@@ -427,7 +435,7 @@ func (d *Database) Len() (uint64, error) {
 
 type MockDb struct {
 	actions map[uint64]Action
-	count uint64
+	count   uint64
 
 	lock sync.Mutex
 }

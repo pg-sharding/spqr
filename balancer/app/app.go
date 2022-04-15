@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"strconv"
 
 	"golang.yandex/hasql"
@@ -11,8 +13,8 @@ import (
 )
 
 type App struct {
-	coordinator *balancerPkg.Coordinator
-	database *balancerPkg.Database
+	coordinator  *balancerPkg.Coordinator
+	database     *balancerPkg.Database
 	installation *balancerPkg.Installation
 
 	balancer *balancerPkg.Balancer
@@ -31,6 +33,12 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 	shardClusters := map[int]*hasql.Cluster{}
 
 	for id, shard := range *shards {
+		if shard.Port == "" {
+			_, shard.Port, err = net.SplitHostPort(shard.Hosts[0])
+			if err != nil {
+				return nil, err
+			}
+		}
 		port, err := strconv.Atoi(shard.Port)
 		if err != nil {
 			return nil, err
@@ -40,11 +48,11 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 			cfg.InstallationDBName,
 			cfg.InstallationUserName,
 			cfg.InstallationPassword,
-			"",
+			cfg.InstallationSSLMode,
 			"",
 			port)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create a new cluster connection: %v", err)
 		}
 	}
 	installation := balancerPkg.Installation{}
@@ -56,9 +64,9 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 		cfg.InstallationPassword,
 		&shardClusters,
 		cfg.InstallationMaxRetries,
-		)
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to init balancer: %v", err)
 	}
 
 	db := balancerPkg.Database{}
@@ -70,10 +78,10 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 	balancer.Init(&installation, &coordinator, &db)
 
 	return &App{
-		coordinator: &coordinator,
+		coordinator:  &coordinator,
 		installation: &installation,
-		database: &db,
-		balancer: balancer,
+		database:     &db,
+		balancer:     balancer,
 	}, nil
 }
 

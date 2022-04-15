@@ -380,7 +380,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, e
 }
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
-	resp, err := q.cli.Put(ctx, keyRangeNodePath(shard.ID), shard.Addr)
+	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Addr)
 	if err != nil {
 		return err
 	}

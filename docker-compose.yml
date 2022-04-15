@@ -62,6 +62,8 @@ services:
         environment:
             ALLOW_NONE_AUTHENTICATION: "yes"
             ETCD_LOG_LEVEL: "debug"
+        ports:
+            - "2379:2379"
         networks:
             spqr:
                 ipv4_address: 192.168.233.06
@@ -75,6 +77,23 @@ services:
         networks:
             spqr:
                 ipv4_address: 192.168.233.04
+    balancer:
+        build:
+            dockerfile: ./docker/balancer/Dockerfile
+            context: .
+        hostname: spqr_balancer
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.09
+    db0:
+        image:
+            spqr_shardbase
+        ports:
+            - "7435:6432"
+        hostname: spqr_db_0_1
+        networks:
+            spqr:
+                ipv4_address: 192.168.233.10
     client:
         build:
             dockerfile: ./docker/tests/Dockerfile
