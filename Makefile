@@ -58,4 +58,7 @@ run: build_images
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
+pooler_run:
+	./spqr-rr run -c ./config-example/localrouter.yaml
+
 .PHONY: build gen

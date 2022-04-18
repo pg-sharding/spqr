@@ -129,6 +129,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 
 	psqlclient, err := r.Rrouter.PreRoute(netconn)
 	if err != nil {
+		_ = psqlclient.ReplyErrMsg(err.Error())
 		return err
 	}
 

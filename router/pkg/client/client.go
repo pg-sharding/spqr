@@ -35,12 +35,16 @@ type RouterClient interface {
 	Rule() *config.FRRule
 
 	ProcQuery(query *pgproto3.Query) (byte, error)
+	ProcCopy(query *pgproto3.FrontendMessage) error
+	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
 }
 
 type PsqlClient struct {
-	rule *config.FRRule
-	conn net.Conn
+	client.Client
+	params map[string]string
+	rule   *config.FRRule
+	conn   net.Conn
 
 	r *route.Route
 
@@ -50,6 +54,11 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     server.Server
+}
+
+func (cl *PsqlClient) SetParam(p *pgproto3.ParameterStatus) error {
+	cl.params[p.Name] = p.Value
+	return nil
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -98,6 +107,18 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
+	return nil
+	if v, ok := cl.params["client_min_messages"]; ok {
+		switch v {
+		case "error":
+			fallthrough
+		case "warning":
+			fallthrough
+		case "fatal":
+			return nil
+		}
+	}
+
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.NoticeResponse{
 			Message: "ROUTER NOTICE: " + msg,
@@ -117,6 +138,7 @@ func (cl *PsqlClient) ID() string {
 
 func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	cl := &PsqlClient{
+		params:     make(map[string]string),
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
 	}
@@ -182,7 +204,9 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	switch protoVer {
 	case conn.SSLREQ:
 		if sslmode == config.SSLMODEDISABLE {
-			return xerrors.Errorf("ssl mode is requested bu ssl is disabled")
+			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+			tracelog.ErrorLogger.FatalOnError(err)
+			return xerrors.Errorf("ssl mode is requested but ssl is disabled")
 		}
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
@@ -350,6 +374,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
+	tracelog.InfoLogger.Printf("sending %T", msg)
 	return cl.be.Send(msg)
 }
 
@@ -362,8 +387,39 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 	return nil
 }
 
-func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
+func (cl *PsqlClient) ProcCopy(query *pgproto3.FrontendMessage) error {
+	tracelog.InfoLogger.Printf("process copy %T", query)
+	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
+	return cl.server.Send(*query)
+}
 
+func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
+	tracelog.InfoLogger.Printf("process copy end %T", query)
+	if err := cl.server.Send(*query); err != nil {
+		return err
+	}
+
+	for {
+		if msg, err := cl.server.Receive(); err != nil {
+			return err
+		} else {
+			switch msg.(type) {
+			case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
+				if err := cl.Send(msg); err != nil {
+					return err
+				}
+			case *pgproto3.ReadyForQuery:
+				if err := cl.Send(msg); err != nil {
+					return err
+				}
+				return nil
+			default:
+			}
+		}
+	}
+}
+
+func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 	tracelog.InfoLogger.Printf("process query %s", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
@@ -373,12 +429,19 @@ func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 
 	for {
 		msg, err := cl.server.Receive()
-		tracelog.InfoLogger.Printf("recv msg from server %v %w", msg, err)
-
 		if err != nil {
 			return 0, err
 		}
+
 		switch v := msg.(type) {
+		case *pgproto3.CopyInResponse:
+			err = cl.Send(msg)
+			if err != nil {
+				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+				////tracelog.InfoLogger.Println(msg)
+				return 0, err
+			}
+			return conn.TXCOPY, nil
 		case *pgproto3.ReadyForQuery:
 			return v.TxStatus, nil
 		case *pgproto3.RowDescription:
@@ -436,7 +499,7 @@ func (cl *PsqlClient) DefaultReply() error {
 	return nil
 }
 
-func (cl *PsqlClient) ReplyErr(errmsg string) error {
+func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
 			Message: errmsg,

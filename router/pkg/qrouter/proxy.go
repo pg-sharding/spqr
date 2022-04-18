@@ -86,7 +86,6 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyQrouter) WorldShards() []string {
-
 	panic("implement me")
 }
 
@@ -432,5 +431,4 @@ func (qr *ProxyQrouter) Route(q string) (RoutingState, error) {
 			Routes: routes,
 		}, nil
 	}
-
 }

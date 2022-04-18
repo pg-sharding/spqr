@@ -11,9 +11,10 @@ import (
 type Client interface {
 	ID() string
 
-	ReplyErr(errmsg string) error
+	ReplyErrMsg(errmsg string) error
 	ReplyNotice(msg string) error
 	DefaultReply() error
+	SetParam(*pgproto3.ParameterStatus) error
 
 	Init(cfg *tls.Config, reqssl string) error
 

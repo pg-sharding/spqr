@@ -121,7 +121,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.cfg, config.RouterConfig().RulesConfig.TLSCfg.SslMode); err != nil {
-		return nil, err
+		return cl, err
 	}
 
 	// match client frontend rule
@@ -136,22 +136,22 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure resp")
+				return nil, errors.Wrap(err, "failed to make route failure responce")
 			}
 		}
 
-		return nil, errors.New(errmsg)
+		return cl, errors.New(errmsg)
 	}
 
 	beRule, ok := r.backendRules[key]
 	if !ok {
-		return nil, errors.New("Failed to route client")
+		return cl, errors.New("Failed to route client")
 	}
 
 	_ = cl.AssignRule(frRule)
 
 	if err := cl.Auth(); err != nil {
-		return nil, err
+		return cl, err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")
 

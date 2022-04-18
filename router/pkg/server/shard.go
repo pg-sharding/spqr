@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -24,7 +25,6 @@ func (srv *ShardServer) Reset() error {
 }
 
 func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
-
 	if srv.shard.SHKey().Name != shkey.Name {
 		return xerrors.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
@@ -49,8 +49,7 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if pgi, err := srv.pool.Connection(shkey); err != nil {
 		return err
 	} else {
-
-		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name])
+		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name], srv.rule)
 		if err != nil {
 			return err
 		}
@@ -75,7 +74,9 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 }
 
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
-	return srv.shard.Receive()
+	msg, err := srv.shard.Receive()
+	tracelog.InfoLogger.Printf("recv msg from server %T", msg)
+	return msg, err
 }
 
 func (srv *ShardServer) Cleanup() error {

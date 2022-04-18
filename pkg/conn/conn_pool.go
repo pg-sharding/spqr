@@ -166,7 +166,6 @@ func (s *InstancePoolImpl) List() []DBInstance {
 var _ ConnPool = &InstancePoolImpl{}
 
 func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
-
 	switch key.RW {
 	case true:
 		var pr string
@@ -186,7 +185,6 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
 	default:
 		panic("never")
 	}
-
 }
 
 func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh DBInstance) error {

@@ -5,14 +5,13 @@ import (
 	"io"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
-	"github.com/wal-g/tracelog"
 	"github.com/spaolacci/murmur3"
+	"github.com/wal-g/tracelog"
 )
 
 type Qinteractor interface {
@@ -22,7 +21,7 @@ type QinteractorImpl struct {
 }
 
 type PrepStmtDesc struct {
-	Name string
+	Name  string
 	Query string
 }
 
@@ -47,8 +46,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			return err
 		}
 
-		asynctracelog.Printf("received msg %v", msg)
-
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
 			hash := murmur3.Sum64([]byte(q.Query))
@@ -61,18 +58,29 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			if _, ok := mp[hash]; ok {
 				tracelog.InfoLogger.Printf("redefinition %v with hash %d", q.Query, hash)
 			}
-			mp[hash] = PrepStmtDesc {
-				Name: q.Name,
+			mp[hash] = PrepStmtDesc{
+				Name:  q.Name,
 				Query: q.Query,
 			}
 
 			// simply reply witch ok parse complete
-			if err :=  cl.ReplyParseComplete(); err != nil {
+			if err := cl.ReplyParseComplete(); err != nil {
 				return err
 			}
-
+		case *pgproto3.CopyData:
+			if err := rst.RelayCopyStep(&msg); err != nil {
+				return err
+			}
+		case *pgproto3.CopyDone, *pgproto3.CopyFail:
+			if err := rst.RelayCopyComplete(&msg); err != nil {
+				return err
+			}
 		case *pgproto3.Query:
-			rst.AddQuery(*q)
+			asynctracelog.Printf("received query %v", q.String)
+			if err := rst.AddQuery(*q); err != nil {
+				//return err
+			}
+
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
 				switch err := rst.Reroute(q); err {
@@ -88,7 +96,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					_ = cl.Reply("ok")
 					continue
 				case nil:
-
 				default:
 					tracelog.InfoLogger.Printf("encounter %w", err)
 					_ = rst.UnRouteWithError(nil, err)
