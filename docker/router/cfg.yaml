@@ -10,7 +10,7 @@ executer:
 
 qrouter:
         qrouter_type: PROXY
-router:
+rules:
         tls:
                 key_file: '/etc/odyssey/ssl/server.key'
                 cert_file: '/etc/odyssey/ssl/server.crt' 
