@@ -73,7 +73,7 @@ func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.
 }
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.Split(ctx, &kr.SplitKeyRange{
-		Bound:    request.Bound,
+		Bound: request.Bound,
 	})
 	if err != nil {
 		return nil, err

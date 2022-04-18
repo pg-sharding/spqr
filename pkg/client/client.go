@@ -30,7 +30,7 @@ type Client interface {
 
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
-	ProcQuery(query *pgproto3.Query) (byte, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool) (byte, error)
 
 	Shutdown() error
 	Reset() error

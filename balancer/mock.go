@@ -11,11 +11,11 @@ import (
 
 type mock struct {
 	shardToKeyRanges map[Shard]map[KeyRange]bool
-	keyRangeToShard map[KeyRange]Shard
-	leftBorders []string
-	lockedKeyRanges map[KeyRange]bool
-	keys map[string]bool
-	ranges map[KeyRange]bool
+	keyRangeToShard  map[KeyRange]Shard
+	leftBorders      []string
+	lockedKeyRanges  map[KeyRange]bool
+	keys             map[string]bool
+	ranges           map[KeyRange]bool
 
 	// shard -> key -> stats
 	stats map[Shard]map[string]Stats
@@ -47,14 +47,14 @@ func (m *mock) init() {
 	i := left
 	for i < right {
 		diff := rand.Intn(maxLen) + 1
-		if i + diff >= right {
+		if i+diff >= right {
 			diff = right - i
 		}
 
 		s := Stats{
-			reads: (uint64)(rand.Intn(100)),
-			writes: (uint64)(rand.Intn(100)),
-			user_time: rand.Float64() * 10,
+			reads:       (uint64)(rand.Intn(100)),
+			writes:      (uint64)(rand.Intn(100)),
+			user_time:   rand.Float64() * 10,
 			system_time: rand.Float64() * 10,
 		}
 
@@ -65,15 +65,15 @@ func (m *mock) init() {
 		m.leftBorders = append(m.leftBorders, kr.left)
 		m.ranges[kr] = true
 		j := i
-		for j < i + diff {
+		for j < i+diff {
 			s1 := Stats{
-				reads: (uint64)(rand.Intn(10)) + s.reads,
-				writes: (uint64)(rand.Intn(10)) + s.writes,
-				user_time: rand.Float64() * 1 + s.user_time,
-				system_time: rand.Float64() * 1 + s.system_time,
+				reads:       (uint64)(rand.Intn(10)) + s.reads,
+				writes:      (uint64)(rand.Intn(10)) + s.writes,
+				user_time:   rand.Float64()*1 + s.user_time,
+				system_time: rand.Float64()*1 + s.system_time,
 			}
 
-			s1 = DivideStats(s1, 1/float64(shard.id + 1)/float64(shard.id + 1))
+			s1 = DivideStats(s1, 1/float64(shard.id+1)/float64(shard.id+1))
 			m.stats[shard][*bigIntToKey(big.NewInt(int64(j)))] = s1
 			m.keys[*bigIntToKey(big.NewInt(int64(j)))] = true
 			j += rand.Intn(3) + 1
@@ -220,7 +220,7 @@ func (m *mock) splitKeyRange(border *string) error {
 	m.foo()
 	leftInd := findRange(border, &m.leftBorders)
 
-	if leftInd == len(m.leftBorders) - 1 {
+	if leftInd == len(m.leftBorders)-1 {
 		if m.leftBorders[leftInd] == *border {
 			// not a problem, we just try to split by right border of all ranges
 			return nil
@@ -229,7 +229,7 @@ func (m *mock) splitKeyRange(border *string) error {
 			return nil
 		}
 	}
-	rng := KeyRange{left: m.leftBorders[leftInd], right: m.leftBorders[leftInd + 1]}
+	rng := KeyRange{left: m.leftBorders[leftInd], right: m.leftBorders[leftInd+1]}
 	leftRng := KeyRange{left: rng.left, right: *border}
 	rightRng := KeyRange{left: *border, right: rng.right}
 	if *border == leftRng.left || *border == rightRng.right {
@@ -266,7 +266,7 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	m.mu.Lock()
 	m.foo()
 	rightInd := findRange(border, &m.leftBorders)
-	if rightInd == 0 || rightInd == len(m.leftBorders) - 1 {
+	if rightInd == 0 || rightInd == len(m.leftBorders)-1 {
 		if rightInd == 0 {
 			// it's ok, just ignore split by left border
 			return nil
@@ -278,8 +278,8 @@ func (m *mock) mergeKeyRanges(border *string) error {
 		// split by border greater than all ranges
 		return errors.New(fmt.Sprint("Split by border greater than all ranges ", border))
 	}
-	leftRng := KeyRange{m.leftBorders[rightInd - 1], m.leftBorders[rightInd]}
-	rightRng := KeyRange{m.leftBorders[rightInd], m.leftBorders[rightInd + 1]}
+	leftRng := KeyRange{m.leftBorders[rightInd-1], m.leftBorders[rightInd]}
+	rightRng := KeyRange{m.leftBorders[rightInd], m.leftBorders[rightInd+1]}
 	if *border != leftRng.right || *border != rightRng.left {
 		return errors.New(fmt.Sprint("Something goes wrong..."))
 	}
@@ -324,10 +324,10 @@ func (m *mock) mergeKeyRanges(border *string) error {
 			j = i
 		}
 	}
-	if j == len(m.leftBorders) - 1 {
+	if j == len(m.leftBorders)-1 {
 		m.leftBorders = m.leftBorders[:j]
 	} else {
-		m.leftBorders = append(m.leftBorders[:j], m.leftBorders[j + 1:]...)
+		m.leftBorders = append(m.leftBorders[:j], m.leftBorders[j+1:]...)
 	}
 	m.foo()
 	return nil

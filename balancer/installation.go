@@ -9,7 +9,7 @@ type InstallationInterface interface {
 	getKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[string]*big.Int, error)
 }
 
-type Installation struct {}
+type Installation struct{}
 
 func (Installation) getShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	return nil, nil

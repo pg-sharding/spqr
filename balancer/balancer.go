@@ -16,26 +16,26 @@ import (
 // TODO use only one place to store strings
 var (
 	// that ones used by planner and workers
-	leftBorderToShard   map[string]Shard // 10^4 * (50 + 4)
-	shardToLeftBorders   map[Shard]map[string]bool // 10^4 * (4 + 4 + 50)
-	leftBordersToRightBorders map[string]string // 10^4 * 100
-	allShardsStats   	map[Shard]Stats // 10^3 * (4 + 8 * 5)
-	keyRangeStats   	map[string]Stats // 10^4 * 8 * 5
+	leftBorderToShard         map[string]Shard          // 10^4 * (50 + 4)
+	shardToLeftBorders        map[Shard]map[string]bool // 10^4 * (4 + 4 + 50)
+	leftBordersToRightBorders map[string]string         // 10^4 * 100
+	allShardsStats            map[Shard]Stats           // 10^3 * (4 + 8 * 5)
+	keyRangeStats             map[string]Stats          // 10^4 * 8 * 5
 	// average distance between two keys
-	keyDistanceByRanges	map[string]*big.Int
-	keysOnShard			map[Shard]uint64
-	avgKeysOnShard		uint64
+	keyDistanceByRanges map[string]*big.Int
+	keysOnShard         map[Shard]uint64
+	avgKeysOnShard      uint64
 	// sorted list of left borders
-	leftBorders			[]string // 10^4 * 50
+	leftBorders []string // 10^4 * 50
 	// sorted list of shards
-	shards 				[]Shard
-	muLeftBorders		sync.Mutex
+	shards        []Shard
+	muLeftBorders sync.Mutex
 
 	// that ones used only by planner
-	keyStats			map[string]Stats
-	muKeyStats			sync.Mutex
+	keyStats   map[string]Stats
+	muKeyStats sync.Mutex
 
-	bestTask  Task
+	bestTask Task
 
 	splits int
 
@@ -44,18 +44,18 @@ var (
 	_db           DatabaseInterface
 	// no need to lock
 
-	reloadRequired		bool
-	muReload			sync.Mutex
+	reloadRequired bool
+	muReload       sync.Mutex
 
-	averageStats 		Stats
-	retryTime    		= time.Second * 5
-	workerRetryTime		= time.Millisecond * 1000
-	okLoad 				= 0.2
-	workersCount		= 2
-	plannerCount		= 100
-	loadK				= 0.9
-	keysInOneTransfer	= new(big.Int).SetInt64(1000)
-	plannerRetryTime	= time.Millisecond * 250
+	averageStats      Stats
+	retryTime         = time.Second * 5
+	workerRetryTime   = time.Millisecond * 1000
+	okLoad            = 0.2
+	workersCount      = 2
+	plannerCount      = 100
+	loadK             = 0.9
+	keysInOneTransfer = new(big.Int).SetInt64(1000)
+	plannerRetryTime  = time.Millisecond * 250
 )
 
 func _init() {
@@ -128,7 +128,7 @@ func _findRange(s *string, left, right int, _leftBorders *[]string) int {
 	//TODO ensure that right key range contains keys from smth to 'infinity'
 
 	middle := (right + left) / 2
-	if left == right - 1 {
+	if left == right-1 {
 		return left
 	}
 
@@ -145,7 +145,7 @@ func findRange(s *string, _leftBorders *[]string) int {
 	return _findRange(s, 0, len(*_leftBorders), _leftBorders)
 }
 
-func tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup)  {
+func tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var keyRanges []KeyRange
 	for left := range shardToLeftBorders[shard] {
@@ -198,8 +198,8 @@ func getFoo(value, avgValue float64, useAbs bool) float64 {
 		// in that case, we increase res only if stat is greater than average one
 		delta = math.Abs(delta)
 	}
-	if delta > okLoad * avgValue {
-		res += math.Pow(delta / avgValue * 100, 2)
+	if delta > okLoad*avgValue {
+		res += math.Pow(delta/avgValue*100, 2)
 	}
 	return res
 }
@@ -287,8 +287,8 @@ func setTaskProfitByLength(startRange KeyRange, task *Task, keyStatsInRange *map
 	rightNeighbor := ""
 	if leftGluing {
 		leftBorderIndex := findRange(&task.keyRange.left, &leftBorders)
-		if leftBorderIndex - 1 >= 0 {
-			leftNeighbor = leftBorders[leftBorderIndex - 1]
+		if leftBorderIndex-1 >= 0 {
+			leftNeighbor = leftBorders[leftBorderIndex-1]
 		} else {
 			leftGluing = false
 		}
@@ -370,7 +370,7 @@ func brutTasksFromShard(shard Shard,
 			load := setTaskProfitByLoad(keyRange, &task, &shardStats)
 			space := setTaskProfitByKeysCount(keyRange, &task, &shardStats)
 			length := setTaskProfitByLength(keyRange, &task, &shardStats)
-			task.profit = (load + space) * loadK + length * (1 - loadK)
+			task.profit = (load+space)*loadK + length*(1-loadK)
 			if task.profit > -1 {
 				t1 := task
 				_ = setTaskProfitByLoad(keyRange, &t1, &shardStats)
@@ -423,22 +423,22 @@ func getAvgKeyDistance(keyDist1, keyDist2, len1, len2 *big.Int) *big.Int {
 		new(big.Int).Add(
 			len1,
 			len2,
-			),
+		),
 		new(big.Int).Mul(
 			keyDist1,
 			keyDist2,
-			),
-		)
+		),
+	)
 	den := new(big.Int).Add(
 		new(big.Int).Mul(
 			keyDist2,
 			len1,
-			),
+		),
 		new(big.Int).Mul(
 			keyDist1,
 			len2,
-			),
-		)
+		),
+	)
 	return new(big.Int).Div(num, den)
 }
 
@@ -501,10 +501,10 @@ func applyTask(task Task, shardStats *map[string]map[string]Stats) {
 
 	for left := range removeLeftBorders {
 		i := findRange(&left, &leftBorders)
-		if i == len(leftBorders) - 1 {
+		if i == len(leftBorders)-1 {
 			leftBorders = leftBorders[:i]
 		} else {
-			leftBorders = append(leftBorders[:i], leftBorders[i + 1:]...)
+			leftBorders = append(leftBorders[:i], leftBorders[i+1:]...)
 		}
 	}
 	for left := range appendLeftBorders {
@@ -661,7 +661,7 @@ func runWorker() {
 }
 
 func planTasks() {
-	shard := shards[len(shards) - 1]
+	shard := shards[len(shards)-1]
 	var keyRanges []KeyRange
 	for left := range shardToLeftBorders[shard] {
 		keyRanges = append(keyRanges, KeyRange{left, leftBordersToRightBorders[left]})
@@ -679,11 +679,11 @@ func planTasks() {
 		//fmt.Println("Plan (id ", bestTask.id, ") to move ", bestTask.keyRange, " from ", bestTask.startKeyRange, " in shard ", bestTask.shardFrom,
 		//	" to shard ", bestTask.shardTo)
 
-		for _, sh := range shards{
+		for _, sh := range shards {
 			foo := getFooByShard(sh, false)
 			fmt.Println("Shard stats without abs", sh.id, foo)
 		}
-		for _, sh := range shards{
+		for _, sh := range shards {
 			foo := getFooByShard(sh, true)
 			fmt.Println("Shard stats with abs", sh.id, foo)
 		}
@@ -698,12 +698,12 @@ func planTasks() {
 
 		if bestTask.profit < 0 {
 			bestAction := Action{
-				id: 0,
+				id:          0,
 				actionStage: plan,
-				keyRange: bestTask.keyRange,
-				fromShard: bestTask.shardFrom,
-				toShard: bestTask.shardTo,
-				isRunning: false,
+				keyRange:    bestTask.keyRange,
+				fromShard:   bestTask.shardFrom,
+				toShard:     bestTask.shardTo,
+				isRunning:   false,
 			}
 
 			err = _db.Insert(&bestAction)

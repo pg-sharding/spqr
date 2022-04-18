@@ -70,6 +70,7 @@ func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
+	tracelog.InfoLogger.Printf("send msg to server %T", query)
 	return srv.shard.Send(query)
 }
 

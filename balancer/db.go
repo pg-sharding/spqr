@@ -16,11 +16,12 @@ type DatabaseInterface interface {
 	Len() uint64
 	Clear() error
 }
+
 //TODO retries!
 
 type MockDb struct {
 	actions map[uint64]Action
-	count uint64
+	count   uint64
 
 	lock sync.Mutex
 }

@@ -10,7 +10,7 @@ type Shard struct {
 }
 
 type KeyRange struct {
-	left string
+	left  string
 	right string
 }
 
@@ -38,8 +38,8 @@ func bigIntToKey(num *big.Int) *string {
 		numCopy.DivMod(numCopy, k, mod)
 		charsArr = append(charsArr, byte(mod.Int64()))
 	}
-	for i := 0; i < len(charsArr) / 2; i++ {
-		charsArr[i], charsArr[len(charsArr) - i - 1] = charsArr[len(charsArr) - i - 1], charsArr[i]
+	for i := 0; i < len(charsArr)/2; i++ {
+		charsArr[i], charsArr[len(charsArr)-i-1] = charsArr[len(charsArr)-i-1], charsArr[i]
 	}
 	res := string(charsArr)
 	return &res
@@ -70,7 +70,7 @@ func logLength(keyRange KeyRange) float64 {
 	for i := 0; i < len(keyRange.right); i++ {
 		diff += (float64)(keyRange.right[i])
 		if i >= lenDiff {
-			diff -= (float64)(keyRange.left[i - lenDiff])
+			diff -= (float64)(keyRange.left[i-lenDiff])
 		}
 		diff *= k
 	}
@@ -114,17 +114,20 @@ func DivideStats(a Stats, k float64) Stats {
 }
 
 type LikeNumbers []string
+
 func (a LikeNumbers) Len() int           { return len(a) }
 func (a LikeNumbers) Less(i, j int) bool { return less(&a[i], &a[j]) }
 func (a LikeNumbers) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 type KeysByFoo []string
-func (a KeysByFoo) Len() int           { return len(a) }
+
+func (a KeysByFoo) Len() int { return len(a) }
 func (a KeysByFoo) Less(i, j int) bool {
 	defer muKeyStats.Unlock()
 	muKeyStats.Lock()
-	return getFooByStats(keyStats[a[i]], false) < getFooByStats(keyStats[a[j]], false) }
-func (a KeysByFoo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+	return getFooByStats(keyStats[a[i]], false) < getFooByStats(keyStats[a[j]], false)
+}
+func (a KeysByFoo) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
 func getFooOfShardSize(shard Shard, useAbs bool) float64 {
 	return getFoo(float64(keysOnShard[shard]), float64(avgKeysOnShard), useAbs)
@@ -135,8 +138,9 @@ func getFooByShard(shard Shard, useAbs bool) float64 {
 }
 
 type ShardsByFoo []Shard
-func (a ShardsByFoo) Len() int           { return len(a) }
+
+func (a ShardsByFoo) Len() int { return len(a) }
 func (a ShardsByFoo) Less(i, j int) bool {
 	return getFooByShard(a[i], false) < getFooByShard(a[j], false)
 }
-func (a ShardsByFoo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ShardsByFoo) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

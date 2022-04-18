@@ -96,7 +96,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
 		//Krid:     request.Bound,
 		//SourceID: request.K
-		Bound:    request.Bound,
+		Bound: request.Bound,
 	}); err != nil {
 		return nil, err
 	}

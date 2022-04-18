@@ -34,7 +34,7 @@ type RouterClient interface {
 	Route() *route.Route
 	Rule() *config.FRRule
 
-	ProcQuery(query *pgproto3.Query) (byte, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool) (byte, error)
 	ProcCopy(query *pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
@@ -324,7 +324,6 @@ func (cl *PsqlClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
-
 	return DefaultUsr
 }
 
@@ -415,12 +414,16 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool) (byte, error) {
 	tracelog.InfoLogger.Printf("process query %s", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
 		return 0, err
+	}
+
+	if !waitForResp {
+		return conn.TXCOPY, nil
 	}
 
 	for {

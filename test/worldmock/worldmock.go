@@ -21,7 +21,6 @@ func (w *WorldMock) Run() error {
 
 	ctx := context.Background()
 
-
 	listener, err := net.Listen("tcp", ":6432")
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)

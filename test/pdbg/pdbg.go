@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net"
-	"fmt"
 	"bufio"
+	"fmt"
+	"net"
 	"os"
 
 	"github.com/jackc/pgproto3/v2"
@@ -14,7 +14,6 @@ func getC() (net.Conn, error) {
 	const addr = "[::1]:6432"
 	return net.Dial(proto, addr)
 }
-
 
 func main() {
 
@@ -29,7 +28,7 @@ func main() {
 	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
 	sm := pgproto3.StartupMessage{
 		ProtocolVersion: 196608,
-		Parameters: map[string]string {
+		Parameters: map[string]string{
 			"database": "db1",
 			"user":     "user1",
 		},
@@ -49,15 +48,15 @@ func main() {
 
 	for {
 		fmt.Print("Enter prepared stmt name: ")
-//		fmt.Print("~$ ")
+		//		fmt.Print("~$ ")
 		name, _ := reader.ReadString('\n')
 
 		fmt.Print("Enter prepared stmt query: ")
-//		fmt.Print("~$ ")
+		//		fmt.Print("~$ ")
 		query, _ := reader.ReadString('\n')
 
 		msg := &pgproto3.Parse{
-			Name: name,
+			Name:  name,
 			Query: query,
 		}
 
@@ -75,9 +74,9 @@ func main() {
 		fmt.Print("Enter for exec: ")
 		_, _ = reader.ReadString('\n')
 
-		msg2 := &pgproto3.Describe {
+		msg2 := &pgproto3.Describe{
 			ObjectType: 'S',
-			Name: name,
+			Name:       name,
 		}
 		if err := frontend.Send(msg2); err != nil {
 			fmt.Printf("failed %w", err)

@@ -2,7 +2,7 @@ package main
 
 import "math/big"
 
-type Spqr struct {}
+type Spqr struct{}
 
 func (Spqr) lockKeyRange(rng KeyRange) error {
 	return nil

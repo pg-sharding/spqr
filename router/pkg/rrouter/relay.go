@@ -39,7 +39,7 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	manager ConnManager
 
-	msgBuf []pgproto3.Query
+	msgBuf []pgproto3.FrontendMessage
 	parser parser.QParser
 }
 
@@ -230,7 +230,7 @@ func (rst *RelayStateImpl) RelayCopyComplete(msg *pgproto3.FrontendMessage) erro
 	return rst.Cl.ProcCopyComplete(msg)
 }
 
-func (rst *RelayStateImpl) RelayStep() (byte, error) {
+func (rst *RelayStateImpl) RelayStep(waitForResp bool) (byte, error) {
 
 	if !rst.TxActive {
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
@@ -243,9 +243,9 @@ func (rst *RelayStateImpl) RelayStep() (byte, error) {
 	var err error
 
 	for len(rst.msgBuf) > 0 {
-		var v *pgproto3.Query
-		v, rst.msgBuf = &rst.msgBuf[0], rst.msgBuf[1:]
-		if txst, err = rst.Cl.ProcQuery(v); err != nil {
+		var v pgproto3.FrontendMessage
+		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		if txst, err = rst.Cl.ProcQuery(v, waitForResp); err != nil {
 			return 0, err
 		}
 	}
@@ -263,7 +263,9 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 	if !rst.CopyActive {
 		switch txst {
 		case conn.TXIDLE:
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
+			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+				TxStatus: txst,
+			}); err != nil {
 				return err
 			}
 
@@ -277,7 +279,9 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 		case conn.TXERR:
 			fallthrough
 		case conn.TXACT:
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{}); err != nil {
+			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+				TxStatus: txst,
+			}); err != nil {
 				return err
 			}
 			if !rst.TxActive {
@@ -303,8 +307,11 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 	return rst.Reset()
 }
 
-func (rst *RelayStateImpl) AddQuery(q pgproto3.Query) error {
+func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 	rst.msgBuf = append(rst.msgBuf, q)
+}
+
+func (rst *RelayStateImpl) Parse(q pgproto3.Query) error {
 	return rst.parser.Parse(q)
 }
 

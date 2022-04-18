@@ -36,7 +36,8 @@ type FRRule struct {
 
 	ClientMax int `json:"client_max" yaml:"client_max" toml:"client_max"`
 
-	PoolingMode PoolingMode `json:"pooling_mode" yaml:"pooling_mode" toml:"pooling_mode"`
+	PoolingMode           PoolingMode `json:"pooling_mode" yaml:"pooling_mode" toml:"pooling_mode"`
+	PoolPreparedStatement bool        `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
 
 	// TODO: validate!
 	AuthRule AuthRule `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
