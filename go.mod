@@ -4,13 +4,13 @@ go 1.17
 
 require (
 	github.com/blastrain/vitess-sqlparser v0.0.0-20201030050434-a139afbb1aba
-	github.com/jackc/pgproto3/v2 v2.1.0
+	github.com/jackc/pgproto3/v2 v2.2.0
 	github.com/jmoiron/sqlx v1.3.4
+	github.com/juju/errors v0.0.0-20170703010042-c7d06af17c68
 	github.com/lib/pq v1.10.3
 	github.com/libp2p/go-reuseport v0.1.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/cobra v1.2.1
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
@@ -31,7 +31,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
-	github.com/juju/errors v0.0.0-20170703010042-c7d06af17c68 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.1 // indirect

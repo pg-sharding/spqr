@@ -303,7 +303,9 @@ func (cl *PsqlClient) Auth() error {
 		&pgproto3.AuthenticationOk{},
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "spqr"},
-		&pgproto3.ReadyForQuery{},
+		&pgproto3.ReadyForQuery{
+			TxStatus: conn.TXIDLE,
+		},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
