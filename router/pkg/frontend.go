@@ -26,7 +26,6 @@ type PrepStmtDesc struct {
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
-
 	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNotice(fmt.Sprintf("process Frontend for user %s %s", cl.Usr(), cl.DB()))
@@ -65,14 +64,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 			// simply reply witch ok parse complete
 			if err := cl.ReplyParseComplete(); err != nil {
-				return err
-			}
-		case *pgproto3.CopyData:
-			if err := rst.RelayCopyStep(&msg); err != nil {
-				return err
-			}
-		case *pgproto3.CopyDone, *pgproto3.CopyFail:
-			if err := rst.RelayCopyComplete(&msg); err != nil {
 				return err
 			}
 		case *pgproto3.Query:

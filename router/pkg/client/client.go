@@ -408,10 +408,6 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 				if err := cl.Send(msg); err != nil {
 					return err
 				}
-			case *pgproto3.ReadyForQuery:
-				if err := cl.Send(msg); err != nil {
-					return err
-				}
 				return nil
 			default:
 			}
@@ -438,25 +434,41 @@ func (cl *PsqlClient) ProcQuery(query *pgproto3.Query) (byte, error) {
 			err = cl.Send(msg)
 			if err != nil {
 				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
+				return 0, err
+			}
+
+			if err := func() error {
+				for {
+					cpMsg, err := cl.Receive()
+					if err != nil {
+						return err
+					}
+
+					switch cpMsg.(type) {
+					case *pgproto3.CopyData:
+						if err := cl.ProcCopy(&cpMsg); err != nil {
+							return err
+						}
+					case *pgproto3.CopyDone, *pgproto3.CopyFail:
+						if err := cl.ProcCopyComplete(&cpMsg); err != nil {
+							return err
+						}
+						return nil
+					}
+				}
+			}(); err != nil {
+				return 0, err
+			}
+		case *pgproto3.ReadyForQuery:
+			return v.TxStatus, nil
+		default:
+			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			err = cl.Send(msg)
+			if err != nil {
+				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
 				////tracelog.InfoLogger.Println(msg)
 				return 0, err
 			}
-			return conn.TXCOPY, nil
-		case *pgproto3.ReadyForQuery:
-			return v.TxStatus, nil
-		case *pgproto3.RowDescription:
-			tracelog.InfoLogger.Printf("row description: %#v", v.Fields)
-		case *pgproto3.CommandComplete:
-			tracelog.InfoLogger.Printf("command complete (%s): %s", string(v.CommandTag), query)
-		default:
-			tracelog.InfoLogger.Printf("unknown msg type: %T", v)
-		}
-
-		err = cl.Send(msg)
-		if err != nil {
-			////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-			////tracelog.InfoLogger.Println(msg)
-			return 0, err
 		}
 	}
 }
