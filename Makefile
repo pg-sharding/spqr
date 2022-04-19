@@ -58,6 +58,9 @@ run: build_images
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
+proxy_run:
+	./spqr-rr run -c ./config-example/router.yaml
+
 pooler_run:
 	./spqr-rr run -c ./config-example/localrouter.yaml
 

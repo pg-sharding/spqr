@@ -8,7 +8,7 @@ executer:
 
 qrouter:
     qrouter_type: PROXY
-router:
+rules:
     tls:
         key_file: '/etc/odyssey/ssl/server.key'
         cert_file: '/etc/odyssey/ssl/server.crt'
@@ -24,6 +24,28 @@ router:
     proto: 'tcp6'
     world_shard_fallback: true
     shard_mapping:
+        sh1:
+            tls:
+                key_file: '/etc/odyssey/ssl/server.key'
+                sslmode: "disable"
+                cert_file: '/etc/odyssey/ssl/server.crt'
+            conn_db: "db1"
+            conn_usr: "user1"
+            passwd: 12345678
+            shard_type: 'DATA'
+            hosts:
+                - conn_addr: "localhost:5550"
+        sh2:
+            tls:
+                key_file: '/etc/odyssey/ssl/server.key'
+                sslmode: "disable"
+                cert_file: '/etc/odyssey/ssl/server.crt'
+            conn_db: "db1"
+            conn_usr: "user1"
+            passwd: 12345678
+            shard_type: 'DATA'
+            hosts:
+                - conn_addr: "localhost:5551"
         w1:
             tls:
                 key_file: '/etc/odyssey/ssl/server.key'

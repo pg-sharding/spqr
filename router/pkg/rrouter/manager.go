@@ -13,14 +13,14 @@ import (
 )
 
 type ConnManager interface {
-	TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error
-	TXEndCB(client client.RouterClient, rst *RelayStateImpl) error
+	TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error
+	TXEndCB(client client.RouterClient, rst RelayStateInteractor) error
 
 	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
-	ValidateReRoute(rst *RelayStateImpl) bool
+	ValidateReRoute(rst RelayStateInteractor) bool
 }
 
 func unRouteWithError(cmngr ConnManager, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
@@ -63,23 +63,23 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
-func (t *TxConnManager) ValidateReRoute(rst *RelayStateImpl) bool {
-	return rst.ActiveShards == nil || !rst.TxActive
+func (t *TxConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
+	return rst.ActiveShards() == nil || !rst.TxActive()
 }
 
-func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error {
+func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(client client.RouterClient, rst *RelayStateImpl) error {
+func (t *TxConnManager) TXEndCB(client client.RouterClient, rst RelayStateInteractor) error {
 
-	asynctracelog.Printf("end of tx unrouting from %v", rst.ActiveShards)
+	asynctracelog.Printf("end of tx unrouting from %v", rst.ActiveShards())
 
-	if err := t.UnRouteCB(client, rst.ActiveShards); err != nil {
+	if err := t.UnRouteCB(client, rst.ActiveShards()); err != nil {
 		return err
 	}
 
-	rst.ActiveShards = nil
+	rst.ActiveShardsReset()
 
 	return nil
 }
@@ -100,11 +100,11 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
-func (s *SessConnManager) TXBeginCB(client client.RouterClient, rst *RelayStateImpl) error {
+func (s *SessConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(client client.RouterClient, rst *RelayStateImpl) error {
+func (s *SessConnManager) TXEndCB(client client.RouterClient, rst RelayStateInteractor) error {
 	return nil
 }
 
@@ -118,8 +118,8 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 	return nil
 }
 
-func (s *SessConnManager) ValidateReRoute(rst *RelayStateImpl) bool {
-	return rst.ActiveShards == nil
+func (s *SessConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
+	return rst.ActiveShards() == nil
 }
 
 func NewSessConnManager() *SessConnManager {

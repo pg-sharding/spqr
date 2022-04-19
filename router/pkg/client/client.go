@@ -107,7 +107,6 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
-	return nil
 	if v, ok := cl.params["client_min_messages"]; ok {
 		switch v {
 		case "error":

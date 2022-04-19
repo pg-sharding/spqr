@@ -109,6 +109,8 @@ func NewProxyRouter(rules config.RulesCfg) (*ProxyQrouter, error) {
 		switch shardCfg.ShType {
 		case config.WorldShard:
 		case config.DataShard:
+			fallthrough // default is datashard
+		default:
 			if err := proxy.AddDataShard(context.TODO(), &datashards.DataShard{
 				ID:  name,
 				Cfg: shardCfg,

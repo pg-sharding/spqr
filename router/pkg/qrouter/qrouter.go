@@ -44,10 +44,11 @@ type QueryRouter interface {
 	shrule.ShardingRulesMgr
 
 	Route(q string) (RoutingState, error)
-	// do not use
+
+	// AddLocalTable do not use
 	AddLocalTable(tname string) error
 
-	// shards
+	// Shards shards
 	Shards() []string
 	WorldShards() []string
 	WorldShardsRoutes() []*ShardRoute

@@ -7,10 +7,19 @@ import (
 
 type QParser struct {
 	stmt sqlparser.Statement
+	q    pgproto3.Query
 }
 
 func (qp *QParser) Reset() {
 	qp.stmt = nil
+}
+
+func (qp *QParser) Stmt() sqlparser.Statement {
+	return qp.stmt
+}
+
+func (qp *QParser) Q() pgproto3.Query {
+	return qp.q
 }
 
 func (qp *QParser) Parse(q pgproto3.Query) error {
@@ -18,6 +27,7 @@ func (qp *QParser) Parse(q pgproto3.Query) error {
 	if err != nil {
 		return err
 	}
+	qp.q = q
 	qp.stmt = parsedStmt
 
 	return nil

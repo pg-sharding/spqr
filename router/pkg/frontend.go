@@ -53,7 +53,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
-				switch err := rst.Reroute(&pgproto3.Query{}); err {
+				switch err := rst.Reroute(); err {
 				case rrouter.SkipQueryError:
 					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
 					_ = cl.Reply("ok")
@@ -116,7 +116,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 				// txactive == 0 || activeSh == nil
 				if cmngr.ValidateReRoute(rst) {
-					switch err := rst.Reroute(&pgproto3.Query{}); err {
+					switch err := rst.Reroute(); err {
 					case rrouter.SkipQueryError:
 						_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
 						_ = cl.Reply("ok")
@@ -158,7 +158,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 			// txactive == 0 || activeSh == nil
 			if cmngr.ValidateReRoute(rst) {
-				switch err := rst.Reroute(q); err {
+				switch err := rst.Reroute(); err {
 				case rrouter.SkipQueryError:
 					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
 					_ = cl.Reply("ok")

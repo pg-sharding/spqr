@@ -33,6 +33,7 @@ rules:
                         conn_db: "db1"
                         conn_usr: "user1"
                         passwd: 12345678
+                        shard_type: 'DATA'
                         hosts:
                                 - conn_addr: "192.168.233.2:6432"
                 sh2: 
@@ -43,6 +44,7 @@ rules:
                         conn_db: "db1"
                         conn_usr: "user1"
                         passwd: 12345678
+                        shard_type: 'DATA'
                         hosts:
                                 - conn_addr: "192.168.233.3:6432"
 
