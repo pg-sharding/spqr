@@ -187,7 +187,6 @@ func (qr *ProxyRouter) AddDataShard(ctx context.Context, ds *datashards.DataShar
 	return nil
 }
 
-
 func (qr *ProxyRouter) Shards() []string {
 	var ret []string
 
@@ -198,10 +197,9 @@ func (qr *ProxyRouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyRouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyRouter) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-
-	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRange(ctx); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
@@ -242,7 +240,7 @@ func (qr *ProxyRouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 
 func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 
-	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
+	krs, _ := qr.qdb.ListKeyRange(context.TODO())
 
 	for _, keyRange := range krs {
 		tracelog.InfoLogger.Printf("comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
@@ -390,8 +388,6 @@ func (qr *ProxyRouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 					},
 				})
 		}
-
-
 
 		return ret
 	}

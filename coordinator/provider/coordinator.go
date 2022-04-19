@@ -159,6 +159,21 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return nil
 }
 
+func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListKeyRange(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	for _, keyRange := range keyRanges {
+
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+	}
+
+	return keyr, nil
+}
+
 func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {
 	cc, err := DialRouter(qRouter)
 
@@ -190,7 +205,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	tracelog.InfoLogger.Printf("got sharding rules response %v", resp.String())
 
 	// Configure key ranges.
-	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	keyRanges, err := qc.db.ListKeyRange(ctx)
 	if err != nil {
 		return err
 	}
@@ -210,7 +225,6 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 
 	return nil
 }
-
 
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
 

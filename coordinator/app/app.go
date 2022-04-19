@@ -16,12 +16,12 @@ import (
 )
 
 type App struct {
-	coordiantor coordinator.Coordinator
+	coordinator coordinator.Coordinator
 }
 
 func NewApp(c coordinator.Coordinator) *App {
 	return &App{
-		coordiantor: c,
+		coordinator: c,
 	}
 }
 
@@ -60,7 +60,7 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	for {
 		conn, err := listener.Accept()
 		tracelog.ErrorLogger.PrintError(err)
-		_ = app.coordiantor.ProcClient(context.TODO(), conn)
+		_ = app.coordinator.ProcClient(context.TODO(), conn)
 	}
 }
 
@@ -72,11 +72,11 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	//shhttp.Register(serv)
 	reflection.Register(serv)
 
-	krserv := provider.NewKeyRangeService(app.coordiantor)
-	rrserv := provider.NewRoutersService(app.coordiantor)
-	shardingRulesServ := provider.NewShardingRules(app.coordiantor)
-	shardServ := provider.NewShardServer(app.coordiantor)
-
+	tracelog.InfoLogger.Printf("Coordinator Service %v", app.coordinator)
+	krserv := provider.NewKeyRangeService(app.coordinator)
+	rrserv := provider.NewRoutersService(app.coordinator)
+	shardingRulesServ := provider.NewShardingRules(app.coordinator)
+	shardServ := provider.NewShardServer(app.coordinator)
 
 	shards.RegisterKeyRangeServiceServer(serv, krserv)
 	shards.RegisterRoutersServiceServer(serv, rrserv)

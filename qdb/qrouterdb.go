@@ -23,7 +23,7 @@ type QrouterDB interface {
 	AddShardingRule(ctx context.Context, shRules *ShardingRule) error
 	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
-	ListKeyRanges(ctx context.Context) ([]*KeyRange, error)
+	ListKeyRange(ctx context.Context) ([]*KeyRange, error)
 
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)

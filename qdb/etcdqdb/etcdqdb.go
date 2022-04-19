@@ -13,6 +13,7 @@ import (
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -132,9 +133,10 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 	})
+	tracelog.InfoLogger.Printf("Coordinator Service, %s %#v", addr, cli)
 
 	if err != nil {
 		return nil, err
@@ -317,7 +319,7 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error
 	return err
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
+func (q *EtcdQDB) ListKeyRange(ctx context.Context) ([]*qdb.KeyRange, error) {
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err

@@ -4,8 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pg-sharding/spqr/qdb"
 	"golang.org/x/xerrors"
+
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type WaitPool struct {
@@ -146,7 +147,7 @@ func (q *QrouterDBMem) UnLock(_ context.Context, KeyRangeID string) error {
 	return nil
 }
 
-func (q *QrouterDBMem) ListKeyRanges(_ context.Context) ([]*qdb.KeyRange, error) {
+func (q *QrouterDBMem) ListKeyRange(_ context.Context) ([]*qdb.KeyRange, error) {
 	var ret []*qdb.KeyRange
 
 	for _, el := range q.krs {

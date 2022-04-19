@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/router/protos"
@@ -39,7 +41,7 @@ func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.
 }
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.Split(ctx, &kr.SplitKeyRange{
-		Bound:    request.Bound,
+		Bound: request.Bound,
 	})
 	if err != nil {
 		return nil, err
@@ -49,7 +51,19 @@ func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.S
 }
 
 func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+	// TODO:
+	tracelog.InfoLogger.Printf("Coordinator Service %v %T %#v", c.impl, c.impl, c.impl.(*qdbCoordinator).db)
+
+	if c.impl == nil {
+		return &protos.KeyRangeReply{}, nil
+	}
+
+	//krsqb, err := c.impl.(*qdbCoordinator).db.ListKeyRange(ctx)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	krsqb, err := c.impl.ListKeyRange(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -63,7 +63,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	krsqdb, err := l.qr.ListKeyRanges(ctx)
+	krsqdb, err := l.qr.ListKeyRange(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
 		//Krid:     request.Bound,
 		//SourceID: request.K
-		Bound:    request.Bound,
+		Bound: request.Bound,
 	}); err != nil {
 		return nil, err
 	}

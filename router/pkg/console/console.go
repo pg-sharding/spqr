@@ -83,7 +83,7 @@ var intf = func(qlogger qlog.Qlog, t TopoCntl, cli client.PSQLInteractor, ctx co
 		case spqrparser.ShowShardsStr:
 			return cli.Shards(ctx, t.ListDataShards(ctx), cl)
 		case spqrparser.ShowKeyRangesStr:
-			if krs, err := t.ListKeyRanges(ctx); err != nil {
+			if krs, err := t.ListKeyRange(ctx); err != nil {
 				return err
 			} else {
 				return cli.KeyRanges(krs, cl)
