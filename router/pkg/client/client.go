@@ -40,8 +40,10 @@ type RouterClient interface {
 	Route() *route.Route
 	Rule() *config.FRRule
 
+	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
+	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (byte, error)
-	ProcCopy(query *pgproto3.FrontendMessage) error
+	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
 	Close() error
@@ -62,6 +64,38 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     server.Server
+}
+
+func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
+	tracelog.InfoLogger.Printf("process query %s", query)
+	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
+
+	if err := cl.server.Send(query); err != nil {
+		return err
+	}
+
+	if !waitForResp {
+		return nil
+	}
+
+	for {
+		msg, err := cl.server.Receive()
+		if err != nil {
+			return err
+		}
+
+		switch msg.(type) {
+		case *pgproto3.ParseComplete:
+			return nil
+		default:
+			if replyCl {
+				err = cl.Send(msg)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
@@ -108,7 +142,6 @@ func (cl *PsqlClient) Reply(msg string) error {
 func (cl *PsqlClient) ReplyParseComplete() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ParseComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
@@ -407,10 +440,10 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 	return nil
 }
 
-func (cl *PsqlClient) ProcCopy(query *pgproto3.FrontendMessage) error {
+func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
 	tracelog.InfoLogger.Printf("process copy %T", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
-	return cl.server.Send(*query)
+	return cl.server.Send(query)
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
@@ -471,7 +504,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 
 					switch cpMsg.(type) {
 					case *pgproto3.CopyData:
-						if err := cl.ProcCopy(&cpMsg); err != nil {
+						if err := cl.ProcCopy(cpMsg); err != nil {
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:
@@ -492,6 +525,41 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 				err = cl.Send(msg)
 				if err != nil {
 					return 0, err
+				}
+			}
+		}
+	}
+}
+
+func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
+	tracelog.InfoLogger.Printf("process query %s", query)
+	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
+
+	if err := cl.server.Send(query); err != nil {
+		return err
+	}
+
+	if !waitForResp {
+		return nil
+	}
+
+	for {
+		msg, err := cl.server.Receive()
+		if err != nil {
+			return err
+		}
+
+		switch v := msg.(type) {
+		case *pgproto3.CommandComplete:
+			return nil
+		case *pgproto3.ErrorResponse:
+			return xerrors.New(v.Message)
+		default:
+			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			if replyCl {
+				err = cl.Send(msg)
+				if err != nil {
+					return err
 				}
 			}
 		}

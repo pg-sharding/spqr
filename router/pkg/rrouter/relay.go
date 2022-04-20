@@ -34,6 +34,8 @@ type RelayStateInteractor interface {
 	Close() error
 	ProcessMessage(waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
+	PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error
+	RelayFlushCommand(waitForResp bool, replyCl bool) error
 }
 
 type RelayStateImpl struct {
@@ -64,18 +66,27 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Query: d.Query,
 	})
 
-	var txst byte
 	var err error
-	if txst, err = rst.RelayStep(true, false); err != nil {
+	if err = rst.RelayParse(false, false); err != nil {
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
 		return err
 	}
 
-	if err := rst.CompleteRelay(txst); err != nil {
+	rst.AddQuery(&pgproto3.Sync{})
+
+	if _, err = rst.RelayStep(true, false); err != nil {
+		if rst.ShouldRetry(err) {
+			// TODO: fix retry logic
+		}
 		return err
 	}
+
+	// dont need to complete relay because tx state dont changed
+	//if err := rst.CompleteRelay(txst); err != nil {
+	//	return err
+	//}
 
 	rst.Cl.Server().PrepareStatement(hash)
 
@@ -152,7 +163,7 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	switch v := routingState.(type) {
 	case qrouter.ShardMatchState:
-		tracelog.InfoLogger.Printf("parsed routes %v", routingState)
+		tracelog.InfoLogger.Printf("parsed routes %+v", routingState)
 		//
 		if len(v.Routes) == 0 {
 			tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
@@ -279,7 +290,7 @@ func (rst *RelayStateImpl) ConnectWorld() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) RelayCopyStep(msg *pgproto3.FrontendMessage) error {
+func (rst *RelayStateImpl) RelayCopyStep(msg pgproto3.FrontendMessage) error {
 	return rst.Cl.ProcCopy(msg)
 }
 
@@ -288,14 +299,57 @@ func (rst *RelayStateImpl) RelayCopyComplete(msg *pgproto3.FrontendMessage) erro
 	return rst.Cl.ProcCopyComplete(msg)
 }
 
-func (rst *RelayStateImpl) RelayStep(waitForResp bool, replyCl bool) (byte, error) {
+func (rst *RelayStateImpl) RelayParse(waitForResp bool, replyCl bool) error {
+
+	var err error
+
+	for len(rst.msgBuf) > 0 {
+		var v pgproto3.FrontendMessage
+		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		if err = rst.Cl.ProcParse(v, waitForResp, replyCl); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (rst *RelayStateImpl) RelayCommand(waitForResp bool, replyCl bool) error {
 	if !rst.txActive {
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
-			return 0, err
+			return err
 		}
 		rst.txActive = true
 	}
 
+	var err error
+
+	for len(rst.msgBuf) > 0 {
+		var v pgproto3.FrontendMessage
+		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		if err = rst.Cl.ProcCommand(v, waitForResp, replyCl); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (rst *RelayStateImpl) RelayFlushCommand(waitForResp bool, replyCl bool) error {
+	var err error
+
+	for len(rst.msgBuf) > 0 {
+		var v pgproto3.FrontendMessage
+		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
+		if err = rst.Cl.ProcCommand(v, waitForResp, replyCl); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (byte, error) {
 	var txst byte
 	var err error
 
@@ -308,6 +362,17 @@ func (rst *RelayStateImpl) RelayStep(waitForResp bool, replyCl bool) (byte, erro
 	}
 
 	return txst, nil
+}
+
+func (rst *RelayStateImpl) RelayStep(waitForResp bool, replyCl bool) (byte, error) {
+	if !rst.txActive {
+		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+			return 0, err
+		}
+		rst.txActive = true
+	}
+
+	return rst.RelayFlush(waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) ShouldRetry(err error) bool {
@@ -374,7 +439,7 @@ func (rst *RelayStateImpl) Parse(q pgproto3.Query) error {
 
 var _ RelayStateInteractor = &RelayStateImpl{}
 
-func (rst *RelayStateImpl) ProcessMessage(waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error {
+func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error {
 	// txactive == 0 || activeSh == nil
 	if cmngr.ValidateReRoute(rst) {
 		switch err := rst.Reroute(); err {
@@ -393,6 +458,12 @@ func (rst *RelayStateImpl) ProcessMessage(waitForResp, replyCl bool, cl client.R
 			_ = rst.UnRouteWithError(nil, err)
 			return err
 		}
+	}
+	return nil
+}
+func (rst *RelayStateImpl) ProcessMessage(waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error {
+	if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+		return err
 	}
 
 	var txst byte

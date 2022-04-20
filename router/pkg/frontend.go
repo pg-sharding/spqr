@@ -93,16 +93,20 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			if err := cl.ReplyParseComplete(); err != nil {
 				return err
 			}
-
-			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-				Name:  fmt.Sprintf("%d", hash),
-				Query: q.Query,
-			}); err != nil {
-				return err
-			}
 		case *pgproto3.Describe:
+			if q.ObjectType == 'P' {
+				rst.AddQuery(msg)
+				if err := rst.ProcessMessage(true, true, cl, cmngr); err != nil {
+					return err
+				}
+				break
+			}
 			query := cl.PreparedStatementQueryByName(q.Name)
 			hash := murmur3.Sum64([]byte(query))
+
+			if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+				return err
+			}
 
 			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
 				Name:  fmt.Sprintf("%d", hash),
@@ -111,22 +115,18 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				return err
 			}
 
-			rst.AddQuery(&pgproto3.Describe{
-				Name: fmt.Sprintf("%d", hash),
-			})
+			q.Name = fmt.Sprintf("%d", hash)
 
-			var txst byte
+			rst.AddQuery(q)
+
 			var err error
-			if txst, err = rst.RelayStep(true, true); err != nil {
+			if err = rst.RelayFlushCommand(false, false); err != nil {
 				if rst.ShouldRetry(err) {
 					// TODO: fix retry logic
 				}
 				return err
 			}
 
-			if err := rst.CompleteRelay(txst); err != nil {
-				return err
-			}
 		case *pgproto3.Execute:
 			tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
 			rst.AddQuery(msg)
@@ -136,8 +136,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		case *pgproto3.Bind:
 
 			query := cl.PreparedStatementQueryByName(q.PreparedStatement)
-
 			hash := murmur3.Sum64([]byte(query))
+
+			if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+				return err
+			}
 
 			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
 				Name:  fmt.Sprintf("%d", hash),
@@ -149,15 +152,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			q.PreparedStatement = fmt.Sprintf("%d", hash)
 			rst.AddQuery(q)
 
-			var txst byte
 			var err error
-			if txst, err = rst.RelayStep(true, true); err != nil {
+			if err = rst.RelayFlushCommand(false, true); err != nil {
 				return err
 			}
 
-			if err := rst.CompleteRelay(txst); err != nil {
-				return err
-			}
 		case *pgproto3.Query:
 			tracelog.InfoLogger.Printf("received query %v", q.String)
 			rst.AddQuery(msg)
