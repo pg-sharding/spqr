@@ -424,7 +424,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 	}
 
 	if !waitForResp {
-		return conn.TXCOPY, nil
+		return conn.TXCONT, nil
 	}
 
 	for {

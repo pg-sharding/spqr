@@ -309,7 +309,7 @@ func (rst *RelayStateImpl) CompleteRelay(txst byte) error {
 				rst.txActive = true
 			}
 			return nil
-		case conn.TXCOPY:
+		case conn.TXCONT:
 			return nil
 		default:
 			err := xerrors.Errorf("unknown tx status %v", txst)

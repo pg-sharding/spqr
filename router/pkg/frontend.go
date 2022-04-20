@@ -24,6 +24,46 @@ type PrepStmtDesc struct {
 	Query string
 }
 
+func ProcessMessage(rst rrouter.RelayStateInteractor, waitForResp bool, cl client.RouterClient, cmngr rrouter.ConnManager) error {
+	// txactive == 0 || activeSh == nil
+	if cmngr.ValidateReRoute(rst) {
+		switch err := rst.Reroute(); err {
+		case rrouter.SkipQueryError:
+			_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
+			_ = cl.Reply("ok")
+			return nil
+		case qrouter.MatchShardError:
+			_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
+			return nil
+		case qrouter.ParseError:
+			_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
+			_ = cl.Reply("ok")
+			return nil
+		case nil:
+		default:
+			tracelog.InfoLogger.Printf("encounter %w", err)
+			_ = rst.UnRouteWithError(nil, err)
+			return err
+		}
+	}
+
+	var txst byte
+	var err error
+	if txst, err = rst.RelayStep(waitForResp); err != nil {
+		if rst.ShouldRetry(err) {
+			// TODO: fix retry logic
+		}
+		return err
+	}
+
+	if err := rst.CompleteRelay(txst); err != nil {
+		return err
+	}
+
+	asynctracelog.Printf("active shards are %v", rst.ActiveShards)
+	return nil
+}
+
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
 
@@ -44,49 +84,14 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			return err
 		}
 
+		tracelog.InfoLogger.Printf("received %T msg", msg)
+
 		switch q := msg.(type) {
 		case *pgproto3.Sync:
-
-			tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
-
 			rst.AddQuery(msg)
-
-			// txactive == 0 || activeSh == nil
-			if cmngr.ValidateReRoute(rst) {
-				switch err := rst.Reroute(); err {
-				case rrouter.SkipQueryError:
-					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-					_ = cl.Reply("ok")
-					continue
-				case qrouter.MatchShardError:
-					_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
-					continue
-				case qrouter.ParseError:
-					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-					_ = cl.Reply("ok")
-					continue
-				case nil:
-				default:
-					tracelog.InfoLogger.Printf("encounter %w", err)
-					_ = rst.UnRouteWithError(nil, err)
-					return err
-				}
-			}
-
-			var txst byte
-			var err error
-			if txst, err = rst.RelayStep(true); err != nil {
-				if rst.ShouldRetry(err) {
-					// TODO: fix retry logic
-				}
+			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
 				return err
 			}
-
-			if err := rst.CompleteRelay(txst); err != nil {
-				return err
-			}
-
-			asynctracelog.Printf("active shards are %v", rst.ActiveShards)
 		case *pgproto3.Describe, *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind:
 
 			if cl.Rule().PoolPreparedStatement {
@@ -111,89 +116,19 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				//}
 			} else {
 				tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
-
 				rst.AddQuery(msg)
-
-				// txactive == 0 || activeSh == nil
-				if cmngr.ValidateReRoute(rst) {
-					switch err := rst.Reroute(); err {
-					case rrouter.SkipQueryError:
-						_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-						_ = cl.Reply("ok")
-						continue
-					case qrouter.MatchShardError:
-						_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
-						continue
-					case qrouter.ParseError:
-						_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-						_ = cl.Reply("ok")
-						continue
-					case nil:
-					default:
-						tracelog.InfoLogger.Printf("encounter %w", err)
-						_ = rst.UnRouteWithError(nil, err)
-						return err
-					}
-				}
-
-				var txst byte
-				var err error
-				if txst, err = rst.RelayStep(false); err != nil {
-					if rst.ShouldRetry(err) {
-						// TODO: fix retry logic
-					}
+				if err := ProcessMessage(rst, false, cl, cmngr); err != nil {
 					return err
 				}
-
-				if err := rst.CompleteRelay(txst); err != nil {
-					return err
-				}
-
-				asynctracelog.Printf("active shards are %v", rst.ActiveShards)
 			}
 		case *pgproto3.Query:
 			asynctracelog.Printf("received query %v", q.String)
 			rst.AddQuery(msg)
 			_ = rst.Parse(*q)
-
-			// txactive == 0 || activeSh == nil
-			if cmngr.ValidateReRoute(rst) {
-				switch err := rst.Reroute(); err {
-				case rrouter.SkipQueryError:
-					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-					_ = cl.Reply("ok")
-					continue
-				case qrouter.MatchShardError:
-					_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
-					continue
-				case qrouter.ParseError:
-					_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-					_ = cl.Reply("ok")
-					continue
-				case nil:
-				default:
-					tracelog.InfoLogger.Printf("encounter %w", err)
-					_ = rst.UnRouteWithError(nil, err)
-					return err
-				}
-			}
-
-			var txst byte
-			var err error
-			if txst, err = rst.RelayStep(true); err != nil {
-				if rst.ShouldRetry(err) {
-					// TODO: fix retry logic
-				}
+			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
 				return err
 			}
-
-			if err := rst.CompleteRelay(txst); err != nil {
-				return err
-			}
-
-			asynctracelog.Printf("active shards are %v", rst.ActiveShards)
 		default:
-			asynctracelog.Printf("received msg type %T", q)
 		}
 	}
 }
