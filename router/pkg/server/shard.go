@@ -18,6 +18,17 @@ type ShardServer struct {
 	pool conn.ConnPool
 
 	shard datashard.Shard
+
+	mp map[uint64]string
+}
+
+func (srv *ShardServer) HasPrepareStatement(hash uint64) bool {
+	_, ok := srv.mp[hash]
+	return ok
+}
+
+func (srv *ShardServer) PrepareStatement(hash uint64) {
+	srv.mp[hash] = "yes"
 }
 
 func (srv *ShardServer) Sync() int {
@@ -75,6 +86,7 @@ func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
 	return &ShardServer{
 		rule: rule,
 		pool: spool,
+		mp:   make(map[uint64]string),
 	}
 }
 

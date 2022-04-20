@@ -2,11 +2,12 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/router/pkg/server"
+	"github.com/spaolacci/murmur3"
 	"io"
 
 	"github.com/jackc/pgproto3/v2"
 
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
@@ -19,59 +20,12 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
-type PrepStmtDesc struct {
-	Name  string
-	Query string
-}
-
-func ProcessMessage(rst rrouter.RelayStateInteractor, waitForResp bool, cl client.RouterClient, cmngr rrouter.ConnManager) error {
-	// txactive == 0 || activeSh == nil
-	if cmngr.ValidateReRoute(rst) {
-		switch err := rst.Reroute(); err {
-		case rrouter.SkipQueryError:
-			_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-			_ = cl.Reply("ok")
-			return nil
-		case qrouter.MatchShardError:
-			_ = cl.Reply(fmt.Sprintf("failed to match any datashard"))
-			return nil
-		case qrouter.ParseError:
-			_ = cl.ReplyNotice(fmt.Sprintf("skip executing this query, wait for next"))
-			_ = cl.Reply("ok")
-			return nil
-		case nil:
-		default:
-			tracelog.InfoLogger.Printf("encounter %w", err)
-			_ = rst.UnRouteWithError(nil, err)
-			return err
-		}
-	}
-
-	var txst byte
-	var err error
-	if txst, err = rst.RelayStep(waitForResp); err != nil {
-		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
-		}
-		return err
-	}
-
-	if err := rst.CompleteRelay(txst); err != nil {
-		return err
-	}
-
-	asynctracelog.Printf("active shards are %v", rst.ActiveShards)
-	return nil
-}
-
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 	tracelog.InfoLogger.Printf("process frontend for route %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNotice(fmt.Sprintf("process frontend for route %s %s", cl.Usr(), cl.DB()))
 
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
-
-	//mp := make(map[uint64]PrepStmtDesc)
 
 	for {
 		msg, err := cl.Receive()
@@ -90,46 +44,125 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 		tracelog.InfoLogger.Printf("received %T msg", msg)
 
+		if !cl.Rule().PoolPreparedStatement {
+			switch q := msg.(type) {
+			case *pgproto3.Sync:
+				rst.AddQuery(msg)
+				if err := rst.ProcessMessage(true, true, cl, cmngr); err != nil {
+					return err
+				}
+			case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
+				rst.AddQuery(msg)
+				if err := rst.ProcessMessage(false, true, cl, cmngr); err != nil {
+					return err
+				}
+			case *pgproto3.Query:
+				tracelog.InfoLogger.Printf("received query %v", q.String)
+				rst.AddQuery(msg)
+				_ = rst.Parse(*q)
+				if err := rst.ProcessMessage(true, true, cl, cmngr); err != nil {
+					return err
+				}
+			default:
+			}
+
+			continue
+		}
+
 		switch q := msg.(type) {
 		case *pgproto3.Sync:
 			rst.AddQuery(msg)
-			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
+			if err := rst.ProcessMessage(true, true, cl, cmngr); err != nil {
 				return err
 			}
-		case *pgproto3.Describe, *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind:
+		case *pgproto3.Parse:
 
-			if cl.Rule().PoolPreparedStatement {
-				//hash := murmur3.Sum64([]byte(q.Query))
-				//
-				//tracelog.InfoLogger.Printf(fmt.Sprintf("skip executing this query, name %v, query %v, hash %d", q.Name, q.Query, hash))
-				//if err := cl.ReplyNotice(fmt.Sprintf("skip executing this query, name %v, query %v, hash %d", q.Name, q.Query, hash)); err != nil {
-				//	return err
-				//}
-				//
-				//if _, ok := mp[hash]; ok {
-				//	tracelog.InfoLogger.Printf("redefinition %v with hash %d", q.Query, hash)
-				//}
-				//mp[hash] = PrepStmtDesc{
-				//	Name:  q.Name,
-				//	Query: q.Query,
-				//}
-				//
-				//// simply reply witch ok parse complete
-				//if err := cl.ReplyParseComplete(); err != nil {
-				//	return err
-				//}
-			} else {
-				tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
-				rst.AddQuery(msg)
-				if err := ProcessMessage(rst, false, cl, cmngr); err != nil {
-					return err
+			hash := murmur3.Sum64([]byte(q.Query))
+
+			tracelog.InfoLogger.Printf(fmt.Sprintf("name %v, query %v, hash %d", q.Name, q.Query, hash))
+			if err := cl.ReplyNotice(fmt.Sprintf("name %v, query %v, hash %d", q.Name, q.Query, hash)); err != nil {
+				return err
+			}
+
+			//if _, ok := mp[hash]; ok {
+			//	tracelog.InfoLogger.Printf("redefinition %v with hash %d", q.Query, hash)
+			//}
+			cl.StorePreparedStatement(q.Name, q.Query)
+
+			// simply reply witch ok parse complete
+			if err := cl.ReplyParseComplete(); err != nil {
+				return err
+			}
+
+			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
+				Name:  fmt.Sprintf("%d", hash),
+				Query: q.Query,
+			}); err != nil {
+				return err
+			}
+		case *pgproto3.Describe:
+			query := cl.PreparedStatementQueryByName(q.Name)
+			hash := murmur3.Sum64([]byte(query))
+
+			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
+				Name:  fmt.Sprintf("%d", hash),
+				Query: query,
+			}); err != nil {
+				return err
+			}
+
+			rst.AddQuery(&pgproto3.Describe{
+				Name: fmt.Sprintf("%d", hash),
+			})
+
+			var txst byte
+			var err error
+			if txst, err = rst.RelayStep(true, true); err != nil {
+				if rst.ShouldRetry(err) {
+					// TODO: fix retry logic
 				}
+				return err
+			}
+
+			if err := rst.CompleteRelay(txst); err != nil {
+				return err
+			}
+		case *pgproto3.Execute:
+			tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
+			rst.AddQuery(msg)
+			if err := rst.ProcessMessage(false, true, cl, cmngr); err != nil {
+				return err
+			}
+		case *pgproto3.Bind:
+
+			query := cl.PreparedStatementQueryByName(q.PreparedStatement)
+
+			hash := murmur3.Sum64([]byte(query))
+
+			if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
+				Name:  fmt.Sprintf("%d", hash),
+				Query: query,
+			}); err != nil {
+				return err
+			}
+
+			q.PreparedStatement = fmt.Sprintf("%d", hash)
+			rst.AddQuery(q)
+
+			var txst byte
+			var err error
+			if txst, err = rst.RelayStep(true, true); err != nil {
+				return err
+			}
+
+			if err := rst.CompleteRelay(txst); err != nil {
+				return err
 			}
 		case *pgproto3.Query:
 			tracelog.InfoLogger.Printf("received query %v", q.String)
 			rst.AddQuery(msg)
 			_ = rst.Parse(*q)
-			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
+			if err := rst.ProcessMessage(true, true, cl, cmngr); err != nil {
 				return err
 			}
 		default:

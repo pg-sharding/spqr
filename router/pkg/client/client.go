@@ -21,8 +21,14 @@ import (
 
 var NotRouted = xerrors.New("client not routed")
 
+type PreparedStatementMapper interface {
+	PreparedStatementQueryByName(name string) string
+	StorePreparedStatement(name, query string)
+}
+
 type RouterClient interface {
 	client.Client
+	PreparedStatementMapper
 
 	Server() server.Server
 	Unroute() error
@@ -34,7 +40,7 @@ type RouterClient interface {
 	Route() *route.Route
 	Rule() *config.FRRule
 
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool) (byte, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (byte, error)
 	ProcCopy(query *pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
@@ -49,12 +55,24 @@ type PsqlClient struct {
 
 	r *route.Route
 
-	id string
+	id        string
+	prepStmts map[string]string
 
 	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 	server     server.Server
+}
+
+func (cl *PsqlClient) StorePreparedStatement(name, query string) {
+	cl.prepStmts[name] = query
+}
+
+func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
+	if v, ok := cl.prepStmts[name]; ok {
+		return v
+	}
+	return ""
 }
 
 func (cl *PsqlClient) SetParam(p *pgproto3.ParameterStatus) error {
@@ -141,6 +159,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 		params:     make(map[string]string),
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},
+		prepStmts:  map[string]string{},
 	}
 	cl.id = "dwoiewiwe"
 
@@ -416,7 +435,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool) (byte, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (byte, error) {
 	tracelog.InfoLogger.Printf("process query %s", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
@@ -436,6 +455,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
+			// handle replyCl somehow
 			err = cl.Send(msg)
 			if err != nil {
 				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
@@ -468,11 +488,11 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			return v.TxStatus, nil
 		default:
 			tracelog.InfoLogger.Printf("got msg type: %T", v)
-			err = cl.Send(msg)
-			if err != nil {
-				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
-				////tracelog.InfoLogger.Println(msg)
-				return 0, err
+			if replyCl {
+				err = cl.Send(msg)
+				if err != nil {
+					return 0, err
+				}
 			}
 		}
 	}

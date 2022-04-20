@@ -1,23 +1,25 @@
 package main
 
 import (
-	"log"
-	"github.com/jmoiron/sqlx"
 	"context"
+	"flag"
+	"github.com/jmoiron/sqlx"
+	"log"
 	"sync"
 
-	"time"
 	_ "github.com/lib/pq"
-
+	"time"
 )
-
 
 var Q = `
 SELECT 1
 `
+var concurrency int
+var sleepTo int
+var updTx bool
 
 func prep(wg *sync.WaitGroup) {
-	ctx, cf := context.WithTimeout(context.Background(), 2 * time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cf()
 	defer wg.Done()
 
@@ -29,45 +31,74 @@ func prep(wg *sync.WaitGroup) {
 
 	defer db.Close()
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if updTx {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	stmt, err := tx.Prepare(Q);
+		defer tx.Rollback()
 
-	if err != nil {
-		log.Printf("Not ok: %v\n", err)
-		return;
-	}
+		stmt, err := tx.Prepare(Q)
 
-	for i := 0; i < 10; i ++  {
-		_, err = stmt.Exec()
 		if err != nil {
 			log.Printf("Not ok: %v\n", err)
-			return;
+			return
 		}
+
+		for i := 0; i < 10; i++ {
+			_, err = stmt.Exec()
+			if err != nil {
+				log.Printf("Not ok: %v\n", err)
+				return
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			log.Printf("Not ok: %v\n", err)
+			return
+		}
+
+		log.Println("OK")
+	} else {
+		stmt, err := db.Prepare(Q)
+
+		if err != nil {
+			log.Printf("Not ok: %v\n", err)
+			return
+		}
+
+		for i := 0; i < 10; i++ {
+			_, err = stmt.Exec()
+			if err != nil {
+				log.Printf("Not ok: %v\n", err)
+				return
+			}
+		}
+
+		log.Println("OK")
 	}
-
-	log.Println("OK")
-
-	tx.Commit()
 }
 
 func main() {
+	flag.IntVar(&concurrency, "concurrency", 1, "help msg")
+	flag.IntVar(&sleepTo, "sleep-to", 1, "help msg")
+	flag.BoolVar(&updTx, "upd-tx", true, "help msg")
+
+	flag.Parse()
 
 	for {
 		wg := sync.WaitGroup{}
 
-		cnt := 10
+		cnt := concurrency
 		wg.Add(cnt)
-		for i := 0; i < cnt; i ++ {
+		for i := 0; i < cnt; i++ {
 			go prep(&wg)
 		}
 		wg.Wait()
 
 		log.Println("ITER OK")
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Duration(sleepTo) * time.Second)
 	}
 }

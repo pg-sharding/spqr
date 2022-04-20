@@ -23,6 +23,12 @@ type MultiShardServer struct {
 	pool conn.ConnPool
 }
 
+func (m *MultiShardServer) HasPrepareStatement(hash uint64) bool {
+	panic("implement me")
+}
+
+func (m *MultiShardServer) PrepareStatement(hash uint64) {}
+
 func (m *MultiShardServer) Reset() error {
 	panic("implement me")
 }
@@ -187,7 +193,7 @@ func (m *MultiShardServer) Cleanup() error {
 	return nil
 }
 
-func (srv *MultiShardServer) Sync() int {
+func (m *MultiShardServer) Sync() int {
 	//TODO implement me
 	panic("implement me")
 }
