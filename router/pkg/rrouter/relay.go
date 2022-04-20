@@ -31,6 +31,7 @@ type RelayStateInteractor interface {
 	RelayStep(waitForResp bool) (byte, error)
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
 	CompleteRelay(txst byte) error
+	Close() error
 }
 
 type RelayStateImpl struct {
@@ -61,6 +62,14 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager C
 		Cl:           client,
 		manager:      manager,
 	}
+}
+
+func (rst *RelayStateImpl) Close() error {
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
+		tracelog.ErrorLogger.PrintError(err)
+		return err
+	}
+	return rst.Cl.Close()
 }
 
 func (rst *RelayStateImpl) TxActive() bool {

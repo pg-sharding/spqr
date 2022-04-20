@@ -20,13 +20,22 @@ type ShardServer struct {
 	shard datashard.Shard
 }
 
+func (srv *ShardServer) Sync() int {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (srv *ShardServer) Reset() error {
 	return nil
 }
 
-func (srv *ShardServer) UnrouteShard(shkey kr.ShardKey) error {
+func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 	if srv.shard.SHKey().Name != shkey.Name {
 		return xerrors.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
+	}
+
+	if err := srv.Cleanup(); err != nil {
+		return err
 	}
 
 	pgi := srv.shard.Instance()
@@ -80,23 +89,39 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	return msg, err
 }
 
+func (srv *ShardServer) fire(q string) error {
+	if err := srv.Send(&pgproto3.Query{
+		String: q,
+	}); err != nil {
+		return err
+	}
+
+	for {
+		if msg, err := srv.Receive(); err != nil {
+			return err
+		} else {
+			tracelog.InfoLogger.Printf("rollback resp %T", msg)
+
+			switch msg.(type) {
+			case *pgproto3.ReadyForQuery:
+				return nil
+			}
+		}
+	}
+}
+
 func (srv *ShardServer) Cleanup() error {
 
 	if srv.rule.PoolRollback {
-		if err := srv.Send(&pgproto3.Query{
-			String: "ROLLBACK",
-		}); err != nil {
+		if err := srv.fire("ROLLBACK"); err != nil {
 			return err
 		}
 	}
 
 	if srv.rule.PoolDiscard {
-		if err := srv.Send(&pgproto3.Query{
-			String: "DISCARD ALL",
-		}); err != nil {
+		if err := srv.fire("DISCARD ALL"); err != nil {
 			return err
 		}
-
 	}
 
 	return nil

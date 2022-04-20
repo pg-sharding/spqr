@@ -126,10 +126,9 @@ func initShards(rules config.RulesCfg) error {
 }
 
 func (r *RouterImpl) serv(netconn net.Conn) error {
-
 	psqlclient, err := r.Rrouter.PreRoute(netconn)
 	if err != nil {
-		_ = psqlclient.ReplyErrMsg(err.Error())
+		_ = netconn.Close()
 		return err
 	}
 

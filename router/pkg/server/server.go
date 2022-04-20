@@ -12,10 +12,11 @@ type Server interface {
 	Receive() (pgproto3.BackendMessage, error)
 
 	AddShard(shkey kr.ShardKey) error
-	UnrouteShard(sh kr.ShardKey) error
+	UnRouteShard(sh kr.ShardKey) error
 
 	AddTLSConf(cfg *tls.Config) error
 
 	Cleanup() error
 	Reset() error
+	Sync() int
 }

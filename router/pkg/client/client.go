@@ -38,6 +38,7 @@ type RouterClient interface {
 	ProcCopy(query *pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
+	Close() error
 }
 
 type PsqlClient struct {
@@ -239,7 +240,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		tracelog.ErrorLogger.FatalOnError(err)
 
 	case conn.CANCELREQ:
-		fallthrough
+		return xerrors.Errorf("cancel is not supported")
 	default:
 		return xerrors.Errorf("protocol number %d not supported", protoVer)
 	}
@@ -511,6 +512,19 @@ func (cl *PsqlClient) DefaultReply() error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (cl *PsqlClient) Close() error {
+
+	// check for tx status
+
+	// check for server sync
+	//for cl.server.Sync() != 0 {
+	//	// something
+	//
+	//}
 
 	return nil
 }

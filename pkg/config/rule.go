@@ -38,6 +38,8 @@ type FRRule struct {
 
 	PoolingMode           PoolingMode `json:"pooling_mode" yaml:"pooling_mode" toml:"pooling_mode"`
 	PoolPreparedStatement bool        `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
+	PoolDiscard           bool        `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
+	PoolRollback          bool        `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
 
 	// TODO: validate!
 	AuthRule AuthRule `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
