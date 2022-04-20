@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 
 	"golang.yandex/hasql"
 )
-
 
 //TODO mb mark broken shards/transfers in db?
 
@@ -37,8 +35,8 @@ $$ LANGUAGE plpgsql;
 		compare_like_numbers(?::bytea, comment_keys->>'key'::bytea) >= 0 and 
 		compare_like_numbers(comment_keys->>'key'::bytea, ?::bytea) < 0`
 
-	dropServer = `drop server if exists ? cascade;`
-	createServer = `CREATE server ? foreign data wrapper postgres_fdw OPTIONS (dbname ?, host ?, port ?)`
+	dropServer        = `drop server if exists ? cascade;`
+	createServer      = `CREATE server ? foreign data wrapper postgres_fdw OPTIONS (dbname ?, host ?, port ?)`
 	createUserMapping = `CREATE USER MAPPING IF NOT EXISTS FOR ? SERVER ? OPTIONS (user ?, password ?)`
 
 	selectTableSchema = `SELECT
@@ -51,7 +49,9 @@ $$ LANGUAGE plpgsql;
 	insertFromSelect = `insert into ? select k.* from dblink(?, 'Select * From keys where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0') as k(?);`
 
 	deleteKeys = `delete from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
-	sampleRows = `select key from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
+	// TODO: the original query fails
+	//sampleRows = `select key from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
+	sampleRows = `select id from x where $1 <= id and $2 > id`
 )
 
 type Column struct {
@@ -70,10 +70,10 @@ type DBStats struct {
 
 func (s *DBStats) toStats() Stats {
 	return Stats{
-		reads: s.reads,
-		writes: s.writes,
+		reads:      s.reads,
+		writes:     s.writes,
 		systemTime: s.systemTime,
-		userTime: s.userTime,
+		userTime:   s.userTime,
 	}
 }
 
@@ -86,12 +86,12 @@ type InstallationInterface interface {
 }
 
 type Installation struct {
-	dbName string
-	tableName string
-	username string
-	password string
+	dbName        string
+	tableName     string
+	username      string
+	password      string
 	shardClusters *map[int]*hasql.Cluster
-	retriesCount int
+	retriesCount  int
 }
 
 func (i *Installation) Init(dbName, tableName, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error {
@@ -108,7 +108,7 @@ func (i *Installation) Init(dbName, tableName, username, password string, shardC
 			continue
 		}
 
-		tx, err := conn.Begin()
+		tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 		if err != nil {
 			fmt.Println(err)
 			_ = conn.Close()
@@ -132,7 +132,7 @@ func (i *Installation) Init(dbName, tableName, username, password string, shardC
 	return nil
 }
 
-func (i *Installation) GetRangeStats(ctx context.Context, conn *sql.DB, keyRange KeyRange) (map[string]map[string]Stats, error) {
+func (i *Installation) GetRangeStats(ctx context.Context, conn *sql.Conn, keyRange KeyRange) (map[string]map[string]Stats, error) {
 	rows, err := conn.QueryContext(ctx, selectStatsFromRange, keyRange.left, keyRange.right)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (i *Installation) GetRangeStats(ctx context.Context, conn *sql.DB, keyRange
 func (i *Installation) GetHostStats(node hasql.Node, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	result := map[string]map[string]Stats{}
 
-	conn, err := GetNodeConn(node, i.retriesCount, defaultSleepMS)
+	conn, err := GetNodeConn(context.TODO(), node, i.retriesCount, defaultSleepMS)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 }
 
 func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverName string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond * time.Duration(defaultSleepMS))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(defaultSleepMS))
 	defer cancel()
 	sourceMaster, err := (*i.shardClusters)[fromShard.id].WaitForPrimary(ctx)
 	if err != nil {
@@ -221,7 +221,7 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -311,7 +311,7 @@ func (i *Installation) StartTransfer(task Action) error {
 
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -336,7 +336,7 @@ func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
 
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -354,15 +354,17 @@ func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
 	return nil
 }
 
-func (i *Installation) GetKeyDistanceByRange(conn *sql.DB, keyRange KeyRange) (*big.Int, error) {
-	rows, err := conn.QueryContext(context.Background(), sampleRows, i.tableName, keyRange.left, keyRange.right)
+func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) (*big.Int, error) {
+	//i.tableName
+	rows, err := conn.QueryContext(context.Background(), sampleRows, keyRange.left, keyRange.right)
 	if err != nil {
 		return nil, err
 	}
 	var key Key
-	greatestKey := ""
+	// TODO: values greatestKey and count are hardcoded to avoid panic
+	greatestKey := keyRange.right
 	firstOne := true
-	count := 0
+	count := 3
 	for rows.Next() {
 		err = rows.Scan(&key)
 		if err != nil {
@@ -375,13 +377,18 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.DB, keyRange KeyRange) (*
 		firstOne = false
 	}
 
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close keyRange rows: %w", err)
+	}
+
 	kr := KeyRange{
-		left: keyRange.left,
+		left:  keyRange.left,
 		right: greatestKey,
 	}
 	if count == 0 {
-		return big.NewInt(math.MaxInt64), nil
+		//return big.NewInt(math.MaxInt64), nil // TODO: uncomment when sampleRows query is working
 	}
+
 	return new(big.Int).Div(getLength(kr), big.NewInt(int64(count))), nil
 }
 

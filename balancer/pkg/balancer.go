@@ -3,14 +3,14 @@ package pkg
 import (
 	"errors"
 	"fmt"
-	//"github.com/wal-g/tracelog"
+	"math"
 	"math/big"
 	"math/rand"
-
-	"math"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/wal-g/tracelog"
 )
 
 // TODO use only one place to store strings
@@ -41,8 +41,8 @@ type Balancer struct {
 	splits int
 
 	installation InstallationInterface
-	coordinator CoordinatorInterface
-	db          DatabaseInterface
+	coordinator  CoordinatorInterface
+	db           DatabaseInterface
 	// no need to actionStageLock
 
 	reloadRequired bool
@@ -50,14 +50,14 @@ type Balancer struct {
 
 	averageStats Stats
 
-	retryTime time.Duration
-	workerRetryTime time.Duration
-	plannerRetryTime time.Duration
-	okLoad float64
-	loadK float64
+	retryTime         time.Duration
+	workerRetryTime   time.Duration
+	plannerRetryTime  time.Duration
+	okLoad            float64
+	loadK             float64
 	keysInOneTransfer *big.Int
-	workersCount int
-	plannerCount int
+	workersCount      int
+	plannerCount      int
 }
 
 //TODO think about schema changing
@@ -65,13 +65,13 @@ type Balancer struct {
 func (b *Balancer) Init(installation InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
 	//TODO actionStageMove constants somewhere, get values from config
 	b.retryTime = time.Second * 5
-	b.workerRetryTime = time.Millisecond * 1000
+	b.workerRetryTime = time.Millisecond * 10000
 	b.okLoad = 0.2
 	b.workersCount = 2
-	b.plannerCount = 100
+	b.plannerCount = 1
 	b.loadK = 0.9
 	b.keysInOneTransfer = new(big.Int).SetInt64(1000)
-	b.plannerRetryTime = time.Millisecond * 250
+	b.plannerRetryTime = time.Millisecond * 25000
 
 	b.installation = installation
 	b.coordinator = coordinator
@@ -90,7 +90,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	b.leftBorderToShard = map[string]Shard{}
 	b.leftBordersToRightBorders = map[string]string{}
 
-	var shardToKeyRanges map[Shard][]KeyRange
+	var shardToKeyRanges = make(map[Shard][]KeyRange)
 	var err error
 
 	for {
@@ -105,11 +105,16 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	}
 	// TODO parallel
 	for shard, keyRanges := range shardToKeyRanges {
-		shardDistances, _ := b.installation.GetKeyDistanceByRanges(shard, keyRanges)
+		shardDistances, err := b.installation.GetKeyDistanceByRanges(shard, keyRanges)
+		if err != nil {
+			tracelog.DebugLogger.PrintError(err)
+			continue
+		}
 		for rng, dist := range shardDistances {
 			b.keyDistanceByRanges[rng] = dist
 		}
 	}
+
 	keysAtAll := new(big.Int)
 	for sh, keyRanges := range shardToKeyRanges {
 		b.keysOnShard[sh] = 0
@@ -117,11 +122,18 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 		for _, kr := range keyRanges {
 			b.shardToLeftBorders[sh][kr.left] = true
 			b.leftBordersToRightBorders[kr.left] = kr.right
-			b.keysOnShard[sh] += uint64(new(big.Int).Div(getLength(kr), b.keyDistanceByRanges[kr.left]).Int64())
+
+			krLength := getLength(kr)
+			y := b.keyDistanceByRanges[kr.left]
+
+			tracelog.InfoLogger.Printf("krLength: %v, y %v", krLength, y)
+
+			b.keysOnShard[sh] += uint64(new(big.Int).Div(krLength, y).Int64())
 			// fmt.Println(sh.id, b.keysOnShard[sh], kr)
 		}
 		keysAtAll.Add(keysAtAll, new(big.Int).SetUint64(b.keysOnShard[sh]))
 	}
+
 	b.avgKeysOnShard = uint64(new(big.Int).Div(keysAtAll, new(big.Int).SetInt64(int64(len(shardToKeyRanges)))).Int64())
 	for shard, ranges := range b.shardToLeftBorders {
 		for left := range ranges {
@@ -129,11 +141,14 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 			b.leftBorders = append(b.leftBorders, left)
 		}
 	}
+
 	sort.Sort(LikeNumbers(b.leftBorders))
 	b.shards = []Shard{}
 	for sh := range b.shardToLeftBorders {
 		b.shards = append(b.shards, sh)
 	}
+
+	tracelog.InfoLogger.Printf("Shards: %#v", b.shards)
 
 	b.muReload.Lock()
 	b.reloadRequired = false
@@ -146,7 +161,7 @@ func findRange(s *string, left, right int, leftBorders *[]string) int {
 	//TODO ensure that right key range contains keys from smth to 'infinity'
 
 	middle := (right + left) / 2
-	if left == right - 1 {
+	if left == right-1 {
 		return left
 	}
 
@@ -163,7 +178,7 @@ func (b *Balancer) FindRange(s *string, leftBorders *[]string) int {
 	return findRange(s, 0, len(*leftBorders), leftBorders)
 }
 
-func (b *Balancer) tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup)  {
+func (b *Balancer) tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var keyRanges []KeyRange
 	for left := range b.shardToLeftBorders[shard] {
@@ -216,8 +231,8 @@ func (b *Balancer) getFoo(value, avgValue float64, useAbs bool) float64 {
 		// in that case, we increase res only if stat is greater than average one
 		delta = math.Abs(delta)
 	}
-	if delta > b.okLoad * avgValue {
-		res += math.Pow(delta / avgValue * 100, 2)
+	if delta > b.okLoad*avgValue {
+		res += math.Pow(delta/avgValue*100, 2)
 	}
 	return res
 }
@@ -305,8 +320,8 @@ func (b *Balancer) setTaskProfitByLength(startRange KeyRange, task *Task, keySta
 	rightNeighbor := ""
 	if leftGluing {
 		leftBorderIndex := b.FindRange(&task.keyRange.left, &b.leftBorders)
-		if leftBorderIndex - 1 >= 0 {
-			leftNeighbor = b.leftBorders[leftBorderIndex - 1]
+		if leftBorderIndex-1 >= 0 {
+			leftNeighbor = b.leftBorders[leftBorderIndex-1]
 		} else {
 			leftGluing = false
 		}
@@ -388,7 +403,7 @@ func (b *Balancer) brutTasksFromShard(shard Shard,
 			load := b.setTaskProfitByLoad(keyRange, &task, &shardStats)
 			space := b.setTaskProfitByKeysCount(keyRange, &task, &shardStats)
 			length := b.setTaskProfitByLength(keyRange, &task, &shardStats)
-			task.profit = (load + space) * b.loadK + length * (1 - b.loadK)
+			task.profit = (load+space)*b.loadK + length*(1-b.loadK)
 			if task.profit > -1 {
 				t1 := task
 				_ = b.setTaskProfitByLoad(keyRange, &t1, &shardStats)
@@ -441,22 +456,22 @@ func getAvgKeyDistance(keyDist1, keyDist2, len1, len2 *big.Int) *big.Int {
 		new(big.Int).Add(
 			len1,
 			len2,
-			),
+		),
 		new(big.Int).Mul(
 			keyDist1,
 			keyDist2,
-			),
-		)
+		),
+	)
 	den := new(big.Int).Add(
 		new(big.Int).Mul(
 			keyDist2,
 			len1,
-			),
+		),
 		new(big.Int).Mul(
 			keyDist1,
 			len2,
-			),
-		)
+		),
+	)
 	return new(big.Int).Div(num, den)
 }
 
@@ -519,10 +534,10 @@ func (b *Balancer) applyTask(task Task, shardStats *map[string]map[string]Stats)
 
 	for left := range removeLeftBorders {
 		i := b.FindRange(&left, &b.leftBorders)
-		if i == len(b.leftBorders) - 1 {
+		if i == len(b.leftBorders)-1 {
 			b.leftBorders = b.leftBorders[:i]
 		} else {
-			b.leftBorders = append(b.leftBorders[:i], b.leftBorders[i + 1:]...)
+			b.leftBorders = append(b.leftBorders[:i], b.leftBorders[i+1:]...)
 		}
 	}
 	for left := range appendLeftBorders {
@@ -684,29 +699,32 @@ func (b *Balancer) runWorker() {
 }
 
 func (b *Balancer) planTasks() {
-	shard := b.shards[len(b.shards) - 1]
+	shard := b.shards[len(b.shards)-1]
 	var keyRanges []KeyRange
 	for left := range b.shardToLeftBorders[shard] {
 		keyRanges = append(keyRanges, KeyRange{left, b.leftBordersToRightBorders[left]})
 	}
-	shardStats, err := b.installation.GetShardStats(shard, keyRanges)
 
+	shardStats, err := b.installation.GetShardStats(shard, keyRanges)
 	if err != nil {
-		//tracelog.ErrorLogger.PrintError(err)
-		fmt.Println("Error: ", err)
+		tracelog.ErrorLogger.PrintError(err)
+		//fmt.Println("Error: ", err)
 		return
 	}
+
+	tracelog.InfoLogger.Printf("Plan tasks. ShardStats: %#v", shardStats)
+
 	b.bestTask = Task{}
 	for i := 0; i < b.plannerCount; i++ {
 		b.brutTasksFromShard(shard, shardStats)
 		//fmt.Println("Plan (id ", b.bestTask.id, ") to actionStageMove ", b.bestTask.keyRange, " from ", b.bestTask.startKeyRange, " in shard ", b.bestTask.shardFrom,
 		//	" to shard ", b.bestTask.shardTo)
 
-		for _, sh := range b.shards{
+		for _, sh := range b.shards {
 			foo := b.getFooByShard(sh, false)
 			fmt.Println("Shard stats without abs", sh.id, foo)
 		}
-		for _, sh := range b.shards{
+		for _, sh := range b.shards {
 			foo := b.getFooByShard(sh, true)
 			fmt.Println("Shard stats with abs", sh.id, foo)
 		}
@@ -757,14 +775,13 @@ func (b *Balancer) getFooByShard(shard Shard, useAbs bool) float64 {
 
 //TODO add function MoveAllDataFromShard
 
-
 func (b *Balancer) BrutForceStrategy() {
 	var err error
 
 	// TODO: actionStageMerge all possible kr's? Or not.
 
 	// TODO: mb we should wait til new stats is going to be collected.
-	// If not, after actionStageTransfer we will see, that transfered range is not loaded, but it might be not true
+	// If not, after actionStageTransfer we will see, that transferred range is not loaded, but it might be not true
 
 	b.muReload.Lock()
 	b.reloadRequired = true
@@ -778,15 +795,18 @@ func (b *Balancer) BrutForceStrategy() {
 		fmt.Println("Error: mark actions as not running ", err)
 		time.Sleep(b.plannerRetryTime)
 	}
+
 	for j := 0; j < b.workersCount; j++ {
 		fmt.Println("add worker")
 		go b.runWorker()
 	}
+
 	for {
 		b.muReload.Lock()
 		reload := b.reloadRequired
 		b.muReload.Unlock()
 		if !reload {
+			tracelog.InfoLogger.Println("Check coordinator for reloading requirements")
 			reload, err = b.coordinator.isReloadRequired()
 			if err != nil {
 				fmt.Println("Error while spqr.isReloadRequired call: ", err)
@@ -794,13 +814,14 @@ func (b *Balancer) BrutForceStrategy() {
 			}
 		}
 		if reload {
-			len, err := b.db.Len()
+			activeTaskCounter, err := b.db.Len()
 			if err != nil {
 				fmt.Println("Error while selecting count of active tasks: ", err)
 				b.reloadRequired = true
 				continue
 			}
-			fmt.Println("Reload, tasks ", len)
+
+			fmt.Println("Reload, tasks ", activeTaskCounter)
 			b.Init(b.installation, b.coordinator, b.db)
 			b.updateAllStats()
 			fmt.Println("Reload actionStageDone")
@@ -810,6 +831,7 @@ func (b *Balancer) BrutForceStrategy() {
 			return b.getFooByShard(b.shards[i], false) < b.getFooByShard(b.shards[j], false)
 		})
 		b.planTasks()
+
 		var length uint64
 		for {
 			fmt.Println("wait for workers")
@@ -820,7 +842,7 @@ func (b *Balancer) BrutForceStrategy() {
 				continue
 			}
 			if length == 0 {
-				fmt.Println("Tasks 0")
+				fmt.Println("No active tasks")
 				break
 			}
 			time.Sleep(b.plannerRetryTime)

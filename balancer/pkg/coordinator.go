@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
@@ -23,11 +25,11 @@ type CoordinatorInterface interface {
 }
 
 type Coordinator struct {
-	maxRetriesCount int
-	addr string
-	balancerServiceClient routerproto.BalancerServiceClient
-	shardServiceClient routerproto.ShardServiceClient
-	keyRangeServiceClient routerproto.KeyRangeServiceClient
+	maxRetriesCount        int
+	addr                   string
+	balancerServiceClient  routerproto.BalancerServiceClient
+	shardServiceClient     routerproto.ShardServiceClient
+	keyRangeServiceClient  routerproto.KeyRangeServiceClient
 	operationServiceClient routerproto.OperationServiceClient
 }
 
@@ -84,7 +86,7 @@ func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
 			return nil, err
 		}
 
-		res[id] = routerproto.ShardInfo{ Hosts: respShard.ShardInfo.Hosts, Port: respShard.ShardInfo.Port }
+		res[id] = routerproto.ShardInfo{Hosts: respShard.ShardInfo.Hosts, Port: respShard.ShardInfo.Port}
 	}
 
 	return &res, nil
@@ -134,10 +136,14 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 		res[shard] = append(res[shard], KeyRange{left: kr.KeyRange.LowerBound, right: kr.KeyRange.UpperBound})
 	}
 
+	tracelog.DebugLogger.Printf("List Key ranges: %v\n", res)
+
 	return res, nil
 }
 
 func (c *Coordinator) isReloadRequired() (bool, error) {
+	return false, nil //TODO: temporary
+
 	resp, err := c.balancerServiceClient.ReloadRequired(context.Background(), &routerproto.ReloadRequest{})
 	if err != nil {
 		return false, err

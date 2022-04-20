@@ -55,14 +55,14 @@ type DatabaseInterface interface {
 //TODO retries? not sure if required
 
 var (
-	actionsDBUser = "balancer"
-	actionsDBName = "actions"
-	//actionsDBName        = "postgres"
-	//actionsDBUser        = "user1"
+	//actionsDBUser = "balancer"
+	//actionsDBName = "actions"
+	actionsDBName        = "postgres"
+	actionsDBUser        = "user1"
 	actionsDBPassword    = ""
 	actionsDBSslMode     = "disable"
 	actionsDBSslRootCert = ""
-	defaultSleepMS       = 1000
+	defaultSleepMS       = 10000
 	defaultPort          = 5432
 
 	//TODO add table and db to actions table? Current configuration will crash on many installation with many tables/databases
@@ -90,21 +90,21 @@ var (
 		shard_from,
 		shard_to
 	) values (
-		?,
-		?,
-		?,
-		?,
-		?,
-		?,
-		?,
-		?
+		$1,
+		$2,
+		$3,
+		$4,
+		$5,
+		$6,
+		$7,
+		$8
 	)`
 
-	updateAction        = `update actions set action_stage = ?, is_running = ? where id = ? and table_name = ? and dbname = ?`
-	markAllAsNotRunning = `update actions set is_running = false where table_name = ? and dbname = ?`
-	deleteAction        = `delete from actions where id = ? and table_name = ? and dbname = ?`
-	selectOneAction     = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to where is_running = FALSE and table_name = ? and dbname = ?`
-	actionsCount        = `select count(*) from actions where is_running = false and table_name = ? and dbname = ?`
+	updateAction        = `update actions set action_stage = $1, is_running = $2 where id = $3 and table_name = $4 and dbname = $5`
+	markAllAsNotRunning = `update actions set is_running = false where table_name = $1 and dbname = $2`
+	deleteAction        = `delete from actions where id = $1 and table_name = $2 and dbname = $3`
+	selectOneAction     = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to from actions where is_running = FALSE and table_name = $1 and dbname = $2`
+	actionsCount        = `select count(*) from actions where is_running = false and table_name = $1 and dbname = $2`
 )
 
 type Database struct {
@@ -132,13 +132,14 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 	for _, addr := range addrs {
 		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert, port)
 		tracelog.InfoLogger.Printf("Connection string: %v", connString)
-		node, err := sql.Open("pgx", connString)
+
+		db, err := sql.Open("pgx", connString)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open pgx connection %v: %v", connString, err)
 		}
 		// TODO may be some connections settings here?
 
-		nodes = append(nodes, hasql.NewNode(addr, node))
+		nodes = append(nodes, hasql.NewNode(addr, db))
 	}
 
 	tracelog.InfoLogger.Printf("Nodes: %v", nodes)
@@ -187,30 +188,26 @@ func ConnString(addr, dbname, user, password, sslMode, sslRootCert string, port 
 	return strings.Join(connParams, " ")
 }
 
-func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.DB, error) {
+func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(defaultSleepMS))
 	defer cancel()
 	node, err := cluster.WaitForPrimary(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("there is no node with role master: %s", err)
 	}
-	return GetNodeConn(node, retries, sleepMS)
+	return GetNodeConn(context.TODO(), node, retries, sleepMS)
 }
 
-func GetNodeConn(node hasql.Node, retries int, sleepMS int) (*sql.DB, error) {
+func GetNodeConn(ctx context.Context, node hasql.Node, retries int, sleepMS int) (*sql.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(sleepMS))
 	defer cancel()
-	for i := 0; i < retries; i++ {
 
-		err := node.DB().PingContext(ctx)
-		if err != nil {
-			fmt.Println("Master connection is dead")
-			time.Sleep(time.Millisecond * time.Duration(sleepMS))
-			continue
-		}
-		return node.DB(), nil
+	conn, err := node.DB().Conn(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connection with master node: %v", err)
 	}
-	return nil, fmt.Errorf("failed to get connection with master node")
+
+	return conn, nil
 }
 
 func (d *Database) Init(addrs []string, retriesCount int, dbname, tableName, actionsDBPassword string) error {
@@ -232,13 +229,14 @@ func (d *Database) Init(addrs []string, retriesCount int, dbname, tableName, act
 	d.dbname = dbname
 	d.tableName = tableName
 	d.retriesCount = retriesCount
+
 	conn, err := GetMasterConn(d.cluster, d.retriesCount, defaultSleepMS)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -265,7 +263,7 @@ func (d *Database) Insert(action *Action) error {
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -277,8 +275,8 @@ func (d *Database) Insert(action *Action) error {
 		action.isRunning,
 		action.keyRange.left,
 		action.keyRange.right,
-		action.fromShard,
-		action.toShard,
+		action.fromShard.id,
+		action.toShard.id,
 	)
 	if err != nil {
 		_ = tx.Rollback()
@@ -300,7 +298,7 @@ func (d *Database) Update(action *Action) error {
 		return err
 	}
 	defer conn.Close()
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -327,7 +325,7 @@ func (d *Database) Delete(action *Action) error {
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -354,12 +352,14 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		return Action{}, false, err
 	}
 	defer conn.Close()
+
 	dbAct := dbAction{}
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return Action{}, false, err
 	}
+
 	rows, err := tx.QueryContext(ctx, selectOneAction, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
@@ -368,7 +368,16 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 
 	var act Action
 	for rows.Next() {
-		err = rows.Scan(&dbAct)
+		err = rows.Scan(
+			&dbAct.id,
+			&dbAct.dbname,
+			&dbAct.actionStage,
+			&dbAct.isRunning,
+			&dbAct.leftBound,
+			&dbAct.rightBound,
+			&dbAct.shardFrom,
+			&dbAct.shardTo,
+		)
 		if err != nil {
 			return Action{}, false, err
 		}
@@ -376,11 +385,15 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		break
 	}
 
+	if err := rows.Close(); err != nil {
+		return Action{}, false, fmt.Errorf("failed to close action rows: %w", err)
+	}
+
 	_, err = tx.Exec(updateAction, act.actionStage, true, act.id, d.tableName, d.dbname)
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
-		return Action{}, false, err
+		return Action{}, false, fmt.Errorf("failed to update an action row: %w", err)
 	}
 
 	err = tx.Commit()
@@ -399,7 +412,7 @@ func (d *Database) MarkAllNotRunning() error {
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -426,7 +439,7 @@ func (d *Database) Len() (uint64, error) {
 	}
 	defer conn.Close()
 	count := uint64(0)
-	err = conn.QueryRow(actionsCount, d.tableName, d.dbname).Scan(&count)
+	err = conn.QueryRowContext(context.TODO(), actionsCount, d.tableName, d.dbname).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
