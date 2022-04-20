@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
@@ -16,6 +17,12 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
 )
+
+type ShardingKey struct {
+	column     string
+	lowerBound interface{}
+	upperBound interface{}
+}
 
 type ProxyQrouter struct {
 	Rules []*shrule.ShardingRule
@@ -405,9 +412,81 @@ func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 }
 
 var ParseError = xerrors.New("parsing stmt error")
+var parsingError = xerrors.New("too complex parse tree")
+
+func ParseBound(node *pgquery.Node) (interface{}, error) {
+	switch q := node.Node.(type) {
+	case *pgquery.Node_Integer:
+		return q.Integer.Ival, nil
+	case *pgquery.Node_String_:
+		return q.String_.Str, nil
+	case *pgquery.Node_AArrayExpr:
+		// ??? something
+
+		reut
+	default:
+		return nil, parsingError
+	}
+}
+
+func ReparseColname(node *pgquery.Node) (string, error) {
+	switch q := node.Node.(type) {
+	case *pgquery.Node_String_:
+		return q.String_.Str, nil
+	default:
+		return "", parsingError
+	}
+}
+
+func (qr *ProxyQrouter) ParseSingleShardingKey(left *pgquery.Node, right *pgquery.Node) ShardingKey {
+	var ret ShardingKey
+
+	switch q := right.Node.(type) {
+	case *pgquery.Node_AConst:
+		ret.key = qr.ParseVal(q.AConst.Val)
+	}
+
+	return ret
+}
+
+func (qr *ProxyQrouter) ReparseShardingKeys() []ShardingKey {
+	var ret []ShardingKey
+
+	return ret
+}
+
+func (qr *ProxyQrouter) ParseNode(node *pgquery.Node) RoutingState {
+	switch q := node.Node.(type) {
+	case *pgquery.Node_AExpr:
+		switch *q.AExpr.Kind.Enum() {
+		case pgquery.A_Expr_Kind_AEXPR_OP:
+			shkey := qr.ParseSingleShardingKey(q.AExpr.Lexpr, q.AExpr.Rexpr)
+			switch op := q.AExpr.Name[0].Node.(type) {
+			case pgquery.Node_String_:
+				if op.String_.Str == "=" {
+					//
+				}
+			}
+		default:
+		}
+	}
+
+	return SkipRoutingState{}
+}
 
 func (qr *ProxyQrouter) Route(q string) (RoutingState, error) {
 	tracelog.InfoLogger.Printf("routing by %s", q)
+
+	pstmt, err := pgquery.Parse(q)
+
+	for _, node := range pstmt.GetStmts() {
+		switch q := node.Stmt.Node.(type) {
+		case *pgquery.Node_SelectStmt:
+			qr.ParseNode(q.SelectStmt.WhereClause)
+		default:
+
+		}
+	}
 
 	parsedStmt, err := sqlparser.Parse(q)
 	if err != nil {
