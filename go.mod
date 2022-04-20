@@ -10,6 +10,7 @@ require (
 	github.com/lib/pq v1.10.3
 	github.com/libp2p/go-reuseport v0.1.0
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/pganalyze/pg_query_go/v2 v2.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.2.1
 	github.com/uber/jaeger-client-go v2.29.1+incompatible
