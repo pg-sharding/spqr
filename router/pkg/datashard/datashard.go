@@ -141,9 +141,9 @@ func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		case *pgproto3.ParameterStatus:
-			asynctracelog.Printf("ignored paramtes status %v %v", v.Name, v.Value)
+			asynctracelog.Printf("ignored parameter status %v %v", v.Name, v.Value)
 		case *pgproto3.BackendKeyData:
-			asynctracelog.Printf("ingored backend key data %v %v", v.ProcessID, v.SecretKey)
+			asynctracelog.Printf("ignored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
 			asynctracelog.Printf("unexpected msg type received %T", v)
 		}

@@ -17,7 +17,7 @@ const CANCELREQ = 80877102
 const TXIDLE = 73
 const TXERR = 69
 const TXACT = 84
-const TXCOPY = 1
+const TXCONT = 1
 
 type InstanceStatus string
 

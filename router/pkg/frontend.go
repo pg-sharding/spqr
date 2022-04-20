@@ -24,7 +24,7 @@ type PrepStmtDesc struct {
 	Query string
 }
 
-func ProcessMessage(rst rrouter.RelayStateInteractor, msg pgproto3.FrontendMessage, cl client.RouterClient, cmngr rrouter.ConnManager) error {
+func ProcessMessage(rst rrouter.RelayStateInteractor, waitForResp bool, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 	// txactive == 0 || activeSh == nil
 	if cmngr.ValidateReRoute(rst) {
 		switch err := rst.Reroute(); err {
@@ -49,7 +49,7 @@ func ProcessMessage(rst rrouter.RelayStateInteractor, msg pgproto3.FrontendMessa
 
 	var txst byte
 	var err error
-	if txst, err = rst.RelayStep(false); err != nil {
+	if txst, err = rst.RelayStep(waitForResp); err != nil {
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
@@ -84,10 +84,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			return err
 		}
 
+		tracelog.InfoLogger.Printf("received %T msg", msg)
+
 		switch q := msg.(type) {
 		case *pgproto3.Sync:
 			rst.AddQuery(msg)
-			if err := ProcessMessage(rst, msg, cl, cmngr); err != nil {
+			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
 				return err
 			}
 		case *pgproto3.Describe, *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind:
@@ -115,7 +117,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			} else {
 				tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
 				rst.AddQuery(msg)
-				if err := ProcessMessage(rst, msg, cl, cmngr); err != nil {
+				if err := ProcessMessage(rst, false, cl, cmngr); err != nil {
 					return err
 				}
 			}
@@ -123,11 +125,10 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			asynctracelog.Printf("received query %v", q.String)
 			rst.AddQuery(msg)
 			_ = rst.Parse(*q)
-			if err := ProcessMessage(rst, msg, cl, cmngr); err != nil {
+			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
 				return err
 			}
 		default:
-			asynctracelog.Printf("received msg type %T", q)
 		}
 	}
 }
