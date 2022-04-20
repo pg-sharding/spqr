@@ -29,7 +29,12 @@ func prep(wg *sync.WaitGroup) {
 
 	defer db.Close()
 
-	stmt, err := db.Prepare(Q);
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	stmt, err := tx.Prepare(Q);
 
 	if err != nil {
 		log.Printf("Not ok: %v\n", err)
@@ -45,6 +50,8 @@ func prep(wg *sync.WaitGroup) {
 	}
 
 	log.Println("OK")
+
+	tx.Commit()
 }
 
 func main() {
@@ -52,8 +59,9 @@ func main() {
 	for {
 		wg := sync.WaitGroup{}
 
-		wg.Add(1)
-		for i := 0; i < 1; i ++ {
+		cnt := 10
+		wg.Add(cnt)
+		for i := 0; i < cnt; i ++ {
 			go prep(&wg)
 		}
 		wg.Wait()
@@ -61,6 +69,5 @@ func main() {
 		log.Println("ITER OK")
 
 		time.Sleep(1 * time.Second)
-		return
 	}
 }

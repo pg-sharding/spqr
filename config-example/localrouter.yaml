@@ -32,6 +32,8 @@ rules:
             usr: reshke
             db: regression
           pooling_mode: 'TRANSACTION'
+          pool_discard: true
+          pool_rollback: true
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
@@ -39,6 +41,8 @@ rules:
             usr: reshke
             db: postgres
           pooling_mode: 'TRANSACTION'
+          pool_discard: true
+          pool_rollback: true
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
@@ -46,6 +50,8 @@ rules:
             usr: user1
             db: db1
           pooling_mode: 'TRANSACTION'
+          pool_discard: true
+          pool_rollback: true
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
@@ -53,21 +59,21 @@ rules:
         - route_key_cfg:
             usr: reshke
             db: db1
-            pool_discard: true
-            pool_rollback: true
+          pool_discard: true
+          pool_rollback: true
         - route_key_cfg:
             usr: reshke
             db: regression
-            pool_discard: true
-            pool_rollback: true
+          pool_discard: true
+          pool_rollback: true
         - route_key_cfg:
             usr: reshke
             db: postgres
-            pool_discard: true
-            pool_rollback: true
+          pool_discard: true
+          pool_rollback: true
         - route_key_cfg:
             usr: user1
             db: db1
-            pool_discard: true
-            pool_rollback: true
+          pool_discard: true
+          pool_rollback: true
 

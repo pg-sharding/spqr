@@ -43,7 +43,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 	return nil
 }
 
-func (m *MultiShardServer) UnrouteShard(sh kr.ShardKey) error {
+func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) error {
 
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
@@ -185,6 +185,11 @@ func (m *MultiShardServer) Cleanup() error {
 	}
 
 	return nil
+}
+
+func (srv *MultiShardServer) Sync() int {
+	//TODO implement me
+	panic("implement me")
 }
 
 var _ Server = &MultiShardServer{}

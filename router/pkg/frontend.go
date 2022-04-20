@@ -65,9 +65,9 @@ func ProcessMessage(rst rrouter.RelayStateInteractor, waitForResp bool, cl clien
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
-	asynctracelog.Printf("process Frontend for user %s %s", cl.Usr(), cl.DB())
+	tracelog.InfoLogger.Printf("process frontend for route %s %s", cl.Usr(), cl.DB())
 
-	_ = cl.ReplyNotice(fmt.Sprintf("process Frontend for user %s %s", cl.Usr(), cl.DB()))
+	_ = cl.ReplyNotice(fmt.Sprintf("process frontend for route %s %s", cl.Usr(), cl.DB()))
 
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
@@ -75,12 +75,16 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 	for {
 		msg, err := cl.Receive()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
 
-			asynctracelog.Printf("failed to receive msg %w", err)
+		switch err {
+		case io.ErrUnexpectedEOF:
+			fallthrough
+		case io.EOF:
+			tracelog.InfoLogger.Printf("failed to receive msg, disconnect client")
+			return rst.Close()
+		case nil:
+			// ok
+		default:
 			return err
 		}
 
@@ -122,7 +126,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				}
 			}
 		case *pgproto3.Query:
-			asynctracelog.Printf("received query %v", q.String)
+			tracelog.InfoLogger.Printf("received query %v", q.String)
 			rst.AddQuery(msg)
 			_ = rst.Parse(*q)
 			if err := ProcessMessage(rst, true, cl, cmngr); err != nil {
