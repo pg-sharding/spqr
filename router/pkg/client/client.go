@@ -67,7 +67,7 @@ type PsqlClient struct {
 }
 
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process query %s", query)
+	tracelog.InfoLogger.Printf("process parse %v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -519,6 +519,14 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 		case *pgproto3.ReadyForQuery:
 			return v.TxStatus, nil
+		case *pgproto3.ErrorResponse:
+			if replyCl {
+				err = cl.Send(msg)
+				if err != nil {
+					return 0, err
+				}
+			}
+
 		default:
 			tracelog.InfoLogger.Printf("got msg type: %T", v)
 			if replyCl {
@@ -532,7 +540,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 }
 
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process query %s", query)
+	tracelog.InfoLogger.Printf("process command %+v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
