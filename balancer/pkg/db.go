@@ -367,6 +367,7 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 	}
 
 	var act Action
+
 	for rows.Next() {
 		err = rows.Scan(
 			&dbAct.id,
@@ -385,6 +386,10 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		break
 	}
 
+	if err := rows.Err(); err != nil {
+		return Action{}, false, fmt.Errorf("rows error: %w", err)
+	}
+
 	if err := rows.Close(); err != nil {
 		return Action{}, false, fmt.Errorf("failed to close action rows: %w", err)
 	}
@@ -401,7 +406,11 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 		return Action{}, false, err
 	}
 
-	return Action{}, false, nil
+	if act.id == 0 {
+		return Action{}, false, nil
+	}
+
+	return act, true, nil
 
 }
 

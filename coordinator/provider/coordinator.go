@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -167,11 +168,60 @@ func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, err
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-
 		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
 	}
 
 	return keyr, nil
+}
+
+func (qc *qdbCoordinator) Lock(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+	keyRangeDB, err := qc.db.Lock(ctx, keyRangeID)
+	if err != nil {
+		return nil, err
+	}
+
+	keyRange := kr.KeyRangeFromDB(keyRangeDB)
+
+	return keyRange, nil
+}
+
+func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
+	return qc.db.UnLock(ctx, keyRangeID)
+}
+
+// TODO: check bounds and keyRangeID (sourceID)
+func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+	var krOld *qdb.KeyRange
+	var err error
+
+	tracelog.InfoLogger.Printf("Split request %#v", req)
+
+	if krOld, err = qc.db.Lock(ctx, req.SourceID); err != nil {
+		return err
+	}
+	defer qc.db.UnLock(ctx, req.SourceID)
+
+	krNew := kr.KeyRangeFromDB(
+		&qdb.KeyRange{
+			LowerBound: req.Bound,
+			UpperBound: krOld.UpperBound,
+			KeyRangeID: req.SourceID,
+		},
+	)
+
+	tracelog.InfoLogger.Printf("New key range %#v", krNew)
+
+	if err := qc.db.AddKeyRange(ctx, krNew.ToSQL()); err != nil {
+		return fmt.Errorf("failed to add a new key range: %w", err)
+	}
+
+	krOld.UpperBound = req.Bound
+
+	if err := qc.db.UpdateKeyRange(ctx, krOld); err != nil {
+		return fmt.Errorf("failed to update an old key range: %w", err)
+	}
+
+	return nil
 }
 
 func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {

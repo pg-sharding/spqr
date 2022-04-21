@@ -584,18 +584,21 @@ func (b *Balancer) runTask(task *Action) error {
 	var err error
 
 	for task.actionStage != actionStageDone {
+		tracelog.InfoLogger.Printf("Action stage: %v", task.actionStage)
+
 		switch task.actionStage {
 		case actionStagePlan:
-			err = b.coordinator.splitKeyRange(&task.keyRange.left)
-			if err != nil {
-				fmt.Println("Error: actionStageSplit problems with ", task.keyRange.left, err)
-				return err
-			}
-			err = b.coordinator.splitKeyRange(&task.keyRange.right)
-			if err != nil {
-				fmt.Println("Error: actionStageSplit problems with ", task.keyRange.right, err)
-				return err
-			}
+			// TODO: uncomment. Skip splitting for MVP
+			//err = b.coordinator.splitKeyRange(&task.keyRange.left)
+			//if err != nil {
+			//	fmt.Println("Error: actionStageSplit problems with ", task.keyRange.left, err)
+			//	return err
+			//}
+			//err = b.coordinator.splitKeyRange(&task.keyRange.right)
+			//if err != nil {
+			//	fmt.Println("Error: actionStageSplit problems with ", task.keyRange.right, err)
+			//	return err
+			//}
 			task.actionStage = actionStageSplit
 		case actionStageSplit:
 			//TODO ensure that task.KeyRange in one actual range
