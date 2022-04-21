@@ -74,6 +74,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				default:
 					return nil
 				}
+				return nil
 			}
 
 			switch q := msg.(type) {

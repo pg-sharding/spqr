@@ -108,6 +108,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager C
 func (rst *RelayStateImpl) Close() error {
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
 		tracelog.ErrorLogger.PrintError(err)
+		_ = rst.Cl.Close()
 		return err
 	}
 	return rst.Cl.Close()

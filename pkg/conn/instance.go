@@ -3,6 +3,7 @@ package conn
 import (
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -133,7 +134,7 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 		}
 		return false, nil
 	default:
-		return false, xerrors.Errorf("unexcepted")
+		return false, fmt.Errorf("unexcepted")
 	}
 }
 
@@ -149,7 +150,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	_, err := pgi.conn.Write(b)
 
 	if err != nil {
-		return xerrors.Errorf("ReqBackendSsl: %w", err)
+		return fmt.Errorf("ReqBackendSsl: %w", err)
 	}
 
 	resp := make([]byte, 1)
@@ -159,8 +160,6 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	}
 
 	sym := resp[0]
-
-	tracelog.InfoLogger.Printf("recv sym %v", sym)
 
 	if sym != 'S' {
 		return xerrors.New("SSL should be enabled")

@@ -159,6 +159,7 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
+	return nil
 	if v, ok := cl.params["client_min_messages"]; ok {
 		switch v {
 		case "error":
@@ -613,16 +614,7 @@ func (cl *PsqlClient) DefaultReply() error {
 }
 
 func (cl *PsqlClient) Close() error {
-
-	// check for tx status
-
-	// check for server sync
-	//for cl.server.Sync() != 0 {
-	//	// something
-	//
-	//}
-
-	return nil
+	return cl.conn.Close()
 }
 
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {

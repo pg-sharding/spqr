@@ -42,7 +42,7 @@ func (srv *ShardServer) Reset() error {
 
 func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 	if srv.shard.SHKey().Name != shkey.Name {
-		return xerrors.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
+		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
 	if err := srv.Cleanup(); err != nil {
@@ -50,7 +50,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 	}
 
 	pgi := srv.shard.Instance()
-	fmt.Printf("put connection to %v back to pool\n", pgi.Hostname())
+	tracelog.InfoLogger.Printf("put connection to %v back to pool\n", pgi.Hostname())
 
 	if err := srv.pool.Put(shkey, pgi); err != nil {
 		return err
@@ -91,7 +91,7 @@ func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("send msg to server %T", query)
+	tracelog.InfoLogger.Printf("send msg to server %+v", query)
 	return srv.shard.Send(query)
 }
 
@@ -105,6 +105,7 @@ func (srv *ShardServer) fire(q string) error {
 	if err := srv.Send(&pgproto3.Query{
 		String: q,
 	}); err != nil {
+		tracelog.InfoLogger.Printf("error firing request to conn")
 		return err
 	}
 
@@ -123,7 +124,6 @@ func (srv *ShardServer) fire(q string) error {
 }
 
 func (srv *ShardServer) Cleanup() error {
-
 	if srv.rule.PoolRollback {
 		if err := srv.fire("ROLLBACK"); err != nil {
 			return err
