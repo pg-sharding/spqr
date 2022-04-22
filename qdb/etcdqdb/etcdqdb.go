@@ -75,7 +75,7 @@ const (
 )
 
 func keyLockPath(key string) string {
-	return path.Join(key, "lock")
+	return path.Join("lock", key)
 }
 
 func keyRangeNodePath(key string) string {
@@ -196,7 +196,6 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 		}
 		switch len(resp.Kvs) {
 		case 0:
-
 			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(keyRangeID)), "locked")
 			if err != nil {
 				return nil, err
@@ -218,9 +217,14 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 	for {
 		select {
 		case <-timer.C:
-			if val, err := fetcher(ctx, sess, keyRangeID); err != nil {
-				return val, nil
+			val, err := fetcher(ctx, sess, keyRangeID)
+			if err != nil {
+				tracelog.InfoLogger.Printf("Error while fetching %v", err)
+				continue
 			}
+
+			return val, nil
+
 		case <-fetchCtx.Done():
 			return nil, xerrors.Errorf("deadlines exceeded")
 		}

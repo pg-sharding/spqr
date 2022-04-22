@@ -35,9 +35,9 @@ $$ LANGUAGE plpgsql;
 		compare_like_numbers(?::bytea, comment_keys->>'key'::bytea) >= 0 and 
 		compare_like_numbers(comment_keys->>'key'::bytea, ?::bytea) < 0`
 
-	dropServer        = `drop server if exists ? cascade;`
-	createServer      = `CREATE server ? foreign data wrapper postgres_fdw OPTIONS (dbname ?, host ?, port ?)`
-	createUserMapping = `CREATE USER MAPPING IF NOT EXISTS FOR ? SERVER ? OPTIONS (user ?, password ?)`
+	dropServer        = "drop server if exists %s cascade;"
+	createServer      = `CREATE server %s foreign data wrapper postgres_fdw OPTIONS (dbname '%s', host '%s', port '%d')`
+	createUserMapping = `CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s OPTIONS (user '%s', password '%s')`
 
 	selectTableSchema = `SELECT
 		column_name,
@@ -45,7 +45,7 @@ $$ LANGUAGE plpgsql;
 	FROM
 		information_schema.columns
 	WHERE
-		table_name = ?`
+		table_name = $1`
 	insertFromSelect = `insert into ? select k.* from dblink(?, 'Select * From keys where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0') as k(?);`
 
 	deleteKeys = `delete from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
@@ -226,15 +226,16 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 		fmt.Println(err)
 		return err
 	}
-	_, err = tx.Exec(dropServer, serverName)
+	_, err = tx.Exec(fmt.Sprintf(dropServer, serverName))
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
 		return err
 	}
+
 	// split sourceMaster.Addr() by : to host and port
 	host, port := AddrToHostPort(sourceMaster.Addr())
-	_, err = tx.Exec(createServer, serverName, i.dbName, host, port)
+	_, err = tx.Exec(fmt.Sprintf(createServer, serverName, i.dbName, host, port))
 
 	if err != nil {
 		_ = tx.Rollback()
@@ -242,11 +243,11 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 		return err
 	}
 
-	_, err = tx.Exec(createUserMapping,
+	_, err = tx.Exec(fmt.Sprintf(createUserMapping,
 		i.username,
 		serverName,
 		i.username,
-		i.password)
+		i.password))
 
 	err = tx.Commit()
 	if err != nil {

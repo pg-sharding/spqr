@@ -144,7 +144,6 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 }
 
 func (qr *ProxyRouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-
 	var krOld *qdb.KeyRange
 	var err error
 

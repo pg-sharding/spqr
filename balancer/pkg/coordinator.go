@@ -98,6 +98,12 @@ func (c *Coordinator) waitTilDone(operationID string) error {
 	request := &routerproto.GetOperationRequest{
 		OperationId: operationID,
 	}
+
+	// TODO: skip waiting because the operation service is not implemented.
+	time.Sleep(time.Second)
+
+	return nil
+
 	for {
 		resp, err := c.operationServiceClient.GetOperation(ctx, request)
 		if err == nil {
@@ -142,7 +148,7 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 }
 
 func (c *Coordinator) isReloadRequired() (bool, error) {
-	return false, nil //TODO: temporary
+	return false, nil //TODO: temporary skip: the ReloadRequired method is not implemented.
 
 	resp, err := c.balancerServiceClient.ReloadRequired(context.Background(), &routerproto.ReloadRequest{})
 	if err != nil {

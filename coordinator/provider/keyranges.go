@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 
 	"github.com/wal-g/tracelog"
 
@@ -31,14 +32,42 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	_, err := c.impl.Lock(ctx, "xx")
-	return nil, err
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.impl.Lock(ctx, keyRangeID)
+	return &protos.ModifyReply{}, err
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.Unlock(ctx, "xx")
-	return nil, err
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.impl.Unlock(ctx, keyRangeID)
+	return &protos.ModifyReply{}, err
 }
+
+func (c CoordinatorService) getKeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
+	krsqb, err := c.impl.ListKeyRange(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO: choose a key range without matching to exact bounds.
+	for _, krqb := range krsqb {
+		if string(krqb.LowerBound) == keyRange.GetLowerBound() &&
+			string(krqb.UpperBound) == keyRange.GetUpperBound() {
+			return krqb.ID, nil
+		}
+	}
+
+	return "", errors.New("no found key range")
+}
+
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.Split(ctx, &kr.SplitKeyRange{
 		Bound: request.Bound,
