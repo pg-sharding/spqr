@@ -174,6 +174,10 @@ func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, err
 	return keyr, nil
 }
 
+func (qc *qdbCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+	return qc.db.UpdateKeyRange(ctx, keyRange.ToSQL())
+}
+
 func (qc *qdbCoordinator) Lock(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qc.db.Lock(ctx, keyRangeID)
 	if err != nil {
@@ -221,6 +225,12 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		return fmt.Errorf("failed to update an old key range: %w", err)
 	}
 
+	return nil
+}
+
+func (qc *qdbCoordinator) Unite(ctx context.Context, keyRange *kr.UniteKeyRange) error {
+	// TODO: not implemented.
+	//return qc.db.UpdateKeyRange(ctx, keyRange.ToSQL())
 	return nil
 }
 

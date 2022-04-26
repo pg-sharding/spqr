@@ -65,7 +65,7 @@ type Balancer struct {
 func (b *Balancer) Init(installation InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
 	//TODO actionStageMove constants somewhere, get values from config
 	b.retryTime = time.Second * 5
-	b.workerRetryTime = time.Millisecond * 10000
+	b.workerRetryTime = time.Second * 10
 	b.okLoad = 0.2
 	b.workersCount = 2
 	b.plannerCount = 1
@@ -529,6 +529,7 @@ func (b *Balancer) applyTask(task Task, shardStats *map[string]map[string]Stats)
 	}
 	delete(*shardStats, task.keyRange.left)
 	for newK, v := range newShardStats {
+		// TODO: fix panic: assignment to entry in nil map
 		(*shardStats)[newK] = v
 	}
 

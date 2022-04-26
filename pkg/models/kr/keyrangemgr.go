@@ -17,6 +17,7 @@ type KeyRangeMgr interface {
 	ListKeyRange(ctx context.Context) ([]*KeyRange, error)
 
 	AddKeyRange(ctx context.Context, kr *KeyRange) error
+	MoveKeyRange(ctx context.Context, kr *KeyRange) error
 
 	Lock(ctx context.Context, krid string) (*KeyRange, error)
 	Unlock(ctx context.Context, krid string) error

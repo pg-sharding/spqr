@@ -46,9 +46,12 @@ $$ LANGUAGE plpgsql;
 		information_schema.columns
 	WHERE
 		table_name = $1`
-	insertFromSelect = `insert into ? select k.* from dblink(?, 'Select * From keys where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0') as k(?);`
+	//insertFromSelect = `insert into ? select k.* from dblink(?, 'Select * From keys where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0') as k(?);`
+	insertFromSelect = `insert into x select k.* from 
+                             dblink('%s', 'select * from x where id >= %s and id < %s') as k(%s);`
 
-	deleteKeys = `delete from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
+	//deleteKeys = `delete from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
+	deleteKeys = `delete from x where id >= $1 and id < $2`
 	// TODO: the original query fails
 	//sampleRows = `select key from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
 	sampleRows = `select id from x where $1 <= id and $2 > id`
@@ -208,6 +211,11 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 	return nil, nil
 }
 
+var hardcodeShards = map[int]string{
+	1: "spqr_shard_1_1:6432",
+	2: "spqr_shard_2_1:6432",
+}
+
 func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(defaultSleepMS))
 	defer cancel()
@@ -235,6 +243,9 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 
 	// split sourceMaster.Addr() by : to host and port
 	host, port := AddrToHostPort(sourceMaster.Addr())
+	// hardcode shards to run locally
+	host, port = AddrToHostPort(hardcodeShards[fromShard.id])
+
 	_, err = tx.Exec(fmt.Sprintf(createServer, serverName, i.dbName, host, port))
 
 	if err != nil {
@@ -264,18 +275,26 @@ func (i *Installation) GetTableSchema(shard Shard) ([]Column, error) {
 		fmt.Println(fmt.Sprintf("Can't find master of shard %d: %s", shard.id, err))
 	}
 	defer conn.Close()
+
 	rows, err := conn.QueryContext(context.Background(), selectTableSchema, i.tableName)
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
+
 	var res []Column
 	for rows.Next() {
 		cur := Column{}
-		err = rows.Scan(&cur)
+		err = rows.Scan(&cur.colName, &cur.colType)
 		if err != nil {
 			return nil, err
 		}
 		res = append(res, cur)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return res, nil
@@ -283,7 +302,8 @@ func (i *Installation) GetTableSchema(shard Shard) ([]Column, error) {
 
 func (i *Installation) StartTransfer(task Action) error {
 	//TODO add dbname to serverName
-	serverName := fmt.Sprintf("serverDB%sShard%d", i.dbName, task.fromShard.id)
+	// Use only lower case names because PostgreSQL converts all SQL except string constants and identifiers in double quotes to lower case.
+	serverName := fmt.Sprintf("serverdb%sshard%d", i.dbName, task.fromShard.id)
 
 	err := i.prepareShardFDW(task.fromShard, task.toShard, serverName)
 	if err != nil {
@@ -316,7 +336,8 @@ func (i *Installation) StartTransfer(task Action) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(insertFromSelect, i.tableName, serverName, task.keyRange.left, task.keyRange.right, schemaStr)
+	//_, err = tx.Exec(insertFromSelect, i.tableName, serverName, task.keyRange.left, task.keyRange.right, schemaStr)
+	_, err = tx.Exec(fmt.Sprintf(insertFromSelect, serverName, task.keyRange.left, task.keyRange.right, schemaStr))
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -342,7 +363,8 @@ func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
 		return err
 	}
 
-	_, err = tx.Exec(deleteKeys, i.tableName, keyRange.left, keyRange.right)
+	//_, err = tx.Exec(deleteKeys, i.tableName, keyRange.left, keyRange.right)
+	_, err = tx.Exec(deleteKeys, keyRange.left, keyRange.right)
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -366,8 +388,12 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 	greatestKey := keyRange.right
 	firstOne := true
 	count := 3
+	//greatestKey := ""
+	//firstOne := true
+	//count := 1
 	for rows.Next() {
-		err = rows.Scan(&key)
+		break
+		err = rows.Scan(&key.key)
 		if err != nil {
 			return nil, err
 		}

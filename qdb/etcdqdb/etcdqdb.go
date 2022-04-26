@@ -323,6 +323,22 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error
 	return err
 }
 
+func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+	rawKeyRange, err := json.Marshal(keyRange)
+
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return err
+}
+
 func (q *EtcdQDB) ListKeyRange(ctx context.Context) ([]*qdb.KeyRange, error) {
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {

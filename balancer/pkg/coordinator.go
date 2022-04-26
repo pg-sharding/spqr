@@ -201,7 +201,7 @@ func (c Coordinator) mergeKeyRanges(border *string) error {
 func (c Coordinator) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	resp, err := c.keyRangeServiceClient.MoveKeyRange(context.Background(), &routerproto.MoveKeyRangeRequest{
 		KeyRange:  &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right},
-		ToShardId: string(int32(shardTo.id)),
+		ToShardId: strconv.Itoa(shardTo.id),
 	})
 	if err != nil {
 		return err

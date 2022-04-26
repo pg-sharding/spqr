@@ -237,6 +237,10 @@ func (qr *ProxyRouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return qr.qdb.AddKeyRange(ctx, kr.ToSQL())
 }
 
+func (qr *ProxyRouter) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	return qr.qdb.UpdateKeyRange(ctx, kr.ToSQL())
+}
+
 func (qr *ProxyRouter) routeByIndx(i []byte) *kr.KeyRange {
 
 	krs, _ := qr.qdb.ListKeyRange(context.TODO())

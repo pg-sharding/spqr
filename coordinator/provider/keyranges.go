@@ -1,8 +1,10 @@
 package provider
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/wal-g/tracelog"
 
@@ -106,6 +108,72 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 	return &protos.KeyRangeReply{
 		KeyRangesInfo: krs,
 	}, nil
+}
+
+func (c CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	updKeyRange := &kr.KeyRange{
+		LowerBound: []byte(request.GetKeyRange().GetLowerBound()),
+		UpperBound: []byte(request.GetKeyRange().GetUpperBound()),
+		ShardID:    request.GetToShardId(),
+		ID:         keyRangeID,
+	}
+
+	tracelog.InfoLogger.Printf("no found key ranges to merge by border %#v", updKeyRange)
+
+	err = c.impl.MoveKeyRange(ctx, updKeyRange)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
+func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
+	krsqb, err := c.impl.ListKeyRange(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bound := request.GetBound()
+	uniteKeyRange := &kr.UniteKeyRange{}
+
+	for _, krqb := range krsqb {
+		if bytes.Equal(krqb.LowerBound, bound) {
+			uniteKeyRange.KeyRangeIDRight = krqb.ID
+
+			if uniteKeyRange.KeyRangeIDLeft != "" {
+				break
+			}
+
+			continue
+		}
+
+		if bytes.Equal(krqb.UpperBound, bound) {
+			uniteKeyRange.KeyRangeIDLeft = krqb.ID
+
+			if uniteKeyRange.KeyRangeIDRight != "" {
+				break
+			}
+
+			continue
+		}
+	}
+
+	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
+		tracelog.InfoLogger.Printf("no found key ranges to merge by border %v", bound)
+		return &protos.ModifyReply{}, nil
+	}
+
+	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
+		return nil, fmt.Errorf("failed to unite key ranges: %w", err)
+	}
+
+	return &protos.ModifyReply{}, nil
 }
 
 var _ protos.KeyRangeServiceServer = CoordinatorService{}
