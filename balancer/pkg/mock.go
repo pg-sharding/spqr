@@ -13,11 +13,11 @@ import (
 
 type mock struct {
 	shardToKeyRanges map[Shard]map[KeyRange]bool
-	keyRangeToShard map[KeyRange]Shard
-	leftBorders []string
-	lockedKeyRanges map[KeyRange]bool
-	keys map[string]bool
-	ranges map[KeyRange]bool
+	keyRangeToShard  map[KeyRange]Shard
+	leftBorders      []string
+	lockedKeyRanges  map[KeyRange]bool
+	keys             map[string]bool
+	ranges           map[KeyRange]bool
 
 	// shard -> key -> stats
 	stats map[Shard]map[string]Stats
@@ -49,7 +49,7 @@ func (m *mock) init() {
 	i := left
 	for i < right {
 		diff := rand.Intn(maxLen) + 1
-		if i + diff >= right {
+		if i+diff >= right {
 			diff = right - i
 		}
 
@@ -67,15 +67,15 @@ func (m *mock) init() {
 		m.leftBorders = append(m.leftBorders, kr.left)
 		m.ranges[kr] = true
 		j := i
-		for j < i + diff {
+		for j < i+diff {
 			s1 := Stats{
 				reads:      (uint64)(rand.Intn(10)) + s.reads,
 				writes:     (uint64)(rand.Intn(10)) + s.writes,
-				userTime:   rand.Float64() * 1 + s.userTime,
-				systemTime: rand.Float64() * 1 + s.systemTime,
+				userTime:   rand.Float64()*1 + s.userTime,
+				systemTime: rand.Float64()*1 + s.systemTime,
 			}
 
-			s1 = DivideStats(s1, 1/float64(shard.id + 1)/float64(shard.id + 1))
+			s1 = DivideStats(s1, 1/float64(shard.id+1)/float64(shard.id+1))
 			m.stats[shard][*bigIntToKey(big.NewInt(int64(j)))] = s1
 			m.keys[*bigIntToKey(big.NewInt(int64(j)))] = true
 			j += rand.Intn(3) + 1
@@ -101,7 +101,7 @@ func (m *mock) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[
 	}
 	sort.Sort(LikeNumbers(_leftBorders))
 	for key, stats := range m.stats[shard] {
-		i := findRange(&key, 0 , len(m.leftBorders), &m.leftBorders)
+		i := findRange(&key, 0, len(m.leftBorders), &m.leftBorders)
 		right := leftToRight[_leftBorders[i]]
 		if less(&key, &right) {
 			res[_leftBorders[i]][key] = stats
@@ -160,7 +160,7 @@ func (m *mock) foo() {
 		}
 	}
 	for r := range m.ranges {
-		i := findRange(&r.left, 0 , len(m.leftBorders), &m.leftBorders)
+		i := findRange(&r.left, 0, len(m.leftBorders), &m.leftBorders)
 		if m.leftBorders[i] != r.left {
 			fmt.Println("foo")
 		}
@@ -220,9 +220,9 @@ func (m *mock) splitKeyRange(border *string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
-	leftInd := findRange(border, 0 , len(m.leftBorders), &m.leftBorders)
+	leftInd := findRange(border, 0, len(m.leftBorders), &m.leftBorders)
 
-	if leftInd == len(m.leftBorders) - 1 {
+	if leftInd == len(m.leftBorders)-1 {
 		if m.leftBorders[leftInd] == *border {
 			// not a problem, we just try to actionStageSplit by right border of all ranges
 			return nil
@@ -231,7 +231,7 @@ func (m *mock) splitKeyRange(border *string) error {
 			return nil
 		}
 	}
-	rng := KeyRange{left: m.leftBorders[leftInd], right: m.leftBorders[leftInd + 1]}
+	rng := KeyRange{left: m.leftBorders[leftInd], right: m.leftBorders[leftInd+1]}
 	leftRng := KeyRange{left: rng.left, right: *border}
 	rightRng := KeyRange{left: *border, right: rng.right}
 	if *border == leftRng.left || *border == rightRng.right {
@@ -267,8 +267,8 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
-	rightInd := findRange(border, 0 , len(m.leftBorders), &m.leftBorders)
-	if rightInd == 0 || rightInd == len(m.leftBorders) - 1 {
+	rightInd := findRange(border, 0, len(m.leftBorders), &m.leftBorders)
+	if rightInd == 0 || rightInd == len(m.leftBorders)-1 {
 		if rightInd == 0 {
 			// it's ok, just ignore actionStageSplit by left border
 			return nil
@@ -280,8 +280,8 @@ func (m *mock) mergeKeyRanges(border *string) error {
 		// actionStageSplit by border greater than all ranges
 		return errors.New(fmt.Sprint("Split by border greater than all ranges ", border))
 	}
-	leftRng := KeyRange{m.leftBorders[rightInd - 1], m.leftBorders[rightInd]}
-	rightRng := KeyRange{m.leftBorders[rightInd], m.leftBorders[rightInd + 1]}
+	leftRng := KeyRange{m.leftBorders[rightInd-1], m.leftBorders[rightInd]}
+	rightRng := KeyRange{m.leftBorders[rightInd], m.leftBorders[rightInd+1]}
 	if *border != leftRng.right || *border != rightRng.left {
 		return errors.New(fmt.Sprint("Something goes wrong..."))
 	}
@@ -326,10 +326,10 @@ func (m *mock) mergeKeyRanges(border *string) error {
 			j = i
 		}
 	}
-	if j == len(m.leftBorders) - 1 {
+	if j == len(m.leftBorders)-1 {
 		m.leftBorders = m.leftBorders[:j]
 	} else {
-		m.leftBorders = append(m.leftBorders[:j], m.leftBorders[j + 1:]...)
+		m.leftBorders = append(m.leftBorders[:j], m.leftBorders[j+1:]...)
 	}
 	m.foo()
 	return nil
@@ -376,7 +376,7 @@ func (m *mock) isReloadRequired() (bool, error) {
 	return false, nil
 }
 
-func (m *mock) Init(_, _, _, _ string, _ *map[int]*hasql.Cluster, _ int) error {
+func (m *mock) Init(_, _, _, _, _ string, _ *map[int]*hasql.Cluster, _ int) error {
 	return nil
 }
 

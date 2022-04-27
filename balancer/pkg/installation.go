@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v4"
 	"golang.yandex/hasql"
 )
 
@@ -36,25 +38,18 @@ $$ LANGUAGE plpgsql;
 		compare_like_numbers(comment_keys->>'key'::bytea, ?::bytea) < 0`
 
 	dropServer        = "drop server if exists %s cascade;"
-	createServer      = `CREATE server %s foreign data wrapper postgres_fdw OPTIONS (dbname '%s', host '%s', port '%d')`
-	createUserMapping = `CREATE USER MAPPING IF NOT EXISTS FOR %s SERVER %s OPTIONS (user '%s', password '%s')`
+	createServer      = `create server %s foreign data wrapper postgres_fdw options (dbname '%s', host '%s', port '%d')`
+	createUserMapping = `create user mapping if not exists for %s server %s options (user '%s', password '%s')`
 
-	selectTableSchema = `SELECT
-		column_name,
-		data_type
-	FROM
-		information_schema.columns
-	WHERE
-		table_name = $1`
-	//insertFromSelect = `insert into ? select k.* from dblink(?, 'Select * From keys where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0') as k(?);`
-	insertFromSelect = `insert into x select k.* from 
-                             dblink('%s', 'select * from x where id >= %s and id < %s') as k(%s);`
+	selectTableSchema = `select column_name, data_type from	information_schema.columns where table_name = $1`
 
-	//deleteKeys = `delete from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
-	deleteKeys = `delete from x where id >= $1 and id < $2`
-	// TODO: the original query fails
-	//sampleRows = `select key from ? where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0`
-	sampleRows = `select id from x where $1 <= id and $2 > id`
+	// TODO: comparing keys for: dblinkSubquery, deleteKeys, sampleRows.
+	//  For example:
+	//  where compare_like_numbers(?::bytea, key::bytea) >= 0 and compare_like_numbers(?::bytea, key::bytea) < 0')`.
+	insertFromSelect = `insert into %s select k.* from dblink($1, $2) as k(%s);`
+	dblinkSubquery   = `select * from %[1]s where %[2]s >= %[3]s and %[2]s < %[4]s`
+	deleteKeys       = `delete from %[1]s where %[2]s >= %[3]s and %[2]s < %[4]s`
+	sampleRows       = `select %[2]s from %[1]s where %[2]s >= %[3]s and %[2]s < %[4]s`
 )
 
 type Column struct {
@@ -81,7 +76,7 @@ func (s *DBStats) toStats() Stats {
 }
 
 type InstallationInterface interface {
-	Init(dbName, tableName, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error
+	Init(dbName, tableName, shardingKey, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error
 	GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error)
 	StartTransfer(task Action) error
 	RemoveRange(keyRange KeyRange, shard Shard) error
@@ -91,16 +86,18 @@ type InstallationInterface interface {
 type Installation struct {
 	dbName        string
 	tableName     string
+	shardingKey   string
 	username      string
 	password      string
 	shardClusters *map[int]*hasql.Cluster
 	retriesCount  int
 }
 
-func (i *Installation) Init(dbName, tableName, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error {
+func (i *Installation) Init(dbName, tableName, shardingKey, username, password string, shardClusters *map[int]*hasql.Cluster, retriesCount int) error {
 	i.shardClusters = shardClusters
 	i.retriesCount = retriesCount
 	i.dbName = dbName
+	i.shardingKey = shardingKey
 	i.username = username
 	i.tableName = tableName
 	i.password = password
@@ -247,18 +244,18 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 	host, port = AddrToHostPort(hardcodeShards[fromShard.id])
 
 	_, err = tx.Exec(fmt.Sprintf(createServer, serverName, i.dbName, host, port))
-
 	if err != nil {
 		_ = tx.Rollback()
 		fmt.Println(err)
 		return err
 	}
 
-	_, err = tx.Exec(fmt.Sprintf(createUserMapping,
-		i.username,
-		serverName,
-		i.username,
-		i.password))
+	_, err = tx.Exec(fmt.Sprintf(createUserMapping, i.username, serverName, i.username, i.password))
+	if err != nil {
+		_ = tx.Rollback()
+		fmt.Println(err)
+		return err
+	}
 
 	err = tx.Commit()
 	if err != nil {
@@ -315,16 +312,6 @@ func (i *Installation) StartTransfer(task Action) error {
 		return err
 	}
 
-	schemaStr := ""
-	first := true
-	for _, col := range columns {
-		if !first {
-			schemaStr += ", "
-		}
-		first = false
-		schemaStr += fmt.Sprintf("%s %s", col.colName, col.colType)
-	}
-
 	conn, err := GetMasterConn((*i.shardClusters)[task.toShard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
 		return err
@@ -336,8 +323,17 @@ func (i *Installation) StartTransfer(task Action) error {
 	if err != nil {
 		return err
 	}
-	//_, err = tx.Exec(insertFromSelect, i.tableName, serverName, task.keyRange.left, task.keyRange.right, schemaStr)
-	_, err = tx.Exec(fmt.Sprintf(insertFromSelect, serverName, task.keyRange.left, task.keyRange.right, schemaStr))
+
+	tableName := pgx.Identifier{i.tableName}.Sanitize()
+	shardingKey := pgx.Identifier{i.shardingKey}.Sanitize()
+	columnTypes := make([]string, 0, len(columns))
+	for _, col := range columns {
+		columnTypes = append(columnTypes, fmt.Sprintf("%s %s", col.colName, col.colType))
+	}
+	schemaStr := strings.Join(columnTypes, ",")
+	subQuery := fmt.Sprintf(dblinkSubquery, tableName, shardingKey, task.keyRange.left, task.keyRange.right)
+
+	_, err = tx.Exec(fmt.Sprintf(insertFromSelect, tableName, schemaStr), serverName, subQuery)
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -363,8 +359,10 @@ func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
 		return err
 	}
 
-	//_, err = tx.Exec(deleteKeys, i.tableName, keyRange.left, keyRange.right)
-	_, err = tx.Exec(deleteKeys, keyRange.left, keyRange.right)
+	tableName := pgx.Identifier{i.tableName}.Sanitize()
+	shardingKey := pgx.Identifier{i.shardingKey}.Sanitize()
+
+	_, err = tx.Exec(fmt.Sprintf(deleteKeys, tableName, shardingKey, keyRange.left, keyRange.right))
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -378,8 +376,10 @@ func (i *Installation) RemoveRange(keyRange KeyRange, shard Shard) error {
 }
 
 func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) (*big.Int, error) {
-	//i.tableName
-	rows, err := conn.QueryContext(context.Background(), sampleRows, keyRange.left, keyRange.right)
+	tableName := pgx.Identifier{i.tableName}.Sanitize()
+	shardingKey := pgx.Identifier{i.shardingKey}.Sanitize()
+
+	rows, err := conn.QueryContext(context.Background(), fmt.Sprintf(sampleRows, tableName, shardingKey, keyRange.left, keyRange.right))
 	if err != nil {
 		return nil, err
 	}
@@ -392,7 +392,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 	//firstOne := true
 	//count := 1
 	for rows.Next() {
-		break
+		break // TODO: remove after debugging
 		err = rows.Scan(&key.key)
 		if err != nil {
 			return nil, err
@@ -413,7 +413,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 		right: greatestKey,
 	}
 	if count == 0 {
-		//return big.NewInt(math.MaxInt64), nil // TODO: uncomment when sampleRows query is working
+		//return big.NewInt(math.MaxInt64), nil // TODO: uncomment when sampleRows query works
 	}
 
 	return new(big.Int).Div(getLength(kr), big.NewInt(int64(count))), nil

@@ -60,6 +60,7 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 	err = installation.Init(
 		cfg.InstallationDBName,
 		cfg.InstallationTableName,
+		cfg.InstallationShardingKey,
 		cfg.InstallationUserName,
 		cfg.InstallationPassword,
 		&shardClusters,

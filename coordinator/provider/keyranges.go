@@ -123,10 +123,7 @@ func (c CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.Mo
 		ID:         keyRangeID,
 	}
 
-	tracelog.InfoLogger.Printf("no found key ranges to merge by border %#v", updKeyRange)
-
-	err = c.impl.MoveKeyRange(ctx, updKeyRange)
-	if err != nil {
+	if err := c.impl.MoveKeyRange(ctx, updKeyRange); err != nil {
 		return nil, err
 	}
 
@@ -163,6 +160,8 @@ func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.M
 			continue
 		}
 	}
+
+	tracelog.InfoLogger.Printf("unite keyrange %#v", uniteKeyRange)
 
 	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
 		tracelog.InfoLogger.Printf("no found key ranges to merge by border %v", bound)
