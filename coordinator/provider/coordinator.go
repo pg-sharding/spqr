@@ -228,9 +228,39 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	return nil
 }
 
-func (qc *qdbCoordinator) Unite(ctx context.Context, keyRange *kr.UniteKeyRange) error {
-	// TODO: not implemented.
-	//return qc.db.UpdateKeyRange(ctx, keyRange.ToSQL())
+func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
+	krLeft, err := qc.db.Lock(ctx, uniteKeyRange.KeyRangeIDLeft)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := qc.db.UnLock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+	}()
+
+	krRight, err := qc.db.Lock(ctx, uniteKeyRange.KeyRangeIDRight)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := qc.db.UnLock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+	}()
+
+	krLeft.UpperBound = krRight.UpperBound
+
+	if err := qc.db.DropKeyRange(ctx, krRight); err != nil {
+		return fmt.Errorf("failed to drop an old key range: %w", err)
+	}
+
+	if err := qc.db.UpdateKeyRange(ctx, krLeft); err != nil {
+		return fmt.Errorf("failed to update a new key range: %w", err)
+	}
+
 	return nil
 }
 

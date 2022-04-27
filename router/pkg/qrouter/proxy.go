@@ -124,6 +124,7 @@ func (qr *ProxyRouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
+	// TODO: krRight seems to be empty.
 	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
