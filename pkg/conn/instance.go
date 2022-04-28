@@ -15,10 +15,15 @@ import (
 
 const SSLREQ = 80877103
 const CANCELREQ = 80877102
-const TXIDLE = 73
-const TXERR = 69
-const TXACT = 84
-const TXCONT = 1
+
+type TXStatus byte
+
+const (
+	TXIDLE = TXStatus(73)
+	TXERR  = TXStatus(69)
+	TXACT  = TXStatus(84)
+	TXCONT = TXStatus(1)
+)
 
 type InstanceStatus string
 

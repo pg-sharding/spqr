@@ -251,7 +251,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 						&pgproto3.DataRow{Values: [][]byte{[]byte("query ok")}},
 						&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 						&pgproto3.ReadyForQuery{
-							TxStatus: conn.TXIDLE,
+							TxStatus: byte(conn.TXIDLE),
 						},
 					} {
 						if err := cl.Send(msg); err != nil {

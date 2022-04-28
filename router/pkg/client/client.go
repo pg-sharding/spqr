@@ -42,7 +42,7 @@ type RouterClient interface {
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (byte, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error)
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
@@ -276,7 +276,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		case *pgproto3.StartupMessage:
 			sm = msg
 		default:
-			return xerrors.Errorf("got unexpected message type %T", frsm)
+			return fmt.Errorf("got unexpected message type %T", frsm)
 		}
 
 		if err != nil {
@@ -293,9 +293,9 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		tracelog.ErrorLogger.FatalOnError(err)
 
 	case conn.CANCELREQ:
-		return xerrors.Errorf("cancel is not supported")
+		return fmt.Errorf("cancel is not supported")
 	default:
-		return xerrors.Errorf("protocol number %d not supported", protoVer)
+		return fmt.Errorf("protocol number %d not supported", protoVer)
 	}
 
 	cl.startupMsg = sm
@@ -357,7 +357,7 @@ func (cl *PsqlClient) Auth() error {
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "spqr"},
 		&pgproto3.ReadyForQuery{
-			TxStatus: conn.TXIDLE,
+			TxStatus: byte(conn.TXIDLE),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -469,7 +469,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (byte, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
 	tracelog.InfoLogger.Printf("process query %s", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
@@ -519,7 +519,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 				return 0, err
 			}
 		case *pgproto3.ReadyForQuery:
-			return v.TxStatus, nil
+			return conn.TXStatus(v.TxStatus), nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = cl.Send(msg)
@@ -620,9 +620,12 @@ func (cl *PsqlClient) Close() error {
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: errmsg,
+			Message:  errmsg,
+			Severity: "ERROR",
 		},
-		&pgproto3.ReadyForQuery{},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(conn.TXIDLE),
+		},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
