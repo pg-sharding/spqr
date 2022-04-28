@@ -103,8 +103,10 @@ var (
 	updateAction        = `update actions set action_stage = $1, is_running = $2 where id = $3 and table_name = $4 and dbname = $5`
 	markAllAsNotRunning = `update actions set is_running = false where table_name = $1 and dbname = $2`
 	deleteAction        = `delete from actions where id = $1 and table_name = $2 and dbname = $3`
-	selectOneAction     = `select id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to from actions where is_running = FALSE and table_name = $1 and dbname = $2`
-	actionsCount        = `select count(*) from actions where is_running = false and table_name = $1 and dbname = $2`
+
+	takeActionForProcessing = `with cte as (select id from actions where is_running = false and table_name = $1 and dbname = $2 limit 1)
+update actions a set is_running = true from cte where a.id = cte.id returning a.id, dbname, action_stage, is_running, left_bound, right_bound, shard_from, shard_to`
+	actionsCount = `select count(*) from actions where is_running = false and table_name = $1 and dbname = $2`
 )
 
 type Database struct {
@@ -354,63 +356,33 @@ func (d *Database) GetAndRun() (Action, bool, error) {
 	defer conn.Close()
 
 	dbAct := dbAction{}
-	tx, err := conn.BeginTx(context.TODO(), &sql.TxOptions{})
+	row := conn.QueryRowContext(ctx, takeActionForProcessing, d.tableName, d.dbname)
+
+	err = row.Scan(
+		&dbAct.id,
+		&dbAct.dbname,
+		&dbAct.actionStage,
+		&dbAct.isRunning,
+		&dbAct.leftBound,
+		&dbAct.rightBound,
+		&dbAct.shardFrom,
+		&dbAct.shardTo,
+	)
 	if err != nil {
-		fmt.Println(err)
-		return Action{}, false, err
-	}
-
-	rows, err := tx.QueryContext(ctx, selectOneAction, d.tableName, d.dbname)
-	if err != nil {
-		_ = tx.Rollback()
-		return Action{}, false, err
-	}
-
-	var act Action
-
-	for rows.Next() {
-		err = rows.Scan(
-			&dbAct.id,
-			&dbAct.dbname,
-			&dbAct.actionStage,
-			&dbAct.isRunning,
-			&dbAct.leftBound,
-			&dbAct.rightBound,
-			&dbAct.shardFrom,
-			&dbAct.shardTo,
-		)
-		if err != nil {
-			return Action{}, false, err
+		if err == sql.ErrNoRows {
+			fmt.Println(err)
+			return Action{}, false, nil
 		}
-		act = dbAct.toAction()
-		break
-	}
-
-	if err := rows.Err(); err != nil {
-		return Action{}, false, fmt.Errorf("rows error: %w", err)
-	}
-
-	if err := rows.Close(); err != nil {
-		return Action{}, false, fmt.Errorf("failed to close action rows: %w", err)
-	}
-
-	_, err = tx.Exec(updateAction, act.actionStage, true, act.id, d.tableName, d.dbname)
-	if err != nil {
-		_ = tx.Rollback()
 		fmt.Println(err)
-		return Action{}, false, fmt.Errorf("failed to update an action row: %w", err)
+		return Action{}, false, fmt.Errorf("failed to grip an action row: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return Action{}, false, err
+	if err := row.Err(); err != nil {
+		fmt.Println(err)
+		return Action{}, false, fmt.Errorf("row error: %w", err)
 	}
 
-	if act.id == 0 {
-		return Action{}, false, nil
-	}
-
-	return act, true, nil
+	return dbAct.toAction(), true, nil
 
 }
 

@@ -580,7 +580,6 @@ func (b *Balancer) applyTask(task Task, shardStats *map[string]map[string]Stats)
 	}
 }
 
-//TODO: make possible parallel runTask
 func (b *Balancer) runTask(task *Action) error {
 	var err error
 
