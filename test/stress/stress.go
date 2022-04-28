@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/wal-g/tracelog"
 	"math/rand"
 	"sync"
 	"time"
@@ -30,8 +31,7 @@ func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error)
 	for i := 0; i < retryCnt; i++ {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
 		if err != nil {
-			err = fmt.Errorf("error while connecting to postgresql: %w", err)
-			fmt.Println(err)
+			tracelog.ErrorLogger.PrintError(fmt.Errorf("error while connecting to postgresql: %w", err))
 			continue
 		}
 		return db, nil
@@ -45,19 +45,23 @@ func simple() {
 	ctx := context.TODO()
 
 	for {
-
 		func() {
 			time.Sleep(time.Duration(50+r.Intn(10)) * time.Microsecond)
 
 			conn, err := getConn(ctx, dbname, 2)
 			if err != nil {
-				fmt.Printf("stress test FAILED %w", err)
+				tracelog.ErrorLogger.PrintError(fmt.Errorf("stress test FAILED %w", err))
 				panic(err)
 			}
-			defer conn.Close()
+			defer func(conn *sqlx.DB) {
+				err := conn.Close()
+				if err != nil {
+					tracelog.ErrorLogger.PrintError(err)
+				}
+			}(conn)
 
-			if _, err := conn.Query(fmt.Sprintf("SELECT * FROM %s WHERE i = %d", relation, r.Intn(10))); err != nil {
-				fmt.Printf("stress test FAILED %w", err)
+			if _, err := conn.Query(fmt.Sprintf("SELECT * FROM %s WHERE i = %d", relation, 1+r.Intn(10))); err != nil {
+				tracelog.ErrorLogger.PrintError(err)
 				panic(err)
 			}
 

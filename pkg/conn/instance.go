@@ -3,6 +3,7 @@ package conn
 import (
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -14,10 +15,15 @@ import (
 
 const SSLREQ = 80877103
 const CANCELREQ = 80877102
-const TXIDLE = 73
-const TXERR = 69
-const TXACT = 84
-const TXCONT = 1
+
+type TXStatus byte
+
+const (
+	TXIDLE = TXStatus(73)
+	TXERR  = TXStatus(69)
+	TXACT  = TXStatus(84)
+	TXCONT = TXStatus(1)
+)
 
 type InstanceStatus string
 
@@ -133,7 +139,7 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 		}
 		return false, nil
 	default:
-		return false, xerrors.Errorf("unexcepted")
+		return false, fmt.Errorf("unexcepted")
 	}
 }
 
@@ -149,7 +155,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	_, err := pgi.conn.Write(b)
 
 	if err != nil {
-		return xerrors.Errorf("ReqBackendSsl: %w", err)
+		return fmt.Errorf("ReqBackendSsl: %w", err)
 	}
 
 	resp := make([]byte, 1)
@@ -159,8 +165,6 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	}
 
 	sym := resp[0]
-
-	tracelog.InfoLogger.Printf("recv sym %v", sym)
 
 	if sym != 'S' {
 		return xerrors.New("SSL should be enabled")

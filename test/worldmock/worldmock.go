@@ -119,7 +119,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
 					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 					&pgproto3.ReadyForQuery{
-						TxStatus: conn.TXIDLE,
+						TxStatus: byte(conn.TXIDLE),
 					},
 				} {
 					if err := cl.Send(msg); err != nil {

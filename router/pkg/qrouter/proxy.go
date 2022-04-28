@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
+	"github.com/pg-sharding/spqr/router/pkg/parser"
 )
 
 type ProxyQrouter struct {
@@ -406,15 +407,8 @@ func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 var ParseError = xerrors.New("parsing stmt error")
 
-func (qr *ProxyQrouter) Route(q string) (RoutingState, error) {
-	tracelog.InfoLogger.Printf("routing by %s", q)
-
-	parsedStmt, err := sqlparser.Parse(q)
-	if err != nil {
-		tracelog.ErrorLogger.Printf("parsing stmt error: %v", err)
-		return nil, ParseError
-	}
-
+func (qr *ProxyQrouter) Route(parser parser.QParser) (RoutingState, error) {
+	parsedStmt := parser.Stmt()
 	tracelog.InfoLogger.Printf("stmt type %T", parsedStmt)
 
 	switch parsedStmt.(type) {
