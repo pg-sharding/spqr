@@ -22,6 +22,44 @@ type Qinteractor interface {
 type QinteractorImpl struct {
 }
 
+func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
+	tracelog.InfoLogger.Printf("received query %v", q.String)
+	state, err := rst.Parse(q)
+	if err != nil {
+		return err
+	}
+	rst.AddQuery(*q)
+
+	switch state {
+	case parser.ParseStateTXBegin:
+		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(conn.TXACT),
+		}); err != nil {
+			return err
+
+		}
+		rst.SetTxStatus(conn.TXACT)
+		return nil
+	case parser.ParseStateEmptyQuery:
+		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
+			return err
+
+		}
+		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		}); err != nil {
+			return err
+
+		}
+		return nil
+	default:
+		if err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 	tracelog.InfoLogger.Printf("process frontend for route %s %s", cl.Usr(), cl.DB())
 
@@ -60,36 +98,15 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			if !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
 				case *pgproto3.Sync:
-					if err := rst.ProcessMessage(q, true, true, cl, cmngr); err != nil {
+					if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
 						return err
 					}
 				case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
-					if err := rst.ProcessMessage(q, false, true, cl, cmngr); err != nil {
+					if err := rst.ProcessMessage(q, false, true, cmngr); err != nil {
 						return err
 					}
 				case *pgproto3.Query:
-					tracelog.InfoLogger.Printf("received query %v", q.String)
-					state, err := rst.Parse(*q)
-					if err != nil {
-						return err
-					}
-					rst.AddQuery(*q)
-
-					switch state {
-					case parser.ParseStateTXBegin:
-						if err := rst.Client().Send(&pgproto3.ReadyForQuery{
-							TxStatus: byte(conn.TXACT),
-						}); err != nil {
-							return err
-
-						}
-						rst.SetTxStatus(conn.TXACT)
-						return nil
-					default:
-						if err := rst.ProcessMessageBuf(true, true, cl, cmngr); err != nil {
-							return err
-						}
-					}
+					return procQuery(rst, q, cmngr)
 				default:
 					return nil
 				}
@@ -98,7 +115,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 			switch q := msg.(type) {
 			case *pgproto3.Sync:
-				if err := rst.ProcessMessage(q, true, true, cl, cmngr); err != nil {
+				if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
 					return err
 				}
 			case *pgproto3.Parse:
@@ -121,7 +138,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				}
 			case *pgproto3.Describe:
 				if q.ObjectType == 'P' {
-					if err := rst.ProcessMessage(q, true, true, cl, cmngr); err != nil {
+					if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
 						return err
 					}
 					break
@@ -153,7 +170,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			case *pgproto3.Execute:
 				tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
 
-				if err := rst.ProcessMessage(q, false, true, cl, cmngr); err != nil {
+				if err := rst.ProcessMessage(q, false, true, cmngr); err != nil {
 					return err
 				}
 			case *pgproto3.Bind:
@@ -178,27 +195,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				}
 
 			case *pgproto3.Query:
-				tracelog.InfoLogger.Printf("received query %v", q.String)
-				state, err := rst.Parse(*q)
-				if err != nil {
-					return err
-				}
-				rst.AddQuery(*q)
-				switch state {
-				case parser.ParseStateTXBegin:
-					if err := rst.Client().Send(&pgproto3.ReadyForQuery{
-						TxStatus: byte(conn.TXACT),
-					}); err != nil {
-						return err
-					}
-					rst.SetTxStatus(conn.TXACT)
-					return nil
-				default:
-					if err := rst.ProcessMessageBuf(true, true, cl, cmngr); err != nil {
-						return err
-					}
-				}
-
+				return procQuery(rst, q, cmngr)
 			default:
 				return nil
 			}

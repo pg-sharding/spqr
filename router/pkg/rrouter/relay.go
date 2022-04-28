@@ -23,7 +23,7 @@ type RelayStateInteractor interface {
 	Flush()
 	Reroute() error
 	ShouldRetry(err error) bool
-	Parse(q pgproto3.Query) (parser.ParseState, error)
+	Parse(q *pgproto3.Query) (parser.ParseState, error)
 	AddQuery(q pgproto3.Query)
 	ActiveShards() []kr.ShardKey
 	ActiveShardsReset()
@@ -34,15 +34,16 @@ type RelayStateInteractor interface {
 	CompleteRelay(txst conn.TXStatus) error
 	Close() error
 	Client() client.RouterClient
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
 	PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error
-	ProcessMessageBuf(waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error
+	ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
+	TxStatus() conn.TXStatus
 }
 
 type RelayStateImpl struct {
-	txActive   bool
+	txStatus   conn.TXStatus
 	sync       int
 	CopyActive bool
 
@@ -61,12 +62,16 @@ type RelayStateImpl struct {
 
 func (rst *RelayStateImpl) SetTxStatus(status conn.TXStatus) {
 	//TODO implement me
-	rst.txActive = status == conn.TXACT
+	rst.txStatus = status
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
 	//TODO implement me
 	return rst.Cl
+}
+
+func (rst *RelayStateImpl) TxStatus() conn.TXStatus {
+	return rst.txStatus
 }
 
 func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) error {
@@ -103,7 +108,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager ConnManager) RelayStateInteractor {
 	return &RelayStateImpl{
 		activeShards: nil,
-		txActive:     false,
+		txStatus:     conn.TXIDLE,
 		msgBuf:       nil,
 		traceMsgs:    false,
 		Qr:           qr,
@@ -122,7 +127,7 @@ func (rst *RelayStateImpl) Close() error {
 }
 
 func (rst *RelayStateImpl) TxActive() bool {
-	return rst.txActive
+	return rst.txStatus == conn.TXACT
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -135,7 +140,7 @@ func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
 
 func (rst *RelayStateImpl) Reset() error {
 	rst.activeShards = nil
-	rst.txActive = false
+	rst.txStatus = conn.TXIDLE
 
 	_ = rst.Cl.Reset()
 
@@ -163,7 +168,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("db", rst.Cl.DB())
 	span.SetTag("query", rst.parser.Q().String)
 
-	routingState, err := rst.Qr.Route(rst.parser.Q().String)
+	routingState, err := rst.Qr.Route(rst.parser)
 	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
 	if err != nil {
 		return err
@@ -316,11 +321,11 @@ func (rst *RelayStateImpl) RelayParse(v pgproto3.FrontendMessage, waitForResp bo
 }
 
 func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	if !rst.txActive {
+	if !rst.TxActive() {
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 			return err
 		}
-		rst.txActive = true
+		rst.txStatus = conn.TXACT
 	}
 
 	if err := rst.Cl.ProcCommand(v, waitForResp, replyCl); err != nil {
@@ -354,11 +359,11 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 }
 
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
-	if !rst.txActive {
+	if !rst.TxActive() {
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 			return 0, err
 		}
-		rst.txActive = true
+		rst.txStatus = conn.TXACT
 	}
 
 	return rst.Cl.ProcQuery(msg, waitForResp, replyCl)
@@ -382,11 +387,11 @@ func (rst *RelayStateImpl) CompleteRelay(txst conn.TXStatus) error {
 			return err
 		}
 
-		if rst.txActive {
+		if rst.TxActive() {
 			if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
 				return err
 			}
-			rst.txActive = false
+			rst.txStatus = conn.TXACT
 		}
 		return nil
 	case conn.TXERR:
@@ -397,11 +402,11 @@ func (rst *RelayStateImpl) CompleteRelay(txst conn.TXStatus) error {
 		}); err != nil {
 			return err
 		}
-		if !rst.txActive {
+		if !rst.TxActive() {
 			if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 				return err
 			}
-			rst.txActive = true
+			rst.txStatus = conn.TXACT
 		}
 		return nil
 	case conn.TXCONT:
@@ -423,7 +428,7 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.Query) {
 	rst.msgBuf = append(rst.msgBuf, q)
 }
 
-func (rst *RelayStateImpl) Parse(q pgproto3.Query) (parser.ParseState, error) {
+func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return rst.parser.Parse(q)
 }
 
@@ -457,8 +462,8 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnMa
 	return nil
 }
 
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error {
-	if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error {
+	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
 		return err
 	}
 
@@ -479,8 +484,8 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cl clien
 	return nil
 }
 
-func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cl client.RouterClient, cmngr ConnManager) error {
-	if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error {
+	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
 		return err
 	}
 

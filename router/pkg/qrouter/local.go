@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/wal-g/tracelog"
 )
 
@@ -52,17 +53,7 @@ func (l *LocalQrouter) IsRouterCommand(statement sqlparser.Statement) bool {
 	return false
 }
 
-func (l *LocalQrouter) Route(q string) (RoutingState, error) {
-	//
-	//parsedStmt, err := sqlparser.Parse(q)
-	//if err != nil {
-	//	return nil, ParseError
-	//}
-	//
-	//if l.IsRouterCommand(parsedStmt) {
-	//	return SkipRoutingState{}, nil
-	//}
-
+func (l *LocalQrouter) Route(parser rparser.QParser) (RoutingState, error) {
 	return ShardMatchState{
 		Routes: []*ShardRoute{
 			{

@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -43,7 +44,7 @@ type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 
-	Route(q string) (RoutingState, error)
+	Route(stmt rparser.QParser) (RoutingState, error)
 
 	// AddLocalTable do not use
 	AddLocalTable(tname string) error
