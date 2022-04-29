@@ -122,13 +122,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 		for _, kr := range keyRanges {
 			b.shardToLeftBorders[sh][kr.left] = true
 			b.leftBordersToRightBorders[kr.left] = kr.right
-
-			krLength := getLength(kr)
-			y := b.keyDistanceByRanges[kr.left]
-
-			tracelog.InfoLogger.Printf("krLength: %v, y %v", krLength, y)
-
-			b.keysOnShard[sh] += uint64(new(big.Int).Div(krLength, y).Int64())
+			b.keysOnShard[sh] += uint64(new(big.Int).Div(getLength(kr), b.keyDistanceByRanges[kr.left]).Int64())
 			// fmt.Println(sh.id, b.keysOnShard[sh], kr)
 		}
 		keysAtAll.Add(keysAtAll, new(big.Int).SetUint64(b.keysOnShard[sh]))
@@ -147,8 +141,6 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	for sh := range b.shardToLeftBorders {
 		b.shards = append(b.shards, sh)
 	}
-
-	tracelog.InfoLogger.Printf("Shards: %#v", b.shards)
 
 	b.muReload.Lock()
 	b.reloadRequired = false
@@ -475,7 +467,7 @@ func getAvgKeyDistance(keyDist1, keyDist2, len1, len2 *big.Int) *big.Int {
 	return new(big.Int).Div(num, den)
 }
 
-func (b *Balancer) applyTask(task Task, shardStats *map[string]map[string]Stats) {
+func (b *Balancer) applyTask(task Task, shardStats map[string]map[string]Stats) {
 	if task.oldKeyRangesOnShardFrom == nil {
 		return
 	}
@@ -520,17 +512,16 @@ func (b *Balancer) applyTask(task Task, shardStats *map[string]map[string]Stats)
 	for newKr := range task.newKeyRangesOnShardFrom {
 		newShardStats[newKr.left] = map[string]Stats{}
 	}
-	for key, stat := range (*shardStats)[task.keyRange.left] {
+	for key, stat := range shardStats[task.keyRange.left] {
 		for newKr := range task.newKeyRangesOnShardFrom {
 			if isKeyFromRange(&key, &newKr) {
 				newShardStats[newKr.left][key] = stat
 			}
 		}
 	}
-	delete(*shardStats, task.keyRange.left)
+	delete(shardStats, task.keyRange.left)
 	for newK, v := range newShardStats {
-		// TODO: fix panic: assignment to entry in nil map
-		(*shardStats)[newK] = v
+		shardStats[newK] = v
 	}
 
 	for left := range removeLeftBorders {
@@ -711,7 +702,6 @@ func (b *Balancer) planTasks() {
 	shardStats, err := b.installation.GetShardStats(shard, keyRanges)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
-		//fmt.Println("Error: ", err)
 		return
 	}
 
@@ -756,7 +746,7 @@ func (b *Balancer) planTasks() {
 				continue
 			}
 
-			b.applyTask(b.bestTask, &shardStats)
+			b.applyTask(b.bestTask, shardStats)
 		}
 		if b.bestTask.profit > -1 {
 			b.splits += 1
@@ -851,5 +841,6 @@ func (b *Balancer) BrutForceStrategy() {
 			time.Sleep(b.plannerRetryTime)
 		}
 
+		time.Sleep(b.plannerRetryTime)
 	}
 }

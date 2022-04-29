@@ -37,4 +37,19 @@ for database_name in db1 dbtpcc; do
 	}
 done
 
+
+# Create extension
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "create extension if not exists postgres_fdw; create extension if not exists dblink" -d db1 >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: users creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
+
+# Grant permissions
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "alter role user1 superuser" -d db1 >> $SETUP_LOG 2>&1 || {
+    echo "ERROR: users creation failed, examine the log"
+    cat "$SETUP_LOG"
+    exit 1
+}
+
 sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop

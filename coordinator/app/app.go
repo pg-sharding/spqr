@@ -69,7 +69,6 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	serv := grpc.NewServer()
-	//shhttp.Register(serv)
 	reflection.Register(serv)
 
 	tracelog.InfoLogger.Printf("Coordinator Service %v", app.coordinator)

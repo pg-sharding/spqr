@@ -10,7 +10,7 @@ type Shard struct {
 }
 
 type KeyRange struct {
-	left string
+	left  string
 	right string
 }
 
@@ -28,6 +28,7 @@ func keyToBigInt(key *string) *big.Int {
 }
 
 //TODO mb add cache to that function
+// TODO: add tests and check correctness.
 func bigIntToKey(num *big.Int) *string {
 	numCopy := new(big.Int).Set(num)
 	k := big.NewInt(256)
@@ -38,8 +39,8 @@ func bigIntToKey(num *big.Int) *string {
 		numCopy.DivMod(numCopy, k, mod)
 		charsArr = append(charsArr, byte(mod.Int64()))
 	}
-	for i := 0; i < len(charsArr) / 2; i++ {
-		charsArr[i], charsArr[len(charsArr) - i - 1] = charsArr[len(charsArr) - i - 1], charsArr[i]
+	for i := 0; i < len(charsArr)/2; i++ {
+		charsArr[i], charsArr[len(charsArr)-i-1] = charsArr[len(charsArr)-i-1], charsArr[i]
 	}
 	res := string(charsArr)
 	return &res
@@ -70,7 +71,7 @@ func logLength(keyRange KeyRange) float64 {
 	for i := 0; i < len(keyRange.right); i++ {
 		diff += (float64)(keyRange.right[i])
 		if i >= lenDiff {
-			diff -= (float64)(keyRange.left[i - lenDiff])
+			diff -= (float64)(keyRange.left[i-lenDiff])
 		}
 		diff *= k
 	}
@@ -80,13 +81,13 @@ func logLength(keyRange KeyRange) float64 {
 
 type Stats struct {
 	// total reads, in bytes
-	reads uint64		`db:"reads"`
+	reads uint64 `db:"reads"`
 	// total writes, in bytes
-	writes uint64		`db:"writes"`
+	writes uint64 `db:"writes"`
 	// total user CPU time used
-	userTime float64 	`db:"user_time"`
+	userTime float64 `db:"user_time"`
 	// total system CPU time used
-	systemTime float64 	`db:"system_time"`
+	systemTime float64 `db:"system_time"`
 }
 
 func AddStats(a, b Stats) Stats {
@@ -114,6 +115,7 @@ func DivideStats(a Stats, k float64) Stats {
 }
 
 type LikeNumbers []string
+
 func (a LikeNumbers) Len() int           { return len(a) }
 func (a LikeNumbers) Less(i, j int) bool { return less(&a[i], &a[j]) }
 func (a LikeNumbers) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wal-g/tracelog"
-
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
@@ -66,11 +64,6 @@ func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
 	respList, err := c.shardServiceClient.ListShards(context.Background(), &routerproto.ShardRequest{})
 	if err != nil {
 		return nil, err
-	}
-
-	// TODO: debug.
-	for _, shard := range respList.Shards {
-		fmt.Printf("ListShards: %#v\n", shard)
 	}
 
 	res := map[int]routerproto.ShardInfo{}
@@ -141,8 +134,6 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 		}
 		res[shard] = append(res[shard], KeyRange{left: kr.KeyRange.LowerBound, right: kr.KeyRange.UpperBound})
 	}
-
-	tracelog.DebugLogger.Printf("List Key ranges: %v\n", res)
 
 	return res, nil
 }

@@ -81,18 +81,10 @@ func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.S
 	return &protos.ModifyReply{}, nil
 }
 
-func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	// TODO:
-	tracelog.InfoLogger.Printf("Coordinator Service %v %T %#v", c.impl, c.impl, c.impl.(*qdbCoordinator).db)
-
+func (c CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	if c.impl == nil {
 		return &protos.KeyRangeReply{}, nil
 	}
-
-	//krsqb, err := c.impl.(*qdbCoordinator).db.ListKeyRange(ctx)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	krsqb, err := c.impl.ListKeyRange(ctx)
 	if err != nil {

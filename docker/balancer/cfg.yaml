@@ -2,6 +2,7 @@ log_level: INFO
 
 installation_db_name: 'db1'
 installation_table_name: 'x'
+installation_sharding_key: 'id'
 installation_user_name: 'user1'
 installation_password: '12345678'
 installation_max_retries: 5

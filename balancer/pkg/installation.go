@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ END;
 $$ LANGUAGE plpgsql;
 `
 
+	// TODO: fix query and create extension to select stats from range.
 	selectStatsFromRange = `select comment_keys->>'key' as key, reads, writes, user_time, system_time from pgcs_get_stats() where 
 		compare_like_numbers(?::bytea, comment_keys->>'key'::bytea) >= 0 and 
 		compare_like_numbers(comment_keys->>'key'::bytea, ?::bytea) < 0`
@@ -205,12 +207,7 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 		}
 		AddHostStats(&res, &hostStats)
 	}
-	return nil, nil
-}
-
-var hardcodeShards = map[int]string{
-	1: "spqr_shard_1_1:6432",
-	2: "spqr_shard_2_1:6432",
+	return make(map[string]map[string]Stats), nil
 }
 
 func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverName string) error {
@@ -240,8 +237,6 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 
 	// split sourceMaster.Addr() by : to host and port
 	host, port := AddrToHostPort(sourceMaster.Addr())
-	// hardcode shards to run locally
-	host, port = AddrToHostPort(hardcodeShards[fromShard.id])
 
 	_, err = tx.Exec(fmt.Sprintf(createServer, serverName, i.dbName, host, port))
 	if err != nil {
@@ -384,15 +379,10 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 		return nil, err
 	}
 	var key Key
-	// TODO: values greatestKey and count are hardcoded to avoid panic
-	greatestKey := keyRange.right
+	greatestKey := ""
 	firstOne := true
-	count := 3
-	//greatestKey := ""
-	//firstOne := true
-	//count := 1
+	count := 0
 	for rows.Next() {
-		break // TODO: remove after debugging
 		err = rows.Scan(&key.key)
 		if err != nil {
 			return nil, err
@@ -413,7 +403,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 		right: greatestKey,
 	}
 	if count == 0 {
-		//return big.NewInt(math.MaxInt64), nil // TODO: uncomment when sampleRows query works
+		return big.NewInt(math.MaxInt64), nil // TODO: uncomment when sampleRows query works
 	}
 
 	return new(big.Int).Div(getLength(kr), big.NewInt(int64(count))), nil
