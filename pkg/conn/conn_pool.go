@@ -5,9 +5,10 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/wal-g/tracelog"
 )
 
 type Pool interface {
