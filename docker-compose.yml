@@ -19,7 +19,7 @@ services:
         hostname: spqr_shard_1_1
         networks:
             spqr:
-                ipv4_address: 192.168.233.03
+                ipv4_address: 192.168.233.02
     shard2:
         image:
             spqr_shardbase
@@ -30,7 +30,7 @@ services:
         hostname: spqr_shard_2_1
         networks:
             spqr:
-                ipv4_address: 192.168.233.02
+                ipv4_address: 192.168.233.03
     coordinator:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
