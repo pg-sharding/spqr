@@ -3,6 +3,7 @@ package conn
 import (
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -14,9 +15,15 @@ import (
 
 const SSLREQ = 80877103
 const CANCELREQ = 80877102
-const TXREL = 73
-const TXCMDCOMPL = 84
-const NOTXREL = 86
+
+type TXStatus byte
+
+const (
+	TXIDLE = TXStatus(73)
+	TXERR  = TXStatus(69)
+	TXACT  = TXStatus(84)
+	TXCONT = TXStatus(1)
+)
 
 type InstanceStatus string
 
@@ -80,7 +87,6 @@ func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
 }
 
 func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string) (DBInstance, error) {
-
 	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
 
 	instance := &PostgreSQLInstance{
@@ -107,7 +113,6 @@ func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string
 }
 
 func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
-
 	msg := &pgproto3.Query{
 		String: "SELECT pg_is_in_recovery()",
 	}
@@ -127,23 +132,20 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 
 	switch v := bmsg.(type) {
 	case *pgproto3.DataRow:
-
 		tracelog.InfoLogger.Printf("got datarow %v", v.Values)
 
 		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
 			return true, nil
 		}
 		return false, nil
-
 	default:
-		return false, xerrors.Errorf("unexcepted")
+		return false, fmt.Errorf("unexcepted")
 	}
 }
 
 var _ DBInstance = &PostgreSQLInstance{}
 
 func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
-
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
 	// Gen salt
@@ -153,7 +155,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	_, err := pgi.conn.Write(b)
 
 	if err != nil {
-		return xerrors.Errorf("ReqBackendSsl: %w", err)
+		return fmt.Errorf("ReqBackendSsl: %w", err)
 	}
 
 	resp := make([]byte, 1)
@@ -163,8 +165,6 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 	}
 
 	sym := resp[0]
-
-	tracelog.InfoLogger.Printf("recv sym %v", sym)
 
 	if sym != 'S' {
 		return xerrors.New("SSL should be enabled")

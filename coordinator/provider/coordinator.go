@@ -424,7 +424,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				tracelog.ErrorLogger.PrintError(err)
 
 				//
-				_ = cl.ReplyErr(err.Error())
+				_ = cl.ReplyErrMsg(err.Error())
 			} else {
 				tracelog.InfoLogger.Print("processed ok\n")
 
@@ -444,7 +444,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 						&pgproto3.DataRow{Values: [][]byte{[]byte("query ok")}},
 						&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 						&pgproto3.ReadyForQuery{
-							TxStatus: conn.TXREL,
+							TxStatus: byte(conn.TXIDLE),
 						},
 					} {
 						if err := cl.Send(msg); err != nil {

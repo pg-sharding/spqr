@@ -11,9 +11,10 @@ import (
 type Client interface {
 	ID() string
 
-	ReplyErr(errmsg string) error
+	ReplyErrMsg(errmsg string) error
 	ReplyNotice(msg string) error
 	DefaultReply() error
+	SetParam(*pgproto3.ParameterStatus) error
 
 	Init(cfg *tls.Config, reqssl string) error
 
@@ -29,7 +30,6 @@ type Client interface {
 
 	Send(msg pgproto3.BackendMessage) error
 	Receive() (pgproto3.FrontendMessage, error)
-	ProcQuery(query *pgproto3.Query) (byte, error)
 
 	Shutdown() error
 	Reset() error

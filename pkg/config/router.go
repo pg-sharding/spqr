@@ -20,7 +20,7 @@ type RouterCfg struct {
 
 	QRouterCfg   QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
 	ExecuterCfg  ExecuterCfg   `json:"executer" toml:"executer" yaml:"executer"`
-	RouterConfig RulesCfg      `json:"router" toml:"router" yaml:"router"`
+	RulesConfig  RulesCfg      `json:"rules" toml:"rules" yaml:"rules"`
 	JaegerConfig JaegerCfg     `json:"jaeger" toml:"jaeger" yaml:"jaeger"`
 }
 

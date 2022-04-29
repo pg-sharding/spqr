@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
@@ -43,12 +44,13 @@ type WorldRouteState struct {
 type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
-  
-	Route(q string) (RoutingState, error)
-	// do not use
+
+	Route(stmt rparser.QParser) (RoutingState, error)
+
+	// AddLocalTable do not use
 	AddLocalTable(tname string) error
 
-	// shards
+	// Shards shards
 	Shards() []string
 	WorldShards() []string
 	WorldShardsRoutes() []*ShardRoute
@@ -60,12 +62,12 @@ type QueryRouter interface {
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
-func NewQrouter(qtype config.QrouterType) (QueryRouter, error) {
+func NewQrouter(qtype config.QrouterType, rules config.RulesCfg) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalQrouter:
-		return NewLocalQrouter(config.RouterConfig().QRouterCfg.LocalShard)
+		return NewLocalQrouter(rules)
 	case config.ProxyQrouter:
-		return NewProxyRouter()
+		return NewProxyRouter(rules)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().QRouterCfg.Qtype)
 	}

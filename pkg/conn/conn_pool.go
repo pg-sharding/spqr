@@ -71,7 +71,7 @@ func (c *cPool) Connection(shard, host string) (DBInstance, error) {
 	tracelog.InfoLogger.Printf("acquire new connection to %v", host)
 	var hostCfg *config.InstanceCFG
 
-	for _, h := range config.RouterConfig().RouterConfig.ShardMapping[shard].Hosts {
+	for _, h := range config.RouterConfig().RulesConfig.ShardMapping[shard].Hosts {
 		if h.ConnAddr == host {
 			hostCfg = h
 		}
@@ -166,19 +166,18 @@ func (s *InstancePoolImpl) List() []DBInstance {
 var _ ConnPool = &InstancePoolImpl{}
 
 func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
-
 	switch key.RW {
 	case true:
 		var pr string
 		var ok bool
 		pr, ok = s.primaries[key.Name]
 		if !ok {
-			pr = config.RouterConfig().RouterConfig.ShardMapping[key.Name].Hosts[0].ConnAddr
+			pr = config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts[0].ConnAddr
 		}
 		return s.poolRW.Connection(key.Name, pr)
 	case false:
 		tracelog.InfoLogger.Printf("get conn to %s", key.Name)
-		hosts := config.RouterConfig().RouterConfig.ShardMapping[key.Name].Hosts
+		hosts := config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[j], hosts[i] = hosts[i], hosts[j]
 		})
@@ -186,7 +185,6 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
 	default:
 		panic("never")
 	}
-
 }
 
 func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh DBInstance) error {

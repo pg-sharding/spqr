@@ -2,9 +2,9 @@ package logproxy
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
-	"fmt"
 
 	"github.com/jackc/pgproto3/v2"
 	//"github.com/pg-sharding/spqr/pkg/config"
@@ -64,7 +64,7 @@ func (p *Proxy) Run() error {
 }
 
 func (p *Proxy) serv(netconn net.Conn) error {
-	
+
 	conn, err := getC()
 	if err != nil {
 		fmt.Printf("failed %w", err)
@@ -74,26 +74,26 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
 	cl := pgproto3.NewBackend(pgproto3.NewChunkReader(netconn), netconn)
 
-//	err = cl.Init(nil, config.SSLMODEDISABLE)
+	//	err = cl.Init(nil, config.SSLMODEDISABLE)
 
-//	if err != nil {
-//		return err
-//	}
+	//	if err != nil {
+	//		return err
+	//	}
 
-//	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	//	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
 
-//	if err := cl.AssignRule(&config.FRRule{
-//		AuthRule: config.AuthRule{
-//			Method: config.AuthOK,
-//		},
-//	}); err != nil {
-//		return err
-//	}
+	//	if err := cl.AssignRule(&config.FRRule{
+	//		AuthRule: config.AuthRule{
+	//			Method: config.AuthOK,
+	//		},
+	//	}); err != nil {
+	//		return err
+	//	}
 
-//	if err := cl.Auth(); err != nil {
-//		return err
-//	}
-//	tracelog.InfoLogger.Printf("client auth OK")
+	//	if err := cl.Auth(); err != nil {
+	//		return err
+	//	}
+	//	tracelog.InfoLogger.Printf("client auth OK")
 
 	cb := func(msg pgproto3.FrontendMessage) {
 		tracelog.InfoLogger.Printf("received msg %v", msg)
@@ -101,7 +101,7 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
 			tracelog.InfoLogger.Printf("received prep stmt %v %v", v.Name, v.Query)
-			break;
+			break
 		case *pgproto3.Query:
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
@@ -118,8 +118,6 @@ func (p *Proxy) serv(netconn net.Conn) error {
 			return false
 		}
 	}
-
-	
 
 	for {
 		msg, err := cl.Receive()
@@ -155,6 +153,5 @@ func (p *Proxy) serv(netconn net.Conn) error {
 }
 
 func NewProxy() *Proxy {
-	return &Proxy{
-	}
+	return &Proxy{}
 }

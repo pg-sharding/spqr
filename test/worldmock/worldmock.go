@@ -21,7 +21,6 @@ func (w *WorldMock) Run() error {
 
 	ctx := context.Background()
 
-
 	listener, err := net.Listen("tcp", ":6432")
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(err)
@@ -97,7 +96,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
 			tracelog.InfoLogger.Printf("received prep stmt %v %v", v.Name, v.Query)
-			break;
+			break
 		case *pgproto3.Query:
 
 			tracelog.InfoLogger.Printf("received message %v", v.String)
@@ -120,7 +119,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
 					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 					&pgproto3.ReadyForQuery{
-						TxStatus: conn.TXREL,
+						TxStatus: byte(conn.TXIDLE),
 					},
 				} {
 					if err := cl.Send(msg); err != nil {

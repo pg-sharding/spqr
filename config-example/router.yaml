@@ -9,7 +9,7 @@ executer:
 
 qrouter:
     qrouter_type: PROXY
-router:
+rules:
     tls:
         key_file: '/etc/odyssey/ssl/server.key'
         cert_file: '/etc/odyssey/ssl/server.crt'
@@ -33,6 +33,7 @@ router:
             conn_db: "db1"
             conn_usr: "user1"
             passwd: 12345678
+            shard_type: 'DATA'
             hosts:
                 - conn_addr: "192.168.233.2:6432"
         sh2:
@@ -43,6 +44,7 @@ router:
             conn_db: "db1"
             conn_usr: "user1"
             passwd: 12345678
+            shard_type: 'DATA'
             hosts:
                 - conn_addr: "192.168.233.3:6432"
         w1:

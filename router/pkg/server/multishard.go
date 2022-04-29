@@ -24,6 +24,12 @@ type MultiShardServer struct {
 	pool conn.ConnPool
 }
 
+func (m *MultiShardServer) HasPrepareStatement(hash uint64) bool {
+	panic("implement me")
+}
+
+func (m *MultiShardServer) PrepareStatement(hash uint64) {}
+
 func (m *MultiShardServer) Reset() error {
 	return nil
 }
@@ -34,7 +40,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RouterConfig.ShardMapping[shkey.Name])
+	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name], m.rule)
 	if err != nil {
 		return err
 	}
@@ -44,7 +50,7 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 	return nil
 }
 
-func (m *MultiShardServer) UnrouteShard(sh kr.ShardKey) error {
+func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) error {
 
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
@@ -186,6 +192,11 @@ func (m *MultiShardServer) Cleanup() error {
 	}
 
 	return nil
+}
+
+func (m *MultiShardServer) Sync() int {
+	//TODO implement me
+	panic("implement me")
 }
 
 var _ Server = &MultiShardServer{}

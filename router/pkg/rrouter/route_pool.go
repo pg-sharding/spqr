@@ -76,18 +76,18 @@ func (r *RoutePoolImpl) MatchRoute(key route.RouteKey,
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if route, ok := r.pool[key]; ok {
+	if nroute, ok := r.pool[key]; ok {
 		tracelog.InfoLogger.Printf("match route %v", key)
 
-		return route, nil
+		return nroute, nil
 	}
 
 	tracelog.InfoLogger.Printf("allocate route %v", key)
-	route := route.NewRoute(beRule, frRule, r.mapping)
+	nroute := route.NewRoute(beRule, frRule, r.mapping)
 
-	r.pool[key] = route
+	r.pool[key] = nroute
 
-	return route, nil
+	return nroute, nil
 }
 
 var _ RoutePool = &RoutePoolImpl{}

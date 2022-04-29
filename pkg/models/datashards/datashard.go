@@ -3,9 +3,8 @@ package datashards
 import "github.com/pg-sharding/spqr/pkg/config"
 
 type DataShard struct {
-	ID string
+	ID  string
 	Cfg *config.ShardCfg
-
 }
 
 func NewDataShard(name string, cfg *config.ShardCfg) *DataShard {

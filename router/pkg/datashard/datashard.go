@@ -27,36 +27,36 @@ type Shard interface {
 
 	ReqBackendSsl(tlscfg *tls.Config) error
 
-	ConstructSMh() *pgproto3.StartupMessage
+	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
 }
 
-func (sh *DataShardConn) ConstructSMh() *pgproto3.StartupMessage {
+func (sh *DataShardConn) ConstructSM() *pgproto3.StartupMessage {
 
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.cfg.ConnUsr,
-			"database":         sh.cfg.ConnDB,
+			"user":             sh.beRule.RK.Usr,
+			"database":         sh.beRule.RK.DB,
 		},
 	}
 	return sm
 }
 
 type DataShardConn struct {
-	cfg *config.ShardCfg
-
 	lg log.Logger
 
-	name string
+	beRule *config.BERule
+	cfg    *config.ShardCfg
+
+	primary string
+	name    string
 
 	mu sync.Mutex
 
 	dedicated conn.DBInstance
-
-	primary string
 }
 
 func (sh *DataShardConn) Instance() conn.DBInstance {
@@ -97,23 +97,24 @@ func (sh *DataShardConn) SHKey() kr.ShardKey {
 	}
 }
 
-func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg) (Shard, error) {
+func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg, beRule *config.BERule) (Shard, error) {
 
-	sh := &DataShardConn{
-		cfg:  cfg,
-		name: key.Name,
+	dtSh := &DataShardConn{
+		cfg:    cfg,
+		name:   key.Name,
+		beRule: beRule,
 	}
 
-	sh.dedicated = pgi
+	dtSh.dedicated = pgi
 
-	if sh.dedicated.Status() == conn.NotInitialized {
-		if err := sh.Auth(sh.ConstructSMh()); err != nil {
+	if dtSh.dedicated.Status() == conn.NotInitialized {
+		if err := dtSh.Auth(dtSh.ConstructSM()); err != nil {
 			return nil, err
 		}
-		sh.dedicated.SetStatus(conn.ACQUIRED)
+		dtSh.dedicated.SetStatus(conn.ACQUIRED)
 	}
 
-	return sh, nil
+	return dtSh, nil
 }
 
 func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
@@ -140,9 +141,9 @@ func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		case *pgproto3.ParameterStatus:
-			asynctracelog.Printf("ignored paramtes status %v %v", v.Name, v.Value)
+			asynctracelog.Printf("ignored parameter status %v %v", v.Name, v.Value)
 		case *pgproto3.BackendKeyData:
-			asynctracelog.Printf("ingored backend key data %v %v", v.ProcessID, v.SecretKey)
+			asynctracelog.Printf("ignored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
 			asynctracelog.Printf("unexpected msg type received %T", v)
 		}

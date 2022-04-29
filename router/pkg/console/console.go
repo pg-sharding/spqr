@@ -189,7 +189,7 @@ func (c *Local) Serve(ctx context.Context, cl client.Client) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 			if err := c.ProcessQuery(ctx, v.String, cl); err != nil {
-				_ = cl.ReplyErr(err.Error())
+				_ = cl.ReplyErrMsg(err.Error())
 				// continue to consume input
 			}
 		default:

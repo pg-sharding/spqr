@@ -2,6 +2,7 @@ package rrouter
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -79,11 +80,11 @@ func (r *RRouter) Shutdown() error {
 func (router *RRouter) initRules() error {
 	frs := make(map[route.RouteKey]*config.FRRule)
 
-	for _, frRule := range config.RouterConfig().RouterConfig.FrontendRules {
+	for _, frRule := range config.RouterConfig().RulesConfig.FrontendRules {
 		frs[*route.NewRouteKey(frRule.RK.Usr, frRule.RK.DB)] = frRule
 	}
 
-	for _, berule := range config.RouterConfig().RouterConfig.BackendRules {
+	for _, berule := range config.RouterConfig().RulesConfig.BackendRules {
 		key := *route.NewRouteKey(
 			berule.RK.Usr, berule.RK.DB,
 		)
@@ -97,7 +98,7 @@ func (router *RRouter) initRules() error {
 
 func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	router := &RRouter{
-		routePool:     NewRouterPoolImpl(config.RouterConfig().RouterConfig.ShardMapping),
+		routePool:     NewRouterPoolImpl(config.RouterConfig().RulesConfig.ShardMapping),
 		frontendRules: map[route.RouteKey]*config.FRRule{},
 		backendRules:  map[route.RouteKey]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
@@ -108,7 +109,7 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 		return nil, err
 	}
 
-	if config.RouterConfig().RouterConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
+	if config.RouterConfig().RulesConfig.TLSCfg.SslMode != config.SSLMODEDISABLE {
 		router.cfg = tlscfg
 	}
 
@@ -119,8 +120,8 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 	cl := rclient.NewPsqlClient(conn)
 
-	if err := cl.Init(r.cfg, config.RouterConfig().RouterConfig.TLSCfg.SslMode); err != nil {
-		return nil, err
+	if err := cl.Init(r.cfg, config.RouterConfig().RulesConfig.TLSCfg.SslMode); err != nil {
+		return cl, err
 	}
 
 	// match client frontend rule
@@ -128,28 +129,29 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 	frRule, ok := r.frontendRules[key]
 	if !ok {
+		errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: "failed to preroute",
+				Message: errmsg,
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure resp")
+				return nil, errors.Wrap(err, "failed to make route failure responce")
 			}
 		}
 
-		return nil, errors.New("Failed to preroute client")
+		return cl, errors.New(errmsg)
 	}
 
 	beRule, ok := r.backendRules[key]
 	if !ok {
-		return nil, errors.New("Failed to route client")
+		return cl, errors.New("Failed to route client")
 	}
 
 	_ = cl.AssignRule(frRule)
 
 	if err := cl.Auth(); err != nil {
-		return nil, err
+		return cl, err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")
 
@@ -167,7 +169,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 func (r *RRouter) ListShards() []string {
 	var ret []string
 
-	for _, sh := range config.RouterConfig().RouterConfig.ShardMapping {
+	for _, sh := range config.RouterConfig().RulesConfig.ShardMapping {
 		ret = append(ret, sh.Hosts[0].ConnAddr)
 	}
 
