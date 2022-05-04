@@ -2,7 +2,7 @@
 
 set -ex
 
-export SETUP_LOG=/var/spqrlog/setup.spqrlog
+export SETUP_LOG=/var/log/setup.log
 
 touch $SETUP_LOG
 
