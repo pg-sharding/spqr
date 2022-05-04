@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	"github.com/jackc/pgproto3/v2"
 	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -44,10 +45,11 @@ type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 
-	Route(stmt rparser.QParser) (RoutingState, error)
+	Route() (RoutingState, error)
 
 	// AddLocalTable do not use
 	AddLocalTable(tname string) error
+	Parse(q *pgproto3.Query) (rparser.ParseState, error)
 
 	// Shards shards
 	Shards() []string

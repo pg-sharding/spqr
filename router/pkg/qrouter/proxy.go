@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+	"github.com/jackc/pgproto3/v2"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
@@ -29,6 +30,8 @@ type ProxyQrouter struct {
 	WorldShardCfgs map[string]*config.ShardCfg
 
 	qdb qdb.QrouterDB
+
+	parser parser.QParser
 }
 
 func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
@@ -121,6 +124,10 @@ func NewProxyRouter(rules config.RulesCfg) (*ProxyQrouter, error) {
 		}
 	}
 	return proxy, nil
+}
+
+func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
+	return qr.parser.Parse(q)
 }
 
 func (qr *ProxyQrouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
@@ -407,8 +414,8 @@ func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 
 var ParseError = xerrors.New("parsing stmt error")
 
-func (qr *ProxyQrouter) Route(parser parser.QParser) (RoutingState, error) {
-	parsedStmt := parser.Stmt()
+func (qr *ProxyQrouter) Route() (RoutingState, error) {
+	parsedStmt := qr.parser.Stmt()
 	tracelog.InfoLogger.Printf("stmt type %T", parsedStmt)
 
 	switch parsedStmt.(type) {
