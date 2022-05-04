@@ -213,14 +213,14 @@ func (rst *RelayStateImpl) Reroute() error {
 		// fallback to execute query on wolrd datashard (s)
 		_, _ = rst.RerouteWorld()
 		if err := rst.ConnectWorld(); err != nil {
-			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))
+			_ = rst.UnRouteWithError(nil, fmt.Errorf("failed to fallback on world datashard: %w", err))
 			return err
 		}
 
 		return nil
 	default:
-		tracelog.ErrorLogger.PrintError(xerrors.Errorf("unexpected route state %T", v))
-		return xerrors.Errorf("unexpected route state %T", v)
+		tracelog.ErrorLogger.PrintError(fmt.Errorf("unexpected route state %T", v))
+		return fmt.Errorf("unexpected route state %T", v)
 	}
 
 	//span.SetTag("shard_routes", routingState)

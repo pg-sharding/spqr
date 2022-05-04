@@ -2,6 +2,7 @@ package rrouter
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/wal-g/tracelog"
 
 	"github.com/jackc/pgproto3/v2"
@@ -65,7 +66,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 }
 
 func (t *TxConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
-	return rst.ActiveShards() == nil || !rst.TxActive()
+	return rst.ActiveShards() == nil || rst.TxStatus() == conn.TXIDLE
 }
 
 func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
