@@ -2,11 +2,11 @@ package datashard
 
 import (
 	"crypto/tls"
+	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 	"log"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -135,17 +135,17 @@ func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
 		case pgproto3.AuthenticationResponseMessage:
 			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
 			if err != nil {
-				asynctracelog.Printf("failed to perform backend auth %w", err)
+				spqrlog.Logger.Errorf("failed to perform backend auth %w", err)
 				return err
 			}
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		case *pgproto3.ParameterStatus:
-			asynctracelog.Printf("ignored parameter status %v %v", v.Name, v.Value)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored parameter status %v %v", v.Name, v.Value)
 		case *pgproto3.BackendKeyData:
-			asynctracelog.Printf("ignored backend key data %v %v", v.ProcessID, v.SecretKey)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
-			asynctracelog.Printf("unexpected msg type received %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "unexpected msg type received %T", v)
 		}
 	}
 }

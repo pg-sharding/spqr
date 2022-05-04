@@ -31,7 +31,13 @@ func LoadRouterCfg(cfgPath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
+
 	if err := yaml.NewDecoder(file).Decode(&cfgRouter); err != nil {
 		return err
 	}

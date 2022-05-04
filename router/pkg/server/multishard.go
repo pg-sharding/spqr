@@ -3,11 +3,11 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
+	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 	"reflect"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -70,7 +70,7 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activeShards {
-		asynctracelog.Printf("sending Q to sh %v", shard.Name())
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "sending Q to sh %v", shard.Name())
 		err := shard.Send(msg)
 		if err != nil {
 			tracelog.InfoLogger.PrintError(err)
@@ -90,7 +90,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 	wg.Add(len(m.activeShards))
 	for _, currshard := range m.activeShards {
-		asynctracelog.Printf("recv mult resp from sh %s", currshard.Name())
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "recv mult resp from sh %s", currshard.Name())
 
 		currshard := currshard
 		go func() {
@@ -101,7 +101,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				if err != nil {
 					return err
 				}
-				asynctracelog.Printf("got %v from %s", msg, shard.Name())
+				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %v from %s", msg, shard.Name())
 
 				ch <- msg
 

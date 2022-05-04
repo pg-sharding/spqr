@@ -2,7 +2,8 @@ package rrouter
 
 import (
 	"fmt"
-	"github.com/wal-g/tracelog"
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"
@@ -37,7 +38,7 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
-		tracelog.InfoLogger.Printf("unrouting from datashard %v", shkey.Name)
+		spqrlog.Logger.Printf(spqrlog.LOG, "unrouting from datashard %v", shkey.Name)
 		if err := cl.Server().UnRouteShard(shkey); err != nil {
 			_ = cl.Unroute()
 			return err
@@ -53,7 +54,7 @@ func NewTxConnManager() *TxConnManager {
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 
 	for _, shkey := range sh {
-		tracelog.InfoLogger.Printf("adding datashard %v", shkey.Name)
+		spqrlog.Logger.Printf(spqrlog.LOG, "adding datashard %v", shkey.Name)
 		_ = client.ReplyNotice(fmt.Sprintf("adding datashard %v", shkey.Name))
 
 		if err := client.Server().AddShard(shkey); err != nil {
@@ -65,7 +66,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 }
 
 func (t *TxConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
-	return rst.ActiveShards() == nil || !rst.TxActive()
+	return rst.ActiveShards() == nil || rst.TxStatus() == conn.TXIDLE
 }
 
 func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
@@ -74,7 +75,7 @@ func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInte
 
 func (t *TxConnManager) TXEndCB(client client.RouterClient, rst RelayStateInteractor) error {
 	ash := rst.ActiveShards()
-	tracelog.InfoLogger.Printf("end of tx unrouting from %v", ash)
+	spqrlog.Logger.Printf(spqrlog.LOG, "end of tx unrouting from %v", ash)
 	rst.ActiveShardsReset()
 
 	if err := t.UnRouteCB(client, ash); err != nil {
