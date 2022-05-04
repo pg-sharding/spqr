@@ -7,8 +7,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -50,7 +50,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 	}
 
 	pgi := srv.shard.Instance()
-	tracelog.InfoLogger.Printf("put connection to %v back to pool\n", pgi.Hostname())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection to %v back to pool\n", pgi.Hostname())
 
 	if err := srv.pool.Put(shkey, pgi); err != nil {
 		return err
@@ -91,13 +91,13 @@ func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("send msg to server %+v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send msg to server %+v", query)
 	return srv.shard.Send(query)
 }
 
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	msg, err := srv.shard.Receive()
-	tracelog.InfoLogger.Printf("recv msg from server %T", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "recv msg from server %T", msg)
 	return msg, err
 }
 
@@ -105,7 +105,7 @@ func (srv *ShardServer) fire(q string) error {
 	if err := srv.Send(&pgproto3.Query{
 		String: q,
 	}); err != nil {
-		tracelog.InfoLogger.Printf("error firing request to conn")
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "error firing request to conn")
 		return err
 	}
 
@@ -113,7 +113,7 @@ func (srv *ShardServer) fire(q string) error {
 		if msg, err := srv.Receive(); err != nil {
 			return err
 		} else {
-			tracelog.InfoLogger.Printf("rollback resp %T", msg)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "rollback resp %T", msg)
 
 			switch msg.(type) {
 			case *pgproto3.ReadyForQuery:

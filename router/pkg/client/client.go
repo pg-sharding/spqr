@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -67,7 +67,7 @@ type PsqlClient struct {
 }
 
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process parse %v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -228,8 +228,7 @@ func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
 
 // startup + ssl
 func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
-
-	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", sslmode)
+	spqrlog.Logger.Printf(spqrlog.LOG, "initialing client connection with %v ssl req", sslmode)
 
 	var backend *pgproto3.Backend
 
@@ -258,9 +257,10 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	case conn.SSLREQ:
 		if sslmode == config.SSLMODEDISABLE {
 			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-			tracelog.ErrorLogger.FatalOnError(err)
-			return xerrors.Errorf("ssl mode is requested but ssl is disabled")
+			spqrlog.Logger.Errorf("ssl mode is requested but ssl is disabled")
+			return fmt.Errorf("ssl mode is requested but ssl is disabled")
 		}
+
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
 			return err
@@ -287,10 +287,15 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		// reuse
 		sm = &pgproto3.StartupMessage{}
 		err = sm.Decode(msg)
-		tracelog.ErrorLogger.FatalOnError(err)
-
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-		tracelog.ErrorLogger.FatalOnError(err)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 
 	case conn.CANCELREQ:
 		return fmt.Errorf("cancel is not supported")
@@ -315,7 +320,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 }
 
 func (cl *PsqlClient) Auth() error {
-	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {
@@ -428,7 +433,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	tracelog.InfoLogger.Printf("sending %T", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T", msg)
 	return cl.be.Send(msg)
 }
 
@@ -442,13 +447,13 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("process copy %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy %T", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 	return cl.server.Send(query)
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("process copy end %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy end %T", query)
 	if err := cl.server.Send(*query); err != nil {
 		return err
 	}
@@ -470,7 +475,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
-	tracelog.InfoLogger.Printf("process query %s", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -529,7 +534,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 
 		default:
-			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -541,7 +546,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 }
 
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process command %+v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process command %+v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -564,7 +569,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		default:
-			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {

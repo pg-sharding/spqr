@@ -2,12 +2,12 @@ package conn
 
 import (
 	"crypto/tls"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/wal-g/tracelog"
 )
 
 type Pool interface {
@@ -61,14 +61,13 @@ func (c *cPool) Connection(shard, host string) (DBInstance, error) {
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
 		c.mu.Unlock()
-		tracelog.InfoLogger.Printf("got cached connection from pool")
+		spqrlog.Logger.Printf(spqrlog.LOG, "got cached connection from pool")
 		return sh, nil
 	}
 	c.mu.Unlock()
 
 	// do not hold lock on poolRW while allocate new connection
-
-	tracelog.InfoLogger.Printf("acquire new connection to %v", host)
+	spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
 	var hostCfg *config.InstanceCFG
 
 	for _, h := range config.RouterConfig().RulesConfig.ShardMapping[shard].Hosts {
@@ -176,7 +175,7 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey) (DBInstance, error) {
 		}
 		return s.poolRW.Connection(key.Name, pr)
 	case false:
-		tracelog.InfoLogger.Printf("get conn to %s", key.Name)
+		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new conn to %s", key.Name)
 		hosts := config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[j], hosts[i] = hosts[i], hosts[j]

@@ -1,10 +1,9 @@
 package client
 
 import (
-	"sync"
-
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
+	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/wal-g/tracelog"
+	"sync"
 )
 
 type Pool interface {
@@ -61,12 +60,13 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 
 	for _, cl := range c.pool {
 		if err := cb(cl); err != nil {
-			asynctracelog.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
 	return nil
 }
+
 func NewClientPool() *PoolImpl {
 	return &PoolImpl{
 		pool: map[string]Client{},

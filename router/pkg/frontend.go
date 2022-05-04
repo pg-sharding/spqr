@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
@@ -13,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
-	"github.com/wal-g/tracelog"
 )
 
 type Qinteractor interface {
@@ -23,7 +23,7 @@ type QinteractorImpl struct {
 }
 
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
-	tracelog.InfoLogger.Printf("received query %v", q.String)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
 	state, err := rst.Parse(q)
 	if err != nil {
 		return err
@@ -61,14 +61,14 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
-	tracelog.InfoLogger.Printf("process frontend for route %s %s", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNotice(fmt.Sprintf("process frontend for route %s %s", cl.Usr(), cl.DB()))
 
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
 	onErrFunc := func(err error) error {
-		tracelog.InfoLogger.Printf("frontend got err %v", err)
+		spqrlog.Logger.Errorf("frontend got error: %v", err)
 
 		switch err {
 		case nil:
@@ -92,7 +92,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			return onErrFunc(err)
 		}
 
-		tracelog.InfoLogger.Printf("received %T msg, %p", msg, msg)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %T msg, %p", msg, msg)
 
 		if err := func() error {
 			if !cl.Rule().PoolPreparedStatement {
@@ -122,14 +122,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 				hash := murmur3.Sum64([]byte(q.Query))
 
-				tracelog.InfoLogger.Printf(fmt.Sprintf("name %v, query %v, hash %d", q.Name, q.Query, hash))
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
+
 				if err := cl.ReplyNotice(fmt.Sprintf("name %v, query %v, hash %d", q.Name, q.Query, hash)); err != nil {
 					return err
 				}
 
-				//if _, ok := mp[hash]; ok {
-				//	tracelog.InfoLogger.Printf("redefinition %v with hash %d", q.Query, hash)
-				//}
 				cl.StorePreparedStatement(q.Name, q.Query)
 
 				// simply reply witch ok parse complete
@@ -168,7 +166,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				}
 
 			case *pgproto3.Execute:
-				tracelog.InfoLogger.Printf(fmt.Sprintf("simply fire parse stmt to connection"))
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
 
 				if err := rst.ProcessMessage(q, false, true, cmngr); err != nil {
 					return err
