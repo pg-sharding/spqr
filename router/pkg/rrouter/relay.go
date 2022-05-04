@@ -338,10 +338,11 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
 		tracelog.InfoLogger.Printf("flushing %+v", v)
 		if txst, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
-			return 0, err
+			return conn.TXERR, err
 		}
 	}
 
+	rst.SetTxStatus(txst)
 	return txst, nil
 }
 
@@ -350,10 +351,14 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 			return 0, err
 		}
-		rst.txStatus = conn.TXACT
 	}
 
-	return rst.Cl.ProcQuery(msg, waitForResp, replyCl)
+	bt, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
+	if err != nil {
+		return conn.TXERR, err
+	}
+	rst.SetTxStatus(bt)
+	return rst.txStatus, nil
 }
 
 func (rst *RelayStateImpl) ShouldRetry(err error) bool {
