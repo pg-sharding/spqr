@@ -23,7 +23,7 @@ type Server interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddShard(shkey kr.ShardKey) error
+	AddShard(shardKey kr.ShardKey) error
 	UnRouteShard(sh kr.ShardKey) error
 
 	AddTLSConf(cfg *tls.Config) error

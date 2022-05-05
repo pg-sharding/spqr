@@ -52,7 +52,6 @@ func NewTxConnManager() *TxConnManager {
 }
 
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-
 	for _, shkey := range sh {
 		spqrlog.Logger.Printf(spqrlog.LOG, "adding datashard %v", shkey.Name)
 		_ = client.ReplyNotice(fmt.Sprintf("adding datashard %v", shkey.Name))

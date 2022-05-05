@@ -10,12 +10,12 @@ import (
 )
 
 type RoutePool interface {
-	MatchRoute(key route.RouteKey,
+	MatchRoute(key route.Key,
 		beRule *config.BERule,
 		frRule *config.FRRule,
 	) (*route.Route, error)
 
-	Obsolete(key route.RouteKey) *route.Route
+	Obsolete(key route.Key) *route.Route
 
 	Shutdown() error
 
@@ -23,10 +23,8 @@ type RoutePool interface {
 }
 
 type RoutePoolImpl struct {
-	mu sync.Mutex
-
-	pool map[route.RouteKey]*route.Route
-
+	mu      sync.Mutex
+	pool    map[route.Key]*route.Route
 	mapping map[string]*config.ShardCfg
 }
 
@@ -45,7 +43,7 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	return nil
 }
 
-func (r *RoutePoolImpl) Obsolete(key route.RouteKey) *route.Route {
+func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 
 	r.mu.Lock()
 	r.mu.Unlock()
@@ -69,7 +67,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	return nil
 }
 
-func (r *RoutePoolImpl) MatchRoute(key route.RouteKey,
+func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	beRule *config.BERule,
 	frRule *config.FRRule) (*route.Route, error) {
 
@@ -95,6 +93,6 @@ var _ RoutePool = &RoutePoolImpl{}
 func NewRouterPoolImpl(mapping map[string]*config.ShardCfg) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		mapping: mapping,
-		pool:    map[route.RouteKey]*route.Route{},
+		pool:    map[route.Key]*route.Route{},
 	}
 }

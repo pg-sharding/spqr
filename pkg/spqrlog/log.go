@@ -55,7 +55,7 @@ var Logger = NewErrorLogger(os.Stdout)
 
 func (el *errorLogger) Printf(severity Severity, fmt string, args ...interface{}) {
 	if mp[config.RouterConfig().LogLevel] <= severity {
-		el.logMp[severity].Printf(fmt, args)
+		el.logMp[severity].Printf(fmt, args...)
 	}
 }
 

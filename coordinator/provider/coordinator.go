@@ -168,7 +168,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	if err := cl.Auth(); err != nil {
+	if err := cl.Auth(nil); err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")
@@ -225,7 +225,6 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				default:
 					return xerrors.New("failed to proc")
 				}
-
 				return nil
 			}(); err != nil {
 				tracelog.ErrorLogger.PrintError(err)

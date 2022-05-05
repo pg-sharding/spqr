@@ -79,7 +79,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	if err := cl.Auth(); err != nil {
+	if err := cl.Auth(nil); err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")

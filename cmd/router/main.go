@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	_ "net/http/pprof"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
