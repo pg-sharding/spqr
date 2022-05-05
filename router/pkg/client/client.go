@@ -111,9 +111,9 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	return ""
 }
 
-func (cl *PsqlClient) SetParam(p *pgproto3.ParameterStatus) error {
-	cl.params[p.Name] = p.Value
-	return nil
+func (cl *PsqlClient) SetParam(name, value string) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client param %v %v", name, value)
+	cl.params[name] = value
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -161,14 +161,10 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
-	return nil
-	if v, ok := cl.params["client_min_messages"]; ok {
-		switch v {
-		case "error":
-			fallthrough
-		case "warning":
-			fallthrough
-		case "fatal":
+	if v, ok := cl.params["client_min_messages"]; !ok {
+		return nil
+	} else {
+		if v != "notice" {
 			return nil
 		}
 	}
@@ -219,7 +215,6 @@ func (cl *PsqlClient) Unroute() error {
 		return NotRouted
 	}
 	cl.server = nil
-
 	return nil
 }
 
@@ -307,6 +302,10 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		return fmt.Errorf("cancel is not supported")
 	default:
 		return fmt.Errorf("protocol number %d not supported", protoVer)
+	}
+
+	for k, v := range sm.Parameters {
+		cl.SetParam(k, v)
 	}
 
 	cl.startupMsg = sm
