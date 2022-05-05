@@ -30,24 +30,6 @@ rules:
                 - conn_addr: "localhost:5550"
     frontend_rules:
         - route_key_cfg:
-            usr: reshke
-            db: regression
-          pooling_mode: 'TRANSACTION'
-          pool_discard: true
-          pool_rollback: true
-          auth_rule:
-              auth_method: 'ok'
-              password: 'strong'
-        - route_key_cfg:
-            usr: reshke
-            db: postgres
-          pooling_mode: 'TRANSACTION'
-          pool_discard: true
-          pool_rollback: true
-          auth_rule:
-              auth_method: 'ok'
-              password: 'strong'
-        - route_key_cfg:
             usr: user1
             db: db1
           pooling_mode: 'TRANSACTION'
@@ -57,6 +39,13 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
+        - default: true
+          pooling_mode: 'SESSION'
+          pool_discard: true
+          pool_rollback: true
+          auth_rule:
+            auth_method: 'passthought'
+
     backend_rules:
         - route_key_cfg:
             usr: reshke
