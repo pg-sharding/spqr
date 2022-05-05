@@ -95,12 +95,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	}
 
 	// dont need to complete relay because tx state dont changed
-	//if err := rst.CompleteRelay(txst); err != nil {
-	//	return err
-	//}
-
 	rst.Cl.Server().PrepareStatement(hash)
-
 	return nil
 }
 
@@ -179,7 +174,7 @@ func (rst *RelayStateImpl) Reroute() error {
 			return qrouter.MatchShardError
 		}
 
-		if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
+		if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
@@ -269,29 +264,19 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
 
-	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
 func (rst *RelayStateImpl) ConnectWorld() error {
 	_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 
 	serv := server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
-
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
 		return err
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
-
-	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
 func (rst *RelayStateImpl) RelayCopyStep(msg pgproto3.FrontendMessage) error {
@@ -323,19 +308,31 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 }
 
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "flush message buff")
+
 	var txst conn.TXStatus
 	var err error
 
 	for len(rst.msgBuf) > 0 {
+		if !rst.TxActive() {
+			if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+				return 0, err
+			}
+		}
+
 		var v pgproto3.Query
 		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v", v)
 		if txst, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
 			return conn.TXERR, err
 		}
+
+		rst.SetTxStatus(txst)
+		if err := rst.CompleteRelay(); err != nil {
+			return conn.TXERR, err
+		}
 	}
 
-	rst.SetTxStatus(txst)
 	return txst, nil
 }
 
@@ -423,30 +420,31 @@ func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 var _ RelayStateInteractor = &RelayStateImpl{}
 
 func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s", cl.Usr(), cl.DB())
 	// txactive == 0 || activeSh == nil
-	if cmngr.ValidateReRoute(rst) {
-		err := rst.Reroute()
-		switch err {
-		case nil:
-			return nil
-		case SkipQueryError:
-			//_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
-			if err := cl.ReplyErrMsg(err.Error()); err != nil {
-				return err
-			}
-			return SkipQueryError
-		case qrouter.MatchShardError:
-			_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
-			return SkipQueryError
-		case qrouter.ParseError:
-			_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
-			return SkipQueryError
-		default:
-			_ = rst.UnRouteWithError(nil, err)
+	if !cmngr.ValidateReRoute(rst) {
+		return nil
+	}
+
+	switch err := rst.Reroute(); err {
+	case nil:
+		return nil
+	case SkipQueryError:
+		//_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+		if err := cl.ReplyErrMsg(err.Error()); err != nil {
 			return err
 		}
+		return SkipQueryError
+	case qrouter.MatchShardError:
+		_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
+		return SkipQueryError
+	case qrouter.ParseError:
+		_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+		return SkipQueryError
+	default:
+		_ = rst.UnRouteWithError(nil, err)
+		return err
 	}
-	return nil
 }
 
 func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error {
@@ -458,10 +456,6 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Co
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
-		return err
-	}
-
-	if err := rst.CompleteRelay(); err != nil {
 		return err
 	}
 
