@@ -186,6 +186,10 @@ func (cl *PsqlClient) ReplyNotice(msg string) error {
 	return nil
 }
 
+func (cl *PsqlClient) ReplyNoticef(fmtString string, args ...interface{}) error {
+	return cl.ReplyNotice(fmt.Sprintf(fmtString, args...))
+}
+
 func (cl *PsqlClient) ID() string {
 	return cl.id
 }
