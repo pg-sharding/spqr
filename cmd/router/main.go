@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"sync"
+	_ "net/http/pprof"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/app"

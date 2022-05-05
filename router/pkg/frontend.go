@@ -64,7 +64,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNotice(fmt.Sprintf("process frontend for route %s %s", cl.Usr(), cl.DB()))
-
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
 	onErrFunc := func(err error) error {
@@ -98,28 +97,20 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			if !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
 				case *pgproto3.Sync:
-					if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
-						return err
-					}
+					return rst.ProcessMessage(q, true, true, cmngr)
 				case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
-					if err := rst.ProcessMessage(q, false, true, cmngr); err != nil {
-						return err
-					}
+					return rst.ProcessMessage(q, false, true, cmngr)
 				case *pgproto3.Query:
 					return procQuery(rst, q, cmngr)
 				default:
 					return nil
 				}
-				return nil
 			}
 
 			switch q := msg.(type) {
 			case *pgproto3.Sync:
-				if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
-					return err
-				}
+				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Parse:
-
 				hash := murmur3.Sum64([]byte(q.Query))
 
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
@@ -131,15 +122,13 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				cl.StorePreparedStatement(q.Name, q.Query)
 
 				// simply reply witch ok parse complete
-				if err := cl.ReplyParseComplete(); err != nil {
-					return err
-				}
+				return cl.ReplyParseComplete()
 			case *pgproto3.Describe:
 				if q.ObjectType == 'P' {
 					if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
 						return err
 					}
-					break
+					return nil
 				}
 				query := cl.PreparedStatementQueryByName(q.Name)
 				hash := murmur3.Sum64([]byte(query))
@@ -162,15 +151,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					if rst.ShouldRetry(err) {
 						// TODO: fix retry logic
 					}
-					return err
 				}
-
+				return err
 			case *pgproto3.Execute:
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
-
-				if err := rst.ProcessMessage(q, false, true, cmngr); err != nil {
-					return err
-				}
+				return rst.ProcessMessage(q, false, true, cmngr)
 			case *pgproto3.Bind:
 				query := cl.PreparedStatementQueryByName(q.PreparedStatement)
 				hash := murmur3.Sum64([]byte(query))
@@ -188,17 +173,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 				q.PreparedStatement = fmt.Sprintf("%d", hash)
 
-				if err := rst.RelayRunCommand(q, false, true); err != nil {
-					return err
-				}
-
+				return rst.RelayRunCommand(q, false, true)
 			case *pgproto3.Query:
 				return procQuery(rst, q, cmngr)
 			default:
 				return nil
 			}
-
-			return nil
 		}(); err != nil {
 			return onErrFunc(err)
 		}

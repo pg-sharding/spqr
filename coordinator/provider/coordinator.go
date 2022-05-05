@@ -225,7 +225,6 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				default:
 					return xerrors.New("failed to proc")
 				}
-
 				return nil
 			}(); err != nil {
 				tracelog.ErrorLogger.PrintError(err)

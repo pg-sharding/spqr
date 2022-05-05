@@ -2,7 +2,7 @@ addr: '[::1]:6432'
 adm_addr: '[::1]:7433'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
-log_level: ERROR
+log_level: DEBUG1
 
 executer:
     init_sql_path: "./test-init.sql"

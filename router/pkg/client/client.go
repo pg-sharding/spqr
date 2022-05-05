@@ -33,6 +33,8 @@ type RouterClient interface {
 	Server() server.Server
 	Unroute() error
 
+	Auth(rt *route.Route) error
+
 	AssignRule(rule *config.FRRule) error
 	AssignServerConn(srv server.Server) error
 	AssignRoute(r *route.Route) error
@@ -319,7 +321,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	return nil
 }
 
-func (cl *PsqlClient) Auth() error {
+func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
@@ -333,12 +335,9 @@ func (cl *PsqlClient) Auth() error {
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
 				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
-
 			return nil
 		case config.AuthMD5:
-
 		case config.AuthSCRAM:
-
 		default:
 			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
 		}
@@ -359,8 +358,28 @@ func (cl *PsqlClient) Auth() error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "spqr"},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	ps, err := rt.Params()
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	for key, msg := range ps {
+		if err := cl.Send(&pgproto3.ParameterStatus{
+			Name:  key,
+			Value: msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(conn.TXIDLE),
 		},

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
@@ -15,11 +14,9 @@ import (
 type ShardServer struct {
 	rule *config.BERule
 
-	pool conn.ConnPool
-
+	pool  datashard.DBPool
 	shard datashard.Shard
-
-	mp map[uint64]string
+	mp    map[uint64]string
 }
 
 func (srv *ShardServer) HasPrepareStatement(hash uint64) bool {
@@ -49,15 +46,12 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 		return err
 	}
 
-	pgi := srv.shard.Instance()
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection to %v back to pool\n", pgi.Hostname())
-
-	if err := srv.pool.Put(shkey, pgi); err != nil {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection to %v back to pool\n", srv.shard.Instance().Hostname())
+	if err := srv.pool.Put(shkey, srv.shard); err != nil {
 		return err
 	}
 
 	srv.shard = nil
-
 	return nil
 }
 
@@ -66,13 +60,10 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 		return xerrors.New("single datashard server does not support more than 2 datashard connection simultaneously")
 	}
 
-	if pgi, err := srv.pool.Connection(shkey); err != nil {
+	var err error
+
+	if srv.shard, err = srv.pool.Connection(shkey, srv.rule); err != nil {
 		return err
-	} else {
-		srv.shard, err = datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name], srv.rule)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -82,7 +73,7 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	return srv.shard.ReqBackendSsl(cfg)
 }
 
-func NewShardServer(rule *config.BERule, spool conn.ConnPool) *ShardServer {
+func NewShardServer(rule *config.BERule, spool datashard.DBPool) *ShardServer {
 	return &ShardServer{
 		rule: rule,
 		pool: spool,

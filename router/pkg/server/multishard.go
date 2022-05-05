@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"github.com/wal-g/tracelog"
@@ -20,7 +19,7 @@ type MultiShardServer struct {
 	rule         *config.BERule
 	activeShards []datashard.Shard
 
-	pool conn.ConnPool
+	pool datashard.DBPool
 }
 
 func (m *MultiShardServer) HasPrepareStatement(hash uint64) bool {
@@ -34,18 +33,12 @@ func (m *MultiShardServer) Reset() error {
 }
 
 func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
-	pgi, err := m.pool.Connection(shkey)
-	if err != nil {
-		return err
-	}
-
-	sh, err := datashard.NewShard(shkey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shkey.Name], m.rule)
+	sh, err := m.pool.Connection(shkey, m.rule)
 	if err != nil {
 		return err
 	}
 
 	m.activeShards = append(m.activeShards, sh)
-
 	return nil
 }
 

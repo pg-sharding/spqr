@@ -158,7 +158,6 @@ func (rst *RelayStateImpl) Flush() {
 var SkipQueryError = xerrors.New("wait for next query")
 
 func (rst *RelayStateImpl) Reroute() error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "rerouting")
 	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
 
 	span := opentracing.StartSpan("reroute")

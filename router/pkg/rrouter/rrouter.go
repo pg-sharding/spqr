@@ -21,8 +21,8 @@ import (
 type RequestRouter interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
-	ObsoleteRoute(key route.RouteKey) error
-	AddRouteRule(key route.RouteKey, befule *config.BERule, frRule *config.FRRule) error
+	ObsoleteRoute(key route.Key) error
+	AddRouteRule(key route.Key, befule *config.BERule, frRule *config.FRRule) error
 
 	AddDataShard(key qdb.ShardKey) error
 	AddWorldShard(key qdb.ShardKey) error
@@ -32,8 +32,8 @@ type RequestRouter interface {
 type RRouter struct {
 	routePool RoutePool
 
-	frontendRules map[route.RouteKey]*config.FRRule
-	backendRules  map[route.RouteKey]*config.BERule
+	frontendRules map[route.Key]*config.FRRule
+	backendRules  map[route.Key]*config.BERule
 
 	mu sync.Mutex
 
@@ -78,7 +78,7 @@ func (r *RRouter) Shutdown() error {
 }
 
 func (router *RRouter) initRules() error {
-	frs := make(map[route.RouteKey]*config.FRRule)
+	frs := make(map[route.Key]*config.FRRule)
 
 	for _, frRule := range config.RouterConfig().RulesConfig.FrontendRules {
 		frs[*route.NewRouteKey(frRule.RK.Usr, frRule.RK.DB)] = frRule
@@ -99,8 +99,8 @@ func (router *RRouter) initRules() error {
 func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 	router := &RRouter{
 		routePool:     NewRouterPoolImpl(config.RouterConfig().RulesConfig.ShardMapping),
-		frontendRules: map[route.RouteKey]*config.FRRule{},
-		backendRules:  map[route.RouteKey]*config.BERule{},
+		frontendRules: map[route.Key]*config.FRRule{},
+		backendRules:  map[route.Key]*config.BERule{},
 		lg:            log.New(os.Stdout, "router", 0),
 		wgs:           map[qdb.ShardKey]Watchdog{},
 	}
@@ -150,18 +150,21 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 	_ = cl.AssignRule(frRule)
 
-	if err := cl.Auth(); err != nil {
+	rt, err := r.routePool.MatchRoute(key, beRule, frRule)
+
+	if err := cl.Auth(rt); err != nil {
 		return cl, err
 	}
-	tracelog.InfoLogger.Printf("client auth OK")
 
-	rt, err := r.routePool.MatchRoute(key, beRule, frRule)
+	tracelog.InfoLogger.Printf("client auth OK")
 
 	if err != nil {
 		tracelog.ErrorLogger.Fatal(err)
 	}
 	_ = rt.AddClient(cl)
-	_ = cl.AssignRoute(rt)
+	if err := cl.AssignRoute(rt); err != nil {
+		return nil, err
+	}
 
 	return cl, nil
 }
@@ -176,7 +179,7 @@ func (r *RRouter) ListShards() []string {
 	return ret
 }
 
-func (r *RRouter) ObsoleteRoute(key route.RouteKey) error {
+func (r *RRouter) ObsoleteRoute(key route.Key) error {
 	rt := r.routePool.Obsolete(key)
 
 	if err := rt.NofityClients(func(cl client.Client) error {
@@ -188,7 +191,7 @@ func (r *RRouter) ObsoleteRoute(key route.RouteKey) error {
 	return nil
 }
 
-func (r *RRouter) AddRouteRule(key route.RouteKey, befule *config.BERule, frRule *config.FRRule) error {
+func (r *RRouter) AddRouteRule(key route.Key, befule *config.BERule, frRule *config.FRRule) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

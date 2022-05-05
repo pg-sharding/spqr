@@ -18,8 +18,6 @@ type Client interface {
 
 	Init(cfg *tls.Config, reqssl string) error
 
-	Auth() error
-
 	PasswordCT() string
 	PasswordMD5() string
 
