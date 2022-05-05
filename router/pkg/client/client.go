@@ -113,7 +113,56 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 
 func (cl *PsqlClient) SetParam(name, value string) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client param %v %v", name, value)
-	cl.params[name] = value
+	if name == "options" {
+		i := 0
+		j := 0
+		for i < len(value) {
+			if value[i] == ' ' {
+				i++
+				continue
+			}
+			if value[i] == '-' {
+				if i+2 == len(value) || value[i+1] != 'c' {
+					// bad
+					return
+				}
+			}
+			i += 3
+			j = i
+
+			opname := ""
+			opvalue := ""
+
+			for j < len(value) {
+				if value[j] == '=' {
+					j++
+					break
+				}
+				opname += string(value[j])
+				j++
+			}
+
+			for j < len(value) {
+				if value[j] == ' ' {
+					break
+				}
+				opvalue += string(value[j])
+				j++
+			}
+
+			if len(opname) == 0 || len(opvalue) == 0 {
+				// bad
+				return
+			}
+			i = j + 1
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed pgoption param %v %v", opname, opvalue)
+			cl.params[opname] = opvalue
+		}
+
+	} else {
+		cl.params[name] = value
+	}
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -498,7 +547,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
-	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
+	_ = cl.ReplyNoticef("executing your query %v", query)
 
 	if err := cl.server.Send(query); err != nil {
 		return 0, err
@@ -642,6 +691,10 @@ func (cl *PsqlClient) DefaultReply() error {
 
 func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
+}
+
+func (cl *PsqlClient) Params() map[string]string {
+	return cl.params
 }
 
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {

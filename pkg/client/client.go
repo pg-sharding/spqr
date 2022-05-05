@@ -15,7 +15,9 @@ type Client interface {
 	ReplyNotice(msg string) error
 	ReplyNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error
+
 	SetParam(string, string)
+	Params() map[string]string
 
 	Init(cfg *tls.Config, reqssl string) error
 

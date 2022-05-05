@@ -264,7 +264,29 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
 
-	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
+	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
+		return err
+	}
+
+	query := &pgproto3.Query{}
+
+	for k, v := range rst.Cl.Params() {
+		if k == "user" {
+			continue
+		}
+		if k == "database" {
+			continue
+		}
+		if k == "options" {
+			continue
+		}
+
+		query.String += fmt.Sprintf("SET %s='%s';", k, v)
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting user params %s", query.String)
+	_, err = rst.Cl.ProcQuery(query, true, false)
+	return err
 }
 
 func (rst *RelayStateImpl) ConnectWorld() error {
