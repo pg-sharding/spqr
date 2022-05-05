@@ -13,8 +13,9 @@ type Client interface {
 
 	ReplyErrMsg(errmsg string) error
 	ReplyNotice(msg string) error
+	ReplyNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error
-	SetParam(*pgproto3.ParameterStatus) error
+	SetParam(string, string)
 
 	Init(cfg *tls.Config, reqssl string) error
 

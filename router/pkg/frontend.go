@@ -63,7 +63,7 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
 	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
 
-	_ = cl.ReplyNotice(fmt.Sprintf("process frontend for route %s %s", cl.Usr(), cl.DB()))
+	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
 	onErrFunc := func(err error) error {
@@ -115,7 +115,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
 
-				if err := cl.ReplyNotice(fmt.Sprintf("name %v, query %v, hash %d", q.Name, q.Query, hash)); err != nil {
+				if err := cl.ReplyNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 					return err
 				}
 
