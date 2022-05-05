@@ -3,6 +3,7 @@ package rrouter
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"log"
 	"net"
 	"os"
@@ -32,8 +33,10 @@ type RequestRouter interface {
 type RRouter struct {
 	routePool RoutePool
 
-	frontendRules map[route.Key]*config.FRRule
-	backendRules  map[route.Key]*config.BERule
+	frontendRules      map[route.Key]*config.FRRule
+	defaultRule        *config.FRRule
+	backendRules       map[route.Key]*config.BERule
+	defaultBackendRule *config.BERule
 
 	mu sync.Mutex
 
@@ -77,18 +80,26 @@ func (r *RRouter) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func (router *RRouter) initRules() error {
+func (r *RRouter) initRules() error {
 	frs := make(map[route.Key]*config.FRRule)
 
 	for _, frRule := range config.RouterConfig().RulesConfig.FrontendRules {
+		if frRule.PoolDefault {
+			r.defaultRule = frRule
+			continue
+		}
 		frs[*route.NewRouteKey(frRule.RK.Usr, frRule.RK.DB)] = frRule
 	}
 
 	for _, berule := range config.RouterConfig().RulesConfig.BackendRules {
+		if berule.PoolDefault {
+			r.defaultBackendRule = berule
+			continue
+		}
 		key := *route.NewRouteKey(
 			berule.RK.Usr, berule.RK.DB,
 		)
-		if err := router.AddRouteRule(key, berule, frs[key]); err != nil {
+		if err := r.AddRouteRule(key, berule, frs[key]); err != nil {
 			return err
 		}
 	}
@@ -117,7 +128,6 @@ func NewRouter(tlscfg *tls.Config) (*RRouter, error) {
 }
 
 func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
-
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.cfg, config.RouterConfig().RulesConfig.TLSCfg.SslMode); err != nil {
@@ -126,40 +136,67 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 	// match client frontend rule
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
-
 	frRule, ok := r.frontendRules[key]
 	if !ok {
-		errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
-		for _, msg := range []pgproto3.BackendMessage{
-			&pgproto3.ErrorResponse{
-				Message: errmsg,
-			},
-		} {
-			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure responce")
+		if r.defaultRule != nil {
+			// ok
+			frRule = &config.FRRule{
+				RK: config.RouteKeyCfg{
+					Usr: cl.Usr(),
+					DB:  cl.DB(),
+				},
+				AuthRule:              r.defaultRule.AuthRule,
+				PoolingMode:           r.defaultRule.PoolingMode,
+				PoolDiscard:           r.defaultRule.PoolDiscard,
+				PoolRollback:          r.defaultRule.PoolRollback,
+				PoolPreparedStatement: r.defaultRule.PoolPreparedStatement,
 			}
-		}
+		} else {
+			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
+			for _, msg := range []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Message: errmsg,
+				},
+			} {
+				if err := cl.Send(msg); err != nil {
+					return nil, errors.Wrap(err, "failed to make route failure responce")
+				}
+			}
 
-		return cl, errors.New(errmsg)
+			return nil, errors.New(errmsg)
+		}
 	}
 
 	beRule, ok := r.backendRules[key]
 	if !ok {
-		return cl, errors.New("Failed to route client")
+		if r.defaultBackendRule != nil {
+			beRule = &config.BERule{
+				RK: config.RouteKeyCfg{
+					Usr: cl.Usr(),
+					DB:  cl.DB(),
+				},
+			}
+		} else {
+			return cl, errors.New("Failed to route backend for client")
+		}
 	}
 
 	_ = cl.AssignRule(frRule)
 
 	rt, err := r.routePool.MatchRoute(key, beRule, frRule)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := cl.Auth(rt); err != nil {
 		return cl, err
 	}
 
-	tracelog.InfoLogger.Printf("client auth OK")
+	spqrlog.Logger.Printf(spqrlog.LOG, "client auth OK")
 
 	if err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.PrintError(err)
+		return nil, err
 	}
 	_ = rt.AddClient(cl)
 	if err := cl.AssignRoute(rt); err != nil {

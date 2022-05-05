@@ -76,7 +76,6 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	if nroute, ok := r.pool[key]; ok {
 		tracelog.InfoLogger.Printf("match route %v", key)
-
 		return nroute, nil
 	}
 

@@ -337,12 +337,12 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 			}
 			return nil
 		case config.AuthMD5:
+			fallthrough
 		case config.AuthSCRAM:
+			fallthrough
 		default:
 			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
 		}
-
-		return nil
 	}(); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{

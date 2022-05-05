@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"sync"
 )
 
 type Key struct {
@@ -30,6 +31,11 @@ type Route struct {
 
 	clPool   client.Pool
 	servPool datashard.DBPool
+
+	mu sync.Mutex
+	// protects this
+	cachedParams bool
+	params       datashard.ParameterSet
 }
 
 func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {
@@ -38,22 +44,46 @@ func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*
 		frRule:   frRule,
 		servPool: datashard.NewConnPool(mapping),
 		clPool:   client.NewClientPool(),
+		params:   datashard.ParameterSet{},
 	}
 }
 
+func (r *Route) SetParams(ps datashard.ParameterSet) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cachedParams = true
+	r.params = ps
+}
+
 func (r *Route) Params() (datashard.ParameterSet, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.cachedParams {
+		return r.params, nil
+	}
+
 	var anyK kr.ShardKey
 	for k := range config.RouterConfig().RulesConfig.ShardMapping {
 		anyK.Name = k
 		break
 	}
+
 	serv, err := r.servPool.Connection(anyK, r.beRule)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
 		return datashard.ParameterSet{}, err
 	}
 
-	return serv.Params(), nil
+	r.cachedParams = true
+	r.params = serv.Params()
+
+	if err := r.servPool.Put(anyK, serv); err != nil {
+		err := r.servPool.Put(anyK, serv)
+		return nil, err
+	}
+
+	return r.params, nil
 }
 
 func (r *Route) ServPool() datashard.DBPool {

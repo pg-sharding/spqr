@@ -39,32 +39,19 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
-        - default: true
-          pooling_mode: 'SESSION'
+        - pooling_mode: 'TRANSACTION'
           pool_discard: true
           pool_rollback: true
+          pool_default: true
+          pool_prepared_statement: true
           auth_rule:
-            auth_method: 'passthought'
-
+            auth_method: 'ok'
     backend_rules:
-        - route_key_cfg:
-            usr: reshke
-            db: db1
-          pool_discard: false
-          pool_rollback: true
-        - route_key_cfg:
-            usr: reshke
-            db: regression
-          pool_discard: false
-          pool_rollback: true
-        - route_key_cfg:
-            usr: reshke
-            db: postgres
-          pool_discard: false
-          pool_rollback: true
         - route_key_cfg:
             usr: user1
             db: db1
           pool_discard: false
           pool_rollback: true
-
+        - pool_default: true
+          pool_discard: false
+          pool_rollback: true
