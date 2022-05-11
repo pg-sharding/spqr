@@ -28,17 +28,22 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	if err != nil {
 		return err
 	}
-	rst.AddQuery(*q)
 
-	switch state {
+	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
+		rst.AddSilentQuery(*q)
+
+		if err := rst.Client().Send(&pgproto3.CommandComplete{
+			CommandTag: []byte("BEGIN"),
+		}); err != nil {
+			return err
+		}
+
 		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(conn.TXACT),
 		}); err != nil {
 			return err
-
 		}
-		rst.SetTxStatus(conn.TXACT)
 		return nil
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
@@ -49,15 +54,33 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			TxStatus: byte(rst.TxStatus()),
 		}); err != nil {
 			return err
-
 		}
 		return nil
-	default:
-		if err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+	case parser.ParseStateSetStmt:
+		rst.AddQuery(*q)
+		rst.Client().SetParam(st.Name, st.Value)
+		return rst.ProcessMessageBuf(true, true, cmngr)
+	case parser.ParseStateResetStmt:
+		rst.Client().ResetParam(st.Name)
+		if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
 			return err
 		}
+
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
+			return err
+		}
+
+		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	default:
+		rst.AddQuery(*q)
+		return rst.ProcessMessageBuf(true, true, cmngr)
 	}
-	return nil
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
@@ -68,7 +91,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 	onErrFunc := func(err error) error {
 		spqrlog.Logger.Errorf("frontend got error: %v", err)
-
 		switch err {
 		case nil:
 			return nil

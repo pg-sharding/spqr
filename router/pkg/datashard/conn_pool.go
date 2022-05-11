@@ -76,7 +76,6 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BERul
 	c.mu.Unlock()
 
 	// do not hold lock on poolRW while allocate new connection
-
 	var err error
 	sh, err = c.f(shardKey, host, rule)
 	if err != nil {
@@ -88,6 +87,8 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BERul
 func (c *cPool) Put(sh Shard) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	return sh.Instance().Close()
 
 	c.pool[sh.Instance().Hostname()] = append(c.pool[sh.Instance().Hostname()], sh)
 

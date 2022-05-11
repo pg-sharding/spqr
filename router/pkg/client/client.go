@@ -68,6 +68,28 @@ type PsqlClient struct {
 	server     server.Server
 }
 
+func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
+	query := &pgproto3.Query{
+		String: "RESET ALL;",
+	}
+
+	for k, v := range cl.Params() {
+		if k == "user" {
+			continue
+		}
+		if k == "database" {
+			continue
+		}
+		if k == "options" {
+			continue
+		}
+
+		query.String += fmt.Sprintf("SET %s='%s';", k, v)
+	}
+
+	return query
+}
+
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
@@ -109,6 +131,14 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 		return v
 	}
 	return ""
+}
+
+func (cl *PsqlClient) ResetParam(name string) {
+	if val, ok := cl.startupMsg.Parameters[name]; ok {
+		cl.params[name] = val
+	} else {
+		delete(cl.params, name)
+	}
 }
 
 func (cl *PsqlClient) SetParam(name, value string) {
@@ -500,11 +530,13 @@ func (cl *PsqlClient) PasswordMD5() string {
 }
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
-	return cl.be.Receive()
+	msg, err := cl.be.Receive()
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client", msg)
+	return msg, err
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
 	return cl.be.Send(msg)
 }
 
@@ -603,7 +635,6 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 					return 0, err
 				}
 			}
-
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
