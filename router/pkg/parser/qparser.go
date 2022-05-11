@@ -18,6 +18,8 @@ func (qp *QParser) Reset() {
 }
 
 func (qp *QParser) Stmt() sqlparser.Statement {
+	parsedStmt, _ := sqlparser.Parse(qp.q.String)
+	qp.stmt = parsedStmt
 	return qp.stmt
 }
 
@@ -64,6 +66,10 @@ type ParseStateResetStmt struct {
 type ParseStateResetAllStmt struct {
 	ParseState
 }
+type ParseStateResetMetadataStmt struct {
+	ParseState
+	Setting string
+}
 
 func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 	qp.q = q
@@ -85,19 +91,22 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 		}
 
 		for _, node := range pstmt.GetStmts() {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt node is %T", node.Stmt.Node)
 			switch q := node.Stmt.Node.(type) {
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_RESET {
-					if q.VariableSetStmt.Name == "role" {
-						qp.state = ParseStateQuery{}
-					} else if q.VariableSetStmt.Name == "all" {
+					switch q.VariableSetStmt.Name {
+					case "session_authorization", "role":
+						qp.state = ParseStateResetMetadataStmt{
+							Setting: q.VariableSetStmt.Name,
+						}
+					case "all":
 						qp.state = ParseStateResetAllStmt{}
-					} else {
+					default:
 						varStmt := ParseStateResetStmt{}
 						varStmt.Name = q.VariableSetStmt.Name
 						qp.state = varStmt
 					}
+
 				} else if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_SET_VALUE {
 					varStmt := ParseStateSetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name
@@ -105,7 +114,10 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 					for _, node := range q.VariableSetStmt.Args {
 						switch nq := node.Node.(type) {
 						case *pgquery.Node_AConst:
-							varStmt.Value = nq.AConst.Val.String()
+							switch act := nq.AConst.Val.Node.(type) {
+							case *pgquery.Node_String_:
+								varStmt.Value = act.String_.Str
+							}
 						}
 					}
 
@@ -128,13 +140,6 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 			}
 		}
 	}
-
-	parsedStmt, err := sqlparser.Parse(q.String)
-	if err != nil {
-		return ParseStateErr{}, err
-	}
-
-	qp.stmt = parsedStmt
 
 	return ParseStateQuery{}, nil
 }

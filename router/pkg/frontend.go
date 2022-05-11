@@ -77,6 +77,23 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 		}
 
 		return nil
+	case parser.ParseStateResetMetadataStmt:
+		rst.Client().ResetParam(st.Setting)
+		rst.AddQuery(*q)
+		return rst.ProcessMessageBuf(true, true, cmngr)
+	case parser.ParseStateResetAllStmt:
+		rst.Client().ResetAll()
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
+			return err
+		}
+
+		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		}); err != nil {
+			return err
+		}
+
+		return nil
 	default:
 		rst.AddQuery(*q)
 		return rst.ProcessMessageBuf(true, true, cmngr)
