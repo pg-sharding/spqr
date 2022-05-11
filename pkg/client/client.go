@@ -17,6 +17,8 @@ type Client interface {
 	DefaultReply() error
 
 	SetParam(string, string)
+	ResetParam(string)
+	ConstructClientParams() *pgproto3.Query
 	Params() map[string]string
 
 	Init(cfg *tls.Config, reqssl string) error
