@@ -288,15 +288,6 @@ func (rst *RelayStateImpl) ConnectWorld() error {
 	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
-func (rst *RelayStateImpl) RelayCopyStep(msg pgproto3.FrontendMessage) error {
-	return rst.Cl.ProcCopy(msg)
-}
-
-func (rst *RelayStateImpl) RelayCopyComplete(msg *pgproto3.FrontendMessage) error {
-	rst.CopyActive = false
-	return rst.Cl.ProcCopyComplete(msg)
-}
-
 func (rst *RelayStateImpl) RelayParse(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	return rst.Cl.ProcParse(v, waitForResp, replyCl)
 }

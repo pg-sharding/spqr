@@ -135,7 +135,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		if err := func() error {
 			if !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
-				case *pgproto3.Sync:
+				case *pgproto3.Sync, *pgproto3.FunctionCall:
 					return rst.ProcessMessage(q, true, true, cmngr)
 				case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
 					return rst.ProcessMessage(q, false, true, cmngr)
@@ -192,9 +192,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					}
 				}
 				return err
-			case *pgproto3.Execute:
+			case *pgproto3.FunctionCall:
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
 				return rst.ProcessMessage(q, false, true, cmngr)
+			case *pgproto3.Execute:
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
+				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Bind:
 				query := cl.PreparedStatementQueryByName(q.PreparedStatement)
 				hash := murmur3.Sum64([]byte(query))

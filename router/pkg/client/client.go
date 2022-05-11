@@ -572,11 +572,11 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 		} else {
 			switch msg.(type) {
 			case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
+				return cl.Send(msg)
+			default:
 				if err := cl.Send(msg); err != nil {
 					return err
 				}
-				return nil
-			default:
 			}
 		}
 	}
@@ -605,7 +605,6 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			// handle replyCl somehow
 			err = cl.Send(msg)
 			if err != nil {
-				////tracelog.InfoLogger.Println(reflect.TypeOf(msg))
 				return 0, err
 			}
 
@@ -626,6 +625,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 							return err
 						}
 						return nil
+					default:
 					}
 				}
 			}(); err != nil {

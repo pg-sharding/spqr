@@ -43,7 +43,7 @@ rules:
           pool_discard: false
           pool_rollback: true
           pool_default: true
-          pool_prepared_statement: true
+          pool_prepared_statement: false
           auth_rule:
             auth_method: 'ok'
     backend_rules:
