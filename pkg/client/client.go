@@ -18,6 +18,7 @@ type Client interface {
 
 	SetParam(string, string)
 	ResetParam(string)
+	ResetAll()
 	ConstructClientParams() *pgproto3.Query
 	Params() map[string]string
 

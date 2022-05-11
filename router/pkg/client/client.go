@@ -90,6 +90,10 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 	return query
 }
 
+func (cl *PsqlClient) ResetAll() {
+	cl.params = cl.startupMsg.Parameters
+}
+
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
@@ -139,6 +143,7 @@ func (cl *PsqlClient) ResetParam(name string) {
 	} else {
 		delete(cl.params, name)
 	}
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "params are now %+v", cl.params)
 }
 
 func (cl *PsqlClient) SetParam(name, value string) {
