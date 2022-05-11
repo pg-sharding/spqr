@@ -2,11 +2,11 @@ package rrouter
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -31,7 +31,7 @@ type RelayStateInteractor interface {
 	SetTxStatus(status conn.TXStatus)
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error)
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
-	CompleteRelay(txst conn.TXStatus) error
+	CompleteRelay() error
 	Close() error
 	Client() client.RouterClient
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error
@@ -57,7 +57,6 @@ type RelayStateImpl struct {
 	manager ConnManager
 
 	msgBuf []pgproto3.Query
-	parser parser.QParser
 }
 
 func (rst *RelayStateImpl) SetTxStatus(status conn.TXStatus) {
@@ -96,12 +95,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	}
 
 	// dont need to complete relay because tx state dont changed
-	//if err := rst.CompleteRelay(txst); err != nil {
-	//	return err
-	//}
-
 	rst.Cl.Server().PrepareStatement(hash)
-
 	return nil
 }
 
@@ -119,7 +113,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager C
 
 func (rst *RelayStateImpl) Close() error {
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 		_ = rst.Cl.Close()
 		return err
 	}
@@ -159,16 +153,14 @@ func (rst *RelayStateImpl) Flush() {
 var SkipQueryError = xerrors.New("wait for next query")
 
 func (rst *RelayStateImpl) Reroute() error {
-	tracelog.InfoLogger.Printf("rerouting")
 	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
-	span.SetTag("query", rst.parser.Q().String)
 
-	routingState, err := rst.Qr.Route(rst.parser)
+	routingState, err := rst.Qr.Route()
 	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
 	if err != nil {
 		return err
@@ -176,15 +168,14 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	switch v := routingState.(type) {
 	case qrouter.ShardMatchState:
-		tracelog.InfoLogger.Printf("parsed routes %+v", routingState)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed routes %+v", routingState)
 		//
 		if len(v.Routes) == 0 {
-			tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
 			return qrouter.MatchShardError
 		}
 
-		if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
-			tracelog.ErrorLogger.PrintError(err)
+		if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 
@@ -198,7 +189,8 @@ func (rst *RelayStateImpl) Reroute() error {
 		}
 
 		if err := rst.Connect(v.Routes); err != nil {
-			tracelog.InfoLogger.Printf("encounter %w while initialing server connection", err)
+			spqrlog.Logger.Errorf("encounter %w while initialing server connection", err)
+
 			_ = rst.Reset()
 			_ = rst.Cl.ReplyErrMsg(err.Error())
 			return err
@@ -215,14 +207,13 @@ func (rst *RelayStateImpl) Reroute() error {
 		// fallback to execute query on world datashard (s)
 		_, _ = rst.RerouteWorld()
 		if err := rst.ConnectWorld(); err != nil {
-			_ = rst.UnRouteWithError(nil, xerrors.Errorf("failed to fallback on world datashard: %w", err))
+			_ = rst.UnRouteWithError(nil, fmt.Errorf("failed to fallback on world datashard: %w", err))
 			return err
 		}
 
 		return nil
 	default:
-		tracelog.ErrorLogger.PrintError(xerrors.Errorf("unexpected route state %T", v))
-		return xerrors.Errorf("unexpected route state %T", v)
+		return fmt.Errorf("unexpected route state %T", v)
 	}
 
 	//span.SetTag("shard_routes", routingState)
@@ -237,13 +228,12 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
 	shardRoutes := rst.Qr.WorldShardsRoutes()
 
 	if len(shardRoutes) == 0 {
-		tracelog.InfoLogger.PrintError(qrouter.MatchShardError)
 		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.MatchShardError)
 		return nil, qrouter.MatchShardError
 	}
 
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		return nil, err
 	}
 
 	rst.activeShards = nil
@@ -264,7 +254,6 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 			return err
 		}
 	} else {
-		tracelog.InfoLogger.Printf("initialize datashard server conn")
 		_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 		serv = server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
 	}
@@ -273,34 +262,43 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
-		tracelog.ErrorLogger.Printf("failed to route cl %w", err)
 		return err
 	}
 
-	return nil
+	query := &pgproto3.Query{}
+
+	for k, v := range rst.Cl.Params() {
+		if k == "user" {
+			continue
+		}
+		if k == "database" {
+			continue
+		}
+		if k == "options" {
+			continue
+		}
+
+		query.String += fmt.Sprintf("SET %s='%s';", k, v)
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting user params %s", query.String)
+	_, err = rst.Cl.ProcQuery(query, true, false)
+	return err
 }
 
 func (rst *RelayStateImpl) ConnectWorld() error {
-	tracelog.InfoLogger.Printf("initialize datashard server conn")
 	_ = rst.Cl.ReplyNotice("initialize single datashard server conn")
 
 	serv := server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
-
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
-
-	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
-		tracelog.ErrorLogger.Printf("failed to route cl %w", err)
-		return err
-	}
-
-	return nil
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
+	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
 func (rst *RelayStateImpl) RelayCopyStep(msg pgproto3.FrontendMessage) error {
@@ -313,11 +311,7 @@ func (rst *RelayStateImpl) RelayCopyComplete(msg *pgproto3.FrontendMessage) erro
 }
 
 func (rst *RelayStateImpl) RelayParse(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	if err := rst.Cl.ProcParse(v, waitForResp, replyCl); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.Cl.ProcParse(v, waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
@@ -328,30 +322,36 @@ func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp 
 		rst.txStatus = conn.TXACT
 	}
 
-	if err := rst.Cl.ProcCommand(v, waitForResp, replyCl); err != nil {
-		return err
-	}
-
-	return nil
+	return rst.Cl.ProcCommand(v, waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	if err := rst.Cl.ProcCommand(msg, waitForResp, replyCl); err != nil {
-		return err
-	}
-	return nil
+	return rst.Cl.ProcCommand(msg, waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "flush message buff")
+
 	var txst conn.TXStatus
 	var err error
 
 	for len(rst.msgBuf) > 0 {
+		if !rst.TxActive() {
+			if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+				return 0, err
+			}
+		}
+
 		var v pgproto3.Query
 		v, rst.msgBuf = rst.msgBuf[0], rst.msgBuf[1:]
-		tracelog.InfoLogger.Printf("flushing %+v", v)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v", v)
 		if txst, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
-			return 0, err
+			return conn.TXERR, err
+		}
+
+		rst.SetTxStatus(txst)
+		if err := rst.CompleteRelay(); err != nil {
+			return conn.TXERR, err
 		}
 	}
 
@@ -363,57 +363,64 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
 			return 0, err
 		}
-		rst.txStatus = conn.TXACT
 	}
 
-	return rst.Cl.ProcQuery(msg, waitForResp, replyCl)
+	bt, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
+	if err != nil {
+		return conn.TXERR, err
+	}
+	rst.SetTxStatus(bt)
+	return rst.txStatus, nil
 }
 
 func (rst *RelayStateImpl) ShouldRetry(err error) bool {
 	return false
 }
 
-func (rst *RelayStateImpl) CompleteRelay(txst conn.TXStatus) error {
+func (rst *RelayStateImpl) CompleteRelay() error {
 	if rst.CopyActive {
 		return nil
 	}
 
-	tracelog.InfoLogger.Printf("complete relay iter with TX status %v", txst)
-	switch txst {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "complete relay iter with TX %s", func(b conn.TXStatus) string {
+		switch b {
+		case conn.TXIDLE:
+			return "idle"
+		case conn.TXACT:
+			return "active"
+		case conn.TXERR:
+			return "err"
+		default:
+			return "unknown"
+		}
+	}(rst.txStatus))
+
+	switch rst.txStatus {
 	case conn.TXIDLE:
 		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(txst),
+			TxStatus: byte(rst.txStatus),
 		}); err != nil {
 			return err
 		}
 
-		if rst.TxActive() {
-			if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
-				return err
-			}
-			rst.txStatus = conn.TXACT
+		if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
+			return err
 		}
+
 		return nil
 	case conn.TXERR:
 		fallthrough
 	case conn.TXACT:
 		if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(txst),
+			TxStatus: byte(rst.txStatus),
 		}); err != nil {
 			return err
-		}
-		if !rst.TxActive() {
-			if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
-				return err
-			}
-			rst.txStatus = conn.TXACT
 		}
 		return nil
 	case conn.TXCONT:
 		return nil
 	default:
-		err := fmt.Errorf("unknown tx status %v", txst)
-		tracelog.ErrorLogger.PrintError(err)
+		err := fmt.Errorf("unknown tx status %v", rst.txStatus)
 		return err
 	}
 }
@@ -424,42 +431,42 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 }
 
 func (rst *RelayStateImpl) AddQuery(q pgproto3.Query) {
-	tracelog.InfoLogger.Printf("adding %T", q)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding %T", q)
 	rst.msgBuf = append(rst.msgBuf, q)
 }
 
 func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
-	return rst.parser.Parse(q)
+	return rst.Qr.Parse(q)
 }
 
 var _ RelayStateInteractor = &RelayStateImpl{}
 
 func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s", cl.Usr(), cl.DB())
 	// txactive == 0 || activeSh == nil
-	if cmngr.ValidateReRoute(rst) {
-		err := rst.Reroute()
-		switch err {
-		case nil:
-			return nil
-		case SkipQueryError:
-			//_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
-			if err := cl.ReplyErrMsg(err.Error()); err != nil {
-				return err
-			}
-			return SkipQueryError
-		case qrouter.MatchShardError:
-			_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
-			return SkipQueryError
-		case qrouter.ParseError:
-			_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
-			return SkipQueryError
-		default:
-			tracelog.InfoLogger.Printf("encounter %w", err)
-			_ = rst.UnRouteWithError(nil, err)
+	if !cmngr.ValidateReRoute(rst) {
+		return nil
+	}
+
+	switch err := rst.Reroute(); err {
+	case nil:
+		return nil
+	case SkipQueryError:
+		//_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+		if err := cl.ReplyErrMsg(err.Error()); err != nil {
 			return err
 		}
+		return SkipQueryError
+	case qrouter.MatchShardError:
+		_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
+		return SkipQueryError
+	case qrouter.ParseError:
+		_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+		return SkipQueryError
+	default:
+		_ = rst.UnRouteWithError(nil, err)
+		return err
 	}
-	return nil
 }
 
 func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error {
@@ -467,20 +474,14 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Co
 		return err
 	}
 
-	var txst conn.TXStatus
-	var err error
-	if txst, err = rst.RelayFlush(waitForResp, replyCl); err != nil {
+	if _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
 		return err
 	}
 
-	if err := rst.CompleteRelay(txst); err != nil {
-		return err
-	}
-
-	tracelog.InfoLogger.Printf("active shards are %v", rst.ActiveShards)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
 	return nil
 }
 
@@ -489,19 +490,17 @@ func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForR
 		return err
 	}
 
-	var txst conn.TXStatus
-	var err error
-	if txst, err = rst.RelayStep(msg, waitForResp, replyCl); err != nil {
+	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
 		return err
 	}
 
-	if err := rst.CompleteRelay(txst); err != nil {
+	if err := rst.CompleteRelay(); err != nil {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("active shards are %v", rst.ActiveShards)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %v", rst.ActiveShards)
 	return nil
 }

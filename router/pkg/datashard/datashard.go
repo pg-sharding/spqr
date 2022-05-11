@@ -2,11 +2,11 @@ package datashard
 
 import (
 	"crypto/tls"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"log"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/asynctracelog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -15,8 +15,6 @@ import (
 )
 
 type Shard interface {
-	//Connect(proto string) (net.Conn, error)
-
 	Cfg() *config.ShardCfg
 
 	Name() string
@@ -29,10 +27,11 @@ type Shard interface {
 
 	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
+
+	Params() ParameterSet
 }
 
-func (sh *DataShardConn) ConstructSM() *pgproto3.StartupMessage {
-
+func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
 		Parameters: map[string]string{
@@ -45,7 +44,22 @@ func (sh *DataShardConn) ConstructSM() *pgproto3.StartupMessage {
 	return sm
 }
 
-type DataShardConn struct {
+type ParameterStatus struct {
+	Name  string
+	Value string
+}
+
+type ParameterSet map[string]string
+
+func (ps ParameterSet) Save(status ParameterStatus) bool {
+	if _, ok := ps[status.Name]; ok {
+		return false
+	}
+	ps[status.Name] = status.Value
+	return true
+}
+
+type Conn struct {
 	lg log.Logger
 
 	beRule *config.BERule
@@ -57,13 +71,14 @@ type DataShardConn struct {
 	mu sync.Mutex
 
 	dedicated conn.DBInstance
+	ps        ParameterSet
 }
 
-func (sh *DataShardConn) Instance() conn.DBInstance {
+func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
 }
 
-func (sh *DataShardConn) ReqBackendSsl(tlscfg *tls.Config) error {
+func (sh *Conn) ReqBackendSsl(tlscfg *tls.Config) error {
 	if err := sh.dedicated.ReqBackendSsl(tlscfg); err != nil {
 		tracelog.InfoLogger.Printf("failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
 
@@ -73,36 +88,40 @@ func (sh *DataShardConn) ReqBackendSsl(tlscfg *tls.Config) error {
 	return nil
 }
 
-func (sh *DataShardConn) Send(query pgproto3.FrontendMessage) error {
+func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	return sh.dedicated.Send(query)
 }
 
-func (sh *DataShardConn) Receive() (pgproto3.BackendMessage, error) {
+func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	return sh.dedicated.Receive()
 }
 
-func (sh *DataShardConn) Name() string {
+func (sh *Conn) Name() string {
 	return sh.name
 }
 
-func (sh *DataShardConn) Cfg() *config.ShardCfg {
+func (sh *Conn) Cfg() *config.ShardCfg {
 	return sh.cfg
 }
 
-var _ Shard = &DataShardConn{}
+var _ Shard = &Conn{}
 
-func (sh *DataShardConn) SHKey() kr.ShardKey {
+func (sh *Conn) SHKey() kr.ShardKey {
 	return kr.ShardKey{
 		Name: sh.name,
 	}
 }
 
-func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg, beRule *config.BERule) (Shard, error) {
+func (sh *Conn) Params() ParameterSet {
+	return sh.ps
+}
 
-	dtSh := &DataShardConn{
+func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg, beRule *config.BERule) (Shard, error) {
+	dtSh := &Conn{
 		cfg:    cfg,
 		name:   key.Name,
 		beRule: beRule,
+		ps:     ParameterSet{},
 	}
 
 	dtSh.dedicated = pgi
@@ -117,7 +136,7 @@ func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg, beRule
 	return dtSh, nil
 }
 
-func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
+func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 
 	err := sh.dedicated.Send(sm)
 	if err != nil {
@@ -135,17 +154,22 @@ func (sh *DataShardConn) Auth(sm *pgproto3.StartupMessage) error {
 		case pgproto3.AuthenticationResponseMessage:
 			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
 			if err != nil {
-				asynctracelog.Printf("failed to perform backend auth %w", err)
+				spqrlog.Logger.Errorf("failed to perform backend auth %w", err)
 				return err
 			}
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		case *pgproto3.ParameterStatus:
-			asynctracelog.Printf("ignored parameter status %v %v", v.Name, v.Value)
+			if !sh.ps.Save(ParameterStatus{
+				Name:  v.Name,
+				Value: v.Value,
+			}) {
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored parameter status %v %v", v.Name, v.Value)
+			}
 		case *pgproto3.BackendKeyData:
-			asynctracelog.Printf("ignored backend key data %v %v", v.ProcessID, v.SecretKey)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
-			asynctracelog.Printf("unexpected msg type received %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "unexpected msg type received %T", v)
 		}
 	}
 }

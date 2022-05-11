@@ -2,6 +2,8 @@ package worldmock
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/pg-sharding/spqr/router/pkg/route"
 	"net"
 	"os"
 
@@ -79,7 +81,9 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	if err := cl.Auth(); err != nil {
+	r := route.NewRoute(nil, nil, nil)
+	r.SetParams(datashard.ParameterSet{})
+	if err := cl.Auth(r); err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")

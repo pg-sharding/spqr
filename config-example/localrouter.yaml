@@ -2,6 +2,7 @@ addr: '[::1]:6432'
 adm_addr: '[::1]:7433'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
+log_level: DEBUG1
 
 executer:
     init_sql_path: "./test-init.sql"
@@ -29,24 +30,6 @@ rules:
                 - conn_addr: "localhost:5550"
     frontend_rules:
         - route_key_cfg:
-            usr: reshke
-            db: regression
-          pooling_mode: 'TRANSACTION'
-          pool_discard: true
-          pool_rollback: true
-          auth_rule:
-              auth_method: 'ok'
-              password: 'strong'
-        - route_key_cfg:
-            usr: reshke
-            db: postgres
-          pooling_mode: 'TRANSACTION'
-          pool_discard: true
-          pool_rollback: true
-          auth_rule:
-              auth_method: 'ok'
-              password: 'strong'
-        - route_key_cfg:
             usr: user1
             db: db1
           pooling_mode: 'TRANSACTION'
@@ -56,25 +39,19 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
+        - pooling_mode: 'SESSION'
+          pool_discard: true
+          pool_rollback: true
+          pool_default: true
+          pool_prepared_statement: true
+          auth_rule:
+            auth_method: 'ok'
     backend_rules:
-        - route_key_cfg:
-            usr: reshke
-            db: db1
-          pool_discard: false
-          pool_rollback: true
-        - route_key_cfg:
-            usr: reshke
-            db: regression
-          pool_discard: false
-          pool_rollback: true
-        - route_key_cfg:
-            usr: reshke
-            db: postgres
-          pool_discard: false
-          pool_rollback: true
         - route_key_cfg:
             usr: user1
             db: db1
           pool_discard: false
           pool_rollback: true
-
+        - pool_default: true
+          pool_discard: false
+          pool_rollback: true

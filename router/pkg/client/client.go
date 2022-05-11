@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -32,6 +32,8 @@ type RouterClient interface {
 
 	Server() server.Server
 	Unroute() error
+
+	Auth(rt *route.Route) error
 
 	AssignRule(rule *config.FRRule) error
 	AssignServerConn(srv server.Server) error
@@ -67,7 +69,7 @@ type PsqlClient struct {
 }
 
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process parse %v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -109,9 +111,58 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	return ""
 }
 
-func (cl *PsqlClient) SetParam(p *pgproto3.ParameterStatus) error {
-	cl.params[p.Name] = p.Value
-	return nil
+func (cl *PsqlClient) SetParam(name, value string) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client param %v %v", name, value)
+	if name == "options" {
+		i := 0
+		j := 0
+		for i < len(value) {
+			if value[i] == ' ' {
+				i++
+				continue
+			}
+			if value[i] == '-' {
+				if i+2 == len(value) || value[i+1] != 'c' {
+					// bad
+					return
+				}
+			}
+			i += 3
+			j = i
+
+			opname := ""
+			opvalue := ""
+
+			for j < len(value) {
+				if value[j] == '=' {
+					j++
+					break
+				}
+				opname += string(value[j])
+				j++
+			}
+
+			for j < len(value) {
+				if value[j] == ' ' {
+					break
+				}
+				opvalue += string(value[j])
+				j++
+			}
+
+			if len(opname) == 0 || len(opvalue) == 0 {
+				// bad
+				return
+			}
+			i = j + 1
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed pgoption param %v %v", opname, opvalue)
+			cl.params[opname] = opvalue
+		}
+
+	} else {
+		cl.params[name] = value
+	}
 }
 
 func (cl *PsqlClient) Reply(msg string) error {
@@ -159,14 +210,10 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
-	return nil
-	if v, ok := cl.params["client_min_messages"]; ok {
-		switch v {
-		case "error":
-			fallthrough
-		case "warning":
-			fallthrough
-		case "fatal":
+	if v, ok := cl.params["client_min_messages"]; !ok {
+		return nil
+	} else {
+		if v != "notice" {
 			return nil
 		}
 	}
@@ -182,6 +229,10 @@ func (cl *PsqlClient) ReplyNotice(msg string) error {
 	}
 
 	return nil
+}
+
+func (cl *PsqlClient) ReplyNoticef(fmtString string, args ...interface{}) error {
+	return cl.ReplyNotice(fmt.Sprintf(fmtString, args...))
 }
 
 func (cl *PsqlClient) ID() string {
@@ -213,7 +264,6 @@ func (cl *PsqlClient) Unroute() error {
 		return NotRouted
 	}
 	cl.server = nil
-
 	return nil
 }
 
@@ -228,8 +278,7 @@ func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
 
 // startup + ssl
 func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
-
-	tracelog.InfoLogger.Printf("initialing client connection with %v ssl req", sslmode)
+	spqrlog.Logger.Printf(spqrlog.LOG, "initialing client connection with %v ssl req", sslmode)
 
 	var backend *pgproto3.Backend
 
@@ -258,9 +307,10 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	case conn.SSLREQ:
 		if sslmode == config.SSLMODEDISABLE {
 			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-			tracelog.ErrorLogger.FatalOnError(err)
-			return xerrors.Errorf("ssl mode is requested but ssl is disabled")
+			spqrlog.Logger.Errorf("ssl mode is requested but ssl is disabled")
+			return fmt.Errorf("ssl mode is requested but ssl is disabled")
 		}
+
 		_, err := cl.conn.Write([]byte{'S'})
 		if err != nil {
 			return err
@@ -287,15 +337,24 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 		// reuse
 		sm = &pgproto3.StartupMessage{}
 		err = sm.Decode(msg)
-		tracelog.ErrorLogger.FatalOnError(err)
-
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-		tracelog.ErrorLogger.FatalOnError(err)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 
 	case conn.CANCELREQ:
 		return fmt.Errorf("cancel is not supported")
 	default:
 		return fmt.Errorf("protocol number %d not supported", protoVer)
+	}
+
+	for k, v := range sm.Parameters {
+		cl.SetParam(k, v)
 	}
 
 	cl.startupMsg = sm
@@ -314,8 +373,8 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	return nil
 }
 
-func (cl *PsqlClient) Auth() error {
-	tracelog.InfoLogger.Printf("Processing auth for %v %v\n", cl.Usr(), cl.DB())
+func (cl *PsqlClient) Auth(rt *route.Route) error {
+	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {
@@ -328,17 +387,14 @@ func (cl *PsqlClient) Auth() error {
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
 				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
-
 			return nil
 		case config.AuthMD5:
-
+			fallthrough
 		case config.AuthSCRAM:
-
+			fallthrough
 		default:
 			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
 		}
-
-		return nil
 	}(); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
@@ -354,8 +410,28 @@ func (cl *PsqlClient) Auth() error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "spqr"},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	ps, err := rt.Params()
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	for key, msg := range ps {
+		if err := cl.Send(&pgproto3.ParameterStatus{
+			Name:  key,
+			Value: msg,
+		}); err != nil {
+			return err
+		}
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(conn.TXIDLE),
 		},
@@ -428,7 +504,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	tracelog.InfoLogger.Printf("sending %T", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T", msg)
 	return cl.be.Send(msg)
 }
 
@@ -442,13 +518,13 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("process copy %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy %T", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 	return cl.server.Send(query)
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	tracelog.InfoLogger.Printf("process copy end %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy end %T", query)
 	if err := cl.server.Send(*query); err != nil {
 		return err
 	}
@@ -470,8 +546,8 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
-	tracelog.InfoLogger.Printf("process query %s", query)
-	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
+	_ = cl.ReplyNoticef("executing your query %v", query)
 
 	if err := cl.server.Send(query); err != nil {
 		return 0, err
@@ -529,7 +605,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 
 		default:
-			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -541,7 +617,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 }
 
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	tracelog.InfoLogger.Printf("process command %+v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process command %+v", query)
 	_ = cl.ReplyNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -564,7 +640,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		default:
-			tracelog.InfoLogger.Printf("got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -615,6 +691,10 @@ func (cl *PsqlClient) DefaultReply() error {
 
 func (cl *PsqlClient) Close() error {
 	return cl.conn.Close()
+}
+
+func (cl *PsqlClient) Params() map[string]string {
+	return cl.params
 }
 
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {

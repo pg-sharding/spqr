@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -53,7 +54,7 @@ func (l *LocalQrouter) IsRouterCommand(statement sqlparser.Statement) bool {
 	return false
 }
 
-func (l *LocalQrouter) Route(parser rparser.QParser) (RoutingState, error) {
+func (l *LocalQrouter) Route() (RoutingState, error) {
 	return ShardMatchState{
 		Routes: []*ShardRoute{
 			{
@@ -63,4 +64,8 @@ func (l *LocalQrouter) Route(parser rparser.QParser) (RoutingState, error) {
 			},
 		},
 	}, nil
+}
+
+func (l *LocalQrouter) Parse(q *pgproto3.Query) (rparser.ParseState, error) {
+	return rparser.ParseStateQuery, nil
 }
