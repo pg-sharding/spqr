@@ -29,10 +29,12 @@ func (app *App) ProcPG(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
 
 	tracelog.InfoLogger.Printf("ProcPG listening %s by %s", addr, proto)
-	return app.spqr.Run(listener)
+	return app.spqr.Run(ctx, listener)
 }
 
 func (app *App) ProcADM(ctx context.Context) error {
@@ -42,7 +44,9 @@ func (app *App) ProcADM(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
 
 	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
 	return app.spqr.RunAdm(ctx, listener)
@@ -50,8 +54,6 @@ func (app *App) ProcADM(ctx context.Context) error {
 
 func (app *App) ServGrpc(ctx context.Context) error {
 	serv := grpc.NewServer()
-	//shhttp.Register(serv)
-	//reflection.Register(serv)
 	grpcqrouter.Register(serv, app.spqr.Qrouter)
 
 	httpAddr := config.RouterConfig().HttpAddr
@@ -61,5 +63,11 @@ func (app *App) ServGrpc(ctx context.Context) error {
 	}
 
 	tracelog.InfoLogger.Printf("ServGrpc listening %s by tcp", httpAddr)
-	return serv.Serve(listener)
+	go func() {
+		_ = serv.Serve(listener)
+	}()
+
+	<-ctx.Done()
+	serv.GracefulStop()
+	return nil
 }

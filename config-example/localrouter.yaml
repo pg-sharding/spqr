@@ -39,11 +39,11 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
-        - pooling_mode: 'TRANSACTION'
+        - pooling_mode: 'SESSION'
           pool_discard: false
           pool_rollback: true
           pool_default: true
-          pool_prepared_statement: true
+          pool_prepared_statement: false
           auth_rule:
             auth_method: 'ok'
     backend_rules:

@@ -16,9 +16,7 @@ type RoutePool interface {
 	) (*route.Route, error)
 
 	Obsolete(key route.Key) *route.Route
-
 	Shutdown() error
-
 	NotifyRoutes(func(route *route.Route) error) error
 }
 
@@ -44,19 +42,18 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 }
 
 func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
-
 	r.mu.Lock()
 	r.mu.Unlock()
 
 	ret := r.pool[key]
 
 	delete(r.pool, key)
-
 	return ret
 }
 
 func (r *RoutePoolImpl) Shutdown() error {
 	for _, rt := range r.pool {
+		rt := rt
 		go func() {
 			_ = rt.NofityClients(func(cl client.Client) error {
 				return cl.Shutdown()
@@ -83,7 +80,6 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	nroute := route.NewRoute(beRule, frRule, r.mapping)
 
 	r.pool[key] = nroute
-
 	return nroute, nil
 }
 

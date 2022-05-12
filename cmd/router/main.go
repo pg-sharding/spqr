@@ -2,8 +2,13 @@ package main
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"runtime/pprof"
 	"sync"
+	"syscall"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/app"
@@ -14,7 +19,9 @@ import (
 )
 
 var (
-	rcfgPath string
+	rcfgPath    string
+	doProfie    bool
+	profileFile string
 )
 
 var rootCmd = &cobra.Command{
@@ -36,6 +43,8 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/router/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/router/router.prof", "path to profile file")
+	rootCmd.PersistentFlags().BoolVar(&doProfie, "profile", false, "path to config file")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -43,13 +52,51 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		if doProfie {
+			f, err := os.Open(profileFile)
+			if err != nil {
+				return err
+			}
+			if err := pprof.StartCPUProfile(f); err != nil {
+				return err
+			}
+
+			defer func(f *os.File) {
+				err := f.Close()
+				if err != nil {
+					spqrlog.Logger.PrintError(err)
+				}
+			}(f)
+		}
+
 		if err := config.LoadRouterCfg(rcfgPath); err != nil {
 			return err
 		}
-
 		ctx, cancelCtx := context.WithCancel(context.Background())
 
-		defer cancelCtx()
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM)
+
+		go func() {
+			for {
+				s := <-sigs
+				spqrlog.Logger.Printf(spqrlog.LOG, "got singal %v", s)
+				switch s {
+				case syscall.SIGUSR1:
+					// write profile
+					pprof.StopCPUProfile()
+					cancelCtx()
+					return
+				case syscall.SIGHUP:
+					// reread config file
+				case syscall.SIGKILL, syscall.SIGTERM:
+					cancelCtx()
+					return
+				default:
+				}
+			}
+		}()
 
 		spqr, err := router.NewRouter(ctx)
 		if err != nil {
@@ -62,23 +109,28 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-
 			err := app.ProcPG(ctx)
-			tracelog.ErrorLogger.FatalOnError(err)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServGrpc(ctx)
-			tracelog.ErrorLogger.FatalOnError(err)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
 			wg.Done()
 		}(wg)
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ProcADM(ctx)
-			tracelog.ErrorLogger.FatalOnError(err)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
 			wg.Done()
 		}(wg)
 

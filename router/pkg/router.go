@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -142,7 +143,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 	return Frontend(r.Qrouter, psqlclient, cmngr)
 }
 
-func (r *RouterImpl) Run(listener net.Listener) error {
+func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 	closer, err := r.initJaegerTracer()
 	if err != nil {
 		return xerrors.Errorf("could not initialize jaeger tracer: %s", err.Error())
@@ -178,6 +179,11 @@ func (r *RouterImpl) Run(listener net.Listener) error {
 		case <-r.stchan:
 			_ = r.Rrouter.Shutdown()
 			_ = listener.Close()
+		case <-ctx.Done():
+			_ = r.Rrouter.Shutdown()
+			_ = listener.Close()
+			spqrlog.Logger.Printf(spqrlog.LOG, "psql sever done")
+			return nil
 		}
 	}
 }
@@ -193,15 +199,34 @@ func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
 }
 
 func (r *RouterImpl) RunAdm(ctx context.Context, listener net.Listener) error {
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			return errors.Wrap(err, "RunAdm failed")
-		}
-		go func() {
-			if err := r.servAdm(ctx, conn); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+	cChan := make(chan net.Conn)
+
+	accept := func(l net.Listener, cChan chan net.Conn) {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				// handle error (and then for example indicate acceptor is down)
+				cChan <- nil
+				return
 			}
-		}()
+			cChan <- c
+		}
+	}
+
+	go accept(listener, cChan)
+
+	for {
+		select {
+		case <-ctx.Done():
+			_ = listener.Close()
+			spqrlog.Logger.Printf(spqrlog.LOG, "admin sever done")
+			return nil
+		case conn := <-cChan:
+			go func() {
+				if err := r.servAdm(ctx, conn); err != nil {
+					tracelog.ErrorLogger.PrintError(err)
+				}
+			}()
+		}
 	}
 }

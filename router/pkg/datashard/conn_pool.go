@@ -87,11 +87,7 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BERul
 func (c *cPool) Put(sh Shard) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	return sh.Instance().Close()
-
 	c.pool[sh.Instance().Hostname()] = append(c.pool[sh.Instance().Hostname()], sh)
-
 	return nil
 }
 
