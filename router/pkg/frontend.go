@@ -99,11 +99,24 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			TxStatus: byte(rst.TxStatus()),
 		})
 	case parser.ParseStateResetMetadataStmt:
-		rst.Client().ResetParam(st.Setting)
 		if cmngr.ConnIsActive(rst) {
 			rst.AddQuery(*q)
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
-			return err
+			if err != nil {
+				return err
+			}
+
+			rst.Client().ResetParam(st.Setting)
+			if st.Setting == "session_authorization" {
+				rst.Client().ResetParam("role")
+			}
+
+			return nil
+		}
+
+		rst.Client().ResetParam(st.Setting)
+		if st.Setting == "session_authorization" {
+			rst.Client().ResetParam("role")
 		}
 
 		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {

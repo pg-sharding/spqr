@@ -74,7 +74,7 @@ type ParseStateResetMetadataStmt struct {
 	ParseState
 	Setting string
 }
-type PrepareStmt struct {
+type ParseStatePrepareStmt struct {
 	ParseState
 }
 
@@ -99,8 +99,8 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
-			case *pgquery.Node_PrepareStmt:
-				qp.state = PrepareStmt{}
+			//case *pgquery.Node_PrepareStmt:
+			//	qp.state = PrepareStmt{}
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.IsLocal {
 					qp.state = ParseStateSetLocalStmt{}
