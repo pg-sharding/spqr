@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -129,6 +130,8 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 							switch act := nq.AConst.Val.Node.(type) {
 							case *pgquery.Node_String_:
 								varStmt.Value = act.String_.Str
+							case *pgquery.Node_Integer:
+								varStmt.Value = fmt.Sprintf("%d", act.Integer.Ival)
 							}
 						}
 					}
