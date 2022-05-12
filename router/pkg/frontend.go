@@ -192,6 +192,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		if err := func() error {
 			if !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
+				case *pgproto3.Terminate:
+					return nil
 				case *pgproto3.Sync, *pgproto3.FunctionCall:
 					return rst.ProcessMessage(q, true, true, cmngr)
 				case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
@@ -204,6 +206,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			}
 
 			switch q := msg.(type) {
+			case *pgproto3.Terminate:
+				return nil
 			case *pgproto3.Sync:
 				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Parse:
