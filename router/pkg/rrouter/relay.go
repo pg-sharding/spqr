@@ -38,7 +38,7 @@ type RelayStateInteractor interface {
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
 	PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error
+	ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	TxStatus() conn.TXStatus
 }
@@ -272,7 +272,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
 
 	query := rst.Cl.ConstructClientParams()
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting user params %s", query.String)
-	_, err = rst.Cl.ProcQuery(query, true, false)
+	_, _, err = rst.Cl.ProcQuery(query, true, false)
 	return err
 }
 
@@ -307,13 +307,16 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 	return rst.Cl.ProcCommand(msg, waitForResp, replyCl)
 }
 
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, error) {
+func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "flush message buff")
+
+	ok := true
 
 	flusher := func(buff []pgproto3.Query, waitForResp, replyCl bool) (conn.TXStatus, error) {
 
 		var txst conn.TXStatus
 		var err error
+		var txok bool
 
 		for len(buff) > 0 {
 			if !rst.TxActive() {
@@ -325,8 +328,11 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 			var v pgproto3.Query
 			v, buff = buff[0], buff[1:]
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v", v)
-			if txst, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
+			if txst, txok, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
+				ok = false
 				return conn.TXERR, err
+			} else {
+				ok = ok && txok
 			}
 
 			rst.SetTxStatus(txst)
@@ -342,21 +348,21 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 	rst.smsgBuf = nil
 
 	if txst, err = flusher(buf, true, false); err != nil {
-		return txst, err
+		return txst, false, err
 	}
 
 	buf = rst.msgBuf
 	rst.msgBuf = nil
 
 	if txst, err = flusher(buf, waitForResp, replyCl); err != nil {
-		return txst, err
+		return txst, false, err
 	}
 
 	if err := rst.CompleteRelay(replyCl); err != nil {
-		return conn.TXERR, err
+		return conn.TXERR, false, err
 	}
 
-	return txst, nil
+	return txst, ok, nil
 }
 
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
@@ -366,7 +372,7 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 		}
 	}
 
-	bt, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
+	bt, _, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
 	if err != nil {
 		return conn.TXERR, err
 	}
@@ -479,20 +485,20 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnMa
 	}
 }
 
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) error {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) (bool, error) {
 	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
-		return err
+		return false, err
 	}
 
-	if _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
+	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		if rst.ShouldRetry(err) {
 			// TODO: fix retry logic
 		}
-		return err
+		return false, err
+	} else {
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
+		return ok, nil
 	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
-	return nil
 }
 
 func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error {

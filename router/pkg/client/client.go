@@ -44,7 +44,7 @@ type RouterClient interface {
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error)
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
@@ -53,9 +53,15 @@ type RouterClient interface {
 
 type PsqlClient struct {
 	client.Client
-	params map[string]string
-	rule   *config.FRRule
-	conn   net.Conn
+	activeParamSet      map[string]string
+	savepointParamSet   map[string]map[string]string
+	savepointParamTxCnt map[string]int
+	beginTxParamSet     map[string]string
+
+	txCnt int
+
+	rule *config.FRRule
+	conn net.Conn
 
 	r *route.Route
 
@@ -66,6 +72,57 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     server.Server
+}
+
+func copymap(params map[string]string) map[string]string {
+	ret := make(map[string]string)
+
+	for k, v := range params {
+		ret[k] = v
+	}
+
+	return ret
+}
+
+func (cl *PsqlClient) StartTx() {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "start new params set")
+	cl.beginTxParamSet = copymap(cl.activeParamSet)
+	cl.savepointParamSet = nil
+	cl.savepointParamTxCnt = nil
+	cl.txCnt = 0
+}
+
+func (cl *PsqlClient) CommitActiveSet() {
+	cl.beginTxParamSet = nil
+	cl.savepointParamSet = nil
+	cl.savepointParamTxCnt = nil
+	cl.txCnt = 0
+}
+
+func (cl *PsqlClient) Savepoint(name string) {
+	cl.savepointParamSet[name] = copymap(cl.activeParamSet)
+	cl.savepointParamTxCnt[name] = cl.txCnt
+	cl.txCnt++
+}
+
+func (cl *PsqlClient) Rollback() {
+	cl.activeParamSet = copymap(cl.beginTxParamSet)
+	cl.beginTxParamSet = nil
+	cl.savepointParamSet = nil
+	cl.savepointParamTxCnt = nil
+	cl.txCnt = 0
+}
+
+func (cl *PsqlClient) RollbackToSp(name string) {
+	cl.activeParamSet = cl.savepointParamSet[name]
+	targetTxCnt := cl.savepointParamTxCnt[name]
+	for k := range cl.savepointParamSet {
+		if cl.savepointParamTxCnt[k] > targetTxCnt {
+			delete(cl.savepointParamTxCnt, k)
+			delete(cl.savepointParamSet, k)
+		}
+	}
+	cl.txCnt = targetTxCnt + 1
 }
 
 func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
@@ -91,7 +148,7 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 }
 
 func (cl *PsqlClient) ResetAll() {
-	cl.params = cl.startupMsg.Parameters
+	cl.activeParamSet = cl.startupMsg.Parameters
 }
 
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
@@ -139,11 +196,11 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 
 func (cl *PsqlClient) ResetParam(name string) {
 	if val, ok := cl.startupMsg.Parameters[name]; ok {
-		cl.params[name] = val
+		cl.activeParamSet[name] = val
 	} else {
-		delete(cl.params, name)
+		delete(cl.activeParamSet, name)
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "params are now %+v", cl.params)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "activeParamSet are now %+v", cl.activeParamSet)
 }
 
 func (cl *PsqlClient) SetParam(name, value string) {
@@ -192,11 +249,11 @@ func (cl *PsqlClient) SetParam(name, value string) {
 			i = j + 1
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed pgoption param %v %v", opname, opvalue)
-			cl.params[opname] = opvalue
+			cl.activeParamSet[opname] = opvalue
 		}
 
 	} else {
-		cl.params[name] = value
+		cl.activeParamSet[name] = value
 	}
 }
 
@@ -245,7 +302,7 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyNotice(msg string) error {
-	if v, ok := cl.params["client_min_messages"]; !ok {
+	if v, ok := cl.activeParamSet["client_min_messages"]; !ok {
 		return nil
 	} else {
 		if v != "notice" {
@@ -276,10 +333,10 @@ func (cl *PsqlClient) ID() string {
 
 func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	cl := &PsqlClient{
-		params:     make(map[string]string),
-		conn:       pgconn,
-		startupMsg: &pgproto3.StartupMessage{},
-		prepStmts:  map[string]string{},
+		activeParamSet: make(map[string]string),
+		conn:           pgconn,
+		startupMsg:     &pgproto3.StartupMessage{},
+		prepStmts:      map[string]string{},
 	}
 	cl.id = "dwoiewiwe"
 
@@ -582,22 +639,24 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
 	_ = cl.ReplyNoticef("executing your query %v", query)
 
 	if err := cl.server.Send(query); err != nil {
-		return 0, err
+		return 0, false, err
 	}
 
 	if !waitForResp {
-		return conn.TXCONT, nil
+		return conn.TXCONT, true, nil
 	}
+
+	ok := true
 
 	for {
 		msg, err := cl.server.Receive()
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 
 		switch v := msg.(type) {
@@ -605,7 +664,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			// handle replyCl somehow
 			err = cl.Send(msg)
 			if err != nil {
-				return 0, err
+				return 0, false, err
 			}
 
 			if err := func() error {
@@ -629,23 +688,24 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 					}
 				}
 			}(); err != nil {
-				return 0, err
+				return conn.TXERR, false, err
 			}
 		case *pgproto3.ReadyForQuery:
-			return conn.TXStatus(v.TxStatus), nil
+			return conn.TXStatus(v.TxStatus), ok, nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return 0, err
+					return conn.TXERR, false, err
 				}
 			}
+			ok = false
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return 0, err
+					return conn.TXERR, false, err
 				}
 			}
 		}
@@ -730,7 +790,7 @@ func (cl *PsqlClient) Close() error {
 }
 
 func (cl *PsqlClient) Params() map[string]string {
-	return cl.params
+	return cl.activeParamSet
 }
 
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {

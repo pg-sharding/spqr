@@ -59,6 +59,9 @@ type ParseStateSetStmt struct {
 	Name  string
 	Value string
 }
+type ParseStateSetLocalStmt struct {
+	ParseState
+}
 type ParseStateResetStmt struct {
 	ParseState
 	Name string
@@ -69,6 +72,9 @@ type ParseStateResetAllStmt struct {
 type ParseStateResetMetadataStmt struct {
 	ParseState
 	Setting string
+}
+type PrepareStmt struct {
+	ParseState
 }
 
 func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
@@ -92,7 +98,13 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
+			case *pgquery.Node_PrepareStmt:
+				qp.state = PrepareStmt{}
 			case *pgquery.Node_VariableSetStmt:
+				if q.VariableSetStmt.IsLocal {
+					qp.state = ParseStateSetLocalStmt{}
+					return qp.state, nil
+				}
 				if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_RESET {
 					switch q.VariableSetStmt.Name {
 					case "session_authorization", "role":

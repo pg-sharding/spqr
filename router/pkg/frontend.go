@@ -16,11 +16,9 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 )
 
-type Qinteractor interface {
-}
+type Qinteractor interface{}
 
-type QinteractorImpl struct {
-}
+type QinteractorImpl struct{}
 
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
@@ -32,6 +30,7 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
 		rst.AddSilentQuery(*q)
+		rst.Client().StartTx()
 
 		if err := rst.Client().Send(&pgproto3.CommandComplete{
 			CommandTag: []byte("BEGIN"),
@@ -45,6 +44,23 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			return err
 		}
 		return nil
+	case parser.ParseStateTXCommit:
+		if !cmngr.ConnIsActive(rst) {
+			// TODO: do stmh
+		}
+		rst.AddQuery(*q)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		if ok {
+			rst.Client().CommitActiveSet()
+		}
+		return err
+	case parser.ParseStateTXRollback:
+		rst.AddQuery(*q)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		if ok {
+			rst.Client().Rollback()
+		}
+		return err
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
@@ -56,47 +72,84 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			return err
 		}
 		return nil
+	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
-		rst.AddQuery(*q)
+		if cmngr.ConnIsActive(rst) {
+			rst.AddQuery(*q)
+			if ok, err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+				return err
+			} else if ok {
+				rst.Client().SetParam(st.Name, st.Value)
+			}
+			return nil
+		}
+
 		rst.Client().SetParam(st.Name, st.Value)
-		return rst.ProcessMessageBuf(true, true, cmngr)
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("SET")}); err != nil {
+			return err
+		}
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
-		if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
-			return err
+
+		if cmngr.ConnIsActive(rst) {
+			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
+				return err
+			}
 		}
 
 		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
 			return err
 		}
 
-		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
 	case parser.ParseStateResetMetadataStmt:
 		rst.Client().ResetParam(st.Setting)
-		rst.AddQuery(*q)
-		return rst.ProcessMessageBuf(true, true, cmngr)
-	case parser.ParseStateResetAllStmt:
-		rst.Client().ResetAll()
+		if cmngr.ConnIsActive(rst) {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			return err
+		}
+
 		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
 			return err
 		}
 
-		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),
-		}); err != nil {
-			return err
+		})
+	case parser.ParseStateResetAllStmt:
+		rst.Client().ResetAll()
+
+		if cmngr.ConnIsActive(rst) {
+			if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
+				return err
+			}
 		}
 
-		return nil
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
+	case parser.ParseStateSetLocalStmt:
+		if cmngr.ConnIsActive(rst) {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			return err
+		}
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("SET")}); err != nil {
+			return err
+		}
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
 	default:
 		rst.AddQuery(*q)
-		return rst.ProcessMessageBuf(true, true, cmngr)
+		_, err := rst.ProcessMessageBuf(true, true, cmngr)
+		return err
 	}
 }
 
