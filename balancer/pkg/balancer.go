@@ -1,16 +1,21 @@
 package pkg
 
 import (
+	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
+	"net"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/wal-g/tracelog"
+
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 // TODO use only one place to store strings
@@ -843,4 +848,37 @@ func (b *Balancer) BrutForceStrategy() {
 
 		time.Sleep(b.plannerRetryTime)
 	}
+}
+
+func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tls.Config) error {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return fmt.Errorf("RunAdm failed: %w", err)
+		}
+
+		go func() {
+			if err := b.servAdm(ctx, conn, tlsCfg); err != nil {
+				tracelog.ErrorLogger.PrintError(err)
+			}
+		}()
+	}
+}
+
+func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Config) error {
+	cl := NewBalancerClient(conn)
+
+	if err := cl.Init(tlsCfg, config.SSLMODEDISABLE); err != nil {
+		return err
+	}
+
+	stchan := make(chan struct{})
+
+	localConsole, err := NewConsole(tlsCfg, stchan)
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
+		return err
+	}
+
+	return localConsole.Serve(ctx, cl)
 }

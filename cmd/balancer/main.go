@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/wal-g/tracelog"
@@ -31,14 +32,26 @@ var rootCmd = &cobra.Command{
 		defer cancelCtx()
 		// init db-,coordinator- and installation-class
 		balancer := pkg.Balancer{}
+		bCfg := *config.BalancerConfig()
 
-		app, err := app.NewApp(&balancer, *config.BalancerConfig())
+		app, err := app.NewApp(&balancer, bCfg)
 		if err != nil {
 			return fmt.Errorf("error while creating balancer app: %s", err)
 		}
 
 		err = app.ProcBalancer(ctx)
 		tracelog.ErrorLogger.PrintError(err)
+
+		wg := &sync.WaitGroup{}
+
+		wg.Add(1)
+		go func(wg *sync.WaitGroup) {
+			err := app.ProcADM(ctx, bCfg.TLSCfg)
+			tracelog.ErrorLogger.FatalOnError(err)
+			wg.Done()
+		}(wg)
+
+		wg.Wait()
 
 		return err
 	},

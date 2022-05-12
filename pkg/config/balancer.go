@@ -26,6 +26,8 @@ type BalancerCfg struct {
 	DatabasePassword   string   `json:"database_password" toml:"database_password" yaml:"database_password"`
 	DatabasePort       int      `json:"database_port" toml:"database_port" yaml:"database_port"`
 	DatabaseMaxRetries int      `json:"database_max_retries" toml:"database_max_retries" yaml:"database_max_retries"`
+
+	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 var cfgBalancer BalancerCfg

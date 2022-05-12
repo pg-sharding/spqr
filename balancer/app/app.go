@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/wal-g/tracelog"
 	"golang.yandex/hasql"
 
 	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
@@ -91,4 +92,22 @@ func (app *App) ProcBalancer(ctx context.Context) error {
 	//TODO return error
 	app.balancer.BrutForceStrategy()
 	return nil
+}
+
+func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
+	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
+	if err != nil {
+		return fmt.Errorf("init frontend TLS: %s", err)
+	}
+
+	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
+
+	listener, err := net.Listen(proto, admaddr)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
+	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
+	return app.balancer.RunAdm(ctx, listener, frTLS)
 }
