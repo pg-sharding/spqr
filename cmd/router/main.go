@@ -56,20 +56,14 @@ var runCmd = &cobra.Command{
 		var pprofFile *os.File
 		var err error
 		if doProfie {
-			pprofFile, err = os.Open(profileFile)
+			pprofFile, err = os.Create(profileFile)
 			if err != nil {
 				return err
 			}
+			spqrlog.Logger.Printf(spqrlog.LOG, "starting cpu prof with %s", profileFile)
 			if err := pprof.StartCPUProfile(pprofFile); err != nil {
 				return err
 			}
-
-			defer func(f *os.File) {
-				err := f.Close()
-				if err != nil {
-					spqrlog.Logger.PrintError(err)
-				}
-			}(pprofFile)
 		}
 
 		if err := config.LoadRouterCfg(rcfgPath); err != nil {
@@ -81,29 +75,27 @@ var runCmd = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGUSR1)
 
 		go func() {
+			defer cancelCtx()
 			for {
 				s := <-sigs
-				spqrlog.Logger.Printf(spqrlog.LOG, "got singal %v", s)
+				spqrlog.Logger.Printf(spqrlog.LOG, "got signal %v", s)
 
 				switch s {
 				case syscall.SIGUSR1:
 					// write profile
-
 					pprof.StopCPUProfile()
-					if err := pprof.WriteHeapProfile(pprofFile); err != nil {
-						return
-					}
 
-					if err = pprof.StartCPUProfile(pprofFile); err != nil {
+					if err := pprofFile.Close(); err != nil {
 						spqrlog.Logger.PrintError(err)
-						return
 					}
+					return
 				case syscall.SIGHUP:
 					// reread config file
 				case syscall.SIGKILL, syscall.SIGTERM:
 					cancelCtx()
 					return
 				default:
+					return
 				}
 			}
 		}()

@@ -2,21 +2,21 @@ package app
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/grpcqrouter"
-	router2 "github.com/pg-sharding/spqr/router/pkg"
-	"github.com/wal-g/tracelog"
+	router "github.com/pg-sharding/spqr/router/pkg"
 	"google.golang.org/grpc"
 )
 
 type App struct {
-	spqr *router2.RouterImpl
+	spqr *router.RouterImpl
 }
 
-func NewApp(sg *router2.RouterImpl) *App {
+func NewApp(sg *router.RouterImpl) *App {
 	return &App{
 		spqr: sg,
 	}
@@ -33,7 +33,7 @@ func (app *App) ProcPG(ctx context.Context) error {
 		_ = listener.Close()
 	}(listener)
 
-	tracelog.InfoLogger.Printf("ProcPG listening %s by %s", addr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcPG listening %s by %s", addr, proto)
 	return app.spqr.Run(ctx, listener)
 }
 
@@ -48,7 +48,7 @@ func (app *App) ProcADM(ctx context.Context) error {
 		_ = listener.Close()
 	}(listener)
 
-	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
 	return app.spqr.RunAdm(ctx, listener)
 }
 
@@ -62,7 +62,7 @@ func (app *App) ServGrpc(ctx context.Context) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("ServGrpc listening %s by tcp", httpAddr)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ServGrpc listening %s by tcp", httpAddr)
 	go func() {
 		_ = serv.Serve(listener)
 	}()

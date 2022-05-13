@@ -12,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 )
 
@@ -46,12 +45,11 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 	// init tls
 	if err := initShards(config.RouterConfig().RulesConfig); err != nil {
-		tracelog.InfoLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 	}
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
-	tracelog.DebugLogger.Printf("creating QueryRouter with type %s", qtype)
-
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 	rules := config.RouterConfig().RulesConfig
 
 	qr, err := qrouter.NewQrouter(qtype, rules)
@@ -75,7 +73,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
+		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 		return nil, err
 	}
 
@@ -87,15 +85,15 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	} {
 		queries, err := localConsole.Qlog.Recover(ctx, fname)
 		if err != nil {
-			tracelog.ErrorLogger.PrintError(xerrors.Errorf("failed to initialize router: %w", err))
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 			return nil, err
 		}
 
 		if err := executer.SPIexec(context.TODO(), localConsole, client.NewFakeClient(), queries); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 		}
 
-		tracelog.InfoLogger.Printf("Successfully init %d queries from %s", len(queries), fname)
+		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 	}
 
 	return &RouterImpl{
@@ -133,7 +131,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("preroute ok")
+	spqrlog.Logger.Printf(spqrlog.LOG, "pre route ok")
 
 	cmngr, err := rrouter.MatchConnectionPooler(psqlclient)
 	if err != nil {
@@ -172,7 +170,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 
 			go func() {
 				if err := r.serv(conn); err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+					spqrlog.Logger.PrintError(err)
 				}
 			}()
 
@@ -182,7 +180,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 		case <-ctx.Done():
 			_ = r.Rrouter.Shutdown()
 			_ = listener.Close()
-			spqrlog.Logger.Printf(spqrlog.LOG, "psql sever done")
+			spqrlog.Logger.Printf(spqrlog.LOG, "psql server done")
 			return nil
 		}
 	}
@@ -190,11 +188,9 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 
 func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	cl := client.NewPsqlClient(conn)
-
 	if err := cl.Init(r.frTLS, config.SSLMODEDISABLE); err != nil {
 		return err
 	}
-
 	return r.AdmConsole.Serve(ctx, cl)
 }
 
@@ -224,7 +220,7 @@ func (r *RouterImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 		case conn := <-cChan:
 			go func() {
 				if err := r.servAdm(ctx, conn); err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+					spqrlog.Logger.PrintError(err)
 				}
 			}()
 		}
