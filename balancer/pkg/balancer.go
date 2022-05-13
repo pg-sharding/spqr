@@ -874,7 +874,7 @@ func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Confi
 
 	stchan := make(chan struct{})
 
-	localConsole, err := NewConsole(tlsCfg, stchan)
+	localConsole, err := NewConsole(tlsCfg, b.coordinator, stchan)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
 		return err
