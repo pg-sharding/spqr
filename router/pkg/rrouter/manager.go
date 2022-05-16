@@ -27,7 +27,6 @@ type ConnManager interface {
 
 func unRouteWithError(cmngr ConnManager, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
-
 	return client.ReplyErrMsg(errmsg.Error())
 }
 

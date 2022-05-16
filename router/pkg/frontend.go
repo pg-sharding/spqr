@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
@@ -26,6 +27,10 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	if err != nil {
 		return err
 	}
+
+	//if rst.Client().Rule().PoolingMode == config.PoolingModeTransaction && !rst.Client().Rule().PoolPreparedStatement {
+	//
+	//}
 
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
@@ -190,7 +195,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %T msg, %p", msg, msg)
 
 		if err := func() error {
-			if !cl.Rule().PoolPreparedStatement {
+			if cl.Rule().PoolingMode == config.PoolingModeTransaction && !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
 				case *pgproto3.Terminate:
 					return nil

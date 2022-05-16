@@ -76,17 +76,19 @@ type ParseStateResetMetadataStmt struct {
 }
 type ParseStatePrepareStmt struct {
 	ParseState
+	Name  string
+	Query string
 }
 
-func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
-	qp.q = q
+func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
+	qp.q = query
 
-	pstmt, err := pgquery.Parse(q.String)
+	pstmt, err := pgquery.Parse(query.String)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
 
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query.String, err)
 	} else {
 		qp.state = ParseStateQuery{}
 
@@ -100,7 +102,12 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
 			//case *pgquery.Node_PrepareStmt:
-			//	qp.state = PrepareStmt{}
+			//	varStmt := ParseStatePrepareStmt{}
+			//	varStmt.Name = q.PrepareStmt.Name
+			//	varStmt.Query = query.String
+			//	qp.state = varStmt
+			//case *pgquery.Node_ExecuteStmt:
+			//	q.ExecuteStmt.Name
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.IsLocal {
 					qp.state = ParseStateSetLocalStmt{}
