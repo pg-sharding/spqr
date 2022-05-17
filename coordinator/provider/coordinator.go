@@ -5,6 +5,10 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
+	"golang.org/x/xerrors"
+	"google.golang.org/grpc"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -14,11 +18,10 @@ import (
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/pg-sharding/spqr/router/pkg/route"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
-	"google.golang.org/grpc"
 )
 
 type routerConn struct {
@@ -168,7 +171,10 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	if err := cl.Auth(nil); err != nil {
+	r := route.NewRoute(nil, nil, nil)
+	r.SetParams(datashard.ParameterSet{})
+
+	if err := cl.Auth(r); err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")
