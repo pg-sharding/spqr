@@ -70,9 +70,6 @@ var runCmd = &cobra.Command{
 		if err := config.LoadRouterCfg(rcfgPath); err != nil {
 			return err
 		}
-
-		// tracelog.UpdateLogLevel(tracelog.ErrorLogLevel)
-
 		ctx, cancelCtx := context.WithCancel(context.Background())
 
 		sigs := make(chan os.Signal, 1)
