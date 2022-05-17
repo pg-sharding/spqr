@@ -18,6 +18,7 @@ import (
 type Console struct {
 	cfg    *tls.Config
 	coord  CoordinatorInterface
+	co     ConsoleInterface
 	stchan chan struct{}
 }
 
@@ -81,6 +82,13 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		switch stmt.Cmd {
 		case spqrparser.ShowKeyRangesStr:
+			keyRanges, err := c.co.showKeyRanges()
+			if err != nil {
+				tracelog.ErrorLogger.Printf("failed to show key ranges: %w", err)
+			}
+
+			return cli.KeyRanges(keyRanges, cl)
+
 		default:
 			tracelog.InfoLogger.Printf("Unknown default %s", stmt.Cmd)
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
@@ -22,6 +23,10 @@ type CoordinatorInterface interface {
 	moveKeyRange(rng KeyRange, shardTo Shard) error
 }
 
+type ConsoleInterface interface {
+	showKeyRanges() ([]*kr.KeyRange, error)
+}
+
 type Coordinator struct {
 	maxRetriesCount        int
 	addr                   string
@@ -29,6 +34,27 @@ type Coordinator struct {
 	shardServiceClient     routerproto.ShardServiceClient
 	keyRangeServiceClient  routerproto.KeyRangeServiceClient
 	operationServiceClient routerproto.OperationServiceClient
+}
+
+func (c *Coordinator) showKeyRanges() ([]*kr.KeyRange, error) {
+	respList, err := c.keyRangeServiceClient.ListKeyRange(context.Background(), &routerproto.ListKeyRangeRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*kr.KeyRange, 0, len(respList.KeyRangesInfo))
+	for _, keyRangeInfo := range respList.KeyRangesInfo {
+		keyRange := &kr.KeyRange{
+			LowerBound: []byte(keyRangeInfo.GetKeyRange().GetLowerBound()),
+			UpperBound: []byte(keyRangeInfo.GetKeyRange().GetUpperBound()),
+			ShardID:    keyRangeInfo.GetShardId(),
+			ID:         keyRangeInfo.GetKrid(),
+		}
+
+		res = append(res, keyRange)
+	}
+
+	return res, nil
 }
 
 func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
