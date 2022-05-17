@@ -16,11 +16,9 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
 )
 
-type Qinteractor interface {
-}
+type Qinteractor interface{}
 
-type QinteractorImpl struct {
-}
+type QinteractorImpl struct{}
 
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
@@ -28,18 +26,41 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	if err != nil {
 		return err
 	}
-	rst.AddQuery(*q)
 
-	switch state {
+	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
+		rst.AddSilentQuery(*q)
+		rst.Client().StartTx()
+
+		if err := rst.Client().Send(&pgproto3.CommandComplete{
+			CommandTag: []byte("BEGIN"),
+		}); err != nil {
+			return err
+		}
+
 		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(conn.TXACT),
 		}); err != nil {
 			return err
-
 		}
-		rst.SetTxStatus(conn.TXACT)
 		return nil
+	case parser.ParseStateTXCommit:
+		if !cmngr.ConnIsActive(rst) {
+			// TODO: do stmh
+		}
+		rst.AddQuery(*q)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		if ok {
+			rst.Client().CommitActiveSet()
+		}
+		return err
+	case parser.ParseStateTXRollback:
+		rst.AddQuery(*q)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		if ok {
+			rst.Client().Rollback()
+		}
+		return err
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
@@ -49,15 +70,91 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			TxStatus: byte(rst.TxStatus()),
 		}); err != nil {
 			return err
-
 		}
 		return nil
-	default:
-		if err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+	// with tx pooling we might have no active connection while processing set x to y
+	case parser.ParseStateSetStmt:
+		rst.AddQuery(*q)
+		if ok, err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+			return err
+		} else if ok {
+			rst.Client().SetParam(st.Name, st.Value)
+		}
+		return nil
+
+	case parser.ParseStateResetStmt:
+		rst.Client().ResetParam(st.Name)
+
+		if cmngr.ConnIsActive(rst) {
+			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
+				return err
+			}
+		}
+
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
 			return err
 		}
+
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
+	case parser.ParseStateResetMetadataStmt:
+		if cmngr.ConnIsActive(rst) {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			if err != nil {
+				return err
+			}
+
+			rst.Client().ResetParam(st.Setting)
+			if st.Setting == "session_authorization" {
+				rst.Client().ResetParam("role")
+			}
+
+			return nil
+		}
+
+		rst.Client().ResetParam(st.Setting)
+		if st.Setting == "session_authorization" {
+			rst.Client().ResetParam("role")
+		}
+
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
+			return err
+		}
+
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
+	case parser.ParseStateResetAllStmt:
+		rst.Client().ResetAll()
+
+		if cmngr.ConnIsActive(rst) {
+			if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
+				return err
+			}
+		}
+
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
+	case parser.ParseStateSetLocalStmt:
+		if cmngr.ConnIsActive(rst) {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			return err
+		}
+		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("SET")}); err != nil {
+			return err
+		}
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
+			TxStatus: byte(rst.TxStatus()),
+		})
+	default:
+		rst.AddQuery(*q)
+		_, err := rst.ProcessMessageBuf(true, true, cmngr)
+		return err
 	}
-	return nil
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
@@ -68,7 +165,6 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 
 	onErrFunc := func(err error) error {
 		spqrlog.Logger.Errorf("frontend got error: %v", err)
-
 		switch err {
 		case nil:
 			return nil
@@ -96,7 +192,9 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		if err := func() error {
 			if !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
-				case *pgproto3.Sync:
+				case *pgproto3.Terminate:
+					return nil
+				case *pgproto3.Sync, *pgproto3.FunctionCall:
 					return rst.ProcessMessage(q, true, true, cmngr)
 				case *pgproto3.Parse, *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
 					return rst.ProcessMessage(q, false, true, cmngr)
@@ -108,6 +206,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 			}
 
 			switch q := msg.(type) {
+			case *pgproto3.Terminate:
+				return nil
 			case *pgproto3.Sync:
 				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Parse:
@@ -153,9 +253,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					}
 				}
 				return err
-			case *pgproto3.Execute:
+			case *pgproto3.FunctionCall:
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
 				return rst.ProcessMessage(q, false, true, cmngr)
+			case *pgproto3.Execute:
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
+				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Bind:
 				query := cl.PreparedStatementQueryByName(q.PreparedStatement)
 				hash := murmur3.Sum64([]byte(query))

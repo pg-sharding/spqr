@@ -2,7 +2,7 @@ addr: '[::1]:6432'
 adm_addr: '[::1]:7433'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
-log_level: DEBUG1
+log_level: WARNING
 
 executer:
     init_sql_path: "./test-init.sql"
@@ -27,23 +27,23 @@ rules:
             passwd: 12345678
             shard_type: 'DATA'
             hosts:
-                - conn_addr: "localhost:5550"
+                - conn_addr: "localhost:5551"
     frontend_rules:
         - route_key_cfg:
             usr: user1
             db: db1
           pooling_mode: 'TRANSACTION'
-          pool_discard: true
+          pool_discard: false
           pool_rollback: true
           pool_prepared_statement: true
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
         - pooling_mode: 'SESSION'
-          pool_discard: true
+          pool_discard: false
           pool_rollback: true
           pool_default: true
-          pool_prepared_statement: true
+          pool_prepared_statement: false
           auth_rule:
             auth_method: 'ok'
     backend_rules:

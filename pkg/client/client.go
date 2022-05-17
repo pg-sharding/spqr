@@ -8,16 +8,29 @@ import (
 	"github.com/jackc/pgproto3/v2"
 )
 
+type Pmgr interface {
+	SetParam(string, string)
+	ResetParam(string)
+	ResetAll()
+	ConstructClientParams() *pgproto3.Query
+	Params() map[string]string
+
+	StartTx()
+	CommitActiveSet()
+	Savepoint(string)
+	Rollback()
+	RollbackToSP(string)
+}
+
 type Client interface {
+	Pmgr
+
 	ID() string
 
 	ReplyErrMsg(errmsg string) error
 	ReplyNotice(msg string) error
 	ReplyNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error
-
-	SetParam(string, string)
-	Params() map[string]string
 
 	Init(cfg *tls.Config, reqssl string) error
 

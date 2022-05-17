@@ -8,13 +8,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
+	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/wal-g/tracelog"
 )
 
 type LocalQrouter struct {
 	QueryRouter
-	ds *datashards.DataShard
+	ds     *datashards.DataShard
+	parser parser.QParser
 }
 
 var _ QueryRouter = &LocalQrouter{}
@@ -66,6 +67,9 @@ func (l *LocalQrouter) Route() (RoutingState, error) {
 	}, nil
 }
 
-func (l *LocalQrouter) Parse(q *pgproto3.Query) (rparser.ParseState, error) {
-	return rparser.ParseStateQuery, nil
+func (l *LocalQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
+	if stmt, err := l.parser.Parse(q); err == nil {
+		return stmt, nil
+	}
+	return parser.ParseStateQuery{}, nil
 }

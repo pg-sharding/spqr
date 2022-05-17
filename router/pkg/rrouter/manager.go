@@ -18,6 +18,7 @@ type ConnManager interface {
 	TXEndCB(client client.RouterClient, rst RelayStateInteractor) error
 
 	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
+	ConnIsActive(rst RelayStateInteractor) bool
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
@@ -31,6 +32,11 @@ func unRouteWithError(cmngr ConnManager, client client.RouterClient, sh []kr.Sha
 }
 
 type TxConnManager struct{}
+
+func (t *TxConnManager) ConnIsActive(rst RelayStateInteractor) bool {
+	//TODO implement me
+	return rst.ActiveShards() != nil || rst.TxStatus() != conn.TXIDLE
+}
 
 func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(t, client, sh, errmsg)
@@ -85,6 +91,11 @@ func (t *TxConnManager) TXEndCB(client client.RouterClient, rst RelayStateIntera
 }
 
 type SessConnManager struct{}
+
+func (s *SessConnManager) ConnIsActive(RelayStateInteractor) bool {
+	//TODO implement me
+	return true
+}
 
 func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(s, client, sh, errmsg)

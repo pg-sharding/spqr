@@ -3,10 +3,11 @@ package qrouter
 import (
 	"context"
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
-	"github.com/wal-g/tracelog"
+
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -41,7 +42,7 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 
 func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 
-	tracelog.InfoLogger.Printf("adding world datashard %s", name)
+	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
 
 	return nil
@@ -144,7 +145,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
 		err := qdb.UnLock(ctx, keyRangeID)
 		if err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
+			return
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
@@ -155,7 +157,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
 		err := qdb.UnLock(ctx, keyRangeID)
 		if err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
+			return
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDRight)
 
@@ -206,7 +209,7 @@ func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
 }
 
 func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
-	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
+	spqrlog.Logger.Printf(spqrlog.LOG, "adding node %s", ds.ID)
 	qr.DataShardCfgs[ds.ID] = ds.Cfg
 	return nil
 }
@@ -271,7 +274,7 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 	krs, _ := qr.qdb.ListKeyRange(context.TODO())
 
 	for _, keyRange := range krs {
-		tracelog.InfoLogger.Printf("comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
 		if kr.CmpRanges(keyRange.LowerBound, i) && kr.CmpRanges(i, keyRange.UpperBound) {
 			return kr.KeyRangeFromDB(keyRange)
 		}
@@ -311,15 +314,11 @@ func (qr *ProxyQrouter) routeByExpr(expr sqlparser.Expr) *ShardRoute {
 	case *sqlparser.ComparisonExpr:
 
 		if qr.matchShkey(texpr.Left) {
-			tracelog.InfoLogger.Printf("go right")
 			shindx := qr.routeByExpr(texpr.Right)
 			return shindx
 		}
-		tracelog.InfoLogger.Printf("go left")
 		return qr.routeByExpr(texpr.Left)
 	case *sqlparser.SQLVal:
-
-		tracelog.InfoLogger.Printf("parsed val %d", texpr.Val)
 		keyRange := qr.routeByIndx(texpr.Val)
 		//rw := qr.qdb.Check(keyRange.ToSQL())
 
@@ -362,9 +361,6 @@ func (qr *ProxyQrouter) isLocalTbl(from sqlparser.TableExprs) bool {
 }
 
 func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
-
-	tracelog.InfoLogger.Printf("parsed qtype %T", qstmt)
-
 	switch stmt := qstmt.(type) {
 	case *sqlparser.Select:
 		if qr.isLocalTbl(stmt.From) {
@@ -403,7 +399,6 @@ func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
 		}
 		return nil
 	case *sqlparser.TruncateTable, *sqlparser.CreateTable:
-		tracelog.InfoLogger.Printf("ddl routing expands to every datashard")
 		// route ddl to every datashard
 		shrds := qr.Shards()
 		var ret []*ShardRoute
@@ -427,8 +422,6 @@ var ParseError = xerrors.New("parsing stmt error")
 
 func (qr *ProxyQrouter) Route() (RoutingState, error) {
 	parsedStmt := qr.parser.Stmt()
-	tracelog.InfoLogger.Printf("stmt type %T", parsedStmt)
-
 	switch parsedStmt.(type) {
 	case *sqlparser.DDL:
 		return ShardMatchState{

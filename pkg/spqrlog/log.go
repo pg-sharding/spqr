@@ -70,9 +70,9 @@ func (el *errorLogger) Errorf(fmt string, args ...interface{}) {
 }
 
 func (el *errorLogger) PrintError(err error) {
-	el.logMp[ERROR].Printf("%w", err)
+	el.logMp[ERROR].Printf("%v", err)
 }
 
 func (el *errorLogger) FatalOnError(err error) {
-	el.logMp[FATAL].Fatalf("%w", err)
+	el.logMp[FATAL].Fatalf("%v", err)
 }

@@ -4,20 +4,21 @@ import (
 	"context"
 	"net"
 
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+
 	reuse "github.com/libp2p/go-reuseport"
-	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/grpcqrouter"
-	router2 "github.com/pg-sharding/spqr/router/pkg"
+	router "github.com/pg-sharding/spqr/router/pkg"
 )
 
 type App struct {
-	spqr *router2.RouterImpl
+	spqr *router.RouterImpl
 }
 
-func NewApp(sg *router2.RouterImpl) *App {
+func NewApp(sg *router.RouterImpl) *App {
 	return &App{
 		spqr: sg,
 	}
@@ -30,10 +31,12 @@ func (app *App) ProcPG(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
 
-	tracelog.InfoLogger.Printf("ProcPG listening %s by %s", addr, proto)
-	return app.spqr.Run(listener)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcPG listening %s by %s", addr, proto)
+	return app.spqr.Run(ctx, listener)
 }
 
 func (app *App) ProcADM(ctx context.Context) error {
@@ -43,16 +46,16 @@ func (app *App) ProcADM(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
 
-	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
 	return app.spqr.RunAdm(ctx, listener)
 }
 
 func (app *App) ServGrpc(ctx context.Context) error {
 	serv := grpc.NewServer()
-	//shhttp.Register(serv)
-	//reflection.Register(serv)
 	grpcqrouter.Register(serv, app.spqr.Qrouter)
 
 	httpAddr := config.RouterConfig().HttpAddr
@@ -61,6 +64,12 @@ func (app *App) ServGrpc(ctx context.Context) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("ServGrpc listening %s by tcp", httpAddr)
-	return serv.Serve(listener)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ServGrpc listening %s by tcp", httpAddr)
+	go func() {
+		_ = serv.Serve(listener)
+	}()
+
+	<-ctx.Done()
+	serv.GracefulStop()
+	return nil
 }
