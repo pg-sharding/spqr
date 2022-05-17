@@ -10,7 +10,7 @@ import (
 
 type QParser struct {
 	stmt  sqlparser.Statement
-	q     *pgproto3.Query
+	query *pgproto3.Query
 	state ParseState
 }
 
@@ -19,7 +19,7 @@ func (qp *QParser) Reset() {
 }
 
 func (qp *QParser) Stmt() sqlparser.Statement {
-	parsedStmt, _ := sqlparser.Parse(qp.q.String)
+	parsedStmt, _ := sqlparser.Parse(qp.query.String)
 	qp.stmt = parsedStmt
 	return qp.stmt
 }
@@ -29,7 +29,7 @@ func (qp *QParser) State() ParseState {
 }
 
 func (qp *QParser) Q() *pgproto3.Query {
-	return qp.q
+	return qp.query
 }
 
 type ParseState interface{}
@@ -81,7 +81,7 @@ type ParseStatePrepareStmt struct {
 }
 
 func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
-	qp.q = query
+	qp.query = query
 
 	pstmt, err := pgquery.Parse(query.String)
 
@@ -103,11 +103,11 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 			switch q := node.Stmt.Node.(type) {
 			//case *pgquery.Node_PrepareStmt:
 			//	varStmt := ParseStatePrepareStmt{}
-			//	varStmt.Name = q.PrepareStmt.Name
-			//	varStmt.Query = query.String
+			//	q.PrepareStmt.Name = "tmp"
+			//	spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
 			//	qp.state = varStmt
 			//case *pgquery.Node_ExecuteStmt:
-			//	q.ExecuteStmt.Name
+			//	query.ExecuteStmt.Name
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.IsLocal {
 					qp.state = ParseStateSetLocalStmt{}
@@ -126,7 +126,6 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 						varStmt.Name = q.VariableSetStmt.Name
 						qp.state = varStmt
 					}
-
 				} else if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_SET_VALUE {
 					varStmt := ParseStateSetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name

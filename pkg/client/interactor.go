@@ -3,13 +3,14 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/wal-g/tracelog"
 )
 
 type Interactor interface {
@@ -21,10 +22,12 @@ type PSQLInteractor struct{}
 func (pi *PSQLInteractor) completeMsg(rowCnt int, cl Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.CommandComplete{CommandTag: []byte(fmt.Sprintf("SELECT %d", rowCnt))},
-		&pgproto3.ReadyForQuery{},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(conn.TXIDLE),
+		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
@@ -47,11 +50,9 @@ func (pi *PSQLInteractor) Databases(dbs []string, cl Client) error {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show dbs")}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
@@ -59,11 +60,11 @@ func (pi *PSQLInteractor) Databases(dbs []string, cl Client) error {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("database %s", db))},
 		}); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
-	return nil
+	return pi.completeMsg(len(dbs), cl)
 }
 
 func (pi *PSQLInteractor) Pools(cl Client) error {
@@ -82,15 +83,13 @@ func (pi *PSQLInteractor) Pools(cl Client) error {
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte("show pools")}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) AddShard(cl Client, shard *datashards.DataShard) error {
@@ -109,20 +108,18 @@ func (pi *PSQLInteractor) AddShard(cl Client, shard *datashards.DataShard) error
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created datashard with name %s", shard.ID))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl Client) error {
 
-	tracelog.InfoLogger.Printf("listing key ranges")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing key ranges")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -139,7 +136,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl Client) error {
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
@@ -148,11 +145,11 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl Client) error {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to datashard %s", keyRange.ID, keyRange.ShardID))},
 		}); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
-	return nil
+	return pi.completeMsg(len(krs), cl)
 }
 
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange, cl Client) error {
@@ -171,15 +168,14 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %s to %s", keyRange.LowerBound, keyRange.UpperBound))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange, cl Client) error {
@@ -198,15 +194,14 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 		},
 		},
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %v", split.SourceID, split.Bound))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl Client) error {
@@ -229,20 +224,19 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl Clie
 				fmt.Sprintf("lock key range with id %v", krid)),
 		},
 		},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard, cl Client) error {
 
-	tracelog.InfoLogger.Printf("listing shards")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing shards")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -259,7 +253,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
@@ -268,51 +262,48 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("datashard with ID %s", shard))},
 		}); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
 	if err := cl.Send(&pgproto3.DataRow{
 		Values: [][]byte{[]byte(fmt.Sprintf("local node"))},
 	}); err != nil {
-		tracelog.InfoLogger.Print(err)
+		spqrlog.Logger.PrintError(err)
+		return err
 	}
 
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
-		}
-	}
-
-	return nil
+	return pi.completeMsg(0, cl)
 }
 
 func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule, cl Client) error {
-	tracelog.InfoLogger.Printf("listing sharding rules")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing sharding rules")
 
 	for _, rule := range rules {
 		if err := cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("colmns-match sharding rule with colmn set: %+v", rule.Columns()))},
 		}); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
-	if err := cl.Send(&pgproto3.DataRow{
-		Values: [][]byte{[]byte(fmt.Sprintf("local node"))},
-	}); err != nil {
-		tracelog.InfoLogger.Print(err)
-	}
+	return pi.completeMsg(0, cl)
+}
 
+func (pi *PSQLInteractor) ReportError(err error, cl Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-		&pgproto3.ReadyForQuery{},
+		&pgproto3.ErrorResponse{Severity: "ERROR",
+			Message: err.Error(),
+		},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(conn.TXIDLE),
+		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
@@ -320,7 +311,6 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 }
 
 func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule, cl Client) error {
-
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -334,14 +324,13 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s, err %w", rule.Columns()))}},
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created sharding column %s", rule.Columns()))}},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
-	return nil
+	return pi.completeMsg(0, cl)
 }

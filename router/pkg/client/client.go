@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
@@ -600,6 +601,20 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
 	return cl.be.Send(msg)
+}
+
+func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
+	ch := make(chan error)
+	go func() {
+		ch <- cl.be.Send(msg)
+	}()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-ch:
+		return err
+	}
 }
 
 func (cl *PsqlClient) AssignRoute(r *route.Route) error {
