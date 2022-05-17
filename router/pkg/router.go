@@ -83,7 +83,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		config.RouterConfig().InitSQL,
 		config.RouterConfig().AutoConf,
 	} {
-		queries, err := localConsole.Qlog.Recover(ctx, fname)
+		queries, err := localConsole.Qlog().Recover(ctx, fname)
 		if err != nil {
 			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 			return nil, err

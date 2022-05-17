@@ -2,9 +2,11 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
+	"sync"
 
 	"github.com/blastrain/vitess-sqlparser/sqlparser"
 
@@ -20,6 +22,9 @@ import (
 )
 
 type ProxyQrouter struct {
+	QueryRouter
+	mu sync.Mutex
+
 	Rules []*shrule.ShardingRule
 
 	ColumnMapping map[string]struct{}
@@ -35,6 +40,9 @@ type ProxyQrouter struct {
 }
 
 func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []*datashards.DataShard
 	for id, cfg := range qr.DataShardCfgs {
 		ret = append(ret, datashards.NewDataShard(id, cfg))
@@ -43,10 +51,14 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 }
 
 func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	qr.mu.Lock()
+	qr.mu.Unlock()
 	return qr.Rules, nil
 }
 
 func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
@@ -55,6 +67,9 @@ func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*ShardRoute {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []*ShardRoute
 
 	for name := range qr.DataShardCfgs {
@@ -70,6 +85,9 @@ func (qr *ProxyQrouter) DataShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []*ShardRoute
 
 	for name := range qr.WorldShardCfgs {
@@ -90,6 +108,9 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyQrouter) WorldShards() []string {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	panic("implement me")
 }
 
@@ -130,12 +151,10 @@ func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return qr.parser.Parse(q)
 }
 
-func (qr *ProxyQrouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-	//return qr.qdb.Watch(krid, krst, noitfyio)
-	return nil
-}
-
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var krRight *qdb.KeyRange
 	var krleft *qdb.KeyRange
 	var err error
@@ -172,6 +191,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 }
 
 func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
 
 	var krOld *qdb.KeyRange
 	var err error
@@ -197,6 +218,9 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 }
 
 func (qr *ProxyQrouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
 	if err != nil {
 		return nil, err
@@ -226,6 +250,9 @@ func (qr *ProxyQrouter) Shards() []string {
 }
 
 func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []*kr.KeyRange
 
 	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
@@ -240,16 +267,18 @@ func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, erro
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
-	qr.ColumnMapping[rule.Columns()[0]] = struct{}{}
-	return nil
-}
+	if _, ok := qr.ColumnMapping[rule.Columns()[0]]; ok {
+		return fmt.Errorf("sharding column already exist")
+	}
 
-func (qr *ProxyQrouter) AddLocalTable(tname string) error {
-	qr.LocalTables[tname] = struct{}{}
+	qr.ColumnMapping[rule.Columns()[0]] = struct{}{}
 	return nil
 }
 
@@ -258,7 +287,6 @@ func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error 
 }
 
 func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
-
 	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
 
 	for _, keyRange := range krs {

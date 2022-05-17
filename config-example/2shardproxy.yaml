@@ -1,5 +1,5 @@
 addr: '[::1]:6432'
-adm_addr: '[::1]:7433'
+adm_addr: '[::1]:7432'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
 log_level: DEBUG2
@@ -8,7 +8,7 @@ executer:
     init_sql_path: "./test-init.sql"
 
 qrouter:
-    qrouter_type: LOCAL
+    qrouter_type: PROXY
 rules:
     tls:
         key_file: '/etc/odyssey/ssl/server.key'
@@ -22,9 +22,14 @@ rules:
                 key_file: '/etc/odyssey/ssl/server.key'
                 sslmode: "disable" 
                 cert_file: '/etc/odyssey/ssl/server.crt' 
-            conn_db: "db1"
-            conn_usr: "user1"
-            passwd: 12345678
+            shard_type: 'DATA'
+            hosts:
+                - conn_addr: "localhost:5550"
+        sh2:
+            tls:
+                key_file: '/etc/odyssey/ssl/server.key'
+                sslmode: "disable" 
+                cert_file: '/etc/odyssey/ssl/server.crt' 
             shard_type: 'DATA'
             hosts:
                 - conn_addr: "localhost:5551"
