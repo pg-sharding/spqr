@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+	"github.com/wal-g/tracelog"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/qdb/etcdqdb"
-	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 )
 
 var cfgPath string

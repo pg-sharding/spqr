@@ -97,7 +97,7 @@ func (app *App) ProcBalancer(ctx context.Context) error {
 func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
 	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
 	if err != nil {
-		return fmt.Errorf("init frontend TLS: %s", err)
+		return fmt.Errorf("init frontend TLS: %w", err)
 	}
 
 	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
