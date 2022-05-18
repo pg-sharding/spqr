@@ -508,7 +508,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 	stmt := parsedStmt.Stmts[0]
 
 	switch stmt.Stmt.Node.(type) {
-	case *pgquery.Node_CreateTableAsStmt:
+	case *pgquery.Node_CreateStmt, *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
 		// support simple ddl
 		return ShardMatchState{
 			Routes: qr.DataShardsRoutes(),
