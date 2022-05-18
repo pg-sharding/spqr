@@ -349,19 +349,32 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, tooComplexQuery
 }
 
+func getbytes(val *pgquery.Node) (string, error) {
+	switch valt := val.Node.(type) {
+	case *pgquery.Node_Integer:
+		return fmt.Sprintf("%d", valt.Integer.Ival), nil
+	case *pgquery.Node_String_:
+		return valt.String_.Str, nil
+	default:
+		return "", tooComplexQuery
+	}
+}
+
 func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_AConst:
-		switch valt := texpr.AConst.Val.Node.(type) {
-		case *pgquery.Node_Integer:
-			return qr.deparseKeyWithRangesInternal(ctx, fmt.Sprintf("%d", valt.Integer.Ival))
-		case *pgquery.Node_String_:
-			return qr.deparseKeyWithRangesInternal(ctx, valt.String_.Str)
-		default:
+		val, err := getbytes(texpr.AConst.Val)
+		if err != nil {
+			return nil, err
+		}
+		return qr.deparseKeyWithRangesInternal(ctx, val)
+	case *pgquery.Node_List:
+		if len(texpr.List.Items) == 0 {
 			return nil, tooComplexQuery
 		}
+		return qr.DeparseKeyWithRanges(ctx, texpr.List.Items[0])
 	default:
 		return nil, tooComplexQuery
 	}
@@ -397,6 +410,22 @@ func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*D
 	}
 }
 
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node) (ShardRoute, error) {
+	//val, err := getbytes(res.ResTarget.Val)
+
+	switch q := node.Node.(type) {
+	case *pgquery.Node_SelectStmt:
+		if len(q.SelectStmt.ValuesLists) != 1 {
+			return nil, tooComplexQuery
+		}
+		valNode := q.SelectStmt.ValuesLists[0]
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", valNode.Node)
+		return qr.DeparseKeyWithRanges(ctx, valNode)
+	}
+
+	return nil, tooComplexQuery
+}
+
 func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt) (ShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
 	switch stmt := qstmt.Stmt.Node.(type) {
@@ -416,6 +445,18 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 	case *pgquery.Node_InsertStmt:
 		for _, c := range stmt.InsertStmt.Cols {
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+			switch res := c.Node.(type) {
+			case *pgquery.Node_ResTarget:
+
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
+				if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
+					continue
+				}
+
+				return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt)
+			default:
+				return nil, tooComplexQuery
+			}
 		}
 
 	case *pgquery.Node_UpdateStmt:
