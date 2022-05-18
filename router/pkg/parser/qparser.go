@@ -2,14 +2,13 @@ package parser
 
 import (
 	"fmt"
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
 
 type QParser struct {
-	stmt  sqlparser.Statement
+	stmt  *pgquery.ParseResult
 	query *pgproto3.Query
 	state ParseState
 }
@@ -18,10 +17,13 @@ func (qp *QParser) Reset() {
 	qp.stmt = nil
 }
 
-func (qp *QParser) Stmt() sqlparser.Statement {
-	parsedStmt, _ := sqlparser.Parse(qp.query.String)
+func (qp *QParser) Stmt() (*pgquery.ParseResult, error) {
+	parsedStmt, err := pgquery.Parse(qp.query.String)
+	if err != nil {
+		return nil, err
+	}
 	qp.stmt = parsedStmt
-	return qp.stmt
+	return qp.stmt, nil
 }
 
 func (qp *QParser) State() ParseState {
@@ -163,16 +165,4 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 	}
 
 	return ParseStateQuery{}, nil
-}
-
-func (qp *QParser) IsRouterCommand() bool {
-	if qp.stmt == nil {
-		return false
-	}
-	switch qp.stmt.(type) {
-	case *sqlparser.Set:
-		return false
-	default:
-		return false
-	}
 }

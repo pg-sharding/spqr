@@ -3,6 +3,8 @@ package etcdqdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"path"
 	"sync"
 	"time"
@@ -177,9 +179,9 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 
 			return q.fetchKeyRange(ctx, keyRangeNodePath(keyRangeID))
 		case 1:
-			return nil, xerrors.Errorf("key range with id %v locked", keyRangeID)
+			return nil, fmt.Errorf("key range with id %v locked", keyRangeID)
 		default:
-			return nil, xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
 
@@ -240,7 +242,12 @@ func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
 			return err
 		}
 
-		defer mu.Unlock(ctx)
+		defer func(mu *concurrency.Mutex, ctx context.Context) {
+			err := mu.Unlock(ctx)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
+		}(mu, ctx)
 
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
 		if err != nil {
@@ -248,30 +255,26 @@ func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
 		}
 		switch len(resp.Kvs) {
 		case 0:
-
-			return xerrors.Errorf("key range with id %v unlocked", keyRangeID)
-
+			return fmt.Errorf("key range with id %v unlocked", keyRangeID)
 		case 1:
 			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 			return err
 		default:
-			return xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
-
-	timer := time.NewTimer(time.Second)
 
 	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
 	defer cf()
 
 	for {
 		select {
-		case <-timer.C:
+		case <-time.After(time.Second):
 			if err := unlocker(ctx, sess, keyRangeID); err != nil {
 				return nil
 			}
 		case <-fetchCtx.Done():
-			return xerrors.Errorf("deadlines exceeded")
+			return fmt.Errorf("deadlines exceeded")
 		}
 	}
 }

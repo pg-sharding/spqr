@@ -2,7 +2,6 @@ package qrouter
 
 import (
 	"context"
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -51,13 +50,9 @@ func (qr *LocalQrouter) AddDataShard(ctx context.Context, ds *datashards.DataSha
 	return nil
 }
 
-func (l *LocalQrouter) IsRouterCommand(statement sqlparser.Statement) bool {
-	return false
-}
-
-func (l *LocalQrouter) Route() (RoutingState, error) {
+func (l *LocalQrouter) Route(ctx context.Context) (RoutingState, error) {
 	return ShardMatchState{
-		Routes: []*ShardRoute{
+		Routes: []*DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
 					Name: l.ds.ID,

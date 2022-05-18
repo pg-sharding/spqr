@@ -28,10 +28,6 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 		return err
 	}
 
-	//if rst.Client().Rule().PoolingMode == config.PoolingModeTransaction && !rst.Client().Rule().PoolPreparedStatement {
-	//
-	//}
-
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
 		rst.AddSilentQuery(*q)

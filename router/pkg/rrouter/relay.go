@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"context"
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
@@ -52,6 +53,8 @@ type RelayStateImpl struct {
 	TargetKeyRange kr.KeyRange
 
 	traceMsgs bool
+
+	routingState qrouter.RoutingState
 
 	Qr      qrouter.QueryRouter
 	Cl      client.RouterClient
@@ -162,11 +165,12 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
-	routingState, err := rst.Qr.Route()
-	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
+	routingState, err := rst.Qr.Route(context.TODO())
 	if err != nil {
 		return err
 	}
+	rst.routingState = routingState
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
 
 	switch v := routingState.(type) {
 	case qrouter.ShardMatchState:
@@ -221,7 +225,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	//span.SetTag("shard_routes", routingState)
 }
 
-func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
+func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
 	span := opentracing.StartSpan("reroute to world")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -246,7 +250,7 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
 	return shardRoutes, nil
 }
 
-func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error {
 	var serv server.Server
 	var err error
 
