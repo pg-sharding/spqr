@@ -83,6 +83,9 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		config.RouterConfig().InitSQL,
 		config.RouterConfig().AutoConf,
 	} {
+		if len(fname) == 0 {
+			continue
+		}
 		queries, err := localConsole.Qlog().Recover(ctx, fname)
 		if err != nil {
 			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
@@ -91,6 +94,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 		if err := executer.SPIexec(context.TODO(), localConsole, client.NewFakeClient(), queries); err != nil {
 			spqrlog.Logger.PrintError(err)
+			return nil, err
 		}
 
 		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
