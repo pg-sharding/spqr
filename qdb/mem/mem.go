@@ -105,6 +105,12 @@ func (q *QrouterDBMem) UpdateKeyRange(_ context.Context, keyRange *qdb.KeyRange)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	for _, v := range q.krs {
+		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+		}
+	}
+
 	q.krs[keyRange.KeyRangeID] = keyRange
 
 	return nil
@@ -129,7 +135,7 @@ func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	kr := q.krs[KeyRangeID]
+	krs := q.krs[KeyRangeID]
 
 	if cnt, ok := q.freq[KeyRangeID]; ok {
 		q.freq[KeyRangeID] = cnt + 1
@@ -137,7 +143,7 @@ func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange
 		q.freq[KeyRangeID] = 1
 	}
 
-	return kr, nil
+	return krs, nil
 }
 
 func (q *QrouterDBMem) UnLock(_ context.Context, KeyRangeID string) error {
