@@ -2,6 +2,9 @@ package mem
 
 import (
 	"context"
+	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"sync"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -80,8 +83,16 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
+
 	if _, ok := q.krs[keyRange.KeyRangeID]; ok {
-		return xerrors.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
+		return fmt.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
+	}
+
+	for _, v := range q.krs {
+		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+		}
 	}
 
 	q.freq[keyRange.KeyRangeID] = 1
@@ -102,7 +113,6 @@ func (q *QrouterDBMem) UpdateKeyRange(_ context.Context, keyRange *qdb.KeyRange)
 func (q *QrouterDBMem) Check(_ context.Context, kr *qdb.KeyRange) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
 	_, ok := q.krs[kr.KeyRangeID]
 	return !ok
 }

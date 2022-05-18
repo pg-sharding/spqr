@@ -60,7 +60,6 @@ type TopoCntl interface {
 }
 
 func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
-
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -71,7 +70,6 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Show:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed %s", stmt.Cmd)
-
 		switch stmt.Cmd {
 		case spqrparser.ShowPoolsStr:
 			//return l.Qrouter.Pools(cl)
@@ -81,20 +79,21 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 			return cli.Shards(ctx, l.Qrouter.ListDataShards(ctx), cl)
 		case spqrparser.ShowKeyRangesStr:
 			if krs, err := l.Qrouter.ListKeyRanges(ctx); err != nil {
-				return err
+				return cli.ReportError(err, cl)
 			} else {
 				return cli.KeyRanges(krs, cl)
 			}
 		case spqrparser.ShowShardingColumns:
 			rules, err := l.Qrouter.ListShardingRules(ctx)
 			if err != nil {
-				return err
+				return cli.ReportError(err, cl)
 			}
 			return cli.ShardingRules(ctx, rules, cl)
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "Unknown default %s", stmt.Cmd)
 			return fmt.Errorf("Unknown show statement: " + stmt.Cmd)
 		}
+		return nil
 	case *spqrparser.SplitKeyRange:
 		split := &kr.SplitKeyRange{
 			Bound:    stmt.Border,
@@ -103,36 +102,39 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 		}
 		err := l.Qrouter.Split(ctx, split)
 		if err != nil {
-			_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+			return cli.ReportError(err, cl)
 		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.SplitKeyRange(ctx, split, cl)
 	case *spqrparser.Lock:
 		_, err := l.Qrouter.Lock(ctx, stmt.KeyRangeID)
 		if err != nil {
-			_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+			return cli.ReportError(err, cl)
 		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.ShardingColumn:
 		err := l.Qrouter.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 		if err != nil {
 			return cli.ReportError(err, cl)
 		}
-
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}), cl)
 	case *spqrparser.AddKeyRange:
 		err := l.Qrouter.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt))
 		if err != nil {
-			_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+			return cli.ReportError(err, cl)
 		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt), cl)
 	case *spqrparser.Shard:
 		err := l.Qrouter.AddDataShard(ctx, &datashards.DataShard{
 			ID: stmt.Name,
 		})
 		if err != nil {
-			_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+			return cli.ReportError(err, cl)
 		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return err
 	case *spqrparser.Shutdown:
 		return l.Shutdown()
@@ -142,9 +144,8 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
+		return nil
 	}
-
-	return nil
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
