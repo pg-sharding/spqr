@@ -2,10 +2,9 @@ addr: '[::1]:6432'
 adm_addr: '[::1]:7432'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
-log_level: DEBUG2
+log_level: DEBUG5
 
-executer:
-    init_sql_path: "./test-init.sql"
+init_sql: "sql/init.sql"
 
 qrouter:
     qrouter_type: PROXY
@@ -44,7 +43,7 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
-        - pooling_mode: 'SESSION'
+        - pooling_mode: 'TRANSACTION'
           pool_discard: false
           pool_rollback: true
           pool_default: true
