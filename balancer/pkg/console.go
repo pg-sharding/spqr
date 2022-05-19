@@ -16,17 +16,18 @@ import (
 )
 
 type Console struct {
-	cfg    *tls.Config
-	coord  CoordinatorInterface
-	co     ConsoleInterface
-	stchan chan struct{}
+	cfg     *tls.Config
+	coord   CoordinatorInterface
+	console ConsoleInterface
+	stchan  chan struct{}
 }
 
-func NewConsole(cfg *tls.Config, coord CoordinatorInterface, stchan chan struct{}) (*Console, error) {
+func NewConsole(cfg *tls.Config, coord CoordinatorInterface, co ConsoleInterface, stchan chan struct{}) (*Console, error) {
 	return &Console{
-		cfg:    cfg,
-		coord:  coord,
-		stchan: stchan,
+		cfg:     cfg,
+		coord:   coord,
+		console: co,
+		stchan:  stchan,
 	}, nil
 }
 
@@ -82,7 +83,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		switch stmt.Cmd {
 		case spqrparser.ShowKeyRangesStr:
-			keyRanges, err := c.co.showKeyRanges()
+			keyRanges, err := c.console.showKeyRanges()
 			if err != nil {
 				tracelog.ErrorLogger.Printf("failed to show key ranges: %w", err)
 			}
@@ -102,7 +103,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 			SourceID: stmt.KeyRangeFromID,
 		}
 		border := string(stmt.Border)
-		err := c.coord.splitKeyRange(&border)
+		err := c.coord.splitKeyRange(&border, split.Krid)
 		if err != nil {
 			tracelog.ErrorLogger.Printf("failed to split key range by border %s: %w", border, err)
 		}

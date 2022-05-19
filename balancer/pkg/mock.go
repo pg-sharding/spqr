@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"golang.yandex/hasql"
+
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 )
 
 type mock struct {
@@ -216,7 +218,7 @@ func (m *mock) GetKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[st
 	return _keyDistanceByRanges, nil
 }
 
-func (m *mock) splitKeyRange(border *string) error {
+func (m *mock) splitKeyRange(border *string, _ string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()
@@ -334,6 +336,9 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	m.foo()
 	return nil
 }
+func (m *mock) showKeyRanges() ([]*kr.KeyRange, error) {
+	return []*kr.KeyRange{}, nil
+}
 
 func (m *mock) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	defer m.mu.Unlock()
@@ -389,7 +394,7 @@ func local_test() {
 	db := MockDb{}
 	_ = db.Init([]string{}, 0, "", "", "")
 	b := Balancer{}
-	b.Init(&m, &m, &db)
+	b.Init(&m, &m, &m, &db)
 	b.BrutForceStrategy()
 	fmt.Println("4")
 }

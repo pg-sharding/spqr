@@ -77,7 +77,7 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 		return nil, err
 	}
 
-	balancer.Init(&installation, &coordinator, &db)
+	balancer.Init(&installation, &coordinator, &coordinator, &db)
 
 	return &App{
 		coordinator:  &coordinator,

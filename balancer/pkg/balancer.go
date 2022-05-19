@@ -16,6 +16,7 @@ import (
 	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/client"
 )
 
 // TODO use only one place to store strings
@@ -47,6 +48,7 @@ type Balancer struct {
 
 	installation InstallationInterface
 	coordinator  CoordinatorInterface
+	console      ConsoleInterface
 	db           DatabaseInterface
 	// no need to actionStageLock
 
@@ -67,7 +69,7 @@ type Balancer struct {
 
 //TODO think about schema changing
 
-func (b *Balancer) Init(installation InstallationInterface, coordinator CoordinatorInterface, db DatabaseInterface) {
+func (b *Balancer) Init(installation InstallationInterface, coordinator CoordinatorInterface, co ConsoleInterface, db DatabaseInterface) {
 	//TODO actionStageMove constants somewhere, get values from config
 	b.retryTime = time.Second * 5
 	b.workerRetryTime = time.Second * 10
@@ -80,6 +82,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 
 	b.installation = installation
 	b.coordinator = coordinator
+	b.console = co
 	b.db = db
 
 	b.splits = 0
@@ -820,7 +823,7 @@ func (b *Balancer) BrutForceStrategy() {
 			}
 
 			fmt.Println("Reload, tasks ", activeTaskCounter)
-			b.Init(b.installation, b.coordinator, b.db)
+			b.Init(b.installation, b.coordinator, b.console, b.db)
 			b.updateAllStats()
 			fmt.Println("Reload actionStageDone")
 		}
@@ -866,7 +869,7 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 }
 
 func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Config) error {
-	cl := NewBalancerClient(conn)
+	cl := client.NewPsqlClient(conn)
 
 	if err := cl.Init(tlsCfg, config.SSLMODEDISABLE); err != nil {
 		return err
@@ -874,7 +877,7 @@ func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Confi
 
 	stchan := make(chan struct{})
 
-	localConsole, err := NewConsole(tlsCfg, b.coordinator, stchan)
+	localConsole, err := NewConsole(tlsCfg, b.coordinator, b.console, stchan)
 	if err != nil {
 		tracelog.ErrorLogger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
 		return err

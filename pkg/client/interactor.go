@@ -122,13 +122,39 @@ func (pi *PSQLInteractor) AddShard(cl Client, shard *datashards.DataShard) error
 }
 
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl Client) error {
-
 	tracelog.InfoLogger.Printf("listing key ranges")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
-				Name:                 []byte("key ranges"),
+				Name:                 []byte("Key range ID"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Shard ID"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Lower bound"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Upper bound"),
 				TableOID:             0,
 				TableAttributeNumber: 0,
 				DataTypeOID:          25,
@@ -147,9 +173,24 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl Client) error {
 
 	for _, keyRange := range krs {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to datashard %s", keyRange.ID, keyRange.ShardID))},
+			Values: [][]byte{
+				[]byte(keyRange.ID),
+				[]byte(keyRange.ShardID),
+				keyRange.LowerBound,
+				keyRange.UpperBound,
+			},
 		}); err != nil {
 			tracelog.InfoLogger.Print(err)
+		}
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			tracelog.InfoLogger.Print(err)
+			return err
 		}
 	}
 
@@ -184,7 +225,6 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 }
 
 func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange, cl Client) error {
-
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -198,7 +238,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %v", split.SourceID, split.Bound))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %s", split.SourceID, string(split.Bound)))}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
