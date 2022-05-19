@@ -7,7 +7,7 @@ require (
 	github.com/jackc/pgx/v4 v4.15.0
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/juju/errors v0.0.0-20220331221717-b38fca44723b
-	github.com/lib/pq v1.10.5
+	github.com/lib/pq v1.10.6
 	github.com/libp2p/go-reuseport v0.2.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pganalyze/pg_query_go/v2 v2.1.0
@@ -18,16 +18,15 @@ require (
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/wal-g/tracelog v0.0.0-20210121175938-897a155375e3
 	go.etcd.io/etcd/client/v3 v3.5.4
-	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	golang.yandex/hasql v1.0.0
-	google.golang.org/grpc v1.46.0
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/grpc v1.38.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
-<<<<<<< HEAD
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -50,8 +49,4 @@ require (
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
-=======
-	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f // indirect
-	golang.org/x/text v0.3.7 // indirect
->>>>>>> Do not double lock key range while moving
 )
