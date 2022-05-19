@@ -3,16 +3,17 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 	"reflect"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
+
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
 type MultiShardServer struct {
@@ -29,7 +30,7 @@ func (m *MultiShardServer) HasPrepareStatement(hash uint64) bool {
 func (m *MultiShardServer) PrepareStatement(hash uint64) {}
 
 func (m *MultiShardServer) Reset() error {
-	panic("implement me")
+	return nil
 }
 
 func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {

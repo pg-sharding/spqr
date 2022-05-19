@@ -21,3 +21,9 @@ func (*ShardServer) ListShards(context.Context, *shards.ShardRequest) (*shards.S
 		Shards: nil,
 	}, nil
 }
+
+func (*ShardServer) GetShardInfo(_ context.Context, _ *shards.ShardRequest) (*shards.ShardInfoReply, error) {
+	return &shards.ShardInfoReply{
+		ShardInfo: nil,
+	}, nil
+}

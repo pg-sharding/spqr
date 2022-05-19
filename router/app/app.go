@@ -2,14 +2,16 @@ package app
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+
 	reuse "github.com/libp2p/go-reuseport"
+	"google.golang.org/grpc"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/grpcqrouter"
 	router "github.com/pg-sharding/spqr/router/pkg"
-	"google.golang.org/grpc"
 )
 
 type App struct {

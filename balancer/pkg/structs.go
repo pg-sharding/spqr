@@ -1,4 +1,4 @@
-package main
+package pkg
 
 import (
 	"math"
@@ -28,6 +28,7 @@ func keyToBigInt(key *string) *big.Int {
 }
 
 //TODO mb add cache to that function
+// TODO: add tests and check correctness.
 func bigIntToKey(num *big.Int) *string {
 	numCopy := new(big.Int).Set(num)
 	k := big.NewInt(256)
@@ -80,36 +81,36 @@ func logLength(keyRange KeyRange) float64 {
 
 type Stats struct {
 	// total reads, in bytes
-	reads uint64
+	reads uint64 `db:"reads"`
 	// total writes, in bytes
-	writes uint64
+	writes uint64 `db:"writes"`
 	// total user CPU time used
-	user_time float64
+	userTime float64 `db:"user_time"`
 	// total system CPU time used
-	system_time float64
+	systemTime float64 `db:"system_time"`
 }
 
 func AddStats(a, b Stats) Stats {
 	a.reads += b.reads
 	a.writes += b.writes
-	a.user_time += b.user_time
-	a.system_time += b.system_time
+	a.userTime += b.userTime
+	a.systemTime += b.systemTime
 	return a
 }
 
 func SubtractStats(a, b Stats) Stats {
 	a.reads -= b.reads
 	a.writes -= b.writes
-	a.user_time -= b.user_time
-	a.system_time -= b.system_time
+	a.userTime -= b.userTime
+	a.systemTime -= b.systemTime
 	return a
 }
 
 func DivideStats(a Stats, k float64) Stats {
 	a.reads = uint64(float64(a.reads) / k)
 	a.writes = uint64(float64(a.writes) / k)
-	a.system_time /= k
-	a.user_time /= k
+	a.systemTime /= k
+	a.userTime /= k
 	return a
 }
 
@@ -118,29 +119,3 @@ type LikeNumbers []string
 func (a LikeNumbers) Len() int           { return len(a) }
 func (a LikeNumbers) Less(i, j int) bool { return less(&a[i], &a[j]) }
 func (a LikeNumbers) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
-type KeysByFoo []string
-
-func (a KeysByFoo) Len() int { return len(a) }
-func (a KeysByFoo) Less(i, j int) bool {
-	defer muKeyStats.Unlock()
-	muKeyStats.Lock()
-	return getFooByStats(keyStats[a[i]], false) < getFooByStats(keyStats[a[j]], false)
-}
-func (a KeysByFoo) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-
-func getFooOfShardSize(shard Shard, useAbs bool) float64 {
-	return getFoo(float64(keysOnShard[shard]), float64(avgKeysOnShard), useAbs)
-}
-
-func getFooByShard(shard Shard, useAbs bool) float64 {
-	return getFooByStats(allShardsStats[shard], useAbs) + getFooOfShardSize(shard, useAbs)
-}
-
-type ShardsByFoo []Shard
-
-func (a ShardsByFoo) Len() int { return len(a) }
-func (a ShardsByFoo) Less(i, j int) bool {
-	return getFooByShard(a[i], false) < getFooByShard(a[j], false)
-}
-func (a ShardsByFoo) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

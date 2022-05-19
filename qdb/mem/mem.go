@@ -3,13 +3,15 @@ package mem
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"sync"
+
+	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/qdb"
-	"golang.org/x/xerrors"
 )
 
 type WaitPool struct {
@@ -149,6 +151,11 @@ func (q *QrouterDBMem) AddRouter(ctx context.Context, r *qdb.Router) error {
 	panic("implement me")
 }
 
+func (q *QrouterDBMem) DeleteRouter(ctx context.Context, rID string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (q *QrouterDBMem) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	//TODO implement me
 	panic("implement me")
@@ -266,6 +273,21 @@ func (q *QrouterDBMem) ListKeyRanges(_ context.Context) ([]*qdb.KeyRange, error)
 	}
 
 	return ret, nil
+}
+
+func (q *QrouterDBMem) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *QrouterDBMem) AddShard(ctx context.Context, shard *qdb.Shard) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *QrouterDBMem) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 var _ qdb.QrouterDB = &QrouterDBMem{}

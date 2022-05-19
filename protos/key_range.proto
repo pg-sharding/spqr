@@ -11,6 +11,7 @@ service KeyRangeService {
   rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (ModifyReply) {}
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (ModifyReply) {}
   rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
+  rpc MoveKeyRange (MoveKeyRangeRequest) returns (ModifyReply) {}
 }
 
 enum KeyRangeStatus {

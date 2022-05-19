@@ -3,12 +3,13 @@ package grpcqrouter
 import (
 	"context"
 
+	"github.com/wal-g/tracelog"
+	"google.golang.org/grpc/reflection"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	protos "github.com/pg-sharding/spqr/router/protos"
-	"github.com/wal-g/tracelog"
-	"google.golang.org/grpc/reflection"
 )
 
 type LocalQrouterServer struct {
@@ -29,7 +30,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 	return &protos.AddShardingRuleReply{}, nil
 }
 
-func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
+func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	rules, err := l.qr.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	tracelog.InfoLogger.Printf("listing key ranges")
 
-	krsqdb, err := l.qr.ListKeyRanges(ctx)
+	krsqdb, err := l.qr.ListKeyRange(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +114,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 	}
 
 	protos.RegisterKeyRangeServiceServer(server, lqr)
+	protos.RegisterShardingRulesServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}

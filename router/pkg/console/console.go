@@ -78,7 +78,7 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 		case spqrparser.ShowShardsStr:
 			return cli.Shards(ctx, l.Qrouter.ListDataShards(ctx), cl)
 		case spqrparser.ShowKeyRangesStr:
-			if krs, err := l.Qrouter.ListKeyRanges(ctx); err != nil {
+			if krs, err := l.Qrouter.ListKeyRange(ctx); err != nil {
 				return cli.ReportError(err, cl)
 			} else {
 				return cli.KeyRanges(krs, cl)

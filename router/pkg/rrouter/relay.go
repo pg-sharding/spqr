@@ -213,12 +213,12 @@ func (rst *RelayStateImpl) Reroute() error {
 		return rst.procRoutes(v.Routes)
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
-	case qrouter.WolrdRouteState:
+	case qrouter.WorldRouteState:
 		if !config.RouterConfig().RulesConfig.WorldShardFallback {
 			return err
 		}
 
-		// fallback to execute query on wolrd datashard (s)
+		// fallback to execute query on world datashard (s)
 		_, _ = rst.RerouteWorld()
 		if err := rst.ConnectWorld(); err != nil {
 			_ = rst.UnRouteWithError(nil, fmt.Errorf("failed to fallback on world datashard: %w", err))

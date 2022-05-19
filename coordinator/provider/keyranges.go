@@ -1,51 +1,22 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
 type CoordinatorService struct {
 	protos.UnimplementedKeyRangeServiceServer
-	protos.UnimplementedShardingRulesServiceServer
 
 	impl coordinator.Coordinator
-}
-
-func (c CoordinatorService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-
-	for _, rule := range request.Rules {
-		err := c.impl.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &protos.AddShardingRuleReply{}, nil
-}
-
-func (c CoordinatorService) ListShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := c.impl.ListShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var shardingRules []*protos.ShardingRule
-
-	for _, rule := range rules {
-		shardingRules = append(shardingRules, &protos.ShardingRule{
-			Columns: rule.Columns(),
-		})
-	}
-
-	return &protos.ListShardingRuleReply{
-		Rules: shardingRules,
-	}, nil
 }
 
 func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -63,14 +34,42 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	_, err := c.impl.Lock(ctx, "xx")
-	return nil, err
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = c.impl.Lock(ctx, keyRangeID)
+	return &protos.ModifyReply{}, err
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.Unlock(ctx, "xx")
-	return nil, err
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.impl.Unlock(ctx, keyRangeID)
+	return &protos.ModifyReply{}, err
 }
+
+func (c CoordinatorService) getKeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
+	krsqb, err := c.impl.ListKeyRange(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO: choose a key range without matching to exact bounds.
+	for _, krqb := range krsqb {
+		if string(krqb.LowerBound) == keyRange.GetLowerBound() &&
+			string(krqb.UpperBound) == keyRange.GetUpperBound() {
+			return krqb.ID, nil
+		}
+	}
+
+	return "", errors.New("no found key range")
+}
+
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.Split(ctx, &kr.SplitKeyRange{
 		Bound: request.Bound,
@@ -82,8 +81,12 @@ func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.S
 	return &protos.ModifyReply{}, nil
 }
 
-func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+func (c CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+	if c.impl == nil {
+		return &protos.KeyRangeReply{}, nil
+	}
+
+	krsqb, err := c.impl.ListKeyRange(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -99,8 +102,72 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, request *protos.Li
 	}, nil
 }
 
+func (c CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
+	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	if err != nil {
+		return nil, err
+	}
+
+	updKeyRange := &kr.KeyRange{
+		LowerBound: []byte(request.GetKeyRange().GetLowerBound()),
+		UpperBound: []byte(request.GetKeyRange().GetUpperBound()),
+		ShardID:    request.GetToShardId(),
+		ID:         keyRangeID,
+	}
+
+	if err := c.impl.MoveKeyRange(ctx, updKeyRange); err != nil {
+		return nil, err
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
+func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
+	krsqb, err := c.impl.ListKeyRange(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bound := request.GetBound()
+	uniteKeyRange := &kr.UniteKeyRange{}
+
+	for _, krqb := range krsqb {
+		if bytes.Equal(krqb.LowerBound, bound) {
+			uniteKeyRange.KeyRangeIDRight = krqb.ID
+
+			if uniteKeyRange.KeyRangeIDLeft != "" {
+				break
+			}
+
+			continue
+		}
+
+		if bytes.Equal(krqb.UpperBound, bound) {
+			uniteKeyRange.KeyRangeIDLeft = krqb.ID
+
+			if uniteKeyRange.KeyRangeIDRight != "" {
+				break
+			}
+
+			continue
+		}
+	}
+
+	tracelog.InfoLogger.Printf("unite keyrange %#v", uniteKeyRange)
+
+	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
+		tracelog.InfoLogger.Printf("no found key ranges to merge by border %v", bound)
+		return &protos.ModifyReply{}, nil
+	}
+
+	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
+		return nil, fmt.Errorf("failed to unite key ranges: %w", err)
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
 var _ protos.KeyRangeServiceServer = CoordinatorService{}
-var _ protos.ShardingRulesServiceServer = CoordinatorService{}
 
 func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
 	return &CoordinatorService{

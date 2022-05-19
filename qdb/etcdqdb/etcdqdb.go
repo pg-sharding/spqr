@@ -1,20 +1,25 @@
 package etcdqdb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"path"
 	"sync"
 	"time"
 
-	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type notifier struct {
@@ -66,11 +71,15 @@ type EtcdQDB struct {
 	etcdLocks map[string]*concurrency.Mutex
 }
 
-const keyRangesNamespace = "/keyranges"
-const routersRangesNamespace = "/routers"
+const (
+	keyRangesNamespace     = "/keyranges"
+	routersRangesNamespace = "/routers"
+	shardingRulesNamespace = "/sharding_rules"
+	shardsNamespace        = "/shards"
+)
 
 func keyLockPath(key string) string {
-	return path.Join(key, "lock")
+	return path.Join("lock", key)
 }
 
 func keyRangeNodePath(key string) string {
@@ -79,6 +88,14 @@ func keyRangeNodePath(key string) string {
 
 func routerNodePath(key string) string {
 	return path.Join(routersRangesNamespace, key)
+}
+
+func shardingRuleNodePath(key string) string {
+	return path.Join(shardingRulesNamespace, key)
+}
+
+func shardNodePath(key string) string {
+	return path.Join(shardsNamespace, key)
 }
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
@@ -120,9 +137,10 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 	})
+	tracelog.InfoLogger.Printf("Coordinator Service, %s %#v", addr, cli)
 
 	if err != nil {
 		return nil, err
@@ -142,6 +160,17 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
 	}
 
 	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) DeleteRouter(ctx context.Context, rID string) error {
+	resp, err := q.cli.Delete(ctx, routerNodePath(rID))
+	if err != nil {
+		tracelog.ErrorLogger.PrintError(err)
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("del resp %v", resp)
 	return nil
 }
 
@@ -171,7 +200,6 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 		}
 		switch len(resp.Kvs) {
 		case 0:
-
 			_, err := q.cli.Put(ctx, keyLockPath(keyRangeNodePath(keyRangeID)), "locked")
 			if err != nil {
 				return nil, err
@@ -193,9 +221,14 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 	for {
 		select {
 		case <-timer.C:
-			if val, err := fetcher(ctx, sess, keyRangeID); err != nil {
-				return val, nil
+			val, err := fetcher(ctx, sess, keyRangeID)
+			if err != nil {
+				tracelog.InfoLogger.Printf("Error while fetching %v", err)
+				continue
 			}
+
+			return val, nil
+
 		case <-fetchCtx.Done():
 			return nil, xerrors.Errorf("deadlines exceeded")
 		}
@@ -295,7 +328,23 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error
 	return err
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
+func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+	rawKeyRange, err := json.Marshal(keyRange)
+
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return err
+}
+
+func (q *EtcdQDB) ListKeyRange(ctx context.Context) ([]*qdb.KeyRange, error) {
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -319,6 +368,89 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 
 func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
+}
+
+func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *shrule.ShardingRule) error {
+	ops := make([]clientv3.Op, len(shRule.Columns()))
+	for i, key := range shRule.Columns() {
+		ops[i] = clientv3.OpPut(shardingRuleNodePath(key), "")
+	}
+
+	resp, err := q.cli.Txn(ctx).Then(ops...).Commit()
+
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put sharding rules resp %v", resp)
+	return err
+}
+
+func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	namespacePrefix := shardingRulesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*shrule.ShardingRule, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// A sharding rule supports no more than one column for a while.
+		rules = append(rules, shrule.NewShardingRule([]string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))}))
+	}
+
+	tracelog.InfoLogger.Printf("list sharding rules resp %v", resp)
+	return rules, nil
+}
+
+func (q *EtcdQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
+	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Addr)
+	if err != nil {
+		return err
+	}
+
+	tracelog.InfoLogger.Printf("put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
+	namespacePrefix := shardsNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*qdb.Shard, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		rules = append(rules, &qdb.Shard{
+			ID:   string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix))),
+			Addr: string(kv.Value),
+		})
+	}
+
+	return rules, nil
+}
+
+func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
+	nodePath := shardNodePath(shardID)
+
+	resp, err := q.cli.Get(ctx, nodePath)
+	if err != nil {
+		return nil, err
+	}
+
+	shardInfo := &qdb.ShardInfo{
+		ID: shardID,
+	}
+
+	for _, shard := range resp.Kvs {
+		// The Port field is always for a while.
+		shardInfo.Hosts = append(shardInfo.Hosts, string(shard.Value))
+	}
+
+	return shardInfo, nil
 }
 
 var _ qdb.QrouterDB = &EtcdQDB{}

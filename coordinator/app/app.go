@@ -5,21 +5,23 @@ import (
 	"net"
 	"sync"
 
-	"github.com/pg-sharding/spqr/coordinator"
-	shhttp "github.com/pg-sharding/spqr/grpc"
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/coordinator/provider"
+	"github.com/pg-sharding/spqr/pkg/config"
+	shards "github.com/pg-sharding/spqr/router/protos"
 )
 
 type App struct {
-	coordiantor coordinator.Coordinator
+	coordinator coordinator.Coordinator
 }
 
 func NewApp(c coordinator.Coordinator) *App {
 	return &App{
-		coordiantor: c,
+		coordinator: c,
 	}
 }
 
@@ -58,7 +60,7 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	for {
 		conn, err := listener.Accept()
 		tracelog.ErrorLogger.PrintError(err)
-		_ = app.coordiantor.ProcClient(context.TODO(), conn)
+		_ = app.coordinator.ProcClient(context.TODO(), conn)
 	}
 }
 
@@ -67,14 +69,18 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	serv := grpc.NewServer()
-	shhttp.Register(serv)
 	reflection.Register(serv)
 
-	//krserv := NewKeyRangeService(d)
-	//rrserv := NewRoutersService(d)
+	tracelog.InfoLogger.Printf("Coordinator Service %v", app.coordinator)
+	krserv := provider.NewKeyRangeService(app.coordinator)
+	rrserv := provider.NewRoutersService(app.coordinator)
+	shardingRulesServ := provider.NewShardingRules(app.coordinator)
+	shardServ := provider.NewShardServer(app.coordinator)
 
-	//shards.RegisterKeyRangeServiceServer(serv, krserv)
-	//shards.RegisterRoutersServiceServer(serv, rrserv)
+	shards.RegisterKeyRangeServiceServer(serv, krserv)
+	shards.RegisterRoutersServiceServer(serv, rrserv)
+	shards.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
+	shards.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
 

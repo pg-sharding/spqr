@@ -1,7 +1,8 @@
-addr: '[::1]:6432'
-adm_addr: '[::1]:7433'
+addr: '[::1]:8432'
+adm_addr: '[::1]:8433'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
+world_http_addr: '[::1]:6432'
 
 executer:
     init_sql_path: "./test-init.sql"
@@ -34,7 +35,7 @@ rules:
             passwd: 12345678
             shard_type: 'DATA'
             hosts:
-                - conn_addr: "localhost:5550"
+                - conn_addr: "192.168.233.2:6432"
         sh2:
             tls:
                 key_file: '/etc/odyssey/ssl/server.key'
@@ -45,7 +46,7 @@ rules:
             passwd: 12345678
             shard_type: 'DATA'
             hosts:
-                - conn_addr: "localhost:5551"
+                - conn_addr: "192.168.233.3:6432"
         w1:
             tls:
                 key_file: '/etc/odyssey/ssl/server.key'
@@ -56,7 +57,7 @@ rules:
             passwd: 12345678
             shard_type: 'WORLD'
             hosts:
-                - conn_addr: "localhost:9432"
+                - conn_addr: "192.168.233.8:6432"
 
     backend_rules:
         - route_key_cfg:
