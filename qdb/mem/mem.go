@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/qdb"
 )
