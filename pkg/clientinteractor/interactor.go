@@ -300,7 +300,7 @@ func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRang
 }
 
 func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl *client.PsqlClient) error {
-	if err := pi.WriteHeader("show pools", cl); err != nil {
+	if err := pi.WriteHeader("show routers", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
@@ -310,6 +310,34 @@ func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl *client.PsqlClient) err
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
+	}
+
+	return pi.completeMsg(0, cl)
+}
+
+func (pi *PSQLInteractor) UnregisterRouter(cl *client.PsqlClient, id string) error {
+	if err := pi.WriteHeader("unregister routers", cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("router %s unregistered", id), cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	return pi.completeMsg(0, cl)
+}
+
+func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, cl *client.PsqlClient, id string, addr string) error {
+	if err := pi.WriteHeader("register routers", cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s registered", id, addr), cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
 	}
 
 	return pi.completeMsg(0, cl)

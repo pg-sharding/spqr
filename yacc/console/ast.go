@@ -142,6 +142,7 @@ var reservedWords = map[string]int{
 	"unregister": UNREGISTER,
 	"router":     ROUTER,
 	"move":       MOVE,
+	"routers":    ROUTERS,
 }
 
 // Tokenizer is the struct used to generate SQL

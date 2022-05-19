@@ -396,13 +396,12 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 						return err
 					}
 
-					return nil
+					return cli.RegisterRouter(ctx, cl, stmt.ID, stmt.Addr)
 				case *spqrparser.UnregisterRouter:
 					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
 						return err
 					}
-
-					return nil
+					return cli.UnregisterRouter(cl, stmt.ID)
 				case *spqrparser.AddKeyRange:
 					req := kr.KeyRangeFromSQL(stmt)
 					if err := qc.AddKeyRange(ctx, req); err != nil {
@@ -413,7 +412,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
 						return err
 					}
-					return nil
+					return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 				case *spqrparser.Show:
 					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 					switch stmt.Cmd {
@@ -424,11 +423,9 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 						}
 
 						var resp []*kr.KeyRange
-
 						for _, el := range ranges {
 							resp = append(resp, kr.KeyRangeFromDB(el))
 						}
-
 						return cli.KeyRanges(resp, cl)
 					case spqrparser.ShowRoutersStr:
 						routers, err := qc.db.ListRouters(ctx)
