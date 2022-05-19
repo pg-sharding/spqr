@@ -17,7 +17,12 @@ import (
 
 const NOSHARD = ""
 
-type ShardRoute struct {
+type ShardRoute interface {
+}
+
+type DataShardRoute struct {
+	ShardRoute
+
 	Shkey     kr.ShardKey
 	Matchedkr *kr.KeyRange
 }
@@ -31,7 +36,16 @@ type RoutingState interface {
 type ShardMatchState struct {
 	RoutingState
 
-	Routes []*ShardRoute
+	Routes []*DataShardRoute
+	keys   []*kr.KeyRange
+}
+
+type MultiMatchRoute struct {
+	ShardRoute
+}
+
+type MultiMatchState struct {
+	RoutingState
 }
 
 type SkipRoutingState struct {
@@ -46,7 +60,7 @@ type QueryRouter interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 
-	Route() (RoutingState, error)
+	Route(ctx context.Context) (RoutingState, error)
 
 	// AddLocalTable do not use
 	AddLocalTable(tname string) error
@@ -55,7 +69,8 @@ type QueryRouter interface {
 	// Shards shards
 	Shards() []string
 	WorldShards() []string
-	WorldShardsRoutes() []*ShardRoute
+	WorldShardsRoutes() []*DataShardRoute
+	DataShardsRoutes() []*DataShardRoute
 
 	AddDataShard(ctx context.Context, ds *datashards.DataShard) error
 	ListDataShards(ctx context.Context) []*datashards.DataShard

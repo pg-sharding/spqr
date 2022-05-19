@@ -170,7 +170,7 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BERule) (Sha
 
 		return shard, nil
 	case false:
-		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new conn to %s", key.Name)
+		spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
 		hosts := config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[j], hosts[i] = hosts[i], hosts[j]

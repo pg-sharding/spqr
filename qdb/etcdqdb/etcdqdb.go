@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"path"
 	"sync"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -203,9 +207,9 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 
 			return q.fetchKeyRange(ctx, keyRangeNodePath(keyRangeID))
 		case 1:
-			return nil, xerrors.Errorf("key range with id %v locked", keyRangeID)
+			return nil, fmt.Errorf("key range with id %v locked", keyRangeID)
 		default:
-			return nil, xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
 
@@ -271,7 +275,12 @@ func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
 			return err
 		}
 
-		defer mu.Unlock(ctx)
+		defer func(mu *concurrency.Mutex, ctx context.Context) {
+			err := mu.Unlock(ctx)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
+		}(mu, ctx)
 
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
 		if err != nil {
@@ -279,30 +288,26 @@ func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
 		}
 		switch len(resp.Kvs) {
 		case 0:
-
-			return xerrors.Errorf("key range with id %v unlocked", keyRangeID)
-
+			return fmt.Errorf("key range with id %v unlocked", keyRangeID)
 		case 1:
 			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 			return err
 		default:
-			return xerrors.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
-
-	timer := time.NewTimer(time.Second)
 
 	fetchCtx, cf := context.WithTimeout(ctx, 15*time.Second)
 	defer cf()
 
 	for {
 		select {
-		case <-timer.C:
+		case <-time.After(time.Second):
 			if err := unlocker(ctx, sess, keyRangeID); err != nil {
 				return nil
 			}
 		case <-fetchCtx.Done():
-			return xerrors.Errorf("deadlines exceeded")
+			return fmt.Errorf("deadlines exceeded")
 		}
 	}
 }
@@ -365,9 +370,9 @@ func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
 }
 
-func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *qdb.ShardingRule) error {
-	ops := make([]clientv3.Op, len(shRule.Columns))
-	for i, key := range shRule.Columns {
+func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *shrule.ShardingRule) error {
+	ops := make([]clientv3.Op, len(shRule.Columns()))
+	for i, key := range shRule.Columns() {
 		ops[i] = clientv3.OpPut(shardingRuleNodePath(key), "")
 	}
 
@@ -381,20 +386,18 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *qdb.ShardingRule)
 	return err
 }
 
-func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	namespacePrefix := shardingRulesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make([]*qdb.ShardingRule, 0, len(resp.Kvs))
+	rules := make([]*shrule.ShardingRule, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
 		// A sharding rule supports no more than one column for a while.
-		rules = append(rules, &qdb.ShardingRule{
-			Columns: []string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))},
-		})
+		rules = append(rules, shrule.NewShardingRule([]string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))}))
 	}
 
 	tracelog.InfoLogger.Printf("list sharding rules resp %v", resp)

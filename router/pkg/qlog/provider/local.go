@@ -3,10 +3,9 @@ package qlog
 import (
 	"bufio"
 	"context"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"os"
 	"strings"
-
-	"github.com/wal-g/tracelog"
 )
 
 type LocalQlog struct{}
@@ -37,16 +36,21 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 
 func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		tracelog.InfoLogger.Printf("%s spqrlog does not exist", path)
-		return []string{}, nil
+		spqrlog.Logger.Printf(spqrlog.LOG, "%s spqrlog does not exist", path)
+		return []string{}, err
 	}
 
-	tracelog.InfoLogger.Printf("%s found", path)
+	spqrlog.Logger.Printf(spqrlog.LOG, "%s found", path)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+	}(file)
 
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)

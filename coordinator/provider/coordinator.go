@@ -20,6 +20,8 @@ import (
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/pg-sharding/spqr/router/pkg/route"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -66,7 +68,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.NewShardingRule(rule.Columns))
+		shRules = append(shRules, shrule.NewShardingRule(rule.Columns()))
 	}
 
 	return shRules, nil
@@ -74,7 +76,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
-	if err := qc.db.AddShardingRule(ctx, rule.ToSQL()); err != nil {
+	if err := qc.db.AddShardingRule(ctx, rule); err != nil {
 		return err
 	}
 
@@ -161,7 +163,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 }
 
 func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRange(ctx)
+	keyRanges, err := qc.db.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +192,7 @@ func (qc *qdbCoordinator) Lock(ctx context.Context, keyRangeID string) (*kr.KeyR
 }
 
 func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
-	return qc.db.UnLock(ctx, keyRangeID)
+	return qc.db.Unlock(ctx, keyRangeID)
 }
 
 // TODO: check bounds and keyRangeID (sourceID)
@@ -203,7 +205,12 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if krOld, err = qc.db.Lock(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer qc.db.UnLock(ctx, req.SourceID)
+
+	defer func() {
+		if err := qc.db.Unlock(ctx, req.SourceID); err != nil {
+			tracelog.ErrorLogger.PrintError(err)
+		}
+	}()
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
@@ -235,7 +242,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}
 
 	defer func() {
-		if err := qc.db.UnLock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
 			tracelog.ErrorLogger.PrintError(err)
 		}
 	}()
@@ -246,7 +253,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}
 
 	defer func() {
-		if err := qc.db.UnLock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
 			tracelog.ErrorLogger.PrintError(err)
 		}
 	}()
@@ -281,7 +288,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	protoShardingRules := []*routerproto.ShardingRule{}
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
 	for _, shRule := range shardingRules {
-		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns})
+		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
 	}
 
 	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
@@ -295,7 +302,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	tracelog.InfoLogger.Printf("got sharding rules response %v", resp.String())
 
 	// Configure key ranges.
-	keyRanges, err := qc.db.ListKeyRange(ctx)
+	keyRanges, err := qc.db.ListKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -348,7 +355,10 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	if err := cl.Auth(nil); err != nil {
+	r := route.NewRoute(nil, nil, nil)
+	r.SetParams(datashard.ParameterSet{})
+
+	if err := cl.Auth(r); err != nil {
 		return err
 	}
 	tracelog.InfoLogger.Printf("client auth OK")

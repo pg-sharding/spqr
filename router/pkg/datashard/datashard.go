@@ -29,6 +29,7 @@ type Shard interface {
 	Instance() conn.DBInstance
 
 	Params() ParameterSet
+	Close() error
 }
 
 func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
@@ -72,6 +73,12 @@ type Conn struct {
 
 	dedicated conn.DBInstance
 	ps        ParameterSet
+}
+
+func (sh *Conn) Close() error {
+	sh.mu.Lock()
+	defer sh.mu.Unlock()
+	return sh.dedicated.Close()
 }
 
 func (sh *Conn) Instance() conn.DBInstance {

@@ -2,15 +2,14 @@ package parser
 
 import (
 	"fmt"
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
 
 type QParser struct {
-	stmt  sqlparser.Statement
-	q     *pgproto3.Query
+	stmt  *pgquery.ParseResult
+	query *pgproto3.Query
 	state ParseState
 }
 
@@ -18,10 +17,13 @@ func (qp *QParser) Reset() {
 	qp.stmt = nil
 }
 
-func (qp *QParser) Stmt() sqlparser.Statement {
-	parsedStmt, _ := sqlparser.Parse(qp.q.String)
+func (qp *QParser) Stmt() (*pgquery.ParseResult, error) {
+	parsedStmt, err := pgquery.Parse(qp.query.String)
+	if err != nil {
+		return nil, err
+	}
 	qp.stmt = parsedStmt
-	return qp.stmt
+	return qp.stmt, nil
 }
 
 func (qp *QParser) State() ParseState {
@@ -29,7 +31,7 @@ func (qp *QParser) State() ParseState {
 }
 
 func (qp *QParser) Q() *pgproto3.Query {
-	return qp.q
+	return qp.query
 }
 
 type ParseState interface{}
@@ -76,17 +78,19 @@ type ParseStateResetMetadataStmt struct {
 }
 type ParseStatePrepareStmt struct {
 	ParseState
+	Name  string
+	Query string
 }
 
-func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
-	qp.q = q
+func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
+	qp.query = query
 
-	pstmt, err := pgquery.Parse(q.String)
+	pstmt, err := pgquery.Parse(query.String)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
 
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query.String, err)
 	} else {
 		qp.state = ParseStateQuery{}
 
@@ -100,7 +104,12 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
 			//case *pgquery.Node_PrepareStmt:
-			//	qp.state = PrepareStmt{}
+			//	varStmt := ParseStatePrepareStmt{}
+			//	q.PrepareStmt.Name = "tmp"
+			//	spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+			//	qp.state = varStmt
+			//case *pgquery.Node_ExecuteStmt:
+			//	query.ExecuteStmt.Name
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.IsLocal {
 					qp.state = ParseStateSetLocalStmt{}
@@ -119,7 +128,6 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 						varStmt.Name = q.VariableSetStmt.Name
 						qp.state = varStmt
 					}
-
 				} else if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_SET_VALUE {
 					varStmt := ParseStateSetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name
@@ -157,16 +165,4 @@ func (qp *QParser) Parse(q *pgproto3.Query) (ParseState, error) {
 	}
 
 	return ParseStateQuery{}, nil
-}
-
-func (qp *QParser) IsRouterCommand() bool {
-	if qp.stmt == nil {
-		return false
-	}
-	switch qp.stmt.(type) {
-	case *sqlparser.Set:
-		return false
-	default:
-		return false
-	}
 }

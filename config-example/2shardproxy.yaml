@@ -1,14 +1,13 @@
 addr: '[::1]:6432'
-adm_addr: '[::1]:7433'
+adm_addr: '[::1]:7432'
 proto: 'tcp6'
 http_addr: '[::1]:7001'
-log_level: DEBUG2
+log_level: DEBUG5
 
-executer:
-    init_sql_path: "./test-init.sql"
+init_sql: "sql/init.sql"
 
 qrouter:
-    qrouter_type: LOCAL
+    qrouter_type: PROXY
 rules:
     tls:
         key_file: '/etc/odyssey/ssl/server.key'
@@ -22,12 +21,17 @@ rules:
                 key_file: '/etc/odyssey/ssl/server.key'
                 sslmode: "disable" 
                 cert_file: '/etc/odyssey/ssl/server.crt' 
-            conn_db: "db1"
-            conn_usr: "user1"
-            passwd: 12345678
             shard_type: 'DATA'
             hosts:
                 - conn_addr: "localhost:5550"
+        sh2:
+            tls:
+                key_file: '/etc/odyssey/ssl/server.key'
+                sslmode: "disable" 
+                cert_file: '/etc/odyssey/ssl/server.crt' 
+            shard_type: 'DATA'
+            hosts:
+                - conn_addr: "localhost:5551"
     frontend_rules:
         - route_key_cfg:
             usr: user1
@@ -39,7 +43,7 @@ rules:
           auth_rule:
               auth_method: 'ok'
               password: 'strong'
-        - pooling_mode: 'SESSION'
+        - pooling_mode: 'TRANSACTION'
           pool_discard: false
           pool_rollback: true
           pool_default: true

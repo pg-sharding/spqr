@@ -2,11 +2,14 @@ package qrouter
 
 import (
 	"context"
-	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"fmt"
 	"math/rand"
+	"sync"
 
-	"github.com/blastrain/vitess-sqlparser/sqlparser"
+	"github.com/jackc/pgproto3/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"golang.org/x/xerrors"
 
@@ -20,6 +23,11 @@ import (
 )
 
 type ProxyQrouter struct {
+	QueryRouter
+	mu sync.Mutex
+
+	Rules []*shrule.ShardingRule
+
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
 
@@ -33,6 +41,9 @@ type ProxyQrouter struct {
 }
 
 func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []*datashards.DataShard
 	for id, cfg := range qr.DataShardCfgs {
 		ret = append(ret, datashards.NewDataShard(id, cfg))
@@ -41,6 +52,8 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 }
 
 func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
@@ -48,11 +61,14 @@ func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 	return nil
 }
 
-func (qr *ProxyQrouter) DataShardsRoutes() []*ShardRoute {
-	var ret []*ShardRoute
+func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	var ret []*DataShardRoute
 
 	for name := range qr.DataShardCfgs {
-		ret = append(ret, &ShardRoute{
+		ret = append(ret, &DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,
@@ -63,11 +79,14 @@ func (qr *ProxyQrouter) DataShardsRoutes() []*ShardRoute {
 	return ret
 }
 
-func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
-	var ret []*ShardRoute
+func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	var ret []*DataShardRoute
 
 	for name := range qr.WorldShardCfgs {
-		ret = append(ret, &ShardRoute{
+		ret = append(ret, &DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,
@@ -84,6 +103,9 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*ShardRoute {
 }
 
 func (qr *ProxyQrouter) WorldShards() []string {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	var ret []string
 
 	for name := range qr.WorldShardCfgs {
@@ -102,7 +124,6 @@ func NewProxyRouter(rules config.RulesCfg) (*ProxyQrouter, error) {
 	}
 
 	proxy := &ProxyQrouter{
-		ColumnMapping:  map[string]struct{}{},
 		DataShardCfgs:  map[string]*config.ShardCfg{},
 		WorldShardCfgs: map[string]*config.ShardCfg{},
 		qdb:            db,
@@ -129,12 +150,10 @@ func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return qr.parser.Parse(q)
 }
 
-func (qr *ProxyQrouter) Subscribe(krid string, krst *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
-	//return qr.qdb.Watch(krid, krst, noitfyio)
-	return nil
-}
-
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
 	var krRight *qdb.KeyRange
 	var krleft *qdb.KeyRange
 	var err error
@@ -143,7 +162,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 		return err
 	}
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.UnLock(ctx, keyRangeID)
+		err := qdb.Unlock(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -155,7 +174,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 		return err
 	}
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.UnLock(ctx, keyRangeID)
+		err := qdb.Unlock(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -172,13 +191,21 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 }
 
 func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
 	var krOld *qdb.KeyRange
 	var err error
 
 	if krOld, err = qr.qdb.Lock(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer qr.qdb.UnLock(ctx, req.SourceID)
+	defer func(qdb qdb.QrouterDB, ctx context.Context, krid string) {
+		err := qdb.Unlock(ctx, krid)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+	}(qr.qdb, ctx, req.SourceID)
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
@@ -196,6 +223,9 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 }
 
 func (qr *ProxyQrouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
 	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
 	if err != nil {
 		return nil, err
@@ -205,7 +235,7 @@ func (qr *ProxyQrouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, er
 }
 
 func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
-	return qr.qdb.UnLock(ctx, krid)
+	return qr.qdb.Unlock(ctx, krid)
 }
 
 func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
@@ -225,8 +255,10 @@ func (qr *ProxyQrouter) Shards() []string {
 }
 
 func (qr *ProxyQrouter) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRange(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
@@ -238,15 +270,20 @@ func (qr *ProxyQrouter) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
-	qr.ColumnMapping[rule.Columns()[0]] = struct{}{}
-	return nil
+	return qr.qdb.AddShardingRule(ctx, rule)
 }
 
 func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.ShardingRule, error) {
+	qr.mu.Lock()
+	qr.mu.Unlock()
+
 	rules := make([]*shrule.ShardingRule, 0, len(qr.ColumnMapping))
 
 	for rule := range qr.ColumnMapping {
@@ -270,8 +307,7 @@ func (qr *ProxyQrouter) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error
 }
 
 func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
-
-	krs, _ := qr.qdb.ListKeyRange(context.TODO())
+	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
 
 	for _, keyRange := range krs {
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
@@ -285,157 +321,251 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 	}
 }
 
-func (qr *ProxyQrouter) matchShkey(expr sqlparser.Expr) bool {
-	switch texpr := expr.(type) {
-	case sqlparser.ValTuple:
-		for _, val := range texpr {
-			if qr.matchShkey(val) {
-				return true
-			}
-		}
-	case *sqlparser.ColName:
-		_, ok := qr.ColumnMapping[texpr.Name.String()]
-		return ok
-	default:
-	}
+var tooComplexQuery = fmt.Errorf("too complex query to parse")
 
-	return false
-}
+func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
+	var colnames []string
 
-func (qr *ProxyQrouter) routeByExpr(expr sqlparser.Expr) *ShardRoute {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing column name %T", expr.Node)
+	switch texpr := expr.Node.(type) {
+	case *pgquery.Node_ColumnRef:
+		for _, node := range texpr.ColumnRef.Fields {
+			spqrlog.Logger.Printf(spqrlog.DEBUG4, "columnref field %T", node.Node)
 
-	switch texpr := expr.(type) {
-	case *sqlparser.AndExpr:
-		lft := qr.routeByExpr(texpr.Left)
-		if lft.Shkey.Name == NOSHARD {
-			return qr.routeByExpr(texpr.Right)
-		}
-		return lft
-	case *sqlparser.ComparisonExpr:
-
-		if qr.matchShkey(texpr.Left) {
-			shindx := qr.routeByExpr(texpr.Right)
-			return shindx
-		}
-		return qr.routeByExpr(texpr.Left)
-	case *sqlparser.SQLVal:
-		keyRange := qr.routeByIndx(texpr.Val)
-		//rw := qr.qdb.Check(keyRange.ToSQL())
-
-		return &ShardRoute{
-			Shkey: kr.ShardKey{
-				Name: keyRange.ShardID,
-				RW:   false,
-			},
-			Matchedkr: keyRange,
-		}
-	default:
-	}
-
-	return &ShardRoute{
-		Shkey: kr.ShardKey{
-			Name: NOSHARD,
-		},
-	}
-}
-
-func (qr *ProxyQrouter) isLocalTbl(from sqlparser.TableExprs) bool {
-	for _, texpr := range from {
-		switch tbltype := texpr.(type) {
-		case *sqlparser.ParenTableExpr:
-		case *sqlparser.JoinTableExpr:
-		case *sqlparser.AliasedTableExpr:
-
-			switch tname := tbltype.Expr.(type) {
-			case sqlparser.TableName:
-				if _, ok := qr.LocalTables[tname.Name.String()]; ok {
-					return true
-				}
-			case *sqlparser.Subquery:
+			switch colname := node.Node.(type) {
+			case *pgquery.Node_String_:
+				colnames = append(colnames, colname.String_.Str)
 			default:
+				return nil, tooComplexQuery
 			}
 		}
+	default:
+		return nil, tooComplexQuery
 	}
 
-	return false
+	if len(colnames) != 1 {
+		return nil, tooComplexQuery
+	}
+
+	return colnames, nil
 }
 
-func (qr *ProxyQrouter) matchShards(qstmt sqlparser.Statement) []*ShardRoute {
-	switch stmt := qstmt.(type) {
-	case *sqlparser.Select:
-		if qr.isLocalTbl(stmt.From) {
-			return nil
-		}
-		if stmt.Where != nil {
-			shroute := qr.routeByExpr(stmt.Where.Expr)
-			if shroute.Shkey.Name == NOSHARD {
-				return nil
-			}
-			return []*ShardRoute{shroute}
-		}
-		return nil
+func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key string) (*DataShardRoute, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking key %s", key)
 
-	case *sqlparser.Insert:
-		for i, c := range stmt.Columns {
-			if _, ok := qr.ColumnMapping[c.String()]; ok {
-				switch vals := stmt.Rows.(type) {
-				case sqlparser.Values:
-					valTyp := vals[0]
-					shroute := qr.routeByExpr(valTyp[i])
-					if shroute.Shkey.Name == NOSHARD {
-						return nil
-					}
-					return []*ShardRoute{shroute}
-				}
-			}
-		}
-	case *sqlparser.Update:
-		if stmt.Where != nil {
-			shroute := qr.routeByExpr(stmt.Where.Expr)
-			if shroute.Shkey.Name == NOSHARD {
-				return nil
-			}
-			return []*ShardRoute{shroute}
-		}
-		return nil
-	case *sqlparser.TruncateTable, *sqlparser.CreateTable:
-		// route ddl to every datashard
-		shrds := qr.Shards()
-		var ret []*ShardRoute
-		for _, sh := range shrds {
-			ret = append(ret,
-				&ShardRoute{
-					Shkey: kr.ShardKey{
-						Name: sh,
-						RW:   true,
-					},
-				})
-		}
+	krs, err := qr.qdb.ListKeyRanges(ctx)
 
-		return ret
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	for _, krkey := range krs {
+		if kr.CmpRanges(krkey.LowerBound, []byte(key)) && kr.CmpRanges([]byte(key), krkey.UpperBound) {
+			if err := qr.qdb.Share(krkey); err != nil {
+				return nil, err
+			}
+
+			return &DataShardRoute{
+				Shkey: kr.ShardKey{Name: krkey.ShardID},
+			}, nil
+		}
+	}
+
+	return nil, tooComplexQuery
+}
+
+func getbytes(val *pgquery.Node) (string, error) {
+	switch valt := val.Node.(type) {
+	case *pgquery.Node_Integer:
+		return fmt.Sprintf("%d", valt.Integer.Ival), nil
+	case *pgquery.Node_String_:
+		return valt.String_.Str, nil
+	default:
+		return "", tooComplexQuery
+	}
+}
+
+func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
+
+	switch texpr := expr.Node.(type) {
+	case *pgquery.Node_AConst:
+		val, err := getbytes(texpr.AConst.Val)
+		if err != nil {
+			return nil, err
+		}
+		return qr.deparseKeyWithRangesInternal(ctx, val)
+	case *pgquery.Node_List:
+		if len(texpr.List.Items) == 0 {
+			return nil, tooComplexQuery
+		}
+		return qr.DeparseKeyWithRanges(ctx, texpr.List.Items[0])
+	default:
+		return nil, tooComplexQuery
+	}
+}
+
+func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T", expr.Node)
+	switch texpr := expr.Node.(type) {
+	case *pgquery.Node_AExpr:
+		if texpr.AExpr.Kind != pgquery.A_Expr_Kind_AEXPR_OP {
+			return nil, tooComplexQuery
+		}
+
+		colnames, err := qr.DeparseExprCol(texpr.AExpr.Lexpr)
+		if err != nil {
+			return nil, err
+		}
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
+
+		if !qr.qdb.CheckShardingRule(ctx, colnames) {
+			return nil, tooComplexQuery
+		}
+
+		krs, err := qr.DeparseKeyWithRanges(ctx, texpr.AExpr.Rexpr)
+		if err != nil {
+			return nil, err
+		}
+		return krs, nil
+	default:
+		return nil, tooComplexQuery
+	}
+}
+
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node) (ShardRoute, error) {
+	//val, err := getbytes(res.ResTarget.Val)
+
+	switch q := node.Node.(type) {
+	case *pgquery.Node_SelectStmt:
+		if len(q.SelectStmt.ValuesLists) != 1 {
+			return nil, tooComplexQuery
+		}
+		valNode := q.SelectStmt.ValuesLists[0]
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", valNode.Node)
+		return qr.DeparseKeyWithRanges(ctx, valNode)
+	}
+
+	return nil, tooComplexQuery
+}
+
+func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt) (ShardRoute, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
+	switch stmt := qstmt.Stmt.Node.(type) {
+	case *pgquery.Node_SelectStmt:
+		clause := stmt.SelectStmt.WhereClause
+		if clause == nil {
+			return &MultiMatchRoute{}, nil
+		}
+		shroute, err := qr.routeByExpr(ctx, clause)
+		if err != nil {
+			return nil, err
+		}
+		if shroute.Shkey.Name == NOSHARD {
+			return nil, err
+		}
+		return shroute, nil
+	case *pgquery.Node_InsertStmt:
+		for _, c := range stmt.InsertStmt.Cols {
+			if sr, err := func() (ShardRoute, error) {
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+				switch res := c.Node.(type) {
+				case *pgquery.Node_ResTarget:
+
+					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
+					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
+						return nil, tooComplexQuery
+					}
+
+					return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt)
+				default:
+					return nil, tooComplexQuery
+				}
+			}(); err != nil {
+				continue
+			} else {
+				return sr, nil
+			}
+		}
+		return nil, tooComplexQuery
+
+	case *pgquery.Node_UpdateStmt:
+		clause := stmt.UpdateStmt.WhereClause
+		if clause == nil {
+			return &MultiMatchRoute{}, nil
+		}
+
+		shroute, err := qr.routeByExpr(ctx, clause)
+		if err != nil {
+			return nil, err
+		}
+		if shroute.Shkey.Name == NOSHARD {
+			return nil, tooComplexQuery
+		}
+		return shroute, nil
+	case *pgquery.Node_DeleteStmt:
+		clause := stmt.DeleteStmt.WhereClause
+		if clause == nil {
+			return &MultiMatchRoute{}, nil
+		}
+
+		shroute, err := qr.routeByExpr(ctx, clause)
+		if err != nil {
+			return nil, err
+		}
+		if shroute.Shkey.Name == NOSHARD {
+			return nil, tooComplexQuery
+		}
+		return shroute, nil
+	}
+
+	return nil, tooComplexQuery
 }
 
 var ParseError = xerrors.New("parsing stmt error")
 
-func (qr *ProxyQrouter) Route() (RoutingState, error) {
-	parsedStmt := qr.parser.Stmt()
-	switch parsedStmt.(type) {
-	case *sqlparser.DDL:
-		return ShardMatchState{
-			Routes: qr.DataShardsRoutes(),
-		}, nil
-	default:
-		routes := qr.matchShards(parsedStmt)
+func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
+	parsedStmt, err := qr.parser.Stmt()
 
-		if routes == nil {
-			return SkipRoutingState{}, nil
+	if err != nil {
+		return nil, err
+	}
+
+	if len(parsedStmt.Stmts) > 1 {
+		return nil, fmt.Errorf("too complex query to route")
+	}
+
+	stmt := parsedStmt.Stmts[0]
+
+	switch stmt.Stmt.Node.(type) {
+	case *pgquery.Node_VariableSetStmt:
+		return MultiMatchState{}, nil
+	case *pgquery.Node_CreateStmt, *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
+		// support simple ddl
+		return MultiMatchState{}, nil
+	case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+		// forbid under separate setting
+		return MultiMatchState{}, nil
+	case *pgquery.Node_CreateRoleStmt, *pgquery.Node_CreatedbStmt:
+		// forbid under separate setting
+		return MultiMatchState{}, nil
+	default:
+		routes, err := qr.matchShards(ctx, stmt)
+		if err != nil {
+			return nil, err
 		}
 
-		return ShardMatchState{
-			Routes: routes,
-		}, nil
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed shard %+v", routes)
+		switch v := routes.(type) {
+		case *DataShardRoute:
+			return ShardMatchState{
+				Routes: []*DataShardRoute{v},
+			}, nil
+		case *MultiMatchRoute:
+			return MultiMatchState{}, nil
+		}
+		return SkipRoutingState{}, nil
 	}
 }

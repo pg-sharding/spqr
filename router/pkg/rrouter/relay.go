@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"context"
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
@@ -52,6 +53,8 @@ type RelayStateImpl struct {
 	TargetKeyRange kr.KeyRange
 
 	traceMsgs bool
+
+	routingState qrouter.RoutingState
 
 	Qr      qrouter.QueryRouter
 	Cl      client.RouterClient
@@ -154,6 +157,37 @@ func (rst *RelayStateImpl) Flush() {
 
 var SkipQueryError = xerrors.New("wait for next query")
 
+func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
+	//
+	if len(routes) == 0 {
+		return qrouter.MatchShardError
+	}
+
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	rst.activeShards = nil
+	for _, shr := range routes {
+		rst.activeShards = append(rst.activeShards, shr.Shkey)
+	}
+	//
+	if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched datashard routes %+v", routes)); err != nil {
+		return err
+	}
+
+	if err := rst.Connect(routes); err != nil {
+		spqrlog.Logger.Errorf("encounter %w while initialing server connection", err)
+
+		_ = rst.Reset()
+		_ = rst.Cl.ReplyErrMsg(err.Error())
+		return err
+	}
+
+	return nil
+}
+
 func (rst *RelayStateImpl) Reroute() error {
 	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
 
@@ -162,43 +196,21 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
-	routingState, err := rst.Qr.Route()
-	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
+	routingState, err := rst.Qr.Route(context.TODO())
 	if err != nil {
 		return err
 	}
+	rst.routingState = routingState
+	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
 
 	switch v := routingState.(type) {
+	case qrouter.MultiMatchState:
+		if rst.TxActive() {
+			return fmt.Errorf("ddl is forbidden inside multi-shard transation")
+		}
+		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case qrouter.ShardMatchState:
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed routes %+v", routingState)
-		//
-		if len(v.Routes) == 0 {
-			return qrouter.MatchShardError
-		}
-
-		if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
-			spqrlog.Logger.PrintError(err)
-			return err
-		}
-
-		rst.activeShards = nil
-		for _, shr := range v.Routes {
-			rst.activeShards = append(rst.activeShards, shr.Shkey)
-		}
-		//
-		if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched datashard routes %+v", v.Routes)); err != nil {
-			return err
-		}
-
-		if err := rst.Connect(v.Routes); err != nil {
-			spqrlog.Logger.Errorf("encounter %w while initialing server connection", err)
-
-			_ = rst.Reset()
-			_ = rst.Cl.ReplyErrMsg(err.Error())
-			return err
-		}
-
-		return nil
+		return rst.procRoutes(v.Routes)
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
 	case qrouter.WorldRouteState:
@@ -221,7 +233,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	//span.SetTag("shard_routes", routingState)
 }
 
-func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
+func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
 	span := opentracing.StartSpan("reroute to world")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -246,7 +258,7 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.ShardRoute, error) {
 	return shardRoutes, nil
 }
 
-func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.ShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error {
 	var serv server.Server
 	var err error
 
@@ -327,7 +339,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 
 			var v pgproto3.Query
 			v, buff = buff[0], buff[1:]
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v waitForResp: %v replyCl: %v", v, waitForResp, replyCl)
 			if txst, txok, err = rst.Cl.ProcQuery(&v, waitForResp, replyCl); err != nil {
 				ok = false
 				return conn.TXERR, err
@@ -401,6 +413,20 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			return "unknown"
 		}
 	}(rst.txStatus))
+
+	switch rst.routingState.(type) {
+	case qrouter.MultiMatchState:
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "unroute multishard route")
+		if replyCl {
+			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
+				TxStatus: byte(conn.TXIDLE),
+			}); err != nil {
+				return err
+			}
+		}
+
+		return rst.manager.TXEndCB(rst.Cl, rst)
+	}
 
 	switch rst.txStatus {
 	case conn.TXIDLE:

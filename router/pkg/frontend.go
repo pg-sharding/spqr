@@ -2,14 +2,14 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
 	"io"
-
-	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -64,7 +64,6 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
-
 		}
 		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),
@@ -190,7 +189,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %T msg, %p", msg, msg)
 
 		if err := func() error {
-			if !cl.Rule().PoolPreparedStatement {
+			if cl.Rule().PoolingMode == config.PoolingModeTransaction && !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
 				case *pgproto3.Terminate:
 					return nil
