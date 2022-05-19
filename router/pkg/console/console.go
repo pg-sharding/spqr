@@ -62,12 +62,17 @@ type TopoCntl interface {
 func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
+		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
 	switch stmt := tstmt.(type) {
+	case *spqrparser.MoveKeyRange:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed move %s to %s", stmt.KeyRangeID, stmt.DestShardID)
+
+		return nil
 	case *spqrparser.Show:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed %s", stmt.Cmd)
 		switch stmt.Cmd {
