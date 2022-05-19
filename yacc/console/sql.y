@@ -285,6 +285,7 @@ KILL kill_statement_type
 move_key_range_stmt:
 	MOVE KEY RANGE key_range_id TO shard_id
 	{
+		$$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $6}
 	}
 
 unite_key_range_stmt:

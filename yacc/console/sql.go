@@ -113,7 +113,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/console/sql.y:335
+//line yacc/console/sql.y:336
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -758,46 +758,47 @@ yydefault:
 		yyDollar = yyS[yypt-6 : yypt+1]
 //line yacc/console/sql.y:287
 		{
+			yyVAL.move = &MoveKeyRange{KeyRangeID: yyDollar[4].str, DestShardID: yyDollar[6].str}
 		}
 	case 45:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:292
+//line yacc/console/sql.y:293
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[4].str, KeyRangeIDR: yyDollar[5].str}
 		}
 	case 46:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:298
+//line yacc/console/sql.y:299
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
 	case 47:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:304
+//line yacc/console/sql.y:305
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
 	case 48:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:312
+//line yacc/console/sql.y:313
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 49:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:318
+//line yacc/console/sql.y:319
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 50:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:324
+//line yacc/console/sql.y:325
 		{
 			yyVAL.register_router = &RegisterRouter{Addr: yyDollar[3].str, ID: yyDollar[4].str}
 		}
 	case 51:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line yacc/console/sql.y:330
+//line yacc/console/sql.y:331
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: yyDollar[3].str}
 		}

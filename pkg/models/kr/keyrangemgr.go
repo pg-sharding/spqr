@@ -8,6 +8,11 @@ type SplitKeyRange struct {
 	Krid     string
 }
 
+type MoveKeyRange struct {
+	ShardId string
+	Krid    string
+}
+
 type UniteKeyRange struct {
 	KeyRangeIDLeft  string
 	KeyRangeIDRight string
@@ -22,6 +27,7 @@ type KeyRangeMgr interface {
 	Lock(ctx context.Context, krid string) (*KeyRange, error)
 	Unlock(ctx context.Context, krid string) error
 
-	Split(ctx context.Context, req *SplitKeyRange) error
-	Unite(ctx context.Context, req *UniteKeyRange) error
+	Split(ctx context.Context, split *SplitKeyRange) error
+	Unite(ctx context.Context, unite *UniteKeyRange) error
+	Move(ctx context.Context, move *MoveKeyRange) error
 }

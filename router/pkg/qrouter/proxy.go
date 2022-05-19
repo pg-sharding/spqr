@@ -150,6 +150,29 @@ func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return qr.parser.Parse(q)
 }
 
+func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	var krmv *qdb.KeyRange
+	var err error
+	if krmv, err = qr.qdb.Lock(ctx, req.Krid); err != nil {
+		return err
+	}
+
+	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
+		err := qdb.Unlock(ctx, keyRangeID)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return
+		}
+	}(qr.qdb, ctx, req.Krid)
+
+	krmv.ShardID = req.ShardId
+
+	return qr.qdb.UpdateKeyRange(ctx, krmv)
+}
+
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()

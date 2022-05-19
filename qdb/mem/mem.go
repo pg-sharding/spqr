@@ -182,7 +182,6 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 	}
 
 	for _, v := range q.krs {
-
 		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
 			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
 		}
@@ -200,6 +199,11 @@ func (q *QrouterDBMem) UpdateKeyRange(_ context.Context, keyRange *qdb.KeyRange)
 	defer q.mu.Unlock()
 
 	for _, v := range q.krs {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checling with %s", v.KeyRangeID)
+		if v.KeyRangeID == keyRange.KeyRangeID {
+			// update req
+			continue
+		}
 		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
 			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
 		}
