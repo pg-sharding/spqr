@@ -12,14 +12,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/pg-sharding/spqr/qdb"
 )
 
 type notifier struct {
@@ -137,7 +135,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
 		DialOptions: []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithInsecure(),
 		},
 	})
 	tracelog.InfoLogger.Printf("Coordinator Service, %s %#v", addr, cli)
