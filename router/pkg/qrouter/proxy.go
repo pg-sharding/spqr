@@ -150,6 +150,20 @@ func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return qr.parser.Parse(q)
 }
 
+func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	var krmv *qdb.KeyRange
+	var err error
+	if krmv, err = qr.qdb.CheckLocked(ctx, req.Krid); err != nil {
+		return err
+	}
+
+	krmv.ShardID = req.ShardId
+	return qr.qdb.UpdateKeyRange(ctx, krmv)
+}
+
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
@@ -385,10 +399,23 @@ func getbytes(val *pgquery.Node) (string, error) {
 	}
 }
 
-func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, colindx int, expr *pgquery.Node) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
+	case *pgquery.Node_RowExpr:
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "looking for row expr with columns %+v", texpr.RowExpr.Args[colindx])
+
+		switch valexpr := texpr.RowExpr.Args[colindx].Node.(type) {
+		case *pgquery.Node_AConst:
+			val, err := getbytes(valexpr.AConst.Val)
+			if err != nil {
+				return nil, err
+			}
+			return qr.deparseKeyWithRangesInternal(ctx, val)
+		default:
+			return nil, tooComplexQuery
+		}
 	case *pgquery.Node_AConst:
 		val, err := getbytes(texpr.AConst.Val)
 		if err != nil {
@@ -399,7 +426,7 @@ func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, expr *pgquery.
 		if len(texpr.List.Items) == 0 {
 			return nil, tooComplexQuery
 		}
-		return qr.DeparseKeyWithRanges(ctx, texpr.List.Items[0])
+		return qr.DeparseKeyWithRanges(ctx, colindx, texpr.List.Items[0])
 	default:
 		return nil, tooComplexQuery
 	}
@@ -425,7 +452,7 @@ func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*D
 			return nil, tooComplexQuery
 		}
 
-		krs, err := qr.DeparseKeyWithRanges(ctx, texpr.AExpr.Rexpr)
+		krs, err := qr.DeparseKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
 		if err != nil {
 			return nil, err
 		}
@@ -435,17 +462,17 @@ func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*D
 	}
 }
 
-func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node) (ShardRoute, error) {
-	//val, err := getbytes(res.ResTarget.Val)
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node *pgquery.Node) (ShardRoute, error) {
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", node.Node)
 	switch q := node.Node.(type) {
 	case *pgquery.Node_SelectStmt:
-		if len(q.SelectStmt.ValuesLists) != 1 {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "select stmt values list len is %d", len(q.SelectStmt.ValuesLists))
+		if len(q.SelectStmt.ValuesLists) == 0 {
 			return nil, tooComplexQuery
 		}
 		valNode := q.SelectStmt.ValuesLists[0]
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", valNode.Node)
-		return qr.DeparseKeyWithRanges(ctx, valNode)
+		return qr.DeparseKeyWithRanges(ctx, colindx, valNode)
 	}
 
 	return nil, tooComplexQuery
@@ -468,7 +495,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		}
 		return shroute, nil
 	case *pgquery.Node_InsertStmt:
-		for _, c := range stmt.InsertStmt.Cols {
+		for cindx, c := range stmt.InsertStmt.Cols {
 			if sr, err := func() (ShardRoute, error) {
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
 				switch res := c.Node.(type) {
@@ -479,7 +506,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 						return nil, tooComplexQuery
 					}
 
-					return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt)
+					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
 				default:
 					return nil, tooComplexQuery
 				}

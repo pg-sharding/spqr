@@ -56,18 +56,31 @@ type TopoCntl interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 	datashards.ShardsMgr
-	kr.KeyRangeMgr
 }
 
 func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
+		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
 	switch stmt := tstmt.(type) {
+	case *spqrparser.MoveKeyRange:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed move %s to %s", stmt.KeyRangeID, stmt.DestShardID)
+		move := &kr.MoveKeyRange{
+			ShardId: stmt.DestShardID,
+			Krid:    stmt.KeyRangeID,
+		}
+		err := l.Qrouter.Move(ctx, move)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+		return cli.MoveKeyRange(ctx, move, cl)
+
 	case *spqrparser.Show:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed %s", stmt.Cmd)
 		switch stmt.Cmd {

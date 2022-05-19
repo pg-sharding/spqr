@@ -52,8 +52,8 @@ package spqrparser
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str>  SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
-%token <str>  BY FROM TO WITH UNITE
+%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
+%token <str> BY FROM TO WITH UNITE
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -285,7 +285,7 @@ KILL kill_statement_type
 move_key_range_stmt:
 	MOVE KEY RANGE key_range_id TO shard_id
 	{
-		$$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $5}
+		$$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $6}
 	}
 
 unite_key_range_stmt:

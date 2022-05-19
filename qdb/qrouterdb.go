@@ -25,15 +25,10 @@ type QrouterDB interface {
 	Check(ctx context.Context, kr *KeyRange) bool
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
 
-	//AddShardingRule(ctx context.Context, shRules *ShardingRule) error
-	//ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
-
-	//ListKeyRange(ctx context.Context) ([]*KeyRange, error)
-
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
 
-	ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error)
 	Share(key *KeyRange) error
+	CheckLocked(ctx context.Context, krid string) (*KeyRange, error)
 }

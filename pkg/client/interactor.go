@@ -364,3 +364,28 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 
 	return pi.completeMsg(0, cl)
 }
+
+func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRange, cl Client) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("fortune"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("moved key range %s to %s", move.Krid, move.ShardId))}},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+	}
+
+	return pi.completeMsg(0, cl)
+}
