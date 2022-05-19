@@ -395,13 +395,12 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 	protoVer := binary.BigEndian.Uint32(msg)
 
-	//tracelog.InfoLogger.Printf("prot version %s\n", protoVer)
-
 	switch protoVer {
 	case conn.SSLREQ:
 		if sslmode == config.SSLMODEDISABLE {
 			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 			spqrlog.Logger.Errorf("ssl mode is requested but ssl is disabled")
+			_ = cl.ReplyErrMsg("ssl mode is requested but ssl is disabled")
 			return fmt.Errorf("ssl mode is requested but ssl is disabled")
 		}
 
@@ -440,7 +439,6 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
-
 	case conn.CANCELREQ:
 		return fmt.Errorf("cancel is not supported")
 	default:

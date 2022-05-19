@@ -79,6 +79,7 @@ type UnregisterRouter struct {
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr    = "databases"
+	ShowRoutersStr      = "routers"
 	ShowShardsStr       = "shards"
 	ShowShardingColumns = "sharding_columns"
 	ShowKeyRangesStr    = "key_ranges"
@@ -141,6 +142,7 @@ var reservedWords = map[string]int{
 	"unregister": UNREGISTER,
 	"router":     ROUTER,
 	"move":       MOVE,
+	"routers":    ROUTERS,
 }
 
 // Tokenizer is the struct used to generate SQL

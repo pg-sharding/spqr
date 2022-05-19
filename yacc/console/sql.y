@@ -52,7 +52,7 @@ package spqrparser
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES
+%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES ROUTERS
 %token <str> BY FROM TO WITH UNITE
 
 %type <str> show_statement_type
@@ -164,12 +164,13 @@ POOLS
 | SHARDS
 | STATS
 | KEY_RANGES
+| ROUTERS
 
 show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
 			$$ = v
 		default:
 			$$ = ShowUnsupportedStr

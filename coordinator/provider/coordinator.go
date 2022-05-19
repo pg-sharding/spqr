@@ -3,16 +3,15 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
@@ -48,7 +47,6 @@ func DialRouter(r router.Router) (*grpc.ClientConn, error) {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-
 	db qdb.QrouterDB
 }
 
@@ -82,16 +80,18 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
+		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("routers %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "routers %+v", resp)
 
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
-		tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", r, err)
 		if err != nil {
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 
@@ -101,22 +101,19 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		})
 
 		if err != nil {
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("got resp %v", resp)
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got resp %v", resp)
 	}
 
 	return nil
 }
 
-func (qc *qdbCoordinator) AddLocalTable(tname string) error {
-	panic("implement me")
-}
-
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-
 	// add key range to metadb
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding key range %+v", keyRange)
 
 	err := qc.db.AddKeyRange(ctx, keyRange.ToSQL())
 	if err != nil {
@@ -128,7 +125,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("routers %v", func() []string {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "routers %+v", func() []string {
 		var strs []string
 
 		for _, el := range resp {
@@ -136,13 +133,13 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		}
 
 		return strs
-	})
+	}())
 
 	// notify all routers
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
-		tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
 		if err != nil {
 			return err
 		}
@@ -156,7 +153,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("got resp %v", resp)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "got resp %v", resp)
 	}
 
 	return nil
@@ -195,12 +192,12 @@ func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
 	return qc.db.Unlock(ctx, keyRangeID)
 }
 
-// TODO: check bounds and keyRangeID (sourceID)
+// Split TODO: check bounds and keyRangeID (sourceID)
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	var krOld *qdb.KeyRange
 	var err error
 
-	tracelog.InfoLogger.Printf("Split request %#v", req)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "Split request %#v", req)
 
 	if krOld, err = qc.db.Lock(ctx, req.SourceID); err != nil {
 		return err
@@ -208,7 +205,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	defer func() {
 		if err := qc.db.Unlock(ctx, req.SourceID); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}()
 
@@ -220,7 +217,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		},
 	)
 
-	tracelog.InfoLogger.Printf("New key range %#v", krNew)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "New key range %#v", krNew)
 
 	if err := qc.db.AddKeyRange(ctx, krNew.ToSQL()); err != nil {
 		return fmt.Errorf("failed to add a new key range: %w", err)
@@ -228,11 +225,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	krOld.UpperBound = req.Bound
 
-	if err := qc.db.UpdateKeyRange(ctx, krOld); err != nil {
-		return fmt.Errorf("failed to update an old key range: %w", err)
-	}
-
-	return nil
+	return qc.db.UpdateKeyRange(ctx, krOld)
 }
 
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
@@ -243,7 +236,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 	defer func() {
 		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}()
 
@@ -254,7 +247,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 	defer func() {
 		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
-			tracelog.ErrorLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}()
 
@@ -274,7 +267,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {
 	cc, err := DialRouter(qRouter)
 
-	tracelog.InfoLogger.Printf("dialing router %v, err %w", qRouter, err)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %w", qRouter, err)
 	if err != nil {
 		return err
 	}
@@ -285,7 +278,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 		return err
 	}
 
-	protoShardingRules := []*routerproto.ShardingRule{}
+	var protoShardingRules []*routerproto.ShardingRule
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
 	for _, shRule := range shardingRules {
 		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
@@ -299,7 +292,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("got sharding rules response %v", resp.String())
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got sharding rules response %v", resp.String())
 
 	// Configure key ranges.
 	keyRanges, err := qc.db.ListKeyRanges(ctx)
@@ -317,24 +310,24 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("got resp %v", resp.String())
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got resp %v", resp.String())
 	}
 
 	return nil
 }
 
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
-
-	tracelog.InfoLogger.Printf("register router %v %v", r.Addr(), r.ID())
-
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "register router %v %v", r.Addr(), r.ID())
 	return qc.db.AddRouter(ctx, r)
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
-	tracelog.InfoLogger.Printf("unregister router %v", rID)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unregister router %v", rID)
 
 	return qc.db.DeleteRouter(ctx, rID)
 }
+
+var unknownCoordinatorCmd = fmt.Errorf("unknown coordinator dmd")
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := psqlclient.NewPsqlClient(nconn)
@@ -345,7 +338,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
 
 	if err := cl.AssignRule(&config.FRRule{
 		AuthRule: config.AuthRule{
@@ -358,115 +351,103 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	r := route.NewRoute(nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
 
+	cli := clientinteractor.PSQLInteractor{}
+
 	if err := cl.Auth(r); err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("client auth OK")
+	spqrlog.Logger.Printf(spqrlog.LOG, "client auth OK")
 
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			tracelog.ErrorLogger.Printf("failed to received msg %w", err)
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("received msg %v", msg)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received msg %v", msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				return err
+				_ = cli.ReportError(err, cl)
+				continue
 			}
 
-			tracelog.InfoLogger.Printf("parsed %v %T", v.String, tstmt)
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
 				case *spqrparser.ShardingColumn:
-					err := qc.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
+					shardingRule := shrule.NewShardingRule([]string{stmt.ColName})
+					err := qc.AddShardingRule(ctx, shardingRule)
 					if err != nil {
 						return err
 					}
-
-					return nil
+					return cli.AddShardingRule(ctx, shardingRule, cl)
 				case *spqrparser.RegisterRouter:
 					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
 
 					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
 						return err
 					}
-
 					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
 						return err
 					}
 
-					return nil
-
+					return cli.RegisterRouter(ctx, cl, stmt.ID, stmt.Addr)
 				case *spqrparser.UnregisterRouter:
 					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
 						return err
 					}
-
-					return nil
-
+					return cli.UnregisterRouter(cl, stmt.ID)
 				case *spqrparser.AddKeyRange:
-					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
+					req := kr.KeyRangeFromSQL(stmt)
+					if err := qc.AddKeyRange(ctx, req); err != nil {
 						return err
 					}
-					return nil
+					return cli.AddKeyRange(ctx, req, cl)
 				case *spqrparser.Lock:
 					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
 						return err
 					}
+					return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 				case *spqrparser.Show:
-
+					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 					switch stmt.Cmd {
-
-					}
-				default:
-					return xerrors.New("failed to proc")
-				}
-				return nil
-			}(); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
-
-				//
-				_ = cl.ReplyErrMsg(err.Error())
-			} else {
-				tracelog.InfoLogger.Print("processed ok\n")
-
-				if err := func() error {
-					for _, msg := range []pgproto3.BackendMessage{
-						&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-							{
-								Name:                 []byte("coordinator"),
-								TableOID:             0,
-								TableAttributeNumber: 0,
-								DataTypeOID:          25,
-								DataTypeSize:         -1,
-								TypeModifier:         -1,
-								Format:               0,
-							},
-						}},
-						&pgproto3.DataRow{Values: [][]byte{[]byte("query ok")}},
-						&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-						&pgproto3.ReadyForQuery{
-							TxStatus: byte(conn.TXIDLE),
-						},
-					} {
-						if err := cl.Send(msg); err != nil {
+					case spqrparser.ShowKeyRangesStr:
+						ranges, err := qc.db.ListKeyRanges(ctx)
+						if err != nil {
 							return err
 						}
-					}
 
-					return nil
-				}(); err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+						var resp []*kr.KeyRange
+						for _, el := range ranges {
+							resp = append(resp, kr.KeyRangeFromDB(el))
+						}
+						return cli.KeyRanges(resp, cl)
+					case spqrparser.ShowRoutersStr:
+						routers, err := qc.db.ListRouters(ctx)
+						if err != nil {
+							return err
+						}
+
+						return cli.Routers(routers, cl)
+					default:
+						return cli.ReportError(unknownCoordinatorCmd, cl)
+					}
+				default:
+					return unknownCoordinatorCmd
 				}
+			}(); err != nil {
+				spqrlog.Logger.PrintError(err)
+				_ = cli.ReportError(err, cl)
+			} else {
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "processed ok\n")
 			}
 		default:
+			return cli.ReportError(fmt.Errorf("unsupported msg type %T", msg), cl)
 		}
 	}
 }

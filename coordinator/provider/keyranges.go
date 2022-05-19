@@ -3,10 +3,8 @@ package provider
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/wal-g/tracelog"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -34,7 +32,7 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +42,7 @@ func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.Lo
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +51,7 @@ func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, err
 }
 
-func (c CoordinatorService) getKeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
+func (c CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
 	krsqb, err := c.impl.ListKeyRange(ctx)
 	if err != nil {
 		return "", err
@@ -67,7 +65,7 @@ func (c CoordinatorService) getKeyRangeIDByBounds(ctx context.Context, keyRange 
 		}
 	}
 
-	return "", errors.New("no found key range")
+	return "", fmt.Errorf("key range not found")
 }
 
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -103,7 +101,7 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyR
 }
 
 func (c CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.getKeyRangeIDByBounds(ctx, request.GetKeyRange())
+	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +136,6 @@ func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.M
 			if uniteKeyRange.KeyRangeIDLeft != "" {
 				break
 			}
-
 			continue
 		}
 
@@ -148,15 +145,14 @@ func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.M
 			if uniteKeyRange.KeyRangeIDRight != "" {
 				break
 			}
-
 			continue
 		}
 	}
 
-	tracelog.InfoLogger.Printf("unite keyrange %#v", uniteKeyRange)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unite keyrange %#v", uniteKeyRange)
 
 	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
-		tracelog.InfoLogger.Printf("no found key ranges to merge by border %v", bound)
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
 		return &protos.ModifyReply{}, nil
 	}
 

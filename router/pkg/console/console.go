@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -58,7 +59,7 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
-func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
+func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -169,7 +170,7 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(client.PSQLInteractor{}, ctx, cl, q)
+	return l.processQueryInternal(clientinteractor.PSQLInteractor{}, ctx, cl, q)
 }
 
 const greeting = `
