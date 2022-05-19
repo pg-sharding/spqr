@@ -30,4 +30,5 @@ type QrouterDB interface {
 	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
 
 	Share(key *KeyRange) error
+	CheckLocked(ctx context.Context, krid string) (*KeyRange, error)
 }

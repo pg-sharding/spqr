@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -70,7 +69,7 @@ type QrouterDBMem struct {
 	mu   sync.RWMutex
 	txmu sync.Mutex
 
-	freq  map[string]int
+	freq  map[string]bool
 	krs   map[string]*qdb.KeyRange
 	locks map[string]*sync.RWMutex
 
@@ -187,7 +186,6 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 		}
 	}
 
-	q.freq[keyRange.KeyRangeID] = 1
 	q.krs[keyRange.KeyRangeID] = keyRange
 	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
 
@@ -223,7 +221,7 @@ func (q *QrouterDBMem) Check(_ context.Context, kr *qdb.KeyRange) bool {
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
-		freq:      map[string]int{},
+		freq:      map[string]bool{},
 		krs:       map[string]*qdb.KeyRange{},
 		locks:     map[string]*sync.RWMutex{},
 		krWaiters: map[string]*WaitPool{},
@@ -239,12 +237,24 @@ func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange
 		return nil, fmt.Errorf("no sush krid")
 	}
 
-	if cnt, ok := q.freq[KeyRangeID]; ok {
-		q.freq[KeyRangeID] = cnt + 1
-	} else {
-		q.freq[KeyRangeID] = 1
-	}
+	q.freq[KeyRangeID] = true
 	q.locks[KeyRangeID].Lock()
+
+	return krs, nil
+}
+
+func (q *QrouterDBMem) CheckLocked(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	krs, ok := q.krs[KeyRangeID]
+	if !ok {
+		return nil, fmt.Errorf("no sush krid")
+	}
+
+	if !q.freq[KeyRangeID] {
+		return nil, fmt.Errorf("key range %v not locked", KeyRangeID)
+	}
 
 	return krs, nil
 }
@@ -253,13 +263,8 @@ func (q *QrouterDBMem) Unlock(_ context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if cnt, ok := q.freq[KeyRangeID]; !ok {
-		return xerrors.Errorf("key range %v not locked", KeyRangeID)
-	} else if cnt > 1 {
-		q.freq[KeyRangeID] = cnt - 1
-	} else {
-		delete(q.freq, KeyRangeID)
-		delete(q.krs, KeyRangeID)
+	if !q.freq[KeyRangeID] {
+		return fmt.Errorf("key range %v not locked", KeyRangeID)
 	}
 
 	q.locks[KeyRangeID].Unlock()

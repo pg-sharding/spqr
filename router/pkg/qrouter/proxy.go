@@ -156,17 +156,9 @@ func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 
 	var krmv *qdb.KeyRange
 	var err error
-	if krmv, err = qr.qdb.Lock(ctx, req.Krid); err != nil {
+	if krmv, err = qr.qdb.CheckLocked(ctx, req.Krid); err != nil {
 		return err
 	}
-
-	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.Unlock(ctx, keyRangeID)
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
-			return
-		}
-	}(qr.qdb, ctx, req.Krid)
 
 	krmv.ShardID = req.ShardId
 
@@ -459,8 +451,6 @@ func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*D
 }
 
 func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node) (ShardRoute, error) {
-	//val, err := getbytes(res.ResTarget.Val)
-
 	switch q := node.Node.(type) {
 	case *pgquery.Node_SelectStmt:
 		if len(q.SelectStmt.ValuesLists) != 1 {
