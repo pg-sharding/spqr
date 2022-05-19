@@ -63,11 +63,11 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activeShards {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "sending Q to sh %v", shard.Name())
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "sending %+v to sh %v", msg, shard.Name())
 		err := shard.Send(msg)
 		if err != nil {
-			tracelog.InfoLogger.PrintError(err)
-			//
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
@@ -133,7 +133,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 	for i := range msgs {
 		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
-			return nil, xerrors.Errorf("got messages with different types from multiconnection %T, %T", msgs[0], msgs[i])
+			return nil, fmt.Errorf("got messages with different types from multiconnection %T, %T", msgs[0], msgs[i])
 		}
 	}
 

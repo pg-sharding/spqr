@@ -113,6 +113,13 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
+	case *spqrparser.Unlock:
+		err := l.Qrouter.Unlock(ctx, stmt.KeyRangeID)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.ShardingColumn:
 		err := l.Qrouter.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 		if err != nil {
@@ -139,7 +146,7 @@ func (l *Local) processQueryInternal(cli client.PSQLInteractor, ctx context.Cont
 	case *spqrparser.Shutdown:
 		return l.Shutdown()
 	default:
-		spqrlog.Logger.Printf(spqrlog.ERROR, "got unexcepted console request %v %T", tstmt, tstmt)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got unexpected console request %v %T", tstmt, tstmt)
 		if err := cl.DefaultReply(); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err

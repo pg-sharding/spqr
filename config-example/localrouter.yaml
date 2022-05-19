@@ -27,7 +27,7 @@ rules:
             passwd: 12345678
             shard_type: 'DATA'
             hosts:
-                - conn_addr: "localhost:5551"
+                - conn_addr: "localhost:5550"
     frontend_rules:
         - route_key_cfg:
             usr: user1

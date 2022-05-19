@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"fmt"
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -9,8 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
 	"io"
-
-	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -65,7 +64,6 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
-
 		}
 		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),

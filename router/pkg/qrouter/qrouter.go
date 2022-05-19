@@ -69,6 +69,7 @@ type QueryRouter interface {
 	Shards() []string
 	WorldShards() []string
 	WorldShardsRoutes() []*DataShardRoute
+	DataShardsRoutes() []*DataShardRoute
 
 	AddDataShard(ctx context.Context, ds *datashards.DataShard) error
 	ListDataShards(ctx context.Context) []*datashards.DataShard
