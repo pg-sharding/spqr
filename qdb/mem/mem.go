@@ -65,11 +65,12 @@ func (wg *WaitPool) Publish(msg interface{}) {
 }
 
 type QrouterDBMem struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	txmu sync.Mutex
 
-	freq map[string]int
-	krs  map[string]*qdb.KeyRange
+	freq  map[string]int
+	krs   map[string]*qdb.KeyRange
+	locks map[string]*sync.RWMutex
 
 	shrules []*shrule.ShardingRule
 
@@ -88,6 +89,10 @@ func (q *QrouterDBMem) AddShardingRule(ctx context.Context, rule *shrule.Shardin
 
 func (q *QrouterDBMem) Share(key *qdb.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "sharing key with key %v", key.KeyRangeID)
+
+	q.locks[key.KeyRangeID].RLock()
+	q.locks[key.KeyRangeID].RUnlock()
+
 	return nil
 }
 
@@ -135,6 +140,7 @@ func (q *QrouterDBMem) DropKeyRange(ctx context.Context, krs *qdb.KeyRange) erro
 	defer q.mu.Unlock()
 	delete(q.krs, krs.KeyRangeID)
 	delete(q.freq, krs.KeyRangeID)
+	delete(q.locks, krs.KeyRangeID)
 	return nil
 }
 
@@ -149,8 +155,8 @@ func (q *QrouterDBMem) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 }
 
 func (q *QrouterDBMem) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	return q.shrules, nil
 }
 
@@ -177,6 +183,7 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 
 	q.freq[keyRange.KeyRangeID] = 1
 	q.krs[keyRange.KeyRangeID] = keyRange
+	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
 
 	return nil
 }
@@ -207,6 +214,7 @@ func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
 		freq:      map[string]int{},
 		krs:       map[string]*qdb.KeyRange{},
+		locks:     map[string]*sync.RWMutex{},
 		krWaiters: map[string]*WaitPool{},
 	}, nil
 }
@@ -215,13 +223,17 @@ func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	krs := q.krs[KeyRangeID]
+	krs, ok := q.krs[KeyRangeID]
+	if !ok {
+		return nil, fmt.Errorf("no sush krid")
+	}
 
 	if cnt, ok := q.freq[KeyRangeID]; ok {
 		q.freq[KeyRangeID] = cnt + 1
 	} else {
 		q.freq[KeyRangeID] = 1
 	}
+	q.locks[KeyRangeID].Lock()
 
 	return krs, nil
 }
@@ -239,10 +251,14 @@ func (q *QrouterDBMem) Unlock(_ context.Context, KeyRangeID string) error {
 		delete(q.krs, KeyRangeID)
 	}
 
+	q.locks[KeyRangeID].Unlock()
+
 	return nil
 }
 
 func (q *QrouterDBMem) ListKeyRanges(_ context.Context) ([]*qdb.KeyRange, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	var ret []*qdb.KeyRange
 
 	for _, el := range q.krs {

@@ -44,9 +44,9 @@ func NewLocalQrouter(rules config.RulesCfg) (*LocalQrouter, error) {
 	return l, nil
 }
 
-func (qr *LocalQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
+func (l *LocalQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
-	qr.ds = ds
+	l.ds = ds
 	return nil
 }
 

@@ -234,6 +234,36 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl Clie
 	return pi.completeMsg(0, cl)
 }
 
+func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string, cl Client) error {
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("unlock key range"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{
+			[]byte(
+				fmt.Sprintf("unlocked key range with id %v", krid)),
+		},
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+	}
+
+	return pi.completeMsg(0, cl)
+}
+
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard, cl Client) error {
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing shards")

@@ -444,20 +444,27 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		return shroute, nil
 	case *pgquery.Node_InsertStmt:
 		for _, c := range stmt.InsertStmt.Cols {
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
-			switch res := c.Node.(type) {
-			case *pgquery.Node_ResTarget:
+			if sr, err := func() (ShardRoute, error) {
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+				switch res := c.Node.(type) {
+				case *pgquery.Node_ResTarget:
 
-				spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
-				if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
-					continue
+					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
+					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
+						return nil, tooComplexQuery
+					}
+
+					return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt)
+				default:
+					return nil, tooComplexQuery
 				}
-
-				return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt)
-			default:
-				return nil, tooComplexQuery
+			}(); err != nil {
+				continue
+			} else {
+				return sr, nil
 			}
 		}
+		return nil, tooComplexQuery
 
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
@@ -508,17 +515,23 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 	stmt := parsedStmt.Stmts[0]
 
 	switch stmt.Stmt.Node.(type) {
+	case *pgquery.Node_VariableSetStmt:
+		return MultiMatchState{}, nil
 	case *pgquery.Node_CreateStmt, *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
 		// support simple ddl
-		return ShardMatchState{
-			Routes: qr.DataShardsRoutes(),
-		}, nil
+		return MultiMatchState{}, nil
+	case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+		// forbid under separate setting
+		return MultiMatchState{}, nil
+	case *pgquery.Node_CreateRoleStmt, *pgquery.Node_CreatedbStmt:
+		// forbid under separate setting
+		return MultiMatchState{}, nil
 	default:
-
 		routes, err := qr.matchShards(ctx, stmt)
 		if err != nil {
 			return nil, err
 		}
+
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed shard %+v", routes)
 		switch v := routes.(type) {
 		case *DataShardRoute:
@@ -528,7 +541,6 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 		case *MultiMatchRoute:
 			return MultiMatchState{}, nil
 		}
-
 		return SkipRoutingState{}, nil
 	}
 }
