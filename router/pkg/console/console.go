@@ -69,6 +69,14 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
 	switch stmt := tstmt.(type) {
+	case *spqrparser.Drop:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
+		err := l.Qrouter.Drop(ctx, stmt.KeyRangeID)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
+		return cli.DropKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.MoveKeyRange:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed move %s to %s", stmt.KeyRangeID, stmt.DestShardID)
 		move := &kr.MoveKeyRange{
@@ -81,7 +89,6 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.MoveKeyRange(ctx, move, cl)
-
 	case *spqrparser.Show:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed %s", stmt.Cmd)
 		switch stmt.Cmd {

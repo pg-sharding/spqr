@@ -3,11 +3,10 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
-	client2 "github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/pkg/client"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -22,7 +21,7 @@ type Interactor interface {
 
 type PSQLInteractor struct{}
 
-func (pi *PSQLInteractor) completeMsg(rowCnt int, cl client2.Client) error {
+func (pi *PSQLInteractor) completeMsg(rowCnt int, cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.CommandComplete{CommandTag: []byte(fmt.Sprintf("SELECT %d", rowCnt))},
 		&pgproto3.ReadyForQuery{
@@ -38,7 +37,7 @@ func (pi *PSQLInteractor) completeMsg(rowCnt int, cl client2.Client) error {
 	return nil
 }
 
-func (pi *PSQLInteractor) WriteHeader(stmt string, cl client2.Client) error {
+func (pi *PSQLInteractor) WriteHeader(stmt string, cl client.Client) error {
 	return cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 		{
 			Name:                 []byte(stmt),
@@ -53,11 +52,11 @@ func (pi *PSQLInteractor) WriteHeader(stmt string, cl client2.Client) error {
 	})
 }
 
-func (pi *PSQLInteractor) WriteDataRow(msg string, cl client2.Client) error {
+func (pi *PSQLInteractor) WriteDataRow(msg string, cl client.Client) error {
 	return cl.Send(&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}})
 }
 
-func (pi *PSQLInteractor) Databases(dbs []string, cl client2.Client) error {
+func (pi *PSQLInteractor) Databases(dbs []string, cl client.Client) error {
 	if err := pi.WriteHeader("show dbs", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -84,7 +83,7 @@ func (pi *PSQLInteractor) Databases(dbs []string, cl client2.Client) error {
 	return pi.completeMsg(len(dbs), cl)
 }
 
-func (pi *PSQLInteractor) Pools(cl client2.Client) error {
+func (pi *PSQLInteractor) Pools(cl client.Client) error {
 	if err := pi.WriteHeader("show pools", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -102,7 +101,7 @@ func (pi *PSQLInteractor) Pools(cl client2.Client) error {
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) AddShard(cl client2.Client, shard *datashards.DataShard) error {
+func (pi *PSQLInteractor) AddShard(cl client.Client, shard *datashards.DataShard) error {
 	if err := pi.WriteHeader("add datashard", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -119,7 +118,7 @@ func (pi *PSQLInteractor) AddShard(cl client2.Client, shard *datashards.DataShar
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client2.Client) error {
+func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing key ranges")
 	if err := pi.WriteHeader("listing key ranges", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -137,7 +136,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client2.Client) error
 	return pi.completeMsg(len(krs), cl)
 }
 
-func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange, cl client2.Client) error {
+func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange, cl client.Client) error {
 	if err := pi.WriteHeader("add key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -155,7 +154,7 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange, cl client2.Client) error {
+func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange, cl client.Client) error {
 	if err := pi.WriteHeader("split key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -173,7 +172,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl client2.Client) error {
+func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl client.Client) error {
 	if err := pi.WriteHeader("lock key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -193,7 +192,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string, cl clie
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string, cl client2.Client) error {
+func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string, cl client.Client) error {
 	if err := pi.WriteHeader("unlock key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -215,7 +214,7 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string, cl cl
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard, cl client2.Client) error {
+func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard, cl client.Client) error {
 	if err := pi.WriteHeader("listing data shards", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -235,7 +234,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule, cl client2.Client) error {
+func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule, cl client.Client) error {
 	if err := pi.WriteHeader("listing sharding rules", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -254,7 +253,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) ReportError(err error, cl client2.Client) error {
+func (pi *PSQLInteractor) ReportError(err error, cl client.Client) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{Severity: "ERROR",
 			Message: err.Error(),
@@ -272,7 +271,7 @@ func (pi *PSQLInteractor) ReportError(err error, cl client2.Client) error {
 	return nil
 }
 
-func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule, cl client2.Client) error {
+func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule, cl client.Client) error {
 	if err := pi.WriteHeader("add sharding rule", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -285,7 +284,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRange, cl client2.Client) error {
+func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRange, cl client.Client) error {
 	if err := pi.WriteHeader("move key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -299,7 +298,7 @@ func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRang
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl *client.PsqlClient) error {
+func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl client.Client) error {
 	if err := pi.WriteHeader("show routers", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -315,7 +314,7 @@ func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl *client.PsqlClient) err
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) UnregisterRouter(cl *client.PsqlClient, id string) error {
+func (pi *PSQLInteractor) UnregisterRouter(cl client.Client, id string) error {
 	if err := pi.WriteHeader("unregister routers", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
@@ -329,13 +328,27 @@ func (pi *PSQLInteractor) UnregisterRouter(cl *client.PsqlClient, id string) err
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, cl *client.PsqlClient, id string, addr string) error {
+func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, cl client.Client, id string, addr string) error {
 	if err := pi.WriteHeader("register routers", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s registered", id, addr), cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	return pi.completeMsg(0, cl)
+}
+
+func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, id string, cl client.Client) error {
+	if err := pi.WriteHeader("drop key range", cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("drop key range %s", id), cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

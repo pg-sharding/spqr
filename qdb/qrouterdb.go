@@ -16,7 +16,7 @@ type QrouterDB interface {
 	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
 
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
-	DropKeyRange(ctx context.Context, krl *KeyRange) error
+	DropKeyRange(ctx context.Context, id string) error
 
 	AddRouter(ctx context.Context, r *Router) error
 	DeleteRouter(ctx context.Context, rID string) error
