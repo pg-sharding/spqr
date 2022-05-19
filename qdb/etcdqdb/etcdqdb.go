@@ -138,11 +138,12 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 			grpc.WithInsecure(),
 		},
 	})
-	tracelog.InfoLogger.Printf("Coordinator Service, %s %#v", addr, cli)
-
 	if err != nil {
+		spqrlog.Logger.PrintError(err)
 		return nil, err
 	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "qdb service, %s %#v", addr, cli)
 
 	return &EtcdQDB{
 		cli:   cli,
@@ -311,18 +312,21 @@ func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
 }
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
 		return err
 	}
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
+
 	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("put resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put kr to qdb resp %v", resp)
 	return err
 }
 
@@ -342,7 +346,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) er
 	return err
 }
 
-func (q *EtcdQDB) ListKeyRange(ctx context.Context) ([]*qdb.KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err

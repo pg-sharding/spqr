@@ -3,14 +3,15 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -118,6 +119,8 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 
 	// add key range to metadb
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding key range %+v", keyRange)
+
 	err := qc.db.AddKeyRange(ctx, keyRange.ToSQL())
 	if err != nil {
 		return err
@@ -128,7 +131,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("routers %v", func() []string {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "routers %+v", func() []string {
 		var strs []string
 
 		for _, el := range resp {
@@ -136,13 +139,13 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		}
 
 		return strs
-	})
+	}())
 
 	// notify all routers
 	for _, r := range resp {
 		cc, err := DialRouter(r)
 
-		tracelog.InfoLogger.Printf("dialing router %v, err %w", r, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
 		if err != nil {
 			return err
 		}
@@ -156,7 +159,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("got resp %v", resp)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "got resp %v", resp)
 	}
 
 	return nil
@@ -336,6 +339,8 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
+var unknownCoordinatorCmd = fmt.Errorf("unknown coordinator dmd")
+
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := psqlclient.NewPsqlClient(nconn)
 
@@ -358,6 +363,8 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	r := route.NewRoute(nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
 
+	cli := client.PSQLInteractor{}
+
 	if err := cl.Auth(r); err != nil {
 		return err
 	}
@@ -374,13 +381,12 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
 				return err
 			}
 
-			tracelog.InfoLogger.Printf("parsed %v %T", v.String, tstmt)
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
@@ -403,36 +409,49 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					}
 
 					return nil
-
 				case *spqrparser.UnregisterRouter:
 					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
 						return err
 					}
 
 					return nil
-
 				case *spqrparser.AddKeyRange:
-					if err := qc.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt)); err != nil {
+					req := kr.KeyRangeFromSQL(stmt)
+					if err := qc.AddKeyRange(ctx, req); err != nil {
+						_ = cli.ReportError(err, cl)
 						return err
 					}
-					return nil
+					return cli.AddKeyRange(ctx, req, cl)
 				case *spqrparser.Lock:
 					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
 						return err
 					}
+					return nil
 				case *spqrparser.Show:
-
+					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 					switch stmt.Cmd {
+					case "key_ranges":
+						ranges, err := qc.db.ListKeyRanges(ctx)
+						if err != nil {
+							_ = cli.ReportError(err, cl)
+							return err
+						}
 
+						var resp []*kr.KeyRange
+
+						for _, el := range ranges {
+							resp = append(resp, kr.KeyRangeFromDB(el))
+						}
+
+						return cli.KeyRanges(resp, cl)
 					}
-				default:
-					return xerrors.New("failed to proc")
-				}
-				return nil
-			}(); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
 
-				//
+					return unknownCoordinatorCmd
+				default:
+					return unknownCoordinatorCmd
+				}
+			}(); err != nil {
+				spqrlog.Logger.PrintError(err)
 				_ = cl.ReplyErrMsg(err.Error())
 			} else {
 				tracelog.InfoLogger.Print("processed ok\n")
@@ -463,7 +482,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 					return nil
 				}(); err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+					spqrlog.Logger.PrintError(err)
 				}
 			}
 		default:
