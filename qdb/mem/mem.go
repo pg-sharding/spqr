@@ -135,12 +135,12 @@ func (q *QrouterDBMem) CheckShardingRule(ctx context.Context, colnames []string)
 //	panic("implement me")
 //}
 
-func (q *QrouterDBMem) DropKeyRange(ctx context.Context, krs *qdb.KeyRange) error {
+func (q *QrouterDBMem) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	delete(q.krs, krs.KeyRangeID)
-	delete(q.freq, krs.KeyRangeID)
-	delete(q.locks, krs.KeyRangeID)
+	delete(q.krs, KeyRangeID)
+	delete(q.freq, KeyRangeID)
+	delete(q.locks, KeyRangeID)
 	return nil
 }
 

@@ -18,6 +18,7 @@ package spqrparser
   unregister_router      *UnregisterRouter
   kill                   *Kill
   drop                   *Drop
+  dropAll                *DropAll
   lock                   *Lock
   shutdown               *Shutdown
   listen                 *Listen
@@ -42,7 +43,6 @@ package spqrparser
 // DDL
 %token <str> SHOW KILL
 
-
 // CMDS
 %type <statement> command
 
@@ -53,7 +53,7 @@ package spqrparser
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES ROUTERS
-%token <str> BY FROM TO WITH UNITE
+%token <str> BY FROM TO WITH UNITE ALL
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -65,6 +65,7 @@ package spqrparser
 
 %type <kr> add_stmt add_key_range_stmt
 %type <drop> drop_stmt drop_key_range_stmt
+%type <dropAll> drop_key_range_all_stmt
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
 %type <shutdown> shutdown_stmt
@@ -107,6 +108,10 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
+	| drop_key_range_all_stmt
+	{
+        setParseTree(yylex, $1)
+    }
 	| drop_stmt
 	{
 		setParseTree(yylex, $1)
@@ -257,6 +262,12 @@ drop_key_range_stmt:
 	{
 		$$ = &Drop{KeyRangeID: $4}
 	}
+
+drop_key_range_all_stmt:
+    DROP KEY RANGE ALL
+    {
+        $$ = &DropAll{}
+    }
 
 lock_key_range_stmt:
 	LOCK KEY RANGE key_range_id

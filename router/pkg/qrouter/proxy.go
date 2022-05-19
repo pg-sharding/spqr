@@ -42,7 +42,7 @@ type ProxyQrouter struct {
 
 func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	qr.mu.Lock()
-	qr.mu.Unlock()
+	defer qr.mu.Unlock()
 
 	var ret []*datashards.DataShard
 	for id, cfg := range qr.DataShardCfgs {
@@ -53,12 +53,20 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 
 func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
 	qr.mu.Lock()
-	qr.mu.Unlock()
+	defer qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", name)
 	qr.WorldShardCfgs[name] = cfg
 
 	return nil
+}
+
+func (qr *ProxyQrouter) Drop(ctx context.Context, id string) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	spqrlog.Logger.Printf(spqrlog.LOG, "dropping key range %s", id)
+	return qr.qdb.DropKeyRange(ctx, id)
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
@@ -104,7 +112,7 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
 
 func (qr *ProxyQrouter) WorldShards() []string {
 	qr.mu.Lock()
-	qr.mu.Unlock()
+	defer qr.mu.Unlock()
 
 	var ret []string
 
@@ -195,7 +203,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDRight)
 
-	if err = qr.qdb.DropKeyRange(ctx, krleft); err != nil {
+	if err = qr.qdb.DropKeyRange(ctx, krleft.KeyRangeID); err != nil {
 		return err
 	}
 
@@ -285,7 +293,7 @@ func (qr *ProxyQrouter) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	qr.mu.Lock()
-	qr.mu.Unlock()
+	defer qr.mu.Unlock()
 
 	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
@@ -296,7 +304,7 @@ func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.Shardi
 
 func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.ShardingRule, error) {
 	qr.mu.Lock()
-	qr.mu.Unlock()
+	defer qr.mu.Unlock()
 
 	rules := make([]*shrule.ShardingRule, 0, len(qr.ColumnMapping))
 
@@ -305,11 +313,6 @@ func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.Sharding
 	}
 
 	return rules, nil
-}
-
-func (qr *ProxyQrouter) AddLocalTable(tname string) error {
-	qr.LocalTables[tname] = struct{}{}
-	return nil
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {

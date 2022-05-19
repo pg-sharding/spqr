@@ -99,7 +99,6 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
 			Rules: []*routerproto.ShardingRule{{Columns: rule.Columns()}},
 		})
-
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
@@ -253,7 +252,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 	krLeft.UpperBound = krRight.UpperBound
 
-	if err := qc.db.DropKeyRange(ctx, krRight); err != nil {
+	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
 		return fmt.Errorf("failed to drop an old key range: %w", err)
 	}
 
@@ -389,10 +388,11 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.RegisterRouter:
 					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
 
-					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
+					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
 						return err
 					}
-					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
+
+					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
 						return err
 					}
 

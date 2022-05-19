@@ -44,6 +44,8 @@ type Drop struct {
 	KeyRangeID string
 }
 
+type DropAll struct{}
+
 type Lock struct {
 	KeyRangeID string
 }
@@ -96,6 +98,7 @@ type Statement interface {
 func (*Show) iStatement()           {}
 func (*Add) iStatement()            {}
 func (*Drop) iStatement()           {}
+func (*DropAll) iStatement()        {}
 func (*Lock) iStatement()           {}
 func (*Unlock) iStatement()         {}
 func (*Shutdown) iStatement()       {}
@@ -130,6 +133,7 @@ var reservedWords = map[string]int{
 	"lock":       LOCK,
 	"unlock":     UNLOCK,
 	"drop":       DROP,
+	"all":        ALL,
 	"shutdown":   SHUTDOWN,
 	"split":      SPLIT,
 	"from":       FROM,

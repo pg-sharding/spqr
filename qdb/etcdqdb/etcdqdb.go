@@ -95,8 +95,8 @@ func shardNodePath(key string) string {
 	return path.Join(shardsNamespace, key)
 }
 
-func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
-	resp, err := q.cli.Delete(ctx, keyRangeNodePath(keyRange.KeyRangeID))
+func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
+	resp, err := q.cli.Delete(ctx, keyRangeNodePath(KeyRangeID))
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
 	return err
