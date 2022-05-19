@@ -2,8 +2,8 @@ package coordinator
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 
-	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
@@ -12,7 +12,7 @@ import (
 )
 
 type Coordinator interface {
-	client.Interactor
+	clientinteractor.Interactor
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 	datashards.ShardsManager

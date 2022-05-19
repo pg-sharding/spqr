@@ -13,7 +13,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/wal-g/tracelog"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
@@ -99,7 +98,7 @@ func shardNodePath(key string) string {
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
 	resp, err := q.cli.Delete(ctx, keyRangeNodePath(keyRange.KeyRangeID))
 
-	tracelog.InfoLogger.Printf("delete resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
 	return err
 }
 
@@ -109,7 +108,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 		return nil, err
 	}
 
-	tracelog.InfoLogger.Printf("got resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got resp %v", resp)
 	var ret []*qdb.Router
 
 	for _, e := range resp.Kvs {
@@ -154,22 +153,22 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
 	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), r.Addr())
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("put resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put resp %v", resp)
 	return nil
 }
 
 func (q *EtcdQDB) DeleteRouter(ctx context.Context, rID string) error {
 	resp, err := q.cli.Delete(ctx, routerNodePath(rID))
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("del resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "del resp %v", resp)
 	return nil
 }
 
@@ -222,7 +221,7 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 		case <-timer.C:
 			val, err := fetcher(ctx, sess, keyRangeID)
 			if err != nil {
-				tracelog.InfoLogger.Printf("Error while fetching %v", err)
+				spqrlog.Logger.Printf(spqrlog.ERROR, "Error while fetching %v", err)
 				continue
 			}
 
@@ -342,7 +341,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *qdb.KeyRange) er
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("put resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put resp %v", resp)
 	return err
 }
 
@@ -352,7 +351,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 		return nil, err
 	}
 
-	tracelog.InfoLogger.Printf("got resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "got resp %v", resp)
 	var ret []*qdb.KeyRange
 
 	for _, e := range resp.Kvs {
@@ -384,8 +383,8 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *shrule.ShardingRu
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("put sharding rules resp %v", resp)
-	return err
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rules resp %v", resp)
+	return nil
 }
 
 func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -402,7 +401,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule
 		rules = append(rules, shrule.NewShardingRule([]string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))}))
 	}
 
-	tracelog.InfoLogger.Printf("list sharding rules resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "list sharding rules resp %v", resp)
 	return rules, nil
 }
 
@@ -412,7 +411,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("put resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put resp %v", resp)
 	return nil
 }
 

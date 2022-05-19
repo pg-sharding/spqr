@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 
@@ -10,7 +11,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -278,7 +278,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 		return err
 	}
 
-	protoShardingRules := []*routerproto.ShardingRule{}
+	var protoShardingRules []*routerproto.ShardingRule
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
 	for _, shRule := range shardingRules {
 		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
@@ -351,7 +351,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	r := route.NewRoute(nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
 
-	cli := client.PSQLInteractor{}
+	cli := clientinteractor.PSQLInteractor{}
 
 	if err := cl.Auth(r); err != nil {
 		return err
@@ -371,7 +371,8 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				return err
+				_ = cli.ReportError(err, cl)
+				continue
 			}
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
@@ -416,7 +417,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.Show:
 					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 					switch stmt.Cmd {
-					case "key_ranges":
+					case spqrparser.ShowKeyRangesStr:
 						ranges, err := qc.db.ListKeyRanges(ctx)
 						if err != nil {
 							return err
@@ -429,9 +430,16 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 						}
 
 						return cli.KeyRanges(resp, cl)
-					}
+					case spqrparser.ShowRoutersStr:
+						routers, err := qc.db.ListRouters(ctx)
+						if err != nil {
+							return err
+						}
 
-					return unknownCoordinatorCmd
+						return cli.Routers(routers, cl)
+					default:
+						return cli.ReportError(unknownCoordinatorCmd, cl)
+					}
 				default:
 					return unknownCoordinatorCmd
 				}
@@ -442,6 +450,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "processed ok\n")
 			}
 		default:
+			return cli.ReportError(fmt.Errorf("unsupported msg type %T", msg), cl)
 		}
 	}
 }

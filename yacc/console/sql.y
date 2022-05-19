@@ -169,7 +169,7 @@ show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ShowDatabasesStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
 			$$ = v
 		default:
 			$$ = ShowUnsupportedStr

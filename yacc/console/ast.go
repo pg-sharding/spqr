@@ -79,6 +79,7 @@ type UnregisterRouter struct {
 // The frollowing constants represent SHOW statements.
 const (
 	ShowDatabasesStr    = "databases"
+	ShowRoutersStr      = "routers"
 	ShowShardsStr       = "shards"
 	ShowShardingColumns = "sharding_columns"
 	ShowKeyRangesStr    = "key_ranges"
