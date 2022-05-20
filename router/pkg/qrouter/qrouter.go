@@ -62,8 +62,6 @@ type QueryRouter interface {
 
 	Route(ctx context.Context) (RoutingState, error)
 
-	// AddLocalTable do not use
-	AddLocalTable(tname string) error
 	Parse(q *pgproto3.Query) (rparser.ParseState, error)
 
 	// Shards shards

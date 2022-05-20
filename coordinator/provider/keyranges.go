@@ -32,22 +32,15 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = c.impl.Lock(ctx, keyRangeID)
+	_, err := c.impl.Lock(ctx, request.KeyRange.Krid)
 	return &protos.ModifyReply{}, err
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
+	err := c.impl.Unlock(ctx, request.KeyRange.Krid)
 	if err != nil {
 		return nil, err
 	}
-
-	err = c.impl.Unlock(ctx, keyRangeID)
 	return &protos.ModifyReply{}, err
 }
 
@@ -101,19 +94,10 @@ func (c CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyR
 }
 
 func (c CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	keyRangeID, err := c.KeyRangeIDByBounds(ctx, request.GetKeyRange())
-	if err != nil {
-		return nil, err
-	}
-
-	updKeyRange := &kr.KeyRange{
-		LowerBound: []byte(request.GetKeyRange().GetLowerBound()),
-		UpperBound: []byte(request.GetKeyRange().GetUpperBound()),
-		ShardID:    request.GetToShardId(),
-		ID:         keyRangeID,
-	}
-
-	if err := c.impl.MoveKeyRange(ctx, updKeyRange); err != nil {
+	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
+		Krid:    request.KeyRange.Krid,
+		ShardId: request.ToShardId,
+	}); err != nil {
 		return nil, err
 	}
 
