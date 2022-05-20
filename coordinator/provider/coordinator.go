@@ -283,7 +283,15 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
 	}
 
-	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
+	resp, err := shClient.DropShardingRules(ctx, &routerproto.AddShardingRuleRequest{
+		Rules: protoShardingRules,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	resp, err = shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
 		Rules: protoShardingRules,
 	})
 

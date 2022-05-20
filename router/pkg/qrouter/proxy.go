@@ -69,6 +69,14 @@ func (qr *ProxyQrouter) Drop(ctx context.Context, id string) error {
 	return qr.qdb.DropKeyRange(ctx, id)
 }
 
+func (qr *ProxyQrouter) DropAll(ctx context.Context) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	spqrlog.Logger.Printf(spqrlog.LOG, "dropping all key range")
+	return qr.qdb.DropKeyRangeAll(ctx)
+}
+
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()

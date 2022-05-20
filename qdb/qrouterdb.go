@@ -31,4 +31,5 @@ type QrouterDB interface {
 
 	Share(key *KeyRange) error
 	CheckLocked(ctx context.Context, krid string) (*KeyRange, error)
+	DropKeyRangeAll(ctx context.Context) error
 }

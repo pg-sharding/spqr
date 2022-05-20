@@ -8,6 +8,8 @@ service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
   rpc AddKeyRange(AddKeyRangeRequest) returns (ModifyReply) {}
+  rpc DropKeyRange(DropKeyRangeRequest) returns (ModifyReply) {}
+  rpc DropAllKeyRanges(DropAllKeyRangesRequest) returns (ModifyReply) {}
   rpc UnlockKeyRange (UnlockKeyRangeRequest) returns (ModifyReply) {}
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (ModifyReply) {}
   rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
@@ -50,6 +52,14 @@ message MoveKeyRangeRequest {
   KeyRange key_range = 1;
   string toShardId = 2;
 }
+
+message DropKeyRangeRequest {
+  KeyRange key_range = 1;
+}
+
+message DropAllKeyRangesRequest {
+}
+
 
 message LockKeyRangeRequest {
   KeyRange key_range = 1;

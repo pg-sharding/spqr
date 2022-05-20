@@ -77,6 +77,28 @@ type QrouterDBMem struct {
 	krWaiters map[string]*WaitPool
 }
 
+func (q *QrouterDBMem) DropKeyRangeAll(ctx context.Context) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	var locks []*sync.RWMutex
+	for _, l := range q.locks {
+		l.Lock()
+		locks = append(locks, l)
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "acquired all locks")
+
+	q.krs = map[string]*qdb.KeyRange{}
+	q.locks = map[string]*sync.RWMutex{}
+
+	for _, l := range locks {
+		l.Unlock()
+	}
+
+	return nil
+}
+
 func (q *QrouterDBMem) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	//TODO implement me
 	q.mu.Lock()

@@ -77,7 +77,6 @@ type QueryRouter interface {
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
-	Drop(ctx context.Context, id string) error
 }
 
 func NewQrouter(qtype config.QrouterType, rules config.RulesCfg) (QueryRouter, error) {
