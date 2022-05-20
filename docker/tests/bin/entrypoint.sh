@@ -5,8 +5,8 @@ set -ex
 sleep 25
 console.sh
 
-move.sh
-
 simple.sh
 
+move.sh
 
+coordinator_setup.sh

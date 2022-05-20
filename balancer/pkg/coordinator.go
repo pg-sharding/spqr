@@ -151,7 +151,7 @@ func (c *Coordinator) isReloadRequired() (bool, error) {
 
 func (c *Coordinator) lockKeyRange(rng KeyRange) error {
 	resp, err := c.keyRangeServiceClient.LockKeyRange(context.Background(), &routerproto.LockKeyRangeRequest{
-		KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right},
+		KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
 	})
 	if err != nil {
 		return err
@@ -159,9 +159,9 @@ func (c *Coordinator) lockKeyRange(rng KeyRange) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c Coordinator) unlockKeyRange(rng KeyRange) error {
+func (c *Coordinator) unlockKeyRange(rng KeyRange) error {
 	resp, err := c.keyRangeServiceClient.UnlockKeyRange(context.Background(), &routerproto.UnlockKeyRangeRequest{
-		KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right},
+		KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
 	})
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func (c Coordinator) unlockKeyRange(rng KeyRange) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c Coordinator) splitKeyRange(border *string) error {
+func (c *Coordinator) splitKeyRange(border *string) error {
 	resp, err := c.keyRangeServiceClient.SplitKeyRange(context.Background(), &routerproto.SplitKeyRangeRequest{
 		Bound: []byte(*border),
 	})
@@ -179,7 +179,7 @@ func (c Coordinator) splitKeyRange(border *string) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c Coordinator) mergeKeyRanges(border *string) error {
+func (c *Coordinator) mergeKeyRanges(border *string) error {
 	resp, err := c.keyRangeServiceClient.MergeKeyRange(context.Background(), &routerproto.MergeKeyRangeRequest{
 		Bound: []byte(*border),
 	})
@@ -189,9 +189,9 @@ func (c Coordinator) mergeKeyRanges(border *string) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c Coordinator) moveKeyRange(rng KeyRange, shardTo Shard) error {
+func (c *Coordinator) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	resp, err := c.keyRangeServiceClient.MoveKeyRange(context.Background(), &routerproto.MoveKeyRangeRequest{
-		KeyRange:  &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right},
+		KeyRange:  &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
 		ToShardId: strconv.Itoa(shardTo.id),
 	})
 	if err != nil {

@@ -279,6 +279,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 
 	var protoShardingRules []*routerproto.ShardingRule
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
+	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, shRule := range shardingRules {
 		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
 	}
@@ -298,10 +299,12 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	if err != nil {
 		return err
 	}
+	if _, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{}); err != nil {
+		return err
+	}
 
-	cl := routerproto.NewKeyRangeServiceClient(cc)
 	for _, keyRange := range keyRanges {
-		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
+		resp, err := krClient.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
 			KeyRangeInfo: kr.KeyRangeFromDB(keyRange).ToProto(),
 		})
 

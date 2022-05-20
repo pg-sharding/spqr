@@ -62,8 +62,6 @@ type QueryRouter interface {
 
 	Route(ctx context.Context) (RoutingState, error)
 
-	// AddLocalTable do not use
-	AddLocalTable(tname string) error
 	Parse(q *pgproto3.Query) (rparser.ParseState, error)
 
 	// Shards shards
@@ -77,7 +75,6 @@ type QueryRouter interface {
 	AddWorldShard(name string, cfg *config.ShardCfg) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
-	Drop(ctx context.Context, id string) error
 }
 
 func NewQrouter(qtype config.QrouterType, rules config.RulesCfg) (QueryRouter, error) {

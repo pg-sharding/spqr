@@ -70,7 +70,7 @@ type EtcdQDB struct {
 
 const (
 	keyRangesNamespace     = "/keyranges"
-	routersRangesNamespace = "/routers"
+	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
 )
@@ -84,7 +84,7 @@ func keyRangeNodePath(key string) string {
 }
 
 func routerNodePath(key string) string {
-	return path.Join(routersRangesNamespace, key)
+	return path.Join(routersNamespace, key)
 }
 
 func shardingRuleNodePath(key string) string {
@@ -102,8 +102,14 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	return err
 }
 
+func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
+	resp, err := q.cli.Delete(ctx, keyRangesNamespace)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
+	return err
+}
+
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
-	resp, err := q.cli.Get(ctx, routersRangesNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}

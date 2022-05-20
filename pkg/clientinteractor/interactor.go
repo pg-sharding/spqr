@@ -342,15 +342,17 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, cl client.Client, 
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, id string, cl client.Client) error {
+func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string, cl client.Client) error {
 	if err := pi.WriteHeader("drop key range", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("drop key range %s", id), cl); err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
+	for _, id := range ids {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop key range %s", id), cl); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 	}
 
 	return pi.completeMsg(0, cl)

@@ -76,7 +76,25 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 			return cli.ReportError(err, cl)
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
-		return cli.DropKeyRange(ctx, stmt.KeyRangeID, cl)
+		return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
+	case *spqrparser.DropAll:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "dropping all key ranges ")
+		krs, err := l.Qrouter.ListKeyRange(ctx)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+
+		ids := []string{}
+		for _, krcurr := range krs {
+			ids = append(ids, krcurr.ID)
+			_ = cl.ReplyNotice(fmt.Sprintf("key range is goind to drop %s", krcurr.ID))
+		}
+
+		if err := l.Qrouter.DropAll(ctx); err != nil {
+			return err
+		}
+
+		return cli.DropKeyRange(ctx, ids, cl)
 	case *spqrparser.MoveKeyRange:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed move %s to %s", stmt.KeyRangeID, stmt.DestShardID)
 		move := &kr.MoveKeyRange{
