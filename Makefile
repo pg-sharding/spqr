@@ -64,6 +64,9 @@ run: build_images
 proxy_run:
 	./spqr-rr run -c ./config-example/router.yaml
 
+coordinator_run:
+	./spqr-coordinator run -c ./config-example/coordinator.yaml
+
 pooler_run:
 	./spqr-rr run -c ./config-example/localrouter.yaml
 
