@@ -11,6 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -68,7 +69,7 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 }
 
 func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	cli := client.PSQLInteractor{}
+	cli := clientinteractor.PSQLInteractor{}
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -142,9 +143,9 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 			tracelog.ErrorLogger.Printf("failed to move key range %s to shard %v: %w", stmt.KeyRangeID, stmt.DestShardID, err)
 		}
 
-		keyRange := &kr.KeyRange{ID: stmt.KeyRangeID}
+		moveKeyRange := &kr.MoveKeyRange{Krid: stmt.KeyRangeID, ShardId: stmt.DestShardID}
 
-		return cli.MoveKeyRange(ctx, keyRange, shardID, cl)
+		return cli.MoveKeyRange(ctx, moveKeyRange, cl)
 
 	case *spqrparser.Lock:
 		// TODO: get key range by ID.
