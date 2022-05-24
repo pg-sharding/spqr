@@ -18,7 +18,7 @@ type CoordinatorInterface interface {
 	lockKeyRange(rng KeyRange) error
 	unlockKeyRange(rng KeyRange) error
 
-	splitKeyRange(border *string, krID string) error
+	splitKeyRange(border *string, krID, sourceID string) error
 	mergeKeyRanges(border *string) error
 	moveKeyRange(rng KeyRange, shardTo Shard) error
 }
@@ -195,12 +195,13 @@ func (c *Coordinator) unlockKeyRange(rng KeyRange) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c *Coordinator) splitKeyRange(border *string, krID string) error {
+func (c *Coordinator) splitKeyRange(border *string, krID, sourceID string) error {
 	resp, err := c.keyRangeServiceClient.SplitKeyRange(context.Background(), &routerproto.SplitKeyRangeRequest{
 		Bound: []byte(*border),
 		KeyRangeInfo: &routerproto.KeyRangeInfo{
 			Krid: krID,
 		},
+		SourceId: sourceID,
 	})
 	if err != nil {
 		return err

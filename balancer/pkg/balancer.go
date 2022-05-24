@@ -16,6 +16,7 @@ import (
 	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 )
 
@@ -862,7 +863,7 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 
 		go func() {
 			if err := b.servAdm(ctx, conn, tlsCfg); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+				spqrlog.Logger.PrintError(err)
 			}
 		}()
 	}
@@ -879,7 +880,7 @@ func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Confi
 
 	localConsole, err := NewConsole(tlsCfg, b.coordinator, b.console, stchan)
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
+		spqrlog.Logger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
 		return err
 	}
 

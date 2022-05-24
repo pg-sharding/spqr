@@ -218,7 +218,7 @@ func (m *mock) GetKeyDistanceByRanges(shard Shard, keyRanges []KeyRange) (map[st
 	return _keyDistanceByRanges, nil
 }
 
-func (m *mock) splitKeyRange(border *string, _ string) error {
+func (m *mock) splitKeyRange(border *string, _, _ string) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.foo()

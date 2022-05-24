@@ -6,11 +6,11 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/wal-g/tracelog"
 	"golang.yandex/hasql"
 
 	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type App struct {
@@ -108,6 +108,6 @@ func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
 	}
 	defer listener.Close()
 
-	tracelog.InfoLogger.Printf("ProcADM listening %s by %s", admaddr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
 	return app.balancer.RunAdm(ctx, listener, frTLS)
 }

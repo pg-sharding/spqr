@@ -12,11 +12,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
-	"github.com/pg-sharding/spqr/qdb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
+
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type notifier struct {
@@ -261,7 +262,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*qdb.KeyR
 	}
 }
 
-func (q *EtcdQDB) UnLock(ctx context.Context, keyRangeID string) error {
+func (q *EtcdQDB) Unlock(ctx context.Context, keyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

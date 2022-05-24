@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/wal-g/tracelog"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -123,7 +121,7 @@ func (pi *PSQLInteractor) AddShard(cl client.Client, shard *datashards.DataShard
 }
 
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error {
-	tracelog.InfoLogger.Printf("listing key ranges")
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "listing key ranges")
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -167,7 +165,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error 
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
@@ -181,7 +179,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error 
 				keyRange.UpperBound,
 			},
 		}); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
@@ -190,12 +188,12 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error 
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
 
-	return pi.completeMsg(len(krs), cl)
+	return nil
 }
 
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange, cl client.Client) error {
@@ -365,7 +363,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 
@@ -391,7 +389,7 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange,
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			tracelog.InfoLogger.Print(err)
+			spqrlog.Logger.PrintError(err)
 		}
 	}
 

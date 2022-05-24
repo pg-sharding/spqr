@@ -6,14 +6,17 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
-var cfgPath string
+var (
+	cfgPath  string
+	rcfgPath string
+)
 
 var rootCmd = &cobra.Command{
 	Use: "spqr-balancer --config `path-to-config`",
@@ -40,14 +43,20 @@ var rootCmd = &cobra.Command{
 		}
 
 		err = app.ProcBalancer(ctx)
-		tracelog.ErrorLogger.PrintError(err)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+
+		if err := config.LoadRouterCfg(rcfgPath); err != nil {
+			return err
+		}
 
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ProcADM(ctx, bCfg.TLSCfg)
-			tracelog.ErrorLogger.FatalOnError(err)
+			spqrlog.Logger.FatalOnError(err)
 			wg.Done()
 		}(wg)
 
@@ -63,7 +72,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.FatalOnError(err)
 	}
 }
 
