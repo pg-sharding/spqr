@@ -58,8 +58,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	}
 
 	// frontend
-	frTlsCfg := rules.TLSCfg
-	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
+	frTLS, err := rules.TLSCfg.Init()
 	if err != nil {
 		return nil, errors.Wrap(err, "init frontend TLS")
 	}
