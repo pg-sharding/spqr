@@ -37,19 +37,23 @@ func (pi *PSQLInteractor) completeMsg(rowCnt int, cl client.Client) error {
 	return nil
 }
 
+// TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
+const TEXTOID = 25
+
+func TextOidFD(stmt string) pgproto3.FieldDescription {
+	return pgproto3.FieldDescription{
+		Name:                 []byte(stmt),
+		TableOID:             0,
+		TableAttributeNumber: 0,
+		DataTypeOID:          TEXTOID,
+		DataTypeSize:         -1,
+		TypeModifier:         -1,
+		Format:               0,
+	}
+}
+
 func (pi *PSQLInteractor) WriteHeader(stmt string, cl client.Client) error {
-	return cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-		{
-			Name:                 []byte(stmt),
-			TableOID:             0,
-			TableAttributeNumber: 0,
-			DataTypeOID:          25,
-			DataTypeSize:         -1,
-			TypeModifier:         -1,
-			Format:               0,
-		},
-	},
-	})
+	return cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{TextOidFD(stmt)}})
 }
 
 func (pi *PSQLInteractor) WriteDataRow(msg string, cl client.Client) error {
@@ -57,7 +61,7 @@ func (pi *PSQLInteractor) WriteDataRow(msg string, cl client.Client) error {
 }
 
 func (pi *PSQLInteractor) Databases(dbs []string, cl client.Client) error {
-	if err := pi.WriteHeader("show dbs", cl); err != nil {
+	if err := pi.WriteHeader("show databases", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
@@ -112,6 +116,7 @@ func (pi *PSQLInteractor) AddShard(cl client.Client, shard *datashards.DataShard
 	} {
 		if err := cl.Send(msg); err != nil {
 			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
@@ -130,6 +135,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error 
 			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to datashard %s", keyRange.ID, keyRange.ShardID))},
 		}); err != nil {
 			spqrlog.Logger.PrintError(err)
+			return err
 		}
 	}
 
