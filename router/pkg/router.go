@@ -3,8 +3,9 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -25,10 +26,9 @@ type RouterImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 
-	SPIExecuter *Executer
-	stchan      chan struct{}
-	addr        string
-	frTLS       *tls.Config
+	stchan chan struct{}
+	addr   string
+	frTLS  *tls.Config
 }
 
 func (r *RouterImpl) ID() string {
@@ -76,10 +76,8 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		return nil, err
 	}
 
-	executer := NewExecuter(config.RouterConfig().ExecuterCfg)
-
 	for _, fname := range []string{
-		config.RouterConfig().InitSQL,
+		config.RouterConfig().InitSQLPath,
 		config.RouterConfig().AutoConf,
 	} {
 		if len(fname) == 0 {
@@ -91,21 +89,20 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 			return nil, err
 		}
 
-		if err := executer.SPIexec(context.TODO(), localConsole, client.NewFakeClient(), queries); err != nil {
+		spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql cmd %s", queries)
+		if err := localConsole.ProcessQuery(context.TODO(), queries, client.NewFakeClient()); err != nil {
 			spqrlog.Logger.PrintError(err)
-			return nil, err
 		}
 
 		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 	}
 
 	return &RouterImpl{
-		Rrouter:     rr,
-		Qrouter:     qr,
-		AdmConsole:  localConsole,
-		SPIExecuter: executer,
-		stchan:      stchan,
-		frTLS:       frTLS,
+		Rrouter:    rr,
+		Qrouter:    qr,
+		AdmConsole: localConsole,
+		stchan:     stchan,
+		frTLS:      frTLS,
 	}, nil
 }
 
