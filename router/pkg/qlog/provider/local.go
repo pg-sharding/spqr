@@ -1,11 +1,12 @@
 package qlog
 
 import (
-	"bufio"
 	"context"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"fmt"
+	"io/ioutil"
 	"os"
-	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type LocalQlog struct{}
@@ -14,7 +15,7 @@ func NewLocalQlog() *LocalQlog {
 	return &LocalQlog{}
 }
 
-func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
+func (dw *LocalQlog) DumpQuery(ctx context.Context, path string, q string) error {
 
 	// TODO: use
 	//ctxQLog, cf := context.WithTimeout(ctx, time.Second * 5)
@@ -22,7 +23,7 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	//
 	//ctxQLog.Deadline()
 
-	file, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.Open(path)
 
 	if err != nil {
 		return err
@@ -34,39 +35,22 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	return nil
 }
 
-func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
+func (dw *LocalQlog) Recover(ctx context.Context, path string) (string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		spqrlog.Logger.Printf(spqrlog.LOG, "%s spqrlog does not exist", path)
-		return []string{}, err
+		return "", err
 	}
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "%s found", path)
+	// TODO it just reads the whole file, but in the future it should read one sql query at a time
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("failed reading file: %w", err)
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
-		}
-	}(file)
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-
-	var queries []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		query := strings.TrimSpace(line)
-		if len(query) > 0 {
-			queries = append(queries, query)
-		}
+	defer file.Close()
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return "", err
 	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	return queries, nil
+	return string(data), nil
 }

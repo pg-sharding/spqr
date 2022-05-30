@@ -4,8 +4,7 @@ proto: 'tcp6'
 http_addr: '[::1]:7001'
 world_http_addr: '[::1]:6432'
 
-executer:
-    init_sql_path: "./test-init.sql"
+init_sql_path: "./test-init.sql"
 
 qrouter:
     qrouter_type: PROXY
