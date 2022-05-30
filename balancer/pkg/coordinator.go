@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/grpcclient"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
@@ -17,9 +18,13 @@ type CoordinatorInterface interface {
 	lockKeyRange(rng KeyRange) error
 	unlockKeyRange(rng KeyRange) error
 
-	splitKeyRange(border *string) error
+	splitKeyRange(border *string, krID, sourceID string) error
 	mergeKeyRanges(border *string) error
 	moveKeyRange(rng KeyRange, shardTo Shard) error
+}
+
+type ConsoleInterface interface {
+	showKeyRanges() ([]*kr.KeyRange, error)
 }
 
 type Coordinator struct {
@@ -29,6 +34,27 @@ type Coordinator struct {
 	shardServiceClient     routerproto.ShardServiceClient
 	keyRangeServiceClient  routerproto.KeyRangeServiceClient
 	operationServiceClient routerproto.OperationServiceClient
+}
+
+func (c *Coordinator) showKeyRanges() ([]*kr.KeyRange, error) {
+	respList, err := c.keyRangeServiceClient.ListKeyRange(context.Background(), &routerproto.ListKeyRangeRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]*kr.KeyRange, 0, len(respList.KeyRangesInfo))
+	for _, keyRangeInfo := range respList.KeyRangesInfo {
+		keyRange := &kr.KeyRange{
+			LowerBound: []byte(keyRangeInfo.GetKeyRange().GetLowerBound()),
+			UpperBound: []byte(keyRangeInfo.GetKeyRange().GetUpperBound()),
+			ShardID:    keyRangeInfo.GetShardId(),
+			ID:         keyRangeInfo.GetKrid(),
+		}
+
+		res = append(res, keyRange)
+	}
+
+	return res, nil
 }
 
 func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
@@ -169,9 +195,13 @@ func (c *Coordinator) unlockKeyRange(rng KeyRange) error {
 	return c.waitTilDone(resp.OperationId)
 }
 
-func (c *Coordinator) splitKeyRange(border *string) error {
+func (c *Coordinator) splitKeyRange(border *string, krID, sourceID string) error {
 	resp, err := c.keyRangeServiceClient.SplitKeyRange(context.Background(), &routerproto.SplitKeyRangeRequest{
 		Bound: []byte(*border),
+		KeyRangeInfo: &routerproto.KeyRangeInfo{
+			Krid: krID,
+		},
+		SourceId: sourceID,
 	})
 	if err != nil {
 		return err

@@ -3,13 +3,15 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"net"
 
 	"github.com/jackc/pgproto3/v2"
+
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
@@ -124,22 +126,80 @@ func (pi *PSQLInteractor) AddShard(cl client.Client, shard *datashards.DataShard
 }
 
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing key ranges")
-	if err := pi.WriteHeader("listing key ranges", cl); err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "listing key ranges")
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("Key range ID"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Shard ID"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Lower bound"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+			{
+				Name:                 []byte("Upper bound"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 	}
 
 	for _, keyRange := range krs {
 		if err := cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("key range %v mapped to datashard %s", keyRange.ID, keyRange.ShardID))},
+			Values: [][]byte{
+				[]byte(keyRange.ID),
+				[]byte(keyRange.ShardID),
+				keyRange.LowerBound,
+				keyRange.UpperBound,
+			},
 		}); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
 
-	return pi.completeMsg(len(krs), cl)
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange, cl client.Client) error {
@@ -167,7 +227,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %v", split.SourceID, split.Bound))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %s", split.SourceID, string(split.Bound)))}},
 	} {
 		if err := cl.Send(msg); err != nil {
 			spqrlog.Logger.PrintError(err)
@@ -290,18 +350,56 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	return pi.completeMsg(0, cl)
 }
 
-func (pi *PSQLInteractor) MoveKeyRange(ctx context.Context, move *kr.MoveKeyRange, cl client.Client) error {
-	if err := pi.WriteHeader("move key range", cl); err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
+func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange, cl client.Client) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("merge key ranges"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.KeyRangeIDLeft, unite.KeyRangeIDRight))}},
+		&pgproto3.CommandComplete{},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("moved key range %s to %s", move.Krid, move.ShardId), cl); err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
+	return nil
+}
+
+func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange, cl client.Client) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("move key range"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+		},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("move key range %v to shard %v", move.Krid, move.ShardId))}},
+		&pgproto3.CommandComplete{},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
 	}
 
-	return pi.completeMsg(0, cl)
+	return nil
 }
 
 func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl client.Client) error {

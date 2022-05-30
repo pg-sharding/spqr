@@ -43,6 +43,7 @@ message AddKeyRangeRequest {
 message SplitKeyRangeRequest {
   KeyRangeInfo key_range_info = 1;
   bytes bound = 2;
+  string source_id = 3;
 }
 
 message MergeKeyRangeRequest {

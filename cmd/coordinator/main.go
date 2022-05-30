@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb/etcdqdb"
-	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 )
 
 var cfgPath string
@@ -25,7 +26,7 @@ var rootCmd = &cobra.Command{
 
 		db, err := etcdqdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 		if err != nil {
-			tracelog.ErrorLogger.FatalError(err)
+			spqrlog.Logger.FatalOnError(err)
 			// exit
 		}
 		coordinator := provider.NewCoordinator(db)
@@ -33,7 +34,7 @@ var rootCmd = &cobra.Command{
 		app := app.NewApp(coordinator)
 
 		err = app.Run()
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 
 		return err
 	},
@@ -45,7 +46,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.FatalOnError(err)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type App struct {
@@ -76,7 +77,7 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 		return nil, err
 	}
 
-	balancer.Init(&installation, &coordinator, &db)
+	balancer.Init(&installation, &coordinator, &coordinator, &db)
 
 	return &App{
 		coordinator:  &coordinator,
@@ -91,4 +92,22 @@ func (app *App) ProcBalancer(ctx context.Context) error {
 	//TODO return error
 	app.balancer.BrutForceStrategy()
 	return nil
+}
+
+func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
+	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
+	if err != nil {
+		return fmt.Errorf("init frontend TLS: %w", err)
+	}
+
+	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
+
+	listener, err := net.Listen(proto, admaddr)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
+	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
+	return app.balancer.RunAdm(ctx, listener, frTLS)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/coordinator"
@@ -62,10 +63,13 @@ func (c CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *pr
 }
 
 func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.Split(ctx, &kr.SplitKeyRange{
-		Bound: request.Bound,
-	})
-	if err != nil {
+	splitKR := &kr.SplitKeyRange{
+		Bound:    request.Bound,
+		Krid:     request.KeyRangeInfo.Krid,
+		SourceID: request.SourceId,
+	}
+
+	if err := c.impl.Split(ctx, splitKR); err != nil {
 		return nil, err
 	}
 
