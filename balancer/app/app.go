@@ -95,7 +95,7 @@ func (app *App) ProcBalancer(ctx context.Context) error {
 }
 
 func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
-	frTLS, err := config.InitTLS(frTlsCfg.SslMode, frTlsCfg.CertFile, frTlsCfg.KeyFile)
+	frTLS, err := frTlsCfg.Init()
 	if err != nil {
 		return fmt.Errorf("init frontend TLS: %w", err)
 	}

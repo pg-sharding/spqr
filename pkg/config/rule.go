@@ -17,7 +17,6 @@ type RulesCfg struct {
 	PROTO              string `json:"proto" toml:"proto" yaml:"proto"`
 	WorldShardFallback bool   `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 
-	// listen cfg
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
 	// shards

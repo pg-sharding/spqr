@@ -2,8 +2,7 @@ package config
 
 import (
 	"crypto/tls"
-
-	"golang.org/x/xerrors"
+	"fmt"
 )
 
 type InstanceCFG struct {
@@ -33,9 +32,9 @@ type ShardCfg struct {
 }
 
 func (sh *ShardCfg) InitShardTLS() error {
-	shardTLSConfig, err := InitTLS(sh.TLSCfg.SslMode, sh.TLSCfg.CertFile, sh.TLSCfg.KeyFile)
+	shardTLSConfig, err := sh.TLSCfg.Init()
 	if err != nil {
-		return xerrors.Errorf("init datashard TLS: %w", err)
+		return fmt.Errorf("init datashard TLS: %w", err)
 	}
 	sh.TLSConfig = shardTLSConfig
 
