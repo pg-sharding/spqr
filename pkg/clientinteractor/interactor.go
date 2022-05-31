@@ -130,42 +130,10 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange, cl client.Client) error 
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			{
-				Name:                 []byte("Key range ID"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-			{
-				Name:                 []byte("Shard ID"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-			{
-				Name:                 []byte("Lower bound"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
-			{
-				Name:                 []byte("Upper bound"),
-				TableOID:             0,
-				TableAttributeNumber: 0,
-				DataTypeOID:          25,
-				DataTypeSize:         -1,
-				TypeModifier:         -1,
-				Format:               0,
-			},
+			TextOidFD("Key range ID"),
+			TextOidFD("Shard ID"),
+			TextOidFD("Lower bound"),
+			TextOidFD("Upper bound"),
 		},
 		},
 	} {
