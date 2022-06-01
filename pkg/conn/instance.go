@@ -35,7 +35,7 @@ type DBInstance interface {
 	Receive() (pgproto3.BackendMessage, error)
 
 	CheckRW() (bool, error)
-	ReqBackendSsl(tlscfg *tls.Config) error
+	ReqBackendSsl(*tls.Config) error
 
 	Hostname() string
 
@@ -86,7 +86,7 @@ func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
 	return net.Dial(proto, addr)
 }
 
-func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string) (DBInstance, error) {
+func NewInstanceConn(cfg *config.InstanceCFG, tlsconfig *tls.Config) (DBInstance, error) {
 	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
 
 	instance := &PostgreSQLInstance{
@@ -101,8 +101,8 @@ func NewInstanceConn(cfg *config.InstanceCFG, tlscfg *tls.Config, sslmode string
 
 	instance.conn = netconn
 
-	if sslmode == config.SSLMODEREQUIRE {
-		err := instance.ReqBackendSsl(tlscfg)
+	if tlsconfig != nil {
+		err := instance.ReqBackendSsl(tlsconfig)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +145,7 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 
 var _ DBInstance = &PostgreSQLInstance{}
 
-func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
+func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)
 	// Gen salt
@@ -170,7 +170,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlscfg *tls.Config) error {
 		return xerrors.New("SSL should be enabled")
 	}
 
-	pgi.conn = tls.Client(pgi.conn, tlscfg)
+	pgi.conn = tls.Client(pgi.conn, tlsconfig)
 	return nil
 }
 

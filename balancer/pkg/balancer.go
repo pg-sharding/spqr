@@ -15,7 +15,6 @@ import (
 
 	"github.com/wal-g/tracelog"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 )
@@ -869,16 +868,16 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 	}
 }
 
-func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsCfg *tls.Config) error {
+func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsconfig *tls.Config) error {
 	cl := client.NewPsqlClient(conn)
 
-	if err := cl.Init(tlsCfg, config.SSLMODEDISABLE); err != nil {
+	if err := cl.Init(tlsconfig); err != nil {
 		return err
 	}
 
 	stchan := make(chan struct{})
 
-	localConsole, err := NewConsole(tlsCfg, b.coordinator, b.console, stchan)
+	localConsole, err := NewConsole(tlsconfig, b.coordinator, b.console, stchan)
 	if err != nil {
 		spqrlog.Logger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
 		return err

@@ -19,7 +19,6 @@ type RouterCfg struct {
 	InitSQL       string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 
 	QRouterCfg   QrouterConfig `json:"qrouter" toml:"qrouter" yaml:"qrouter"`
-	ExecuterCfg  ExecuterCfg   `json:"executer" toml:"executer" yaml:"executer"`
 	RulesConfig  RulesCfg      `json:"rules" toml:"rules" yaml:"rules"`
 	JaegerConfig JaegerCfg     `json:"jaeger" toml:"jaeger" yaml:"jaeger"`
 }

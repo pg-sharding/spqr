@@ -7,9 +7,15 @@ import (
 	"github.com/wal-g/tracelog"
 )
 
+// https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION
+
 const (
-	SSLMODEDISABLE = "disable"
-	SSLMODEREQUIRE = "require"
+	SSLMODEDISABLE    = "disable"
+	SSLMODEALLOW      = "allow"
+	SSLMODEPREFER     = "prefer"
+	SSLMODEREQUIRE    = "require"
+	SSLMODEVERIFYCA   = "verify-ca"
+	SSLMODEVERIFYFULL = "verify-full"
 )
 
 type TLSConfig struct {
@@ -18,13 +24,12 @@ type TLSConfig struct {
 	CertFile string `json:"cert_file" toml:"cert_file" yaml:"cert_file"`
 }
 
-func (c *TLSConfig) IsTLSModeDisable() bool {
+func (c *TLSConfig) IsSSLModeDisable() bool {
 	return c == nil || c.SslMode == SSLMODEDISABLE || (c.CertFile == "" && c.KeyFile == "" || c.SslMode == "")
 }
 
 func (c *TLSConfig) Init() (*tls.Config, error) {
-	tracelog.InfoLogger.Printf("Init TLS kek")
-	if c.IsTLSModeDisable() {
+	if c.IsSSLModeDisable() {
 		tracelog.InfoLogger.Printf("skip loading tls certs")
 		return nil, nil
 	}

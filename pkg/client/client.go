@@ -32,7 +32,7 @@ type Client interface {
 	ReplyNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error
 
-	Init(cfg *tls.Config, reqssl string) error
+	Init(cfg *tls.Config) error
 
 	PasswordCT() string
 	PasswordMD5() string

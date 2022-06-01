@@ -336,7 +336,7 @@ var unknownCoordinatorCmd = fmt.Errorf("unknown coordinator dmd")
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := psqlclient.NewPsqlClient(nconn)
 
-	err := cl.Init(nil, config.SSLMODEDISABLE)
+	err := cl.Init(nil)
 
 	if err != nil {
 		return err

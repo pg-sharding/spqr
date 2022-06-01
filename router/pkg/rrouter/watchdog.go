@@ -18,17 +18,15 @@ type Watchdog interface {
 	Run()
 }
 
-func NewShardWatchDog(tlscfg *tls.Config, shname string, rp RoutePool) (Watchdog, error) {
+func NewShardWatchDog(tlsconfig *tls.Config, shname string, rp RoutePool) (Watchdog, error) {
 
 	cfgs := config.RouterConfig().RulesConfig.ShardMapping[shname].Hosts
-
-	sslmode := config.RouterConfig().RulesConfig.ShardMapping[shname].TLSCfg.SslMode
 
 	hostConns := make([]conn.DBInstance, 0, len(cfgs))
 
 	for _, h := range cfgs {
 
-		i, err := conn.NewInstanceConn(h, tlscfg, sslmode)
+		i, err := conn.NewInstanceConn(h, tlsconfig)
 
 		if err != nil {
 			return nil, err
@@ -39,8 +37,7 @@ func NewShardWatchDog(tlscfg *tls.Config, shname string, rp RoutePool) (Watchdog
 
 	return &ShardPrimaryWatchdog{
 		hostConns: hostConns,
-		tlscfg:    tlscfg,
-		sslmode:   sslmode,
+		tlsconfig:    tlsconfig,
 		rp:        rp,
 		shname:    shname,
 	}, nil
@@ -48,8 +45,7 @@ func NewShardWatchDog(tlscfg *tls.Config, shname string, rp RoutePool) (Watchdog
 
 type ShardPrimaryWatchdog struct {
 	mu      sync.Mutex
-	tlscfg  *tls.Config
-	sslmode string
+	tlsconfig  *tls.Config
 
 	rp RoutePool
 
@@ -59,7 +55,7 @@ type ShardPrimaryWatchdog struct {
 }
 
 func (s *ShardPrimaryWatchdog) AddInstance(cfg *config.InstanceCFG) error {
-	instance, err := conn.NewInstanceConn(cfg, s.tlscfg, s.sslmode)
+	instance, err := conn.NewInstanceConn(cfg, s.tlsconfig)
 	if err != nil {
 		return err
 	}

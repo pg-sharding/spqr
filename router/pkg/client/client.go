@@ -371,8 +371,8 @@ func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
 }
 
 // startup + ssl
-func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "initialing client connection with %v ssl req", sslmode)
+func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
+	spqrlog.Logger.Printf(spqrlog.LOG, "initialing client connection with ssl: %t", tlsconfig == nil)
 
 	var backend *pgproto3.Backend
 
@@ -397,7 +397,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 
 	switch protoVer {
 	case conn.SSLREQ:
-		if sslmode == config.SSLMODEDISABLE {
+		if tlsconfig == nil {
 			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 			spqrlog.Logger.Errorf("ssl mode is requested but ssl is disabled")
 			_ = cl.ReplyErrMsg("ssl mode is requested but ssl is disabled")
@@ -409,7 +409,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 			return err
 		}
 
-		cl.conn = tls.Server(cl.conn, cfg)
+		cl.conn = tls.Server(cl.conn, tlsconfig)
 
 		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 
@@ -452,7 +452,7 @@ func (cl *PsqlClient) Init(cfg *tls.Config, sslmode string) error {
 	cl.startupMsg = sm
 	cl.be = backend
 
-	if sslmode == config.SSLMODEREQUIRE && protoVer != conn.SSLREQ {
+	if tlsconfig != nil && protoVer != conn.SSLREQ {
 		if err := cl.Send(
 			&pgproto3.ErrorResponse{
 				Severity: "ERROR",
