@@ -559,12 +559,11 @@ func (cl *PsqlClient) DB() string {
 		return db
 	}
 
-	return DefaultUsr
+	return DefaultDB
 }
 
 func (cl *PsqlClient) receivepasswd() string {
 	msg, err := cl.be.Receive()
-
 	if err != nil {
 		return ""
 	}

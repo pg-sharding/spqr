@@ -175,6 +175,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	}
 
 	if err := cl.Auth(rt); err != nil {
+		_ = cl.ReplyErrMsg(err.Error())
 		return cl, err
 	}
 
