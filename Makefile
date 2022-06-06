@@ -30,7 +30,10 @@ build_worldmock:
 build_balancer:
 	go build -o spqr-balancer ./cmd/balancer/main.go
 
-build: build_c build_proxy build_world build_worldmock build_stress build_balancer
+build_mover:
+	go build -o spqr-mover  ./cmd/mover/main.go
+
+build: build_c build_proxy build_world build_worldmock build_stress build_balancer build_mover
 
 gogen:
 	protoc --go_out=./router --go_opt=paths=source_relative --go-grpc_out=./router --go-grpc_opt=paths=source_relative \

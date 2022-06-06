@@ -106,21 +106,27 @@ WHERE column_name=$1;
 			ch <- struct{}{}
 		}()
 
-		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw,
-			fmt.Sprintf("copy (select * from %s.%s) to stdout", v.TableSchema, v.TableName))
+		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
+			key.Columns()[0], keyRange.LowerBound, key.Columns()[0], keyRange.UpperBound)
+
+		spqrlog.Logger.Printf(spqrlog.ERROR, "executing %v", qry)
+
+		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 
-		pw.w.Close()
+		if err := pw.w.Close(); err != nil {
+			spqrlog.Logger.Printf(spqrlog.ERROR, "error closing pipe %v", err)
+		}
 
 		spqrlog.Logger.Printf(spqrlog.ERROR, "copy cmd executed")
 
 		<-ch
 	}
 
-	txTo.Commit(ctx)
-	txFrom.Commit(ctx)
+	_ = txTo.Commit(ctx)
+	_ = txFrom.Commit(ctx)
 	return nil
 }
 

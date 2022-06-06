@@ -7,6 +7,7 @@ spqr-world
 spqr-stress
 spqr-worldmock
 spqr-balancer
+spqr-mover
 y.output
 *.swp
 *.swo
