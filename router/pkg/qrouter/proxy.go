@@ -445,8 +445,8 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 }
 
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
-
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T", expr.Node)
+
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_BoolExpr:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "bool expr routing")
@@ -463,7 +463,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 				if err != nil {
 					return nil, err
 				}
-				if inRoute.Matchedkr.ID != route.Matchedkr.ID {
+				if inRoute.Matchedkr.ShardID != route.Matchedkr.ShardID {
 					return nil, ComplexQuery
 				}
 			}
