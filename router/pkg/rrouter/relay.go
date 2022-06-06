@@ -386,6 +386,7 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 
 	bt, _, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
 	if err != nil {
+		rst.SetTxStatus(conn.TXERR)
 		return conn.TXERR, err
 	}
 	rst.SetTxStatus(bt)
@@ -507,6 +508,8 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnMa
 		return SkipQueryError
 	default:
 		_ = rst.UnRouteWithError(nil, err)
+		rst.msgBuf = nil
+		rst.smsgBuf = nil
 		return err
 	}
 }
@@ -517,8 +520,9 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Co
 	}
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return false, err
 		}
 		return false, err
 	} else {
@@ -533,8 +537,9 @@ func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForR
 	}
 
 	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
-		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
 		}
 		return err
 	}

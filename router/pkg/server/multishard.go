@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -95,7 +94,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				if err != nil {
 					return err
 				}
-				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %v from %s", msg, shard.Name())
+				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %T from %s", msg, shard.Name())
 
 				ch <- msg
 
@@ -138,7 +137,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		}
 	}
 
-	tracelog.InfoLogger.Printf("compute multi server msgs from %T", msgs[0])
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "compute multi server msgs from %T", msgs[0])
 
 	switch v := msgs[0].(type) {
 	case *pgproto3.CommandComplete:
@@ -162,7 +161,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		return ret, nil
 
 	default:
-		return &pgproto3.ErrorResponse{Severity: "ERROR", Message: fmt.Sprintf("failed to conpose responce %T", v)}, nil
+		return &pgproto3.ErrorResponse{Severity: "ERROR", Message: fmt.Sprintf("failed to compose responce %T", v)}, nil
 	}
 }
 
