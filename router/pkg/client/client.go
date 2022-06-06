@@ -23,6 +23,10 @@ import (
 
 var NotRouted = xerrors.New("client not routed")
 
+type RouterPreparedStatement struct {
+	query string
+}
+
 type PreparedStatementMapper interface {
 	PreparedStatementQueryByName(name string) string
 	StorePreparedStatement(name, query string)

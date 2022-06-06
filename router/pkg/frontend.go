@@ -20,6 +20,10 @@ type Qinteractor interface{}
 
 type QinteractorImpl struct{}
 
+func AdvancedPoolingNeeded(rst rrouter.RelayStateInteractor) bool {
+	return rst.Client().Rule().PoolingMode == config.PoolingModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().QRouterCfg.Qtype == string(config.ProxyQrouter)
+}
+
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
 	state, err := rst.Parse(q)
@@ -149,6 +153,27 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 		return rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),
 		})
+	case parser.ParseStatePrepareStmt:
+		// sql level prepares stmt pooling
+		if AdvancedPoolingNeeded(rst) {
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "sql level prep statement pooling support is on")
+			rst.Client().StorePreparedStatement(st.Name, st.Query)
+			return rst.Client().ReplyParseComplete()
+		} else {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			return err
+		}
+	case parser.ParseStateExecute:
+		if AdvancedPoolingNeeded(rst) {
+			// do nothing
+			rst.Client().PreparedStatementQueryByName(st.Name)
+			return nil
+		} else {
+			rst.AddQuery(*q)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			return err
+		}
 	default:
 		rst.AddQuery(*q)
 		_, err := rst.ProcessMessageBuf(true, true, cmngr)
@@ -162,28 +187,21 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
-	onErrFunc := func(err error) error {
-		spqrlog.Logger.Errorf("frontend got error: %v", err)
-		switch err {
-		case nil:
-			return nil
-		case io.ErrUnexpectedEOF:
-			fallthrough
-		case io.EOF:
-			fallthrough
-			// ok
-		default:
-			return rst.Close()
-		}
-	}
-
 	var msg pgproto3.FrontendMessage
 	var err error
 
 	for {
 		msg, err = cl.Receive()
 		if err != nil {
-			return onErrFunc(err)
+			switch err {
+			case io.ErrUnexpectedEOF:
+				fallthrough
+			case io.EOF:
+				return rst.Close()
+				// ok
+			default:
+				_ = rst.UnRouteWithError(rst.ActiveShards(), err)
+			}
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %T msg, %p", msg, msg)
@@ -211,15 +229,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				return rst.ProcessMessage(q, true, true, cmngr)
 			case *pgproto3.Parse:
 				hash := murmur3.Sum64([]byte(q.Query))
-
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
-
 				if err := cl.ReplyNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 					return err
 				}
-
 				cl.StorePreparedStatement(q.Name, q.Query)
-
 				// simply reply witch ok parse complete
 				return cl.ReplyParseComplete()
 			case *pgproto3.Describe:
@@ -236,14 +250,13 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 					return err
 				}
 
+				q.Name = fmt.Sprintf("%d", hash)
 				if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-					Name:  fmt.Sprintf("%d", hash),
+					Name:  q.Name,
 					Query: query,
 				}); err != nil {
 					return err
 				}
-
-				q.Name = fmt.Sprintf("%d", hash)
 
 				var err error
 				if err = rst.RelayRunCommand(q, false, false); err != nil {
@@ -282,7 +295,15 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 				return nil
 			}
 		}(); err != nil {
-			return onErrFunc(err)
+			switch err {
+			case io.ErrUnexpectedEOF:
+				fallthrough
+			case io.EOF:
+				return rst.Close()
+				// ok
+			default:
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client iter done with %v", err)
+			}
 		}
 	}
 }

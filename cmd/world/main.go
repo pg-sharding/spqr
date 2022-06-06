@@ -10,7 +10,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:  "world run ",
-	Long: "Stateless Postgres Query Rrouter",
+	Long: "Stateless Postgres ParamsQuerySuf Rrouter",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

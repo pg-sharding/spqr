@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
+	"strings"
 )
 
 type QParser struct {
@@ -30,7 +31,7 @@ func (qp *QParser) State() ParseState {
 	return qp.state
 }
 
-func (qp *QParser) Q() *pgproto3.Query {
+func (qp *QParser) Query() *pgproto3.Query {
 	return qp.query
 }
 
@@ -81,6 +82,11 @@ type ParseStatePrepareStmt struct {
 	Name  string
 	Query string
 }
+type ParseStateExecute struct {
+	ParseState
+	ParamsQuerySuf string
+	Name           string
+}
 
 func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 	qp.query = query
@@ -103,11 +109,25 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
-			//case *pgquery.Node_PrepareStmt:
-			//	varStmt := ParseStatePrepareStmt{}
-			//	q.PrepareStmt.Name = "tmp"
-			//	spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
-			//	qp.state = varStmt
+			case *pgquery.Node_ExecuteStmt:
+				varStmt := ParseStateExecute{}
+				varStmt.Name = q.ExecuteStmt.Name
+				ss := strings.Split(strings.Split(strings.ToLower(query.String), "execute")[1], strings.ToLower(varStmt.Name))[1]
+
+				varStmt.ParamsQuerySuf = ss
+				qp.state = varStmt
+				return varStmt, nil
+			case *pgquery.Node_PrepareStmt:
+				varStmt := ParseStatePrepareStmt{}
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+				varStmt.Name = q.PrepareStmt.Name
+				// prepare *name* as *query*
+				ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query.String), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
+				varStmt.Query = ss
+				qp.query.String = ss
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
+				qp.state = varStmt
+				return qp.state, nil
 			//case *pgquery.Node_ExecuteStmt:
 			//	query.ExecuteStmt.Name
 			case *pgquery.Node_VariableSetStmt:

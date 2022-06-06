@@ -22,14 +22,14 @@ type cPool struct {
 	mu   sync.Mutex
 	pool map[string][]Shard
 
-	f func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)
+	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)
 }
 
-func NewPool(f func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)) *cPool {
+func NewPool(connectionAllocaFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)) *cPool {
 	return &cPool{
-		f:    f,
-		mu:   sync.Mutex{},
-		pool: map[string][]Shard{},
+		connectionAllocateFn: connectionAllocaFn,
+		mu:                   sync.Mutex{},
+		pool:                 map[string][]Shard{},
 	}
 }
 
@@ -77,7 +77,7 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BERul
 
 	// do not hold lock on poolRW while allocate new connection
 	var err error
-	sh, err = c.f(shardKey, host, rule)
+	sh, err = c.connectionAllocateFn(shardKey, host, rule)
 	if err != nil {
 		return nil, err
 	}
