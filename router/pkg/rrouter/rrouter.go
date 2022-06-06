@@ -39,7 +39,7 @@ type RRouter struct {
 	defaultBackendRule  *config.BERule
 
 	tlsconfig *tls.Config
-	lg  *log.Logger
+	lg        *log.Logger
 
 	wgs map[qdb.ShardKey]Watchdog
 }
@@ -102,13 +102,13 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	}
 
 	return &RRouter{
-		routePool:     NewRouterPoolImpl(config.RouterConfig().RulesConfig.ShardMapping),
-		frontendRules: frontendRules,
-		backendRules:  backendRules,
+		routePool:           NewRouterPoolImpl(config.RouterConfig().RulesConfig.ShardMapping),
+		frontendRules:       frontendRules,
+		backendRules:        backendRules,
 		defaultFrontendRule: defaultFrontendRule,
-		defaultBackendRule: defaultBackendRule,
-		lg:            log.New(os.Stdout, "router", 0),
-		wgs:           map[qdb.ShardKey]Watchdog{},
+		defaultBackendRule:  defaultBackendRule,
+		lg:                  log.New(os.Stdout, "router", 0),
+		wgs:                 map[qdb.ShardKey]Watchdog{},
 		tlsconfig:           tlsconfig,
 	}
 }

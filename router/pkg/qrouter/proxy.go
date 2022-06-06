@@ -391,7 +391,8 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 			}
 
 			return &DataShardRoute{
-				Shkey: kr.ShardKey{Name: krkey.ShardID},
+				Shkey:     kr.ShardKey{Name: krkey.ShardID},
+				Matchedkr: kr.KeyRangeFromDB(krkey),
 			}, nil
 		}
 	}
@@ -410,7 +411,7 @@ func getbytes(val *pgquery.Node) (string, error) {
 	}
 }
 
-func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, colindx int, expr *pgquery.Node) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, expr *pgquery.Node) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
@@ -437,16 +438,39 @@ func (qr *ProxyQrouter) DeparseKeyWithRanges(ctx context.Context, colindx int, e
 		if len(texpr.List.Items) == 0 {
 			return nil, ComplexQuery
 		}
-		return qr.DeparseKeyWithRanges(ctx, colindx, texpr.List.Items[0])
+		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[0])
 	default:
 		return nil, ComplexQuery
 	}
 }
 
-func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T", expr.Node)
 	switch texpr := expr.Node.(type) {
+	case *pgquery.Node_BoolExpr:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "bool expr routing")
+		var route *DataShardRoute
+		var err error
+		for i, inExpr := range texpr.BoolExpr.Args {
+			if i == 0 {
+				route, err = qr.routeByClause(ctx, inExpr)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				inRoute, err := qr.routeByClause(ctx, inExpr)
+				if err != nil {
+					return nil, err
+				}
+				if inRoute.Matchedkr.ID != route.Matchedkr.ID {
+					return nil, ComplexQuery
+				}
+			}
+		}
+
+		return route, nil
+
 	case *pgquery.Node_AExpr:
 		if texpr.AExpr.Kind != pgquery.A_Expr_Kind_AEXPR_OP {
 			return nil, ComplexQuery
@@ -463,11 +487,11 @@ func (qr *ProxyQrouter) routeByExpr(ctx context.Context, expr *pgquery.Node) (*D
 			return nil, ComplexQuery
 		}
 
-		krs, err := qr.DeparseKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
+		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
 		if err != nil {
 			return nil, err
 		}
-		return krs, nil
+		return route, nil
 	default:
 		return nil, ComplexQuery
 	}
@@ -483,7 +507,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node
 			return nil, ComplexQuery
 		}
 		valNode := q.SelectStmt.ValuesLists[0]
-		return qr.DeparseKeyWithRanges(ctx, colindx, valNode)
+		return qr.RouteKeyWithRanges(ctx, colindx, valNode)
 	}
 
 	return nil, ComplexQuery
@@ -497,7 +521,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if clause == nil {
 			return &MultiMatchRoute{}, nil
 		}
-		shroute, err := qr.routeByExpr(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause)
 		if err != nil {
 			return nil, err
 		}
@@ -535,7 +559,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return &MultiMatchRoute{}, nil
 		}
 
-		shroute, err := qr.routeByExpr(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause)
 		if err != nil {
 			return nil, err
 		}
@@ -549,7 +573,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return &MultiMatchRoute{}, nil
 		}
 
-		shroute, err := qr.routeByExpr(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause)
 		if err != nil {
 			return nil, err
 		}
