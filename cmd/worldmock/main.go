@@ -8,7 +8,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:  "worldmock run",
-	Long: "Stateless Postgres Query Router",
+	Long: "Stateless Postgres ParamsQuerySuf Router",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

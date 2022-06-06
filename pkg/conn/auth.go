@@ -8,11 +8,10 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/wal-g/tracelog"
 )
 
 func AuthBackend(shard DBInstance, cfg *config.ShardCfg, msg pgproto3.BackendMessage) error {
-	tracelog.InfoLogger.Printf("Auth type proc %+v\n", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "Auth type proc %+v\n", msg)
 
 	switch v := msg.(type) {
 	case *pgproto3.AuthenticationOk:

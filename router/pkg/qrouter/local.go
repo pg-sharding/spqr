@@ -7,8 +7,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
-	"github.com/wal-g/tracelog"
 )
 
 type LocalQrouter struct {
@@ -22,8 +22,9 @@ var _ QueryRouter = &LocalQrouter{}
 func NewLocalQrouter(rules config.RulesCfg) (*LocalQrouter, error) {
 	if len(rules.ShardMapping) != 1 {
 		errmsg := "local router support only single-datashard routing"
-		tracelog.ErrorLogger.Printf(errmsg)
-		return nil, errors.New(errmsg)
+		err := errors.New(errmsg)
+		spqrlog.Logger.PrintError(err)
+		return nil, err
 	}
 
 	l := &LocalQrouter{}
@@ -44,13 +45,13 @@ func NewLocalQrouter(rules config.RulesCfg) (*LocalQrouter, error) {
 	return l, nil
 }
 
-func (l *LocalQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
-	tracelog.InfoLogger.Printf("adding node %s", ds.ID)
+func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding node %s", ds.ID)
 	l.ds = ds
 	return nil
 }
 
-func (l *LocalQrouter) Route(ctx context.Context) (RoutingState, error) {
+func (l *LocalQrouter) Route(_ context.Context) (RoutingState, error) {
 	return ShardMatchState{
 		Routes: []*DataShardRoute{
 			{

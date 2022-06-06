@@ -23,6 +23,10 @@ import (
 
 var NotRouted = xerrors.New("client not routed")
 
+type RouterPreparedStatement struct {
+	query string
+}
+
 type PreparedStatementMapper interface {
 	PreparedStatementQueryByName(name string) string
 	StorePreparedStatement(name, query string)
@@ -555,12 +559,11 @@ func (cl *PsqlClient) DB() string {
 		return db
 	}
 
-	return DefaultUsr
+	return DefaultDB
 }
 
 func (cl *PsqlClient) receivepasswd() string {
 	msg, err := cl.be.Receive()
-
 	if err != nil {
 		return ""
 	}

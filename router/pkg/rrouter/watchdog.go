@@ -37,15 +37,15 @@ func NewShardWatchDog(tlsconfig *tls.Config, shname string, rp RoutePool) (Watch
 
 	return &ShardPrimaryWatchdog{
 		hostConns: hostConns,
-		tlsconfig:    tlsconfig,
+		tlsconfig: tlsconfig,
 		rp:        rp,
 		shname:    shname,
 	}, nil
 }
 
 type ShardPrimaryWatchdog struct {
-	mu      sync.Mutex
-	tlsconfig  *tls.Config
+	mu        sync.Mutex
+	tlsconfig *tls.Config
 
 	rp RoutePool
 

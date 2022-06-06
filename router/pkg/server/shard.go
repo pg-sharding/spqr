@@ -57,11 +57,10 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 
 func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
-		return xerrors.New("single datashard server does not support more than 2 datashard connection simultaneously")
+		return xerrors.New("single datashard server does not support more than 1 datashard connection simultaneously")
 	}
 
 	var err error
-
 	if srv.shard, err = srv.pool.Connection(shkey, srv.rule); err != nil {
 		return err
 	}
