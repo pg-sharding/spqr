@@ -112,7 +112,7 @@ type InstancePoolImpl struct {
 
 	primaries map[string]string
 
-	tlscfg *tls.Config
+	tlsconfig *tls.Config
 }
 
 func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) error {
@@ -210,7 +210,12 @@ func NewConnPool(mapping map[string]*config.ShardCfg) DBPool {
 			}
 		}
 
-		pgi, err := conn.NewInstanceConn(hostCfg, mapping[shardKey.Name].TLSConfig, mapping[shardKey.Name].TLSCfg.SslMode)
+		tlsconfig, err := mapping[shardKey.Name].TLSCfg.Init()
+		if err != nil {
+			return nil, err
+		}
+
+		pgi, err := conn.NewInstanceConn(hostCfg, tlsconfig)
 		if err != nil {
 			return nil, err
 		}

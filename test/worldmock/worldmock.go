@@ -65,7 +65,7 @@ func (w *WorldMock) Run() error {
 func (w *WorldMock) serv(netconn net.Conn) error {
 	cl := client.NewPsqlClient(netconn)
 
-	err := cl.Init(nil, config.SSLMODEDISABLE)
+	err := cl.Init(nil)
 
 	if err != nil {
 		return err

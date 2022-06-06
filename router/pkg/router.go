@@ -3,16 +3,16 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"fmt"
 	"net"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rrouter"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 )
 
 type Router interface {
@@ -25,10 +25,9 @@ type RouterImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 
-	SPIExecuter *Executer
-	stchan      chan struct{}
-	addr        string
-	frTLS       *tls.Config
+	stchan chan struct{}
+	addr   string
+	frTLS  *tls.Config
 }
 
 func (r *RouterImpl) ID() string {
@@ -43,10 +42,6 @@ var _ Router = &RouterImpl{}
 
 func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
-	// init tls
-	if err := initShards(config.RouterConfig().RulesConfig); err != nil {
-		spqrlog.Logger.PrintError(err)
-	}
 	// qrouter init
 	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
@@ -60,14 +55,11 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	// frontend
 	frTLS, err := rules.TLSCfg.Init()
 	if err != nil {
-		return nil, errors.Wrap(err, "init frontend TLS")
+		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}
 
 	// request router
-	rr, err := rrouter.NewRouter(frTLS)
-	if err != nil {
-		return nil, errors.Wrap(err, "NewRouter")
-	}
+	rr := rrouter.NewRouter(frTLS)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
@@ -75,8 +67,6 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 		return nil, err
 	}
-
-	executer := NewExecuter(config.RouterConfig().ExecuterCfg)
 
 	for _, fname := range []string{
 		config.RouterConfig().InitSQL,
@@ -91,40 +81,24 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 			return nil, err
 		}
 
-		if err := executer.SPIexec(context.TODO(), localConsole, client.NewFakeClient(), queries); err != nil {
-			spqrlog.Logger.PrintError(err)
-			return nil, err
+		spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
+		for _, query := range queries {
+			spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
+			if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
 		}
 
 		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 	}
 
 	return &RouterImpl{
-		Rrouter:     rr,
-		Qrouter:     qr,
-		AdmConsole:  localConsole,
-		SPIExecuter: executer,
-		stchan:      stchan,
-		frTLS:       frTLS,
+		Rrouter:    rr,
+		Qrouter:    qr,
+		AdmConsole: localConsole,
+		stchan:     stchan,
+		frTLS:      frTLS,
 	}, nil
-}
-
-func initShards(rules config.RulesCfg) error {
-	for _, shard := range rules.ShardMapping {
-		switch shard.ShType {
-		case config.WorldShard:
-			// nothing
-		case config.DataShard:
-			// datashard assumed by default
-			fallthrough
-		default:
-			if err := shard.InitShardTLS(); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func (r *RouterImpl) serv(netconn net.Conn) error {
@@ -147,7 +121,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 	closer, err := r.initJaegerTracer()
 	if err != nil {
-		return xerrors.Errorf("could not initialize jaeger tracer: %s", err.Error())
+		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
 	}
 	defer func() { _ = closer.Close() }()
 
@@ -191,7 +165,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 
 func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	cl := client.NewPsqlClient(conn)
-	if err := cl.Init(r.frTLS, config.SSLMODEDISABLE); err != nil {
+	if err := cl.Init(r.frTLS); err != nil {
 		return err
 	}
 	return r.AdmConsole.Serve(ctx, cl)

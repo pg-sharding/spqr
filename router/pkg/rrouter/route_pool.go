@@ -26,6 +26,15 @@ type RoutePoolImpl struct {
 	mapping map[string]*config.ShardCfg
 }
 
+var _ RoutePool = &RoutePoolImpl{}
+
+func NewRouterPoolImpl(mapping map[string]*config.ShardCfg) *RoutePoolImpl {
+	return &RoutePoolImpl{
+		mapping: mapping,
+		pool:    map[route.Key]*route.Route{},
+	}
+}
+
 func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -81,13 +90,4 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	r.pool[key] = nroute
 	return nroute, nil
-}
-
-var _ RoutePool = &RoutePoolImpl{}
-
-func NewRouterPoolImpl(mapping map[string]*config.ShardCfg) *RoutePoolImpl {
-	return &RoutePoolImpl{
-		mapping: mapping,
-		pool:    map[route.Key]*route.Route{},
-	}
 }

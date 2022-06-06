@@ -1,10 +1,5 @@
 package config
 
-import (
-	"crypto/tls"
-	"fmt"
-)
-
 type InstanceCFG struct {
 	ConnAddr string `json:"conn_addr" toml:"conn_addr" yaml:"conn_addr"`
 	Proto    string `json:"proto" toml:"proto" yaml:"proto"`
@@ -27,16 +22,4 @@ type ShardCfg struct {
 	ShType ShardType `json:"shard_type" toml:"shard_type" yaml:"shard_type"`
 
 	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
-
-	TLSConfig *tls.Config
-}
-
-func (sh *ShardCfg) InitShardTLS() error {
-	shardTLSConfig, err := sh.TLSCfg.Init()
-	if err != nil {
-		return fmt.Errorf("init datashard TLS: %w", err)
-	}
-	sh.TLSConfig = shardTLSConfig
-
-	return nil
 }

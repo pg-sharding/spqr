@@ -23,7 +23,7 @@ type Shard interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	ReqBackendSsl(tlscfg *tls.Config) error
+	ReqBackendSsl(*tls.Config) error
 
 	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
@@ -85,8 +85,8 @@ func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
 }
 
-func (sh *Conn) ReqBackendSsl(tlscfg *tls.Config) error {
-	if err := sh.dedicated.ReqBackendSsl(tlscfg); err != nil {
+func (sh *Conn) ReqBackendSsl(tlsconfig *tls.Config) error {
+	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
 		tracelog.InfoLogger.Printf("failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
 
 		return err
