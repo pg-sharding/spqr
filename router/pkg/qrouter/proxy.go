@@ -111,7 +111,6 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
 	}
 
 	// a sort of round robin
-
 	rand.Shuffle(len(ret), func(i, j int) {
 		ret[i], ret[j] = ret[j], ret[i]
 	})
@@ -438,7 +437,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 		if len(texpr.List.Items) == 0 {
 			return nil, ComplexQuery
 		}
-		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[0])
+		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[colindx])
 	default:
 		return nil, ComplexQuery
 	}
@@ -484,6 +483,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
 		if !qr.qdb.CheckShardingRule(ctx, colnames) {
+			// is that needed?
 			return nil, ComplexQuery
 		}
 
@@ -497,17 +497,32 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 	}
 }
 
-func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node *pgquery.Node) (ShardRoute, error) {
+func (qr *ProxyQrouter) RouteSelectStmt(ctx context.Context, colindx int, node *pgquery.Node) (*DataShardRoute, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T for colindex %d", node.Node, colindx)
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", node.Node)
 	switch q := node.Node.(type) {
 	case *pgquery.Node_SelectStmt:
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "select stmt values list len is %d", len(q.SelectStmt.ValuesLists))
 		if len(q.SelectStmt.ValuesLists) == 0 {
 			return nil, ComplexQuery
 		}
-		valNode := q.SelectStmt.ValuesLists[0]
-		return qr.RouteKeyWithRanges(ctx, colindx, valNode)
+
+		var route *DataShardRoute
+		for i, valNode := range q.SelectStmt.ValuesLists {
+			currroute, err := qr.RouteKeyWithRanges(ctx, colindx, valNode)
+			if err != nil {
+				return nil, err
+			}
+			if i == 0 {
+				route = currroute
+			} else {
+				if route.Matchedkr.ShardID != route.Matchedkr.ShardID {
+					return nil, ComplexQuery
+				}
+			}
+		}
+
+		return route, nil
 	}
 
 	return nil, ComplexQuery
@@ -530,29 +545,31 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		}
 		return shroute, nil
 	case *pgquery.Node_InsertStmt:
+		var route *DataShardRoute
+
 		for cindx, c := range stmt.InsertStmt.Cols {
-			if sr, err := func() (ShardRoute, error) {
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
-				switch res := c.Node.(type) {
-				case *pgquery.Node_ResTarget:
-
-					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
-					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
-						return nil, ComplexQuery
-					}
-
-					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
-				default:
-					return nil, ComplexQuery
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+			switch res := c.Node.(type) {
+			case *pgquery.Node_ResTarget:
+				spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
+				if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
+					// skip non-sharding column
+					continue
 				}
-			}(); err != nil {
-				continue
-			} else {
-				return sr, nil
+
+				curroute, err := qr.RouteSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
+				if err != nil {
+					return nil, err
+				} else if cindx == 0 {
+					route = curroute
+				} else if curroute.Matchedkr.ShardID != route.Matchedkr.ShardID {
+					return nil, fmt.Errorf("mismatched key ranges destinations: query should be routed to both %v and %v", curroute.Matchedkr.ShardID, route.Matchedkr.ShardID)
+				}
+			default:
+				return nil, ComplexQuery
 			}
 		}
-		return nil, ComplexQuery
-
+		return route, nil
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
 		if clause == nil {

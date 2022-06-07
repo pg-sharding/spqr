@@ -4,6 +4,11 @@ sleep 20
 
 set -ex
 
+psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c 'DROP TABLE IF EXISTS x' || {
+	echo "ERROR: tests failed"
+	exit 1
+}
+
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c 'CREATE TABLE x(w_id INT)' || {
 	echo "ERROR: tests failed"
 	exit 1
@@ -39,8 +44,3 @@ BEGIN;
 INSERT INTO x (w_id) VALUES(5);
 ROLLBACK;
 EOH
-
-#psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c 'select count(1) from x where w_id = 5' || {
-#	echo "ERROR: tests failed"
-#	exit 1
-#}
