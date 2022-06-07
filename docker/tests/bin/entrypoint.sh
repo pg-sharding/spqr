@@ -9,4 +9,6 @@ simple.sh
 
 move.sh
 
+multicolumn.sh
+
 coordinator_setup.sh
