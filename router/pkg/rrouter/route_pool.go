@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"context"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -10,7 +11,7 @@ import (
 )
 
 type RoutePool interface {
-	MatchRoute(key route.Key,
+	MatchRoute(ctx context.Context, key route.Key,
 		beRule *config.BERule,
 		frRule *config.FRRule,
 	) (*route.Route, error)
@@ -73,7 +74,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	return nil
 }
 
-func (r *RoutePoolImpl) MatchRoute(key route.Key,
+func (r *RoutePoolImpl) MatchRoute(ctx context.Context, key route.Key,
 	beRule *config.BERule,
 	frRule *config.FRRule) (*route.Route, error) {
 
@@ -86,7 +87,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	}
 
 	tracelog.InfoLogger.Printf("allocate route %v", key)
-	nroute := route.NewRoute(beRule, frRule, r.mapping)
+	nroute := route.NewRoute(ctx, beRule, frRule, r.mapping)
 
 	r.pool[key] = nroute
 	return nroute, nil

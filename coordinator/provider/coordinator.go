@@ -352,7 +352,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	r := route.NewRoute(nil, nil, nil)
+	r := route.NewRoute(context.Background(), nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
 
 	cli := clientinteractor.PSQLInteractor{}

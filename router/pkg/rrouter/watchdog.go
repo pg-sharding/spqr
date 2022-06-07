@@ -1,7 +1,9 @@
 package rrouter
 
 import (
+	"context"
 	"crypto/tls"
+	"net"
 	"sync"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 
 type Watchdog interface {
 	Watch(sh datashard.Shard)
-	AddInstance(cfg *config.InstanceCFG) error
+	AddInstance(ctx context.Context, cfg *config.InstanceCFG) error
 	Run()
 }
 
@@ -22,11 +24,13 @@ func NewShardWatchDog(tlsconfig *tls.Config, shname string, rp RoutePool) (Watch
 
 	cfgs := config.RouterConfig().RulesConfig.ShardMapping[shname].Hosts
 
+	ctx, _ := context.WithCancel(context.Background())
+
 	hostConns := make([]conn.DBInstance, 0, len(cfgs))
 
 	for _, h := range cfgs {
 
-		i, err := conn.NewInstanceConn(h, tlsconfig)
+		i, err := conn.NewInstanceConn(ctx, net.Dialer{}, h, tlsconfig)
 
 		if err != nil {
 			return nil, err
@@ -54,8 +58,8 @@ type ShardPrimaryWatchdog struct {
 	hostConns []conn.DBInstance
 }
 
-func (s *ShardPrimaryWatchdog) AddInstance(cfg *config.InstanceCFG) error {
-	instance, err := conn.NewInstanceConn(cfg, s.tlsconfig)
+func (s *ShardPrimaryWatchdog) AddInstance(ctx context.Context, cfg *config.InstanceCFG) error {
+	instance, err := conn.NewInstanceConn(ctx, net.Dialer{}, cfg, s.tlsconfig)
 	if err != nil {
 		return err
 	}

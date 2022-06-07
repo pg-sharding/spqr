@@ -3,9 +3,6 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"reflect"
-	"sync"
-
 	"github.com/jackc/pgproto3/v2"
 	"golang.org/x/xerrors"
 
@@ -15,11 +12,42 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
+type multiShardResponseState int
+
+const (
+	RowDescriptorsState = multiShardResponseState(iota)
+	DataRowsState       = multiShardResponseState(iota)
+	CCState             = multiShardResponseState(iota)
+	RFQState            = multiShardResponseState(iota)
+	ErrState            = multiShardResponseState(iota)
+)
+
+type MultiShardConnState struct {
+	rstate      multiShardResponseState
+	messageChan chan pgproto3.BackendMessage
+	errChan     chan error
+}
+
 type MultiShardServer struct {
 	rule         *config.BERule
 	activeShards []datashard.Shard
+	shardsState  map[string]*MultiShardConnState
 
 	pool datashard.DBPool
+
+	state multiShardResponseState
+}
+
+func NewMultiShardServer(rule *config.BERule, pool datashard.DBPool) (Server, error) {
+	ret := &MultiShardServer{
+		rule:         rule,
+		pool:         pool,
+		activeShards: []datashard.Shard{},
+		state:        RowDescriptorsState,
+		shardsState:  map[string]*MultiShardConnState{},
+	}
+
+	return ret, nil
 }
 
 func (m *MultiShardServer) HasPrepareStatement(hash uint64) bool {
@@ -75,93 +103,135 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 }
 
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
-	ch := make(chan pgproto3.BackendMessage, len(m.activeShards))
-	errch := make(chan error, 0)
-	defer close(errch)
 
-	wg := sync.WaitGroup{}
+	// we expect result in format
+	// shard1: (RowDescription, DataRow1, DataRow2, ..., DataRowN1, CommandComplete, RFQ),
+	// shard2: (RowDescription, DataRow1, DataRow2, ..., DataRowN2, CommandComplete, RFQ),
+	// .....
+	// shardM: (RowDescription, DataRow1, DataRow2, ..., DataRowNM, CommandComplete, RFQ)
 
-	wg.Add(len(m.activeShards))
-	for _, currshard := range m.activeShards {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "recv mult resp from sh %s", currshard.Name())
+	// step1: collect row descriptions
 
-		currshard := currshard
-		go func() {
-			err := func(shard datashard.Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
-				defer wg.Done()
-
-				msg, err := shard.Receive()
-				if err != nil {
-					return err
-				}
-				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %T from %s", msg, shard.Name())
-
-				ch <- msg
-
-				return nil
-			}(currshard, ch, &wg)
-
+	switch m.state {
+	case RowDescriptorsState:
+		var rd *pgproto3.RowDescription
+		for i, shard := range m.activeShards {
+			msg, err := shard.Receive()
 			if err != nil {
-				errch <- err
+				return nil, err
 			}
-		}()
-	}
-
-	wg.Wait()
-	close(ch)
-
-	msgs := make([]pgproto3.BackendMessage, 0, len(m.activeShards))
-
-	err := func() error {
-		for {
-			select {
-			case msg, ok := <-ch:
-				if !ok {
-					// all shards messages are collected
-					return nil
+			switch q := msg.(type) {
+			case *pgproto3.RowDescription:
+				if i == 0 {
+					// copy row descr
+					*rd = *q
+				} else {
+					if len(rd.Fields) != len(q.Fields) {
+						return nil, fmt.Errorf("incompatable row descriptions from shards")
+					} else {
+						for j, fd := range q.Fields {
+							if rd.Fields[j].DataTypeOID != fd.DataTypeOID {
+								return nil, fmt.Errorf("incompatable field descriptions from shards")
+							}
+						}
+					}
 				}
-				msgs = append(msgs, msg)
-			case err := <-errch:
-				return err
+
+			default:
+				return nil, fmt.Errorf("unexpected message type %T from shard %v while collecting row descriptions", msg, shard.Name())
+			}
+			m.shardsState[shard.Name()] = &MultiShardConnState{
+				rstate:      RowDescriptorsState,
+				messageChan: make(chan pgproto3.BackendMessage),
 			}
 		}
-	}()
+		// run shard data row goroutines
+		for _, shard := range m.activeShards {
+			shastate := m.shardsState[shard.Name()]
+			shastate.rstate = DataRowsState
+			go func(shard datashard.Shard, shastate *MultiShardConnState) {
+				for {
+					msg, err := shard.Receive()
+					if err != nil {
+						shastate.rstate = ErrState
+						shastate.errChan <- err
+						return
+					}
 
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range msgs {
-		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
-			return nil, fmt.Errorf("got messages with different types from multiconnection %T, %T", msgs[0], msgs[i])
+					switch q := msg.(type) {
+					case *pgproto3.DataRow:
+						shastate.messageChan <- q
+					case *pgproto3.CommandComplete:
+						close(shastate.messageChan)
+						close(shastate.errChan)
+						shastate.rstate = CCState
+						return
+					default:
+						shastate.errChan <- fmt.Errorf("unexpected msg in flow %T", msg)
+						return
+					}
+				}
+			}(shard, shastate)
 		}
-	}
+		m.state = DataRowsState
+		return rd, nil
+	case DataRowsState:
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "compute multi server msgs from %T", msgs[0])
-
-	switch v := msgs[0].(type) {
-	case *pgproto3.CommandComplete:
-		return v, nil
-	case *pgproto3.ErrorResponse:
-		return v, nil
-	case *pgproto3.ReadyForQuery:
-		return v, nil
-	case *pgproto3.DataRow:
-		ret := &pgproto3.DataRow{}
-
-		for i, msg := range msgs {
-			if i == 0 {
-				ret = msg.(*pgproto3.DataRow)
-				continue
+		for {
+			cntClosed := 0
+			for _, shard := range m.shardsState {
+				switch shard.rstate {
+				case CCState:
+					cntClosed++
+				case DataRowsState:
+					select {
+					case msg := <-shard.messageChan:
+						return msg, nil
+					default:
+						// continue
+					}
+				case ErrState:
+					select {
+					// abort here
+					case err := <-shard.errChan:
+						return nil, err
+					default:
+						return nil, fmt.Errorf("unexpected state %d", shard.rstate)
+					}
+				}
 			}
-			drow := msg.(*pgproto3.DataRow)
-			ret.Values = append(ret.Values, drow.Values...)
+			if cntClosed == len(m.activeShards) {
+				m.state = CCState
+				return &pgproto3.CommandComplete{
+					CommandTag: []byte("multiselect"),
+				}, nil
+			}
+		}
+	case CCState:
+		var rfq *pgproto3.ReadyForQuery
+		for i, shard := range m.activeShards {
+			// state is CCState
+			msg, err := shard.Receive()
+			if err != nil {
+				return nil, err
+			}
+			switch q := msg.(type) {
+			case *pgproto3.ReadyForQuery:
+				if i == 0 {
+					rfq = q
+				} else if q.TxStatus != rfq.TxStatus {
+					return nil, fmt.Errorf("unexpected tx status %v differ from %v", q.TxStatus, rfq.TxStatus)
+				}
+				break
+			default:
+				return nil, fmt.Errorf("unexpected msg %T", msg)
+			}
 		}
 
-		return ret, nil
-
+		return rfq, nil
 	default:
-		return &pgproto3.ErrorResponse{Severity: "ERROR", Message: fmt.Sprintf("failed to compose responce %T", v)}, nil
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "broken multi shard connection state %v", m.state)
+		return nil, fmt.Errorf("broken mutlishard connection state %v", m.state)
 	}
 }
 
@@ -182,6 +252,9 @@ func (m *MultiShardServer) Cleanup() error {
 			return err
 		}
 	}
+
+	m.shardsState = map[string]*MultiShardConnState{}
+	m.state = RowDescriptorsState
 
 	return nil
 }

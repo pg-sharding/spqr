@@ -81,7 +81,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	r := route.NewRoute(nil, nil, nil)
+	r := route.NewRoute(context.Background(), nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return err

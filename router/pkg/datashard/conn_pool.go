@@ -1,10 +1,12 @@
 package datashard
 
 import (
+	"context"
 	"crypto/tls"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
+	"net"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -198,7 +200,7 @@ func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
 	}
 }
 
-func NewConnPool(mapping map[string]*config.ShardCfg) DBPool {
+func NewConnPool(ctx context.Context, mapping map[string]*config.ShardCfg) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error) {
 		var err error
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
@@ -215,7 +217,7 @@ func NewConnPool(mapping map[string]*config.ShardCfg) DBPool {
 			return nil, err
 		}
 
-		pgi, err := conn.NewInstanceConn(hostCfg, tlsconfig)
+		pgi, err := conn.NewInstanceConn(ctx, net.Dialer{}, hostCfg, tlsconfig)
 		if err != nil {
 			return nil, err
 		}

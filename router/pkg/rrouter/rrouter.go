@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -21,7 +22,7 @@ import (
 
 type RequestRouter interface {
 	Shutdown() error
-	PreRoute(conn net.Conn) (rclient.RouterClient, error)
+	PreRoute(ctx context.Context, conn net.Conn) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
 	AddDataShard(key qdb.ShardKey) error
@@ -55,21 +56,6 @@ func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
 
 func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
 	return nil
-	// wait to datashard to become available
-	//wg, err := NewShardWatchDog(r.cfg, key.Name, r.routePool)
-	//
-	//if err != nil {
-	//	return errors.Wrap(err, "NewShardWatchDog")
-	//}
-	//
-	//wg.Run()
-	//
-	//r.mu.Lock()
-	//defer r.mu.Unlock()
-	//
-	//r.wgs[key] = wg
-	//
-	//return nil
 }
 
 var _ RequestRouter = &RRouter{}
@@ -113,7 +99,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	}
 }
 
-func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
+func (r *RRouter) PreRoute(ctx context.Context, conn net.Conn) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
@@ -169,7 +155,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 	_ = cl.AssignRule(frRule)
 
-	rt, err := r.routePool.MatchRoute(key, beRule, frRule)
+	rt, err := r.routePool.MatchRoute(ctx, key, beRule, frRule)
 	if err != nil {
 		return nil, err
 	}

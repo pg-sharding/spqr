@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
@@ -38,6 +39,7 @@ type DBInstance interface {
 	ReqBackendSsl(*tls.Config) error
 
 	Hostname() string
+	Conn() net.Conn
 
 	Close() error
 	Status() InstanceStatus
@@ -45,6 +47,10 @@ type DBInstance interface {
 }
 
 type PostgreSQLInstance struct {
+	d net.Dialer
+
+	cf context.CancelFunc
+
 	conn     net.Conn
 	frontend *pgproto3.Frontend
 
@@ -68,6 +74,10 @@ func (pgi *PostgreSQLInstance) Hostname() string {
 	return pgi.hostname
 }
 
+func (pgi *PostgreSQLInstance) Conn() net.Conn {
+	return pgi.conn
+}
+
 func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 	return pgi.frontend.Send(query)
 }
@@ -78,23 +88,27 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 
 const defaultProto = "tcp"
 
-func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
+func (pgi *PostgreSQLInstance) connect(ctx context.Context, addr, proto string) (net.Conn, error) {
 	if proto == "" {
-		return net.Dial(defaultProto, addr)
+		return pgi.d.DialContext(ctx, defaultProto, addr)
 	}
 
 	return net.Dial(proto, addr)
 }
 
-func NewInstanceConn(cfg *config.InstanceCFG, tlsconfig *tls.Config) (DBInstance, error) {
+func NewInstanceConn(ctx context.Context, d net.Dialer, cfg *config.InstanceCFG, tlsconfig *tls.Config) (DBInstance, error) {
 	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
+
+	chctx, cf := context.WithCancel(ctx)
 
 	instance := &PostgreSQLInstance{
 		hostname: cfg.ConnAddr,
 		status:   NotInitialized,
+		d:        d,
+		cf:       cf,
 	}
 
-	netconn, err := instance.connect(cfg.ConnAddr, cfg.Proto)
+	netconn, err := instance.connect(chctx, cfg.ConnAddr, cfg.Proto)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +189,6 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 }
 
 func (pgi *PostgreSQLInstance) Cancel() error {
-	msg := &pgproto3.CancelRequest{}
-
-	return pgi.frontend.Send(msg)
+	pgi.cf()
+	return nil
 }
