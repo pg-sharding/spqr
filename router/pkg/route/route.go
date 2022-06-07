@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -38,11 +39,11 @@ type Route struct {
 	params       datashard.ParameterSet
 }
 
-func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {
+func NewRoute(ctx context.Context, beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {
 	return &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: datashard.NewConnPool(mapping),
+		servPool: datashard.NewConnPool(ctx, mapping),
 		clPool:   client.NewClientPool(),
 		params:   datashard.ParameterSet{},
 	}

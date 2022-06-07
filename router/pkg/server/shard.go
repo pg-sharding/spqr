@@ -100,6 +100,7 @@ func (srv *ShardServer) fire(q string) error {
 	}
 
 	for {
+		srv.shard.Instance()
 		if msg, err := srv.Receive(); err != nil {
 			return err
 		} else {

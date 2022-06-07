@@ -102,7 +102,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 }
 
 func (r *RouterImpl) serv(netconn net.Conn) error {
-	psqlclient, err := r.Rrouter.PreRoute(netconn)
+	psqlclient, err := r.Rrouter.PreRoute(context.Background(), netconn)
 	if err != nil {
 		_ = netconn.Close()
 		return err

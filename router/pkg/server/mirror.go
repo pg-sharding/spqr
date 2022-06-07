@@ -2,19 +2,7 @@ package server
 
 import (
 	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
-
-func NewMultiShardServer(rule *config.BERule, pool datashard.DBPool) (Server, error) {
-	ret := &MultiShardServer{
-		rule:         rule,
-		pool:         pool,
-		activeShards: []datashard.Shard{},
-	}
-
-	return ret, nil
-}
 
 type LoadMirroringServer struct {
 	Server
