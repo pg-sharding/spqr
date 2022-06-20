@@ -347,6 +347,7 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
+var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
 func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
 	var colnames []string
@@ -464,7 +465,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 					return nil, err
 				}
 				if inRoute.Matchedkr.ShardID != route.Matchedkr.ShardID {
-					return nil, ComplexQuery
+					return nil, CrossShardQueryUnsupported
 				}
 			}
 		}
@@ -484,7 +485,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
 		if !qr.qdb.CheckShardingRule(ctx, colnames) {
-			return nil, ComplexQuery
+			return nil, CrossShardQueryUnsupported
 		}
 
 		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
@@ -538,7 +539,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 
 					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
 					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
-						return nil, ComplexQuery
+						return nil, CrossShardQueryUnsupported
 					}
 
 					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
@@ -564,7 +565,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return nil, err
 		}
 		if shroute.Shkey.Name == NOSHARD {
-			return nil, ComplexQuery
+			return nil, CrossShardQueryUnsupported
 		}
 		return shroute, nil
 	case *pgquery.Node_DeleteStmt:
@@ -578,7 +579,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return nil, err
 		}
 		if shroute.Shkey.Name == NOSHARD {
-			return nil, ComplexQuery
+			return nil, CrossShardQueryUnsupported
 		}
 		return shroute, nil
 	}
