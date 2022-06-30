@@ -73,4 +73,7 @@ coordinator_run:
 pooler_run:
 	./spqr-rr run -c ./config-example/localrouter.yaml
 
+clean:
+	rm -f spqr-rr spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
+
 .PHONY: build gen
