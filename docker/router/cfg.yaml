@@ -35,7 +35,7 @@ rules:
                         passwd: 12345678
                         shard_type: 'DATA'
                         hosts:
-                                - conn_addr: "192.168.233.2:6432"
+                                - conn_addr: "spqr_shard_1_1:6432"
                 sh2:
                         tls:
                                 key_file: '/etc/odyssey/ssl/server.key'
@@ -46,7 +46,7 @@ rules:
                         passwd: 12345678
                         shard_type: 'DATA'
                         hosts:
-                                - conn_addr: "192.168.233.3:6432"
+                                - conn_addr: "spqr_shard_2_1:6432"
 
                 w1:
                         tls:
@@ -58,7 +58,7 @@ rules:
                         passwd: 12345678
                         shard_type: 'WORLD'
                         hosts:
-                                - conn_addr: "192.168.233.8:6432"
+                                - conn_addr: "spqr_world_0_1:6432"
 
         backend_rules:
                 - route_key_cfg:

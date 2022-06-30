@@ -17,9 +17,6 @@ services:
         ports:
             - "7432:6432"
         hostname: spqr_shard_1_1
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.02
     shard2:
         image:
             spqr_shardbase
@@ -28,9 +25,6 @@ services:
         ports:
             - "7433:6432"
         hostname: spqr_shard_2_1
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.03
     coordinator:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
@@ -39,9 +33,6 @@ services:
             - "7002:7002"
             - "7003:7003"
         hostname: spqr_coordinator
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.07
     world1:
         image:
             spqr_shardbase
@@ -53,9 +44,6 @@ services:
         hostname: spqr_world_0_1
         ports:
             - "7434:6432"
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.08
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1
@@ -64,9 +52,6 @@ services:
             ETCD_LOG_LEVEL: "debug"
         ports:
             - "2379:2379"
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.06
     router:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -74,34 +59,22 @@ services:
         ports:
             - "8432:6432"
         hostname: spqr_router_1_1
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.04
     balancer:
         build:
             dockerfile: ./docker/balancer/Dockerfile
             context: .
         hostname: spqr_balancer
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.09
     db0:
         image:
             spqr_shardbase
         ports:
             - "7435:6432"
         hostname: spqr_db_0_1
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.10
     client:
         build:
             dockerfile: ./docker/tests/Dockerfile
             context: .
         hostname: spqr_client
-        networks:
-            spqr:
-                ipv4_address: 192.168.233.05
 
 networks:
     spqr:
