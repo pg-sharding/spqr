@@ -42,12 +42,9 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			return err
 		}
 
-		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(conn.TXACT),
-		}); err != nil {
-			return err
-		}
-		return nil
+		})
 	case parser.ParseStateTXCommit:
 		if !cmngr.ConnIsActive(rst) {
 			// TODO: do stmh
@@ -69,12 +66,9 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
 		}
-		if err := rst.Client().Send(&pgproto3.ReadyForQuery{
+		return rst.Client().Send(&pgproto3.ReadyForQuery{
 			TxStatus: byte(rst.TxStatus()),
-		}); err != nil {
-			return err
-		}
-		return nil
+		})
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
 		rst.AddQuery(*q)
@@ -84,7 +78,6 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			rst.Client().SetParam(st.Name, st.Value)
 		}
 		return nil
-
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 
