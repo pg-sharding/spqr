@@ -1,0 +1,44 @@
+psql:sql/shard_routing.sql:1: Shard match: sh2
+Shard match: sh1
+CREATE TABLE
+psql:sql/shard_routing.sql:2: ERROR:  shardiung keys are missing in query
+psql:sql/shard_routing.sql:3: Shard match: sh2
+Shard match: sh1
+CREATE TABLE
+psql:sql/shard_routing.sql:5: Shard match: sh1
+INSERT 0 1
+psql:sql/shard_routing.sql:6: Shard match: sh1
+INSERT 0 1
+psql:sql/shard_routing.sql:7: Shard match: sh1
+INSERT 0 1
+psql:sql/shard_routing.sql:8: Shard match: sh2
+INSERT 0 1
+psql:sql/shard_routing.sql:9: Shard match: sh2
+INSERT 0 1
+psql:sql/shard_routing.sql:12: Shard match: sh1
+ w_id 
+------
+    1
+   10
+   20
+(3 rows)
+
+psql:sql/shard_routing.sql:13: Shard match: sh1
+ w_id 
+------
+   20
+(1 row)
+
+psql:sql/shard_routing.sql:14: Shard match: sh2
+ w_id 
+------
+   21
+   30
+(2 rows)
+
+psql:sql/shard_routing.sql:16: Shard match: sh1
+Shard match: sh2
+DROP TABLE
+psql:sql/shard_routing.sql:17: Shard match: sh2
+Shard match: sh1
+DROP TABLE
