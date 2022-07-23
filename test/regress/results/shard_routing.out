@@ -1,0 +1,28 @@
+CREATE TABLE
+psql:sql/shard_routing.sql:2: ERROR:  shardiung keys are missing in query
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ w_id 
+------
+    1
+   10
+   20
+(3 rows)
+
+ w_id 
+------
+   20
+(1 row)
+
+ w_id 
+------
+   21
+   30
+(2 rows)
+
+DROP TABLE
+DROP TABLE
