@@ -25,9 +25,9 @@ type cPool struct {
 	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)
 }
 
-func NewPool(connectionAllocaFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)) *cPool {
+func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)) *cPool {
 	return &cPool{
-		connectionAllocateFn: connectionAllocaFn,
+		connectionAllocateFn: connectionAllocFn,
 		mu:                   sync.Mutex{},
 		pool:                 map[string][]Shard{},
 	}

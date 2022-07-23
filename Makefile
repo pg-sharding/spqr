@@ -76,4 +76,7 @@ pooler_run:
 clean:
 	rm -f spqr-rr spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
+check:
+	make -C ./test/regress/ check
+
 .PHONY: build gen

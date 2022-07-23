@@ -84,10 +84,10 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 			return cli.ReportError(err, cl)
 		}
 
-		ids := []string{}
+		var ids []string
 		for _, krcurr := range krs {
 			ids = append(ids, krcurr.ID)
-			_ = cl.ReplyNotice(fmt.Sprintf("key range is goind to drop %s", krcurr.ID))
+			_ = cl.ReplyNoticef("key range is goind to drop %s", krcurr.ID)
 		}
 
 		if err := l.Qrouter.DropAll(ctx); err != nil {
