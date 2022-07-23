@@ -347,6 +347,7 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
+var ShardingKeysMissing = fmt.Errorf("shardiung keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
 func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
@@ -485,7 +486,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
 		if !qr.qdb.CheckShardingRule(ctx, colnames) {
-			return nil, CrossShardQueryUnsupported
+			return nil, ShardingKeysMissing
 		}
 
 		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
@@ -536,15 +537,13 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
 				switch res := c.Node.(type) {
 				case *pgquery.Node_ResTarget:
-
 					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
 					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
-						return nil, CrossShardQueryUnsupported
+						return nil, ShardingKeysMissing
 					}
-
 					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
 				default:
-					return nil, ComplexQuery
+					return nil, ShardingKeysMissing
 				}
 			}(); err != nil {
 				continue
@@ -552,7 +551,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				return sr, nil
 			}
 		}
-		return nil, ComplexQuery
+		return nil, ShardingKeysMissing
 
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
@@ -589,6 +588,23 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 
 var ParseError = xerrors.New("parsing stmt error")
 
+func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgquery.Node_CreateStmt) error {
+
+	for _, elt := range node.CreateStmt.TableElts {
+		switch eltTar := elt.Node.(type) {
+		case *pgquery.Node_ColumnDef:
+			// multi-column sharding rules checks
+			if qr.qdb.CheckShardingRule(ctx, []string{eltTar.ColumnDef.Colname}) {
+				return nil
+			}
+		default:
+			spqrlog.Logger.Printf(spqrlog.DEBUG3, "current table elt type is %T %v", elt, elt)
+		}
+	}
+
+	return ShardingKeysMissing
+}
+
 func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 	parsedStmt, err := qr.parser.Stmt()
 
@@ -602,11 +618,20 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 
 	stmt := parsedStmt.Stmts[0]
 
-	switch stmt.Stmt.Node.(type) {
+	switch node := stmt.Stmt.Node.(type) {
 	case *pgquery.Node_VariableSetStmt:
 		return MultiMatchState{}, nil
-	case *pgquery.Node_CreateStmt, *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
-		// support simple ddl
+	case *pgquery.Node_CreateStmt: // XXX: need alter table which renames sharding column to non-sharding column check
+		/*
+		* Disallow to create table which does not contain any sharding column
+		 */
+		if err := qr.CheckTableShardingColumns(ctx, node); err != nil {
+			return nil, err
+		}
+		return MultiMatchState{}, nil
+	case *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
+		// support simple ddl commands, route them to every chard
+		// this is not fully ACID (not atomic at least)
 		return MultiMatchState{}, nil
 	case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 		// forbid under separate setting
