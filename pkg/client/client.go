@@ -28,6 +28,7 @@ type Client interface {
 	ID() string
 
 	ReplyErrMsg(errmsg string) error
+	ReplyShardMatch(shardId string) error
 	ReplyNotice(msg string) error
 	ReplyNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error

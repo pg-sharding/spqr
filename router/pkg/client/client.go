@@ -307,6 +307,28 @@ func (cl *PsqlClient) Reset() error {
 	return cl.server.Reset()
 }
 
+func (cl *PsqlClient) ReplyShardMatch(shardId string) error {
+	if v, ok := cl.activeParamSet["spqr_reply_shard_match"]; !ok {
+		return nil
+	} else {
+		if v != "on" {
+			return nil
+		}
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.NoticeResponse{
+			Message: "Shard match: " + shardId,
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cl *PsqlClient) ReplyNotice(msg string) error {
 	if v, ok := cl.activeParamSet["client_min_messages"]; !ok {
 		return nil

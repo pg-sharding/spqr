@@ -173,7 +173,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
 	//
-	if err := rst.Cl.ReplyNotice(fmt.Sprintf("matched datashard routes %+v", routes)); err != nil {
+	if err := rst.Cl.ReplyNoticef("matched datashard routes %+v", routes); err != nil {
 		return err
 	}
 
@@ -189,7 +189,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 }
 
 func (rst *RelayStateImpl) Reroute() error {
-	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting your connection"))
+	_ = rst.Cl.ReplyNotice("rerouting your connection")
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
@@ -201,7 +201,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		return err
 	}
 	rst.routingState = routingState
-	_ = rst.Cl.ReplyNotice(fmt.Sprintf("rerouting state %T %v", routingState, err))
+	_ = rst.Cl.ReplyNoticef("rerouting state %T %v", routingState, err)
 
 	switch v := routingState.(type) {
 	case qrouter.MultiMatchState:
