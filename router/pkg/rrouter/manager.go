@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"sort"
+	"strings"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"
@@ -57,11 +59,21 @@ func NewTxConnManager() *TxConnManager {
 }
 
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	for _, shkey := range sh {
-		spqrlog.Logger.Printf(spqrlog.LOG, "adding datashard %v", shkey.Name)
-		_ = client.ReplyNoticef("adding datashard %v", shkey.Name)
-		_ = client.ReplyShardMatch(shkey.Name)
+	var shardNames []string
 
+	for _, shkey := range sh {
+		shardNames = append(shardNames, shkey.Name)
+	}
+
+	sort.Strings(shardNames)
+	shardMathes := strings.Join(shardNames, ",")
+
+	_ = client.ReplyShardMatch(shardMathes)
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
+	_ = client.ReplyNoticef("adding datashards %v", shardMathes)
+
+	for _, shkey := range sh {
 		if err := client.Server().AddShard(shkey); err != nil {
 			return err
 		}
