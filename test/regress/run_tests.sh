@@ -1,4 +1,4 @@
-set -x
+#set -x
 
 ../../spqr-rr run -c ./conf/regression.yaml > /dev/null 2>&1 &
 

@@ -440,7 +440,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 		if len(texpr.List.Items) == 0 {
 			return nil, ComplexQuery
 		}
-		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[0])
+		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[colindx])
 	default:
 		return nil, ComplexQuery
 	}
@@ -508,6 +508,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node
 		if len(q.SelectStmt.ValuesLists) == 0 {
 			return nil, ComplexQuery
 		}
+		// route using first tuple from `VALUES` clause
 		valNode := q.SelectStmt.ValuesLists[0]
 		return qr.RouteKeyWithRanges(ctx, colindx, valNode)
 	}
