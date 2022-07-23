@@ -20,13 +20,17 @@ do
 	diff ./expected/$line.out ./results/$line.out >> regression.diffs
 done
 
-
-echo '
-
-Tests exp/actual diffs: 
-
-'
-
-cat regression.diffs
-
 kill $spqr_pid
+
+if [ -s regression.diffs ]; then
+	echo '
+
+	Tests exp/actual diffs: 
+
+	'
+	cat regression.diffs
+
+	exit 2
+fi
+
+
