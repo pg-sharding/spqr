@@ -146,6 +146,9 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 		if k == "options" {
 			continue
 		}
+		if k == "spqr_reply_shard_match" {
+			continue
+		}
 
 		query.String += fmt.Sprintf("SET %s='%s';", k, v)
 	}

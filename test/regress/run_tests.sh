@@ -1,6 +1,8 @@
 #set -x
 
-../../spqr-rr run -c ./conf/regression.yaml > /dev/null 2>&1 &
+LOGFILE=log.log
+
+../../spqr-rr run -c ./conf/regression.yaml > $LOGFILE 2>&1 &
 
 spqr_pid=$(echo $!)
 # XXX:bootstrap database

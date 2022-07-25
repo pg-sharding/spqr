@@ -25,6 +25,7 @@ type MultishardState int
 const (
 	InitialState = MultishardState(iota)
 	RunningState
+	ServerErrorState
 	CommandCompleteState
 )
 
@@ -127,6 +128,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	}
 
 	switch m.multistate {
+	case ServerErrorState:
+		m.multistate = InitialState
+		return &pgproto3.ReadyForQuery{
+			TxStatus: 0, // XXX : fix this
+		}, nil
 	case InitialState:
 		var saveRd *pgproto3.RowDescription = nil
 		var saveCC *pgproto3.CommandComplete = nil
@@ -157,7 +163,15 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					// ignore
 					// XXX: do not ignore
 					continue
+				case *pgproto3.ErrorResponse:
+					spqrlog.Logger.Errorf("err got is %v", retMsg.Message)
+					m.states[i] = ErrorState
+					m.multistate = ServerErrorState
+					rollback()
+					return msg, nil
 				default:
+					m.states[i] = ErrorState
+					rollback()
 					// sync is broken
 					return nil, MultiShardSyncBroken
 				}
