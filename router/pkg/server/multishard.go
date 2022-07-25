@@ -3,11 +3,7 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"reflect"
-	"sync"
-
 	"github.com/jackc/pgproto3/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -15,9 +11,30 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
+type ShardState int
+
+const (
+	DatarowState = ShardState(iota)
+	ShardCCState = ShardState(iota)
+	RFQState
+	ErrorState
+)
+
+type MultishardState int
+
+const (
+	InitialState = MultishardState(iota)
+	RunningState
+	CommandCompleteState
+)
+
 type MultiShardServer struct {
 	rule         *config.BERule
 	activeShards []datashard.Shard
+
+	states []ShardState
+
+	multistate MultishardState
 
 	pool datashard.DBPool
 }
@@ -39,18 +56,20 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 	}
 
 	m.activeShards = append(m.activeShards, sh)
+	m.states = append(m.states, RFQState)
+	m.multistate = InitialState
+
 	return nil
 }
 
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) error {
-
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
 			return nil
 		}
 	}
 
-	return xerrors.New("unrouted datashard does not match any of active")
+	return fmt.Errorf("unrouted datashard does not match any of active")
 }
 
 func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
@@ -74,95 +93,167 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	return nil
 }
 
+var (
+	MultiShardSyncBroken = fmt.Errorf("multishard state is out of sync")
+)
+
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
-	ch := make(chan pgproto3.BackendMessage, len(m.activeShards))
-	errch := make(chan error, 0)
-	defer close(errch)
 
-	wg := sync.WaitGroup{}
-
-	wg.Add(len(m.activeShards))
-	for _, currshard := range m.activeShards {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "recv mult resp from sh %s", currshard.Name())
-
-		currshard := currshard
-		go func() {
-			err := func(shard datashard.Shard, ch chan<- pgproto3.BackendMessage, wg *sync.WaitGroup) error {
-				defer wg.Done()
-
-				msg, err := shard.Receive()
-				if err != nil {
-					return err
-				}
-				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %T from %s", msg, shard.Name())
-
-				ch <- msg
-
-				return nil
-			}(currshard, ch, &wg)
-
-			if err != nil {
-				errch <- err
-			}
-		}()
-	}
-
-	wg.Wait()
-	close(ch)
-
-	msgs := make([]pgproto3.BackendMessage, 0, len(m.activeShards))
-
-	err := func() error {
-		for {
-			select {
-			case msg, ok := <-ch:
-				if !ok {
-					// all shards messages are collected
-					return nil
-				}
-				msgs = append(msgs, msg)
-			case err := <-errch:
-				return err
-			}
-		}
-	}()
-
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range msgs {
-		if reflect.TypeOf(msgs[0]) != reflect.TypeOf(msgs[i]) {
-			return nil, fmt.Errorf("got messages with different types from multiconnection %T, %T", msgs[0], msgs[i])
-		}
-	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "compute multi server msgs from %T", msgs[0])
-
-	switch v := msgs[0].(type) {
-	case *pgproto3.CommandComplete:
-		return v, nil
-	case *pgproto3.ErrorResponse:
-		return v, nil
-	case *pgproto3.ReadyForQuery:
-		return v, nil
-	case *pgproto3.DataRow:
-		ret := &pgproto3.DataRow{}
-
-		for i, msg := range msgs {
-			if i == 0 {
-				ret = msg.(*pgproto3.DataRow)
+	rollback := func() {
+		for i := range m.activeShards {
+			if m.states[i] == RFQState {
 				continue
 			}
-			drow := msg.(*pgproto3.DataRow)
-			ret.Values = append(ret.Values, drow.Values...)
+			// error state or something else
+			m.states[i] = RFQState
+
+			go func(i int) {
+				for {
+					msg, err := m.activeShards[i].Receive()
+					if err != nil {
+						spqrlog.Logger.PrintError(err)
+						return
+					}
+
+					switch msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						return
+					default:
+						spqrlog.Logger.Printf(spqrlog.LOG, "got %T message from %s shard while rollback after error", msg, m.activeShards[i].Name())
+					}
+				}
+			}(i)
+		}
+	}
+
+	switch m.multistate {
+	case InitialState:
+		var saveRd *pgproto3.RowDescription = nil
+		var saveCC *pgproto3.CommandComplete = nil
+		var saveRFQ *pgproto3.ReadyForQuery = nil
+		/* Step one: ensure all shard backend are stared */
+		for i := range m.activeShards {
+
+			for {
+				// all shards should be in rfq state
+				msg, err := m.activeShards[i].Receive()
+				if err != nil {
+					spqrlog.Logger.Printf(spqrlog.LOG, "encountered error while reading from %s shard", m.activeShards[i].Name())
+					m.states[i] = ErrorState
+					rollback()
+					return nil, err
+				}
+
+				spqrlog.Logger.Printf(spqrlog.DEBUG2, "got %T msg from %s shard", msg, m.activeShards[i].Name())
+
+				switch retMsg := msg.(type) {
+				case *pgproto3.CommandComplete:
+					saveCC = retMsg //
+				case *pgproto3.RowDescription:
+					saveRd = retMsg // all should be same
+				case *pgproto3.ReadyForQuery:
+					saveRFQ = retMsg
+				case *pgproto3.ParameterStatus:
+					// ignore
+					// XXX: do not ignore
+					continue
+				default:
+					// sync is broken
+					return nil, MultiShardSyncBroken
+				}
+				m.states[i] = DatarowState
+				break
+			}
 		}
 
-		return ret, nil
+		if saveCC != nil {
+			m.multistate = InitialState
+			return saveCC, nil
+		}
+		if saveRFQ != nil {
+			m.multistate = InitialState
+			return saveRFQ, nil
+		}
 
-	default:
-		return &pgproto3.ErrorResponse{Severity: "ERROR", Message: fmt.Sprintf("failed to compose responce %T", v)}, nil
+		m.multistate = RunningState
+		return saveRd, nil
+	case RunningState:
+		/* Step two: fetch all datarow ms	gs */
+		for i := range m.activeShards {
+			// some shards may be in cc state
+
+			if m.states[i] == ShardCCState {
+				continue
+			}
+
+			msg, err := m.activeShards[i].Receive()
+			if err != nil {
+				spqrlog.Logger.Printf(spqrlog.LOG, "encountered error while reading from %s shard", m.activeShards[i].Name())
+				m.states[i] = ErrorState
+				rollback()
+				return nil, err
+			}
+
+			switch msg.(type) {
+			case *pgproto3.CommandComplete:
+				//
+				m.states[i] = ShardCCState
+			case *pgproto3.ReadyForQuery:
+				m.states[i] = ErrorState
+				rollback()
+				// sync is broken
+				return nil, MultiShardSyncBroken
+			default:
+				return msg, nil
+			}
+		}
+		// all shard are in RFQ state
+		m.multistate = CommandCompleteState
+		return &pgproto3.CommandComplete{
+			CommandTag: []byte{}, // XXX : fix this
+		}, nil
+	case CommandCompleteState:
+		spqrlog.Logger.Printf(spqrlog.LOG, "enter rfq await mode")
+
+		/* Step tree: fetch all datarow msgs */
+		for i := range m.activeShards {
+			// all shards shall be in cc state
+
+			if m.states[i] != ShardCCState {
+				return nil, MultiShardSyncBroken
+			}
+
+			if err := func() error {
+				for {
+					msg, err := m.activeShards[i].Receive()
+					if err != nil {
+						return err
+					}
+
+					switch msg.(type) {
+					case *pgproto3.ReadyForQuery:
+						m.states[i] = RFQState
+						return nil
+					default:
+						// sync is broken
+						return MultiShardSyncBroken
+					}
+				}
+			}(); err != nil {
+				spqrlog.Logger.Printf(spqrlog.LOG, "encountered error %v while reading from %s shard", err, m.activeShards[i].Name())
+				m.states[i] = ErrorState
+				rollback()
+				return nil, err
+			}
+		}
+
+		m.multistate = InitialState
+		return &pgproto3.ReadyForQuery{
+			TxStatus: 0, // XXX : fix this
+		}, nil
 	}
+
+	return nil, nil
 }
 
 func (m *MultiShardServer) Cleanup() error {

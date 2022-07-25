@@ -178,7 +178,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	}
 
 	if err := rst.Connect(routes); err != nil {
-		spqrlog.Logger.Errorf("encounter %w while initialing server connection", err)
+		spqrlog.Logger.Errorf("encounter %v while initialing server connection", err)
 
 		_ = rst.Reset()
 		_ = rst.Cl.ReplyErrMsg(err.Error())
