@@ -50,7 +50,7 @@ package spqrparser
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
 // routers
-%token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
+%token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str> SHARDING COLUMN KEY RANGE
@@ -260,9 +260,9 @@ lock_stmt:
 	lock_key_range_stmt
 
 add_key_range_stmt:
-	ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
+	ADD KEY RANGE key_range_id FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO shard_id
 	{
-		$$ = &Add{Element: &AddKeyRange{LowerBound: $4, UpperBound: $5, ShardID: $6, KeyRangeID: $7}}
+		$$ = &Add{Element: &AddKeyRange{LowerBound: $6, UpperBound: $8, ShardID: $11, KeyRangeID: $4}}
 	}
 
 add_sharding_rule_stmt:

@@ -1,9 +1,10 @@
 package client
 
 import (
+	"sync"
+
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/wal-g/tracelog"
-	"sync"
 )
 
 type Pool interface {

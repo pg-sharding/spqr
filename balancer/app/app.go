@@ -3,8 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
-	"golang.yandex/hasql"
 	"net"
+
+	"golang.yandex/hasql"
 
 	balancerPkg "github.com/pg-sharding/spqr/balancer/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"

@@ -4,14 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/jackc/pgx/v4"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb/etcdqdb"
-	"io"
-	"os"
 )
 
 type MoveTableRes struct {
