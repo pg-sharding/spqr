@@ -278,7 +278,7 @@ func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataSha
 
 	return qr.qdb.AddShard(ctx, &qdb.Shard{
 		ID:   ds.ID,
-		Addr: ds.Cfg.Hosts[0].ConnAddr,
+		Addr: ds.Cfg.Hosts[0],
 	})
 }
 

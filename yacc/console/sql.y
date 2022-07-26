@@ -14,6 +14,7 @@ package spqrparser
   show                   *Show
   kr                     *AddKeyRange
   sh_col                 *ShardingColumn
+  shard                  *AddShard
   register_router        *RegisterRouter
   unregister_router      *UnregisterRouter
   kill                   *Kill
@@ -52,8 +53,8 @@ package spqrparser
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES ROUTERS
-%token <str> BY FROM TO WITH UNITE ALL
+%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES ROUTERS SHARD HOST
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -63,7 +64,8 @@ package spqrparser
 
 %type <sh_col> create_sharding_column_stmt
 
-%type <kr> add_stmt add_key_range_stmt
+%type <shard> add_shard_stmt
+%type <kr> add_key_range_stmt
 %type <drop> drop_stmt drop_key_range_stmt
 %type <dropAll> drop_key_range_all_stmt
 %type <unlock> unlock_stmt unlock_key_range_stmt
@@ -80,7 +82,7 @@ package spqrparser
 %type <str> sharding_column_name
 
 %type<str> shard_id
-%type<str> spqr_addr
+%type<str> address
 %type<bytes> key_range_spec_bound
 %type<str> key_range_id
 %type<str> router_id
@@ -104,7 +106,11 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| add_stmt
+	| add_key_range_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| add_shard_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -232,7 +238,7 @@ shard_id:
 		$$ = string($1)
 	}
 
-spqr_addr:
+address:
 	STRING
 	{
 		$$ = string($1)
@@ -245,17 +251,22 @@ drop_stmt:
 lock_stmt:
 	lock_key_range_stmt
 
-add_stmt:
-	add_key_range_stmt
-
-unlock_stmt:
-	unlock_key_range_stmt
-
 add_key_range_stmt:
 	ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
 	{
 		$$ = &AddKeyRange{LowerBound: $4, UpperBound: $5, ShardID: $6, KeyRangeID: $7}
 	}
+
+add_shard_stmt:
+// support multi-host shards
+	ADD SHARD shard_id WITH HOST address
+	{
+		$$ = &AddShard{Id: $3, Hosts: []string{$6}}
+	}
+
+
+unlock_stmt:
+	unlock_key_range_stmt
 
 drop_key_range_stmt:
 	DROP KEY RANGE key_range_id
@@ -307,7 +318,7 @@ unite_key_range_stmt:
 	}
 
 listen_stmt:
-	LISTEN spqr_addr
+	LISTEN address
 	{
 		$$ = &Listen{addr: $2}
 	}

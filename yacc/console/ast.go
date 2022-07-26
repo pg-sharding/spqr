@@ -20,6 +20,11 @@ type AddKeyRange struct {
 	KeyRangeID string
 }
 
+type AddShard struct {
+	Id    string
+	Hosts []string
+}
+
 type SplitKeyRange struct {
 	Border         []byte
 	KeyRangeFromID string
@@ -52,10 +57,6 @@ type Lock struct {
 
 type Unlock struct {
 	KeyRangeID string
-}
-
-type Shard struct {
-	Name string
 }
 
 type Listen struct {
@@ -108,7 +109,7 @@ func (*SplitKeyRange) iStatement()  {}
 func (*UniteKeyRange) iStatement()  {}
 func (*ShardingColumn) iStatement() {}
 func (*AddKeyRange) iStatement()    {}
-func (*Shard) iStatement()          {}
+func (*AddShard) iStatement()       {}
 func (*Kill) iStatement()           {}
 
 func (*RegisterRouter) iStatement()   {}
@@ -147,6 +148,8 @@ var reservedWords = map[string]int{
 	"router":     ROUTER,
 	"move":       MOVE,
 	"routers":    ROUTERS,
+	"address":    ADDRESS,
+	"host":       HOST,
 }
 
 // Tokenizer is the struct used to generate SQL

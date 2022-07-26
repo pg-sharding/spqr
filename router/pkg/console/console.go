@@ -174,9 +174,9 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt), cl)
-	case *spqrparser.Shard:
+	case *spqrparser.AddShard:
 		err := l.Qrouter.AddDataShard(ctx, &datashards.DataShard{
-			ID: stmt.Name,
+			ID: stmt.Id,
 		})
 		if err != nil {
 			return cli.ReportError(err, cl)
