@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"sync"
 	"syscall"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -112,7 +113,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcPG(ctx)
+			err := app.ServeRouter(ctx)
 			if err != nil {
 				spqrlog.Logger.PrintError(err)
 			}
@@ -121,7 +122,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServGrpc(ctx)
+			err := app.ServeGrpcApi(ctx)
 			if err != nil {
 				spqrlog.Logger.PrintError(err)
 			}
@@ -130,7 +131,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcADM(ctx)
+			err := app.ServeAdminConsole(ctx)
 			if err != nil {
 				spqrlog.Logger.PrintError(err)
 			}

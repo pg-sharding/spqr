@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type BalancerCfg struct {
+type Balancer struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 
 	InstallationDBName      string `json:"installation_db_name" toml:"installation_db_name" yaml:"installation_db_name"`
@@ -27,10 +27,10 @@ type BalancerCfg struct {
 	DatabasePort       int      `json:"database_port" toml:"database_port" yaml:"database_port"`
 	DatabaseMaxRetries int      `json:"database_max_retries" toml:"database_max_retries" yaml:"database_max_retries"`
 
-	TLSCfg TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	TLS TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
-var cfgBalancer BalancerCfg
+var cfgBalancer Balancer
 
 func LoadBalancerCfg(cfgPath string) error {
 	file, err := os.Open(cfgPath)
@@ -51,6 +51,6 @@ func LoadBalancerCfg(cfgPath string) error {
 	return nil
 }
 
-func BalancerConfig() *BalancerCfg {
+func BalancerConfig() *Balancer {
 	return &cfgBalancer
 }

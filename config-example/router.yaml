@@ -1,67 +1,63 @@
-addr: '[::1]:8432'
-adm_addr: '[::1]:8433'
-proto: 'tcp6'
-http_addr: '[::1]:7001'
-world_http_addr: '[::1]:6432'
+host: '[spqr_router_1_1]'
+router_port: '8432'
+admin_console_port: '8433'
+grpc_api_port: '7001'
 
-init_sql: "./test-init.sql"
+world_shard_address: '[::1]:6432'
+world_shard_fallback: true
 
-qrouter:
-    qrouter_type: PROXY
-rules:
+router_mode: PROXY
+
+frontend_tls:
+  key_file: /etc/odyssey/ssl/server.key
+  cert_file: /etc/odyssey/ssl/server.crt
+  sslmode: disable
+
+frontend_rules:
+  - usr: user1
+    db: db1
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+      password: strong
+
+backend_rules:
+  - usr: user1
+    db: db1
+    pool_discard: true
+    pool_rollback: true
+
+shards:
+  sh1:
     tls:
-        key_file: '/etc/odyssey/ssl/server.key'
-        cert_file: '/etc/odyssey/ssl/server.crt'
-        sslmode: "disable" 
-    frontend_rules:
-        - route_key_cfg:
-            usr: user1
-            db: db1
-          pooling_mode: 'TRANSACTION'
-          auth_rule:
-            auth_method: 'ok'
-            password: 'strong'
-    proto: 'tcp6'
-    world_shard_fallback: true
-    shard_mapping:
-        sh1:
-            tls:
-                key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable"
-                cert_file: '/etc/odyssey/ssl/server.crt'
-            conn_db: "db1"
-            conn_usr: "user1"
-            passwd: 12345678
-            shard_type: 'DATA'
-            hosts:
-                - conn_addr: "192.168.233.2:6432"
-        sh2:
-            tls:
-                key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable"
-                cert_file: '/etc/odyssey/ssl/server.crt'
-            conn_db: "db1"
-            conn_usr: "user1"
-            passwd: 12345678
-            shard_type: 'DATA'
-            hosts:
-                - conn_addr: "192.168.233.3:6432"
-        w1:
-            tls:
-                key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable"
-                cert_file: '/etc/odyssey/ssl/server.crt'
-            conn_db: "db1"
-            conn_usr: "user1"
-            passwd: 12345678
-            shard_type: 'WORLD'
-            hosts:
-                - conn_addr: "192.168.233.8:6432"
-
-    backend_rules:
-        - route_key_cfg:
-            usr: user1
-            db: db1
-            pool_discard: true
-            pool_rollback: true
-
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - '192.168.233.2:6432'
+  sh2:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - '192.168.233.3:6432'
+  w1:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: WORLD
+    hosts:
+      - '192.168.233.8:6432'

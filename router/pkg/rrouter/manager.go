@@ -2,10 +2,11 @@ package rrouter
 
 import (
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"sort"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"
@@ -150,15 +151,15 @@ func NewSessConnManager() *SessConnManager {
 }
 
 func MatchConnectionPooler(client client.RouterClient) (ConnManager, error) {
-	switch client.Rule().PoolingMode {
-	case config.PoolingModeSession:
+	switch client.Rule().PoolMode {
+	case config.PoolModeSession:
 		return NewSessConnManager(), nil
-	case config.PoolingModeTransaction:
+	case config.PoolModeTransaction:
 		return NewTxConnManager(), nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message:  fmt.Sprintf("unknown pooling mode for route %v", client.ID()),
+				Message:  fmt.Sprintf("unknown pool mode for route %v", client.ID()),
 				Severity: "ERROR",
 			},
 		} {
@@ -167,6 +168,6 @@ func MatchConnectionPooler(client client.RouterClient) (ConnManager, error) {
 			}
 		}
 
-		return nil, errors.Errorf("unknown pooling mode %v", client.Rule().PoolingMode)
+		return nil, errors.Errorf("unknown pool mode %v", client.Rule().PoolMode)
 	}
 }

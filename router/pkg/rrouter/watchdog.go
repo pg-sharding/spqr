@@ -14,13 +14,13 @@ import (
 
 type Watchdog interface {
 	Watch(sh datashard.Shard)
-	AddInstance(cfg *config.InstanceCFG) error
+	AddInstance(host string) error
 	Run()
 }
 
 func NewShardWatchDog(tlsconfig *tls.Config, shname string, rp RoutePool) (Watchdog, error) {
 
-	cfgs := config.RouterConfig().RulesConfig.ShardMapping[shname].Hosts
+	cfgs := config.RouterConfig().ShardMapping[shname].Hosts
 
 	hostConns := make([]conn.DBInstance, 0, len(cfgs))
 
@@ -54,8 +54,8 @@ type ShardPrimaryWatchdog struct {
 	hostConns []conn.DBInstance
 }
 
-func (s *ShardPrimaryWatchdog) AddInstance(cfg *config.InstanceCFG) error {
-	instance, err := conn.NewInstanceConn(cfg, s.tlsconfig)
+func (s *ShardPrimaryWatchdog) AddInstance(host string) error {
+	instance, err := conn.NewInstanceConn(host, s.tlsconfig)
 	if err != nil {
 		return err
 	}

@@ -203,7 +203,7 @@ const greeting = `
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/doc/router
+https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 func (l *Local) Serve(ctx context.Context, cl client.Client) error {

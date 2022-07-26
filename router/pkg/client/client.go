@@ -41,12 +41,12 @@ type RouterClient interface {
 
 	Auth(rt *route.Route) error
 
-	AssignRule(rule *config.FRRule) error
+	AssignRule(rule *config.FrontendRule) error
 	AssignServerConn(srv server.Server) error
 	AssignRoute(r *route.Route) error
 
 	Route() *route.Route
-	Rule() *config.FRRule
+	Rule() *config.FrontendRule
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
@@ -66,7 +66,7 @@ type PsqlClient struct {
 
 	txCnt int
 
-	rule *config.FRRule
+	rule *config.FrontendRule
 	conn net.Conn
 
 	r *route.Route
@@ -374,7 +374,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	return cl
 }
 
-func (cl *PsqlClient) Rule() *config.FRRule {
+func (cl *PsqlClient) Rule() *config.FrontendRule {
 	return cl.rule
 }
 
@@ -390,9 +390,9 @@ func (cl *PsqlClient) Unroute() error {
 	return nil
 }
 
-func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
+func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
-		return xerrors.Errorf("client has active rule %s:%s", rule.RK.Usr, rule.RK.DB)
+		return xerrors.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
 	}
 	cl.rule = rule
 

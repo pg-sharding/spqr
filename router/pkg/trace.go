@@ -16,7 +16,7 @@ func (r *RouterImpl) initJaegerTracer() (io.Closer, error) {
 		Sampler: &jaegercfg.SamplerConfig{
 			Type:              "const",
 			Param:             1,
-			SamplingServerURL: config.RouterConfig().JaegerConfig.JaegerUrl,
+			SamplingServerURL: config.RouterConfig().JaegerUrl,
 		},
 		Reporter: &jaegercfg.ReporterConfig{
 			LogSpans: false,

@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
+
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -12,7 +13,7 @@ import (
 )
 
 type ShardServer struct {
-	rule *config.BERule
+	rule *config.BackendRule
 
 	pool  datashard.DBPool
 	shard datashard.Shard
@@ -72,7 +73,7 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	return srv.shard.ReqBackendSsl(cfg)
 }
 
-func NewShardServer(rule *config.BERule, spool datashard.DBPool) *ShardServer {
+func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServer {
 	return &ShardServer{
 		rule: rule,
 		pool: spool,

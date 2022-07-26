@@ -10,7 +10,7 @@ const (
 	AuthSCRAM     = AuthMethod("scram")
 )
 
-type AuthRule struct {
+type AuthCfg struct {
 	Method   AuthMethod `json:"auth_method" yaml:"auth_method" toml:"auth_method"`
 	Password string     `json:"password" yaml:"password" toml:"password"`
 }

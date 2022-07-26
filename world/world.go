@@ -27,7 +27,7 @@ func (w *World) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
-	httpAddr := config.RouterConfig().WorldHttpAddr
+	httpAddr := config.RouterConfig().WorldShardAddress
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {
 		return err

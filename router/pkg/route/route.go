@@ -1,33 +1,34 @@
 package route
 
 import (
+	"sync"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"sync"
 )
 
-type Key struct {
-	usr string
-	db  string
+type RouteKey struct {
+	user string
+	db   string
 }
 
-func NewRouteKey(usr, db string) *Key {
-	return &Key{
-		usr: usr,
-		db:  db,
+func NewRouteKey(user, db string) *RouteKey {
+	return &RouteKey{
+		user: user,
+		db:   db,
 	}
 }
 
-func (r *Key) String() string {
-	return r.db + " " + r.usr
+func (r *RouteKey) String() string {
+	return r.db + " " + r.user
 }
 
 type Route struct {
-	beRule *config.BERule
-	frRule *config.FRRule
+	beRule *config.BackendRule
+	frRule *config.FrontendRule
 
 	clPool   client.Pool
 	servPool datashard.DBPool
@@ -38,7 +39,7 @@ type Route struct {
 	params       datashard.ParameterSet
 }
 
-func NewRoute(beRule *config.BERule, frRule *config.FRRule, mapping map[string]*config.ShardCfg) *Route {
+func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
 	return &Route{
 		beRule:   beRule,
 		frRule:   frRule,
@@ -64,7 +65,7 @@ func (r *Route) Params() (datashard.ParameterSet, error) {
 	}
 
 	var anyK kr.ShardKey
-	for k := range config.RouterConfig().RulesConfig.ShardMapping {
+	for k := range config.RouterConfig().ShardMapping {
 		anyK.Name = k
 		break
 	}
@@ -90,11 +91,11 @@ func (r *Route) ServPool() datashard.DBPool {
 	return r.servPool
 }
 
-func (r *Route) BeRule() *config.BERule {
+func (r *Route) BeRule() *config.BackendRule {
 	return r.beRule
 }
 
-func (r *Route) FrRule() *config.FRRule {
+func (r *Route) FrRule() *config.FrontendRule {
 	return r.frRule
 }
 

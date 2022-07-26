@@ -3,6 +3,7 @@ package rrouter
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 
@@ -214,7 +215,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
 	case qrouter.WorldRouteState:
-		if !config.RouterConfig().RulesConfig.WorldShardFallback {
+		if !config.RouterConfig().WorldShardFallback {
 			return err
 		}
 

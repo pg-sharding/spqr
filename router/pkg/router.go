@@ -43,17 +43,16 @@ var _ Router = &RouterImpl{}
 func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 	// qrouter init
-	qtype := config.QrouterType(config.RouterConfig().QRouterCfg.Qtype)
+	qtype := config.RouterMode(config.RouterConfig().RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
-	rules := config.RouterConfig().RulesConfig
 
-	qr, err := qrouter.NewQrouter(qtype, rules)
+	qr, err := qrouter.NewQrouter(qtype, config.RouterConfig().ShardMapping)
 	if err != nil {
 		return nil, err
 	}
 
 	// frontend
-	frTLS, err := rules.TLSCfg.Init()
+	frTLS, err := config.RouterConfig().FrontendTLS.Init()
 	if err != nil {
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}

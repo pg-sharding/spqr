@@ -55,7 +55,7 @@ var rootCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcADM(ctx, bCfg.TLSCfg)
+			err := app.ServeAdminConsole(ctx, bCfg.TLS)
 			spqrlog.Logger.FatalOnError(err)
 			wg.Done()
 		}(wg)
