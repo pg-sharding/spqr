@@ -5,64 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/qdb"
 )
-
-type WaitPool struct {
-	stopCh    chan struct{}
-	publishCh chan interface{}
-	subCh     chan chan<- interface{}
-	unsubCh   chan chan<- interface{}
-}
-
-func NewWaitPool() *WaitPool {
-	return &WaitPool{
-		stopCh:    make(chan struct{}),
-		publishCh: make(chan interface{}, 1),
-		subCh:     make(chan chan<- interface{}, 1),
-		unsubCh:   make(chan chan<- interface{}, 1),
-	}
-}
-
-func (wp *WaitPool) Start() {
-	waiters := map[chan<- interface{}]struct{}{}
-
-	for {
-		select {
-		case <-wp.stopCh:
-			// notify all cl
-			return
-		case msgCh := <-wp.subCh:
-			waiters[msgCh] = struct{}{}
-		case msgCh := <-wp.unsubCh:
-			delete(waiters, msgCh)
-		case msg := <-wp.publishCh:
-			for msgCh := range waiters {
-				select {
-				case msgCh <- msg:
-				default:
-				}
-			}
-		}
-	}
-}
-
-func (wg *WaitPool) Subscribe(status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
-	wg.subCh <- notifyio
-	return nil
-}
-
-func (wg *WaitPool) Unsubscribe(msgCh chan interface{}) {
-	wg.unsubCh <- msgCh
-}
-
-func (wg *WaitPool) Publish(msg interface{}) {
-	wg.publishCh <- msg
-}
 
 type QrouterDBMem struct {
 	mu   sync.RWMutex
@@ -72,14 +19,21 @@ type QrouterDBMem struct {
 	krs   map[string]*qdb.KeyRange
 	locks map[string]*sync.RWMutex
 
-	shrules []*shrule.ShardingRule
+	shards map[string]*qdb.Shard
 
-	krWaiters map[string]*WaitPool
+	shrules []*shrule.ShardingRule
 }
 
 func (q *QrouterDBMem) GetKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
-	//TODO implement me
-	panic("implement me")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	krs, ok := q.krs[id]
+	if !ok {
+		return nil, fmt.Errorf("no sush krid")
+	}
+
+	return krs, nil
 }
 
 func (q *QrouterDBMem) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
@@ -152,16 +106,6 @@ func (q *QrouterDBMem) CheckShardingRule(ctx context.Context, colnames []string)
 	return false
 }
 
-//func (q *QrouterDBMem) Split(ctx context.Context, req *qdb.SplitKeyRange) error {
-//	//TODO implement me
-//	panic("implement me")
-//}
-//
-//func (q *QrouterDBMem) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-//	//TODO implement me
-//	panic("implement me")
-//}
-
 func (q *QrouterDBMem) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -193,24 +137,12 @@ func (q *QrouterDBMem) ListShardingRules(ctx context.Context) ([]*shrule.Shardin
 }
 
 func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
-	return q.krWaiters[krid].Subscribe(status, notifyio)
+	panic("implement me")
 }
 
 func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
-
-	if _, ok := q.krs[keyRange.KeyRangeID]; ok {
-		return fmt.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
-	}
-
-	for _, v := range q.krs {
-		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
-		}
-	}
 
 	q.krs[keyRange.KeyRangeID] = keyRange
 	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
@@ -221,17 +153,6 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 func (q *QrouterDBMem) UpdateKeyRange(_ context.Context, keyRange *qdb.KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
-	for _, v := range q.krs {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checling with %s", v.KeyRangeID)
-		if v.KeyRangeID == keyRange.KeyRangeID {
-			// update req
-			continue
-		}
-		if kr.CmpRanges(keyRange.LowerBound, v.LowerBound) && kr.CmpRanges(v.LowerBound, keyRange.UpperBound) || kr.CmpRanges(keyRange.LowerBound, v.UpperBound) && kr.CmpRanges(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
-		}
-	}
 
 	q.krs[keyRange.KeyRangeID] = keyRange
 
@@ -247,10 +168,10 @@ func (q *QrouterDBMem) Check(_ context.Context, kr *qdb.KeyRange) bool {
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
-		freq:      map[string]bool{},
-		krs:       map[string]*qdb.KeyRange{},
-		locks:     map[string]*sync.RWMutex{},
-		krWaiters: map[string]*WaitPool{},
+		freq:   map[string]bool{},
+		krs:    map[string]*qdb.KeyRange{},
+		locks:  map[string]*sync.RWMutex{},
+		shards: map[string]*qdb.Shard{},
 	}, nil
 }
 
@@ -311,18 +232,35 @@ func (q *QrouterDBMem) ListKeyRanges(_ context.Context) ([]*qdb.KeyRange, error)
 }
 
 func (q *QrouterDBMem) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
-	//TODO implement me
-	panic("implement me")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	var ret []*qdb.Shard
+	for k := range q.shards {
+		ret = append(ret, &qdb.Shard{
+			ID: k,
+		})
+	}
+	return ret, nil
 }
 
 func (q *QrouterDBMem) AddShard(ctx context.Context, shard *qdb.Shard) error {
-	//TODO implement me
-	panic("implement me")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.shards[shard.ID] = shard
+	return nil
 }
 
 func (q *QrouterDBMem) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
-	//TODO implement me
-	panic("implement me")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if _, ok := q.shards[shardID]; ok {
+		return &qdb.ShardInfo{ID: shardID}, nil
+	}
+
+	return nil, fmt.Errorf("unknown shard %s", shardID)
 }
 
 var _ qdb.QrouterDB = &QrouterDBMem{}

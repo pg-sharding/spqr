@@ -41,7 +41,8 @@ type ShardingRule struct {
 }
 
 type Shard struct {
-	ID   string
+	ID string
+	// change to slice of strings, as shard may contain many instances
 	Addr string
 }
 

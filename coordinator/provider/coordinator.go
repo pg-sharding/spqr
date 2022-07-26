@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pg-sharding/spqr/qdb/ops"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -116,7 +118,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	// add key range to metadb
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding key range %+v", keyRange)
 
-	err := qc.db.AddKeyRange(ctx, keyRange.ToSQL())
+	err := ops.AddKeyRangeWithChecks(ctx, qc.db, keyRange.ToSQL())
 	if err != nil {
 		return err
 	}
@@ -175,7 +177,7 @@ func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, err
 }
 
 func (qc *qdbCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	return qc.db.UpdateKeyRange(ctx, keyRange.ToSQL())
+	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, keyRange.ToSQL())
 }
 
 func (qc *qdbCoordinator) Lock(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
@@ -221,13 +223,13 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "New key range %#v", krNew)
 
-	if err := qc.db.AddKeyRange(ctx, krNew.ToSQL()); err != nil {
+	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew.ToSQL()); err != nil {
 		return fmt.Errorf("failed to add a new key range: %w", err)
 	}
 
 	krOld.UpperBound = req.Bound
 
-	return qc.db.UpdateKeyRange(ctx, krOld)
+	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld)
 }
 
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
@@ -259,7 +261,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		return fmt.Errorf("failed to drop an old key range: %w", err)
 	}
 
-	if err := qc.db.UpdateKeyRange(ctx, krLeft); err != nil {
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krLeft); err != nil {
 		return fmt.Errorf("failed to update a new key range: %w", err)
 	}
 
@@ -345,7 +347,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	defer qc.db.Unlock(ctx, req.Krid)
 
 	krmv.ShardID = req.ShardId
-	return qc.db.UpdateKeyRange(ctx, krmv)
+	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv)
 }
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
@@ -401,13 +403,13 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.Drop:
 					err := qc.db.DropKeyRange(ctx, stmt.KeyRangeID)
 					if err != nil {
-						return cli.ReportError(err, cl)
+						return err
 					}
 					return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
 				case *spqrparser.DropAll:
 
 					if krids, err := qc.db.DropKeyRangeAll(ctx); err != nil {
-						return cli.ReportError(err, cl)
+						return err
 					} else {
 						return cli.DropKeyRange(ctx, func() []string {
 							var ret []string
@@ -457,7 +459,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.AddKeyRange:
 					req := kr.KeyRangeFromSQL(stmt)
 					if err := qc.AddKeyRange(ctx, req); err != nil {
-						return err
+						return cli.ReportError(err, cl)
 					}
 					return cli.AddKeyRange(ctx, req, cl)
 				case *spqrparser.Lock:
@@ -468,6 +470,18 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.Show:
 					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 					switch stmt.Cmd {
+					case spqrparser.ShowShardsStr:
+						shards, err := qc.db.ListShards(ctx)
+						if err != nil {
+							return err
+						}
+						var resp []*datashards.DataShard
+						for _, sh := range shards {
+							resp = append(resp, &datashards.DataShard{
+								ID: sh.ID,
+							})
+						}
+						return cli.Shards(ctx, resp, cl)
 					case spqrparser.ShowKeyRangesStr:
 						ranges, err := qc.db.ListKeyRanges(ctx)
 						if err != nil {
@@ -487,7 +501,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 						return cli.Routers(routers, cl)
 					default:
-						return cli.ReportError(unknownCoordinatorCommand, cl)
+						return unknownCoordinatorCommand
 					}
 				default:
 					return unknownCoordinatorCommand

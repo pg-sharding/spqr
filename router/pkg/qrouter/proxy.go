@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/qdb/ops"
 	"math/rand"
 	"sync"
 
@@ -178,7 +179,7 @@ func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	}
 
 	krmv.ShardID = req.ShardId
-	return qr.qdb.UpdateKeyRange(ctx, krmv)
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krmv)
 }
 
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
@@ -218,7 +219,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 
 	krRight.LowerBound = krleft.LowerBound
 
-	return qr.qdb.UpdateKeyRange(ctx, krRight)
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krRight)
 }
 
 func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
@@ -246,7 +247,9 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 		},
 	)
 
-	_ = qr.qdb.AddKeyRange(ctx, krNew.ToSQL())
+	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew.ToSQL()); err != nil {
+		return err
+	}
 	krOld.UpperBound = req.Bound
 	_ = qr.qdb.UpdateKeyRange(ctx, krOld)
 
@@ -272,7 +275,11 @@ func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
 func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "adding node %s", ds.ID)
 	qr.DataShardCfgs[ds.ID] = ds.Cfg
-	return nil
+
+	return qr.qdb.AddShard(ctx, &qdb.Shard{
+		ID:   ds.ID,
+		Addr: ds.Cfg.Hosts[0].ConnAddr,
+	})
 }
 
 func (qr *ProxyQrouter) Shards() []string {
@@ -325,11 +332,11 @@ func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.Sharding
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return qr.qdb.AddKeyRange(ctx, kr.ToSQL())
+	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
 }
 
 func (qr *ProxyQrouter) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return qr.qdb.UpdateKeyRange(ctx, kr.ToSQL())
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
 }
 
 func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
