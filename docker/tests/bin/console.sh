@@ -18,6 +18,6 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c '
 }
 
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'ADD KEY RANGE krid2 FROM 11 TO 20 sh2;' || {
-    echo "2ERROR: 12tests failed"
+    echo "ERROR: tests failed"
     exit 1
 }

@@ -53,6 +53,24 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 	return ret
 }
 
+func (qr *ProxyQrouter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+	resp, err := qr.qdb.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retShards []*datashards.DataShard
+
+	for _, sh := range resp {
+		retShards = append(retShards, &datashards.DataShard{
+			ID: sh.ID,
+			Cfg: &config.Shard{
+				Hosts: sh.Hosts,
+			},
+		})
+	}
+	return retShards, nil
+}
+
 func (qr *ProxyQrouter) AddWorldShard(ctx context.Context, ds *datashards.DataShard) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
