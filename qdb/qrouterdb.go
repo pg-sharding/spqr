@@ -2,19 +2,18 @@ package qdb
 
 import (
 	"context"
-
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 )
 
 type QrouterDB interface {
-	shrule.ShardingRulesMgr
-
-	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
-	Lock(ctx context.Context, krid string) (*KeyRange, error)
-	Unlock(ctx context.Context, krid string) error
+	AddShardingRule(ctx context.Context, rule *ShardingRule) error
+	DropShardingRule(ctx context.Context, id string) error
+	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
 
+	Lock(ctx context.Context, keyRangeID string) (*KeyRange, error)
+	Unlock(ctx context.Context, keyRangeID string) error
+	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
@@ -28,7 +27,7 @@ type QrouterDB interface {
 
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
-	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
+	GetShardInfo(ctx context.Context, shardID string) (*Shard, error)
 
 	CheckLocked(ctx context.Context, KeyRangeID string) (*KeyRange, error)
 	Share(key *KeyRange) error

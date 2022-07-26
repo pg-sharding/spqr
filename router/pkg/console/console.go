@@ -160,7 +160,7 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
-	case *spqrparser.ShardingColumn:
+	case *spqrparser.AddShardingRule:
 		err := l.Qrouter.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
 		if err != nil {
 			return cli.ReportError(err, cl)

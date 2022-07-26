@@ -277,8 +277,8 @@ func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataSha
 	qr.DataShardCfgs[ds.ID] = ds.Cfg
 
 	return qr.qdb.AddShard(ctx, &qdb.Shard{
-		ID:   ds.ID,
-		Addr: ds.Cfg.Hosts[0],
+		ID:    ds.ID,
+		Hosts: ds.Cfg.Hosts,
 	})
 }
 
@@ -315,20 +315,23 @@ func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.Shardi
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
-	return qr.qdb.AddShardingRule(ctx, rule)
+	return qr.qdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		Id:       rule.ID(),
+		Colnames: rule.Columns(),
+	})
 }
 
-func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.ShardingRule, error) {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	rules := make([]*shrule.ShardingRule, 0, len(qr.ColumnMapping))
-
-	for rule := range qr.ColumnMapping {
-		rules = append(rules, shrule.NewShardingRule([]string{rule}))
+func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []*shrule.ShardingRule
+	for _, v := range rules {
+		resp = append(resp, shrule.ShardingRuleFromDB(v))
 	}
 
-	return rules, nil
+	return resp, nil
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
@@ -493,8 +496,8 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
-		if !qr.qdb.CheckShardingRule(ctx, colnames) {
-			return nil, ShardingKeysMissing
+		if err := ops.CheckShardingRule(ctx, qr.qdb, colnames); err != nil {
+			return nil, err
 		}
 
 		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
@@ -547,8 +550,8 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				switch res := c.Node.(type) {
 				case *pgquery.Node_ResTarget:
 					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
-					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
-						return nil, ShardingKeysMissing
+					if err := ops.CheckShardingRule(ctx, qr.qdb, []string{res.ResTarget.Name}); err != nil {
+						return nil, err
 					}
 					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
 				default:
@@ -602,8 +605,8 @@ func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgq
 	for _, elt := range node.CreateStmt.TableElts {
 		switch eltTar := elt.Node.(type) {
 		case *pgquery.Node_ColumnDef:
-			// multi-column sharding rules checks
-			if qr.qdb.CheckShardingRule(ctx, []string{eltTar.ColumnDef.Colname}) {
+			// TODO: multi-column sharding rules checks
+			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err != nil {
 				return nil
 			}
 		default:

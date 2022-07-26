@@ -9,8 +9,29 @@ type Show struct {
 	Cmd string
 }
 
-type ShardingColumn struct {
-	ColName string
+type Add struct {
+	Element Statement
+}
+
+func (*Add) iStatement() {}
+
+type Drop struct {
+	Element Statement
+}
+
+func (*Drop) iStatement() {}
+
+type AddStmt interface {
+	iAdd()
+}
+
+type DropStmt interface {
+	iDrop()
+}
+
+type AddShardingRule struct {
+	ID       string
+	ColNames []string
 }
 
 type AddKeyRange struct {
@@ -24,6 +45,10 @@ type AddShard struct {
 	Id    string
 	Hosts []string
 }
+
+func (*AddKeyRange) iAdd()     {}
+func (*AddShard) iAdd()        {}
+func (*AddShardingRule) iAdd() {}
 
 type SplitKeyRange struct {
 	Border         []byte
@@ -41,13 +66,16 @@ type MoveKeyRange struct {
 	KeyRangeID  string
 }
 
-type Add struct {
+type DropKeyRange struct {
 	KeyRangeID string
 }
 
-type Drop struct {
-	KeyRangeID string
+type DropShardingRule struct {
+	ID string
 }
+
+func (*DropKeyRange) iDrop()     {}
+func (*DropShardingRule) iDrop() {}
 
 type DropAll struct{}
 
@@ -96,21 +124,21 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()           {}
-func (*Add) iStatement()            {}
-func (*Drop) iStatement()           {}
-func (*DropAll) iStatement()        {}
-func (*Lock) iStatement()           {}
-func (*Unlock) iStatement()         {}
-func (*Shutdown) iStatement()       {}
-func (*Listen) iStatement()         {}
-func (*MoveKeyRange) iStatement()   {}
-func (*SplitKeyRange) iStatement()  {}
-func (*UniteKeyRange) iStatement()  {}
-func (*ShardingColumn) iStatement() {}
-func (*AddKeyRange) iStatement()    {}
-func (*AddShard) iStatement()       {}
-func (*Kill) iStatement()           {}
+func (*Show) iStatement()             {}
+func (*DropKeyRange) iStatement()     {}
+func (*DropShardingRule) iStatement() {}
+func (*DropAll) iStatement()          {}
+func (*Lock) iStatement()             {}
+func (*Unlock) iStatement()           {}
+func (*Shutdown) iStatement()         {}
+func (*Listen) iStatement()           {}
+func (*MoveKeyRange) iStatement()     {}
+func (*SplitKeyRange) iStatement()    {}
+func (*UniteKeyRange) iStatement()    {}
+func (*AddShardingRule) iStatement()  {}
+func (*AddKeyRange) iStatement()      {}
+func (*AddShard) iStatement()         {}
+func (*Kill) iStatement()             {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

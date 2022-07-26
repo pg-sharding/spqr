@@ -305,6 +305,19 @@ func (pi *PSQLInteractor) ReportError(err error, cl client.Client) error {
 	return nil
 }
 
+func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, rule *shrule.ShardingRule, cl client.Client) error {
+	if err := pi.WriteHeader("drop sharding rule", cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("dropped sharding column %s", rule.Columns()), cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+	return pi.completeMsg(0, cl)
+}
+
 func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule, cl client.Client) error {
 	if err := pi.WriteHeader("add sharding rule", cl); err != nil {
 		spqrlog.Logger.PrintError(err)

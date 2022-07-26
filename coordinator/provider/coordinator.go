@@ -400,7 +400,15 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
-				case *spqrparser.Drop:
+				case *spqrparser.DropShardingRule:
+					err := qc.db.DropShardingRule(ctx, stmt.ID)
+					if err != nil {
+						return err
+					}
+					return cli.DropShardingRule(ctx, &shrule.ShardingRule{
+						: stmt.ColName,
+					}, cl)
+				case *spqrparser.DropKeyRange:
 					err := qc.db.DropKeyRange(ctx, stmt.KeyRangeID)
 					if err != nil {
 						return err
@@ -432,7 +440,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					}
 
 					return cli.MoveKeyRange(ctx, move, cl)
-				case *spqrparser.ShardingColumn:
+				case *spqrparser.AddShardingRule:
 					shardingRule := shrule.NewShardingRule([]string{stmt.ColName})
 					err := qc.AddShardingRule(ctx, shardingRule)
 					if err != nil {
@@ -518,40 +526,29 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	}
 }
 
-func (qc *qdbCoordinator) AddDataShard(ctx context.Context, newShard *datashards.Shard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(newShard.ID, newShard.Addr))
+func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *qdb.Shard) error {
+	return qc.db.AddShard(ctx, shard)
 }
 
-func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.Shard) error {
+func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *qdb.Shard) error {
 	panic("implement me")
 }
 
-func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.Shard, error) {
+func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
 	shardList, err := qc.db.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	shards := make([]*datashards.Shard, 0, len(shardList))
+	shards := make([]*qdb.Shard, 0, len(shardList))
 
 	for _, shard := range shardList {
-		shards = append(shards, &datashards.Shard{
-			Addr: shard.Addr,
-			ID:   shard.ID,
-		})
+		shards = append(shards, shard)
 	}
 
 	return shards, nil
 }
 
-func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.ShardInfo, error) {
-	shardInfo, err := qc.db.GetShardInfo(ctx, shardID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &datashards.ShardInfo{
-		Hosts: shardInfo.Hosts,
-		Port:  shardInfo.Port,
-	}, nil
+func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard, error) {
+	return qc.db.GetShardInfo(ctx, shardID)
 }

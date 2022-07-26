@@ -40,6 +40,42 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	return qdb.AddKeyRange(ctx, keyRange)
 }
 
+func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
+	rules, err := qdb.ListShardingRules(ctx)
+	if err != nil {
+		return err
+	}
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d rules", len(rules))
+
+	checkSet := make(map[string]struct{}, len(colnames))
+
+	for _, k := range colnames {
+		checkSet[k] = struct{}{}
+	}
+
+	for _, rule := range rules {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Colnames, colnames)
+		if len(rule.Colnames) != len(colnames) {
+			continue
+		}
+
+		fullMatch := true
+
+		for _, v := range rule.Colnames {
+			if _, ok := checkSet[v]; !ok {
+				fullMatch = false
+				break
+			}
+		}
+
+		if fullMatch {
+			return fmt.Errorf("sharding rule intersects with %s", rule.Id)
+		}
+	}
+
+	return nil
+}
+
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
 	// TODO: check lock are properly hold while updating
 

@@ -19,6 +19,18 @@ psql "host=spqr_router_1_1 port=7432 sslmode=disable user=user1 dbname=db1" -c "
 	exit 1
 }
 
+# configure ectd
+
+psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'DROP KEY RANGE ALL;' || {
+	echo "ERROR: tests failed"
+	exit 1
+}
+
+psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'DROP SHARDING COLUMN ALL;' || {
+	echo "ERROR: tests failed"
+	exit 1
+}
+
 
 psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'add key range 1 10 sh1 krid1;' || {
 	echo "ERROR: tests failed"
@@ -26,6 +38,11 @@ psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 
 }
 
 psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'add key range 11 20 sh2 krid2;' || {
+	echo "ERROR: tests failed"
+	exit 1
+}
+
+psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'ADD SHARDING COLUMN id;' || {
 	echo "ERROR: tests failed"
 	exit 1
 }
