@@ -59,7 +59,20 @@ type qdbCoordinator struct {
 
 func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, error) {
 	//TODO implement me
-	panic("implement me")
+	resp, err := qc.db.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retTouters []*routers.Router
+
+	for _, v := range resp {
+		retTouters = append(retTouters, &routers.Router{
+			Id:      v.Id,
+			AdmAddr: v.Address,
+		})
+	}
+
+	return retTouters, nil
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -247,6 +260,39 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	krOld.UpperBound = req.Bound
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld)
+}
+
+func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+
+	// TODO: exclusive lock all routers
+
+	krs, err := qc.ListKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rtrs, err := qc.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, qRouter := range rtrs {
+		cc, err := DialRouter(qRouter)
+		if err != nil {
+			return nil, err
+		}
+
+		// Configure sharding rules.
+
+		krClient := routerproto.NewKeyRangeServiceClient(cc)
+
+		_, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return krs, nil
 }
 
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {

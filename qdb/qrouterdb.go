@@ -13,9 +13,13 @@ type QrouterDB interface {
 
 	Lock(ctx context.Context, keyRangeID string) (*KeyRange, error)
 	Unlock(ctx context.Context, keyRangeID string) error
+
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
+
 	DropKeyRange(ctx context.Context, id string) error
+	DropKeyRangeAll(ctx context.Context) ([]*KeyRange, error)
+
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 
 	AddRouter(ctx context.Context, r *Router) error
@@ -31,5 +35,4 @@ type QrouterDB interface {
 
 	CheckLocked(ctx context.Context, KeyRangeID string) (*KeyRange, error)
 	Share(key *KeyRange) error
-	DropKeyRangeAll(ctx context.Context) ([]*KeyRange, error)
 }

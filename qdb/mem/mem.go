@@ -121,6 +121,7 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 
 	q.krs[keyRange.KeyRangeID] = keyRange
 	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
+	q.freq[keyRange.KeyRangeID] = false
 
 	return nil
 }
@@ -188,6 +189,8 @@ func (q *QrouterDBMem) Unlock(_ context.Context, KeyRangeID string) error {
 	if !q.freq[KeyRangeID] {
 		return fmt.Errorf("key range %v not locked", KeyRangeID)
 	}
+
+	q.freq[KeyRangeID] = false
 
 	q.locks[KeyRangeID].Unlock()
 

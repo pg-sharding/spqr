@@ -122,6 +122,11 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mngr MetaMgr, cli cli
 			return err
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
+	case *spqrparser.Unlock:
+		if err := mngr.Unlock(ctx, stmt.KeyRangeID); err != nil {
+			return err
+		}
+		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.Show:
 		return ProcessShow(ctx, stmt, mngr, cli, cl)
 	default:
