@@ -20,52 +20,12 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type notifier struct {
-	pch chan interface{}
-	sch chan chan interface{}
-}
-
-func newnotifier() *notifier {
-	return &notifier{
-		pch: make(chan interface{}, 1),
-		sch: make(chan chan interface{}, 1),
-	}
-}
-
-func (n *notifier) run() {
-	subs := map[chan interface{}]struct{}{}
-	for {
-		select {
-		case msgCh := <-n.sch:
-			subs[msgCh] = struct{}{}
-		case msg := <-n.pch:
-			for msgCh := range subs {
-				select {
-				case msgCh <- msg:
-				default:
-				}
-			}
-		}
-	}
-}
-
-func (n *notifier) Subscribe() chan interface{} {
-	msgCh := make(chan interface{}, 0)
-	n.sch <- msgCh
-	return msgCh
-}
-
-func (n *notifier) nofity(msg interface{}) {
-	n.pch <- msg
-}
-
 type EtcdQDB struct {
 	qdb.QrouterDB
 
 	cli *clientv3.Client
 
 	mu        sync.Mutex
-	locks     map[string]*notifier
 	etcdLocks map[string]*concurrency.Mutex
 }
 
@@ -96,6 +56,12 @@ func shardNodePath(key string) string {
 	return path.Join(shardsNamespace, key)
 }
 
+func (q *EtcdQDB) GetKeyRange(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
+	kr, err := q.fetchKeyRange(ctx, KeyRangeID)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get key range responce %v %v", kr, err)
+	return kr, err
+}
+
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	resp, err := q.cli.Delete(ctx, keyRangeNodePath(KeyRangeID))
 
@@ -103,10 +69,19 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	return err
 }
 
-func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
-	resp, err := q.cli.Delete(ctx, keyRangesNamespace)
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
-	return err
+func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
+	krids, err := q.ListKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, krcurr := range krids {
+		resp, err := q.cli.Delete(ctx, keyRangeNodePath(krcurr.KeyRangeID))
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return krids, nil
 }
 
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
@@ -152,8 +127,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "qdb service, %s %#v", addr, cli)
 
 	return &EtcdQDB{
-		cli:   cli,
-		locks: map[string]*notifier{},
+		cli: cli,
 	}, nil
 }
 
