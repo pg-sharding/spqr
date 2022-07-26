@@ -10,7 +10,7 @@ import (
 
 type PoolMode string
 type ShardType string
-type QrouterType string
+type RouterMode string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -19,9 +19,8 @@ const (
 	DataShard  = ShardType("DATA")
 	WorldShard = ShardType("WORLD")
 
-	LocalQrouter = QrouterType("LOCAL")
-	ProxyQrouter = QrouterType("PROXY")
-	ShardQrouter = QrouterType("SHARDING")
+	LocalMode = RouterMode("LOCAL")
+	ProxyMode = RouterMode("PROXY")
 )
 
 type Router struct {
@@ -40,7 +39,7 @@ type Router struct {
 	RouterMode    string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
 	JaegerUrl     string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
 	FrontendRules []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	FrontendTLS   TLSConfig         `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	FrontendTLS   *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
 	BackendRules  []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
 	ShardMapping  map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 }
@@ -56,7 +55,7 @@ type BackendRule struct {
 type FrontendRule struct {
 	DB                    string   `json:"db" yaml:"db" toml:"db"`
 	User                  string   `json:"user" yaml:"user" toml:"user"`
-	AuthRule              AuthCfg  `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
+	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolPreparedStatement bool     `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
 	PoolDiscard           bool     `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
@@ -65,12 +64,12 @@ type FrontendRule struct {
 }
 
 type Shard struct {
-	DB       string    `json:"db" toml:"db" yaml:"db"`
-	User     string    `json:"user" toml:"user" yaml:"user"`
-	Password string    `json:"password" toml:"password" yaml:"password"`
-	Hosts    []string  `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type     ShardType `json:"type" toml:"type" yaml:"type"`
-	TLS      TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	DB       string     `json:"db" toml:"db" yaml:"db"`
+	User     string     `json:"user" toml:"user" yaml:"user"`
+	Password string     `json:"password" toml:"password" yaml:"password"`
+	Hosts    []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
+	Type     ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS      *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 var cfgRouter Router

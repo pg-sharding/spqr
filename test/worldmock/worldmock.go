@@ -75,7 +75,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.User(), cl.DB())
 
 	if err := cl.AssignRule(&config.FrontendRule{
-		AuthRule: config.AuthCfg{
+		AuthRule: &config.AuthCfg{
 			Method: config.AuthOK,
 		},
 	}); err != nil {

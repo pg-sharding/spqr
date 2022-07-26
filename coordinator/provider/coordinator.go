@@ -345,7 +345,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	spqrlog.Logger.Printf(spqrlog.LOG, "initialized client connection %s-%s\n", cl.User(), cl.DB())
 
 	if err := cl.AssignRule(&config.FrontendRule{
-		AuthRule: config.AuthCfg{
+		AuthRule: &config.AuthCfg{
 			Method: config.AuthOK,
 		},
 	}); err != nil {

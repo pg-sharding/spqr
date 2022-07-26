@@ -43,7 +43,7 @@ var _ Router = &RouterImpl{}
 func NewRouter(ctx context.Context) (*RouterImpl, error) {
 
 	// qrouter init
-	qtype := config.QrouterType(config.RouterConfig().RouterMode)
+	qtype := config.RouterMode(config.RouterConfig().RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 
 	qr, err := qrouter.NewQrouter(qtype, config.RouterConfig().ShardMapping)

@@ -1,6 +1,6 @@
 # SQPR Concepts
 
-![SPQR Schema](schema.jpg "SPQR")
+
 
 ## Data shard
 ```

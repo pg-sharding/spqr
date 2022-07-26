@@ -22,7 +22,7 @@ type Qinteractor interface{}
 type QinteractorImpl struct{}
 
 func AdvancedPoolModeNeeded(rst rrouter.RelayStateInteractor) bool {
-	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().RouterMode == string(config.ProxyQrouter)
+	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().RouterMode == string(config.ProxyMode)
 }
 
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
