@@ -24,10 +24,9 @@ func NewApp(sg *router.RouterImpl) *App {
 	}
 }
 
-func (app *App) ProcPG(ctx context.Context) error {
-	proto, addr := config.RouterConfig().Proto, config.RouterConfig().Addr
-
-	listener, err := reuse.Listen(proto, addr)
+func (app *App) ServeRouter(ctx context.Context) error {
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().RouterPort)
+	listener, err := reuse.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
@@ -35,14 +34,13 @@ func (app *App) ProcPG(ctx context.Context) error {
 		_ = listener.Close()
 	}(listener)
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "ProcPG listening %s by %s", addr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s", address)
 	return app.spqr.Run(ctx, listener)
 }
 
-func (app *App) ProcADM(ctx context.Context) error {
-	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
-
-	listener, err := net.Listen(proto, admaddr)
+func (app *App) ServeAdminConsole(ctx context.Context) error {
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().AdminConsolePort)
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
@@ -50,26 +48,25 @@ func (app *App) ProcADM(ctx context.Context) error {
 		_ = listener.Close()
 	}(listener)
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
+	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Administative Console is ready on %s", address)
 	return app.spqr.RunAdm(ctx, listener)
 }
 
-func (app *App) ServGrpc(ctx context.Context) error {
-	serv := grpc.NewServer()
-	grpcqrouter.Register(serv, app.spqr.Qrouter)
-
-	httpAddr := config.RouterConfig().HttpAddr
-	listener, err := net.Listen("tcp", httpAddr)
+func (app *App) ServeGrpcApi(ctx context.Context) error {
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort)
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "ServGrpc listening %s by tcp", httpAddr)
+	server := grpc.NewServer()
+	grpcqrouter.Register(server, app.spqr.Qrouter)
+	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR GRPC API is ready on %s", address)
 	go func() {
-		_ = serv.Serve(listener)
+		_ = server.Serve(listener)
 	}()
 
 	<-ctx.Done()
-	serv.GracefulStop()
+	server.GracefulStop()
 	return nil
 }

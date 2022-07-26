@@ -16,7 +16,7 @@ import (
 )
 
 type MultiShardServer struct {
-	rule         *config.BERule
+	rule         *config.BackendRule
 	activeShards []datashard.Shard
 
 	pool datashard.DBPool

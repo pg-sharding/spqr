@@ -342,10 +342,10 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "initialized client connection %s-%s\n", cl.User(), cl.DB())
 
-	if err := cl.AssignRule(&config.FRRule{
-		AuthRule: config.AuthRule{
+	if err := cl.AssignRule(&config.FrontendRule{
+		AuthRule: config.AuthCfg{
 			Method: config.AuthOK,
 		},
 	}); err != nil {

@@ -9,8 +9,6 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/wal-g/tracelog"
 	"golang.org/x/xerrors"
-
-	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 const SSLREQ = 80877103
@@ -76,30 +74,19 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 	return pgi.frontend.Receive()
 }
 
-const defaultProto = "tcp"
+func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
+	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", host)
 
-func (pgi *PostgreSQLInstance) connect(addr, proto string) (net.Conn, error) {
-	if proto == "" {
-		return net.Dial(defaultProto, addr)
-	}
-
-	return net.Dial(proto, addr)
-}
-
-func NewInstanceConn(cfg *config.InstanceCFG, tlsconfig *tls.Config) (DBInstance, error) {
-	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", cfg.ConnAddr)
-
-	instance := &PostgreSQLInstance{
-		hostname: cfg.ConnAddr,
-		status:   NotInitialized,
-	}
-
-	netconn, err := instance.connect(cfg.ConnAddr, cfg.Proto)
+	netconn, err := net.Dial("tcp", host)
 	if err != nil {
 		return nil, err
 	}
 
-	instance.conn = netconn
+	instance := &PostgreSQLInstance{
+		hostname: host,
+		conn:     netconn,
+		status:   NotInitialized,
+	}
 
 	if tlsconfig != nil {
 		err := instance.ReqBackendSsl(tlsconfig)

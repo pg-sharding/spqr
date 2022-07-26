@@ -4,13 +4,14 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
-func AuthBackend(shard DBInstance, cfg *config.ShardCfg, msg pgproto3.BackendMessage) error {
+func AuthBackend(shard DBInstance, cfg *config.Shard, msg pgproto3.BackendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "Auth type proc %+v\n", msg)
 
 	switch v := msg.(type) {
@@ -19,7 +20,7 @@ func AuthBackend(shard DBInstance, cfg *config.ShardCfg, msg pgproto3.BackendMes
 	case *pgproto3.AuthenticationMD5Password:
 
 		hash := md5.New()
-		hash.Write([]byte(cfg.Passwd + cfg.ConnUsr))
+		hash.Write([]byte(cfg.Password + cfg.User))
 		res := hash.Sum(nil)
 
 		hashSec := md5.New()
@@ -29,11 +30,11 @@ func AuthBackend(shard DBInstance, cfg *config.ShardCfg, msg pgproto3.BackendMes
 
 		psswd := hex.EncodeToString(res2)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, cfg.Passwd)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, cfg.Password)
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		return shard.Send(&pgproto3.PasswordMessage{Password: cfg.Passwd})
+		return shard.Send(&pgproto3.PasswordMessage{Password: cfg.Password})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}

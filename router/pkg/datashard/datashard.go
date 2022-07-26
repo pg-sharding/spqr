@@ -2,9 +2,10 @@ package datashard
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"log"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -15,7 +16,7 @@ import (
 )
 
 type Shard interface {
-	Cfg() *config.ShardCfg
+	Cfg() *config.Shard
 
 	Name() string
 	SHKey() kr.ShardKey
@@ -38,8 +39,8 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.beRule.RK.Usr,
-			"database":         sh.beRule.RK.DB,
+			"user":             sh.beRule.User,
+			"database":         sh.beRule.DB,
 		},
 	}
 	return sm
@@ -63,8 +64,8 @@ func (ps ParameterSet) Save(status ParameterStatus) bool {
 type Conn struct {
 	lg log.Logger
 
-	beRule *config.BERule
-	cfg    *config.ShardCfg
+	beRule *config.BackendRule
+	cfg    *config.Shard
 
 	primary string
 	name    string
@@ -107,7 +108,7 @@ func (sh *Conn) Name() string {
 	return sh.name
 }
 
-func (sh *Conn) Cfg() *config.ShardCfg {
+func (sh *Conn) Cfg() *config.Shard {
 	return sh.cfg
 }
 
@@ -123,7 +124,7 @@ func (sh *Conn) Params() ParameterSet {
 	return sh.ps
 }
 
-func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.ShardCfg, beRule *config.BERule) (Shard, error) {
+func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.Shard, beRule *config.BackendRule) (Shard, error) {
 	dtSh := &Conn{
 		cfg:    cfg,
 		name:   key.Name,

@@ -2,6 +2,8 @@ package pkg
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -9,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
-	"io"
 
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
@@ -20,8 +21,8 @@ type Qinteractor interface{}
 
 type QinteractorImpl struct{}
 
-func AdvancedPoolingNeeded(rst rrouter.RelayStateInteractor) bool {
-	return rst.Client().Rule().PoolingMode == config.PoolingModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().QRouterCfg.Qtype == string(config.ProxyQrouter)
+func AdvancedPoolModeNeeded(rst rrouter.RelayStateInteractor) bool {
+	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().RouterMode == string(config.ProxyQrouter)
 }
 
 func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rrouter.ConnManager) error {
@@ -148,7 +149,7 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 		})
 	case parser.ParseStatePrepareStmt:
 		// sql level prepares stmt pooling
-		if AdvancedPoolingNeeded(rst) {
+		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "sql level prep statement pooling support is on")
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
 			return rst.Client().ReplyParseComplete()
@@ -158,7 +159,7 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 			return err
 		}
 	case parser.ParseStateExecute:
-		if AdvancedPoolingNeeded(rst) {
+		if AdvancedPoolModeNeeded(rst) {
 			// do nothing
 			rst.Client().PreparedStatementQueryByName(st.Name)
 			return nil
@@ -175,9 +176,9 @@ func procQuery(rst rrouter.RelayStateInteractor, q *pgproto3.Query, cmngr rroute
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.ConnManager) error {
-	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.User(), cl.DB())
 
-	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.User(), cl.DB())
 	rst := rrouter.NewRelayState(qr, cl, cmngr)
 
 	var msg pgproto3.FrontendMessage
@@ -200,7 +201,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.Conn
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %T msg, %p", msg, msg)
 
 		if err := func() error {
-			if cl.Rule().PoolingMode == config.PoolingModeTransaction && !cl.Rule().PoolPreparedStatement {
+			if cl.Rule().PoolMode == config.PoolModeTransaction && !cl.Rule().PoolPreparedStatement {
 				switch q := msg.(type) {
 				case *pgproto3.Terminate:
 					return nil

@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+
 	"github.com/jackc/pgproto3/v2"
 	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 
@@ -72,18 +73,18 @@ type QueryRouter interface {
 
 	AddDataShard(ctx context.Context, ds *datashards.DataShard) error
 	ListDataShards(ctx context.Context) []*datashards.DataShard
-	AddWorldShard(name string, cfg *config.ShardCfg) error
+	AddWorldShard(name string, cfg *config.Shard) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
-func NewQrouter(qtype config.QrouterType, rules config.RulesCfg) (QueryRouter, error) {
+func NewQrouter(qtype config.QrouterType, shardMapping map[string]*config.Shard) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalQrouter:
-		return NewLocalQrouter(rules)
+		return NewLocalQrouter(shardMapping)
 	case config.ProxyQrouter:
-		return NewProxyRouter(rules)
+		return NewProxyRouter(shardMapping)
 	default:
-		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().QRouterCfg.Qtype)
+		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().RouterMode)
 	}
 }

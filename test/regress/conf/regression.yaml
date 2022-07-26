@@ -1,61 +1,56 @@
-addr: '[::1]:6432'
-adm_addr: '[::1]:7432'
-proto: 'tcp6'
-http_addr: '[::1]:7001'
+host: '[spqr_router_1_1]'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7001'
 log_level: DEBUG5
 
 init_sql: "./conf/init.sql"
+router_mode: PROXY
 
-qrouter:
-    qrouter_type: PROXY
-rules:
-    tls:
-        key_file: '/etc/odyssey/ssl/server.key'
-        cert_file: '/etc/odyssey/ssl/server.crt'
-        sslmode: "disable" 
-    proto: 'tcp6'
-    world_shard_fallback: true
-    shard_mapping:
-        sh1:
-            tls:
-                key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable" 
-                cert_file: '/etc/odyssey/ssl/server.crt' 
-            shard_type: 'DATA'
-            hosts:
-                - conn_addr: "localhost:5550"
-        sh2:
-            tls:
-                key_file: '/etc/odyssey/ssl/server.key'
-                sslmode: "disable" 
-                cert_file: '/etc/odyssey/ssl/server.crt' 
-            shard_type: 'DATA'
-            hosts:
-                - conn_addr: "localhost:5551"
-    frontend_rules:
-        - route_key_cfg:
-            usr: user1
-            db: regression_spqr
-          pooling_mode: 'TRANSACTION'
-          pool_discard: false
-          pool_rollback: true
-          pool_prepared_statement: true
-          auth_rule:
-              auth_method: 'ok'
-              password: 'strong'
-        - pooling_mode: 'TRANSACTION'
-          pool_discard: false
-          pool_rollback: true
-          pool_default: true
-          pool_prepared_statement: false
-          auth_rule:
-            auth_method: 'ok'
-    backend_rules:
-        - route_key_cfg:
-            usr: user1
-            db: regression_spqr
-          pool_discard: false
-          pool_rollback: true
-        - pool_default: true
-          pool_discard: false
-          pool_rollback: true
+frontend_tls:
+    key_file: '/etc/odyssey/ssl/server.key'
+    cert_file: '/etc/odyssey/ssl/server.crt'
+    sslmode: "disable" 
+world_shard_fallback: true
+shards:
+    sh1:
+        tls:
+            key_file: '/etc/odyssey/ssl/server.key'
+            sslmode: "disable" 
+            cert_file: '/etc/odyssey/ssl/server.crt' 
+        shard_type: 'DATA'
+        hosts:
+            - conn_addr: "localhost:5550"
+    sh2:
+        tls:
+            key_file: '/etc/odyssey/ssl/server.key'
+            sslmode: "disable" 
+            cert_file: '/etc/odyssey/ssl/server.crt' 
+        shard_type: 'DATA'
+        hosts:
+            - conn_addr: "localhost:5551"
+frontend_rules:
+    - user: user1
+    db: regression_spqr
+    pool_mode: 'TRANSACTION'
+    pool_discard: false
+    pool_rollback: true
+    pool_prepared_statement: true
+    auth_rule:
+        auth_method: 'ok'
+        password: 'strong'
+    - pool_mode: 'TRANSACTION'
+    pool_discard: false
+    pool_rollback: true
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+        auth_method: 'ok'
+backend_rules:
+    - user: user1
+    db: regression_spqr
+    pool_discard: false
+    pool_rollback: true
+    - pool_default: true
+    pool_discard: false
+    pool_rollback: true

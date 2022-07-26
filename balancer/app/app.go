@@ -21,7 +21,7 @@ type App struct {
 	balancer *balancerPkg.Balancer
 }
 
-func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error) {
+func NewApp(balancer *balancerPkg.Balancer, cfg config.Balancer) (*App, error) {
 	coordinator := balancerPkg.Coordinator{}
 	err := coordinator.Init(cfg.CoordinatorAddress, 3)
 	if err != nil {
@@ -87,27 +87,26 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.BalancerCfg) (*App, error
 	}, nil
 }
 
-func (app *App) ProcBalancer(ctx context.Context) error {
+func (app *App) ServeBalancer(ctx context.Context) error {
 
 	//TODO return error
 	app.balancer.BrutForceStrategy()
 	return nil
 }
 
-func (app *App) ProcADM(ctx context.Context, frTlsCfg config.TLSConfig) error {
-	frTLS, err := frTlsCfg.Init()
+func (app *App) ServeAdminConsole(ctx context.Context, clientTLSConfig config.TLSConfig) error {
+	clientTLS, err := clientTLSConfig.Init()
 	if err != nil {
 		return fmt.Errorf("init frontend TLS: %w", err)
 	}
 
-	proto, admaddr := config.RouterConfig().Proto, config.RouterConfig().ADMAddr
-
-	listener, err := net.Listen(proto, admaddr)
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().AdminConsolePort)
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "ProcADM listening %s by %s", admaddr, proto)
-	return app.balancer.RunAdm(ctx, listener, frTLS)
+	spqrlog.Logger.Printf(spqrlog.INFO, "SQR Admin Console is ready on %s", address)
+	return app.balancer.RunAdm(ctx, listener, clientTLS)
 }

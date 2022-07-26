@@ -32,8 +32,8 @@ type ProxyQrouter struct {
 	LocalTables   map[string]struct{}
 
 	// shards
-	DataShardCfgs  map[string]*config.ShardCfg
-	WorldShardCfgs map[string]*config.ShardCfg
+	DataShardCfgs  map[string]*config.Shard
+	WorldShardCfgs map[string]*config.Shard
 
 	qdb qdb.QrouterDB
 
@@ -51,7 +51,7 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 	return ret
 }
 
-func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.ShardCfg) error {
+func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.Shard) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
@@ -133,20 +133,20 @@ func (qr *ProxyQrouter) WorldShards() []string {
 
 var _ QueryRouter = &ProxyQrouter{}
 
-func NewProxyRouter(rules config.RulesCfg) (*ProxyQrouter, error) {
+func NewProxyRouter(shardMapping map[string]*config.Shard) (*ProxyQrouter, error) {
 	db, err := mem.NewQrouterDBMem()
 	if err != nil {
 		return nil, err
 	}
 
 	proxy := &ProxyQrouter{
-		DataShardCfgs:  map[string]*config.ShardCfg{},
-		WorldShardCfgs: map[string]*config.ShardCfg{},
+		DataShardCfgs:  map[string]*config.Shard{},
+		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
 	}
 
-	for name, shardCfg := range rules.ShardMapping {
-		switch shardCfg.ShType {
+	for name, shardCfg := range shardMapping {
+		switch shardCfg.Type {
 		case config.WorldShard:
 		case config.DataShard:
 			fallthrough // default is datashard

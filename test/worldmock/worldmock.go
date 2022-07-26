@@ -2,10 +2,11 @@ package worldmock
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/pg-sharding/spqr/router/pkg/route"
 	"net"
 	"os"
+
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/pg-sharding/spqr/router/pkg/route"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/wal-g/tracelog"
@@ -71,10 +72,10 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.User(), cl.DB())
 
-	if err := cl.AssignRule(&config.FRRule{
-		AuthRule: config.AuthRule{
+	if err := cl.AssignRule(&config.FrontendRule{
+		AuthRule: config.AuthCfg{
 			Method: config.AuthOK,
 		},
 	}); err != nil {

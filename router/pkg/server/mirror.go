@@ -6,7 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
-func NewMultiShardServer(rule *config.BERule, pool datashard.DBPool) (Server, error) {
+func NewMultiShardServer(rule *config.BackendRule, pool datashard.DBPool) (Server, error) {
 	ret := &MultiShardServer{
 		rule:         rule,
 		pool:         pool,

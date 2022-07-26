@@ -4,10 +4,10 @@ import "github.com/pg-sharding/spqr/pkg/config"
 
 type DataShard struct {
 	ID  string
-	Cfg *config.ShardCfg
+	Cfg *config.Shard
 }
 
-func NewDataShard(name string, cfg *config.ShardCfg) *DataShard {
+func NewDataShard(name string, cfg *config.Shard) *DataShard {
 	return &DataShard{
 		ID:  name,
 		Cfg: cfg,

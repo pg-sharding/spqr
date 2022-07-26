@@ -41,12 +41,12 @@ type RouterClient interface {
 
 	Auth(rt *route.Route) error
 
-	AssignRule(rule *config.FRRule) error
+	AssignRule(rule *config.FrontendRule) error
 	AssignServerConn(srv server.Server) error
 	AssignRoute(r *route.Route) error
 
 	Route() *route.Route
-	Rule() *config.FRRule
+	Rule() *config.FrontendRule
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
@@ -66,7 +66,7 @@ type PsqlClient struct {
 
 	txCnt int
 
-	rule *config.FRRule
+	rule *config.FrontendRule
 	conn net.Conn
 
 	r *route.Route
@@ -371,7 +371,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	return cl
 }
 
-func (cl *PsqlClient) Rule() *config.FRRule {
+func (cl *PsqlClient) Rule() *config.FrontendRule {
 	return cl.rule
 }
 
@@ -387,9 +387,9 @@ func (cl *PsqlClient) Unroute() error {
 	return nil
 }
 
-func (cl *PsqlClient) AssignRule(rule *config.FRRule) error {
+func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
-		return xerrors.Errorf("client has active rule %s:%s", rule.RK.Usr, rule.RK.DB)
+		return xerrors.Errorf("client has active rule %s:%s", rule.User, rule.DB)
 	}
 	cl.rule = rule
 
@@ -492,7 +492,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.User(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {
@@ -500,10 +500,10 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 			return nil
 			// TODO:
 		case config.AuthNotOK:
-			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
+			return errors.Errorf("user %v %v blocked", cl.User(), cl.DB())
 		case config.AuthClearText:
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
-				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
+				return errors.Errorf("user %v %v auth failed", cl.User(), cl.DB())
 			}
 			return nil
 		case config.AuthMD5:
@@ -569,7 +569,7 @@ func (cl *PsqlClient) StartupMessage() *pgproto3.StartupMessage {
 const DefaultUsr = "default"
 const DefaultDB = "default"
 
-func (cl *PsqlClient) Usr() string {
+func (cl *PsqlClient) User() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
@@ -874,7 +874,7 @@ type FakeClient struct {
 	RouterClient
 }
 
-func (f FakeClient) Usr() string {
+func (f FakeClient) User() string {
 	return DefaultUsr
 }
 

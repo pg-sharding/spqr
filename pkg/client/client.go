@@ -40,7 +40,7 @@ type Client interface {
 
 	StartupMessage() *pgproto3.StartupMessage
 
-	Usr() string
+	User() string
 	DB() string
 
 	Send(msg pgproto3.BackendMessage) error

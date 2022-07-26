@@ -2,17 +2,18 @@ package datashard
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 )
 
 type Pool interface {
-	Connection(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)
+	Connection(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
 	Cut(host string) []Shard
 	Put(host Shard) error
 	List() []Shard
@@ -22,10 +23,10 @@ type cPool struct {
 	mu   sync.Mutex
 	pool map[string][]Shard
 
-	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)
+	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
 }
 
-func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error)) *cPool {
+func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)) *cPool {
 	return &cPool{
 		connectionAllocateFn: connectionAllocFn,
 		mu:                   sync.Mutex{},
@@ -61,7 +62,7 @@ func (c *cPool) List() []Shard {
 	return ret
 }
 
-func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error) {
+func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
 	c.mu.Lock()
 
 	var sh Shard
@@ -94,7 +95,7 @@ func (c *cPool) Put(sh Shard) error {
 var _ Pool = &cPool{}
 
 type DBPool interface {
-	Connection(key kr.ShardKey, rule *config.BERule) (Shard, error)
+	Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error)
 	Put(shkey kr.ShardKey, sh Shard) error
 
 	Check(key kr.ShardKey) bool
@@ -153,14 +154,14 @@ func (s *InstancePoolImpl) List() []Shard {
 
 var _ DBPool = &InstancePoolImpl{}
 
-func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BERule) (Shard, error) {
+func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
 	switch key.RW {
 	case true:
 		var pr string
 		var ok bool
 		pr, ok = s.primaries[key.Name]
 		if !ok {
-			pr = config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts[0].ConnAddr
+			pr = config.RouterConfig().ShardMapping[key.Name].Hosts[0]
 		}
 
 		shard, err := s.poolRW.Connection(key, pr, rule)
@@ -171,12 +172,12 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BERule) (Sha
 		return shard, nil
 	case false:
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
-		hosts := config.RouterConfig().RulesConfig.ShardMapping[key.Name].Hosts
+		hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
 		rand.Shuffle(len(hosts), func(i, j int) {
 			hosts[j], hosts[i] = hosts[i], hosts[j]
 		})
 
-		shard, err := s.poolRO.Connection(key, hosts[0].ConnAddr, rule)
+		shard, err := s.poolRO.Connection(key, hosts[0], rule)
 		if err != nil {
 			return nil, err
 		}
@@ -198,28 +199,20 @@ func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
 	}
 }
 
-func NewConnPool(mapping map[string]*config.ShardCfg) DBPool {
-	allocator := func(shardKey kr.ShardKey, host string, rule *config.BERule) (Shard, error) {
-		var err error
+func NewConnPool(mapping map[string]*config.Shard) DBPool {
+	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
-		var hostCfg *config.InstanceCFG
 
-		for _, h := range config.RouterConfig().RulesConfig.ShardMapping[shardKey.Name].Hosts {
-			if h.ConnAddr == host {
-				hostCfg = h
-			}
-		}
-
-		tlsconfig, err := mapping[shardKey.Name].TLSCfg.Init()
+		tlsconfig, err := mapping[shardKey.Name].TLS.Init()
 		if err != nil {
 			return nil, err
 		}
 
-		pgi, err := conn.NewInstanceConn(hostCfg, tlsconfig)
+		pgi, err := conn.NewInstanceConn(host, tlsconfig)
 		if err != nil {
 			return nil, err
 		}
-		shardC, err := NewShard(shardKey, pgi, config.RouterConfig().RulesConfig.ShardMapping[shardKey.Name], rule)
+		shardC, err := NewShard(shardKey, pgi, config.RouterConfig().ShardMapping[shardKey.Name], rule)
 		if err != nil {
 			return nil, err
 		}

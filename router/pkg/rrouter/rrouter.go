@@ -22,21 +22,21 @@ import (
 type RequestRouter interface {
 	Shutdown() error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
-	ObsoleteRoute(key route.Key) error
+	ObsoleteRoute(key route.RouteKey) error
 
 	AddDataShard(key qdb.ShardKey) error
 	AddWorldShard(key qdb.ShardKey) error
-	AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG)
+	AddShardInstance(key qdb.ShardKey, host string)
 }
 
 type RRouter struct {
 	routePool RoutePool
 
-	frontendRules map[route.Key]*config.FRRule
-	backendRules  map[route.Key]*config.BERule
+	frontendRules map[route.RouteKey]*config.FrontendRule
+	backendRules  map[route.RouteKey]*config.BackendRule
 
-	defaultFrontendRule *config.FRRule
-	defaultBackendRule  *config.BERule
+	defaultFrontendRule *config.FrontendRule
+	defaultBackendRule  *config.BackendRule
 
 	tlsconfig *tls.Config
 	lg        *log.Logger
@@ -49,7 +49,7 @@ func (r *RRouter) AddWorldShard(key qdb.ShardKey) error {
 	return nil
 }
 
-func (r *RRouter) AddShardInstance(key qdb.ShardKey, cfg *config.InstanceCFG) {
+func (r *RRouter) AddShardInstance(key qdb.ShardKey, host string) {
 	panic("implement me")
 }
 
@@ -79,30 +79,30 @@ func (r *RRouter) Shutdown() error {
 }
 
 func NewRouter(tlsconfig *tls.Config) *RRouter {
-	frontendRules := map[route.Key]*config.FRRule{}
-	var defaultFrontendRule *config.FRRule
-	for _, rule := range config.RouterConfig().RulesConfig.FrontendRules {
+	frontendRules := map[route.RouteKey]*config.FrontendRule{}
+	var defaultFrontendRule *config.FrontendRule
+	for _, rule := range config.RouterConfig().FrontendRules {
 		if rule.PoolDefault {
 			defaultFrontendRule = rule
 			continue
 		}
-		key := *route.NewRouteKey(rule.RK.Usr, rule.RK.DB)
+		key := *route.NewRouteKey(rule.User, rule.DB)
 		frontendRules[key] = rule
 	}
 
-	backendRules := map[route.Key]*config.BERule{}
-	var defaultBackendRule *config.BERule
-	for _, rule := range config.RouterConfig().RulesConfig.BackendRules {
+	backendRules := map[route.RouteKey]*config.BackendRule{}
+	var defaultBackendRule *config.BackendRule
+	for _, rule := range config.RouterConfig().BackendRules {
 		if rule.PoolDefault {
 			defaultBackendRule = rule
 			continue
 		}
-		key := *route.NewRouteKey(rule.RK.Usr, rule.RK.DB)
+		key := *route.NewRouteKey(rule.User, rule.DB)
 		backendRules[key] = rule
 	}
 
 	return &RRouter{
-		routePool:           NewRouterPoolImpl(config.RouterConfig().RulesConfig.ShardMapping),
+		routePool:           NewRouterPoolImpl(config.RouterConfig().ShardMapping),
 		frontendRules:       frontendRules,
 		backendRules:        backendRules,
 		defaultFrontendRule: defaultFrontendRule,
@@ -121,24 +121,22 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	}
 
 	// match client frontend rule
-	key := *route.NewRouteKey(cl.Usr(), cl.DB())
+	key := *route.NewRouteKey(cl.User(), cl.DB())
 	frRule, ok := r.frontendRules[key]
 	if !ok {
 		if r.defaultFrontendRule != nil {
 			// ok
-			frRule = &config.FRRule{
-				RK: config.RouteKeyCfg{
-					Usr: cl.Usr(),
-					DB:  cl.DB(),
-				},
+			frRule = &config.FrontendRule{
+				User:                  cl.User(),
+				DB:                    cl.DB(),
 				AuthRule:              r.defaultFrontendRule.AuthRule,
-				PoolingMode:           r.defaultFrontendRule.PoolingMode,
+				PoolMode:              r.defaultFrontendRule.PoolMode,
 				PoolDiscard:           r.defaultFrontendRule.PoolDiscard,
 				PoolRollback:          r.defaultFrontendRule.PoolRollback,
 				PoolPreparedStatement: r.defaultFrontendRule.PoolPreparedStatement,
 			}
 		} else {
-			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
+			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.User(), cl.DB())
 			for _, msg := range []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Message: errmsg,
@@ -156,11 +154,9 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	beRule, ok := r.backendRules[key]
 	if !ok {
 		if r.defaultBackendRule != nil {
-			beRule = &config.BERule{
-				RK: config.RouteKeyCfg{
-					Usr: cl.Usr(),
-					DB:  cl.DB(),
-				},
+			beRule = &config.BackendRule{
+				User: cl.User(),
+				DB:   cl.DB(),
 			}
 		} else {
 			return cl, errors.New("Failed to route backend for client")
@@ -196,14 +192,14 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 func (r *RRouter) ListShards() []string {
 	var ret []string
 
-	for _, sh := range config.RouterConfig().RulesConfig.ShardMapping {
-		ret = append(ret, sh.Hosts[0].ConnAddr)
+	for _, sh := range config.RouterConfig().ShardMapping {
+		ret = append(ret, sh.Hosts[0])
 	}
 
 	return ret
 }
 
-func (r *RRouter) ObsoleteRoute(key route.Key) error {
+func (r *RRouter) ObsoleteRoute(key route.RouteKey) error {
 	rt := r.routePool.Obsolete(key)
 
 	if err := rt.NofityClients(func(cl client.Client) error {

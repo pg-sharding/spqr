@@ -22,7 +22,7 @@ func NewBalancerClient(conn net.Conn) *BalancerClient {
 	}
 }
 
-func (c BalancerClient) Usr() string {
+func (c BalancerClient) User() string {
 	return "DefaultUsr"
 }
 

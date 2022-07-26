@@ -1,21 +1,32 @@
 host: '[spqr_router_1_1]'
-router_port: '6432'
-admin_console_port: '7432'
-grpc_api_port: '7000'
-world_shard_address: ':6432'
-init_sql: /router/docker/router/init.sql
+router_port: '8432'
+admin_console_port: '8433'
+grpc_api_port: '7001'
+
+world_shard_address: '[::1]:6432'
+world_shard_fallback: true
+
 router_mode: PROXY
+
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
   cert_file: /etc/odyssey/ssl/server.crt
   sslmode: disable
+
 frontend_rules:
   - user: user1
     db: db1
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
-world_shard_fallback: true
+      password: strong
+
+backend_rules:
+  - user: user1
+    db: db1
+    pool_discard: true
+    pool_rollback: true
+
 shards:
   sh1:
     tls:
@@ -27,7 +38,7 @@ shards:
     password: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_1_1:6432'
+      - '192.168.233.2:6432'
   sh2:
     tls:
       key_file: /etc/odyssey/ssl/server.key
@@ -38,7 +49,7 @@ shards:
     password: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_2_1:6432'
+      - '192.168.233.3:6432'
   w1:
     tls:
       key_file: /etc/odyssey/ssl/server.key
@@ -49,9 +60,4 @@ shards:
     password: 12345678
     type: WORLD
     hosts:
-      - 'spqr_world_0_1:6432'
-backend_rules:
-  - user: user1
-    db: db1
-    pool_discard: true
-    pool_rollback: true
+      - '192.168.233.8:6432'

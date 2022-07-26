@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("error while creating balancer app: %s", err)
 		}
 
-		err = app.ProcBalancer(ctx)
+		err = app.ServeBalancer(ctx)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
@@ -55,7 +55,7 @@ var rootCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ProcADM(ctx, bCfg.TLSCfg)
+			err := app.ServeAdminConsole(ctx, bCfg.TLS)
 			spqrlog.Logger.FatalOnError(err)
 			wg.Done()
 		}(wg)
