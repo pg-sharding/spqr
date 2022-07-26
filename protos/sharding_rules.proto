@@ -6,7 +6,8 @@ option go_package = "yandex/spqr/proto";
 
 
 message ShardingRule {
-  repeated string columns = 1;
+  string id = 1;
+  repeated string columns = 2;
 }
 
 message AddShardingRuleRequest {

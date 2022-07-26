@@ -70,7 +70,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.NewShardingRule(rule.Columns()))
+		shRules = append(shRules, shrule.NewShardingRule(rule.Id, rule.Colnames))
 	}
 
 	return shRules, nil
@@ -78,7 +78,10 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
-	if err := qc.db.AddShardingRule(ctx, rule); err != nil {
+	if err := qc.db.AddShardingRule(ctx, &qdb.ShardingRule{
+		Colnames: rule.Columns(),
+		Id:       rule.ID(),
+	}); err != nil {
 		return err
 	}
 
@@ -286,7 +289,8 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
 	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, shRule := range shardingRules {
-		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
+		protoShardingRules = append(protoShardingRules,
+			&routerproto.ShardingRule{Columns: shRule.Colnames, Id: shRule.Id})
 	}
 
 	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
@@ -405,9 +409,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					if err != nil {
 						return err
 					}
-					return cli.DropShardingRule(ctx, &shrule.ShardingRule{
-						: stmt.ColName,
-					}, cl)
+					return cli.DropShardingRule(ctx, stmt.ID, cl)
 				case *spqrparser.DropKeyRange:
 					err := qc.db.DropKeyRange(ctx, stmt.KeyRangeID)
 					if err != nil {
@@ -441,7 +443,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 					return cli.MoveKeyRange(ctx, move, cl)
 				case *spqrparser.AddShardingRule:
-					shardingRule := shrule.NewShardingRule([]string{stmt.ColName})
+					shardingRule := shrule.NewShardingRule(stmt.ID, stmt.ColNames)
 					err := qc.AddShardingRule(ctx, shardingRule)
 					if err != nil {
 						return err
