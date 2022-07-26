@@ -24,6 +24,7 @@ var lb = flag.String("lower-bound", "", "")
 var ub = flag.String("upper-bound", "", "")
 var shkey = flag.String("sharding-key", "", "")
 
+// TODO: use schema
 var schema = flag.String("shema", "", "")
 
 type ProxyW struct {

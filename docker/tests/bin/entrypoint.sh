@@ -11,3 +11,4 @@ move.sh
 
 coordinator_setup.sh
 
+with_coordinator.sh

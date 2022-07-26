@@ -17,6 +17,7 @@ type QrouterDB interface {
 
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
+	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 
 	AddRouter(ctx context.Context, r *Router) error
 	DeleteRouter(ctx context.Context, rID string) error
@@ -29,7 +30,7 @@ type QrouterDB interface {
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
 
+	CheckLocked(ctx context.Context, KeyRangeID string) (*KeyRange, error)
 	Share(key *KeyRange) error
-	CheckLocked(ctx context.Context, krid string) (*KeyRange, error)
-	DropKeyRangeAll(ctx context.Context) error
+	DropKeyRangeAll(ctx context.Context) ([]*KeyRange, error)
 }

@@ -4,7 +4,7 @@ sleep 20
 
 set -ex
 
-psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'REGISTER ROUTER "spqr_router_1_1:7000" r1' || {
+psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c 'REGISTER ROUTER spqr_router_1_1:7000 r1' || {
 	echo "ERROR: tests failed"
 	exit 1
 }

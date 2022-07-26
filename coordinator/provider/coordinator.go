@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net"
-
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"google.golang.org/grpc"
@@ -265,7 +265,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
-func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router) error {
+func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router, cl client.Client) error {
 	cc, err := DialRouter(qRouter)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %w", qRouter, err)
@@ -295,6 +295,7 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got sharding rules response %v", resp.String())
+	_ = cl.ReplyNoticef("got sharding rules response %v", resp.String())
 
 	// Configure key ranges.
 	keyRanges, err := qc.db.ListKeyRanges(ctx)
@@ -314,14 +315,16 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 			return err
 		}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got resp %v", resp.String())
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got resp %v while adding kr %v", resp.String(), keyRange)
+		_ = cl.ReplyNoticef("got resp %v while adding kr %v", resp.String(), keyRange)
 	}
 
 	return nil
 }
 
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "register router %v %v", r.Addr(), r.ID())
+	// TODO: list routers and deduplicate
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.Addr(), r.ID())
 	return qc.db.AddRouter(ctx, r)
 }
 
@@ -331,7 +334,18 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-var unknownCoordinatorCmd = fmt.Errorf("unknown coordinator dmd")
+var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+
+func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+	krmv, err := qc.db.Lock(ctx, req.Krid)
+	if err != nil {
+		return err
+	}
+	defer qc.db.Unlock(ctx, req.Krid)
+
+	krmv.ShardID = req.ShardId
+	return qc.db.UpdateKeyRange(ctx, krmv)
+}
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl := psqlclient.NewPsqlClient(nconn)
@@ -383,6 +397,38 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 			if err := func() error {
 				switch stmt := tstmt.(type) {
+				case *spqrparser.Drop:
+					err := qc.db.DropKeyRange(ctx, stmt.KeyRangeID)
+					if err != nil {
+						return cli.ReportError(err, cl)
+					}
+					return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
+				case *spqrparser.DropAll:
+
+					if krids, err := qc.db.DropKeyRangeAll(ctx); err != nil {
+						return cli.ReportError(err, cl)
+					} else {
+						return cli.DropKeyRange(ctx, func() []string {
+							var ret []string
+
+							for _, krcurr := range krids {
+								ret = append(ret, krcurr.KeyRangeID)
+							}
+
+							return ret
+						}(), cl)
+					}
+				case *spqrparser.MoveKeyRange:
+					move := &kr.MoveKeyRange{
+						ShardId: stmt.DestShardID,
+						Krid:    stmt.KeyRangeID,
+					}
+
+					if err := qc.Move(ctx, move); err != nil {
+						return cli.ReportError(err, cl)
+					}
+
+					return cli.MoveKeyRange(ctx, move, cl)
 				case *spqrparser.ShardingColumn:
 					shardingRule := shrule.NewShardingRule([]string{stmt.ColName})
 					err := qc.AddShardingRule(ctx, shardingRule)
@@ -393,11 +439,11 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				case *spqrparser.RegisterRouter:
 					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
 
-					if err := qc.ConfigureNewRouter(ctx, newRouter); err != nil {
+					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
 						return err
 					}
 
-					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
+					if err := qc.ConfigureNewRouter(ctx, newRouter, cl); err != nil {
 						return err
 					}
 
@@ -440,10 +486,10 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 						return cli.Routers(routers, cl)
 					default:
-						return cli.ReportError(unknownCoordinatorCmd, cl)
+						return cli.ReportError(unknownCoordinatorCommand, cl)
 					}
 				default:
-					return unknownCoordinatorCmd
+					return unknownCoordinatorCommand
 				}
 			}(); err != nil {
 				spqrlog.Logger.PrintError(err)
