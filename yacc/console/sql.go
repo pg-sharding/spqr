@@ -68,7 +68,7 @@ const KEY_RANGES = 57374
 const ROUTERS = 57375
 const SHARD = 57376
 const HOST = 57377
-const SHARDING_COLUMNS = 57378
+const SHARDING_RULES = 57378
 const RULE = 57379
 const COLUMNS = 57380
 const BY = 57381
@@ -115,7 +115,7 @@ var yyToknames = [...]string{
 	"ROUTERS",
 	"SHARD",
 	"HOST",
-	"SHARDING_COLUMNS",
+	"SHARDING_RULES",
 	"RULE",
 	"COLUMNS",
 	"BY",
@@ -133,7 +133,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line yacc/console/sql.y:379
+//line yacc/console/sql.y:377
 
 //line yacctab:1
 var yyExca = [...]int{
@@ -157,8 +157,8 @@ var yyAct = [...]int{
 	112, 61, 60, 67, 101, 54, 80, 56, 103, 76,
 	85, 82, 86, 88, 89, 90, 74, 91, 35, 1,
 	92, 93, 102, 81, 73, 84, 19, 18, 17, 16,
-	15, 13, 14, 22, 9, 23, 10, 5, 3, 106,
-	105, 104, 107, 4, 6, 7, 8, 12, 11, 53,
+	15, 13, 14, 22, 9, 23, 10, 5, 4, 106,
+	105, 104, 107, 3, 6, 7, 8, 12, 11, 53,
 	110, 111, 42, 2, 114,
 }
 var yyPact = [...]int{
@@ -203,7 +203,7 @@ var yyR2 = [...]int{
 }
 var yyChk = [...]int{
 
-	-1000, -33, -1, -10, -9, -11, -8, -7, -6, -14,
+	-1000, -33, -1, -9, -10, -11, -8, -7, -6, -14,
 	-12, -4, -5, -17, -16, -18, -19, -20, -21, -22,
 	21, 22, -15, -13, 6, 7, 15, 14, 25, 26,
 	43, 16, 17, 23, 24, -34, 46, 29, 27, 34,
@@ -706,7 +706,7 @@ yydefault:
 //line yacc/console/sql.y:189
 		{
 			switch v := string(yyDollar[1].str); v {
-			case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+			case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingRules:
 				yyVAL.str = v
 			default:
 				yyVAL.str = ShowUnsupportedStr
@@ -779,103 +779,103 @@ yydefault:
 		}
 	case 42:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:271
+//line yacc/console/sql.y:270
 		{
 			yyVAL.add = &Add{Element: &AddShardingRule{ID: yyDollar[4].str, ColNames: []string{yyDollar[6].str}}}
 		}
 	case 43:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:278
+//line yacc/console/sql.y:276
 		{
 			yyVAL.add = &Add{Element: &AddShard{Id: yyDollar[3].str, Hosts: []string{yyDollar[6].str}}}
 		}
 	case 45:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:287
+//line yacc/console/sql.y:285
 		{
 			yyVAL.drop = &Drop{Element: &DropShardingRule{ID: yyDollar[4].str}}
 		}
 	case 46:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:293
+//line yacc/console/sql.y:291
 		{
 			yyVAL.drop = &Drop{Element: &DropKeyRange{KeyRangeID: yyDollar[4].str}}
 		}
 	case 47:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:299
+//line yacc/console/sql.y:297
 		{
 			yyVAL.dropAll = &DropAll{}
 		}
 	case 48:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:305
+//line yacc/console/sql.y:303
 		{
 			yyVAL.lock = &Lock{KeyRangeID: yyDollar[4].str}
 		}
 	case 49:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:311
+//line yacc/console/sql.y:309
 		{
 			yyVAL.unlock = &Unlock{KeyRangeID: yyDollar[4].str}
 		}
 	case 50:
 		yyDollar = yyS[yypt-8 : yypt+1]
-//line yacc/console/sql.y:318
+//line yacc/console/sql.y:316
 		{
 			yyVAL.split = &SplitKeyRange{KeyRangeID: yyDollar[4].str, KeyRangeFromID: yyDollar[6].str, Border: yyDollar[8].bytes}
 		}
 	case 51:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:324
+//line yacc/console/sql.y:322
 		{
 			yyVAL.kill = &Kill{Cmd: yyDollar[2].str}
 		}
 	case 52:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:330
+//line yacc/console/sql.y:328
 		{
 			yyVAL.move = &MoveKeyRange{KeyRangeID: yyDollar[4].str, DestShardID: yyDollar[6].str}
 		}
 	case 53:
 		yyDollar = yyS[yypt-6 : yypt+1]
-//line yacc/console/sql.y:336
+//line yacc/console/sql.y:334
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[4].str, KeyRangeIDR: yyDollar[5].str}
 		}
 	case 54:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line yacc/console/sql.y:342
+//line yacc/console/sql.y:340
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
 	case 55:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:348
+//line yacc/console/sql.y:346
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
 	case 56:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:356
+//line yacc/console/sql.y:354
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 57:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line yacc/console/sql.y:362
+//line yacc/console/sql.y:360
 		{
 			yyVAL.str = string(yyDollar[1].str)
 		}
 	case 58:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line yacc/console/sql.y:368
+//line yacc/console/sql.y:366
 		{
 			yyVAL.register_router = &RegisterRouter{Addr: yyDollar[3].str, ID: yyDollar[4].str}
 		}
 	case 59:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line yacc/console/sql.y:374
+//line yacc/console/sql.y:372
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: yyDollar[3].str}
 		}

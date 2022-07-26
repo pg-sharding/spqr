@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"sync"
 
-	_ "github.com/lib/pq"
+	"github.com/jmoiron/sqlx"
+
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 var Q = `

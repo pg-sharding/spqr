@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pg-sharding/spqr/pkg/models/routers"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/jackc/pgproto3/v2"
 
@@ -278,7 +279,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 
 	for _, rule := range rules {
 
-		if err := pi.WriteDataRow(fmt.Sprintf("colmns-match sharding rule with colmn set: %+v", rule.Columns()), cl); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule with column set: %+v", rule.Columns()), cl); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
@@ -383,14 +384,14 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange,
 	return nil
 }
 
-func (pi *PSQLInteractor) Routers(resp []*qdb.Router, cl client.Client) error {
+func (pi *PSQLInteractor) Routers(resp []*routers.Router, cl client.Client) error {
 	if err := pi.WriteHeader("show routers", cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID(), msg.Addr()), cl); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.Id, msg.AdmAddr), cl); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}

@@ -109,14 +109,14 @@ type UnregisterRouter struct {
 
 // The frollowing constants represent SHOW statements.
 const (
-	ShowDatabasesStr    = "databases"
-	ShowRoutersStr      = "routers"
-	ShowShardsStr       = "shards"
-	ShowShardingColumns = "sharding_columns"
-	ShowKeyRangesStr    = "key_ranges"
-	KillClientsStr      = "clients"
-	ShowPoolsStr        = "pools"
-	ShowUnsupportedStr  = "unsupported"
+	ShowDatabasesStr   = "databases"
+	ShowRoutersStr     = "routers"
+	ShowShardsStr      = "shards"
+	ShowShardingRules  = "sharding_rules"
+	ShowKeyRangesStr   = "key_ranges"
+	KillClientsStr     = "clients"
+	ShowPoolsStr       = "pools"
+	ShowUnsupportedStr = "unsupported"
 )
 
 // Statement represents a statement.
@@ -144,41 +144,45 @@ func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
 
 var reservedWords = map[string]int{
-	"pools":      POOLS,
-	"servers":    SERVERS,
-	"clients":    CLIENTS,
-	"databases":  DATABASES,
-	"show":       SHOW,
-	"stats":      STATS,
-	"kill":       KILL,
-	"column":     COLUMN,
-	"sharding":   SHARDING,
-	"create":     CREATE,
-	"add":        ADD,
-	"key":        KEY,
-	"range":      RANGE,
-	"shards":     SHARDS,
-	"key_ranges": KEY_RANGES,
-	"lock":       LOCK,
-	"unlock":     UNLOCK,
-	"drop":       DROP,
-	"all":        ALL,
-	"shutdown":   SHUTDOWN,
-	"split":      SPLIT,
-	"from":       FROM,
-	"by":         BY,
-	"to":         TO,
-	"with":       WITH,
-	"unite":      UNITE,
-	"listen":     LISTEN,
-	"register":   REGISTER,
-	"unregister": UNREGISTER,
-	"router":     ROUTER,
-	"move":       MOVE,
-	"routers":    ROUTERS,
-	"address":    ADDRESS,
-	"host":       HOST,
-	"route":      ROUTE,
+	"pools":          POOLS,
+	"servers":        SERVERS,
+	"clients":        CLIENTS,
+	"databases":      DATABASES,
+	"show":           SHOW,
+	"stats":          STATS,
+	"kill":           KILL,
+	"column":         COLUMN,
+	"columns":        COLUMNS,
+	"shard":          SHARD,
+	"rule":           RULE,
+	"sharding":       SHARDING,
+	"create":         CREATE,
+	"add":            ADD,
+	"key":            KEY,
+	"range":          RANGE,
+	"shards":         SHARDS,
+	"key_ranges":     KEY_RANGES,
+	"sharding_rules": SHARDING_RULES,
+	"lock":           LOCK,
+	"unlock":         UNLOCK,
+	"drop":           DROP,
+	"all":            ALL,
+	"shutdown":       SHUTDOWN,
+	"split":          SPLIT,
+	"from":           FROM,
+	"by":             BY,
+	"to":             TO,
+	"with":           WITH,
+	"unite":          UNITE,
+	"listen":         LISTEN,
+	"register":       REGISTER,
+	"unregister":     UNREGISTER,
+	"router":         ROUTER,
+	"move":           MOVE,
+	"routers":        ROUTERS,
+	"address":        ADDRESS,
+	"host":           HOST,
+	"route":          ROUTE,
 }
 
 // Tokenizer is the struct used to generate SQL

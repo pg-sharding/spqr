@@ -19,11 +19,11 @@ type UniteKeyRange struct {
 }
 
 type KeyRangeMgr interface {
-	ListKeyRange(ctx context.Context) ([]*KeyRange, error)
+	ListKeyRanges(ctx context.Context) ([]*KeyRange, error)
 
 	AddKeyRange(ctx context.Context, kr *KeyRange) error
 
-	Lock(ctx context.Context, krid string) (*KeyRange, error)
+	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)
 	Unlock(ctx context.Context, krid string) error
 
 	Split(ctx context.Context, split *SplitKeyRange) error
@@ -31,5 +31,5 @@ type KeyRangeMgr interface {
 	Move(ctx context.Context, move *MoveKeyRange) error
 
 	DropKeyRange(ctx context.Context, krid string) error
-	DropAll(ctx context.Context) error
+	DropKeyRangeAll(ctx context.Context) ([]*KeyRange, error)
 }

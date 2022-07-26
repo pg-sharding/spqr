@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/pg-sharding/spqr/coordinator"

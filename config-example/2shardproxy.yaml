@@ -1,6 +1,6 @@
 log_level: DEBUG5
 
-host: '[spqr_router_1_1]'
+host: '[localhost]'
 router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7001'
@@ -49,7 +49,7 @@ shards:
       cert_file: /etc/odyssey/ssl/server.crt
     shard_type: DATA
     hosts:
-      - conn_addr: 'localhost:5550'
+      - 'localhost:5550'
   sh2:
     tls:
       key_file: /etc/odyssey/ssl/server.key
@@ -57,4 +57,4 @@ shards:
       cert_file: /etc/odyssey/ssl/server.crt
     shard_type: DATA
     hosts:
-      - conn_addr: 'localhost:5551'
+      - 'localhost:5551'

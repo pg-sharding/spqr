@@ -40,6 +40,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	return qdb.AddKeyRange(ctx, keyRange)
 }
 
+var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
+
 func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
@@ -69,7 +71,7 @@ func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string
 		}
 
 		if fullMatch {
-			return fmt.Errorf("sharding rule intersects with %s", rule.Id)
+			return RuleIntersec
 		}
 	}
 

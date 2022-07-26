@@ -7,7 +7,7 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c '
     exit 1
 }
 
-psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'ADD SHARDING RULE w_id;' || {
+psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'ADD SHARDING RULE r1 COLUMNS w_id;' || {
     echo "ERROR: tests failed"
     exit 1
 }
@@ -17,7 +17,7 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c '
     exit 1
 }
 
-psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c '2;' || {
+psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'ADD KEY RANGE krid2 FROM 11 TO 20 sh2;' || {
     echo "2ERROR: 12tests failed"
     exit 1
 }

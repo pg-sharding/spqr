@@ -54,7 +54,7 @@ package spqrparser
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
 %token <str> SHARDING COLUMN KEY RANGE
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_COLUMNS RULE COLUMNS
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 
 %type <str> show_statement_type
@@ -104,11 +104,11 @@ semicolon_opt:
 
 
 command:
-	add_key_range_stmt
+	add_shard_stmt
 	{
 		setParseTree(yylex, $1)
 	}
-	| add_shard_stmt
+	| add_key_range_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -182,13 +182,13 @@ POOLS
 | STATS
 | KEY_RANGES
 | ROUTERS
-| SHARDING_COLUMNS
+| SHARDING_RULES
 
 show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingRules:
 			$$ = v
 		default:
 			$$ = ShowUnsupportedStr
@@ -266,14 +266,12 @@ add_key_range_stmt:
 	}
 
 add_sharding_rule_stmt:
-// TODO: support multi-column rules
 	ADD SHARDING RULE shrule_id COLUMNS sharding_column_names
 	{
 		$$ = &Add{Element: &AddShardingRule{ID: $4, ColNames: []string{$6}}}
 	}
 
 add_shard_stmt:
-// support multi-host shards
 	ADD SHARD shard_id WITH HOST address
 	{
 		$$ = &Add{Element: &AddShard{Id: $3, Hosts: []string{$6}}}
