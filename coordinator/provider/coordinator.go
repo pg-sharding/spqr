@@ -478,41 +478,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 					}
 					return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 				case *spqrparser.Show:
-					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
-					switch stmt.Cmd {
-					case spqrparser.ShowShardsStr:
-						shards, err := qc.db.ListShards(ctx)
-						if err != nil {
-							return err
-						}
-						var resp []*datashards.DataShard
-						for _, sh := range shards {
-							resp = append(resp, &datashards.DataShard{
-								ID: sh.ID,
-							})
-						}
-						return cli.Shards(ctx, resp, cl)
-					case spqrparser.ShowKeyRangesStr:
-						ranges, err := qc.db.ListKeyRanges(ctx)
-						if err != nil {
-							return err
-						}
-
-						var resp []*kr.KeyRange
-						for _, el := range ranges {
-							resp = append(resp, kr.KeyRangeFromDB(el))
-						}
-						return cli.KeyRanges(resp, cl)
-					case spqrparser.ShowRoutersStr:
-						routers, err := qc.db.ListRouters(ctx)
-						if err != nil {
-							return err
-						}
-
-						return cli.Routers(routers, cl)
-					default:
-						return unknownCoordinatorCommand
-					}
+					return qc.ProcessShow(ctx, stmt, cli, cl)
 				default:
 					return unknownCoordinatorCommand
 				}
@@ -528,29 +494,72 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	}
 }
 
-func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *qdb.Shard) error {
-	return qc.db.AddShard(ctx, shard)
+func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.Hosts))
 }
 
-func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *qdb.Shard) error {
+func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
 	panic("implement me")
 }
 
-func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
+func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	shardList, err := qc.db.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	shards := make([]*qdb.Shard, 0, len(shardList))
+	shards := make([]*datashards.DataShard, 0, len(shardList))
 
 	for _, shard := range shardList {
-		shards = append(shards, shard)
+		shards = append(shards, &datashards.DataShard{
+			ID: shard.ID,
+			Cfg: &config.Shard{
+				Hosts: shard.Hosts,
+			},
+		})
 	}
 
 	return shards, nil
 }
 
-func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard, error) {
-	return qc.db.GetShardInfo(ctx, shardID)
+func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+	panic("implement or delete me")
+}
+
+func (qc *qdbCoordinator) ProcessShow(ctx context.Context, stmt *spqrparser.Show, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
+	switch stmt.Cmd {
+	case spqrparser.ShowShardsStr:
+		shards, err := qc.db.ListShards(ctx)
+		if err != nil {
+			return err
+		}
+		var resp []*datashards.DataShard
+		for _, sh := range shards {
+			resp = append(resp, &datashards.DataShard{
+				ID: sh.ID,
+			})
+		}
+		return cli.Shards(ctx, resp, cl)
+	case spqrparser.ShowKeyRangesStr:
+		ranges, err := qc.db.ListKeyRanges(ctx)
+		if err != nil {
+			return err
+		}
+
+		var resp []*kr.KeyRange
+		for _, el := range ranges {
+			resp = append(resp, kr.KeyRangeFromDB(el))
+		}
+		return cli.KeyRanges(resp, cl)
+	case spqrparser.ShowRoutersStr:
+		routers, err := qc.db.ListRouters(ctx)
+		if err != nil {
+			return err
+		}
+
+		return cli.Routers(routers, cl)
+	default:
+		return unknownCoordinatorCommand
+	}
 }

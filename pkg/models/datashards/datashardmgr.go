@@ -1,6 +1,8 @@
 package datashards
 
-import "context"
+import (
+	"context"
+)
 
 type ShardsMgr interface {
 	ListDataShards(ctx context.Context) []*DataShard
@@ -8,8 +10,8 @@ type ShardsMgr interface {
 }
 
 type ShardsManager interface {
-	AddDataShard(ctx context.Context, shard *Shard) error
-	AddWorldShard(ctx context.Context, shard *Shard) error
-	ListShards(ctx context.Context) ([]*Shard, error)
-	GetShardInfo(ctx context.Context, shardID string) (*ShardInfo, error)
+	AddDataShard(ctx context.Context, shard *DataShard) error
+	AddWorldShard(ctx context.Context, shard *DataShard) error
+	ListShards(ctx context.Context) ([]*DataShard, error)
+	GetShardInfo(ctx context.Context, shardID string) (*DataShard, error)
 }

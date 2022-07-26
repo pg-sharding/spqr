@@ -62,7 +62,7 @@ func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.Shard) error {
 	return nil
 }
 
-func (qr *ProxyQrouter) Drop(ctx context.Context, id string) error {
+func (qr *ProxyQrouter) DropKeyRange(ctx context.Context, id string) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 

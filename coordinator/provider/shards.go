@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -25,7 +26,9 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, datashards.NewShard(newShard.Id, newShard.Addr)); err != nil {
+	if err := s.impl.AddDataShard(ctx, datashards.NewDataShard(newShard.Id, &config.Shard{
+		Hosts: newShard.Hosts,
+	})); err != nil {
 		return nil, err
 	}
 
@@ -47,8 +50,8 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ShardRequest) (*
 
 	for _, shard := range shardList {
 		protoShards = append(protoShards, &protos.Shard{
-			Addr: shard.Addr,
-			Id:   shard.ID,
+			Hosts: shard.Cfg.Hosts,
+			Id:    shard.ID,
 		})
 	}
 
@@ -65,8 +68,8 @@ func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.Sha
 
 	return &protos.ShardInfoReply{
 		ShardInfo: &protos.ShardInfo{
-			Hosts: shardInfo.Hosts,
-			Port:  shardInfo.Port,
+			Hosts: shardInfo.Cfg.Hosts,
+			Id:    shardInfo.ID,
 		},
 	}, nil
 }

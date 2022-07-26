@@ -30,6 +30,6 @@ type KeyRangeMgr interface {
 	Unite(ctx context.Context, unite *UniteKeyRange) error
 	Move(ctx context.Context, move *MoveKeyRange) error
 
-	Drop(ctx context.Context, krid string) error
+	DropKeyRange(ctx context.Context, krid string) error
 	DropAll(ctx context.Context) error
 }

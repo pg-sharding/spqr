@@ -60,7 +60,28 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
-func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx context.Context, cl client.Client, q string) error {
+func (l *Local) processDrop(ctx context.Context, dstmt spqrparser.Statement, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+	switch stmt := dstmt.(type) {
+	case *spqrparser.DropKeyRange:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
+		err := l.Qrouter.DropKeyRange(ctx, stmt.KeyRangeID)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+		return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
+	case *spqrparser.DropShardingRule:
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.ID)
+		err := l.Qrouter.DropShardingRule(ctx, stmt.ID)
+		if err != nil {
+			return cli.ReportError(err, cl)
+		}
+		return cli.DropShardingRule(ctx, stmt.ID, cl)
+	default:
+		return fmt.Errorf("unknown drop statement")
+	}
+}
+
+func (l *Local) processQueryInternal(ctx context.Context, cli clientinteractor.PSQLInteractor, q string, cl client.Client) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -71,13 +92,8 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
-		err := l.Qrouter.Drop(ctx, stmt.KeyRangeID)
-		if err != nil {
-			return cli.ReportError(err, cl)
-		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
-		return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
+		return l.processDrop(ctx, stmt.Element, cli, cl)
 	case *spqrparser.DropAll:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "dropping all key ranges ")
 		krs, err := l.Qrouter.ListKeyRange(ctx)
@@ -161,12 +177,12 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.AddShardingRule:
-		err := l.Qrouter.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}))
+		err := l.Qrouter.AddShardingRule(ctx, shrule.NewShardingRule(stmt.ID, stmt.ColNames))
 		if err != nil {
 			return cli.ReportError(err, cl)
 		}
 		_ = l.qlogger.DumpQuery(ctx, config.RouterConfig().AutoConf, q)
-		return cli.AddShardingRule(ctx, shrule.NewShardingRule([]string{stmt.ColName}), cl)
+		return cli.AddShardingRule(ctx, shrule.NewShardingRule(stmt.ID, stmt.ColNames), cl)
 	case *spqrparser.AddKeyRange:
 		err := l.Qrouter.AddKeyRange(ctx, kr.KeyRangeFromSQL(stmt))
 		if err != nil {
@@ -196,7 +212,7 @@ func (l *Local) processQueryInternal(cli clientinteractor.PSQLInteractor, ctx co
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(clientinteractor.PSQLInteractor{}, ctx, cl, q)
+	return l.processQueryInternal(ctx, clientinteractor.PSQLInteractor{}, q, cl)
 }
 
 const greeting = `

@@ -19,7 +19,7 @@ type LocalQrouterServer struct {
 }
 
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.qr.Drop(ctx, request.KeyRange.Krid)
+	err := l.qr.DropKeyRange(ctx, request.KeyRange.Krid)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := l.qr.AddShardingRule(ctx, shrule.NewShardingRule(rule.Columns))
+		err := l.qr.AddShardingRule(ctx, shrule.NewShardingRule(rule.Id, rule.Columns))
 
 		if err != nil {
 			return nil, err

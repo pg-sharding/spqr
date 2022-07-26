@@ -5,13 +5,13 @@ package yandex.spqr;
 option go_package = "yandex/spqr/proto";
 
 message Shard {
-  string addr = 1;
-  string id = 2;
+  string id = 1;
+  repeated string hosts = 2;
 }
 
 message ShardInfo {
-  repeated string hosts = 1;
-  string port = 2;
+  string id = 1;
+  repeated string hosts = 2;
 }
 
 //TODO is ListShards returns all types of shards or only data-shards?
