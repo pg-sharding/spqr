@@ -82,7 +82,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	frontendRules := map[route.RouteKey]*config.FrontendRule{}
 	var defaultFrontendRule *config.FrontendRule
 	for _, rule := range config.RouterConfig().FrontendRules {
-		if rule.PoolDefault {
+		if rule.Default {
 			defaultFrontendRule = rule
 			continue
 		}
@@ -93,7 +93,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	backendRules := map[route.RouteKey]*config.BackendRule{}
 	var defaultBackendRule *config.BackendRule
 	for _, rule := range config.RouterConfig().BackendRules {
-		if rule.PoolDefault {
+		if rule.Default {
 			defaultBackendRule = rule
 			continue
 		}
@@ -131,8 +131,6 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 				DB:                    cl.DB(),
 				AuthRule:              r.defaultFrontendRule.AuthRule,
 				PoolMode:              r.defaultFrontendRule.PoolMode,
-				PoolDiscard:           r.defaultFrontendRule.PoolDiscard,
-				PoolRollback:          r.defaultFrontendRule.PoolRollback,
 				PoolPreparedStatement: r.defaultFrontendRule.PoolPreparedStatement,
 			}
 		} else {

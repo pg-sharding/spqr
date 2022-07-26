@@ -2,7 +2,7 @@
 
 PostgreSQL is awesome, but it's hard to manage a single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical and hybrid workloads (OLAP, HTAP). Moreover, most of those solutions do not provide a simple, painless path for the monolith<->sharded transitions. That's why the [Data Platform](https://cloud.yandex.com/en-ru/services#data-platform) team of Yandex.Cloud designed SPQR.
 
-![SPQR schema](spqr-schema.jpg "SPQR")
+![SPQR schema](readme.jpg "SPQR")
 
 ## Core requirements
 1. Use highly available clusters as building blocks for sharding installations. These clusters can be based on Patroni, Stolon, Managed PostgreSQL, or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle-proven, and we reuse all their benefits.
@@ -10,8 +10,6 @@ PostgreSQL is awesome, but it's hard to manage a single database with some terab
 3. SPQR dev/test environments should be installable on a developer's laptop or Raspberry Pi in minutes, not hours in a datacenter.
 4. SPQR is optimized for single-shard OLTP queries. We aim to have a very low latency overhead (1-2 ms) introduced by SPQR for such queries.
 5. Data migration between shards aims to balance the workload across shards proportionally. Migrations must cause as little locking impact as possible. One of the ways to achieve that is to reduce range size. Liquid migrations should allow transferring between clouds. However, in this case, temporary high latencies are inevitable.
-
-Read more in [design concepts](doc/concepts.md).
 
 ## Why stateless?
 There are some good sharding solutions relying on the Postgres codebase for routing. This is a reliable and maintainable design decision. One of the obvious benefits of this approach is that the SQL grammar is always compatible between the same versions of Postgres.
