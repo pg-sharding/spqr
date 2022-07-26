@@ -14,7 +14,7 @@ frontend_tls:
   sslmode: disable
 
 frontend_rules:
-  - user: user1
+  - usr: user1
     db: db1
     pool_mode: TRANSACTION
     auth_rule:
@@ -22,7 +22,7 @@ frontend_rules:
       password: strong
 
 backend_rules:
-  - user: user1
+  - usr: user1
     db: db1
     pool_discard: true
     pool_rollback: true
@@ -34,8 +34,8 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    user: user1
-    password: 12345678
+    usr: user1
+    pwd: 12345678
     type: DATA
     hosts:
       - '192.168.233.2:6432'
@@ -45,8 +45,8 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    user: user1
-    password: 12345678
+    usr: user1
+    pwd: 12345678
     type: DATA
     hosts:
       - '192.168.233.3:6432'
@@ -56,8 +56,8 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    user: user1
-    password: 12345678
+    usr: user1
+    pwd: 12345678
     type: WORLD
     hosts:
       - '192.168.233.8:6432'

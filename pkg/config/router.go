@@ -46,7 +46,7 @@ type Router struct {
 
 type BackendRule struct {
 	DB           string `json:"db" yaml:"db" toml:"db"`
-	User         string `json:"user" yaml:"user" toml:"user"`
+	Usr          string `json:"usr" yaml:"usr" toml:"usr"`
 	PoolDiscard  bool   `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
 	PoolRollback bool   `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
 	PoolDefault  bool   `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
@@ -54,7 +54,7 @@ type BackendRule struct {
 
 type FrontendRule struct {
 	DB                    string   `json:"db" yaml:"db" toml:"db"`
-	User                  string   `json:"user" yaml:"user" toml:"user"`
+	Usr                   string   `json:"usr" yaml:"usr" toml:"usr"`
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolPreparedStatement bool     `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
@@ -64,12 +64,12 @@ type FrontendRule struct {
 }
 
 type Shard struct {
-	DB       string     `json:"db" toml:"db" yaml:"db"`
-	User     string     `json:"user" toml:"user" yaml:"user"`
-	Password string     `json:"password" toml:"password" yaml:"password"`
-	Hosts    []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type     ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS      *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	DB    string     `json:"db" toml:"db" yaml:"db"`
+	Usr   string     `json:"usr" toml:"usr" yaml:"usr"`
+	Pwd   string     `json:"pwd" toml:"pwd" yaml:"pwd"`
+	Hosts []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
+	Type  ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 var cfgRouter Router

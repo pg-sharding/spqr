@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("error while creating balancer app: %s", err)
 		}
 
-		err = app.ServeBalancer(ctx)
+		err = app.ProcBalancer(ctx)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 		}

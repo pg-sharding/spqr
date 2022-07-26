@@ -20,7 +20,7 @@ func AuthBackend(shard DBInstance, cfg *config.Shard, msg pgproto3.BackendMessag
 	case *pgproto3.AuthenticationMD5Password:
 
 		hash := md5.New()
-		hash.Write([]byte(cfg.Password + cfg.User))
+		hash.Write([]byte(cfg.Pwd + cfg.Usr))
 		res := hash.Sum(nil)
 
 		hashSec := md5.New()
@@ -30,11 +30,11 @@ func AuthBackend(shard DBInstance, cfg *config.Shard, msg pgproto3.BackendMessag
 
 		psswd := hex.EncodeToString(res2)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, cfg.Password)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, cfg.Pwd)
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		return shard.Send(&pgproto3.PasswordMessage{Password: cfg.Password})
+		return shard.Send(&pgproto3.PasswordMessage{Password: cfg.Pwd})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}

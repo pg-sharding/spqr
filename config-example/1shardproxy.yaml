@@ -16,14 +16,14 @@ frontend_tls:
   sslmode: disable
 
 frontend_rules:
-  user: opgejrqr
+  usr: opgejrqr
   db: opgejrqr
   pool_mode: TRANSACTION
   auth_rule:
     auth_method: ok
 
 backend_rules:
-  user: opgejrqr
+  usr: opgejrqr
   db: opgejrqr
   pool_discard: true
   pool_rollback: true
@@ -31,8 +31,8 @@ backend_rules:
 shards:
   sh1:
     db: opgejrqr
-    user: opgejrqr
-    password: RJj7-J717NALMmU4As0umiYwYn7wgAOk
+    usr: opgejrqr
+    pwd: RJj7-J717NALMmU4As0umiYwYn7wgAOk
     type: DATA
     tls:
       sslmode: disable

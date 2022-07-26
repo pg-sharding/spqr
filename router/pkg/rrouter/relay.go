@@ -3,6 +3,7 @@ package rrouter
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 
@@ -193,7 +194,7 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
-	span.SetTag("user", rst.Cl.User())
+	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
 	routingState, err := rst.Qr.Route(context.TODO())
@@ -236,7 +237,7 @@ func (rst *RelayStateImpl) Reroute() error {
 func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
 	span := opentracing.StartSpan("reroute to world")
 	defer span.Finish()
-	span.SetTag("user", rst.Cl.User())
+	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
 	shardRoutes := rst.Qr.WorldShardsRoutes()
@@ -276,7 +277,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.User(), rst.Cl.DB(), shardRoutes)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
@@ -296,7 +297,7 @@ func (rst *RelayStateImpl) ConnectWorld() error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.User(), rst.Cl.DB())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
 	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
@@ -485,7 +486,7 @@ func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 var _ RelayStateInteractor = &RelayStateImpl{}
 
 func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s", cl.User(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s", cl.Usr(), cl.DB())
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
 		return nil

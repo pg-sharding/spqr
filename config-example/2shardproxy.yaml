@@ -15,7 +15,7 @@ frontend_tls:
   sslmode: disable
 
 frontend_rules:
-  - user: user1
+  - usr: user1
     db: db1
     pool_mode: TRANSACTION
     pool_discard: false
@@ -33,7 +33,7 @@ frontend_rules:
       auth_method: ok
 
 backend_rules:
-  - user: user1
+  - usr: user1
     db: db1
     pool_discard: false
     pool_rollback: true

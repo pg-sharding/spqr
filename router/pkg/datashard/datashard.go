@@ -39,7 +39,7 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.beRule.User,
+			"user":             sh.beRule.Usr,
 			"database":         sh.beRule.DB,
 		},
 	}

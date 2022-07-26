@@ -389,7 +389,7 @@ func (cl *PsqlClient) Unroute() error {
 
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
-		return xerrors.Errorf("client has active rule %s:%s", rule.User, rule.DB)
+		return xerrors.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
 	}
 	cl.rule = rule
 
@@ -492,7 +492,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.User(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {
@@ -500,10 +500,10 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 			return nil
 			// TODO:
 		case config.AuthNotOK:
-			return errors.Errorf("user %v %v blocked", cl.User(), cl.DB())
+			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case config.AuthClearText:
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
-				return errors.Errorf("user %v %v auth failed", cl.User(), cl.DB())
+				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 			return nil
 		case config.AuthMD5:
@@ -569,7 +569,7 @@ func (cl *PsqlClient) StartupMessage() *pgproto3.StartupMessage {
 const DefaultUsr = "default"
 const DefaultDB = "default"
 
-func (cl *PsqlClient) User() string {
+func (cl *PsqlClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
 		return usr
 	}
@@ -874,7 +874,7 @@ type FakeClient struct {
 	RouterClient
 }
 
-func (f FakeClient) User() string {
+func (f FakeClient) Usr() string {
 	return DefaultUsr
 }
 

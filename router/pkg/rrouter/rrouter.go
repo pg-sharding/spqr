@@ -86,7 +86,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 			defaultFrontendRule = rule
 			continue
 		}
-		key := *route.NewRouteKey(rule.User, rule.DB)
+		key := *route.NewRouteKey(rule.Usr, rule.DB)
 		frontendRules[key] = rule
 	}
 
@@ -97,7 +97,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 			defaultBackendRule = rule
 			continue
 		}
-		key := *route.NewRouteKey(rule.User, rule.DB)
+		key := *route.NewRouteKey(rule.Usr, rule.DB)
 		backendRules[key] = rule
 	}
 
@@ -121,13 +121,13 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	}
 
 	// match client frontend rule
-	key := *route.NewRouteKey(cl.User(), cl.DB())
+	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, ok := r.frontendRules[key]
 	if !ok {
 		if r.defaultFrontendRule != nil {
 			// ok
 			frRule = &config.FrontendRule{
-				User:                  cl.User(),
+				Usr:                   cl.Usr(),
 				DB:                    cl.DB(),
 				AuthRule:              r.defaultFrontendRule.AuthRule,
 				PoolMode:              r.defaultFrontendRule.PoolMode,
@@ -136,7 +136,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 				PoolPreparedStatement: r.defaultFrontendRule.PoolPreparedStatement,
 			}
 		} else {
-			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.User(), cl.DB())
+			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
 			for _, msg := range []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Message: errmsg,
@@ -155,8 +155,8 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	if !ok {
 		if r.defaultBackendRule != nil {
 			beRule = &config.BackendRule{
-				User: cl.User(),
-				DB:   cl.DB(),
+				Usr: cl.Usr(),
+				DB:  cl.DB(),
 			}
 		} else {
 			return cl, errors.New("Failed to route backend for client")

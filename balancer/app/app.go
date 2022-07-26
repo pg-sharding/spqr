@@ -87,7 +87,7 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.Balancer) (*App, error) {
 	}, nil
 }
 
-func (app *App) ServeBalancer(ctx context.Context) error {
+func (app *App) ProcBalancer(ctx context.Context) error {
 
 	//TODO return error
 	app.balancer.BrutForceStrategy()
