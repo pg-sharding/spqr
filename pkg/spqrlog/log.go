@@ -1,10 +1,11 @@
 package spqrlog
 
 import (
-	"github.com/pg-sharding/spqr/pkg/config"
 	"io"
 	"log"
 	"os"
+
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 type Severity int

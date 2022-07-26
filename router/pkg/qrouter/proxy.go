@@ -3,9 +3,10 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/qdb/ops"
 
 	"github.com/jackc/pgproto3/v2"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
@@ -52,17 +53,35 @@ func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataSh
 	return ret
 }
 
-func (qr *ProxyQrouter) AddWorldShard(name string, cfg *config.Shard) error {
+func (qr *ProxyQrouter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+	resp, err := qr.qdb.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retShards []*datashards.DataShard
+
+	for _, sh := range resp {
+		retShards = append(retShards, &datashards.DataShard{
+			ID: sh.ID,
+			Cfg: &config.Shard{
+				Hosts: sh.Hosts,
+			},
+		})
+	}
+	return retShards, nil
+}
+
+func (qr *ProxyQrouter) AddWorldShard(ctx context.Context, ds *datashards.DataShard) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", name)
-	qr.WorldShardCfgs[name] = cfg
+	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", ds.ID)
+	qr.WorldShardCfgs[ds.ID] = ds.Cfg
 
 	return nil
 }
 
-func (qr *ProxyQrouter) Drop(ctx context.Context, id string) error {
+func (qr *ProxyQrouter) DropKeyRange(ctx context.Context, id string) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
@@ -70,13 +89,17 @@ func (qr *ProxyQrouter) Drop(ctx context.Context, id string) error {
 	return qr.qdb.DropKeyRange(ctx, id)
 }
 
-func (qr *ProxyQrouter) DropAll(ctx context.Context) error {
+func (qr *ProxyQrouter) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "dropping all key range")
-	_, err := qr.qdb.DropKeyRangeAll(ctx)
-	return err
+	resp, err := qr.qdb.DropKeyRangeAll(ctx)
+	var krid []*kr.KeyRange
+	for _, krcurr := range resp {
+		krid = append(krid, kr.KeyRangeFromDB(krcurr))
+	}
+	return krid, err
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
@@ -256,7 +279,7 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 	return nil
 }
 
-func (qr *ProxyQrouter) Lock(ctx context.Context, krid string) (*kr.KeyRange, error) {
+func (qr *ProxyQrouter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
@@ -277,8 +300,8 @@ func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataSha
 	qr.DataShardCfgs[ds.ID] = ds.Cfg
 
 	return qr.qdb.AddShard(ctx, &qdb.Shard{
-		ID:   ds.ID,
-		Addr: ds.Cfg.Hosts[0],
+		ID:    ds.ID,
+		Hosts: ds.Cfg.Hosts,
 	})
 }
 
@@ -292,7 +315,7 @@ func (qr *ProxyQrouter) Shards() []string {
 	return ret
 }
 
-func (qr *ProxyQrouter) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 	var ret []*kr.KeyRange
@@ -315,20 +338,23 @@ func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.Shardi
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
 
-	return qr.qdb.AddShardingRule(ctx, rule)
+	return qr.qdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		Id:       rule.ID(),
+		Colnames: rule.Columns(),
+	})
 }
 
-func (qr *ProxyQrouter) ListShardingRules(_ context.Context) ([]*shrule.ShardingRule, error) {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	rules := make([]*shrule.ShardingRule, 0, len(qr.ColumnMapping))
-
-	for rule := range qr.ColumnMapping {
-		rules = append(rules, shrule.NewShardingRule([]string{rule}))
+func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []*shrule.ShardingRule
+	for _, v := range rules {
+		resp = append(resp, shrule.ShardingRuleFromDB(v))
 	}
 
-	return rules, nil
+	return resp, nil
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
@@ -493,7 +519,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
-		if !qr.qdb.CheckShardingRule(ctx, colnames) {
+		if err := ops.CheckShardingRule(ctx, qr.qdb, colnames); err == nil {
 			return nil, ShardingKeysMissing
 		}
 
@@ -547,7 +573,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				switch res := c.Node.(type) {
 				case *pgquery.Node_ResTarget:
 					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
-					if !qr.qdb.CheckShardingRule(ctx, []string{res.ResTarget.Name}) {
+					if err := ops.CheckShardingRule(ctx, qr.qdb, []string{res.ResTarget.Name}); err == nil {
 						return nil, ShardingKeysMissing
 					}
 					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
@@ -602,8 +628,8 @@ func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgq
 	for _, elt := range node.CreateStmt.TableElts {
 		switch eltTar := elt.Node.(type) {
 		case *pgquery.Node_ColumnDef:
-			// multi-column sharding rules checks
-			if qr.qdb.CheckShardingRule(ctx, []string{eltTar.ColumnDef.Colname}) {
+			// TODO: multi-column sharding rules checks
+			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.RuleIntersec {
 				return nil
 			}
 		default:

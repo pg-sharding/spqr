@@ -142,7 +142,7 @@ func (s *InstancePoolImpl) Check(key kr.ShardKey) bool {
 
 	return true
 	//
-	//s.mu.Lock()
+	//s.mu.LockKeyRange()
 	//defer s.mu.Unlock()
 	//
 	//return len(s.poolRW[key]) > 0

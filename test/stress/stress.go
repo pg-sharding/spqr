@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/wal-g/tracelog"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/wal-g/tracelog"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"

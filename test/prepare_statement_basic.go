@@ -4,11 +4,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/jackc/pgproto3/v2"
+	"github.com/wal-g/tracelog"
 )
 
 var readResp = flag.Bool("v", false, "Logs every packet in great detail")

@@ -9,4 +9,4 @@ simple.sh
 
 move.sh
 
-with_coordinator.sh
+#with_coordinator.sh

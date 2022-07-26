@@ -3,6 +3,8 @@ package qrouter
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
+
 	"github.com/jackc/pgproto3/v2"
 	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
 
@@ -10,9 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
@@ -58,22 +58,13 @@ type WorldRouteState struct {
 }
 
 type QueryRouter interface {
-	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
+	meta.MetaMgr
 
 	Route(ctx context.Context) (RoutingState, error)
 
 	Parse(q *pgproto3.Query) (rparser.ParseState, error)
-
-	// Shards shards
-	Shards() []string
-	WorldShards() []string
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute
-
-	AddDataShard(ctx context.Context, ds *datashards.DataShard) error
-	ListDataShards(ctx context.Context) []*datashards.DataShard
-	AddWorldShard(name string, cfg *config.Shard) error
 
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }

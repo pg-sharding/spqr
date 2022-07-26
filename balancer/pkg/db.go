@@ -129,10 +129,10 @@ func AddrToHostPort(addr string) (string, int) {
 	return s[0], port
 }
 
-func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert string, port int) (*hasql.Cluster, error) {
+func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert string) (*hasql.Cluster, error) {
 	nodes := make([]hasql.Node, 0, len(addrs))
 	for _, addr := range addrs {
-		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert, port)
+		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert)
 		tracelog.InfoLogger.Printf("Connection string: %v", connString)
 
 		db, err := sql.Open("pgx", connString)
@@ -149,17 +149,15 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }
 
-func ConnString(addr, dbname, user, password, sslMode, sslRootCert string, port int) string {
+func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) string {
 	var connParams []string
 
 	host, portFromAddr, err := net.SplitHostPort(addr)
-	if err == nil {
-		connParams = append(connParams, "host="+host)
-		connParams = append(connParams, "port="+portFromAddr)
-	} else {
-		connParams = append(connParams, "host="+addr)
-		connParams = append(connParams, "port="+strconv.Itoa(port))
+	if err != nil {
+		// invalid host spec
 	}
+	connParams = append(connParams, "host="+host)
+	connParams = append(connParams, "port="+portFromAddr)
 
 	if dbname != "" {
 		connParams = append(connParams, "dbname="+dbname)
@@ -221,7 +219,6 @@ func (d *Database) Init(addrs []string, retriesCount int, dbname, tableName, act
 			actionsDBPassword,
 			actionsDBSslMode,
 			actionsDBSslRootCert,
-			6432,
 		)
 	if err != nil {
 		return err

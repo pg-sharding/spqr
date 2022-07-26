@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strconv"
 
 	"golang.yandex/hasql"
 
@@ -34,24 +33,13 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.Balancer) (*App, error) {
 	shardClusters := map[int]*hasql.Cluster{}
 
 	for id, shard := range *shards {
-		if shard.Port == "" {
-			_, shard.Port, err = net.SplitHostPort(shard.Hosts[0])
-			if err != nil {
-				return nil, err
-			}
-		}
-		port, err := strconv.Atoi(shard.Port)
-		if err != nil {
-			return nil, err
-		}
 		shardClusters[id], err = balancerPkg.NewCluster(
 			shard.Hosts,
 			cfg.InstallationDBName,
 			cfg.InstallationUserName,
 			cfg.InstallationPassword,
 			cfg.InstallationSSLMode,
-			"",
-			port)
+			"")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create a new cluster connection: %v", err)
 		}

@@ -105,7 +105,7 @@ func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
 			return nil, err
 		}
 
-		res[id] = routerproto.ShardInfo{Hosts: respShard.ShardInfo.Hosts, Port: respShard.ShardInfo.Port}
+		res[id] = routerproto.ShardInfo{Hosts: respShard.ShardInfo.Hosts}
 	}
 
 	return &res, nil

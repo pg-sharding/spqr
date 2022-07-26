@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/routers"
+
 	"github.com/pg-sharding/spqr/qdb/ops"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -45,13 +48,31 @@ func (r *routerConn) ID() string {
 
 var _ router.Router = &routerConn{}
 
-func DialRouter(r router.Router) (*grpc.ClientConn, error) {
-	return grpcclient.Dial(r.Addr())
+func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
+	return grpcclient.Dial(r.AdmAddr)
 }
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
 	db qdb.QrouterDB
+}
+
+func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, error) {
+	//TODO implement me
+	resp, err := qc.db.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retTouters []*routers.Router
+
+	for _, v := range resp {
+		retTouters = append(retTouters, &routers.Router{
+			Id:      v.Id,
+			AdmAddr: v.Address,
+		})
+	}
+
+	return retTouters, nil
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -70,7 +91,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.NewShardingRule(rule.Columns()))
+		shRules = append(shRules, shrule.NewShardingRule(rule.Id, rule.Colnames))
 	}
 
 	return shRules, nil
@@ -78,7 +99,10 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
-	if err := qc.db.AddShardingRule(ctx, rule); err != nil {
+	if err := qc.db.AddShardingRule(ctx, &qdb.ShardingRule{
+		Colnames: rule.Columns(),
+		Id:       rule.ID(),
+	}); err != nil {
 		return err
 	}
 
@@ -91,7 +115,10 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "routers %+v", resp)
 
 	for _, r := range resp {
-		cc, err := DialRouter(r)
+		cc, err := DialRouter(&routers.Router{
+			Id:      r.ID(),
+			AdmAddr: r.Addr(),
+		})
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", r, err)
 		if err != nil {
@@ -140,7 +167,10 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 
 	// notify all routers
 	for _, r := range resp {
-		cc, err := DialRouter(r)
+		cc, err := DialRouter(&routers.Router{
+			Id:      r.ID(),
+			AdmAddr: r.Addr(),
+		})
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
 		if err != nil {
@@ -162,7 +192,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return nil
 }
 
-func (qc *qdbCoordinator) ListKeyRange(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
@@ -180,7 +210,7 @@ func (qc *qdbCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRang
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, keyRange.ToSQL())
 }
 
-func (qc *qdbCoordinator) Lock(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
+func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qc.db.Lock(ctx, keyRangeID)
 	if err != nil {
 		return nil, err
@@ -232,6 +262,39 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld)
 }
 
+func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+
+	// TODO: exclusive lock all routers
+
+	krs, err := qc.ListKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rtrs, err := qc.ListRouters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, qRouter := range rtrs {
+		cc, err := DialRouter(qRouter)
+		if err != nil {
+			return nil, err
+		}
+
+		// Configure sharding rules.
+
+		krClient := routerproto.NewKeyRangeServiceClient(cc)
+
+		_, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return krs, nil
+}
+
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	krLeft, err := qc.db.Lock(ctx, uniteKeyRange.KeyRangeIDLeft)
 	if err != nil {
@@ -268,7 +331,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
-func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router.Router, cl client.Client) error {
+func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter *routers.Router, cl client.Client) error {
 	cc, err := DialRouter(qRouter)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %w", qRouter, err)
@@ -286,7 +349,8 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
 	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, shRule := range shardingRules {
-		protoShardingRules = append(protoShardingRules, &routerproto.ShardingRule{Columns: shRule.Columns()})
+		protoShardingRules = append(protoShardingRules,
+			&routerproto.ShardingRule{Columns: shRule.Colnames, Id: shRule.Id})
 	}
 
 	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
@@ -325,10 +389,12 @@ func (qc *qdbCoordinator) ConfigureNewRouter(ctx context.Context, qRouter router
 	return nil
 }
 
-func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *qdb.Router) error {
+func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *routers.Router) error {
 	// TODO: list routers and deduplicate
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.Addr(), r.ID())
-	return qc.db.AddRouter(ctx, r)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.AdmAddr, r.Id)
+	return qc.db.AddRouter(ctx, &qdb.Router{
+		Id: r.Id,
+	})
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
@@ -336,8 +402,6 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 
 	return qc.db.DeleteRouter(ctx, rID)
 }
-
-var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	krmv, err := qc.db.Lock(ctx, req.Krid)
@@ -398,115 +462,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
 
-			if err := func() error {
-				switch stmt := tstmt.(type) {
-				case *spqrparser.Drop:
-					err := qc.db.DropKeyRange(ctx, stmt.KeyRangeID)
-					if err != nil {
-						return err
-					}
-					return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
-				case *spqrparser.DropAll:
-
-					if krids, err := qc.db.DropKeyRangeAll(ctx); err != nil {
-						return err
-					} else {
-						return cli.DropKeyRange(ctx, func() []string {
-							var ret []string
-
-							for _, krcurr := range krids {
-								ret = append(ret, krcurr.KeyRangeID)
-							}
-
-							return ret
-						}(), cl)
-					}
-				case *spqrparser.MoveKeyRange:
-					move := &kr.MoveKeyRange{
-						ShardId: stmt.DestShardID,
-						Krid:    stmt.KeyRangeID,
-					}
-
-					if err := qc.Move(ctx, move); err != nil {
-						return cli.ReportError(err, cl)
-					}
-
-					return cli.MoveKeyRange(ctx, move, cl)
-				case *spqrparser.ShardingColumn:
-					shardingRule := shrule.NewShardingRule([]string{stmt.ColName})
-					err := qc.AddShardingRule(ctx, shardingRule)
-					if err != nil {
-						return err
-					}
-					return cli.AddShardingRule(ctx, shardingRule, cl)
-				case *spqrparser.RegisterRouter:
-					newRouter := qdb.NewRouter(stmt.Addr, stmt.ID)
-
-					if err := qc.RegisterRouter(ctx, newRouter); err != nil {
-						return err
-					}
-
-					if err := qc.ConfigureNewRouter(ctx, newRouter, cl); err != nil {
-						return err
-					}
-
-					return cli.RegisterRouter(ctx, cl, stmt.ID, stmt.Addr)
-				case *spqrparser.UnregisterRouter:
-					if err := qc.UnregisterRouter(ctx, stmt.ID); err != nil {
-						return err
-					}
-					return cli.UnregisterRouter(cl, stmt.ID)
-				case *spqrparser.AddKeyRange:
-					req := kr.KeyRangeFromSQL(stmt)
-					if err := qc.AddKeyRange(ctx, req); err != nil {
-						return cli.ReportError(err, cl)
-					}
-					return cli.AddKeyRange(ctx, req, cl)
-				case *spqrparser.Lock:
-					if _, err := qc.Lock(ctx, stmt.KeyRangeID); err != nil {
-						return err
-					}
-					return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
-				case *spqrparser.Show:
-					spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
-					switch stmt.Cmd {
-					case spqrparser.ShowShardsStr:
-						shards, err := qc.db.ListShards(ctx)
-						if err != nil {
-							return err
-						}
-						var resp []*datashards.DataShard
-						for _, sh := range shards {
-							resp = append(resp, &datashards.DataShard{
-								ID: sh.ID,
-							})
-						}
-						return cli.Shards(ctx, resp, cl)
-					case spqrparser.ShowKeyRangesStr:
-						ranges, err := qc.db.ListKeyRanges(ctx)
-						if err != nil {
-							return err
-						}
-
-						var resp []*kr.KeyRange
-						for _, el := range ranges {
-							resp = append(resp, kr.KeyRangeFromDB(el))
-						}
-						return cli.KeyRanges(resp, cl)
-					case spqrparser.ShowRoutersStr:
-						routers, err := qc.db.ListRouters(ctx)
-						if err != nil {
-							return err
-						}
-
-						return cli.Routers(routers, cl)
-					default:
-						return unknownCoordinatorCommand
-					}
-				default:
-					return unknownCoordinatorCommand
-				}
-			}(); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, cli, cl); err != nil {
 				spqrlog.Logger.PrintError(err)
 				_ = cli.ReportError(err, cl)
 			} else {
@@ -518,40 +474,34 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	}
 }
 
-func (qc *qdbCoordinator) AddDataShard(ctx context.Context, newShard *datashards.Shard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(newShard.ID, newShard.Addr))
+func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.Hosts))
 }
 
-func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.Shard) error {
+func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
 	panic("implement me")
 }
 
-func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.Shard, error) {
+func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	shardList, err := qc.db.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	shards := make([]*datashards.Shard, 0, len(shardList))
+	shards := make([]*datashards.DataShard, 0, len(shardList))
 
 	for _, shard := range shardList {
-		shards = append(shards, &datashards.Shard{
-			Addr: shard.Addr,
-			ID:   shard.ID,
+		shards = append(shards, &datashards.DataShard{
+			ID: shard.ID,
+			Cfg: &config.Shard{
+				Hosts: shard.Hosts,
+			},
 		})
 	}
 
 	return shards, nil
 }
 
-func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.ShardInfo, error) {
-	shardInfo, err := qc.db.GetShardInfo(ctx, shardID)
-	if err != nil {
-		return nil, err
-	}
-
-	return &datashards.ShardInfo{
-		Hosts: shardInfo.Hosts,
-		Port:  shardInfo.Port,
-	}, nil
+func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+	panic("implement or delete me")
 }

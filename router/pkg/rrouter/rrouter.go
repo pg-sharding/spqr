@@ -64,7 +64,7 @@ func (r *RRouter) AddDataShard(key qdb.ShardKey) error {
 	//
 	//wg.Run()
 	//
-	//r.mu.Lock()
+	//r.mu.LockKeyRange()
 	//defer r.mu.Unlock()
 	//
 	//r.wgs[key] = wg

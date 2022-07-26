@@ -1,7 +1,6 @@
 package etcdqdb
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -57,9 +55,9 @@ func shardNodePath(key string) string {
 }
 
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
-	kr, err := q.fetchKeyRange(ctx, KeyRangeID)
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get key range responce %v %v", kr, err)
-	return kr, err
+	krret, err := q.fetchKeyRange(ctx, KeyRangeID)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get key range responce %v %v", krret, err)
+	return krret, err
 }
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
@@ -70,18 +68,18 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 }
 
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
-	krids, err := q.ListKeyRanges(ctx)
+	keyRanges, err := q.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
-	for _, krcurr := range krids {
+	for _, krcurr := range keyRanges {
 		resp, err := q.cli.Delete(ctx, keyRangeNodePath(krcurr.KeyRangeID))
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return krids, nil
+	return keyRanges, nil
 }
 
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
@@ -162,7 +160,12 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 		return nil, err
 	}
 
-	defer sess.Close()
+	defer func(sess *concurrency.Session) {
+		err := sess.Close()
+		if err != nil {
+
+		}
+	}(sess)
 
 	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*qdb.KeyRange, error) {
 		mu := concurrency.NewMutex(sess, keyspace)
@@ -184,7 +187,7 @@ func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, e
 				return nil, err
 			}
 
-			return q.fetchKeyRange(ctx, keyRangeNodePath(keyRangeID))
+			return q.GetKeyRange(ctx, keyRangeID)
 		case 1:
 			return nil, fmt.Errorf("key range with id %v locked", keyRangeID)
 		default:
@@ -292,7 +295,6 @@ func (q *EtcdQDB) Unlock(ctx context.Context, keyRangeID string) error {
 }
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
-
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
@@ -352,34 +354,67 @@ func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
 	return true
 }
 
-func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *shrule.ShardingRule) error {
-	ops := make([]clientv3.Op, len(shRule.Columns()))
-	for i, key := range shRule.Columns() {
-		ops[i] = clientv3.OpPut(shardingRuleNodePath(key), "")
-	}
-
-	resp, err := q.cli.Txn(ctx).Then(ops...).Commit()
-
+func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *qdb.ShardingRule) error {
+	rawShardingRule, err := json.Marshal(shRule)
 	if err != nil {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rules resp %v", resp)
-	return nil
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
+	resp, err := q.cli.Put(ctx, shardingRuleNodePath(shRule.Id), string(rawShardingRule))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rule to qdb resp %v", resp)
+	return err
 }
 
-func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
+	resp, err := q.cli.Delete(ctx, shardingRuleNodePath(id))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rule to qdb resp %v", resp)
+	return err
+}
+
+func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*qdb.ShardingRule, error) {
+	resp, err := q.cli.Get(ctx, shardingRuleNodePath(id), clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	var shrule qdb.ShardingRule
+
+	err = json.Unmarshal(resp.Kvs[0].Value, &shrule)
+	if err != nil {
+		return nil, err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get sharding rules resp %v", resp)
+	return &shrule, nil
+}
+
+func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
 	namespacePrefix := shardingRulesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make([]*shrule.ShardingRule, 0, len(resp.Kvs))
+	rules := make([]*qdb.ShardingRule, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
 		// A sharding rule supports no more than one column for a while.
-		rules = append(rules, shrule.NewShardingRule([]string{string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix)))}))
+		var rule *qdb.ShardingRule
+		err := json.Unmarshal(kv.Value, &rule)
+		if err != nil {
+			return nil, err
+		}
+
+		rules = append(rules, rule)
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "list sharding rules resp %v", resp)
@@ -387,7 +422,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule
 }
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *qdb.Shard) error {
-	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Addr)
+	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Hosts[0])
 	if err != nil {
 		return err
 	}
@@ -403,19 +438,20 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*qdb.Shard, error) {
 		return nil, err
 	}
 
-	rules := make([]*qdb.Shard, 0, len(resp.Kvs))
+	shards := make([]*qdb.Shard, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		rules = append(rules, &qdb.Shard{
-			ID:   string(bytes.TrimPrefix(kv.Key, []byte(namespacePrefix))),
-			Addr: string(kv.Value),
-		})
+		var shard *qdb.Shard
+		if err := json.Unmarshal(kv.Value, &shard); err != nil {
+			return nil, err
+		}
+		shards = append(shards, shard)
 	}
 
-	return rules, nil
+	return shards, nil
 }
 
-func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
+func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard, error) {
 	nodePath := shardNodePath(shardID)
 
 	resp, err := q.cli.Get(ctx, nodePath)
@@ -423,7 +459,7 @@ func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardI
 		return nil, err
 	}
 
-	shardInfo := &qdb.ShardInfo{
+	shardInfo := &qdb.Shard{
 		ID: shardID,
 	}
 

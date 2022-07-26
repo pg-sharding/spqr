@@ -9,8 +9,29 @@ type Show struct {
 	Cmd string
 }
 
-type ShardingColumn struct {
-	ColName string
+type Add struct {
+	Element Statement
+}
+
+func (*Add) iStatement() {}
+
+type Drop struct {
+	Element Statement
+}
+
+func (*Drop) iStatement() {}
+
+type AddStmt interface {
+	iAdd()
+}
+
+type DropStmt interface {
+	iDrop()
+}
+
+type AddShardingRule struct {
+	ID       string
+	ColNames []string
 }
 
 type AddKeyRange struct {
@@ -24,6 +45,10 @@ type AddShard struct {
 	Id    string
 	Hosts []string
 }
+
+func (*AddKeyRange) iAdd()     {}
+func (*AddShard) iAdd()        {}
+func (*AddShardingRule) iAdd() {}
 
 type SplitKeyRange struct {
 	Border         []byte
@@ -41,13 +66,16 @@ type MoveKeyRange struct {
 	KeyRangeID  string
 }
 
-type Add struct {
+type DropKeyRange struct {
 	KeyRangeID string
 }
 
-type Drop struct {
-	KeyRangeID string
+type DropShardingRule struct {
+	ID string
 }
+
+func (*DropKeyRange) iDrop()     {}
+func (*DropShardingRule) iDrop() {}
 
 type DropAll struct{}
 
@@ -81,14 +109,14 @@ type UnregisterRouter struct {
 
 // The frollowing constants represent SHOW statements.
 const (
-	ShowDatabasesStr    = "databases"
-	ShowRoutersStr      = "routers"
-	ShowShardsStr       = "shards"
-	ShowShardingColumns = "sharding_columns"
-	ShowKeyRangesStr    = "key_ranges"
-	KillClientsStr      = "clients"
-	ShowPoolsStr        = "pools"
-	ShowUnsupportedStr  = "unsupported"
+	ShowDatabasesStr   = "databases"
+	ShowRoutersStr     = "routers"
+	ShowShardsStr      = "shards"
+	ShowShardingRules  = "sharding_rules"
+	ShowKeyRangesStr   = "key_ranges"
+	KillClientsStr     = "clients"
+	ShowPoolsStr       = "pools"
+	ShowUnsupportedStr = "unsupported"
 )
 
 // Statement represents a statement.
@@ -96,60 +124,65 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()           {}
-func (*Add) iStatement()            {}
-func (*Drop) iStatement()           {}
-func (*DropAll) iStatement()        {}
-func (*Lock) iStatement()           {}
-func (*Unlock) iStatement()         {}
-func (*Shutdown) iStatement()       {}
-func (*Listen) iStatement()         {}
-func (*MoveKeyRange) iStatement()   {}
-func (*SplitKeyRange) iStatement()  {}
-func (*UniteKeyRange) iStatement()  {}
-func (*ShardingColumn) iStatement() {}
-func (*AddKeyRange) iStatement()    {}
-func (*AddShard) iStatement()       {}
-func (*Kill) iStatement()           {}
+func (*Show) iStatement()             {}
+func (*DropKeyRange) iStatement()     {}
+func (*DropShardingRule) iStatement() {}
+func (*DropAll) iStatement()          {}
+func (*Lock) iStatement()             {}
+func (*Unlock) iStatement()           {}
+func (*Shutdown) iStatement()         {}
+func (*Listen) iStatement()           {}
+func (*MoveKeyRange) iStatement()     {}
+func (*SplitKeyRange) iStatement()    {}
+func (*UniteKeyRange) iStatement()    {}
+func (*AddShardingRule) iStatement()  {}
+func (*AddKeyRange) iStatement()      {}
+func (*AddShard) iStatement()         {}
+func (*Kill) iStatement()             {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
 
 var reservedWords = map[string]int{
-	"pools":      POOLS,
-	"servers":    SERVERS,
-	"clients":    CLIENTS,
-	"databases":  DATABASES,
-	"show":       SHOW,
-	"stats":      STATS,
-	"kill":       KILL,
-	"column":     COLUMN,
-	"sharding":   SHARDING,
-	"create":     CREATE,
-	"add":        ADD,
-	"key":        KEY,
-	"range":      RANGE,
-	"shards":     SHARDS,
-	"key_ranges": KEY_RANGES,
-	"lock":       LOCK,
-	"unlock":     UNLOCK,
-	"drop":       DROP,
-	"all":        ALL,
-	"shutdown":   SHUTDOWN,
-	"split":      SPLIT,
-	"from":       FROM,
-	"by":         BY,
-	"to":         TO,
-	"with":       WITH,
-	"unite":      UNITE,
-	"listen":     LISTEN,
-	"register":   REGISTER,
-	"unregister": UNREGISTER,
-	"router":     ROUTER,
-	"move":       MOVE,
-	"routers":    ROUTERS,
-	"address":    ADDRESS,
-	"host":       HOST,
+	"pools":          POOLS,
+	"servers":        SERVERS,
+	"clients":        CLIENTS,
+	"databases":      DATABASES,
+	"show":           SHOW,
+	"stats":          STATS,
+	"kill":           KILL,
+	"column":         COLUMN,
+	"columns":        COLUMNS,
+	"shard":          SHARD,
+	"rule":           RULE,
+	"sharding":       SHARDING,
+	"create":         CREATE,
+	"add":            ADD,
+	"key":            KEY,
+	"range":          RANGE,
+	"shards":         SHARDS,
+	"key_ranges":     KEY_RANGES,
+	"sharding_rules": SHARDING_RULES,
+	"lock":           LOCK,
+	"unlock":         UNLOCK,
+	"drop":           DROP,
+	"all":            ALL,
+	"shutdown":       SHUTDOWN,
+	"split":          SPLIT,
+	"from":           FROM,
+	"by":             BY,
+	"to":             TO,
+	"with":           WITH,
+	"unite":          UNITE,
+	"listen":         LISTEN,
+	"register":       REGISTER,
+	"unregister":     UNREGISTER,
+	"router":         ROUTER,
+	"move":           MOVE,
+	"routers":        ROUTERS,
+	"address":        ADDRESS,
+	"host":           HOST,
+	"route":          ROUTE,
 }
 
 // Tokenizer is the struct used to generate SQL

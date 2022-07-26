@@ -13,12 +13,12 @@ package spqrparser
   statement              Statement
   show                   *Show
   kr                     *AddKeyRange
-  sh_col                 *ShardingColumn
   shard                  *AddShard
   register_router        *RegisterRouter
   unregister_router      *UnregisterRouter
   kill                   *Kill
   drop                   *Drop
+  add                    *Add
   dropAll                *DropAll
   lock                   *Lock
   shutdown               *Shutdown
@@ -50,10 +50,11 @@ package spqrparser
 %token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
 
 // routers
-%token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER
+%token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str> SHARDING COLUMN KEY RANGE SHARDS KEY_RANGES ROUTERS SHARD HOST
+%token <str> SHARDING COLUMN KEY RANGE
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 
 %type <str> show_statement_type
@@ -62,12 +63,11 @@ package spqrparser
 %type <show> show_stmt
 %type <kill> kill_stmt
 
-%type <sh_col> create_sharding_column_stmt
-
-%type <shard> add_shard_stmt
-%type <kr> add_key_range_stmt
-%type <drop> drop_stmt drop_key_range_stmt
+%type <drop> drop_sharding_colimn_stmt drop_key_range_stmt
 %type <dropAll> drop_key_range_all_stmt
+
+%type <add> add_shard_stmt add_key_range_stmt add_sharding_rule_stmt
+
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
 %type <shutdown> shutdown_stmt
@@ -87,6 +87,8 @@ package spqrparser
 %type<str> key_range_id
 %type<str> router_id
 %type<str> router_addr
+%type<str> shrule_id
+%type<str> sharding_column_names
 
 %start any_command
 
@@ -102,7 +104,7 @@ semicolon_opt:
 
 
 command:
-	create_sharding_column_stmt
+	add_shard_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -110,7 +112,7 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| add_shard_stmt
+	| add_sharding_rule_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -118,7 +120,11 @@ command:
 	{
         setParseTree(yylex, $1)
     }
-	| drop_stmt
+	| drop_key_range_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| drop_sharding_colimn_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -176,12 +182,13 @@ POOLS
 | STATS
 | KEY_RANGES
 | ROUTERS
+| SHARDING_RULES
 
 show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingColumns:
+		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingRules:
 			$$ = v
 		default:
 			$$ = ShowUnsupportedStr
@@ -206,6 +213,17 @@ show_stmt:
 		$$ = &Show{Cmd: $2}
 	}
 
+sharding_column_names:
+	STRING
+	{
+		$$ = string($1)
+	}
+
+shrule_id:
+	STRING
+	{
+		$$ = string($1)
+	}
 
 sharding_column_name:
 	STRING
@@ -218,12 +236,6 @@ key_range_spec_bound:
     {
       $$ = []byte($1)
     }
-
-create_sharding_column_stmt:
-	CREATE SHARDING COLUMN sharding_column_name
-	{
-		$$ = &ShardingColumn{ColName: $4}
-	}
 
 key_range_id:
 	STRING
@@ -244,34 +256,40 @@ address:
 		$$ = string($1)
 	}
 
-
-drop_stmt:
-	drop_key_range_stmt
-
 lock_stmt:
 	lock_key_range_stmt
 
 add_key_range_stmt:
-	ADD KEY RANGE key_range_spec_bound key_range_spec_bound shard_id key_range_id
+	ADD KEY RANGE key_range_id FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO shard_id
 	{
-		$$ = &AddKeyRange{LowerBound: $4, UpperBound: $5, ShardID: $6, KeyRangeID: $7}
+		$$ = &Add{Element: &AddKeyRange{LowerBound: $6, UpperBound: $8, ShardID: $11, KeyRangeID: $4}}
+	}
+
+add_sharding_rule_stmt:
+	ADD SHARDING RULE shrule_id COLUMNS sharding_column_names
+	{
+		$$ = &Add{Element: &AddShardingRule{ID: $4, ColNames: []string{$6}}}
 	}
 
 add_shard_stmt:
-// support multi-host shards
 	ADD SHARD shard_id WITH HOST address
 	{
-		$$ = &AddShard{Id: $3, Hosts: []string{$6}}
+		$$ = &Add{Element: &AddShard{Id: $3, Hosts: []string{$6}}}
 	}
-
 
 unlock_stmt:
 	unlock_key_range_stmt
 
+drop_sharding_colimn_stmt:
+	DROP SHARDING RULE sharding_column_name
+	{
+		$$ = &Drop{Element: &DropShardingRule{ID: $4}}
+	}
+
 drop_key_range_stmt:
 	DROP KEY RANGE key_range_id
 	{
-		$$ = &Drop{KeyRangeID: $4}
+		$$ = &Drop{Element: &DropKeyRange{KeyRangeID: $4}}
 	}
 
 drop_key_range_all_stmt:

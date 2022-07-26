@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -21,7 +20,12 @@ type QrouterDBMem struct {
 
 	shards map[string]*qdb.Shard
 
-	shrules []*shrule.ShardingRule
+	shrules []*qdb.ShardingRule
+}
+
+func (q *QrouterDBMem) DropShardingRule(ctx context.Context, id string) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (q *QrouterDBMem) GetKeyRange(ctx context.Context, id string) (*qdb.KeyRange, error) {
@@ -58,11 +62,11 @@ func (q *QrouterDBMem) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, er
 	return nil, nil
 }
 
-func (q *QrouterDBMem) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+func (q *QrouterDBMem) AddShardingRule(ctx context.Context, rule *qdb.ShardingRule) error {
 	//TODO implement me
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %v", rule.Columns())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %v", rule.Colnames)
 
 	q.shrules = append(q.shrules, rule)
 	return nil
@@ -75,35 +79,6 @@ func (q *QrouterDBMem) Share(key *qdb.KeyRange) error {
 	q.locks[key.KeyRangeID].RUnlock()
 
 	return nil
-}
-
-func (q *QrouterDBMem) CheckShardingRule(ctx context.Context, colnames []string) bool {
-	//TODO implement me
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d rules", len(q.shrules))
-
-	for _, rule := range q.shrules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Columns(), colnames)
-		if len(rule.Columns()) != len(colnames) {
-			continue
-		}
-		ok := true
-
-		for j := 0; j < len(colnames); j++ {
-			if rule.Columns()[j] != colnames[j] {
-				ok = false
-				break
-			}
-		}
-
-		if ok {
-			return true
-		}
-	}
-
-	return false
 }
 
 func (q *QrouterDBMem) DropKeyRange(ctx context.Context, KeyRangeID string) error {
@@ -130,7 +105,7 @@ func (q *QrouterDBMem) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	panic("implement me")
 }
 
-func (q *QrouterDBMem) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (q *QrouterDBMem) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	return q.shrules, nil
@@ -146,6 +121,7 @@ func (q *QrouterDBMem) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) 
 
 	q.krs[keyRange.KeyRangeID] = keyRange
 	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
+	q.freq[keyRange.KeyRangeID] = false
 
 	return nil
 }
@@ -214,6 +190,8 @@ func (q *QrouterDBMem) Unlock(_ context.Context, KeyRangeID string) error {
 		return fmt.Errorf("key range %v not locked", KeyRangeID)
 	}
 
+	q.freq[KeyRangeID] = false
+
 	q.locks[KeyRangeID].Unlock()
 
 	return nil
@@ -252,12 +230,12 @@ func (q *QrouterDBMem) AddShard(ctx context.Context, shard *qdb.Shard) error {
 	return nil
 }
 
-func (q *QrouterDBMem) GetShardInfo(ctx context.Context, shardID string) (*qdb.ShardInfo, error) {
+func (q *QrouterDBMem) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	if _, ok := q.shards[shardID]; ok {
-		return &qdb.ShardInfo{ID: shardID}, nil
+		return &qdb.Shard{ID: shardID}, nil
 	}
 
 	return nil, fmt.Errorf("unknown shard %s", shardID)
