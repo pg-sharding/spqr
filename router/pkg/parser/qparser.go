@@ -2,10 +2,11 @@ package parser
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
-	"strings"
 )
 
 type QParser struct {

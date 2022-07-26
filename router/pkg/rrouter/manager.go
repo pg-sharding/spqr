@@ -2,10 +2,11 @@ package rrouter
 
 import (
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"sort"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pkg/errors"

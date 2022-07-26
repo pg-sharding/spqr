@@ -2,10 +2,11 @@ package datashard
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/conn"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"

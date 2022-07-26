@@ -2,9 +2,10 @@ package datashard
 
 import (
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"log"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"

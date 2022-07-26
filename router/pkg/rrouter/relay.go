@@ -3,6 +3,7 @@ package rrouter
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 

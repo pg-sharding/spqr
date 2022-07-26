@@ -3,10 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"net"
 
 	"github.com/jackc/pgproto3/v2"
 	"google.golang.org/grpc"

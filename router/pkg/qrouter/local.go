@@ -2,6 +2,7 @@ package qrouter
 
 import (
 	"context"
+
 	"github.com/jackc/pgproto3/v2"
 	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"

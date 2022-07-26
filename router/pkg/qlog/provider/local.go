@@ -3,9 +3,10 @@ package qlog
 import (
 	"bufio"
 	"context"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"os"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type LocalQlog struct{}
