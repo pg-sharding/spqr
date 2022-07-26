@@ -381,6 +381,22 @@ func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 	return err
 }
 
+func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*qdb.ShardingRule, error) {
+	resp, err := q.cli.Get(ctx, shardingRuleNodePath(id), clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+	var shrule qdb.ShardingRule
+
+	err = json.Unmarshal(resp.Kvs[0].Value, &shrule)
+	if err != nil {
+		return nil, err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get sharding rules resp %v", resp)
+	return &shrule, nil
+}
+
 func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
 	namespacePrefix := shardingRulesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())

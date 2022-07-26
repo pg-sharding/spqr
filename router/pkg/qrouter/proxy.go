@@ -3,9 +3,10 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/qdb/ops"
 
 	"github.com/jackc/pgproto3/v2"
 	pgquery "github.com/pganalyze/pg_query_go/v2"

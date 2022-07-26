@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb/etcdqdb"
 	"io"
 	"os"
 )
@@ -23,6 +24,7 @@ var toShardConnst = flag.String("to-shard-connstring", "", "")
 var lb = flag.String("lower-bound", "", "")
 var ub = flag.String("upper-bound", "", "")
 var shkey = flag.String("sharding-key", "", "")
+var etcdAddr = flag.String("etcd-addr", "", "")
 
 // TODO: use schema
 var schema = flag.String("shema", "", "")
@@ -148,9 +150,17 @@ func main() {
 		return
 	}
 
+	db, err := etcdqdb.NewEtcdQDB(*etcdAddr)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return
+	}
+
+	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+
 	if err := moveData(ctx,
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
-		shrule.NewShardingRule([]string{*shkey})); err != nil {
+		shrule.NewShardingRule(shRule.Id, shRule.Colnames)); err != nil {
 		spqrlog.Logger.PrintError(err)
 	}
 }
