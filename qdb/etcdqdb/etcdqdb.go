@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -68,18 +70,20 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 }
 
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
-	keyRanges, err := q.ListKeyRanges(ctx)
+	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
-	for _, krcurr := range keyRanges {
-		resp, err := q.cli.Delete(ctx, keyRangeNodePath(krcurr.KeyRangeID))
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
-		if err != nil {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "got delete with prefix reps %+v", resp)
+	var ret []*kr.KeyRange
+	for _, v := range resp.PrevKvs {
+		var krcurr *kr.KeyRange
+		if err := json.Unmarshal(v.Value, &krcurr); err != nil {
 			return nil, err
 		}
+		ret = append(ret, krcurr)
 	}
-	return keyRanges, nil
+	return nil, nil
 }
 
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
@@ -377,8 +381,19 @@ func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rule to qdb resp %v", resp)
-	return err
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rule to qdb resp %+v", resp.PrevKvs)
+	return nil
+}
+
+func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*qdb.ShardingRule, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
+	resp, err := q.cli.Delete(ctx, shardingRulesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put sharding rule to qdb resp %v", resp.PrevKvs)
+	return nil, nil
 }
 
 func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*qdb.ShardingRule, error) {

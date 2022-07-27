@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/pg-sharding/spqr/pkg/models/routers"
+
 	"github.com/pg-sharding/spqr/qdb/ops"
 
 	"github.com/jackc/pgproto3/v2"
@@ -318,6 +320,7 @@ func (qr *ProxyQrouter) Shards() []string {
 func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
+
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
 		return nil, err
@@ -328,6 +331,12 @@ func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, erro
 	}
 
 	return ret, nil
+}
+
+func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, error) {
+	return []*routers.Router{{
+		Id: "local",
+	}}, nil
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {

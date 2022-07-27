@@ -74,10 +74,22 @@ type DropShardingRule struct {
 	ID string
 }
 
+type DropRoutersAll struct{}
+
+func (*DropRoutersAll) iStatement() {}
+
 func (*DropKeyRange) iDrop()     {}
 func (*DropShardingRule) iDrop() {}
 
-type DropAll struct{}
+const (
+	EntityRouters      = "ROUTERS"
+	EntityKeyRanges    = "KEY_RANGES"
+	EntityShardingRule = "SHARDING_RULE"
+)
+
+type DropAll struct {
+	Entity string
+}
 
 type Lock struct {
 	KeyRangeID string

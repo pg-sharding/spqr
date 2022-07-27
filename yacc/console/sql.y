@@ -64,7 +64,7 @@ package spqrparser
 %type <kill> kill_stmt
 
 %type <drop> drop_sharding_colimn_stmt drop_key_range_stmt
-%type <dropAll> drop_key_range_all_stmt
+%type <dropAll> drop_key_range_all_stmt drop_sharding_rules_all_stmt unregister_routers_all_stmt
 
 %type <add> add_shard_stmt add_key_range_stmt add_sharding_rule_stmt
 
@@ -120,6 +120,14 @@ command:
 	{
         setParseTree(yylex, $1)
     }
+	| drop_sharding_rules_all_stmt
+	{
+	    setParseTree(yylex, $1)
+	}
+	| unregister_routers_all_stmt
+	{
+	    setParseTree(yylex, $1)
+	}
 	| drop_key_range_stmt
 	{
 		setParseTree(yylex, $1)
@@ -292,12 +300,6 @@ drop_key_range_stmt:
 		$$ = &Drop{Element: &DropKeyRange{KeyRangeID: $4}}
 	}
 
-drop_key_range_all_stmt:
-    DROP KEY RANGE ALL
-    {
-        $$ = &DropAll{}
-    }
-
 lock_key_range_stmt:
 	LOCK KEY RANGE key_range_id
 	{
@@ -318,7 +320,7 @@ split_key_range_stmt:
 	}
 
 kill_stmt:
-KILL kill_statement_type
+	KILL kill_statement_type
 	{
 		$$ = &Kill{Cmd: $2}
 	}
@@ -362,10 +364,30 @@ router_id:
 	}
 
 register_router_stmt:
-	REGISTER ROUTER router_addr router_id
+	REGISTER ROUTER router_id ADDRESS router_addr
 	{
-		$$ = &RegisterRouter{Addr: $3, ID: $4}
+		$$ = &RegisterRouter{ID: $3, Addr: $5}
 	}
+
+drop_key_range_all_stmt:
+    DROP KEY RANGE ALL
+    {
+        $$ = &DropAll{Entity: EntityKeyRanges}
+    }
+
+
+drop_sharding_rules_all_stmt:
+    DROP SHARDING RULE ALL
+    {
+        $$ = &DropAll{Entity: EntityShardingRule}
+    }
+
+
+unregister_routers_all_stmt:
+    UNREGISTER ROUTER ALL
+    {
+        $$ = &DropAll{Entity: EntityRouters}
+    }
 
 unregister_router_stmt:
 	UNREGISTER ROUTER router_id
