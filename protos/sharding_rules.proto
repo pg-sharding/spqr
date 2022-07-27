@@ -22,7 +22,7 @@ message ListShardingRuleReply {
 }
 
 message DropShardingRuleRequest {
-  repeated ShardingRule rules = 1;
+  repeated string id = 1;
 }
 
 message DropShardingRuleReply {}
