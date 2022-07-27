@@ -63,16 +63,16 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, e
 	if err != nil {
 		return nil, err
 	}
-	var retTouters []*routers.Router
+	var retRouters []*routers.Router
 
 	for _, v := range resp {
-		retTouters = append(retTouters, &routers.Router{
+		retRouters = append(retRouters, &routers.Router{
 			Id:      v.Id,
 			AdmAddr: v.Address,
 		})
 	}
 
-	return retTouters, nil
+	return retRouters, nil
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
