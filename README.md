@@ -12,12 +12,12 @@ For more about SPQR, please see [docs/](docs/).
 ## Main features
 
 - Transaction and session pooling
-- Multiple routers
-- Sharding
-- Falling unrouted queries to the world shard
-- Shard rebalancing
+- Multiple routers for fault tolerance
+- Sharding 
+- Shards rebalancing with minor cost
 - Limited multi-shard queries
-- TLS
+- Falling unrouted queries to the world shard
+- and of course TLS support
 
 ## Development
 
@@ -36,7 +36,7 @@ spqr-rr run -c path-to-router-config.yaml
 
 ## Tests
 
-SPQR does not have unit tests yet but has end-to-end tests. These tests requires Docker and can be run using `make run`. Also, there are stress tests but it work in progress. For more information on testing, please see `test` and `stress` section in [Makefile](./Makefile).
+SPQR has regression tests. These tests requires Docker and can be run using `make run`. Also, there are stress tests but it work in progress. For more information on testing, please see `test` and `stress` section in [Makefile](./Makefile).
 
 ## License
 

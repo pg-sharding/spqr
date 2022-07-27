@@ -1,38 +1,27 @@
 # Coordinator
 
-                                                                               |
-                                                                               |
-                     Control plane                                             |                Data plane
-                                                                               |                ----------------
-                                        ----------------                       |                |              |
-                                        |              |                       |                | Data shard 2 |
-                                        |    Router1   |                       |                |              |
-                                        |              |                       |                ----------------
-                                        ----------------                       |
-                                   /                                           |
-                                  /                                            |
-                                                                               |                ----------------
-        ------------------------        ----------------                       |                |              |
-        |                      |        |              |                       |                | Data shard 1 |
-        |      Psql Client     |   ---> |   Router2    |                       |                |              |
-        |                      |        |              |                       |                ----------------
-        ------------------------        ----------------                       |
-                                                                               |                ----------------
-                                                                               |                |              |
-                                                                               |                | Data shard 3 |
-                                                                               |                |              |
-                                                                               |                ----------------
---------------------------------------------------------------------------------
+The coordinator manages the routers and saves the installation state in QDB([etcd](https://etcd.io/)). It blocks key ranges on a shard for modification, and moves key ranges consistency from one shard to another.
 
+We considered different options for moving data. The most popular way is to make a copy via logical replication, then delete half of the data on one node and delete another half of the data on the other node. We decided that logical replication does not work well enough yet. Instead, the coordinator makes ε-split - cut off a small part of the data. Since it is small, it all works very quickly.
 
-                   Coordinator + Resharder
+![ε-split](e-split.png "ε-split")
 
-      -------------------           ---------------------
-      |                 |    gRPC   |                   |
-      |  Coordinator    |    <---   |   Resharder       |
-      |                 |           |                   |
-      -------------------           ---------------------
+The load from the moving key ranges measured with [pg_comment_stats](https://github.com/munakoiso/pg_comment_stats) extension.
 
+```
+> /* a: 1 c: hmm*/ select 1;
+> select comment_keys, query_count, user_time from pgcs_get_stats() limit 1;
+-[ RECORD 1 ]+----------------------
+comment_keys | {"a": "1"}
+query_count  | 1
+user_time    | 6.000000000000363e-06
+```
+
+## Configuration
+
+WIP
+
+## KeyRangeService
 
 ```
 ➜ grpcurl -plaintext 'localhost:7002' describe yandex.spqr.KeyRangeService

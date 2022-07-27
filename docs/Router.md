@@ -4,7 +4,7 @@
 
 Consist of 3 parts:
 - Router - an app that works by PostgreSQL protocol. It receives a SQL query, parses it, and decides to which shard it should be sent. Then returns the query response.
-- Admin Console - an app that works by PostgreSQL protocol. There you can see available shards with `SHOW SHARDS` and manage sharding rules with `CREATE SHARDING COLUMN` and `ADD KEY RANGE` commands.
+- Admin Console - an app that works by PostgreSQL protocol. There you can see available shards with `SHOW SHARDS` and manage sharding rules with `CREATE SHARDING RULE` and `ADD KEY RANGE` commands.
 - GRPC API - an app that works by GRPC protocol. It will also be used for managing sharding rules, WIP.
 
 ## Query Path
@@ -15,11 +15,11 @@ The path of the query depends on:
 - Frontend Rules settings: connections from the router to each shard.
 - Sharding columns and key ranges added via Admin Console.
 
-# Configuration
+## Configuration
 
 All SPQR configurations can be written in json, yaml or toml format. See examples in [config-example](../config-example/) or [pkg/config/router.go](../pkg/config/router.go)
 
-## general settings
+### general settings
 
 | **Name**               | **Description**                                                                                                                                                                               |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -36,11 +36,11 @@ All SPQR configurations can be written in json, yaml or toml format. See example
 | `jaeger_url`           | a path to the Jaeger instance - open source software for tracing transactions between distributed services                                                                                    |
 | `world_shard_fallback` | can be true or false. If false, then router will raise an error when query will be impossible to send to particular shard. If true, then router will route unrouted query to the world shard. |
 
-## frontend_tls
+### frontend_tls
 
 Client's TLS config, see [tls config description](#tls-config-description) section
 
-## frontend_rules
+### frontend_rules
 
 | **Name**                  | **Description**                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -52,7 +52,7 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 | `pool_prepared_statement` | use prepared statements or not. Can be false or true                                            |
 | `pool_default`            | use this rule by default. Can be true or false                                                  |
 
-## backend_rules
+### backend_rules
 
 | **Name**        | **Description**                                                                          |
 | --------------- | ---------------------------------------------------------------------------------------- |
@@ -63,7 +63,7 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 | `pool_rollback` | execute `ROLLBACK` if server left in active transaction. Close connection otherwise.     |
 | `pool_default`  | use this rule by default. Can be true or false                                           |
 
-## shards
+### shards
 
 | **Name** | **Description**                                                                    |
 | -------- | ---------------------------------------------------------------------------------- |
@@ -71,10 +71,10 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 | `usr`    | the username with to connect                                                       |
 | `pwd`    | the username's password                                                            |
 | `hosts`  | list of data shard hosts in `host:port` format                                     |
-| `type`   | can be `DATA` or `WORLD`                                                           |
+| `type`   | can be `DATA` or `WORLD`, see World                                                           |
 | `tls`    | server's TLS config, see [TLS config description](#tls-config-description) section |
 
-## tls config description
+### tls config description
 
 | **Name**    | **Description**                                                                                                                                                                                                                                                  |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
