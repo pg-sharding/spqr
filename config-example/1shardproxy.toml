@@ -1,0 +1,39 @@
+log_level = "DEBUG5"
+host = "[spqr_router_1_1]"
+router_port = "6432"
+admin_console_port = "7432"
+grpc_api_port = "7001"
+world_shard_fallback = true
+init_sql_path = "init.sql"
+router_mode = "PROXY"
+
+[frontend_tls]
+key_file = "/etc/odyssey/ssl/server.key"
+cert_file = "/etc/odyssey/ssl/server.crt"
+sslmode = "disable"
+
+[frontend_rules]
+usr = "opgejrqr"
+db = "opgejrqr"
+pool_mode = "TRANSACTION"
+
+  [frontend_rules.auth_rule]
+  auth_method = "ok"
+
+[backend_rules]
+usr = "opgejrqr"
+db = "opgejrqr"
+pool_discard = true
+pool_rollback = true
+
+[shards.sh1]
+db = "opgejrqr"
+usr = "opgejrqr"
+pwd = "RJj7-J717NALMmU4As0umiYwYn7wgAOk"
+type = "DATA"
+hosts = [ "dumbo.db.elephantsql.com:5432" ]
+
+  [shards.sh1.tls]
+  sslmode = "disable"
+  cert_file = "/etc/odyssey/ssl/server.crt"
+  key_file = "/etc/odyssey/ssl/server.crt"

@@ -38,7 +38,7 @@ frontend_rules:
         auth_method: 'ok'
         password: 'strong'
     - pool_mode: 'TRANSACTION'
-    use_by_default: true
+    pool_default: true
     pool_prepared_statement: false
     auth_rule:
         auth_method: 'ok'
@@ -47,6 +47,6 @@ backend_rules:
     db: regression_spqr
     pool_discard: false
     pool_rollback: true
-    - use_by_default: true
+    - pool_default: true
     pool_discard: false
     pool_rollback: true

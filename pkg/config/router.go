@@ -48,7 +48,7 @@ type BackendRule struct {
 	Usr          string `json:"usr" yaml:"usr" toml:"usr"`
 	PoolDiscard  bool   `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
 	PoolRollback bool   `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
-	Default      bool   `json:"use_by_default" yaml:"use_by_default" toml:"use_by_default"`
+	Default      bool   `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
 
 type FrontendRule struct {
@@ -57,7 +57,7 @@ type FrontendRule struct {
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolPreparedStatement bool     `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
-	Default               bool     `json:"use_by_default" yaml:"use_by_default" toml:"use_by_default"`
+	Default               bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
 
 type Shard struct {
