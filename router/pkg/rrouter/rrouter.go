@@ -82,7 +82,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	frontendRules := map[route.RouteKey]*config.FrontendRule{}
 	var defaultFrontendRule *config.FrontendRule
 	for _, rule := range config.RouterConfig().FrontendRules {
-		if rule.Default {
+		if rule.PoolDefault {
 			defaultFrontendRule = rule
 			continue
 		}
@@ -93,7 +93,7 @@ func NewRouter(tlsconfig *tls.Config) *RRouter {
 	backendRules := map[route.RouteKey]*config.BackendRule{}
 	var defaultBackendRule *config.BackendRule
 	for _, rule := range config.RouterConfig().BackendRules {
-		if rule.Default {
+		if rule.PoolDefault {
 			defaultBackendRule = rule
 			continue
 		}

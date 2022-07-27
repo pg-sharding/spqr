@@ -1,4 +1,4 @@
-# Design Concepts
+# Concepts
 
 PostgreSQL is awesome, but it's hard to manage a single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical and hybrid workloads (OLAP, HTAP). Moreover, most of those solutions do not provide a simple, painless path for the monolith<->sharded transitions. That's why the [Data Platform](https://cloud.yandex.com/en-ru/services#data-platform) team of Yandex.Cloud designed SPQR.
 
