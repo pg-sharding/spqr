@@ -176,23 +176,26 @@ func (c *Coordinator) isReloadRequired() (bool, error) {
 }
 
 func (c *Coordinator) lockKeyRange(rng KeyRange) error {
-	resp, err := c.keyRangeServiceClient.LockKeyRange(context.Background(), &routerproto.LockKeyRangeRequest{
-		KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
-	})
-	if err != nil {
-		return err
-	}
-	return c.waitTilDone(resp.OperationId)
+	return nil
+	// TODO: resolve key range by bound
+	//resp, err := c.keyRangeServiceClient.LockKeyRange(context.Background(), &routerproto.LockKeyRangeRequest{
+	//	KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//return c.waitTilDone(resp.OperationId)
 }
 
 func (c *Coordinator) unlockKeyRange(rng KeyRange) error {
-	resp, err := c.keyRangeServiceClient.UnlockKeyRange(context.Background(), &routerproto.UnlockKeyRangeRequest{
-		KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
-	})
-	if err != nil {
-		return err
-	}
-	return c.waitTilDone(resp.OperationId)
+	return nil
+	//resp, err := c.keyRangeServiceClient.UnlockKeyRange(context.Background(), &routerproto.UnlockKeyRangeRequest{
+	//	KeyRange: &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
+	//})
+	//if err != nil {
+	//	return err
+	//}
+	//return c.waitTilDone(resp.OperationId)
 }
 
 func (c *Coordinator) splitKeyRange(border *string, krID, sourceID string) error {

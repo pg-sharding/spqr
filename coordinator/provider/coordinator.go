@@ -161,9 +161,14 @@ func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.Sh
 			return err
 		}
 
+		var ids []string
+		for _, v := range resp.Rules {
+			ids = append(ids, v.Id)
+		}
+
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got list sharding rules resp %v", resp)
 		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
-			Rules: resp.Rules,
+			Id: ids,
 		})
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules responce %v", dropResp)
 
@@ -310,18 +315,18 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
 	// TODO: exclusive lock all routers
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all key ranges")
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		dropResp, err := cl.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules response %v", dropResp)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop key range response %v", dropResp)
 		return err
 	}); err != nil {
 		return nil, err
 	}
 
-	// Drop sharding rules from qdb.
+	// Drop key ranges from qdb.
 	rules, err := qc.db.DropKeyRangeAll(ctx)
 	if err != nil {
 		return nil, err
@@ -334,6 +339,44 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, 
 	}
 
 	return ret, nil
+}
+
+func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
+	// TODO: exclusive lock all routers
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		dropResp, err := cl.DropKeyRange(ctx, &routerproto.DropKeyRangeRequest{
+			Id: []string{id},
+		})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop key ranges response %v", dropResp)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	// Drop key range from qdb.
+	return qc.db.DropKeyRange(ctx, id)
+}
+
+func (qc *qdbCoordinator) DropShardingRule(ctx context.Context, id string) error {
+	// TODO: exclusive lock all routers
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewShardingRulesServiceClient(cc)
+		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
+			Id: []string{id},
+		})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules response %v", dropResp)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	// Drop key range from qdb.
+	return qc.db.DropShardingRule(ctx, id)
 }
 
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
@@ -369,6 +412,77 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		return fmt.Errorf("failed to update a new key range: %w", err)
 	}
 
+	return nil
+}
+
+func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
+			Id: []string{req.Krid},
+		})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "lock sharding rules response %v", lockResp)
+		return err
+	}); err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+			cl := routerproto.NewKeyRangeServiceClient(cc)
+			lockResp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
+				Id: []string{req.Krid},
+			})
+			spqrlog.Logger.Printf(spqrlog.DEBUG4, "unlock sharding rules response %v", lockResp)
+			return err
+		}); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return
+		}
+	}()
+
+	krmv, err := qc.db.Lock(ctx, req.Krid)
+	if err != nil {
+		return err
+	}
+	defer qc.db.Unlock(ctx, req.Krid)
+
+	krmv.ShardID = req.ShardId
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
+		// TODO: check if unlock here is ok
+		return err
+	}
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
+			Id: []string{req.Krid},
+		})
+		if err != nil {
+			return err
+		}
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "lock key range response %v", lockResp)
+
+		defer func() {
+			unlockResp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
+				Id: []string{req.Krid},
+			})
+			if err != nil {
+				return
+			}
+			spqrlog.Logger.Printf(spqrlog.DEBUG4, "unlock key range response %v", unlockResp)
+		}()
+
+		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
+			KeyRange: kr.KeyRangeFromDB(krmv).ToProto(),
+		})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "lock key range response %v", moveResp)
+		return err
+	}); err != nil {
+		return err
+	}
+	// do phyc keys move
 	return nil
 }
 
@@ -443,17 +557,6 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unregister router %v", rID)
 
 	return qc.db.DeleteRouter(ctx, rID)
-}
-
-func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
-	krmv, err := qc.db.Lock(ctx, req.Krid)
-	if err != nil {
-		return err
-	}
-	defer qc.db.Unlock(ctx, req.Krid)
-
-	krmv.ShardID = req.ShardId
-	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv)
 }
 
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {

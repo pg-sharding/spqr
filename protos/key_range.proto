@@ -56,7 +56,7 @@ message MoveKeyRangeRequest {
 }
 
 message DropKeyRangeRequest {
-  KeyRangeInfo key_range = 1;
+  repeated string id = 1;
 }
 
 message DropAllKeyRangesRequest {
@@ -67,11 +67,11 @@ message DropAllKeyRangesResponse {
 }
 
 message LockKeyRangeRequest {
-  KeyRangeInfo key_range = 1;
+  repeated string id = 1;
 }
 
 message UnlockKeyRangeRequest {
-  KeyRangeInfo key_range = 1;
+  repeated string id = 1;
 }
 
 message KeyRangeReply {
