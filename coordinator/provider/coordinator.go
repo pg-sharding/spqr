@@ -57,6 +57,42 @@ type qdbCoordinator struct {
 	db qdb.QrouterDB
 }
 
+var _ coordinator.Coordinator = &qdbCoordinator{}
+
+func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
+	return &qdbCoordinator{
+		db: db,
+	}
+}
+
+func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator traverse")
+
+	rtrs, err := qc.db.ListRouters(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, rtr := range rtrs {
+		// TODO: run cb`s async
+		cc, err := DialRouter(&routers.Router{
+			Id:      rtr.ID(),
+			AdmAddr: rtr.Addr(),
+		})
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID(), err)
+		if err != nil {
+			return err
+		}
+
+		if err := cb(cc); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, error) {
 	//TODO implement me
 	resp, err := qc.db.ListRouters(ctx)
@@ -73,14 +109,6 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, e
 	}
 
 	return retRouters, nil
-}
-
-var _ coordinator.Coordinator = &qdbCoordinator{}
-
-func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
-	return &qdbCoordinator{
-		db: db,
-	}
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -106,26 +134,7 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		return err
 	}
 
-	resp, err := qc.db.ListRouters(ctx)
-	if err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
-	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "routers %+v", resp)
-
-	for _, r := range resp {
-		cc, err := DialRouter(&routers.Router{
-			Id:      r.ID(),
-			AdmAddr: r.Addr(),
-		})
-
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", r, err)
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
-			return err
-		}
-
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewShardingRulesServiceClient(cc)
 		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
 			Rules: []*routerproto.ShardingRule{{Columns: rule.Columns()}},
@@ -136,9 +145,46 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got resp %v", resp)
+		return nil
+	})
+}
+
+func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewShardingRulesServiceClient(cc)
+		// TODO: support drop sharding rules all in grpc somehow
+		resp, err := cl.ListShardingRules(context.TODO(), &routerproto.ListShardingRuleRequest{})
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got list sharding rules resp %v", resp)
+		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
+			Rules: resp.Rules,
+		})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules responce %v", dropResp)
+
+		return err
+	}); err != nil {
+		return nil, err
 	}
 
-	return nil
+	// Drop sharding rules from qdb.
+	rules, err := qc.db.DropShardingRuleAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*shrule.ShardingRule
+
+	for _, v := range rules {
+		ret = append(ret, shrule.ShardingRuleFromDB(v))
+	}
+
+	return ret, nil
 }
 
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
@@ -263,36 +309,31 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 }
 
 func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
-
 	// TODO: exclusive lock all routers
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
 
-	krs, err := qc.ListKeyRanges(ctx)
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		dropResp, err := cl.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules response %v", dropResp)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+
+	// Drop sharding rules from qdb.
+	rules, err := qc.db.DropKeyRangeAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	rtrs, err := qc.ListRouters(ctx)
-	if err != nil {
-		return nil, err
+	var ret []*kr.KeyRange
+
+	for _, v := range rules {
+		ret = append(ret, kr.KeyRangeFromDB(v))
 	}
 
-	for _, qRouter := range rtrs {
-		cc, err := DialRouter(qRouter)
-		if err != nil {
-			return nil, err
-		}
-
-		// Configure sharding rules.
-
-		krClient := routerproto.NewKeyRangeServiceClient(cc)
-
-		_, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return krs, nil
+	return ret, nil
 }
 
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
@@ -393,7 +434,8 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *routers.Router)
 	// TODO: list routers and deduplicate
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.AdmAddr, r.Id)
 	return qc.db.AddRouter(ctx, &qdb.Router{
-		Id: r.Id,
+		Id:      r.Id,
+		Address: r.AdmAddr,
 	})
 }
 
@@ -414,13 +456,13 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv)
 }
 
-func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
+func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 	cl := psqlclient.NewPsqlClient(nconn)
 
 	err := cl.Init(nil)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
@@ -430,20 +472,32 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 			Method: config.AuthOK,
 		},
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	r := route.NewRoute(nil, nil, nil)
 	r.SetParams(datashard.ParameterSet{})
-
-	cli := clientinteractor.PSQLInteractor{}
-
 	if err := cl.Auth(r); err != nil {
-		return err
+		return nil, err
 	}
 	spqrlog.Logger.Printf(spqrlog.LOG, "client auth OK")
 
+	return cl, nil
+}
+
+func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
+
+	cl, err := qc.PrepareClient(nconn)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	cli := clientinteractor.PSQLInteractor{}
+
 	for {
+		// TODO: check leader status
+
 		msg, err := cl.Receive()
 		if err != nil {
 			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)

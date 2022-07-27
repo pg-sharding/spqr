@@ -58,7 +58,7 @@ type WorldRouteState struct {
 }
 
 type QueryRouter interface {
-	meta.MetaMgr
+	meta.EntityMgr
 
 	Route(ctx context.Context) (RoutingState, error)
 

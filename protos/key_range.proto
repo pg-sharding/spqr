@@ -63,6 +63,7 @@ message DropAllKeyRangesRequest {
 }
 
 message DropAllKeyRangesResponse {
+  repeated KeyRangeInfo key_range = 1;
 }
 
 message LockKeyRangeRequest {

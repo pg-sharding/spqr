@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -14,7 +15,7 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-type MetaMgr interface {
+type EntityMgr interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
 	routers.RouterMgr
@@ -23,7 +24,7 @@ type MetaMgr interface {
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
-func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr MetaMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.DropKeyRange:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
@@ -44,7 +45,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr MetaMgr, 
 	}
 }
 
-func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr MetaMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AddShardingRule:
 		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.ColNames)
@@ -64,25 +65,46 @@ func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr MetaMgr, c
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mngr MetaMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, mngr, cli, cl)
+		return processDrop(ctx, stmt.Element, mgr, cli, cl)
 	case *spqrparser.Add:
-		return processAdd(ctx, stmt.Element, mngr, cli, cl)
+		return processAdd(ctx, stmt.Element, mgr, cli, cl)
 	case *spqrparser.DropAll:
-		if krids, err := mngr.DropKeyRangeAll(ctx); err != nil {
-			return err
-		} else {
-			return cli.DropKeyRange(ctx, func() []string {
-				var ret []string
+		switch stmt.Entity {
+		case spqrparser.EntityKeyRanges:
+			if krids, err := mgr.DropKeyRangeAll(ctx); err != nil {
+				return err
+			} else {
+				return cli.DropKeyRange(ctx, func() []string {
+					var ret []string
 
-				for _, krcurr := range krids {
-					ret = append(ret, krcurr.ID)
-				}
+					for _, krcurr := range krids {
+						ret = append(ret, krcurr.ID)
+					}
 
-				return ret
-			}(), cl)
+					return ret
+				}(), cl)
+			}
+		case spqrparser.EntityShardingRule:
+			if rules, err := mgr.DropShardingRuleAll(ctx); err != nil {
+				return err
+			} else {
+				return cli.DropShardingRule(ctx, func() string {
+					var ret []string
+
+					for _, rule := range rules {
+						ret = append(ret, rule.ID())
+					}
+
+					return strings.Join(ret, ",")
+				}(), cl)
+			}
+		case spqrparser.EntityRouters:
+			return cli.ReportError(fmt.Errorf("unmplememnted"), cl)
+		default:
+			return fmt.Errorf("unknown entity to drop")
 		}
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
@@ -90,7 +112,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mngr MetaMgr, cli cli
 			Krid:    stmt.KeyRangeID,
 		}
 
-		if err := mngr.Move(ctx, move); err != nil {
+		if err := mgr.Move(ctx, move); err != nil {
 			return cli.ReportError(err, cl)
 		}
 
@@ -102,39 +124,38 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mngr MetaMgr, cli cli
 			AdmAddr: stmt.Addr,
 		}
 
-		if err := mngr.RegisterRouter(ctx, newRouter); err != nil {
+		if err := mgr.RegisterRouter(ctx, newRouter); err != nil {
 			return err
 		}
 
-		if err := mngr.ConfigureNewRouter(ctx, newRouter, cl); err != nil {
+		if err := mgr.ConfigureNewRouter(ctx, newRouter, cl); err != nil {
 			return err
 		}
 
 		return cli.RegisterRouter(ctx, cl, stmt.ID, stmt.Addr)
 	case *spqrparser.UnregisterRouter:
-		if err := mngr.UnregisterRouter(ctx, stmt.ID); err != nil {
+		if err := mgr.UnregisterRouter(ctx, stmt.ID); err != nil {
 			return err
 		}
 		return cli.UnregisterRouter(cl, stmt.ID)
-
 	case *spqrparser.Lock:
-		if _, err := mngr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
+		if _, err := mgr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.Unlock:
-		if err := mngr.Unlock(ctx, stmt.KeyRangeID); err != nil {
+		if err := mgr.Unlock(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.Show:
-		return ProcessShow(ctx, stmt, mngr, cli, cl)
+		return ProcessShow(ctx, stmt, mgr, cli, cl)
 	default:
 		return unknownCoordinatorCommand
 	}
 }
 
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr MetaMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 	switch stmt.Cmd {
 	case spqrparser.ShowShardsStr:

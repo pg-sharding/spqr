@@ -8,7 +8,6 @@ package proto
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -24,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardingRulesServiceClient interface {
 	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error)
 	ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error)
 }
 
@@ -44,6 +44,15 @@ func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *A
 	return out, nil
 }
 
+func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error) {
+	out := new(DropShardingRuleReply)
+	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/DropShardingRules", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error) {
 	out := new(ListShardingRuleReply)
 	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/ListShardingRules", in, out, opts...)
@@ -58,6 +67,7 @@ func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *
 // for forward compatibility
 type ShardingRulesServiceServer interface {
 	AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	DropShardingRules(context.Context, *DropShardingRuleRequest) (*DropShardingRuleReply, error)
 	ListShardingRules(context.Context, *ListShardingRuleRequest) (*ListShardingRuleReply, error)
 	mustEmbedUnimplementedShardingRulesServiceServer()
 }
@@ -68,6 +78,9 @@ type UnimplementedShardingRulesServiceServer struct {
 
 func (UnimplementedShardingRulesServiceServer) AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddShardingRules not implemented")
+}
+func (UnimplementedShardingRulesServiceServer) DropShardingRules(context.Context, *DropShardingRuleRequest) (*DropShardingRuleReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropShardingRules not implemented")
 }
 func (UnimplementedShardingRulesServiceServer) ListShardingRules(context.Context, *ListShardingRuleRequest) (*ListShardingRuleReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListShardingRules not implemented")
@@ -103,6 +116,24 @@ func _ShardingRulesService_AddShardingRules_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ShardingRulesService_DropShardingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropShardingRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShardingRulesServiceServer).DropShardingRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/yandex.spqr.ShardingRulesService/DropShardingRules",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShardingRulesServiceServer).DropShardingRules(ctx, req.(*DropShardingRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ShardingRulesService_ListShardingRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListShardingRuleRequest)
 	if err := dec(in); err != nil {
@@ -131,6 +162,10 @@ var ShardingRulesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddShardingRules",
 			Handler:    _ShardingRulesService_AddShardingRules_Handler,
+		},
+		{
+			MethodName: "DropShardingRules",
+			Handler:    _ShardingRulesService_DropShardingRules_Handler,
 		},
 		{
 			MethodName: "ListShardingRules",
