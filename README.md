@@ -14,14 +14,16 @@ For more about SPQR, please see [docs/](docs/).
 - Transaction and session pooling
 - Multiple routers for fault tolerance
 - Sharding 
-- Shards rebalancing with minor cost
+- Liquid data migrations 
 - Limited multi-shard queries
+- Works over PostgreSQL protocol
 - Falling unrouted queries to the world shard
-- and of course TLS support
+- [Minor overhead](https://gitlab.com/postgres-ai/postgresql-consulting/tests-and-benchmarks/-/issues/30) for query execution
+- and, of course, TLS support
 
 ## Development
 
-You can use `make run` for a quick example using Docker. For local development you need [the latest Go version](https://go.dev/dl/).
+You can use `make run` for a quick example using Docker. For local development, you need [the latest Go version](https://go.dev/dl/).
 
 How to build:
 ```
@@ -36,7 +38,7 @@ spqr-rr run -c path-to-router-config.yaml
 
 ## Tests
 
-SPQR has regression tests. These tests requires Docker and can be run using `make run`. Also, there are stress tests but it work in progress. For more information on testing, please see `test` and `stress` section in [Makefile](./Makefile).
+SPQR has regression tests. These tests require Docker, and can be run using `make run`. Also, there are stress tests, but it a work in progress. For more information on testing, please see `test` and `stress` section in [Makefile](./Makefile).
 
 ## License
 
