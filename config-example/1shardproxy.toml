@@ -12,7 +12,7 @@ key_file = "/etc/odyssey/ssl/server.key"
 cert_file = "/etc/odyssey/ssl/server.crt"
 sslmode = "disable"
 
-[frontend_rules]
+[[frontend_rules]]
 usr = "opgejrqr"
 db = "opgejrqr"
 pool_mode = "TRANSACTION"
@@ -20,7 +20,7 @@ pool_mode = "TRANSACTION"
   [frontend_rules.auth_rule]
   auth_method = "ok"
 
-[backend_rules]
+[[backend_rules]]
 usr = "opgejrqr"
 db = "opgejrqr"
 pool_discard = true

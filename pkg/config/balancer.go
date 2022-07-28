@@ -2,9 +2,12 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v2"
 )
 
@@ -38,7 +41,8 @@ func LoadBalancerCfg(cfgPath string) error {
 		return err
 	}
 	defer file.Close()
-	if err := yaml.NewDecoder(file).Decode(&cfgBalancer); err != nil {
+
+	if err := initBalancerConfig(file, cfgPath); err != nil {
 		return err
 	}
 
@@ -49,6 +53,20 @@ func LoadBalancerCfg(cfgPath string) error {
 
 	log.Println("Running config:", string(configBytes))
 	return nil
+}
+
+func initBalancerConfig(file *os.File, filepath string) error {
+	if strings.HasSuffix(filepath, ".toml") {
+		_, err := toml.NewDecoder(file).Decode(&cfgBalancer)
+		return err
+	}
+	if strings.HasSuffix(filepath, ".yaml") {
+		return yaml.NewDecoder(file).Decode(&cfgBalancer)
+	}
+	if strings.HasSuffix(filepath, ".json") {
+		return json.NewDecoder(file).Decode(&cfgBalancer)
+	}
+	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
 
 func BalancerConfig() *Balancer {

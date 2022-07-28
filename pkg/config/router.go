@@ -2,9 +2,12 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v2"
 )
 
@@ -76,14 +79,9 @@ func LoadRouterCfg(cfgPath string) error {
 	if err != nil {
 		return err
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
+	defer file.Close()
 
-		}
-	}(file)
-
-	if err := yaml.NewDecoder(file).Decode(&cfgRouter); err != nil {
+	if err := initRouterConfig(file, cfgPath); err != nil {
 		return err
 	}
 
@@ -94,6 +92,20 @@ func LoadRouterCfg(cfgPath string) error {
 
 	log.Println("Running config:", string(configBytes))
 	return nil
+}
+
+func initRouterConfig(file *os.File, filepath string) error {
+	if strings.HasSuffix(filepath, ".toml") {
+		_, err := toml.NewDecoder(file).Decode(&cfgRouter)
+		return err
+	}
+	if strings.HasSuffix(filepath, ".yaml") {
+		return yaml.NewDecoder(file).Decode(&cfgRouter)
+	}
+	if strings.HasSuffix(filepath, ".json") {
+		return json.NewDecoder(file).Decode(&cfgRouter)
+	}
+	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
 
 func RouterConfig() *Router {
