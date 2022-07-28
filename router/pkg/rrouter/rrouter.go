@@ -131,8 +131,6 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 				DB:                    cl.DB(),
 				AuthRule:              r.defaultFrontendRule.AuthRule,
 				PoolMode:              r.defaultFrontendRule.PoolMode,
-				PoolDiscard:           r.defaultFrontendRule.PoolDiscard,
-				PoolRollback:          r.defaultFrontendRule.PoolRollback,
 				PoolPreparedStatement: r.defaultFrontendRule.PoolPreparedStatement,
 			}
 		} else {

@@ -31,8 +31,7 @@ type Router struct {
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
 	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 
-	WorldShardAddress  string `json:"world_shard_address" toml:"world_shard_address" yaml:"world_shard_address"`
-	WorldShardFallback bool   `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
+	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 
 	AutoConf      string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
 	InitSQL       string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
@@ -58,8 +57,6 @@ type FrontendRule struct {
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolPreparedStatement bool     `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
-	PoolDiscard           bool     `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
-	PoolRollback          bool     `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
 	PoolDefault           bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
 

@@ -17,15 +17,11 @@ frontend_rules:
   - usr: user1
     db: db1
     pool_mode: TRANSACTION
-    pool_discard: false
-    pool_rollback: true
     pool_prepared_statement: true
     auth_rule:
       auth_method: ok
       password: strong
   - pool_mode: SESSION
-    pool_discard: false
-    pool_rollback: true
     pool_default: true
     pool_prepared_statement: false
     auth_rule:

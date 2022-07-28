@@ -27,12 +27,25 @@ func (w *World) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
-	httpAddr := config.RouterConfig().WorldShardAddress
-	listener, err := net.Listen("tcp", httpAddr)
+	worldShard := getWorldShard(config.RouterConfig().ShardMapping)
+	if worldShard == nil {
+		return nil
+	}
+	address := worldShard.Hosts[0]
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("world listening on %s", httpAddr)
+	tracelog.InfoLogger.Printf("world listening on %s", address)
 
 	return serv.Serve(listener)
+}
+
+func getWorldShard(shardMapping map[string]*config.Shard) *config.Shard {
+	for _, shard := range shardMapping {
+		if shard.Type == config.WorldShard {
+			return shard
+		}
+	}
+	return nil
 }
