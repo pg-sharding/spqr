@@ -6,13 +6,16 @@ import (
 
 type QrouterDB interface {
 	AddShardingRule(ctx context.Context, rule *ShardingRule) error
-	DropShardingRule(ctx context.Context, id string) error
-	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
-	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
+	DropShardingRule(ctx context.Context, id string) error
+	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
+
+	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	Lock(ctx context.Context, keyRangeID string) (*KeyRange, error)
 	Unlock(ctx context.Context, keyRangeID string) error
+
+	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
 
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error

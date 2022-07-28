@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/pg-sharding/spqr/pkg/models/routers"
+
 	"github.com/pg-sharding/spqr/qdb/ops"
 
 	"github.com/jackc/pgproto3/v2"
@@ -192,9 +194,6 @@ func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 }
 
 func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
 	var krmv *qdb.KeyRange
 	var err error
 	if krmv, err = qr.qdb.CheckLocked(ctx, req.Krid); err != nil {
@@ -206,9 +205,6 @@ func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 }
 
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
 	var krRight *qdb.KeyRange
 	var krleft *qdb.KeyRange
 	var err error
@@ -246,9 +242,6 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 }
 
 func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
 	var krOld *qdb.KeyRange
 	var err error
 
@@ -280,9 +273,6 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 }
 
 func (qr *ProxyQrouter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
 	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
 	if err != nil {
 		return nil, err
@@ -316,8 +306,6 @@ func (qr *ProxyQrouter) Shards() []string {
 }
 
 func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
 		return nil, err
@@ -330,10 +318,13 @@ func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, erro
 	return ret, nil
 }
 
-func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
+func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, error) {
+	return []*routers.Router{{
+		Id: "local",
+	}}, nil
+}
 
+func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	if len(rule.Columns()) != 1 {
 		return xerrors.New("only single column sharding rules are supported for now")
 	}
@@ -357,6 +348,10 @@ func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.Shardi
 	return resp, nil
 }
 
+func (qr *ProxyQrouter) DropShardingRule(ctx context.Context, id string) error {
+	return qr.qdb.DropShardingRule(ctx, id)
+}
+
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
 }
@@ -370,7 +365,7 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 
 	for _, keyRange := range krs {
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
-		if kr.CmpRanges(keyRange.LowerBound, i) && kr.CmpRanges(i, keyRange.UpperBound) {
+		if kr.CmpRangesLess(keyRange.LowerBound, i) && kr.CmpRangesLess(i, keyRange.UpperBound) {
 			return kr.KeyRangeFromDB(keyRange)
 		}
 	}
@@ -421,7 +416,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 	}
 
 	for _, krkey := range krs {
-		if kr.CmpRanges(krkey.LowerBound, []byte(key)) && kr.CmpRanges([]byte(key), krkey.UpperBound) {
+		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
 			if err := qr.qdb.Share(krkey); err != nil {
 				return nil, err
 			}

@@ -3,7 +3,7 @@ package shrule
 import "github.com/pg-sharding/spqr/qdb"
 
 type ShardingRule struct {
-	id      string
+	Id      string
 	columns []string
 }
 
@@ -11,13 +11,13 @@ type ShardingRule struct {
 
 func NewShardingRule(id string, cols []string) *ShardingRule {
 	return &ShardingRule{
-		id:      id,
+		Id:      id,
 		columns: cols,
 	}
 }
 
 func (s *ShardingRule) ID() string {
-	return s.id
+	return s.Id
 }
 
 func (s *ShardingRule) Columns() []string {
@@ -26,7 +26,7 @@ func (s *ShardingRule) Columns() []string {
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 	return &ShardingRule{
-		id:      rule.Id,
+		Id:      rule.Id,
 		columns: rule.Colnames,
 	}
 }

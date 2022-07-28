@@ -19,11 +19,12 @@ type LocalQrouterServer struct {
 }
 
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.qr.DropKeyRange(ctx, request.KeyRange.Krid)
-	if err != nil {
-		return nil, err
+	for _, id := range request.Id {
+		err := l.qr.DropKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
 	}
-
 	return &protos.ModifyReply{}, nil
 }
 
@@ -67,12 +68,24 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 	for _, rule := range rules {
 		shardingRules = append(shardingRules, &protos.ShardingRule{
 			Columns: rule.Columns(),
+			Id:      rule.ID(),
 		})
 	}
 
 	return &protos.ListShardingRuleReply{
 		Rules: shardingRules,
 	}, nil
+}
+
+func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dropping sharding rules %v", request.Id)
+	for _, id := range request.Id {
+		if err := l.qr.DropShardingRule(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+
+	return &protos.DropShardingRuleReply{}, nil
 }
 
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -104,15 +117,19 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKey
 }
 
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	if _, err := l.qr.LockKeyRange(ctx, request.KeyRange.Krid); err != nil {
-		return nil, err
+	for _, id := range request.Id {
+		if _, err := l.qr.LockKeyRange(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 	return &protos.ModifyReply{}, nil
 }
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	if err := l.qr.Unlock(ctx, request.KeyRange.Krid); err != nil {
-		return nil, err
+	for _, id := range request.Id {
+		if err := l.qr.Unlock(ctx, id); err != nil {
+			return nil, err
+		}
 	}
 	return &protos.ModifyReply{}, nil
 }

@@ -33,16 +33,22 @@ func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Add
 }
 
 func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
-	_, err := c.impl.LockKeyRange(ctx, request.KeyRange.Krid)
-	return &protos.ModifyReply{}, err
+	for _, id := range request.Id {
+		_, err := c.impl.LockKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &protos.ModifyReply{}, nil
 }
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.Unlock(ctx, request.KeyRange.Krid)
-	if err != nil {
-		return nil, err
+	for _, id := range request.Id {
+		if err := c.impl.Unlock(ctx, id); err != nil {
+			return nil, err
+		}
 	}
-	return &protos.ModifyReply{}, err
+	return &protos.ModifyReply{}, nil
 }
 
 func (c CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {

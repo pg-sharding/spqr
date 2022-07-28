@@ -20,7 +20,7 @@ type KeyRange struct {
 	ID         string
 }
 
-func CmpRanges(kr []byte, other []byte) bool {
+func CmpRangesLess(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) <= string(other)
 	}

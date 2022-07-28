@@ -8,5 +8,5 @@ import (
 
 type Coordinator interface {
 	clientinteractor.Interactor
-	meta.MetaMgr
+	meta.EntityMgr
 }
