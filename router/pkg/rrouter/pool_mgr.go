@@ -16,26 +16,26 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/client"
 )
 
-type ConnManager interface {
-	TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error
-	TXEndCB(client client.RouterClient, rst RelayStateInteractor) error
+type PoolMgr interface {
+	TXBeginCB(rst RelayStateMgr) error
+	TXEndCB(rst RelayStateMgr) error
 
 	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
-	ConnIsActive(rst RelayStateInteractor) bool
+	ConnIsActive(rst RelayStateMgr) bool
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
-	ValidateReRoute(rst RelayStateInteractor) bool
+	ValidateReRoute(rst RelayStateMgr) bool
 }
 
-func unRouteWithError(cmngr ConnManager, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 	return client.ReplyErrMsg(errmsg.Error())
 }
 
 type TxConnManager struct{}
 
-func (t *TxConnManager) ConnIsActive(rst RelayStateInteractor) bool {
+func (t *TxConnManager) ConnIsActive(rst RelayStateMgr) bool {
 	//TODO implement me
 	return rst.ActiveShards() != nil || rst.TxStatus() != conn.TXIDLE
 }
@@ -83,20 +83,20 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
-func (t *TxConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
+func (t *TxConnManager) ValidateReRoute(rst RelayStateMgr) bool {
 	return rst.ActiveShards() == nil || rst.TxStatus() == conn.TXIDLE
 }
 
-func (t *TxConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
+func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(client client.RouterClient, rst RelayStateInteractor) error {
+func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	ash := rst.ActiveShards()
 	spqrlog.Logger.Printf(spqrlog.LOG, "end of tx unrouting from %v", ash)
 	rst.ActiveShardsReset()
 
-	if err := t.UnRouteCB(client, ash); err != nil {
+	if err := t.UnRouteCB(rst.Client(), ash); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (t *TxConnManager) TXEndCB(client client.RouterClient, rst RelayStateIntera
 
 type SessConnManager struct{}
 
-func (s *SessConnManager) ConnIsActive(RelayStateInteractor) bool {
+func (s *SessConnManager) ConnIsActive(RelayStateMgr) bool {
 	//TODO implement me
 	return true
 }
@@ -124,11 +124,11 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
-func (s *SessConnManager) TXBeginCB(client client.RouterClient, rst RelayStateInteractor) error {
+func (s *SessConnManager) TXBeginCB(rst RelayStateMgr) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(client client.RouterClient, rst RelayStateInteractor) error {
+func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
 	return nil
 }
 
@@ -142,7 +142,7 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 	return nil
 }
 
-func (s *SessConnManager) ValidateReRoute(rst RelayStateInteractor) bool {
+func (s *SessConnManager) ValidateReRoute(rst RelayStateMgr) bool {
 	return rst.ActiveShards() == nil
 }
 
@@ -150,7 +150,7 @@ func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
-func MatchConnectionPooler(client client.RouterClient) (ConnManager, error) {
+func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
 	case config.PoolModeSession:
 		return NewSessConnManager(), nil

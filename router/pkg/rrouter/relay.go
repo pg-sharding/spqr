@@ -19,7 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/server"
 )
 
-type RelayStateInteractor interface {
+type RelayStateMgr interface {
 	Reset() error
 	StartTrace()
 	Flush()
@@ -37,10 +37,10 @@ type RelayStateInteractor interface {
 	CompleteRelay(replyCl bool) error
 	Close() error
 	Client() client.RouterClient
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
-	PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) (bool, error)
+	PrepareRelayStep(cl client.RouterClient, cmngr PoolMgr) error
+	ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	TxStatus() conn.TXStatus
 }
@@ -59,7 +59,7 @@ type RelayStateImpl struct {
 
 	Qr      qrouter.QueryRouter
 	Cl      client.RouterClient
-	manager ConnManager
+	manager PoolMgr
 
 	msgBuf  []pgproto3.Query
 	smsgBuf []pgproto3.Query
@@ -105,7 +105,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	return nil
 }
 
-func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager ConnManager) RelayStateInteractor {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager PoolMgr) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards: nil,
 		txStatus:     conn.TXIDLE,
@@ -307,7 +307,7 @@ func (rst *RelayStateImpl) RelayParse(v pgproto3.FrontendMessage, waitForResp bo
 
 func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	if !rst.TxActive() {
-		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+		if err := rst.manager.TXBeginCB(rst); err != nil {
 			return err
 		}
 		rst.txStatus = conn.TXACT
@@ -333,7 +333,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 
 		for len(buff) > 0 {
 			if !rst.TxActive() {
-				if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+				if err := rst.manager.TXBeginCB(rst); err != nil {
 					return 0, err
 				}
 			}
@@ -380,7 +380,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
 	if !rst.TxActive() {
-		if err := rst.manager.TXBeginCB(rst.Cl, rst); err != nil {
+		if err := rst.manager.TXBeginCB(rst); err != nil {
 			return 0, err
 		}
 	}
@@ -418,6 +418,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 
 	switch rst.routingState.(type) {
 	case qrouter.MultiMatchState:
+		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "unroute multishard route")
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
@@ -427,7 +428,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.manager.TXEndCB(rst.Cl, rst)
+		return rst.manager.TXEndCB(rst)
 	}
 
 	switch rst.txStatus {
@@ -440,7 +441,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		if err := rst.manager.TXEndCB(rst.Cl, rst); err != nil {
+		if err := rst.manager.TXEndCB(rst); err != nil {
 			return err
 		}
 
@@ -483,9 +484,9 @@ func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
 	return rst.Qr.Parse(q)
 }
 
-var _ RelayStateInteractor = &RelayStateImpl{}
+var _ RelayStateMgr = &RelayStateImpl{}
 
-func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnManager) error {
+func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMgr) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s", cl.Usr(), cl.DB())
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
@@ -515,7 +516,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr ConnMa
 	}
 }
 
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr ConnManager) (bool, error) {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error) {
 	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
 		return false, err
 	}
@@ -532,7 +533,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Co
 	}
 }
 
-func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr ConnManager) error {
+func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error {
 	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
 		return err
 	}
