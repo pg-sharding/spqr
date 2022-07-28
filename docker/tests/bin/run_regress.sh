@@ -8,7 +8,7 @@ touch regression.diffs
 
 while IFS= read -r line
 do
-	psql "host=localhost port=7002 dbname=regression_spqr sslmode=disable" -f ./coordregress/"$line".sql > ./results/"$line".out 2>&1
+	psql "host=spqr_coordinator port=7002 dbname=regression_spqr sslmode=disable" -f ./coordregress/"$line".sql > ./results/"$line".out 2>&1
 	diff ./expected/"$line".out ./results/"$line".out >> regression.diffs
 done < coordregress/schedule
 
