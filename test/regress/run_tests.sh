@@ -2,7 +2,7 @@
 
 LOGFILE=log.log
 
-../../spqr-rr run -c ./conf/regression.yaml > $LOGFILE 2>&1 &
+../../spqr-rr run -c ./conf/regression-tx.yaml > $LOGFILE 2>&1 &
 
 spqr_pid=$!
 # XXX:bootstrap database
@@ -19,7 +19,7 @@ touch regression.diffs
 
 while IFS= read -r line
 do
-  psql "host=localhost port=6432 dbname=regression_spqr sslmode=disable" -f ./sql/$line.sql > ./results/$line.out 2>&1
+  psql "host=localhost port=6433 dbname=regression_spqr sslmode=disable" -f ./sql/"$line".sql > ./results/"$line".out 2>&1
   diff ./expected/"$line".out ./results/"$line".out >> regression.diffs
 done < schedule
 

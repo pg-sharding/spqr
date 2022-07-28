@@ -32,14 +32,14 @@ shards:
 frontend_rules:
     - user: user1
       db: regression_spqr
-      pool_mode: 'TRANSACTION'
+      pool_mode: 'SESSION'
       pool_discard: false
       pool_rollback: true
       pool_prepared_statement: true
       auth_rule:
         auth_method: 'ok'
         password: 'strong'
-    - pool_mode: 'TRANSACTION'
+    - pool_mode: 'SESSION'
       pool_discard: false
       pool_rollback: true
       pool_default: true
