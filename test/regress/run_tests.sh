@@ -4,7 +4,7 @@ LOGFILE=log.log
 
 ../../spqr-rr run -c ./conf/regression.yaml > $LOGFILE 2>&1 &
 
-spqr_pid=$(echo $!)
+spqr_pid=$!
 # XXX:bootstrap database
 #psql ""
 
@@ -16,13 +16,14 @@ sleep 2
 rm -f regression.diffs
 touch regression.diffs
 
-for line in `cat schedule`
-do
-	psql "host=localhost port=6432 dbname=regression_spqr sslmode=disable" -f ./sql/$line.sql > ./results/$line.out 2>&1
-	diff ./expected/$line.out ./results/$line.out >> regression.diffs
-done
 
-kill $spqr_pid
+while IFS= read -r line
+do
+  psql "host=localhost port=6432 dbname=regression_spqr sslmode=disable" -f ./sql/$line.sql > ./results/$line.out 2>&1
+  diff ./expected/"$line".out ./results/"$line".out >> regression.diffs
+done < schedule
+
+kill "$spqr_pid"
 
 if [ -s regression.diffs ]; then
 	echo '

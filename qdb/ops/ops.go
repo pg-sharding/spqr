@@ -30,6 +30,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	if err != nil {
 		return err
 	}
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "keys present in qdb: %+v", existsKrids)
 
 	for _, v := range existsKrids {
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
