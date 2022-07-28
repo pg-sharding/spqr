@@ -57,7 +57,7 @@ func shardNodePath(key string) string {
 }
 
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
-	krret, err := q.fetchKeyRange(ctx, KeyRangeID)
+	krret, err := q.fetchKeyRange(ctx, keyRangeNodePath(KeyRangeID))
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "get key range responce %v %v", krret, err)
 	return krret, err
 }
@@ -230,7 +230,6 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*qdb.KeyR
 
 	switch len(raw.Kvs) {
 	case 1:
-
 		ret := qdb.KeyRange{}
 
 		if err := json.Unmarshal(raw.Kvs[0].Value, &ret); err != nil {
@@ -239,7 +238,8 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*qdb.KeyR
 		return &ret, nil
 
 	default:
-		return nil, xerrors.Errorf("failed to fetch key range with id %v", nodePath)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "got kvs list: %+v", raw.Kvs)
+		return nil, fmt.Errorf("failed to fetch key range with id %v", nodePath)
 	}
 }
 
@@ -299,13 +299,13 @@ func (q *EtcdQDB) Unlock(ctx context.Context, keyRangeID string) error {
 }
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *qdb.KeyRange) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding key range %+v to qdb", keyRange)
+
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
 		return err
 	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
 
 	resp, err := q.cli.Put(ctx, keyRangeNodePath(keyRange.KeyRangeID), string(rawKeyRange))
 	if err != nil {
@@ -342,13 +342,13 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	var ret []*qdb.KeyRange
 
 	for _, e := range resp.Kvs {
-		var kr qdb.KeyRange
+		var krCurr qdb.KeyRange
 
-		if err := json.Unmarshal(e.Value, &kr); err != nil {
+		if err := json.Unmarshal(e.Value, &krCurr); err != nil {
 			return nil, err
 		}
 
-		ret = append(ret, &kr)
+		ret = append(ret, &krCurr)
 	}
 
 	return ret, nil
