@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/routers"
@@ -54,15 +55,63 @@ func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-	db qdb.QrouterDB
+	db   qdb.QrouterDB
+	rtrs map[string]struct{}
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
 
+func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
+	for {
+		spqrlog.Logger.Printf(spqrlog.LOG, "start routers watch iteration")
+
+		// TODO: lock router
+		rtrs, err := qc.db.ListRouters(ctx)
+		if err != nil {
+			spqrlog.Logger.PrintError(err)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if err := func() error {
+			for _, r := range rtrs {
+				spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v", r.Id)
+
+				cc, err := DialRouter(&routers.Router{
+					Id:      r.Id,
+					AdmAddr: r.Address,
+				})
+
+				if err != nil {
+					return err
+				}
+
+				rrClient := routerproto.NewRouterServiceClient(cc)
+
+				resp, err := rrClient.GetStatus(ctx, &routerproto.GetStatusRequest{})
+				if err != nil {
+					return err
+				}
+
+				spqrlog.Logger.Printf(spqrlog.DEBUG4, "router %v status %v", r.Id, resp)
+			}
+
+			return nil
+		}(); err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+
+		time.Sleep(time.Second)
+	}
+}
+
 func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
-	return &qdbCoordinator{
+	cc := &qdbCoordinator{
 		db: db,
 	}
+
+	go cc.watchRouters(context.TODO())
+	return cc
 }
 
 func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {

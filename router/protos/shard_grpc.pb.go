@@ -38,7 +38,7 @@ func NewShardServiceClient(cc grpc.ClientConnInterface) ShardServiceClient {
 
 func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error) {
 	out := new(ShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/ListShards", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardService/ListShards", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *shardServiceClient) ListShards(ctx context.Context, in *ShardRequest, o
 
 func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
 	out := new(AddShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddDataShard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardService/AddDataShard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardReque
 
 func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
 	out := new(AddShardReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/AddWorldShard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardService/AddWorldShard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShar
 
 func (c *shardServiceClient) GetShardInfo(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardInfoReply, error) {
 	out := new(ShardInfoReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardService/GetShardInfo", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardService/GetShardInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/ListShards",
+		FullMethod: "/spqr.ShardService/ListShards",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).ListShards(ctx, req.(*ShardRequest))
@@ -140,7 +140,7 @@ func _ShardService_AddDataShard_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/AddDataShard",
+		FullMethod: "/spqr.ShardService/AddDataShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).AddDataShard(ctx, req.(*AddShardRequest))
@@ -158,7 +158,7 @@ func _ShardService_AddWorldShard_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/AddWorldShard",
+		FullMethod: "/spqr.ShardService/AddWorldShard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).AddWorldShard(ctx, req.(*AddWorldShardRequest))
@@ -176,7 +176,7 @@ func _ShardService_GetShardInfo_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardService/GetShardInfo",
+		FullMethod: "/spqr.ShardService/GetShardInfo",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardServiceServer).GetShardInfo(ctx, req.(*ShardRequest))
@@ -188,7 +188,7 @@ func _ShardService_GetShardInfo_Handler(srv interface{}, ctx context.Context, de
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ShardService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.ShardService",
+	ServiceName: "spqr.ShardService",
 	HandlerType: (*ShardServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

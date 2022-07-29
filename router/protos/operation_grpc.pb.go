@@ -35,7 +35,7 @@ func NewOperationServiceClient(cc grpc.ClientConnInterface) OperationServiceClie
 
 func (c *operationServiceClient) GetOperation(ctx context.Context, in *GetOperationRequest, opts ...grpc.CallOption) (*GetOperationReply, error) {
 	out := new(GetOperationReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.OperationService/GetOperation", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.OperationService/GetOperation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func _OperationService_GetOperation_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.OperationService/GetOperation",
+		FullMethod: "/spqr.OperationService/GetOperation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OperationServiceServer).GetOperation(ctx, req.(*GetOperationRequest))
@@ -92,7 +92,7 @@ func _OperationService_GetOperation_Handler(srv interface{}, ctx context.Context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var OperationService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.OperationService",
+	ServiceName: "spqr.OperationService",
 	HandlerType: (*OperationServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

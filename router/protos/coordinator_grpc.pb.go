@@ -37,7 +37,7 @@ func NewRoutersServiceClient(cc grpc.ClientConnInterface) RoutersServiceClient {
 
 func (c *routersServiceClient) ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error) {
 	out := new(ListRoutersReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.RoutersService/ListRouters", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.RoutersService/ListRouters", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *routersServiceClient) ListRouters(ctx context.Context, in *ListRoutersR
 
 func (c *routersServiceClient) AddRouters(ctx context.Context, in *AddRoutersRequest, opts ...grpc.CallOption) (*AddRoutersReply, error) {
 	out := new(AddRoutersReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.RoutersService/AddRouters", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.RoutersService/AddRouters", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *routersServiceClient) AddRouters(ctx context.Context, in *AddRoutersReq
 
 func (c *routersServiceClient) ShutdownRouter(ctx context.Context, in *ShutdownRouterRequest, opts ...grpc.CallOption) (*ShutdownRouterReply, error) {
 	out := new(ShutdownRouterReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.RoutersService/ShutdownRouter", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.RoutersService/ShutdownRouter", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func _RoutersService_ListRouters_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.RoutersService/ListRouters",
+		FullMethod: "/spqr.RoutersService/ListRouters",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RoutersServiceServer).ListRouters(ctx, req.(*ListRoutersRequest))
@@ -126,7 +126,7 @@ func _RoutersService_AddRouters_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.RoutersService/AddRouters",
+		FullMethod: "/spqr.RoutersService/AddRouters",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RoutersServiceServer).AddRouters(ctx, req.(*AddRoutersRequest))
@@ -144,7 +144,7 @@ func _RoutersService_ShutdownRouter_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.RoutersService/ShutdownRouter",
+		FullMethod: "/spqr.RoutersService/ShutdownRouter",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(RoutersServiceServer).ShutdownRouter(ctx, req.(*ShutdownRouterRequest))
@@ -156,7 +156,7 @@ func _RoutersService_ShutdownRouter_Handler(srv interface{}, ctx context.Context
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var RoutersService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.RoutersService",
+	ServiceName: "spqr.RoutersService",
 	HandlerType: (*RoutersServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

@@ -35,7 +35,7 @@ func NewQueryServiceClient(cc grpc.ClientConnInterface) QueryServiceClient {
 
 func (c *queryServiceClient) Process(ctx context.Context, in *QueryExecuteRequest, opts ...grpc.CallOption) (*QueryExecuteResponse, error) {
 	out := new(QueryExecuteResponse)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.QueryService/Process", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.QueryService/Process", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func _QueryService_Process_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.QueryService/Process",
+		FullMethod: "/spqr.QueryService/Process",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(QueryServiceServer).Process(ctx, req.(*QueryExecuteRequest))
@@ -92,7 +92,7 @@ func _QueryService_Process_Handler(srv interface{}, ctx context.Context, dec fun
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var QueryService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.QueryService",
+	ServiceName: "spqr.QueryService",
 	HandlerType: (*QueryServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

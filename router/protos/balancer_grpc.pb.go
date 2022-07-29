@@ -36,7 +36,7 @@ func NewBalancerServiceClient(cc grpc.ClientConnInterface) BalancerServiceClient
 
 func (c *balancerServiceClient) ReloadRequired(ctx context.Context, in *ReloadRequest, opts ...grpc.CallOption) (*ReloadReply, error) {
 	out := new(ReloadReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.BalancerService/ReloadRequired", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.BalancerService/ReloadRequired", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func _BalancerService_ReloadRequired_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.BalancerService/ReloadRequired",
+		FullMethod: "/spqr.BalancerService/ReloadRequired",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BalancerServiceServer).ReloadRequired(ctx, req.(*ReloadRequest))
@@ -94,7 +94,7 @@ func _BalancerService_ReloadRequired_Handler(srv interface{}, ctx context.Contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var BalancerService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.BalancerService",
+	ServiceName: "spqr.BalancerService",
 	HandlerType: (*BalancerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
