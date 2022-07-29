@@ -359,5 +359,3 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 		return SkipRoutingState{}, nil
 	}
 }
-
-var _ QueryRouter = &ProxyQrouter{}

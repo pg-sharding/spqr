@@ -55,8 +55,7 @@ func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-	db   qdb.QrouterDB
-	rtrs map[string]struct{}
+	db qdb.QrouterDB
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -614,7 +613,6 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *route
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *routers.Router) error {
 	// TODO: list routers and deduplicate
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.AdmAddr, r.Id)
-	qc.rtrs[r.Id] = struct{}{}
 	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Id, r.AdmAddr, qdb.CLOSED))
 }
 

@@ -20,11 +20,16 @@ type LocalQrouterServer struct {
 }
 
 func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRequest) (*protos.OpenReply, error) {
-	//TODO implement me
-	panic("implement me")
+	l.qr.Initialize()
+	return &protos.OpenReply{}, nil
 }
 
 func (l *LocalQrouterServer) GetStatus(ctx context.Context, request *protos.GetStatusRequest) (*protos.GetStatusReply, error) {
+	if l.qr.Initialized() {
+		return &protos.GetStatusReply{
+			Status: protos.RouterStatus_OPENED,
+		}, nil
+	}
 	return &protos.GetStatusReply{
 		Status: protos.RouterStatus_CLOSED,
 	}, nil

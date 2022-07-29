@@ -7,7 +7,6 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"go.uber.org/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -26,8 +25,6 @@ type InstanceImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 
-	initialized *atomic.Bool
-
 	stchan chan struct{}
 	addr   string
 	frTLS  *tls.Config
@@ -42,7 +39,7 @@ func (r *InstanceImpl) Addr() string {
 }
 
 func (r *InstanceImpl) Initialized() bool {
-	return r.initialized.Load()
+	return r.Qrouter.Initialized()
 }
 
 var _ Router = &InstanceImpl{}
@@ -74,8 +71,6 @@ func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 		return nil, err
 	}
 
-	initialized := atomic.NewBool(false)
-
 	if !config.RouterConfig().UnderCoordinator {
 		for _, fname := range []string{
 			config.RouterConfig().InitSQL,
@@ -102,16 +97,15 @@ func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 			spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 		}
 
-		initialized.Swap(true)
+		qr.Initialize()
 	}
 
 	return &InstanceImpl{
-		Rrouter:     rr,
-		Qrouter:     qr,
-		AdmConsole:  localConsole,
-		initialized: initialized,
-		stchan:      stchan,
-		frTLS:       frTLS,
+		Rrouter:    rr,
+		Qrouter:    qr,
+		AdmConsole: localConsole,
+		stchan:     stchan,
+		frTLS:      frTLS,
 	}, nil
 }
 
@@ -158,7 +152,6 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	for {
 		select {
 		case conn := <-cChan:
-
 			if !r.Initialized() {
 				_ = conn.Close()
 			} else {
@@ -168,7 +161,6 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 					}
 				}()
 			}
-
 		case <-r.stchan:
 			_ = r.Rrouter.Shutdown()
 			_ = listener.Close()

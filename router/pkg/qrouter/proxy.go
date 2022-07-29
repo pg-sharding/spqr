@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"go.uber.org/atomic"
 	"math/rand"
 	"sync"
 
@@ -36,9 +37,19 @@ type ProxyQrouter struct {
 	DataShardCfgs  map[string]*config.Shard
 	WorldShardCfgs map[string]*config.Shard
 
+	initialized *atomic.Bool
+
 	qdb qdb.QrouterDB
 
 	parser parser.QParser
+}
+
+func (qr *ProxyQrouter) Initialized() bool {
+	return qr.initialized.Load()
+}
+
+func (qr *ProxyQrouter) Initialize() bool {
+	return qr.initialized.Swap(true)
 }
 
 func (qr *ProxyQrouter) ListDataShards(ctx context.Context) []*datashards.DataShard {
@@ -389,3 +400,5 @@ func (qr *ProxyQrouter) GetShardInfo(ctx context.Context, shardID string) (*data
 func (qr *ProxyQrouter) Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	return nil
 }
+
+var _ QueryRouter = &ProxyQrouter{}
