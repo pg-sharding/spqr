@@ -60,6 +60,8 @@ type qdbCoordinator struct {
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
 
+// watchRouters traverse routers one check if they are opened
+// for clients. If not, initialize metadata and open router
 func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	for {
 		spqrlog.Logger.Printf(spqrlog.LOG, "start routers watch iteration")
@@ -98,7 +100,6 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					if err := qc.db.LockRouter(ctx, r.Id); err != nil {
 						return err
 					}
-
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
 						return err
 					}
@@ -119,6 +120,8 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
+// NewCoordinator side efferc: runs async goroutine that checks
+// spqr router`s availability
 func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
 	cc := &qdbCoordinator{
 		db: db,
@@ -128,6 +131,8 @@ func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
 	return cc
 }
 
+// traverseRouters traverse each route and run callback for each of them
+// cb receives grpc connection to router`s admin console
 func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator traverse")
 
@@ -157,7 +162,6 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 }
 
 func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, error) {
-	//TODO implement me
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
 		return nil, err
@@ -478,6 +482,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
+// Move key range from one logical shard to another
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -625,9 +630,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 	cl := psqlclient.NewPsqlClient(nconn)
 
-	err := cl.Init(nil)
-
-	if err != nil {
+	if err := cl.Init(nil); err != nil {
 		return nil, err
 	}
 
@@ -652,7 +655,6 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 }
 
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
-
 	cl, err := qc.PrepareClient(nconn)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -660,16 +662,13 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	}
 
 	cli := clientinteractor.PSQLInteractor{}
-
 	for {
 		// TODO: check leader status
-
 		msg, err := cl.Receive()
 		if err != nil {
 			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)
 			return err
 		}
-
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received msg %v", msg)
 
 		switch v := msg.(type) {

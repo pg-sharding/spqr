@@ -27,7 +27,7 @@ const (
 type Router struct {
 	Address string      `json:"address"`
 	Id      string      `json:"id"`
-	State   RouterState `json:"state"`
+	State   RouterState `json:"state,omitempty"`
 }
 
 func NewRouter(addr, id string, rst RouterState) *Router {

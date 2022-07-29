@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 	"sync"
 
-	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -27,29 +27,29 @@ func NewApp(c coordinator.Coordinator) *App {
 
 func (app *App) Run() error {
 
-	tracelog.InfoLogger.Printf("running coordinator app\n")
+	spqrlog.Logger.Printf(spqrlog.LOG, "running coordinator app\n")
 
 	wg := &sync.WaitGroup{}
 
 	wg.Add(2)
 
 	go func(wg *sync.WaitGroup) {
-		tracelog.InfoLogger.PrintError(app.ServeGrpc(wg))
+		spqrlog.Logger.PrintError(app.ServeGrpc(wg))
 	}(wg)
 	go func(wg *sync.WaitGroup) {
-		tracelog.InfoLogger.PrintError(app.ServePsql(wg))
+		spqrlog.Logger.PrintError(app.ServePsql(wg))
 	}(wg)
 
 	wg.Wait()
-	tracelog.InfoLogger.Printf("exit")
+
+	spqrlog.Logger.Printf(spqrlog.LOG, "exit")
 	return nil
 }
 
 func (app *App) ServePsql(wg *sync.WaitGroup) error {
-
 	defer wg.Done()
 
-	tracelog.InfoLogger.Printf("serve psql on %v", config.CoordinatorConfig().Addr)
+	spqrlog.Logger.Printf(spqrlog.LOG, "serve psql on %v", config.CoordinatorConfig().Addr)
 
 	listener, err := net.Listen("tcp", config.CoordinatorConfig().Addr)
 
@@ -59,7 +59,7 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 
 	for {
 		conn, err := listener.Accept()
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 		_ = app.coordinator.ProcClient(context.TODO(), conn)
 	}
 }
@@ -71,7 +71,8 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	serv := grpc.NewServer()
 	reflection.Register(serv)
 
-	tracelog.InfoLogger.Printf("Coordinator Service %v", app.coordinator)
+	spqrlog.Logger.Printf(spqrlog.LOG, "Coordinator Service %v", app.coordinator)
+
 	krserv := provider.NewKeyRangeService(app.coordinator)
 	rrserv := provider.NewRoutersService(app.coordinator)
 	shardingRulesServ := provider.NewShardingRules(app.coordinator)
@@ -84,13 +85,11 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
 
-	tracelog.InfoLogger.Printf("serve grpc on %v", httpAddr)
+	spqrlog.Logger.Printf(spqrlog.LOG, "serve grpc on %v", httpAddr)
 
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("coordinator listening on %s", httpAddr)
-
 	return serv.Serve(listener)
 }

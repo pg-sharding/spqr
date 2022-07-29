@@ -100,6 +100,10 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 		if err := json.Unmarshal(e.Value, &st); err != nil {
 			return nil, err
 		}
+		// TODO: create routers in qdb properly
+		if len(st.State) == 0 {
+			st.State = qdb.CLOSED
+		}
 		ret = append(ret, &st)
 	}
 
@@ -137,9 +141,12 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
-	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), r.Addr())
+	bts, err := json.Marshal(r)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), string(bts))
+	if err != nil {
 		return err
 	}
 
