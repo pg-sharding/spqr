@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"net"
-
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"go.uber.org/atomic"
+	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -24,6 +24,8 @@ type RouterImpl struct {
 	Rrouter    rrouter.RequestRouter
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
+
+	initialized *atomic.Bool
 
 	stchan chan struct{}
 	addr   string
@@ -67,36 +69,44 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		return nil, err
 	}
 
-	for _, fname := range []string{
-		config.RouterConfig().InitSQL,
-		config.RouterConfig().AutoConf,
-	} {
-		if len(fname) == 0 {
-			continue
-		}
-		queries, err := localConsole.Qlog().Recover(ctx, fname)
-		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
-			return nil, err
-		}
+	initialized := atomic.NewBool(false)
 
-		spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
-		for _, query := range queries {
-			spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
-			if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-				spqrlog.Logger.PrintError(err)
+	if !config.RouterConfig().UnderCoordinator {
+		for _, fname := range []string{
+			config.RouterConfig().InitSQL,
+			config.RouterConfig().AutoConf,
+		} {
+			if len(fname) == 0 {
+				continue
 			}
+			queries, err := localConsole.Qlog().Recover(ctx, fname)
+			if err != nil {
+				spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
+				return nil, err
+			}
+
+			spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
+			for _, query := range queries {
+				spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
+				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+					spqrlog.Logger.PrintError(err)
+					return nil, err
+				}
+			}
+
+			spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 		}
 
-		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
+		initialized.Swap(true)
 	}
 
 	return &RouterImpl{
-		Rrouter:    rr,
-		Qrouter:    qr,
-		AdmConsole: localConsole,
-		stchan:     stchan,
-		frTLS:      frTLS,
+		Rrouter:     rr,
+		Qrouter:     qr,
+		AdmConsole:  localConsole,
+		initialized: initialized,
+		stchan:      stchan,
+		frTLS:       frTLS,
 	}, nil
 }
 
@@ -144,11 +154,15 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 		select {
 		case conn := <-cChan:
 
-			go func() {
-				if err := r.serv(conn); err != nil {
-					spqrlog.Logger.PrintError(err)
-				}
-			}()
+			if !r.initialized.Load() {
+				_ = conn.Close()
+			} else {
+				go func() {
+					if err := r.serv(conn); err != nil {
+						spqrlog.Logger.PrintError(err)
+					}
+				}()
+			}
 
 		case <-r.stchan:
 			_ = r.Rrouter.Shutdown()

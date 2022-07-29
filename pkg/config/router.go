@@ -36,14 +36,15 @@ type Router struct {
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 
-	AutoConf      string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
-	InitSQL       string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
-	RouterMode    string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	JaegerUrl     string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
-	FrontendRules []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	FrontendTLS   *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	BackendRules  []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping  map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+	AutoConf         string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
+	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
+	UnderCoordinator bool              `json:"under_coordinator" toml:"under_coordinator" yaml:"under_coordinator"`
+	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
+	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 }
 
 type BackendRule struct {
