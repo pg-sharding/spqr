@@ -15,10 +15,10 @@ import (
 )
 
 type App struct {
-	spqr *router.RouterImpl
+	spqr *router.InstanceImpl
 }
 
-func NewApp(sg *router.RouterImpl) *App {
+func NewApp(sg *router.InstanceImpl) *App {
 	return &App{
 		spqr: sg,
 	}

@@ -15,7 +15,24 @@ import (
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
 	protos.UnimplementedShardingRulesServiceServer
+	protos.UnimplementedRouterServiceServer
 	qr qrouter.QueryRouter
+}
+
+func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRequest) (*protos.OpenReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) GetStatus(ctx context.Context, request *protos.GetStatusRequest) (*protos.GetStatusReply, error) {
+	return &protos.GetStatusReply{
+		Status: protos.RouterStatus_CLOSED,
+	}, nil
+}
+
+func (l *LocalQrouterServer) Close(ctx context.Context, request *protos.CloseRequest) (*protos.CloseReply, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -160,3 +177,4 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
 var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
+var _ protos.RouterServiceServer = &LocalQrouterServer{}

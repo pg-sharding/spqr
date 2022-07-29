@@ -17,15 +17,24 @@ type KeyRangeStatus string
 const KRLocked = KeyRangeStatus("LOCKED")
 const KRUnLocked = KeyRangeStatus("UNLOCKED")
 
+type RouterState string
+
+const (
+	CLOSED = RouterState("CLOSED")
+	OPENED = RouterState("OPENED")
+)
+
 type Router struct {
-	Address string `json:"address"`
-	Id      string `json:"id"`
+	Address string      `json:"address"`
+	Id      string      `json:"id"`
+	State   RouterState `json:"state"`
 }
 
-func NewRouter(addr, id string) *Router {
+func NewRouter(addr, id string, rst RouterState) *Router {
 	return &Router{
 		Address: addr,
 		Id:      id,
+		State:   rst,
 	}
 }
 

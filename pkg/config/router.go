@@ -80,7 +80,12 @@ func LoadRouterCfg(cfgPath string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Fatalf("failed to close confi file: %v", err)
+		}
+	}(file)
 
 	if err := initRouterConfig(file, cfgPath); err != nil {
 		return err

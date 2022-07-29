@@ -96,16 +96,19 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	var ret []*qdb.Router
 
 	for _, e := range resp.Kvs {
-		_, keyRangeID := path.Split(string(e.Key))
-		ret = append(ret,
-			qdb.NewRouter(
-				string(e.Value),
-				keyRangeID,
-			),
-		)
+		var st qdb.Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return nil, err
+		}
+		ret = append(ret, &st)
 	}
 
 	return ret, nil
+}
+
+func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
+	// TODO: lock
+	return nil
 }
 
 func (q *EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
@@ -155,7 +158,7 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, rID string) error {
 	return nil
 }
 
-func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, error) {
+func (q *EtcdQDB) LockKeyRange(ctx context.Context, keyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

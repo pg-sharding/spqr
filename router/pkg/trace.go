@@ -10,7 +10,7 @@ import (
 	"github.com/uber/jaeger-lib/metrics"
 )
 
-func (r *RouterImpl) initJaegerTracer() (io.Closer, error) {
+func (r *InstanceImpl) initJaegerTracer() (io.Closer, error) {
 	cfg := jaegercfg.Configuration{
 		ServiceName: "worldmock",
 		Sampler: &jaegercfg.SamplerConfig{

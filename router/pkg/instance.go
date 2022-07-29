@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
+
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"go.uber.org/atomic"
-	"net"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -20,7 +21,7 @@ type Router interface {
 	ID() string
 }
 
-type RouterImpl struct {
+type InstanceImpl struct {
 	Rrouter    rrouter.RequestRouter
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
@@ -32,17 +33,21 @@ type RouterImpl struct {
 	frTLS  *tls.Config
 }
 
-func (r *RouterImpl) ID() string {
+func (r *InstanceImpl) ID() string {
 	return "noid"
 }
 
-func (r *RouterImpl) Addr() string {
+func (r *InstanceImpl) Addr() string {
 	return r.addr
 }
 
-var _ Router = &RouterImpl{}
+func (r *InstanceImpl) Initialized() bool {
+	return r.initialized.Load()
+}
 
-func NewRouter(ctx context.Context) (*RouterImpl, error) {
+var _ Router = &InstanceImpl{}
+
+func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 
 	// qrouter init
 	qtype := config.RouterMode(config.RouterConfig().RouterMode)
@@ -100,7 +105,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		initialized.Swap(true)
 	}
 
-	return &RouterImpl{
+	return &InstanceImpl{
 		Rrouter:     rr,
 		Qrouter:     qr,
 		AdmConsole:  localConsole,
@@ -110,7 +115,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	}, nil
 }
 
-func (r *RouterImpl) serv(netconn net.Conn) error {
+func (r *InstanceImpl) serv(netconn net.Conn) error {
 	psqlclient, err := r.Rrouter.PreRoute(netconn)
 	if err != nil {
 		_ = netconn.Close()
@@ -127,7 +132,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 	return Frontend(r.Qrouter, psqlclient, cmngr)
 }
 
-func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
+func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	closer, err := r.initJaegerTracer()
 	if err != nil {
 		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
@@ -154,7 +159,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 		select {
 		case conn := <-cChan:
 
-			if !r.initialized.Load() {
+			if !r.Initialized() {
 				_ = conn.Close()
 			} else {
 				go func() {
@@ -176,7 +181,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 	}
 }
 
-func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
+func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	cl := client.NewPsqlClient(conn)
 	if err := cl.Init(r.frTLS); err != nil {
 		return err
@@ -184,7 +189,7 @@ func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	return r.AdmConsole.Serve(ctx, cl)
 }
 
-func (r *RouterImpl) RunAdm(ctx context.Context, listener net.Listener) error {
+func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener, cChan chan net.Conn) {

@@ -12,7 +12,7 @@ type QrouterDB interface {
 
 	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
-	Lock(ctx context.Context, keyRangeID string) (*KeyRange, error)
+	LockKeyRange(ctx context.Context, keyRangeID string) (*KeyRange, error)
 	Unlock(ctx context.Context, keyRangeID string) error
 
 	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
@@ -28,6 +28,7 @@ type QrouterDB interface {
 	AddRouter(ctx context.Context, r *Router) error
 	DeleteRouter(ctx context.Context, rID string) error
 	ListRouters(ctx context.Context) ([]*Router, error)
+	LockRouter(ctx context.Context, id string) error
 
 	Check(ctx context.Context, kr *KeyRange) bool
 	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error

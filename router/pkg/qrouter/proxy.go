@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/client"
-
 	"github.com/pg-sharding/spqr/pkg/models/routers"
 
 	"github.com/pg-sharding/spqr/qdb/ops"
@@ -205,7 +203,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	var krleft *qdb.KeyRange
 	var err error
 
-	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDLeft); err != nil {
+	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil {
 		return err
 	}
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
@@ -217,7 +215,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
 	// TODO: krRight seems to be empty.
-	if krleft, err = qr.qdb.Lock(ctx, req.KeyRangeIDRight); err != nil {
+	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
 	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
@@ -241,7 +239,7 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 	var krOld *qdb.KeyRange
 	var err error
 
-	if krOld, err = qr.qdb.Lock(ctx, req.SourceID); err != nil {
+	if krOld, err = qr.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
 		return err
 	}
 	defer func(qdb qdb.QrouterDB, ctx context.Context, krid string) {
@@ -269,7 +267,7 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 }
 
 func (qr *ProxyQrouter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
-	keyRangeDB, err := qr.qdb.Lock(ctx, krid)
+	keyRangeDB, err := qr.qdb.LockKeyRange(ctx, krid)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +378,7 @@ func (qr *ProxyQrouter) UnregisterRouter(ctx context.Context, id string) error {
 	return ErrNotCoordinator
 }
 
-func (qr *ProxyQrouter) ConfigureNewRouter(ctx context.Context, router *routers.Router, client client.Client) error {
+func (qr *ProxyQrouter) SyncRouterMetadata(ctx context.Context, router *routers.Router) error {
 	return ErrNotCoordinator
 }
 

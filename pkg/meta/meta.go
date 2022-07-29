@@ -128,7 +128,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 			return err
 		}
 
-		if err := mgr.ConfigureNewRouter(ctx, newRouter, cl); err != nil {
+		if err := mgr.SyncRouterMetadata(ctx, newRouter); err != nil {
 			return err
 		}
 
