@@ -37,7 +37,7 @@ func NewShardingRulesServiceClient(cc grpc.ClientConnInterface) ShardingRulesSer
 
 func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
 	out := new(AddShardingRuleReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/AddShardingRules", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardingRulesService/AddShardingRules", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *A
 
 func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error) {
 	out := new(DropShardingRuleReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/DropShardingRules", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardingRulesService/DropShardingRules", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *
 
 func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error) {
 	out := new(ListShardingRuleReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.ShardingRulesService/ListShardingRules", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.ShardingRulesService/ListShardingRules", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func _ShardingRulesService_AddShardingRules_Handler(srv interface{}, ctx context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardingRulesService/AddShardingRules",
+		FullMethod: "/spqr.ShardingRulesService/AddShardingRules",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardingRulesServiceServer).AddShardingRules(ctx, req.(*AddShardingRuleRequest))
@@ -126,7 +126,7 @@ func _ShardingRulesService_DropShardingRules_Handler(srv interface{}, ctx contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardingRulesService/DropShardingRules",
+		FullMethod: "/spqr.ShardingRulesService/DropShardingRules",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardingRulesServiceServer).DropShardingRules(ctx, req.(*DropShardingRuleRequest))
@@ -144,7 +144,7 @@ func _ShardingRulesService_ListShardingRules_Handler(srv interface{}, ctx contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.ShardingRulesService/ListShardingRules",
+		FullMethod: "/spqr.ShardingRulesService/ListShardingRules",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ShardingRulesServiceServer).ListShardingRules(ctx, req.(*ListShardingRuleRequest))
@@ -156,7 +156,7 @@ func _ShardingRulesService_ListShardingRules_Handler(srv interface{}, ctx contex
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ShardingRulesService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.ShardingRulesService",
+	ServiceName: "spqr.ShardingRulesService",
 	HandlerType: (*ShardingRulesServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

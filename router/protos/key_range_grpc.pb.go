@@ -44,7 +44,7 @@ func NewKeyRangeServiceClient(cc grpc.ClientConnInterface) KeyRangeServiceClient
 
 func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
 	out := new(KeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/ListKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/ListKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRan
 
 func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/LockKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/LockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRan
 
 func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/AddKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/AddKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRange
 
 func (c *keyRangeServiceClient) DropKeyRange(ctx context.Context, in *DropKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/DropKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/DropKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (c *keyRangeServiceClient) DropKeyRange(ctx context.Context, in *DropKeyRan
 
 func (c *keyRangeServiceClient) DropAllKeyRanges(ctx context.Context, in *DropAllKeyRangesRequest, opts ...grpc.CallOption) (*DropAllKeyRangesResponse, error) {
 	out := new(DropAllKeyRangesResponse)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/DropAllKeyRanges", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/DropAllKeyRanges", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (c *keyRangeServiceClient) DropAllKeyRanges(ctx context.Context, in *DropAl
 
 func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/UnlockKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/UnlockKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (c *keyRangeServiceClient) UnlockKeyRange(ctx context.Context, in *UnlockKe
 
 func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/SplitKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/SplitKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (c *keyRangeServiceClient) SplitKeyRange(ctx context.Context, in *SplitKeyR
 
 func (c *keyRangeServiceClient) MergeKeyRange(ctx context.Context, in *MergeKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/MergeKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/MergeKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (c *keyRangeServiceClient) MergeKeyRange(ctx context.Context, in *MergeKeyR
 
 func (c *keyRangeServiceClient) MoveKeyRange(ctx context.Context, in *MoveKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/MoveKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/MoveKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *keyRangeServiceClient) MoveKeyRange(ctx context.Context, in *MoveKeyRan
 
 func (c *keyRangeServiceClient) ResolveKeyRange(ctx context.Context, in *ResolveKeyRangeRequest, opts ...grpc.CallOption) (*ResolveKeyRangeReply, error) {
 	out := new(ResolveKeyRangeReply)
-	err := c.cc.Invoke(ctx, "/yandex.spqr.KeyRangeService/ResolveKeyRange", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/spqr.KeyRangeService/ResolveKeyRange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func _KeyRangeService_ListKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/ListKeyRange",
+		FullMethod: "/spqr.KeyRangeService/ListKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).ListKeyRange(ctx, req.(*ListKeyRangeRequest))
@@ -224,7 +224,7 @@ func _KeyRangeService_LockKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/LockKeyRange",
+		FullMethod: "/spqr.KeyRangeService/LockKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).LockKeyRange(ctx, req.(*LockKeyRangeRequest))
@@ -242,7 +242,7 @@ func _KeyRangeService_AddKeyRange_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/AddKeyRange",
+		FullMethod: "/spqr.KeyRangeService/AddKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).AddKeyRange(ctx, req.(*AddKeyRangeRequest))
@@ -260,7 +260,7 @@ func _KeyRangeService_DropKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/DropKeyRange",
+		FullMethod: "/spqr.KeyRangeService/DropKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).DropKeyRange(ctx, req.(*DropKeyRangeRequest))
@@ -278,7 +278,7 @@ func _KeyRangeService_DropAllKeyRanges_Handler(srv interface{}, ctx context.Cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/DropAllKeyRanges",
+		FullMethod: "/spqr.KeyRangeService/DropAllKeyRanges",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).DropAllKeyRanges(ctx, req.(*DropAllKeyRangesRequest))
@@ -296,7 +296,7 @@ func _KeyRangeService_UnlockKeyRange_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/UnlockKeyRange",
+		FullMethod: "/spqr.KeyRangeService/UnlockKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).UnlockKeyRange(ctx, req.(*UnlockKeyRangeRequest))
@@ -314,7 +314,7 @@ func _KeyRangeService_SplitKeyRange_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/SplitKeyRange",
+		FullMethod: "/spqr.KeyRangeService/SplitKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).SplitKeyRange(ctx, req.(*SplitKeyRangeRequest))
@@ -332,7 +332,7 @@ func _KeyRangeService_MergeKeyRange_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/MergeKeyRange",
+		FullMethod: "/spqr.KeyRangeService/MergeKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).MergeKeyRange(ctx, req.(*MergeKeyRangeRequest))
@@ -350,7 +350,7 @@ func _KeyRangeService_MoveKeyRange_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/MoveKeyRange",
+		FullMethod: "/spqr.KeyRangeService/MoveKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).MoveKeyRange(ctx, req.(*MoveKeyRangeRequest))
@@ -368,7 +368,7 @@ func _KeyRangeService_ResolveKeyRange_Handler(srv interface{}, ctx context.Conte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/yandex.spqr.KeyRangeService/ResolveKeyRange",
+		FullMethod: "/spqr.KeyRangeService/ResolveKeyRange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KeyRangeServiceServer).ResolveKeyRange(ctx, req.(*ResolveKeyRangeRequest))
@@ -380,7 +380,7 @@ func _KeyRangeService_ResolveKeyRange_Handler(srv interface{}, ctx context.Conte
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "yandex.spqr.KeyRangeService",
+	ServiceName: "spqr.KeyRangeService",
 	HandlerType: (*KeyRangeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

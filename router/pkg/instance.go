@@ -20,7 +20,7 @@ type Router interface {
 	ID() string
 }
 
-type RouterImpl struct {
+type InstanceImpl struct {
 	Rrouter    rrouter.RequestRouter
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
@@ -30,17 +30,21 @@ type RouterImpl struct {
 	frTLS  *tls.Config
 }
 
-func (r *RouterImpl) ID() string {
+func (r *InstanceImpl) ID() string {
 	return "noid"
 }
 
-func (r *RouterImpl) Addr() string {
+func (r *InstanceImpl) Addr() string {
 	return r.addr
 }
 
-var _ Router = &RouterImpl{}
+func (r *InstanceImpl) Initialized() bool {
+	return r.Qrouter.Initialized()
+}
 
-func NewRouter(ctx context.Context) (*RouterImpl, error) {
+var _ Router = &InstanceImpl{}
+
+func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 
 	// qrouter init
 	qtype := config.RouterMode(config.RouterConfig().RouterMode)
@@ -67,31 +71,36 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 		return nil, err
 	}
 
-	for _, fname := range []string{
-		config.RouterConfig().InitSQL,
-		config.RouterConfig().AutoConf,
-	} {
-		if len(fname) == 0 {
-			continue
-		}
-		queries, err := localConsole.Qlog().Recover(ctx, fname)
-		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
-			return nil, err
-		}
-
-		spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
-		for _, query := range queries {
-			spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
-			if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-				spqrlog.Logger.PrintError(err)
+	if !config.RouterConfig().UnderCoordinator {
+		for _, fname := range []string{
+			config.RouterConfig().InitSQL,
+			config.RouterConfig().AutoConf,
+		} {
+			if len(fname) == 0 {
+				continue
 			}
+			queries, err := localConsole.Qlog().Recover(ctx, fname)
+			if err != nil {
+				spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
+				return nil, err
+			}
+
+			spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
+			for _, query := range queries {
+				spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
+				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+					spqrlog.Logger.PrintError(err)
+					return nil, err
+				}
+			}
+
+			spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 		}
 
-		spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
+		qr.Initialize()
 	}
 
-	return &RouterImpl{
+	return &InstanceImpl{
 		Rrouter:    rr,
 		Qrouter:    qr,
 		AdmConsole: localConsole,
@@ -100,7 +109,7 @@ func NewRouter(ctx context.Context) (*RouterImpl, error) {
 	}, nil
 }
 
-func (r *RouterImpl) serv(netconn net.Conn) error {
+func (r *InstanceImpl) serv(netconn net.Conn) error {
 	psqlclient, err := r.Rrouter.PreRoute(netconn)
 	if err != nil {
 		_ = netconn.Close()
@@ -117,7 +126,7 @@ func (r *RouterImpl) serv(netconn net.Conn) error {
 	return Frontend(r.Qrouter, psqlclient, cmngr)
 }
 
-func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
+func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	closer, err := r.initJaegerTracer()
 	if err != nil {
 		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
@@ -143,13 +152,15 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 	for {
 		select {
 		case conn := <-cChan:
-
-			go func() {
-				if err := r.serv(conn); err != nil {
-					spqrlog.Logger.PrintError(err)
-				}
-			}()
-
+			if !r.Initialized() {
+				_ = conn.Close()
+			} else {
+				go func() {
+					if err := r.serv(conn); err != nil {
+						spqrlog.Logger.PrintError(err)
+					}
+				}()
+			}
 		case <-r.stchan:
 			_ = r.Rrouter.Shutdown()
 			_ = listener.Close()
@@ -162,7 +173,7 @@ func (r *RouterImpl) Run(ctx context.Context, listener net.Listener) error {
 	}
 }
 
-func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
+func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	cl := client.NewPsqlClient(conn)
 	if err := cl.Init(r.frTLS); err != nil {
 		return err
@@ -170,7 +181,7 @@ func (r *RouterImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	return r.AdmConsole.Serve(ctx, cl)
 }
 
-func (r *RouterImpl) RunAdm(ctx context.Context, listener net.Listener) error {
+func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener, cChan chan net.Conn) {

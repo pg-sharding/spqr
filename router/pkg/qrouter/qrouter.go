@@ -66,6 +66,9 @@ type QueryRouter interface {
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute
 
+	Initialized() bool
+	Initialize() bool
+
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 

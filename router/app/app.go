@@ -10,15 +10,15 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/grpcqrouter"
+	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	router "github.com/pg-sharding/spqr/router/pkg"
 )
 
 type App struct {
-	spqr *router.RouterImpl
+	spqr *router.InstanceImpl
 }
 
-func NewApp(sg *router.RouterImpl) *App {
+func NewApp(sg *router.InstanceImpl) *App {
 	return &App{
 		spqr: sg,
 	}
@@ -60,7 +60,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 	}
 
 	server := grpc.NewServer()
-	grpcqrouter.Register(server, app.spqr.Qrouter)
+	rgrpc.Register(server, app.spqr.Qrouter)
 	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR GRPC API is ready on %s", address)
 	go func() {
 		_ = server.Serve(listener)

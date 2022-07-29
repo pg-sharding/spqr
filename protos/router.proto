@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+enum RouterStatus {
+  CLOSED = 0;
+  OPENED = 1;
+}
+
+service RouterService {
+  rpc Open(OpenRequest) returns (OpenReply) {}
+  rpc GetStatus(GetStatusRequest) returns (GetStatusReply) {}
+  rpc Close(CloseRequest) returns (CloseReply) {}
+}
+
+message OpenRequest {}
+
+message OpenReply {}
+
+message CloseRequest {}
+
+message CloseReply {}
+
+message GetStatusRequest {}
+
+message GetStatusReply {
+  RouterStatus status = 1;
+}
+

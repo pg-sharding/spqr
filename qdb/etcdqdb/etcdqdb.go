@@ -96,16 +96,23 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	var ret []*qdb.Router
 
 	for _, e := range resp.Kvs {
-		_, keyRangeID := path.Split(string(e.Key))
-		ret = append(ret,
-			qdb.NewRouter(
-				string(e.Value),
-				keyRangeID,
-			),
-		)
+		var st qdb.Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return nil, err
+		}
+		// TODO: create routers in qdb properly
+		if len(st.State) == 0 {
+			st.State = qdb.CLOSED
+		}
+		ret = append(ret, &st)
 	}
 
 	return ret, nil
+}
+
+func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
+	// TODO: lock
+	return nil
 }
 
 func (q *EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
@@ -134,9 +141,12 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *qdb.Router) error {
-	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), r.Addr())
+	bts, err := json.Marshal(r)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), string(bts))
+	if err != nil {
 		return err
 	}
 
@@ -155,7 +165,7 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, rID string) error {
 	return nil
 }
 
-func (q *EtcdQDB) Lock(ctx context.Context, keyRangeID string) (*qdb.KeyRange, error) {
+func (q *EtcdQDB) LockKeyRange(ctx context.Context, keyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

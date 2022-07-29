@@ -176,7 +176,7 @@ func (q *QrouterDBMem) Check(_ context.Context, kr *qdb.KeyRange) bool {
 	return !ok
 }
 
-func (q *QrouterDBMem) Lock(_ context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
+func (q *QrouterDBMem) LockKeyRange(_ context.Context, KeyRangeID string) (*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -264,6 +264,10 @@ func (q *QrouterDBMem) GetShardInfo(ctx context.Context, shardID string) (*qdb.S
 	}
 
 	return nil, fmt.Errorf("unknown shard %s", shardID)
+}
+
+func (q *QrouterDBMem) LockRouter(ctx context.Context, id string) error {
+	return nil
 }
 
 var _ qdb.QrouterDB = &QrouterDBMem{}

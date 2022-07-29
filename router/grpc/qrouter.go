@@ -1,4 +1,4 @@
-package grpcqrouter
+package grpc
 
 import (
 	"context"
@@ -15,7 +15,29 @@ import (
 type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
 	protos.UnimplementedShardingRulesServiceServer
+	protos.UnimplementedRouterServiceServer
 	qr qrouter.QueryRouter
+}
+
+func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRequest) (*protos.OpenReply, error) {
+	l.qr.Initialize()
+	return &protos.OpenReply{}, nil
+}
+
+func (l *LocalQrouterServer) GetStatus(ctx context.Context, request *protos.GetStatusRequest) (*protos.GetStatusReply, error) {
+	if l.qr.Initialized() {
+		return &protos.GetStatusReply{
+			Status: protos.RouterStatus_OPENED,
+		}, nil
+	}
+	return &protos.GetStatusReply{
+		Status: protos.RouterStatus_CLOSED,
+	}, nil
+}
+
+func (l *LocalQrouterServer) Close(ctx context.Context, request *protos.CloseRequest) (*protos.CloseReply, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
@@ -148,15 +170,17 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 
-	reflection.Register(server)
-
 	lqr := &LocalQrouterServer{
 		qr: qrouter,
 	}
 
+	reflection.Register(server)
+
 	protos.RegisterKeyRangeServiceServer(server, lqr)
 	protos.RegisterShardingRulesServiceServer(server, lqr)
+	protos.RegisterRouterServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
 var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
+var _ protos.RouterServiceServer = &LocalQrouterServer{}
