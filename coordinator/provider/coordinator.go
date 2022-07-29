@@ -619,7 +619,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *route
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *routers.Router) error {
 	// TODO: list routers and deduplicate
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.AdmAddr, r.Id)
-	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Id, r.AdmAddr, qdb.CLOSED))
+	return qc.db.AddRouter(ctx, qdb.NewRouter(r.AdmAddr, r.Id, qdb.CLOSED))
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
