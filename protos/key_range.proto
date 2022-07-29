@@ -14,6 +14,7 @@ service KeyRangeService {
   rpc SplitKeyRange (SplitKeyRangeRequest) returns (ModifyReply) {}
   rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
   rpc MoveKeyRange (MoveKeyRangeRequest) returns (ModifyReply) {}
+  rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
 }
 
 enum KeyRangeStatus {
@@ -80,4 +81,12 @@ message KeyRangeReply {
 
 message ModifyReply {
   string operation_id = 1;
+}
+
+message ResolveKeyRangeRequest {
+  string bound = 1;
+}
+
+message ResolveKeyRangeReply {
+  repeated string key_range_d = 1;
 }
