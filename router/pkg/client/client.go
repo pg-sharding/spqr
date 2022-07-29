@@ -743,7 +743,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 			ok = false
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type from server: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -778,7 +778,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return xerrors.New(v.Message)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type from server: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {

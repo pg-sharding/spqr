@@ -614,9 +614,14 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		}
 		return shroute, nil
 	case *pgquery.Node_CopyStmt:
+		if !stmt.CopyStmt.IsFrom {
+			// COPY TO STOUT
+
+		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "copy query was: %s", qstmt.Stmt.String())
 		clause := stmt.CopyStmt.WhereClause
 		if clause == nil {
+			// will not work
 			return &MultiMatchRoute{}, nil
 		}
 
