@@ -415,6 +415,8 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 		return nil, err
 	}
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d key ranges", len(krs))
+
 	for _, krkey := range krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
 			if err := qr.qdb.Share(krkey); err != nil {
@@ -599,6 +601,21 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		return shroute, nil
 	case *pgquery.Node_DeleteStmt:
 		clause := stmt.DeleteStmt.WhereClause
+		if clause == nil {
+			return &MultiMatchRoute{}, nil
+		}
+
+		shroute, err := qr.routeByClause(ctx, clause)
+		if err != nil {
+			return nil, err
+		}
+		if shroute.Shkey.Name == NOSHARD {
+			return nil, CrossShardQueryUnsupported
+		}
+		return shroute, nil
+	case *pgquery.Node_CopyStmt:
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "copy query was: %s", qstmt.Stmt.String())
+		clause := stmt.CopyStmt.WhereClause
 		if clause == nil {
 			return &MultiMatchRoute{}, nil
 		}
