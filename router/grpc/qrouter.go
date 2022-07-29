@@ -1,4 +1,4 @@
-package grpcqrouter
+package grpc
 
 import (
 	"context"
@@ -170,14 +170,15 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 
-	reflection.Register(server)
-
 	lqr := &LocalQrouterServer{
 		qr: qrouter,
 	}
 
+	reflection.Register(server)
+
 	protos.RegisterKeyRangeServiceServer(server, lqr)
 	protos.RegisterShardingRulesServiceServer(server, lqr)
+	protos.RegisterRouterServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}

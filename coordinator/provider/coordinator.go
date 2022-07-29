@@ -75,7 +75,6 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 		if err := func() error {
 			for _, r := range rtrs {
 				spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v", r.Id)
-
 				internalR := &routers.Router{
 					Id:      r.Id,
 					AdmAddr: r.Address,
@@ -103,7 +102,9 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
 						return err
 					}
-
+					if _, err := rrClient.Open(ctx, &routerproto.OpenRequest{}); err != nil {
+						return err
+					}
 				case routerproto.RouterStatus_OPENED:
 					// TODO: consistency checks
 				}
@@ -111,7 +112,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 			return nil
 		}(); err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Logger.Printf(spqrlog.ERROR, "router watchdog coroutine failed: %v", err)
 		}
 
 		time.Sleep(time.Second)

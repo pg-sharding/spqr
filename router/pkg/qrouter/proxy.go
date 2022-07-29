@@ -3,9 +3,10 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"go.uber.org/atomic"
 	"math/rand"
 	"sync"
+
+	"go.uber.org/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/routers"
 
@@ -175,6 +176,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard) (*ProxyQrouter, error
 		DataShardCfgs:  map[string]*config.Shard{},
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
+		initialized:    atomic.NewBool(false),
 	}
 
 	for name, shardCfg := range shardMapping {
