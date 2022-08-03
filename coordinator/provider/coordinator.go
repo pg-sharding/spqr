@@ -24,7 +24,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/grpcclient"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
@@ -50,7 +49,7 @@ func (r *routerConn) ID() string {
 var _ router.Router = &routerConn{}
 
 func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
-	return grpcclient.Dial(r.AdmAddr)
+	return grpc.Dial(r.AdmAddr)
 }
 
 type qdbCoordinator struct {
