@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/jackc/pgproto3/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -169,7 +168,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 	case *spqrparser.Shutdown:
 		//t.stchan <- struct{}{}
-		return xerrors.New("not implemented")
+		return fmt.Errorf("not implemented")
 
 	default:
 		spqrlog.Logger.Printf(spqrlog.INFO, "got unexcepted console request %v %T", tstmt, tstmt)

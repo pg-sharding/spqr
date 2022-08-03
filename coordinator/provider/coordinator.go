@@ -49,7 +49,8 @@ func (r *routerConn) ID() string {
 var _ router.Router = &routerConn{}
 
 func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
-	return grpc.Dial(r.AdmAddr)
+	// TODO: add creds
+	return grpc.Dial(r.AdmAddr, grpc.WithInsecure())
 }
 
 type qdbCoordinator struct {

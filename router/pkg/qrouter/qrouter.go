@@ -2,14 +2,14 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 
 	"github.com/jackc/pgproto3/v2"
-	rparser "github.com/pg-sharding/spqr/router/pkg/parser"
+	"github.com/pg-sharding/spqr/router/pkg/parser"
 
 	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -28,7 +28,7 @@ type DataShardRoute struct {
 	Matchedkr *kr.KeyRange
 }
 
-var MatchShardError = xerrors.New("failed to match datashard")
+var MatchShardError = fmt.Errorf("failed to match datashard")
 
 type RoutingState interface {
 	iState()
@@ -62,7 +62,7 @@ type QueryRouter interface {
 
 	Route(ctx context.Context) (RoutingState, error)
 
-	Parse(q *pgproto3.Query) (rparser.ParseState, error)
+	Parse(q *pgproto3.Query) (parser.ParseState, error)
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute
 

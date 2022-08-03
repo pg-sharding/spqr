@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
-	"golang.org/x/xerrors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -156,7 +155,7 @@ func (rst *RelayStateImpl) Flush() {
 	rst.traceMsgs = false
 }
 
-var SkipQueryError = xerrors.New("wait for next query")
+var SkipQueryError = fmt.Errorf("wait for next query")
 
 func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	//

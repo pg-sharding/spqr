@@ -6,22 +6,21 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/jackc/pgproto3/v2"
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
-	"github.com/jackc/pgproto3/v2"
-	"github.com/pkg/errors"
-	"golang.org/x/xerrors"
-
 	"github.com/pg-sharding/spqr/pkg/client"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pg-sharding/spqr/router/pkg/server"
+	"github.com/pkg/errors"
 )
 
-var NotRouted = xerrors.New("client not routed")
+var NotRouted = fmt.Errorf("client not routed")
 
 type RouterPreparedStatement struct {
 	query string
@@ -392,7 +391,7 @@ func (cl *PsqlClient) Unroute() error {
 
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
-		return xerrors.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
+		return fmt.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
 	}
 	cl.rule = rule
 
@@ -646,7 +645,7 @@ func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) 
 
 func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 	if cl.r != nil {
-		return xerrors.New("client already has assigned route")
+		return fmt.Errorf("client already has assigned route")
 	}
 
 	cl.r = r
@@ -776,7 +775,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.CommandComplete:
 			return nil
 		case *pgproto3.ErrorResponse:
-			return xerrors.New(v.Message)
+			return fmt.Errorf(v.Message)
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type from server: %T", v)
 			if replyCl {
@@ -791,7 +790,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
 	if cl.server != nil {
-		return xerrors.New("client already has active connection")
+		return fmt.Errorf("client already has active connection")
 	}
 	cl.server = srv
 

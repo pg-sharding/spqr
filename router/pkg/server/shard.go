@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"golang.org/x/xerrors"
 )
 
 type ShardServer struct {
@@ -58,7 +57,8 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 
 func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
-		return xerrors.New("single datashard server does not support more than 1 datashard connection simultaneously")
+		return fmt.Errorf("single datashard " +
+			"server does not support more than 1 datashard connection simultaneously")
 	}
 
 	var err error

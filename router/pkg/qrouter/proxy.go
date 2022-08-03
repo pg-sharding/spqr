@@ -15,8 +15,6 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
-	"golang.org/x/xerrors"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -333,7 +331,7 @@ func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, err
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	if len(rule.Columns()) != 1 {
-		return xerrors.New("only single column sharding rules are supported for now")
+		return fmt.Errorf("only single column sharding rules are supported for now")
 	}
 
 	return qr.qdb.AddShardingRule(ctx, &qdb.ShardingRule{
