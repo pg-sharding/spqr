@@ -1,0 +1,5 @@
+addr: 'localhost:7002'
+http_addr: 'localhost:7003'
+qdb_addr: 'localhost:2379'
+log_level: INFO
+
