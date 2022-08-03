@@ -3,11 +3,11 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"strconv"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/grpcclient"
 	routerproto "github.com/pg-sharding/spqr/router/protos"
 )
 
@@ -60,25 +60,25 @@ func (c *Coordinator) showKeyRanges() ([]*kr.KeyRange, error) {
 func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
 	c.addr = addr
 	c.maxRetriesCount = maxRetriesCount
-	connect, err := grpcclient.Dial(addr)
+	connect, err := grpc.Dial(addr)
 	if err != nil {
 		return err
 	}
 	c.balancerServiceClient = routerproto.NewBalancerServiceClient(connect)
 
-	connect, err = grpcclient.Dial(addr)
+	connect, err = grpc.Dial(addr)
 	if err != nil {
 		return err
 	}
 	c.shardServiceClient = routerproto.NewShardServiceClient(connect)
 
-	connect, err = grpcclient.Dial(addr)
+	connect, err = grpc.Dial(addr)
 	if err != nil {
 		return err
 	}
 	c.keyRangeServiceClient = routerproto.NewKeyRangeServiceClient(connect)
 
-	connect, err = grpcclient.Dial(addr)
+	connect, err = grpc.Dial(addr)
 	if err != nil {
 		return err
 	}

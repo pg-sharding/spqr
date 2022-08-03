@@ -4,11 +4,9 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"net"
-
 	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"net"
 )
 
 const SSLREQ = 80877103
@@ -75,7 +73,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
-	tracelog.InfoLogger.Printf("initializing new postgresql instance connection to %v", host)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "initializing new postgresql instance connection to %v", host)
 
 	netconn, err := net.Dial("tcp", host)
 	if err != nil {
@@ -105,21 +103,21 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 	}
 
 	if err := pgi.frontend.Send(msg); err != nil {
-		tracelog.InfoLogger.Printf("got error while checking rw %v", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while checking rw %v", err)
 		return false, err
 	}
 
 	bmsg, err := pgi.frontend.Receive()
 
 	if err != nil {
-		tracelog.InfoLogger.Printf("got error while checking rw %v", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while checking rw %v", err)
 		return false, err
 	}
-	tracelog.InfoLogger.Printf("got reply from %v: %T", pgi.hostname, bmsg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got reply from %v: %T", pgi.hostname, bmsg)
 
 	switch v := bmsg.(type) {
 	case *pgproto3.DataRow:
-		tracelog.InfoLogger.Printf("got datarow %v", v.Values)
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got datarow %v", v.Values)
 
 		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
 			return true, nil
@@ -154,7 +152,7 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	sym := resp[0]
 
 	if sym != 'S' {
-		return xerrors.New("SSL should be enabled")
+		return fmt.Errorf("SSL should be enabled")
 	}
 
 	pgi.conn = tls.Client(pgi.conn, tlsconfig)

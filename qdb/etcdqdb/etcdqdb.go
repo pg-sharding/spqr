@@ -14,7 +14,6 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"golang.org/x/xerrors"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -226,7 +225,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, keyRangeID string) (*qdb.Key
 			return val, nil
 
 		case <-fetchCtx.Done():
-			return nil, xerrors.Errorf("deadlines exceeded")
+			return nil, fmt.Errorf("deadlines exceeded")
 		}
 	}
 }

@@ -2,17 +2,16 @@ package datashard
 
 import (
 	"crypto/tls"
+	"fmt"
+	"github.com/jackc/pgproto3/v2"
 	"log"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/wal-g/tracelog"
-	"golang.org/x/xerrors"
 )
 
 type Shard interface {
@@ -88,11 +87,9 @@ func (sh *Conn) Instance() conn.DBInstance {
 
 func (sh *Conn) ReqBackendSsl(tlsconfig *tls.Config) error {
 	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
-		tracelog.InfoLogger.Printf("failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
-
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
 		return err
 	}
-
 	return nil
 }
 
@@ -166,7 +163,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 				return err
 			}
 		case *pgproto3.ErrorResponse:
-			return xerrors.New(v.Message)
+			return fmt.Errorf(v.Message)
 		case *pgproto3.ParameterStatus:
 			if !sh.ps.Save(ParameterStatus{
 				Name:  v.Name,
