@@ -1,0 +1,17 @@
+INSERT INTO x (w_id) VALUES (1);
+INSERT INTO x (w_id) VALUES (11);
+SELECT * FROM x WHERE w_id = 11;
+ w_id 
+------
+   11
+(1 row)
+
+SELECT * FROM x WHERE w_id = 1;
+ w_id 
+------
+    1
+(1 row)
+
+BEGIN;
+INSERT INTO x (w_id) VALUES(5);
+ROLLBACK;

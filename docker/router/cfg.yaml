@@ -2,12 +2,7 @@ host: '[spqr_router_1_1]'
 router_port: '6432'
 admin_console_port: '7432'
 grpc_api_port: '7000'
-init_sql: /router/docker/router/init.sql
 router_mode: PROXY
-frontend_tls:
-  key_file: /etc/odyssey/ssl/server.key
-  cert_file: /etc/odyssey/ssl/server.crt
-  sslmode: disable
 frontend_rules:
   - usr: user1
     db: db1
@@ -17,32 +12,14 @@ frontend_rules:
 world_shard_fallback: true
 shards:
   sh1:
-    tls:
-      key_file: /etc/odyssey/ssl/server.key
-      sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
-    db: db1
-    usr: user1
-    pwd: 12345678
     type: DATA
     hosts:
       - 'spqr_shard_1_1:6432'
   sh2:
-    tls:
-      key_file: /etc/odyssey/ssl/server.key
-      sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
-    db: db1
-    usr: user1
-    pwd: 12345678
     type: DATA
     hosts:
       - 'spqr_shard_2_1:6432'
   w1:
-    tls:
-      key_file: /etc/odyssey/ssl/server.key
-      sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
     db: db1
     usr: user1
     pwd: 12345678

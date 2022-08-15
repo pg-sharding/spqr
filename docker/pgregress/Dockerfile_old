@@ -1,0 +1,22 @@
+FROM postgres:14-alpine
+
+RUN apk --no-cache add curl python3 gcc clang llvm g++ make musl-dev openssl-dev cmake curl-dev util-linux-dev git gdb sudo musl-dbg; \
+	sed -e 's/# %wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) NOPASSWD: ALL/g' -i /etc/sudoers; \
+	sed -e 's/^wheel:\(.*\)/wheel:\1,postgres/g' -i /etc/group;
+
+ENV LANG=C.UTF-8 PGDATA=/pg/data
+
+
+RUN mkdir -p ${PGDATA} && \
+	mkdir /pg/src && \
+	chown postgres:postgres ${PGDATA} && \
+	chmod a+rwx /usr/local/lib/postgresql
+
+# export PG_REGRESS_DIFF_OPTS="-w -U3" # for alpine's diff (BusyBox)
+# PGPORT=55435 make installcheck || status=$?
+
+COPY ./docker/pgregress/simple.sh /usr/local/bin/simple.sh
+
+RUN chmod a+x /usr/local/bin/simple.sh
+
+ENTRYPOINT ["/usr/local/bin/simple.sh"]

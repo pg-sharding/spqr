@@ -51,6 +51,13 @@ init:
 build_images:
 	docker-compose build spqrbase shardbase
 
+build_router:
+	docker-compose build spqrbase shardbase
+	docker-compose up --remove-orphans --exit-code-from client --build router
+
+devtest: build_router
+	docker-compose up --remove-orphans --exit-code-from client router coordinator world1 shard1 shard2 qdb01 client 
+
 test: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 qdb01 client 
 

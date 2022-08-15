@@ -32,6 +32,9 @@ services:
         ports:
             - "7002:7002"
             - "7003:7003"
+        depends_on:
+            - qdb01
+            - router
         hostname: spqr_coordinator
     world1:
         image:
@@ -58,23 +61,29 @@ services:
             context: .
         ports:
             - "8432:6432"
+        depends_on:
+            - shard1
+            - shard2
         hostname: spqr_router_1_1
     balancer:
         build:
             dockerfile: ./docker/balancer/Dockerfile
             context: .
         hostname: spqr_balancer
-    db0:
-        image:
-            spqr_shardbase
-        ports:
-            - "7435:6432"
-        hostname: spqr_db_0_1
     client:
         build:
             dockerfile: ./docker/tests/Dockerfile
             context: .
         hostname: spqr_client
+        depends_on:
+            - coordinator
+    installcheck:
+        build:
+            dockerfile: ./docker/pgregress/Dockerfile
+            context: .
+        hostname: spqr_installcheck
+        depends_on:
+            - router
 
 networks:
     spqr:

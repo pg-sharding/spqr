@@ -2,10 +2,8 @@ FROM spqr_spqrbase
 
 COPY --from=networld/grpcurl /grpcurl /usr/bin/
 
-RUN mv /router/spqr-stress /usr/local/bin/spqr-stress
-
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe/Moskow
+ENV TZ=Israel
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,8 +20,9 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-13 
 
-COPY ./docker/tests/bin/ /usr/local/bin/
-
-RUN chmod a+x /usr/local/bin/entrypoint.sh
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+COPY ./docker/tests/ /usr/local/bin/
+WORKDIR /usr/local/bin
+RUN chmod a+rwx /usr/local/bin/ &&\
+    chmod a+x /usr/local/bin/run_tests.sh
+USER postgres
+ENTRYPOINT ["/usr/local/bin/run_tests.sh"]
