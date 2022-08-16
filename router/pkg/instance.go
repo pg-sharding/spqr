@@ -45,7 +45,6 @@ func (r *InstanceImpl) Initialized() bool {
 var _ Router = &InstanceImpl{}
 
 func NewRouter(ctx context.Context) (*InstanceImpl, error) {
-
 	// qrouter init
 	qtype := config.RouterMode(config.RouterConfig().RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)

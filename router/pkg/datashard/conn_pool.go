@@ -2,6 +2,8 @@ package datashard
 
 import (
 	"crypto/tls"
+	"fmt"
+	"github.com/jackc/pgproto3/v2"
 	"math/rand"
 	"sync"
 
@@ -154,28 +156,48 @@ func (s *InstancePoolImpl) List() []Shard {
 
 var _ DBPool = &InstancePoolImpl{}
 
-func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
-	switch key.RW {
-	case true:
-		var pr string
-		var ok bool
-		pr, ok = s.primaries[key.Name]
-		if !ok {
-			pr = config.RouterConfig().ShardMapping[key.Name].Hosts[0]
-		}
+func checkRw(sh Shard) (bool, error) {
+	if err := sh.Send(&pgproto3.Query{
+		String: "select pg_is_in_recovery()",
+	}); err != nil {
+		return false, err
+	}
 
-		shard, err := s.poolRW.Connection(key, pr, rule)
+	res := false
+
+	for {
+		msg, err := sh.Receive()
 		if err != nil {
-			return nil, err
+			return false, err
 		}
+		switch qt := msg.(type) {
+		case *pgproto3.DataRow:
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "checkRw: got %v row", qt)
+			if len(qt.Values) == 1 && len(qt.Values[0]) == 1 && qt.Values[0][0] == 'f' {
+				res = true
+			}
 
-		return shard, nil
-	case false:
-		spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
-		hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
-		rand.Shuffle(len(hosts), func(i, j int) {
-			hosts[j], hosts[i] = hosts[i], hosts[j]
-		})
+		case *pgproto3.ReadyForQuery:
+			if conn.TXStatus(qt.TxStatus) != conn.TXIDLE {
+				return false, fmt.Errorf("connection unsync while acquirind it")
+			}
+			return res, nil
+		}
+	}
+}
+
+func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
+
+	spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
+	hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
+	rand.Shuffle(len(hosts), func(i, j int) {
+		hosts[j], hosts[i] = hosts[i], hosts[j]
+	})
+
+	switch config.RouterConfig().ShardMapping[key.Name].TargetSessionAttrs {
+	case "":
+		fallthrough
+	case config.TargetSessionAttrsAny:
 
 		shard, err := s.poolRO.Connection(key, hosts[0], rule)
 		if err != nil {
@@ -183,9 +205,75 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule)
 		}
 
 		return shard, nil
+	case config.TargetSessionAttrsRO:
+		for _, host := range hosts {
+			shard, err := s.poolRO.Connection(key, host, rule)
+			if err != nil {
+				return nil, err
+			}
+			if ch, err := checkRw(shard); err != nil {
+				_ = shard.Close()
+				continue
+			} else if ch {
+				_ = s.poolRO.Put(shard)
+				continue
+			}
+
+			return shard, nil
+		}
+		return nil, fmt.Errorf("failed to find replica")
+	case config.TargetSessionAttrsRW:
+		for _, host := range hosts {
+			shard, err := s.poolRO.Connection(key, host, rule)
+			if err != nil {
+				return nil, err
+			}
+			if ch, err := checkRw(shard); err != nil {
+				_ = shard.Close()
+				continue
+			} else if !ch {
+				_ = s.poolRO.Put(shard)
+				continue
+			}
+
+			return shard, nil
+		}
+		return nil, fmt.Errorf("failed to find primary")
 	default:
-		panic("never")
+		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
+
+	//switch key.RW {
+	//case true:
+	//	var pr string
+	//	var ok bool
+	//	pr, ok = s.primaries[key.Name]
+	//	if !ok {
+	//		pr = config.RouterConfig().ShardMapping[key.Name].Hosts[0]
+	//	}
+	//
+	//	shard, err := s.poolRW.Connection(key, pr, rule)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	return shard, nil
+	//case false:
+	//	spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
+	//	hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
+	//	rand.Shuffle(len(hosts), func(i, j int) {
+	//		hosts[j], hosts[i] = hosts[i], hosts[j]
+	//	})
+	//
+	//	shard, err := s.poolRO.Connection(key, hosts[0], rule)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//
+	//	return shard, nil
+	//default:
+	//	panic("never")
+	//}
 }
 
 func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
