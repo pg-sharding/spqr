@@ -46,6 +46,14 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 	return l, nil
 }
 
+func (l *LocalQrouter) Initialize() bool {
+	return true
+}
+
+func (l *LocalQrouter) Initialized() bool {
+	return true
+}
+
 func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding node %s", ds.ID)
 	l.ds = ds

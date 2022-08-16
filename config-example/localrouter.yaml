@@ -1,4 +1,4 @@
-log_level: DEBUG2
+log_level: DEBUG5
 
 host: '::1'
 router_port: '6432'
@@ -46,5 +46,7 @@ shards:
     usr: user1
     pwd: 12345678
     type: DATA
+    target_session_attrs: "read-write"
     hosts:
-      - 'localhost:5550'
+      - 'localhost:5551'
+      - 'localhost:5432'

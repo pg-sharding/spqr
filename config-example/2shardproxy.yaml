@@ -59,5 +59,7 @@ shards:
     usr: user1
     pwd: 12345678
     type: DATA
+    target_session_attrs: "read-write"
     hosts:
       - 'localhost:5551'
+      - 'localhost:5432'

@@ -64,13 +64,20 @@ type FrontendRule struct {
 	PoolDefault           bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
 
+const (
+	TargetSessionAttrsRW  = "read-write"
+	TargetSessionAttrsRO  = "read-only"
+	TargetSessionAttrsAny = "any"
+)
+
 type Shard struct {
-	DB    string     `json:"db" toml:"db" yaml:"db"`
-	Usr   string     `json:"usr" toml:"usr" yaml:"usr"`
-	Pwd   string     `json:"pwd" toml:"pwd" yaml:"pwd"`
-	Hosts []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type  ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	DB                 string     `json:"db" toml:"db" yaml:"db"`
+	Usr                string     `json:"usr" toml:"usr" yaml:"usr"`
+	Pwd                string     `json:"pwd" toml:"pwd" yaml:"pwd"`
+	TargetSessionAttrs string     `json:"target_session_attrs" toml:"target_session_attrs" yaml:"target_session_attrs"`
+	Hosts              []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
+	Type               ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS                *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 var cfgRouter Router

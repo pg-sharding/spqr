@@ -32,7 +32,6 @@ usr = "opgejrqr"
 pwd = "RJj7-J717NALMmU4As0umiYwYn7wgAOk"
 type = "DATA"
 hosts = [ "dumbo.db.elephantsql.com:5432" ]
-
   [shards.sh1.tls]
   sslmode = "disable"
   cert_file = "/etc/odyssey/ssl/server.crt"
