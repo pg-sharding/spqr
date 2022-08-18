@@ -1,5 +1,4 @@
 psql:sql/mixed_routing.sql:1: Shard match: sh1,sh2
-DROP TABLE
 psql:sql/mixed_routing.sql:2: Shard match: sh1,sh2
 CREATE TABLE
 psql:sql/mixed_routing.sql:3: Shard match: sh1

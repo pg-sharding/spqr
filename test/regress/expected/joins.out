@@ -1,5 +1,7 @@
+psql:sql/joins.sql:1: Shard match: sh1,sh2
 psql:sql/joins.sql:2: Shard match: sh1,sh2
 CREATE TABLE
+psql:sql/joins.sql:4: Shard match: sh1,sh2
 psql:sql/joins.sql:5: Shard match: sh1,sh2
 CREATE TABLE
 psql:sql/joins.sql:7: Shard match: sh1
