@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  sh1:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_DB=regression_spqr
+      - POSTGRES_HOST_AUTH_METHOD=trust
+
+  sh2:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_DB=regression_spqr
+      - POSTGRES_HOST_AUTH_METHOD=trust
+
+  regression-tests:
+    image: regression-test-dev:latest
+    build: .
+    depends_on:
+      - sh1
+      - sh2
