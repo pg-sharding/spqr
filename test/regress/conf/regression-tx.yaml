@@ -20,7 +20,7 @@ shards:
             cert_file: '/etc/odyssey/ssl/server.crt' 
         shard_type: 'DATA'
         hosts:
-            - "localhost:5550"
+            - "sh1:5432"
     sh2:
         tls:
             key_file: '/etc/odyssey/ssl/server.key'
@@ -28,7 +28,7 @@ shards:
             cert_file: '/etc/odyssey/ssl/server.crt' 
         shard_type: 'DATA'
         hosts:
-            - "localhost:5551"
+            - "sh2:5432"
 frontend_rules:
     - user: user1
       db: regression_spqr
