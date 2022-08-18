@@ -1,6 +1,7 @@
 #set -x
 
 LOGFILE=router.log
+COORDINATOR_LOGFILE=coordinator.log
 
 echo 'Router tests:' >> LOGFILE
 
@@ -49,7 +50,7 @@ echo 'Coordinator + router tests:' >> $LOGFILE
 
 spqr_pid=$!
 
-../../spqr-coordinator run -c ./conf/regression-coord.yaml > $LOGFILE 2>&1 &
+../../spqr-coordinator run -c ./conf/regression-coord.yaml > $COORDINATOR_LOGFILE 2>&1 &
 
 spqr_coordinator_pid=$!
 
