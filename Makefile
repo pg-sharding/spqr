@@ -79,4 +79,16 @@ clean:
 check:
 	make -C ./test/regress/ check
 
+compose-up:
+	docker compose -f regression-docker-compose.yaml up
+
+compose-down:
+	docker compose -f regression-docker-compose.yaml down
+
+compose-build:
+	docker compose -f regression-docker-compose.yaml build
+
+run-regression: compose-down compose-build
+	docker compose -f regression-docker-compose.yaml run regression-tests
+
 .PHONY: build gen
