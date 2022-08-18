@@ -1,6 +1,8 @@
 #set -x
 
-LOGFILE=log.log
+LOGFILE=router.log
+
+echo 'Router tests:' >> LOGFILE
 
 ../../spqr-rr run -c ./conf/regression-tx.yaml > $LOGFILE 2>&1 &
 
@@ -40,6 +42,8 @@ fi
 
 ## coordinator + router setup tests
 ## TODO: start qdb
+
+echo 'Coordinator + router tests:' >> $LOGFILE
 
 ../../spqr-rr run -c ./conf/regression-cc.yaml > $LOGFILE 2>&1 &
 
