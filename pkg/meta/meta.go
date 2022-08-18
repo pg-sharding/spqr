@@ -102,7 +102,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 				}(), cl)
 			}
 		case spqrparser.EntityRouters:
-			return cli.ReportError(fmt.Errorf("unmplememnted"), cl)
+			return cli.ReportError(fmt.Errorf("unimplememnted"), cl)
 		default:
 			return fmt.Errorf("unknown entity to drop")
 		}
