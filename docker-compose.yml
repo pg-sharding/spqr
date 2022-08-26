@@ -69,11 +69,3 @@ services:
             dockerfile: ./docker/tests/Dockerfile
             context: .
         hostname: spqr_client
-
-networks:
-    spqr:
-        driver: bridge
-        ipam:
-            driver: default
-            config:
-                - subnet: 192.168.233.0/24
