@@ -6,7 +6,6 @@ export SETUP_LOG=/var/log/setup.log
 
 touch $SETUP_LOG
 
-export PGAGGR=$PG_LISTEN_ADDR
 # Start postgresql
 
 cat >> /var/lib/postgresql/13/main/pg_hba.conf <<-EOF
