@@ -12,16 +12,12 @@ services:
     shard1:
         image:
             spqr_shardbase
-        environment:
-            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard1_1.spqr_spqr.}"
         ports:
             - "7432:6432"
         hostname: spqr_shard_1_1
     shard2:
         image:
             spqr_shardbase
-        environment:
-            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_shard2_1.spqr_spqr.}"
         ports:
             - "7433:6432"
         hostname: spqr_shard_2_1
@@ -39,8 +35,6 @@ services:
 #        build:
 #            dockerfile: ./docker/world/Dockerfile
 #            context: .
-        environment:
-            PG_LISTEN_ADDR: "${PG_LISTEN_ADDR:-spqr_world1_1.spqr_spqr.}"
         hostname: spqr_world_0_1
         ports:
             - "7434:6432"
