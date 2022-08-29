@@ -27,9 +27,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "./spqr-rr run --config `path-to-config-folder`",
+	Use:   "./spqr-router run --config `path-to-config-folder`",
 	Short: "sqpr-rr",
-	Long:  "spqr-rr",
+	Long:  "spqr-router",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -44,8 +44,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/router/config.yaml", "path to config file")
-	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/router/router.prof", "path to profile file")
+	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVar(&doProfie, "profile", false, "path to config file")
 	rootCmd.AddCommand(runCmd)
 }

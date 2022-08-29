@@ -119,7 +119,7 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 				PoolPreparedStatement: r.defaultFrontendRule.PoolPreparedStatement,
 			}
 		} else {
-			errmsg := fmt.Sprintf("Failed to preroute client: route %s-%s is unconfigured", cl.Usr(), cl.DB())
+			errmsg := fmt.Sprintf("Failed to route frontend for client: route for user:%s and db:%s is unconfigured", cl.Usr(), cl.DB())
 			for _, msg := range []pgproto3.BackendMessage{
 				&pgproto3.ErrorResponse{
 					Message: errmsg,
@@ -142,7 +142,18 @@ func (r *RRouter) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 				DB:  cl.DB(),
 			}
 		} else {
-			return cl, errors.New("Failed to route backend for client")
+			errmsg := fmt.Sprintf("Failed to route backend for client: route for user:%s and db:%s is unconfigured", cl.Usr(), cl.DB())
+			for _, msg := range []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{
+					Message: errmsg,
+				},
+			} {
+				if err := cl.Send(msg); err != nil {
+					return nil, errors.Wrap(err, "failed to make route failure responce")
+				}
+			}
+
+			return nil, errors.New(errmsg)
 		}
 	}
 

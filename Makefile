@@ -12,11 +12,11 @@ yacc-deps:
 deps:
 	go mod download
 
-build_c: 
+build_coordinator: 
 	go build -o spqr-coordinator cmd/coordinator/main.go
 
-build_proxy: 
-	go build -o spqr-rr cmd/router/main.go
+build_router: 
+	go build -o spqr-router cmd/router/main.go
 
 build_world: 
 	go build -o spqr-world cmd/world/main.go
@@ -33,7 +33,7 @@ build_balancer:
 build_mover:
 	go build -o spqr-mover  ./cmd/mover/main.go
 
-build: build_c build_proxy build_world build_worldmock build_stress build_balancer build_mover
+build: build_balancer build_coordinator build_router build_stress  build_mover build_world build_worldmock
 
 gogen:
 	protoc --go_out=./router --go_opt=paths=source_relative --go-grpc_out=./router --go-grpc_opt=paths=source_relative \
@@ -65,16 +65,16 @@ run: build_images
 	docker-compose run --entrypoint /bin/bash client
 
 proxy_run:
-	./spqr-rr run -c ./config-example/router.yaml
+	./spqr-router run -c ./config-example/router.yaml
 
 coordinator_run:
 	./spqr-coordinator run -c ./config-example/coordinator.yaml
 
 pooler_run:
-	./spqr-rr run -c ./config-example/localrouter.yaml
+	./spqr-router run -c ./config-example/localrouter.yaml
 
 clean:
-	rm -f spqr-rr spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
 check:
 	make -C ./test/regress/ check

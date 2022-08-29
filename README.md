@@ -33,7 +33,7 @@ make build
 
 How to run:
 ```
-spqr-rr run -c path-to-router-config.yaml
+spqr-router run -c path-to-router-config.yaml
 ```
 
 ## Tests
