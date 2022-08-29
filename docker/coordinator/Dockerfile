@@ -1,3 +1,3 @@
 FROM spqr_spqrbase
 
-ENTRYPOINT /router/spqr-coordinator -c /router/docker/coordinator/cfg.yaml
+ENTRYPOINT /spqr/spqr-coordinator -c /spqr/docker/coordinator/cfg.yaml

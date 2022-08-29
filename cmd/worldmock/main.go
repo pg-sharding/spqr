@@ -40,7 +40,7 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/worldmock/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/worldmock.yml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&addr, "addr", "a", "localhost", "addr to listen")
 	rootCmd.AddCommand(runCmd)
 }

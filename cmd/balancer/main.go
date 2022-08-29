@@ -67,7 +67,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/balancer/config.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/balancer.yml", "path to config file")
 }
 
 func Execute() {

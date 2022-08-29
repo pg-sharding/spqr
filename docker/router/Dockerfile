@@ -1,3 +1,3 @@
 FROM spqr_spqrbase
 
-ENTRYPOINT /router/spqr-rr run -c /router/docker/router/cfg.yaml
+ENTRYPOINT /spqr/spqr-router run -c /spqr/docker/router/cfg.yaml

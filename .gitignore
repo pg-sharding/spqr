@@ -1,7 +1,7 @@
 .idea
 vendor
 tmp
-spqr-rr
+spqr-router
 spqr-coordinator
 spqr-world
 spqr-stress

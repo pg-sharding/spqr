@@ -1,7 +1,7 @@
 FROM golang:1.18
 
-RUN mkdir /router
-COPY ./ /router
+RUN mkdir /spqr
+COPY ./ /spqr
 
-RUN cd /router && make && make build
+RUN cd /spqr && make && make build
 
