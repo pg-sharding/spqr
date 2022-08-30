@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+    shard:
+        image: postgres:13-alpine
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_DB=regression
+          - POSTGRES_HOST_AUTH_METHOD=trust
+        hostname: installcheck_shard_1
+        ports:
+            - "5432:5432"
+    router:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6432:6432"
+        environment:
+          - SPQR_CONFIG=/spqr/test/installcheck/router.yaml
+        hostname: installcheck_router_1
+        depends_on:
+          - "shard"
+    installcheck:
+        build:
+            context: .
+        hostname: installcheck_installcheck
+        depends_on:
+          - "router"

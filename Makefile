@@ -54,6 +54,9 @@ build_images:
 test: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 qdb01 client 
 
+make installcheck: build_images
+	docker-compose -f test/installcheck/docker-compose.yml up --remove-orphans --exit-code-from installcheck --build router shard installcheck
+
 stress: build_images
 	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2 qdb01
 	docker-compose build client
