@@ -73,7 +73,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "initializing new postgresql instance connection to %v", host)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "init new postgresql instance connection to %v", host)
 
 	netconn, err := net.Dial("tcp", host)
 	if err != nil {

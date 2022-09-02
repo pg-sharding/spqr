@@ -44,7 +44,7 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVar(&doProfie, "profile", false, "path to config file")
 	rootCmd.AddCommand(runCmd)

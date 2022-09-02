@@ -400,7 +400,7 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 
 // startup + ssl
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "initialing client connection with ssl: %t", tlsconfig == nil)
+	spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
 
 	var backend *pgproto3.Backend
 
