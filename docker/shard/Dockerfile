@@ -1,5 +1,8 @@
 FROM ubuntu:focal
 
+ENV POSTGRES_USER $POSTGRES_USER
+ENV POSTGRES_DB $POSTGRES_DB
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

@@ -52,15 +52,15 @@ build_images:
 	docker-compose build spqrbase shardbase
 
 test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator world1 shard1 shard2 qdb01 client 
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client 
 
 stress: build_images
-	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2 qdb01
+	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
 
 run: build_images
-	docker-compose up -d --remove-orphans --build router coordinator world1 shard1 shard2 qdb01
+	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
@@ -76,19 +76,7 @@ pooler_run:
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
-check:
-	make -C ./test/regress/ check
-
-compose-up:
-	docker compose -f regression-docker-compose.yaml up
-
-compose-down:
-	docker compose -f regression-docker-compose.yaml down
-
-compose-build:
-	docker compose -f regression-docker-compose.yaml build
-
-run-regression: compose-down compose-build
-	docker compose -f regression-docker-compose.yaml run regression-tests
+make regress: build_images
+	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build router shard1 shard2 regress
 
 .PHONY: build gen

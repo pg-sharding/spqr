@@ -12,12 +12,18 @@ services:
     shard1:
         image:
             spqr_shardbase
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
         ports:
             - "7432:6432"
         hostname: spqr_shard_1_1
     shard2:
         image:
             spqr_shardbase
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
         ports:
             - "7433:6432"
         hostname: spqr_shard_2_1
@@ -29,15 +35,15 @@ services:
             - "7002:7002"
             - "7003:7003"
         hostname: spqr_coordinator
-    world1:
-        image:
-            spqr_shardbase
+#    world1:
+#        image:
+#            spqr_shardbase
 #        build:
 #            dockerfile: ./docker/world/Dockerfile
 #            context: .
-        hostname: spqr_world_0_1
-        ports:
-            - "7434:6432"
+#        hostname: spqr_world_0_1
+#        ports:
+#            - "7434:6432"
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: spqr_qdb_0_1

@@ -44,7 +44,7 @@ var ctlCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/world.yml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/world.yaml", "path to config file")
 	rootCmd.AddCommand(ctlCmd)
 }
 

@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  shard1:
+    image:
+      spqr_shardbase
+    environment:
+      - POSTGRES_USER=regress
+      - POSTGRES_DB=regress
+    ports:
+      - "7432:6432"
+    hostname: spqr_shard_1_1
+  shard2:
+    image:
+      spqr_shardbase
+    environment:
+      - POSTGRES_USER=regress
+      - POSTGRES_DB=regress
+    ports:
+      - "7433:6432"
+    hostname: spqr_shard_2_1
+
+  router:
+    build:
+      dockerfile: ./docker/router/Dockerfile
+      context: ../../
+    ports:
+      - "6432:6432"
+    environment:
+      - SPQR_CONFIG=/spqr/test/regress/router.yaml
+      - PGOPTIONS='-c spqr_reply_shard_match=on'
+    hostname: regress_router_1
+    depends_on:
+      - "shard1"
+      - "shard2"
+
+  regress:
+    build:
+      context: .
+    hostname: regress_1
+    depends_on:
+      - "router"

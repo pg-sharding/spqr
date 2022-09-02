@@ -37,7 +37,6 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 
 func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		spqrlog.Logger.Printf(spqrlog.LOG, "%s spqrlog does not exist", path)
 		return []string{}, err
 	}
 
