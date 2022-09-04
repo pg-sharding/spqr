@@ -29,4 +29,4 @@ COPY xxcopy FROM STDIN WHERE id <= 30;
 43
 \.
 
-SELECT * FROM xxcopy WHERE id <= 30;
+SELECT * FROM xxcopy WHERE id <= 30 ORDER BY xxcopy;

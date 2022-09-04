@@ -1,0 +1,1 @@
+REGISTER ROUTER r1 ADDRESS spqr_router_1_1:7000;

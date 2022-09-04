@@ -26,8 +26,7 @@ services:
     ports:
       - "6432:6432"
     environment:
-      - SPQR_CONFIG=/spqr/test/regress/router.yaml
-      - PGOPTIONS='-c spqr_reply_shard_match=on'
+      - SPQR_CONFIG=/spqr/test/regress/conf/router.yaml
     hostname: regress_router_1
     depends_on:
       - "shard1"

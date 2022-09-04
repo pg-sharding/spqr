@@ -29,3 +29,13 @@ jobs:
 
       - name: stress tests
         run: make stress
+  regress:
+    name: regress
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: regress tests
+        run: make regress

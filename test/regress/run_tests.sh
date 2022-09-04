@@ -1,30 +1,28 @@
 #!/bin/bash
 
-set -x
+export PGDATABASE=regress
+export PGUSER=regress
+export PGSSLMODE=disable
 
-LOGFILE=router.log
-echo 'Router tests:' >> LOGFILE
 
-# wait for spqr to start
-sleep 2
+DIR=$1  # router
+HOST=$2 # regress_router_1
+PORT=$3 # 6432
 
-rm -f regression.diffs
-touch regression.diffs
 
-mkdir ./results
-while IFS= read -r line
-do
-  psql "host=regress_router_1 port=6432 dbname=regress user=regress sslmode=disable" -f sql/"$line".sql > ./results/"$line".out 2>&1
-  diff ./expected/"$line".out ./results/"$line".out >> regression.diffs
-done < ./schedule
+pg_regress \
+    --inputdir /regress/tests/$DIR \
+    --outputdir /regress/tests/$DIR \
+    --user $PGUSER \
+    --dbname $PGDATABASE \
+    --host $HOST \
+    --port $PORT \
+    --create-role $PGUSER \
+    --schedule=/regress/schedule/$DIR \
+    --use-existing \
+    --debug || status=$?
 
-if [ -s regression.diffs ]; then
-	echo '
+# show diff if it exists
+if test -f /regress/tests/$DIR/regression.diffs; then cat /regress/tests/$DIR/regression.diffs; fi
 
-	Tests exp/actual diffs: 
-
-	'
-	cat regression.diffs
-
-	exit 2
-fi
+exit $status

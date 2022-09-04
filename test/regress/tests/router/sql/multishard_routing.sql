@@ -7,7 +7,7 @@ INSERT INTO xx (w_id) VALUES (20);
 INSERT INTO xx (w_id) VALUES (21);
 INSERT INTO xx (w_id) VALUES (30);
 
-SELECT * FROM xx;
+SELECT * FROM xx ORDER BY w_id;
 
 DROP TABLE xx;
 DROP TABLE xxtt1;

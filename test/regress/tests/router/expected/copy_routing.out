@@ -1,0 +1,33 @@
+DROP TABLE IF EXISTS xxcopy;
+Shard match: sh1,sh2
+CREATE TABLE xxcopy (id int);
+Shard match: sh1,sh2
+COPY xxcopy FROM STDIN WHERE id <= 10;
+Shard match: sh1
+SELECT * FROM xxcopy WHERE id <= 10;
+Shard match: sh1
+ id 
+----
+  1
+  2
+  3
+  4
+  5
+(5 rows)
+
+COPY xxcopy FROM STDIN WHERE id <= 30;
+Shard match: sh2
+SELECT * FROM xxcopy WHERE id <= 30 ORDER BY xxcopy;
+Shard match: sh2
+ id 
+----
+  1
+  2
+  3
+  4
+  5
+ 12
+ 22
+ 23
+(8 rows)
+
