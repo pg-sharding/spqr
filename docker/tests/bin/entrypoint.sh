@@ -3,14 +3,8 @@
 set -ex
 
 sleep 25
+
 console.sh
-
 simple.sh
-
 move.sh
-
 with_coordinator.sh
-
-
-cd /usr/local/bin/
-run_regress.sh

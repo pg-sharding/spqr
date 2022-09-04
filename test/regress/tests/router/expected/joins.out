@@ -1,15 +1,29 @@
 DROP TABLE IF EXISTS xjoin;
+Shard match: sh1,sh2
 CREATE TABLE xjoin(id int);
-
+Shard match: sh1,sh2
 DROP TABLE IF EXISTS yjoin;
+Shard match: sh1,sh2
 CREATE TABLE yjoin(w_id int);
-
+Shard match: sh1,sh2
 INSERT INTO xjoin (id) values(1);
+Shard match: sh1
 INSERT INTO xjoin (id) values(15);
+Shard match: sh1
 INSERT INTO xjoin (id) values(25);
-
+Shard match: sh2
 INSERT INTO yjoin (w_id) values(1);
+Shard match: sh1
 INSERT INTO yjoin (w_id) values(15);
+Shard match: sh1
 INSERT INTO yjoin (w_id) values(25);
+Shard match: sh2
+SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
+Shard match: sh1,sh2
+ id | w_id 
+----+------
+  1 |    1
+ 15 |   15
+ 25 |   25
+(3 rows)
 
-SELECT * FROM xjoin JOIN yjoin on id=w_id;

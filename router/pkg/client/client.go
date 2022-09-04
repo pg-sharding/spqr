@@ -145,9 +145,6 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 		if k == "options" {
 			continue
 		}
-		if k == "spqr_reply_shard_match" {
-			continue
-		}
 
 		query.String += fmt.Sprintf("SET %s='%s';", k, v)
 	}
@@ -310,14 +307,6 @@ func (cl *PsqlClient) Reset() error {
 }
 
 func (cl *PsqlClient) ReplyShardMatch(shardId string) error {
-	if v, ok := cl.activeParamSet["spqr_reply_shard_match"]; !ok {
-		return nil
-	} else {
-		if v != "on" {
-			return nil
-		}
-	}
-
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.NoticeResponse{
 			Message: "Shard match: " + shardId,

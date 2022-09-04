@@ -1,0 +1,62 @@
+DROP TABLE IF EXISTS xxmixed;
+Shard match: sh1,sh2
+CREATE TABLE xxmixed(id int);
+Shard match: sh1,sh2
+INSERT INTO xxmixed (id) VALUES(1);
+Shard match: sh1
+INSERT INTO xxmixed (id) VALUES(10);
+Shard match: sh1
+INSERT INTO xxmixed (id) VALUES(11);
+Shard match: sh1
+INSERT INTO xxmixed (id) VALUES(20);
+Shard match: sh1
+INSERT INTO xxmixed (id) VALUES(21);
+Shard match: sh2
+INSERT INTO xxmixed (id) VALUES(22);
+Shard match: sh2
+INSERT INTO xxmixed (id) VALUES(29);
+Shard match: sh2
+INSERT INTO xxmixed (id) VALUES(30);
+Shard match: sh2
+SELECT * FROM xxmixed ORDER BY id;
+Shard match: sh1,sh2
+ id 
+----
+ 21
+ 22
+ 29
+ 30
+  1
+ 10
+ 11
+ 20
+(8 rows)
+
+SELECT * FROM xxmixed WHERE id <= 10 ORDER BY id;
+Shard match: sh1
+ id 
+----
+  1
+ 10
+(2 rows)
+
+SELECT * FROM xxmixed WHERE id <= 20 ORDER BY id;
+Shard match: sh1
+ id 
+----
+  1
+ 10
+ 11
+ 20
+(4 rows)
+
+SELECT * FROM xxmixed WHERE id <= 30 ORDER BY id;
+Shard match: sh2
+ id 
+----
+ 21
+ 22
+ 29
+ 30
+(4 rows)
+

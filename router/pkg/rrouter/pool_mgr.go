@@ -69,7 +69,9 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	sort.Strings(shardNames)
 	shardMathes := strings.Join(shardNames, ",")
 
-	_ = client.ReplyShardMatch(shardMathes)
+	if config.RouterConfig().ReplyShardMatch  {
+		_ = client.ReplyShardMatch(shardMathes)
+	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
 	_ = client.ReplyNoticef("adding datashards %v", shardMathes)

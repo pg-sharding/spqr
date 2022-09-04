@@ -1,0 +1,5 @@
+test: shard_routing
+test: multishard_routing
+test: mixed_routing
+test: copy_routing
+test: joins
