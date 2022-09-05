@@ -1,2 +1,6 @@
-test: basic
-test: show
+test: show_shards
+test: show_routers
+test: show_key_ranges
+test: show_sharding_rules
+test: drop
+test: add

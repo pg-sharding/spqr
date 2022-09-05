@@ -32,9 +32,32 @@ services:
       - "shard1"
       - "shard2"
 
+  coordinator:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile
+      context: ../../
+    ports:
+      - "7002:7002"
+      - "7003:7003"
+    environment:
+      - SPQR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+    hostname: regress_coordinator
+    depends_on:
+      - "router"
+      - "qdb01"
+
+  qdb01:
+    image: 'bitnami/etcd:latest'
+    hostname: regress_qdb_0_1
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_LOG_LEVEL: "debug"
+    ports:
+      - "2379:2379"
+
   regress:
     build:
       context: .
     hostname: regress_1
     depends_on:
-      - "router"
+      - "coordinator"

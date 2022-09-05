@@ -18,13 +18,14 @@ func main() {
 
 	testdata := [][]string{
 		{"router", "regress_router_1", "6432"},
-		// {"console", "regress_router_1", "7432"},
-		// {"coordinator", "regress_coordinator_1", "7002"},
+		{"console", "regress_router_1", "7432"},
+		{"coordinator", "regress_coordinator_1", "7002"},
 	}
 
 	time.Sleep(10 * time.Second)
 	status := 0
 	for _, line := range testdata {
+		fmt.Printf("============== %s ==============", line[0])
 		cmd, err := exec.Command("/bin/sh", "/regress/run_tests.sh", line[0], line[1], line[2]).Output()
 		if err != nil {
 			status = 2

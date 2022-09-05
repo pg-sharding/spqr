@@ -1,0 +1,14 @@
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+SHOW shards;
+  listing data shards  
+-----------------------
+ datashard with ID sh2
+ datashard with ID sh1
+(2 rows)
+

@@ -1,0 +1,47 @@
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+--DROP SHARDING RULE ALL; -- does not work
+DROP SHARDING RULE r1;
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r1
+(1 row)
+
+DROP SHARDING RULE r2;
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r2
+(1 row)
+
+DROP SHARDING RULE r3;
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r3
+(1 row)
+
+DROP SHARDING RULE wrong;
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule wrong
+(1 row)
+
+SHOW key_ranges;
+ Key range ID | Shard ID | Lower bound | Upper bound 
+--------------+----------+-------------+-------------
+(0 rows)
+
+SHOW sharding_rules;
+ listing sharding rules 
+------------------------
+(0 rows)
+
