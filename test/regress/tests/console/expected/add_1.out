@@ -8,43 +8,12 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 SHOW key_ranges;
  Key range ID | Shard ID | Lower bound | Upper bound 
 --------------+----------+-------------+-------------
- krid1        | sh1      | 1           | 10
- krid2        | sh1      | 11          | 20
- krid3        | sh2      | 21          | 30
-(3 rows)
-
-SHOW sharding_rules;
-          listing sharding rules          
-------------------------------------------
- sharding rule r1 with column set: [w_id]
- sharding rule r2 with column set: [id]
- sharding rule r3 with column set: [bid]
-(3 rows)
-
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
--- DROP SHARDING RULE ALL; does not work
-DROP SHARDING RULE rule1;
-     drop sharding rule      
------------------------------
- dropped sharding rule rule1
-(1 row)
-
-SHOW key_ranges;
- Key range ID | Shard ID | Lower bound | Upper bound 
---------------+----------+-------------+-------------
 (0 rows)
 
 SHOW sharding_rules;
-          listing sharding rules          
-------------------------------------------
- sharding rule r1 with column set: [w_id]
- sharding rule r2 with column set: [id]
- sharding rule r3 with column set: [bid]
-(3 rows)
+ listing sharding rules 
+------------------------
+(0 rows)
 
 ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
          add key range          
@@ -67,18 +36,15 @@ ADD SHARDING RULE rule1 COLUMNS id;
 SHOW key_ranges;
  Key range ID | Shard ID | Lower bound | Upper bound 
 --------------+----------+-------------+-------------
- krid1        | sh1      | 1           | 10
  krid2        | sh1      | 11          | 20
+ krid1        | sh1      | 1           | 10
 (2 rows)
 
 SHOW sharding_rules;
           listing sharding rules           
 -------------------------------------------
- sharding rule r1 with column set: [w_id]
- sharding rule r2 with column set: [id]
- sharding rule r3 with column set: [bid]
  sharding rule rule1 with column set: [id]
-(4 rows)
+(1 row)
 
 DROP SHARDING RULE rule1;
      drop sharding rule      
@@ -86,13 +52,35 @@ DROP SHARDING RULE rule1;
  dropped sharding rule rule1
 (1 row)
 
-ADD SHARDING RULE r1 COLUMNS w_id;
-       add sharding rule        
---------------------------------
- created sharding column [w_id]
+DROP KEY RANGE krid1;
+    drop key range    
+----------------------
+ drop key range krid1
 (1 row)
 
 ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-ERROR:  key range krid1 already present in qdb
+         add key range          
+--------------------------------
+ created key range from 1 to 10
+(1 row)
+
 ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
 ERROR:  key range krid2 already present in qdb
+ADD SHARDING RULE rule1 COLUMNS id;
+      add sharding rule       
+------------------------------
+ created sharding column [id]
+(1 row)
+
+SHOW key_ranges;
+ Key range ID | Shard ID | Lower bound | Upper bound 
+--------------+----------+-------------+-------------
+ krid2        | sh1      | 11          | 20
+(2 rows)
+
+SHOW sharding_rules;
+          listing sharding rules           
+-------------------------------------------
+ sharding rule rule1 with column set: [id]
+(1 row)
+
