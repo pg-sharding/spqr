@@ -55,7 +55,7 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
+func (m *MultiShardServer) AddDataShard(shkey kr.ShardKey) error {
 	sh, err := m.pool.Connection(shkey, m.rule)
 	if err != nil {
 		return err
@@ -68,19 +68,23 @@ func (m *MultiShardServer) AddShard(shkey kr.ShardKey) error {
 	return nil
 }
 
-func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey) error {
+func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			return nil
+			return activeShard.Cleanup(rule)
 		}
 	}
 
 	return fmt.Errorf("unrouted datashard does not match any of active")
 }
 
+func (m *MultiShardServer) Name() string {
+	return "multishard"
+}
+
 func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 	for _, shard := range m.activeShards {
-		_ = shard.ReqBackendSsl(cfg)
+		_ = shard.AddTLSConf(cfg)
 	}
 
 	return nil
@@ -345,9 +349,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	return nil, nil
 }
 
-func (m *MultiShardServer) Cleanup() error {
+func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 
-	if m.rule.PoolRollback {
+	if rule.PoolRollback {
 		if err := m.Send(&pgproto3.Query{
 			String: "ROLLBACK",
 		}); err != nil {
@@ -355,7 +359,7 @@ func (m *MultiShardServer) Cleanup() error {
 		}
 	}
 
-	if m.rule.PoolDiscard {
+	if rule.PoolDiscard {
 		if err := m.Send(&pgproto3.Query{
 			String: "DISCARD ALL",
 		}); err != nil {

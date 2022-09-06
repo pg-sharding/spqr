@@ -24,6 +24,10 @@ func (srv *ShardServer) HasPrepareStatement(hash uint64) bool {
 	return ok
 }
 
+func (srv *ShardServer) Name() string {
+	return srv.shard.Name()
+}
+
 func (srv *ShardServer) PrepareStatement(hash uint64) {
 	srv.mp[hash] = "yes"
 }
@@ -37,12 +41,12 @@ func (srv *ShardServer) Reset() error {
 	return nil
 }
 
-func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
+func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
 	if srv.shard.SHKey().Name != shkey.Name {
 		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
-	if err := srv.Cleanup(); err != nil {
+	if err := srv.Cleanup(rule); err != nil {
 		return err
 	}
 
@@ -55,7 +59,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey) error {
 	return nil
 }
 
-func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
+func (srv *ShardServer) AddDataShard(shkey kr.ShardKey) error {
 	if srv.shard != nil {
 		return fmt.Errorf("single datashard " +
 			"server does not support more than 1 datashard connection simultaneously")
@@ -70,7 +74,7 @@ func (srv *ShardServer) AddShard(shkey kr.ShardKey) error {
 }
 
 func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
-	return srv.shard.ReqBackendSsl(cfg)
+	return srv.shard.AddTLSConf(cfg)
 }
 
 func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServer {
@@ -92,42 +96,8 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	return msg, err
 }
 
-func (srv *ShardServer) fire(q string) error {
-	if err := srv.Send(&pgproto3.Query{
-		String: q,
-	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "error firing request to conn")
-		return err
-	}
-
-	for {
-		if msg, err := srv.Receive(); err != nil {
-			return err
-		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "rollback resp %T", msg)
-
-			switch msg.(type) {
-			case *pgproto3.ReadyForQuery:
-				return nil
-			}
-		}
-	}
-}
-
-func (srv *ShardServer) Cleanup() error {
-	if srv.rule.PoolRollback {
-		if err := srv.fire("ROLLBACK"); err != nil {
-			return err
-		}
-	}
-
-	if srv.rule.PoolDiscard {
-		if err := srv.fire("DISCARD ALL"); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
+	return srv.shard.Cleanup(rule)
 }
 
 var _ Server = &ShardServer{}

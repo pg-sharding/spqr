@@ -1,7 +1,7 @@
 package server
 
 import (
-	"crypto/tls"
+	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -20,15 +20,13 @@ type PreparedStatementHolder interface {
 type Server interface {
 	PreparedStatementHolder
 
+	Name() string
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddShard(shardKey kr.ShardKey) error
-	UnRouteShard(sh kr.ShardKey) error
+	AddDataShard(shardKey kr.ShardKey) error
+	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 
-	AddTLSConf(cfg *tls.Config) error
-
-	Cleanup() error
 	Reset() error
 	Sync() int
 }

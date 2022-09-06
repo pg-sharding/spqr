@@ -49,11 +49,10 @@ type Router struct {
 }
 
 type BackendRule struct {
-	DB           string `json:"db" yaml:"db" toml:"db"`
-	Usr          string `json:"usr" yaml:"usr" toml:"usr"`
-	PoolDiscard  bool   `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
-	PoolRollback bool   `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
-	PoolDefault  bool   `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
+	DB          string   `json:"db" yaml:"db" toml:"db"`
+	Usr         string   `json:"usr" yaml:"usr" toml:"usr"`
+	AuthRule    *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
+	PoolDefault bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
 
 type FrontendRule struct {
@@ -61,6 +60,8 @@ type FrontendRule struct {
 	Usr                   string   `json:"usr" yaml:"usr" toml:"usr"`
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
+	PoolDiscard           bool     `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
+	PoolRollback          bool     `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
 	PoolPreparedStatement bool     `json:"pool_prepared_statement" yaml:"pool_prepared_statement" toml:"pool_prepared_statement"`
 	PoolDefault           bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 }
@@ -72,9 +73,6 @@ const (
 )
 
 type Shard struct {
-	DB                 string     `json:"db" toml:"db" yaml:"db"`
-	Usr                string     `json:"usr" toml:"usr" yaml:"usr"`
-	Pwd                string     `json:"pwd" toml:"pwd" yaml:"pwd"`
 	TargetSessionAttrs string     `json:"target_session_attrs" toml:"target_session_attrs" yaml:"target_session_attrs"`
 	Hosts              []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
 	Type               ShardType  `json:"type" toml:"type" yaml:"type"`

@@ -1,6 +1,7 @@
 package rrouter
 
 import (
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -85,7 +86,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.RouteKey,
 		return nroute, nil
 	}
 
-	tracelog.InfoLogger.Printf("allocate route %v", key)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "allocate route %v", key)
 	nroute := route.NewRoute(beRule, frRule, r.mapping)
 
 	r.pool[key] = nroute

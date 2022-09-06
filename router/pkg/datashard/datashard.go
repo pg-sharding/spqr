@@ -23,7 +23,8 @@ type Shard interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	ReqBackendSsl(*tls.Config) error
+	AddTLSConf(cfg *tls.Config) error
+	Cleanup(rule *config.FrontendRule) error
 
 	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
@@ -85,7 +86,7 @@ func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
 }
 
-func (sh *Conn) ReqBackendSsl(tlsconfig *tls.Config) error {
+func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
 		return err
@@ -142,7 +143,6 @@ func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.Shard, beRule *c
 }
 
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
-
 	err := sh.dedicated.Send(sm)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ReadyForQuery:
 			return nil
 		case pgproto3.AuthenticationResponseMessage:
-			err := conn.AuthBackend(sh.dedicated, sh.Cfg(), v)
+			err := conn.AuthBackend(sh.dedicated, sh.beRule, v)
 			if err != nil {
 				spqrlog.Logger.Errorf("failed to perform backend auth %w", err)
 				return err
@@ -177,4 +177,42 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "unexpected msg type received %T", v)
 		}
 	}
+}
+
+func (sh *Conn) fire(q string) error {
+	if err := sh.Send(&pgproto3.Query{
+		String: q,
+	}); err != nil {
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "error firing request to conn")
+		return err
+	}
+
+	for {
+		if msg, err := sh.Receive(); err != nil {
+			return err
+		} else {
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "rollback resp %T", msg)
+
+			switch msg.(type) {
+			case *pgproto3.ReadyForQuery:
+				return nil
+			}
+		}
+	}
+}
+
+func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
+	if rule.PoolRollback {
+		if err := sh.fire("ROLLBACK"); err != nil {
+			return err
+		}
+	}
+
+	if rule.PoolDiscard {
+		if err := sh.fire("DISCARD ALL"); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

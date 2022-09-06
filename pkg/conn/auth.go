@@ -11,16 +11,15 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
-func AuthBackend(shard DBInstance, cfg *config.Shard, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "Auth type proc %+v\n", msg)
+func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "Auth type proc %T\n", msg)
 
 	switch v := msg.(type) {
 	case *pgproto3.AuthenticationOk:
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
-
 		hash := md5.New()
-		hash.Write([]byte(cfg.Pwd + cfg.Usr))
+		hash.Write([]byte(berule.AuthRule.Password + berule.Usr))
 		res := hash.Sum(nil)
 
 		hashSec := md5.New()
@@ -30,11 +29,13 @@ func AuthBackend(shard DBInstance, cfg *config.Shard, msg pgproto3.BackendMessag
 
 		psswd := hex.EncodeToString(res2)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, cfg.Pwd)
-
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, berule.AuthRule.Password)
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		return shard.Send(&pgproto3.PasswordMessage{Password: cfg.Pwd})
+		if berule.AuthRule == nil {
+			return fmt.Errorf("no auth rule specified for server connection")
+		}
+		return shard.Send(&pgproto3.PasswordMessage{Password: berule.AuthRule.Password})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}
