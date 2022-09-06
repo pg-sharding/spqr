@@ -47,7 +47,7 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
 		spqrlog.Logger.Printf(spqrlog.LOG, "unrouting from datashard %v", shkey.Name)
-		if err := cl.Server().UnRouteShard(shkey); err != nil {
+		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			_ = cl.Unroute()
 			return err
 		}
@@ -69,7 +69,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	sort.Strings(shardNames)
 	shardMathes := strings.Join(shardNames, ",")
 
-	if config.RouterConfig().ReplyShardMatch  {
+	if config.RouterConfig().ReplyShardMatch {
 		_ = client.ReplyShardMatch(shardMathes)
 	}
 
@@ -77,7 +77,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	_ = client.ReplyNoticef("adding datashards %v", shardMathes)
 
 	for _, shkey := range sh {
-		if err := client.Server().AddShard(shkey); err != nil {
+		if err := client.Server().AddDataShard(shkey); err != nil {
 			return err
 		}
 	}
@@ -118,7 +118,7 @@ func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.S
 
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
-		if err := cl.Server().UnRouteShard(shkey); err != nil {
+		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			return err
 		}
 	}
@@ -136,7 +136,7 @@ func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
 
 func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 	for _, shkey := range sh {
-		if err := client.Server().AddShard(shkey); err != nil {
+		if err := client.Server().AddDataShard(shkey); err != nil {
 			return err
 		}
 	}

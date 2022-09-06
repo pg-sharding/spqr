@@ -242,38 +242,6 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
-
-	//switch key.RW {
-	//case true:
-	//	var pr string
-	//	var ok bool
-	//	pr, ok = s.primaries[key.Name]
-	//	if !ok {
-	//		pr = config.RouterConfig().ShardMapping[key.Name].Hosts[0]
-	//	}
-	//
-	//	shard, err := s.poolRW.Connection(key, pr, rule)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	return shard, nil
-	//case false:
-	//	spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
-	//	hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
-	//	rand.Shuffle(len(hosts), func(i, j int) {
-	//		hosts[j], hosts[i] = hosts[i], hosts[j]
-	//	})
-	//
-	//	shard, err := s.poolRO.Connection(key, hosts[0], rule)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	return shard, nil
-	//default:
-	//	panic("never")
-	//}
 }
 
 func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
