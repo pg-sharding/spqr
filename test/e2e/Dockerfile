@@ -22,7 +22,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-13 
 
-COPY ./docker/tests/bin/ /usr/local/bin/
+COPY ./bin/ /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 

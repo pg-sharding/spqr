@@ -1,0 +1,4 @@
+addr: '[e2e_coordinator_1]:7002'
+http_addr: 'e2e_coordinator_1:7003'
+qdb_addr: '[e2e_qdb_0_1]:2379'
+log_level: INFO

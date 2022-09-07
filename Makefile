@@ -51,14 +51,6 @@ init:
 build_images:
 	docker-compose build spqrbase shardbase
 
-test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client 
-
-stress: build_images
-	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
-	docker-compose build client
-	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
-
 run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
 	docker-compose build client
@@ -76,7 +68,15 @@ pooler_run:
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
-make regress: build_images
+e2e: build_images
+	docker-compose -f test/e2e/docker-compose.yaml up --remove-orphans --exit-code-from e2e --build router shard1 shard2 coordinator e2e
+
+stress: build_images
+	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
+	docker-compose build client
+	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
+
+regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator shard1 shard2 regress
 
 .PHONY: build gen

@@ -72,6 +72,6 @@ services:
         hostname: spqr_db_0_1
     client:
         build:
-            dockerfile: ./docker/tests/Dockerfile
+            dockerfile: ./test/e2e/Dockerfile
             context: .
         hostname: spqr_client

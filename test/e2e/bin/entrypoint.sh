@@ -2,9 +2,8 @@
 
 set -ex
 
-sleep 25
+sleep 10
 
 console.sh
-simple.sh
 move.sh
 with_coordinator.sh

@@ -1,0 +1,34 @@
+DROP TABLE IF EXISTS x;
+Shard match: sh1,sh2
+CREATE TABLE x(w_id INT);
+Shard match: sh1,sh2
+INSERT INTO x (w_id) VALUES(1);
+Shard match: sh1
+INSERT INTO x (w_id) VALUES(11)
+SELECT * FROM x WHERE w_id = 11
+SELECT * FROM x WHERE w_id = 1
+BEGIN;
+ERROR:  syntax error at or near "SELECT"
+INSERT INTO x (w_id) VALUES(5);
+Shard match: sh1
+ROLLBACK;
+ERROR:  too complex query to parse
+SELECT * FROM x WHERE w_id = 5;
+Shard match: sh1
+ w_id 
+------
+    5
+(1 row)
+
+BEGIN;
+INSERT INTO x (w_id) VALUES(5);
+Shard match: sh1
+COMMIT;
+SELECT * FROM x WHERE w_id = 5;
+Shard match: sh1
+ w_id 
+------
+    5
+    5
+(2 rows)
+

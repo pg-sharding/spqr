@@ -1,4 +1,5 @@
-version: "3.9"
+version: '3.9'
+
 services:
   shard1:
     image:
@@ -8,7 +9,6 @@ services:
       - POSTGRES_DB=regress
     ports:
       - "7432:6432"
-    hostname: spqr_shard_1_1
   shard2:
     image:
       spqr_shardbase
@@ -17,7 +17,6 @@ services:
       - POSTGRES_DB=regress
     ports:
       - "7433:6432"
-    hostname: spqr_shard_2_1
 
   router:
     build:
@@ -26,8 +25,7 @@ services:
     ports:
       - "6432:6432"
     environment:
-      - SPQR_CONFIG=/spqr/test/regress/conf/router.yaml
-    hostname: regress_router_1
+      - SPQR_CONFIG=/spqr/test/e2e/conf/router.yaml
     depends_on:
       - "shard1"
       - "shard2"
@@ -40,15 +38,14 @@ services:
       - "7002:7002"
       - "7003:7003"
     environment:
-      - SPQR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
-    hostname: regress_coordinator
+      - SPQR_CONFIG=/spqr/test/e2e/conf/coordinator.yaml
     depends_on:
       - "router"
       - "qdb01"
 
   qdb01:
     image: 'bitnami/etcd:latest'
-    hostname: regress_qdb_0_1
+    hostname: spqr_qdb_0_1
     environment:
       ALLOW_NONE_AUTHENTICATION: "yes"
       ETCD_LOG_LEVEL: "debug"
@@ -58,6 +55,6 @@ services:
   e2e:
     build:
       context: .
-    hostname: e2e_1
+    hostname: spqr_1
     depends_on:
       - "coordinator"
