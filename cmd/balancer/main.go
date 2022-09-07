@@ -47,10 +47,6 @@ var rootCmd = &cobra.Command{
 			spqrlog.Logger.PrintError(err)
 		}
 
-		if err := config.LoadRouterCfg(rcfgPath); err != nil {
-			return err
-		}
-
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)

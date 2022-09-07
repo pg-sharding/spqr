@@ -3,9 +3,10 @@ package pkg
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc"
 	"strconv"
 	"time"
+
+	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	routerproto "github.com/pg-sharding/spqr/router/protos"

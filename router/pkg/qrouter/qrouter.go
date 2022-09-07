@@ -79,6 +79,6 @@ func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard) 
 	case config.ProxyMode:
 		return NewProxyRouter(shardMapping)
 	default:
-		return nil, errors.Errorf("unknown qrouter type: %v", config.RouterConfig().RouterMode)
+		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}
 }

@@ -3,9 +3,10 @@ package datashard
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/jackc/pgproto3/v2"
 	"log"
 	"sync"
+
+	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 

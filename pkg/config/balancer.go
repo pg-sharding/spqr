@@ -14,6 +14,11 @@ import (
 type Balancer struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 
+	Host             string `json:"host" toml:"host" yaml:"host"`
+	BalancerPort     string `json:"balancer_port" toml:"balancer_port" yaml:"}"`
+	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
+	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+
 	InstallationDBName      string `json:"installation_db_name" toml:"installation_db_name" yaml:"installation_db_name"`
 	InstallationTableName   string `json:"installation_table_name" toml:"installation_table_name" yaml:"installation_table_name"`
 	InstallationShardingKey string `json:"installation_sharding_key" toml:"installation_sharding_key" yaml:"installation_sharding_key"`

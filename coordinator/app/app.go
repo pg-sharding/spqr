@@ -2,9 +2,10 @@ package app
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"net"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

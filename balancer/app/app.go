@@ -76,7 +76,6 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.Balancer) (*App, error) {
 }
 
 func (app *App) ProcBalancer(ctx context.Context) error {
-
 	//TODO return error
 	app.balancer.BrutForceStrategy()
 	return nil
@@ -88,13 +87,13 @@ func (app *App) ServeAdminConsole(ctx context.Context, clientTLSConfig config.TL
 		return fmt.Errorf("init frontend TLS: %w", err)
 	}
 
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().AdminConsolePort)
+	address := net.JoinHostPort(config.BalancerConfig().Host, config.BalancerConfig().AdminConsolePort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "SQR Admin Console is ready on %s", address)
+	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR balancer Admin Console is ready on %s", address)
 	return app.balancer.RunAdm(ctx, listener, clientTLS)
 }

@@ -10,19 +10,27 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 )
 
-type RouteKey struct {
+type Key struct {
 	user string
 	db   string
 }
 
-func NewRouteKey(user, db string) *RouteKey {
-	return &RouteKey{
+func (r *Key) Usr() string {
+	return r.user
+}
+
+func (r *Key) DB() string {
+	return r.db
+}
+
+func NewRouteKey(user, db string) *Key {
+	return &Key{
 		user: user,
 		db:   db,
 	}
 }
 
-func (r *RouteKey) String() string {
+func (r *Key) String() string {
 	return r.db + " " + r.user
 }
 
@@ -65,7 +73,7 @@ func (r *Route) Params() (datashard.ParameterSet, error) {
 	}
 
 	var anyK kr.ShardKey
-	for k := range config.RouterConfig().ShardMapping {
+	for k := range r.servPool.ShardMapping() {
 		anyK.Name = k
 		break
 	}

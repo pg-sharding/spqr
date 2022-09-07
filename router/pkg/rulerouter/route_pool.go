@@ -1,8 +1,9 @@
-package rrouter
+package rulerouter
 
 import (
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -11,28 +12,28 @@ import (
 )
 
 type RoutePool interface {
-	MatchRoute(key route.RouteKey,
+	MatchRoute(key route.Key,
 		beRule *config.BackendRule,
 		frRule *config.FrontendRule,
 	) (*route.Route, error)
 
-	Obsolete(key route.RouteKey) *route.Route
+	Obsolete(key route.Key) *route.Route
 	Shutdown() error
 	NotifyRoutes(func(route *route.Route) error) error
 }
 
 type RoutePoolImpl struct {
-	mu      sync.Mutex
-	pool    map[route.RouteKey]*route.Route
-	mapping map[string]*config.Shard
+	mu           sync.Mutex
+	pool         map[route.Key]*route.Route
+	shardMapping map[string]*config.Shard
 }
 
 var _ RoutePool = &RoutePoolImpl{}
 
-func NewRouterPoolImpl(mapping map[string]*config.Shard) *RoutePoolImpl {
+func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 	return &RoutePoolImpl{
-		mapping: mapping,
-		pool:    map[route.RouteKey]*route.Route{},
+		shardMapping: shardMapping,
+		pool:         map[route.Key]*route.Route{},
 	}
 }
 
@@ -51,9 +52,9 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	return nil
 }
 
-func (r *RoutePoolImpl) Obsolete(key route.RouteKey) *route.Route {
+func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 	r.mu.Lock()
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 
 	ret := r.pool[key]
 
@@ -74,7 +75,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	return nil
 }
 
-func (r *RoutePoolImpl) MatchRoute(key route.RouteKey,
+func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	beRule *config.BackendRule,
 	frRule *config.FrontendRule) (*route.Route, error) {
 
@@ -87,7 +88,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.RouteKey,
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "allocate route %v", key)
-	nroute := route.NewRoute(beRule, frRule, r.mapping)
+	nroute := route.NewRoute(beRule, frRule, r.shardMapping)
 
 	r.pool[key] = nroute
 	return nroute, nil

@@ -9,7 +9,6 @@ import (
 	reuse "github.com/libp2p/go-reuseport"
 	"google.golang.org/grpc"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	router "github.com/pg-sharding/spqr/router/pkg"
 )
@@ -25,7 +24,7 @@ func NewApp(sg *router.InstanceImpl) *App {
 }
 
 func (app *App) ServeRouter(ctx context.Context) error {
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().RouterPort)
+	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort)
 	listener, err := reuse.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -39,7 +38,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 }
 
 func (app *App) ServeAdminConsole(ctx context.Context) error {
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().AdminConsolePort)
+	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().AdminConsolePort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -53,7 +52,7 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 }
 
 func (app *App) ServeGrpcApi(ctx context.Context) error {
-	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort)
+	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().GrpcApiPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
