@@ -14,18 +14,18 @@ import (
 
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rulerouter"
 )
 
 type Qinteractor interface{}
 
 type QinteractorImpl struct{}
 
-func AdvancedPoolModeNeeded(rst rrouter.RelayStateMgr) bool {
-	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterConfig().RouterMode == string(config.ProxyMode)
+func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
+	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func procQuery(rst rrouter.RelayStateMgr, q *pgproto3.Query, cmngr rrouter.PoolMgr) error {
+func procQuery(rst rulerouter.RelayStateMgr, q *pgproto3.Query, cmngr rulerouter.PoolMgr) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
 	state, err := rst.Parse(q)
 	if err != nil {
@@ -175,11 +175,11 @@ func procQuery(rst rrouter.RelayStateMgr, q *pgproto3.Query, cmngr rrouter.PoolM
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rrouter.PoolMgr) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rcfg *config.Router) error {
 	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
 
 	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
-	rst := rrouter.NewRelayState(qr, cl, cmngr)
+	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
 
 	var msg pgproto3.FrontendMessage
 	var err error

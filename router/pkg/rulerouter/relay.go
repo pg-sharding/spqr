@@ -1,4 +1,4 @@
-package rrouter
+package rulerouter
 
 import (
 	"context"
@@ -22,26 +22,33 @@ type RelayStateMgr interface {
 	Reset() error
 	StartTrace()
 	Flush()
+
 	Reroute() error
 	ShouldRetry(err error) bool
 	Parse(q *pgproto3.Query) (parser.ParseState, error)
+
 	AddQuery(q pgproto3.Query)
 	AddSilentQuery(q pgproto3.Query)
 	ActiveShards() []kr.ShardKey
 	ActiveShardsReset()
 	TxActive() bool
+
 	SetTxStatus(status conn.TXStatus)
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error)
+
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
 	CompleteRelay(replyCl bool) error
 	Close() error
 	Client() client.RouterClient
+
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
 	PrepareRelayStep(cl client.RouterClient, cmngr PoolMgr) error
 	ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
+
 	TxStatus() conn.TXStatus
+	RouterMode() config.RouterMode
 }
 
 type RelayStateImpl struct {
@@ -52,7 +59,9 @@ type RelayStateImpl struct {
 	activeShards   []kr.ShardKey
 	TargetKeyRange kr.KeyRange
 
-	traceMsgs bool
+	traceMsgs          bool
+	WorldShardFallback bool
+	routerMode         config.RouterMode
 
 	routingState qrouter.RoutingState
 
@@ -99,21 +108,27 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		return err
 	}
 
-	// dont need to complete relay because tx state dont changed
+	// dont need to complete relay because tx state didt changed
 	rst.Cl.Server().PrepareStatement(hash)
 	return nil
 }
 
-func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager PoolMgr) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards: nil,
-		txStatus:     conn.TXIDLE,
-		msgBuf:       nil,
-		traceMsgs:    false,
-		Qr:           qr,
-		Cl:           client,
-		manager:      manager,
+		activeShards:       nil,
+		txStatus:           conn.TXIDLE,
+		msgBuf:             nil,
+		traceMsgs:          false,
+		Qr:                 qr,
+		Cl:                 client,
+		manager:            manager,
+		WorldShardFallback: rcfg.WorldShardFallback,
+		routerMode:         config.RouterMode(rcfg.RouterMode),
 	}
+}
+
+func (rst *RelayStateImpl) RouterMode() config.RouterMode {
+	return rst.routerMode
 }
 
 func (rst *RelayStateImpl) Close() error {
@@ -189,7 +204,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 }
 
 func (rst *RelayStateImpl) Reroute() error {
-	_ = rst.Cl.ReplyNotice("rerouting your connection")
+	_ = rst.Cl.ReplyNotice("rerouting client connection")
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
@@ -214,7 +229,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	case qrouter.SkipRoutingState:
 		return SkipQueryError
 	case qrouter.WorldRouteState:
-		if !config.RouterConfig().WorldShardFallback {
+		if !rst.WorldShardFallback {
 			return err
 		}
 

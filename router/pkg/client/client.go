@@ -6,8 +6,9 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/jackc/pgproto3/v2"
 	"net"
+
+	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 

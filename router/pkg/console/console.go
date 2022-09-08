@@ -19,7 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -32,7 +32,7 @@ type Console interface {
 type Local struct {
 	cfg     *tls.Config
 	Qrouter qrouter.QueryRouter
-	RRouter rrouter.RequestRouter
+	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
 
 	stchan chan struct{}
@@ -44,7 +44,7 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, qrouter qrouter.QueryRouter, rrouter rrouter.RequestRouter, stchan chan struct{}) (*Local, error) {
+func NewConsole(cfg *tls.Config, qrouter qrouter.QueryRouter, rrouter rulerouter.RuleRouter, stchan chan struct{}) (*Local, error) {
 	return &Local{
 		Qrouter: qrouter,
 		RRouter: rrouter,

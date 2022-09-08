@@ -4,9 +4,10 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"net"
+
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"net"
 )
 
 const SSLREQ = 80877103

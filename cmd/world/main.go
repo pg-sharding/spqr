@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/world"
@@ -10,7 +10,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:  "world run ",
-	Long: "Stateless Postgres ParamsQuerySuf Rrouter",
+	Long: "Stateless Postgres ParamsQuerySuf RuleRouter",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.FatalOnError(err)
 	}
 }
 
@@ -29,14 +29,15 @@ var cfgPath string
 var ctlCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.LoadRouterCfg(cfgPath); err != nil {
-			tracelog.ErrorLogger.FatalOnError(err)
+		rcfg, err := config.LoadRouterCfg(cfgPath)
+		if err != nil {
+			return err
 		}
 
-		w := world.NewWorld()
-		err := w.Run()
-		if err != nil {
-			tracelog.ErrorLogger.FatalOnError(err)
+		w := world.NewWorld(&rcfg)
+
+		if err := w.Run(); err != nil {
+			spqrlog.Logger.PrintError(err)
 		}
 
 		return err

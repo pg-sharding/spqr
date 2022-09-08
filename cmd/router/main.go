@@ -22,7 +22,7 @@ import (
 
 var (
 	rcfgPath    string
-	doProfie    bool
+	saveProfie  bool
 	profileFile string
 )
 
@@ -46,7 +46,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
-	rootCmd.PersistentFlags().BoolVar(&doProfie, "profile", false, "path to config file")
+	rootCmd.PersistentFlags().BoolVar(&saveProfie, "profile", false, "path to config file")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -57,7 +57,7 @@ var runCmd = &cobra.Command{
 
 		var pprofFile *os.File
 		var err error
-		if doProfie {
+		if saveProfie {
 			pprofFile, err = os.Create(profileFile)
 			if err != nil {
 				return err
@@ -68,16 +68,25 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		if err := config.LoadRouterCfg(rcfgPath); err != nil {
+		rcfg, err := config.LoadRouterCfg(rcfgPath)
+		if err != nil {
 			return err
 		}
+
 		ctx, cancelCtx := context.WithCancel(context.Background())
+		defer cancelCtx()
 
 		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGUSR1)
+		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+
+		router, err := router.NewRouter(ctx, &rcfg)
+		if err != nil {
+			return errors.Wrap(err, "router failed to start")
+		}
+
+		app := app.NewApp(router)
 
 		go func() {
-			defer cancelCtx()
 			for {
 				s := <-sigs
 				spqrlog.Logger.Printf(spqrlog.LOG, "got signal %v", s)
@@ -93,7 +102,11 @@ var runCmd = &cobra.Command{
 					return
 				case syscall.SIGHUP:
 					// reread config file
-				case syscall.SIGKILL, syscall.SIGTERM:
+					err := router.RuleRouter.Reload(rcfgPath)
+					if err != nil {
+						spqrlog.Logger.PrintError(err)
+					}
+				case syscall.SIGINT, syscall.SIGTERM:
 					cancelCtx()
 					return
 				default:
@@ -101,13 +114,6 @@ var runCmd = &cobra.Command{
 				}
 			}
 		}()
-
-		spqr, err := router.NewRouter(ctx)
-		if err != nil {
-			return errors.Wrap(err, "router failed to start")
-		}
-
-		app := app.NewApp(spqr)
 
 		wg := &sync.WaitGroup{}
 

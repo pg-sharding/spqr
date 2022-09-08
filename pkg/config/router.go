@@ -79,12 +79,11 @@ type Shard struct {
 	TLS                *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
-var cfgRouter Router
-
-func LoadRouterCfg(cfgPath string) error {
+func LoadRouterCfg(cfgPath string) (Router, error) {
+	var rcfg Router
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return err
+		return rcfg, err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -93,33 +92,29 @@ func LoadRouterCfg(cfgPath string) error {
 		}
 	}(file)
 
-	if err := initRouterConfig(file, cfgPath); err != nil {
-		return err
+	if err := initRouterConfig(file, &rcfg); err != nil {
+		return rcfg, err
 	}
 
-	configBytes, err := json.MarshalIndent(cfgRouter, "", "  ")
+	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {
-		return err
+		return rcfg, err
 	}
 
 	log.Println("Running config:", string(configBytes))
-	return nil
+	return rcfg, nil
 }
 
-func initRouterConfig(file *os.File, filepath string) error {
-	if strings.HasSuffix(filepath, ".toml") {
-		_, err := toml.NewDecoder(file).Decode(&cfgRouter)
+func initRouterConfig(file *os.File, cfgRouter *Router) error {
+	if strings.HasSuffix(file.Name(), ".toml") {
+		_, err := toml.NewDecoder(file).Decode(cfgRouter)
 		return err
 	}
-	if strings.HasSuffix(filepath, ".yaml") {
+	if strings.HasSuffix(file.Name(), ".yaml") {
 		return yaml.NewDecoder(file).Decode(&cfgRouter)
 	}
-	if strings.HasSuffix(filepath, ".json") {
+	if strings.HasSuffix(file.Name(), ".json") {
 		return json.NewDecoder(file).Decode(&cfgRouter)
 	}
-	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
-}
-
-func RouterConfig() *Router {
-	return &cfgRouter
+	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }

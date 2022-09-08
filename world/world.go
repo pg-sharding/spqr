@@ -5,29 +5,33 @@ import (
 
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	shards "github.com/pg-sharding/spqr/router/protos"
-	"github.com/wal-g/tracelog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 type World struct {
 	shards.UnimplementedKeyRangeServiceServer
+	rcfg *config.Router
 }
 
 var (
 	_ shards.KeyRangeServiceServer = World{}
 )
 
-func NewWorld() *World {
-	return &World{}
+func NewWorld(rcfg *config.Router) *World {
+	return &World{
+		rcfg: rcfg,
+	}
 }
 
 func (w *World) Run() error {
 	serv := grpc.NewServer()
 	shhttp.Register(serv)
 	reflection.Register(serv)
-	worldShard := getWorldShard(config.RouterConfig().ShardMapping)
+
+	worldShard := getWorldShard(w.rcfg.ShardMapping)
 	if worldShard == nil {
 		return nil
 	}
@@ -36,7 +40,8 @@ func (w *World) Run() error {
 	if err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("world listening on %s", address)
+
+	spqrlog.Logger.Printf(spqrlog.INFO, "world listening on %s", address)
 
 	return serv.Serve(listener)
 }

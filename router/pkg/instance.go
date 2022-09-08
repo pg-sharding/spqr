@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/console"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	"github.com/pg-sharding/spqr/router/pkg/rrouter"
+	"github.com/pg-sharding/spqr/router/pkg/rulerouter"
 )
 
 type Router interface {
@@ -21,7 +21,7 @@ type Router interface {
 }
 
 type InstanceImpl struct {
-	Rrouter    rrouter.RequestRouter
+	RuleRouter rulerouter.RuleRouter
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 
@@ -44,24 +44,29 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
+	// Logger
+	if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
+		return nil, err
+	}
+
 	// qrouter init
-	qtype := config.RouterMode(config.RouterConfig().RouterMode)
+	qtype := config.RouterMode(rcfg.RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 
-	qr, err := qrouter.NewQrouter(qtype, config.RouterConfig().ShardMapping)
+	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping)
 	if err != nil {
 		return nil, err
 	}
 
 	// frontend
-	frTLS, err := config.RouterConfig().FrontendTLS.Init()
+	frTLS, err := rcfg.FrontendTLS.Init()
 	if err != nil {
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}
 
 	// request router
-	rr := rrouter.NewRouter(frTLS)
+	rr := rulerouter.NewRouter(frTLS, rcfg)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
@@ -70,10 +75,10 @@ func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 		return nil, err
 	}
 
-	if !config.RouterConfig().UnderCoordinator {
+	if !rcfg.UnderCoordinator {
 		for _, fname := range []string{
-			config.RouterConfig().InitSQL,
-			config.RouterConfig().AutoConf,
+			rcfg.InitSQL,
+			rcfg.AutoConf,
 		} {
 			if len(fname) == 0 {
 				continue
@@ -100,7 +105,7 @@ func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 	}
 
 	return &InstanceImpl{
-		Rrouter:    rr,
+		RuleRouter: rr,
 		Qrouter:    qr,
 		AdmConsole: localConsole,
 		stchan:     stchan,
@@ -109,7 +114,7 @@ func NewRouter(ctx context.Context) (*InstanceImpl, error) {
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn) error {
-	psqlclient, err := r.Rrouter.PreRoute(netconn)
+	psqlclient, err := r.RuleRouter.PreRoute(netconn)
 	if err != nil {
 		_ = netconn.Close()
 		return err
@@ -117,16 +122,16 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "pre route ok")
 
-	cmngr, err := rrouter.MatchConnectionPooler(psqlclient)
+	cmngr, err := rulerouter.MatchConnectionPooler(psqlclient, r.RuleRouter.Config())
 	if err != nil {
 		return err
 	}
 
-	return Frontend(r.Qrouter, psqlclient, cmngr)
+	return Frontend(r.Qrouter, psqlclient, cmngr, r.RuleRouter.Config())
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
-	closer, err := r.initJaegerTracer()
+	closer, err := r.initJaegerTracer(r.RuleRouter.Config())
 	if err != nil {
 		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
 	}
@@ -161,10 +166,10 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 				}()
 			}
 		case <-r.stchan:
-			_ = r.Rrouter.Shutdown()
+			_ = r.RuleRouter.Shutdown()
 			_ = listener.Close()
 		case <-ctx.Done():
-			_ = r.Rrouter.Shutdown()
+			_ = r.RuleRouter.Shutdown()
 			_ = listener.Close()
 			spqrlog.Logger.Printf(spqrlog.LOG, "psql server done")
 			return nil

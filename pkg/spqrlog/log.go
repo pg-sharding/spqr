@@ -1,11 +1,10 @@
 package spqrlog
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
-
-	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 type Severity int
@@ -54,14 +53,29 @@ func NewErrorLogger(out io.Writer) *errorLogger {
 
 var Logger = NewErrorLogger(os.Stdout)
 
+var defaultLogLevel = INFO
+
+func UpdateDefaultLogLevel(val string) error {
+	if len(val) == 0 {
+		defaultLogLevel = INFO
+		return nil
+	}
+	if v, ok := mp[val]; !ok {
+		return fmt.Errorf("no matching log level found %v", val)
+	} else {
+		defaultLogLevel = v
+	}
+	return nil
+}
+
 func (el *errorLogger) Printf(severity Severity, fmt string, args ...interface{}) {
-	if mp[config.RouterConfig().LogLevel] <= severity {
+	if defaultLogLevel <= severity {
 		el.logMp[severity].Printf(fmt, args...)
 	}
 }
 
 func (el *errorLogger) Fatalf(severity Severity, fmt string, args ...interface{}) {
-	if mp[config.RouterConfig().LogLevel] <= severity {
+	if defaultLogLevel <= severity {
 		el.logMp[severity].Fatalf(fmt, args)
 	}
 }

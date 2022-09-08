@@ -1,4 +1,4 @@
-package rrouter
+package rulerouter
 
 import (
 	"fmt"
@@ -33,7 +33,9 @@ func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKe
 	return client.ReplyErrMsg(errmsg.Error())
 }
 
-type TxConnManager struct{}
+type TxConnManager struct {
+	ReplyShardMatch bool
+}
 
 func (t *TxConnManager) ConnIsActive(rst RelayStateMgr) bool {
 	//TODO implement me
@@ -55,11 +57,13 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	return cl.Unroute()
 }
 
-func NewTxConnManager() *TxConnManager {
-	return &TxConnManager{}
+func NewTxConnManager(rcfg *config.Router) *TxConnManager {
+	return &TxConnManager{
+		ReplyShardMatch: rcfg.ReplyShardMatch,
+	}
 }
 
-func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	var shardNames []string
 
 	for _, shkey := range sh {
@@ -69,12 +73,21 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	sort.Strings(shardNames)
 	shardMathes := strings.Join(shardNames, ",")
 
-	if config.RouterConfig().ReplyShardMatch {
-		_ = client.ReplyShardMatch(shardMathes)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
+
+	if err := client.ReplyShardMatch(shardMathes); err != nil {
+		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
-	_ = client.ReplyNoticef("adding datashards %v", shardMathes)
+	return nil
+}
+
+func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+	if t.ReplyShardMatch {
+		if err := replyShardMatches(client, sh); err != nil {
+			return err
+		}
+	}
 
 	for _, shkey := range sh {
 		if err := client.Server().AddDataShard(shkey); err != nil {
@@ -105,7 +118,9 @@ func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	return nil
 }
 
-type SessConnManager struct{}
+type SessConnManager struct {
+	ReplyShardMatch bool
+}
 
 func (s *SessConnManager) ConnIsActive(RelayStateMgr) bool {
 	//TODO implement me
@@ -135,6 +150,12 @@ func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
 }
 
 func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
+	if s.ReplyShardMatch {
+		if err := replyShardMatches(client, sh); err != nil {
+			return err
+		}
+	}
+
 	for _, shkey := range sh {
 		if err := client.Server().AddDataShard(shkey); err != nil {
 			return err
@@ -148,16 +169,18 @@ func (s *SessConnManager) ValidateReRoute(rst RelayStateMgr) bool {
 	return rst.ActiveShards() == nil
 }
 
-func NewSessConnManager() *SessConnManager {
-	return &SessConnManager{}
+func NewSessConnManager(rcfg *config.Router) *SessConnManager {
+	return &SessConnManager{
+		ReplyShardMatch: rcfg.ReplyShardMatch,
+	}
 }
 
-func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
+func MatchConnectionPooler(client client.RouterClient, rcfg *config.Router) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
 	case config.PoolModeSession:
-		return NewSessConnManager(), nil
+		return NewSessConnManager(rcfg), nil
 	case config.PoolModeTransaction:
-		return NewTxConnManager(), nil
+		return NewTxConnManager(rcfg), nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{

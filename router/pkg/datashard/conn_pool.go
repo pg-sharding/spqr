@@ -3,9 +3,10 @@ package datashard
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/jackc/pgproto3/v2"
 	"math/rand"
 	"sync"
+
+	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -104,6 +105,8 @@ type DBPool interface {
 
 	UpdateHostStatus(shard, hostname string, rw bool) error
 
+	ShardMapping() map[string]*config.Shard
+
 	List() []Shard
 }
 
@@ -115,7 +118,13 @@ type InstancePoolImpl struct {
 
 	primaries map[string]string
 
+	shardMapping map[string]*config.Shard
+
 	tlsconfig *tls.Config
+}
+
+func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
+	return s.shardMapping
 }
 
 func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) error {
@@ -189,12 +198,12 @@ func checkRw(sh Shard) (bool, error) {
 func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
-	hosts := config.RouterConfig().ShardMapping[key.Name].Hosts
+	hosts := s.shardMapping[key.Name].Hosts
 	rand.Shuffle(len(hosts), func(i, j int) {
 		hosts[j], hosts[i] = hosts[i], hosts[j]
 	})
 
-	switch config.RouterConfig().ShardMapping[key.Name].TargetSessionAttrs {
+	switch s.shardMapping[key.Name].TargetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
@@ -268,7 +277,7 @@ func NewConnPool(mapping map[string]*config.Shard) DBPool {
 		if err != nil {
 			return nil, err
 		}
-		shardC, err := NewShard(shardKey, pgi, config.RouterConfig().ShardMapping[shardKey.Name], rule)
+		shardC, err := NewShard(shardKey, pgi, mapping[shardKey.Name], rule)
 		if err != nil {
 			return nil, err
 		}
@@ -276,8 +285,9 @@ func NewConnPool(mapping map[string]*config.Shard) DBPool {
 	}
 
 	return &InstancePoolImpl{
-		poolRW:    NewPool(allocator),
-		poolRO:    NewPool(allocator),
-		primaries: map[string]string{},
+		poolRW:       NewPool(allocator),
+		poolRO:       NewPool(allocator),
+		primaries:    map[string]string{},
+		shardMapping: mapping,
 	}
 }
