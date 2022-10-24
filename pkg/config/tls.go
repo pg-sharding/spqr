@@ -41,3 +41,17 @@ func (c *TLSConfig) Init() (*tls.Config, error) {
 	}
 	return &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}, nil
 }
+
+func (c *TLSConfig) InitCl() (*tls.Config, error) {
+	if c.IsSSLModeDisable() {
+		tracelog.InfoLogger.Printf("skip loading tls certs")
+		return nil, nil
+	}
+
+	// tracelog.InfoLogger.Printf("loading tls cert file %s, key file %s", c.CertFile, c.KeyFile)
+	// cert, err := tls.(c.CertFile, c.KeyFile)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to load tls conf: %w", err)
+	// }
+	return &tls.Config{InsecureSkipVerify: true}, nil
+}

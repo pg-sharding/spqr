@@ -30,6 +30,9 @@ frontend_rules:
 backend_rules:
   - usr: user1
     db: db1
+    auth_rule:
+        auth_method: 'md5'
+        password: 12345678
     pool_discard: false
     pool_rollback: true
   - pool_default: true
@@ -39,14 +42,12 @@ backend_rules:
 shards:
   sh1:
     tls:
-      key_file: /etc/odyssey/ssl/server.key
-      sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
+      key_file: /home/reshke/.postgresql/root.crt
+      sslmode: require
+      cert_file: /home/reshke/.postgresql/root.crt
     db: db1
     usr: user1
-    pwd: 12345678
     type: DATA
     target_session_attrs: "read-write"
     hosts:
-      - 'localhost:5551'
-      - 'localhost:5432'
+      - "example.test.com:6432'

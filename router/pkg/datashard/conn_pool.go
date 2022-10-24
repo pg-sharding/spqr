@@ -268,7 +268,7 @@ func NewConnPool(mapping map[string]*config.Shard) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
 
-		tlsconfig, err := mapping[shardKey.Name].TLS.Init()
+		tlsconfig, err := mapping[shardKey.Name].TLS.InitCl()
 		if err != nil {
 			return nil, err
 		}
