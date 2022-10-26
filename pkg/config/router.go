@@ -35,7 +35,7 @@ type Router struct {
 	GrpcApiPort      string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
-	ReplyShardMatch    bool `json:"reply_shard_match" toml:"reply_shard_match" yaml:"reply_shard_match"`
+	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
 	AutoConf         string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
 	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`

@@ -28,9 +28,9 @@ type Client interface {
 	ID() string
 
 	ReplyErrMsg(errmsg string) error
-	ReplyShardMatch(shardId string) error
-	ReplyNotice(msg string) error
-	ReplyNoticef(fmt string, args ...interface{}) error
+	ReplyNotice(message string) error
+	ReplyDebugNotice(msg string) error
+	ReplyDebugNoticef(fmt string, args ...interface{}) error
 	DefaultReply() error
 
 	Init(cfg *tls.Config) error
