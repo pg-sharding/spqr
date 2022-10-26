@@ -1,19 +1,19 @@
 CREATE TABLE xx (w_id int);
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxtt1 (i int, j int, w_id int);
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (10);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (20);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (21);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (w_id) VALUES (30);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 SELECT * FROM xx ORDER BY w_id;
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
  w_id 
 ------
     1
@@ -24,6 +24,6 @@ Shard match: sh1,sh2
 (5 rows)
 
 DROP TABLE xx;
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxtt1;
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2

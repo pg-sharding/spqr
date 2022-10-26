@@ -59,27 +59,19 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 
 func NewTxConnManager(rcfg *config.Router) *TxConnManager {
 	return &TxConnManager{
-		ReplyShardMatch: rcfg.ReplyShardMatch,
+		ReplyShardMatch: rcfg.ShowNoticeMessages,
 	}
 }
 
 func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	var shardNames []string
-
 	for _, shkey := range sh {
 		shardNames = append(shardNames, shkey.Name)
 	}
-
 	sort.Strings(shardNames)
-	shardMathes := strings.Join(shardNames, ",")
+	shardMatches := strings.Join(shardNames, ",")
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
-
-	if err := client.ReplyShardMatch(shardMathes); err != nil {
-		return err
-	}
-
-	return nil
+	return client.ReplyNoticef("send query to shard(s) : %s", shardMatches)
 }
 
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
@@ -171,7 +163,7 @@ func (s *SessConnManager) ValidateReRoute(rst RelayStateMgr) bool {
 
 func NewSessConnManager(rcfg *config.Router) *SessConnManager {
 	return &SessConnManager{
-		ReplyShardMatch: rcfg.ReplyShardMatch,
+		ReplyShardMatch: rcfg.ShowNoticeMessages,
 	}
 }
 

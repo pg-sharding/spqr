@@ -5,7 +5,7 @@ grpc_api_port: '7000'
 router_mode: PROXY
 init_sql: "/spqr/test/regress/conf/init.sql"
 world_shard_fallback: true
-reply_shard_match: true
+show_notice_messages: true
 frontend_rules:
   - db: regress
     usr: regress

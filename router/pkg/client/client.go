@@ -307,21 +307,8 @@ func (cl *PsqlClient) Reset() error {
 	return cl.server.Reset()
 }
 
-func (cl *PsqlClient) ReplyShardMatch(shardId string) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.NoticeResponse{
-			Message: "Shard match: " + shardId,
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (cl *PsqlClient) ReplyNotice(msg string) error {
+	// TODO document this feature
 	if v, ok := cl.activeParamSet["client_min_messages"]; !ok {
 		return nil
 	} else {
@@ -330,14 +317,10 @@ func (cl *PsqlClient) ReplyNotice(msg string) error {
 		}
 	}
 
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.NoticeResponse{
-			Message: "ROUTER NOTICE: " + msg,
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
+	if err := cl.Send(&pgproto3.NoticeResponse{
+		Message: "NOTICE: " + msg,
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -671,8 +654,8 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
-	_ = cl.ReplyNoticef("executing your query %v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "processing query %s", query)
+	_ = cl.ReplyNoticef("processing query %v", query)
 
 	if err := cl.server.Send(query); err != nil {
 		return 0, false, err

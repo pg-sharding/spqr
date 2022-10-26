@@ -12,7 +12,7 @@ psql (14devel, server lolkekcheburek)
 Type "help" for help.
 
 postgres=?> select  * from x ;
-ROUTER NOTICE: you are receiving messagwe from mock world shard
+NOTICE: you are receiving message from the mock world shard
  worldmock
 -----------
  row1
