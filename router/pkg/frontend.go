@@ -178,7 +178,7 @@ func procQuery(rst rulerouter.RelayStateMgr, q *pgproto3.Query, cmngr rulerouter
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rcfg *config.Router) error {
 	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s", cl.Usr(), cl.DB())
 
-	_ = cl.ReplyNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
 
 	var msg pgproto3.FrontendMessage
@@ -224,7 +224,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			case *pgproto3.Parse:
 				hash := murmur3.Sum64([]byte(q.Query))
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
-				if err := cl.ReplyNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
+				if err := cl.ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 					return err
 				}
 				cl.StorePreparedStatement(q.Name, q.Query)

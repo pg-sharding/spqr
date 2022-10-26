@@ -35,6 +35,7 @@ All SPQR configurations can be written in json, yaml or toml format. See example
 | `router_mode`          | mode in which router will be run. Can be LOCAL and PROXY. In local mode spqr works like an usual connection pooler with one shard, in proxy mode works with many shards.                      |
 | `jaeger_url`           | a path to the Jaeger instance - open source software for tracing transactions between distributed services                                                                                    |
 | `world_shard_fallback` | can be true or false. If false, then router will raise an error when query will be impossible to send to particular shard. If true, then router will route unrouted query to the world shard. |
+| `show_notice_messages` | can be true or false. May help to debug the router and see to where it is actualy sending queries |
 
 ### frontend_tls
 

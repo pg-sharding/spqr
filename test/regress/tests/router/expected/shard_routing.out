@@ -1,21 +1,21 @@
 CREATE TABLE xx (w_id int);
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxerr (i int);
 ERROR:  shardiung keys are missing in query
 CREATE TABLE xxtt1 (i int, j int, w_id int);
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (10);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (20);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (21);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (w_id) VALUES (30);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 SELECT * FROM xx WHERE w_id >= 1;
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
     1
@@ -24,14 +24,14 @@ Shard match: sh1
 (3 rows)
 
 SELECT * FROM xx WHERE w_id >= 20;
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
 (1 row)
 
 SELECT * FROM xx WHERE w_id >= 21;
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
  w_id 
 ------
    21
@@ -39,37 +39,37 @@ Shard match: sh2
 (2 rows)
 
 INSERT INTO xxtt1 (w_id) VALUES(1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id) VALUES(15);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id) VALUES(21);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(15, 15);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(21, 21);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 (w_id, i) VALUES(1, 1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id, i) VALUES(15, -12);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (w_id, i) VALUES(21, 12);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(-12, 15);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id) VALUES(2121221, 21);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 (i, j, w_id) VALUES(-12, 1, 1);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (i, w_id, j) VALUES(-12, 15, 123123);
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 23);
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
 SELECT * FROM xxtt1 WHERE w_id >= 1;
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 
 -----+--------+------
      |        |    1
@@ -85,13 +85,13 @@ Shard match: sh1
 (10 rows)
 
 SELECT * FROM xxtt1 WHERE w_id >= 20;
-Shard match: sh1
+NOTICE: send query to shard(s) : sh1
  i | j | w_id 
 ---+---+------
 (0 rows)
 
 SELECT * FROM xxtt1 WHERE w_id >= 21;
-Shard match: sh2
+NOTICE: send query to shard(s) : sh2
     i    |    j    | w_id 
 ---------+---------+------
          |         |   21
@@ -102,6 +102,6 @@ Shard match: sh2
 (5 rows)
 
 DROP TABLE xx;
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxtt1;
-Shard match: sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2

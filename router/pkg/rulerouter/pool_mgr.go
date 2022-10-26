@@ -34,7 +34,7 @@ func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKe
 }
 
 type TxConnManager struct {
-	ReplyShardMatch bool
+	ReplyNotice bool
 }
 
 func (t *TxConnManager) ConnIsActive(rst RelayStateMgr) bool {
@@ -59,31 +59,23 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 
 func NewTxConnManager(rcfg *config.Router) *TxConnManager {
 	return &TxConnManager{
-		ReplyShardMatch: rcfg.ReplyShardMatch,
+		ReplyNotice: rcfg.ShowNoticeMessages,
 	}
 }
 
 func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	var shardNames []string
-
 	for _, shkey := range sh {
 		shardNames = append(shardNames, shkey.Name)
 	}
-
 	sort.Strings(shardNames)
-	shardMathes := strings.Join(shardNames, ",")
+	shardMatches := strings.Join(shardNames, ",")
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding datashards %v", shardMathes)
-
-	if err := client.ReplyShardMatch(shardMathes); err != nil {
-		return err
-	}
-
-	return nil
+	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if t.ReplyShardMatch {
+	if t.ReplyNotice {
 		if err := replyShardMatches(client, sh); err != nil {
 			return err
 		}
@@ -119,7 +111,7 @@ func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 }
 
 type SessConnManager struct {
-	ReplyShardMatch bool
+	ReplyNotice bool
 }
 
 func (s *SessConnManager) ConnIsActive(RelayStateMgr) bool {
@@ -150,7 +142,7 @@ func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
 }
 
 func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if s.ReplyShardMatch {
+	if s.ReplyNotice {
 		if err := replyShardMatches(client, sh); err != nil {
 			return err
 		}
@@ -171,7 +163,7 @@ func (s *SessConnManager) ValidateReRoute(rst RelayStateMgr) bool {
 
 func NewSessConnManager(rcfg *config.Router) *SessConnManager {
 	return &SessConnManager{
-		ReplyShardMatch: rcfg.ReplyShardMatch,
+		ReplyNotice: rcfg.ShowNoticeMessages,
 	}
 }
 
