@@ -60,7 +60,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	// frontend
-	frTLS, err := rcfg.FrontendTLS.Init()
+	frTLS, err := rcfg.FrontendTLS.Init(rcfg.Host)
 	if err != nil {
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}

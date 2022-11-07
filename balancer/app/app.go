@@ -81,13 +81,13 @@ func (app *App) ProcBalancer(ctx context.Context) error {
 	return nil
 }
 
-func (app *App) ServeAdminConsole(ctx context.Context, clientTLSConfig config.TLSConfig) error {
-	clientTLS, err := clientTLSConfig.Init()
+func (app *App) ServeAdminConsole(ctx context.Context, bconfig *config.Balancer) error {
+	clientTLS, err := bconfig.TLS.Init(bconfig.Host)
 	if err != nil {
 		return fmt.Errorf("init frontend TLS: %w", err)
 	}
 
-	address := net.JoinHostPort(config.BalancerConfig().Host, config.BalancerConfig().AdminConsolePort)
+	address := net.JoinHostPort(bconfig.Host, bconfig.AdminConsolePort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
