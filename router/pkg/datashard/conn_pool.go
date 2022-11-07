@@ -267,8 +267,9 @@ func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
 func NewConnPool(mapping map[string]*config.Shard) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
+		shard := mapping[shardKey.Name]
 
-		tlsconfig, err := mapping[shardKey.Name].TLS.Init()
+		tlsconfig, err := shard.TLS.Init(shard.Hosts[0])
 		if err != nil {
 			return nil, err
 		}
