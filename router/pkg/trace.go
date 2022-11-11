@@ -27,7 +27,7 @@ func (r *InstanceImpl) initJaegerTracer(rcfg *config.Router) (io.Closer, error) 
 		},
 	}
 
-	jLogger := jaegerlog.StdLogger //TODO: replace with tracelog logger
+	jLogger := jaegerlog.StdLogger
 	jMetricsFactory := metrics.NullFactory
 
 	// Initialize tracer with a logger and a metrics factory

@@ -18,6 +18,12 @@ type CoordinatorService struct {
 	impl coordinator.Coordinator
 }
 
+func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
+	return &CoordinatorService{
+		impl: impl,
+	}
+}
+
 func (c CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
 		LowerBound: []byte(request.KeyRangeInfo.KeyRange.LowerBound),
@@ -44,7 +50,7 @@ func (c CoordinatorService) LockKeyRange(ctx context.Context, request *protos.Lo
 
 func (c CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := c.impl.Unlock(ctx, id); err != nil {
+		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -75,7 +81,7 @@ func (c CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.S
 		SourceID: request.SourceId,
 	}
 
-	if err := c.impl.Split(ctx, splitKR); err != nil {
+	if err := c.impl.SplitKeyRange(ctx, splitKR); err != nil {
 		return nil, err
 	}
 
@@ -121,46 +127,40 @@ func (c CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.M
 	}
 
 	bound := request.GetBound()
-	uniteKeyRange := &kr.UniteKeyRange{}
+	mergeKeyRange := &kr.MergeKeyRange{}
 
 	for _, krqb := range krsqb {
 		if bytes.Equal(krqb.LowerBound, bound) {
-			uniteKeyRange.KeyRangeIDRight = krqb.ID
+			mergeKeyRange.KeyRangeIDRight = krqb.ID
 
-			if uniteKeyRange.KeyRangeIDLeft != "" {
+			if mergeKeyRange.KeyRangeIDLeft != "" {
 				break
 			}
 			continue
 		}
 
 		if bytes.Equal(krqb.UpperBound, bound) {
-			uniteKeyRange.KeyRangeIDLeft = krqb.ID
+			mergeKeyRange.KeyRangeIDLeft = krqb.ID
 
-			if uniteKeyRange.KeyRangeIDRight != "" {
+			if mergeKeyRange.KeyRangeIDRight != "" {
 				break
 			}
 			continue
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unite keyrange %#v", uniteKeyRange)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "merge keyrange %#v", mergeKeyRange)
 
-	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
+	if mergeKeyRange.KeyRangeIDLeft == "" || mergeKeyRange.KeyRangeIDRight == "" {
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
 		return &protos.ModifyReply{}, nil
 	}
 
-	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
-		return nil, fmt.Errorf("failed to unite key ranges: %w", err)
+	if err := c.impl.MergeKeyRanges(ctx, mergeKeyRange); err != nil {
+		return nil, fmt.Errorf("failed to merge key ranges: %w", err)
 	}
 
 	return &protos.ModifyReply{}, nil
 }
 
 var _ protos.KeyRangeServiceServer = CoordinatorService{}
-
-func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
-	return &CoordinatorService{
-		impl: impl,
-	}
-}

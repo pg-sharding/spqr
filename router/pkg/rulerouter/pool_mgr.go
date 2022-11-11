@@ -5,12 +5,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
-	"github.com/jackc/pgproto3/v2"
-	"github.com/pkg/errors"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -185,6 +182,6 @@ func MatchConnectionPooler(client client.RouterClient, rcfg *config.Router) (Poo
 			}
 		}
 
-		return nil, errors.Errorf("unknown pool mode %v", client.Rule().PoolMode)
+		return nil, fmt.Errorf("unknown pool mode %v", client.Rule().PoolMode)
 	}
 }

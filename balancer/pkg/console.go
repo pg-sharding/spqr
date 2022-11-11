@@ -42,7 +42,7 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Logger.Fatal(err)
 		}
 	}
 
@@ -93,7 +93,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		default:
 			spqrlog.Logger.Printf(spqrlog.INFO, "Unknown default %s", stmt.Cmd)
 
-			return fmt.Errorf("Unknown show statement: %s", stmt.Cmd)
+			return fmt.Errorf("unknown show statement: %s", stmt.Cmd)
 		}
 
 	case *spqrparser.SplitKeyRange:
@@ -111,7 +111,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		return cli.SplitKeyRange(ctx, split, cl)
 
 	case *spqrparser.UniteKeyRange:
-		unite := &kr.UniteKeyRange{
+		unite := &kr.MergeKeyRange{
 			KeyRangeIDLeft:  stmt.KeyRangeIDL,
 			KeyRangeIDRight: stmt.KeyRangeIDR,
 		}
@@ -173,7 +173,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 	default:
 		spqrlog.Logger.Printf(spqrlog.INFO, "got unexcepted console request %v %T", tstmt, tstmt)
 		if err := cl.DefaultReply(); err != nil {
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Logger.Fatal(err)
 		}
 	}
 

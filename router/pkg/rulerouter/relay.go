@@ -53,7 +53,6 @@ type RelayStateMgr interface {
 
 type RelayStateImpl struct {
 	txStatus   conn.TXStatus
-	sync       int
 	CopyActive bool
 
 	activeShards   []kr.ShardKey
@@ -95,16 +94,18 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Name:  d.Name,
 		Query: d.Query,
 	}, false, false); err != nil {
-		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
-		}
+		// // TODO
+		// if rst.ShouldRetry(err) {
+		//  fix retry logic
+		// }
 		return err
 	}
 
 	if _, err := rst.RelayStep(&pgproto3.Sync{}, true, false); err != nil {
-		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
-		}
+		// TODO: fix retry logic
+		// if rst.ShouldRetry(err) {
+
+		// }
 		return err
 	}
 
@@ -132,7 +133,7 @@ func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 }
 
 func (rst *RelayStateImpl) Close() error {
-	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.ErrClientNotRouted {
 		spqrlog.Logger.PrintError(err)
 		_ = rst.Cl.Close()
 		return err
@@ -175,10 +176,10 @@ var ErrSkipQuery = fmt.Errorf("wait for a next query")
 func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	//
 	if len(routes) == 0 {
-		return qrouter.MatchShardError
+		return qrouter.ErrMatchShardError
 	}
 
-	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.ErrClientNotRouted {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
@@ -255,8 +256,8 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
 	shardRoutes := rst.Qr.WorldShardsRoutes()
 
 	if len(shardRoutes) == 0 {
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.MatchShardError)
-		return nil, qrouter.MatchShardError
+		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.ErrMatchShardError)
+		return nil, qrouter.ErrMatchShardError
 	}
 
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil {
@@ -514,11 +515,11 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMg
 			return err
 		}
 		return ErrSkipQuery
-	case qrouter.MatchShardError:
-		_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
+	case qrouter.ErrMatchShardError:
+		_ = cl.ReplyErrMsg("failed to match any datashard")
 		return ErrSkipQuery
-	case qrouter.ParseError:
-		_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+	case qrouter.ErrParseError:
+		_ = cl.ReplyErrMsg("skip executing this query, wait for next")
 		return ErrSkipQuery
 	default:
 		_ = rst.UnRouteWithError(nil, err)

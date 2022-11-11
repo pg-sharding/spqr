@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 
 		db, err := etcdqdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 		if err != nil {
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Logger.Fatal(err)
 			// exit
 		}
 		coordinator := provider.NewCoordinator(db)
@@ -46,7 +46,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Logger.Fatal(err)
 	}
 }
 

@@ -10,24 +10,12 @@ import (
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
 
-func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
-	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
-
-	for _, keyRange := range krs {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
-		if kr.CmpRangesLess(keyRange.LowerBound, i) && kr.CmpRangesLess(i, keyRange.UpperBound) {
-			return kr.KeyRangeFromDB(keyRange)
-		}
-	}
-
-	return &kr.KeyRange{
-		ShardID: NOSHARD,
-	}
-}
-
-var ComplexQuery = fmt.Errorf("too complex query to parse")
-var ShardingKeysMissing = fmt.Errorf("shardiung keys are missing in query")
-var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
+var (
+	ErrComplexQuery               = fmt.Errorf("too complex query to parse")
+	ErrShardingKeysMissing        = fmt.Errorf("shardiung keys are missing in query")
+	ErrCrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
+	ErrParseError                 = fmt.Errorf("parsing stmt error")
+)
 
 func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
 	var colnames []string
@@ -42,15 +30,15 @@ func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
 			case *pgquery.Node_String_:
 				colnames = append(colnames, colname.String_.Str)
 			default:
-				return nil, ComplexQuery
+				return nil, ErrComplexQuery
 			}
 		}
 	default:
-		return nil, ComplexQuery
+		return nil, ErrComplexQuery
 	}
 
 	if len(colnames) != 1 {
-		return nil, ComplexQuery
+		return nil, ErrComplexQuery
 	}
 
 	return colnames, nil
@@ -80,7 +68,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 		}
 	}
 
-	return nil, ComplexQuery
+	return nil, ErrComplexQuery
 }
 
 func getbytes(val *pgquery.Node) (string, error) {
@@ -90,7 +78,7 @@ func getbytes(val *pgquery.Node) (string, error) {
 	case *pgquery.Node_String_:
 		return valt.String_.Str, nil
 	default:
-		return "", ComplexQuery
+		return "", ErrComplexQuery
 	}
 }
 
@@ -109,7 +97,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 			}
 			return qr.deparseKeyWithRangesInternal(ctx, val)
 		default:
-			return nil, ComplexQuery
+			return nil, ErrComplexQuery
 		}
 	case *pgquery.Node_AConst:
 		val, err := getbytes(texpr.AConst.Val)
@@ -119,11 +107,11 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 		return qr.deparseKeyWithRangesInternal(ctx, val)
 	case *pgquery.Node_List:
 		if len(texpr.List.Items) == 0 {
-			return nil, ComplexQuery
+			return nil, ErrComplexQuery
 		}
 		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[colindx])
 	default:
-		return nil, ComplexQuery
+		return nil, ErrComplexQuery
 	}
 }
 
@@ -147,7 +135,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 					return nil, err
 				}
 				if inRoute.Matchedkr.ShardID != route.Matchedkr.ShardID {
-					return nil, CrossShardQueryUnsupported
+					return nil, ErrCrossShardQueryUnsupported
 				}
 			}
 		}
@@ -156,7 +144,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 
 	case *pgquery.Node_AExpr:
 		if texpr.AExpr.Kind != pgquery.A_Expr_Kind_AEXPR_OP {
-			return nil, ComplexQuery
+			return nil, ErrComplexQuery
 		}
 
 		colnames, err := qr.DeparseExprCol(texpr.AExpr.Lexpr)
@@ -167,7 +155,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
 
 		if err := ops.CheckShardingRule(ctx, qr.qdb, colnames); err == nil {
-			return nil, ShardingKeysMissing
+			return nil, ErrShardingKeysMissing
 		}
 
 		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
@@ -176,7 +164,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		}
 		return route, nil
 	default:
-		return nil, ComplexQuery
+		return nil, ErrComplexQuery
 	}
 }
 
@@ -187,18 +175,19 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node
 	case *pgquery.Node_SelectStmt:
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "select stmt values list len is %d", len(q.SelectStmt.ValuesLists))
 		if len(q.SelectStmt.ValuesLists) == 0 {
-			return nil, ComplexQuery
+			return nil, ErrComplexQuery
 		}
 		// route using first tuple from `VALUES` clause
 		valNode := q.SelectStmt.ValuesLists[0]
 		return qr.RouteKeyWithRanges(ctx, colindx, valNode)
 	}
 
-	return nil, ComplexQuery
+	return nil, ErrComplexQuery
 }
 
 func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt) (ShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
+	const noshard = ""
 	switch stmt := qstmt.Stmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
 		clause := stmt.SelectStmt.WhereClause
@@ -209,7 +198,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if err != nil {
 			return nil, err
 		}
-		if shroute.Shkey.Name == NOSHARD {
+		if shroute.Shkey.Name == noshard {
 			return nil, err
 		}
 		return shroute, nil
@@ -221,11 +210,11 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				case *pgquery.Node_ResTarget:
 					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
 					if err := ops.CheckShardingRule(ctx, qr.qdb, []string{res.ResTarget.Name}); err == nil {
-						return nil, ShardingKeysMissing
+						return nil, ErrShardingKeysMissing
 					}
 					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
 				default:
-					return nil, ShardingKeysMissing
+					return nil, ErrShardingKeysMissing
 				}
 			}(); err != nil {
 				continue
@@ -233,7 +222,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 				return sr, nil
 			}
 		}
-		return nil, ShardingKeysMissing
+		return nil, ErrShardingKeysMissing
 
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
@@ -245,8 +234,8 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if err != nil {
 			return nil, err
 		}
-		if shroute.Shkey.Name == NOSHARD {
-			return nil, CrossShardQueryUnsupported
+		if shroute.Shkey.Name == noshard {
+			return nil, ErrCrossShardQueryUnsupported
 		}
 		return shroute, nil
 	case *pgquery.Node_DeleteStmt:
@@ -259,15 +248,15 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if err != nil {
 			return nil, err
 		}
-		if shroute.Shkey.Name == NOSHARD {
-			return nil, CrossShardQueryUnsupported
+		if shroute.Shkey.Name == noshard {
+			return nil, ErrCrossShardQueryUnsupported
 		}
 		return shroute, nil
 	case *pgquery.Node_CopyStmt:
-		if !stmt.CopyStmt.IsFrom {
-			// COPY TO STOUT
-
-		}
+		// TODO
+		// if !stmt.CopyStmt.IsFrom {
+		// 	// COPY TO STOUT
+		// }
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "copy query was: %s", qstmt.Stmt.String())
 		clause := stmt.CopyStmt.WhereClause
 		if clause == nil {
@@ -279,24 +268,22 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if err != nil {
 			return nil, err
 		}
-		if shroute.Shkey.Name == NOSHARD {
-			return nil, CrossShardQueryUnsupported
+		if shroute.Shkey.Name == noshard {
+			return nil, ErrCrossShardQueryUnsupported
 		}
 		return shroute, nil
 	}
 
-	return nil, ComplexQuery
+	return nil, ErrComplexQuery
 }
 
-var ParseError = fmt.Errorf("parsing stmt error")
-
-func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgquery.Node_CreateStmt) error {
+func (qr *ProxyQrouter) checkTableShardingColumns(ctx context.Context, node *pgquery.Node_CreateStmt) error {
 
 	for _, elt := range node.CreateStmt.TableElts {
 		switch eltTar := elt.Node.(type) {
 		case *pgquery.Node_ColumnDef:
 			// TODO: multi-column sharding rules checks
-			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.RuleIntersec {
+			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.ErrRuleIntersec {
 				return nil
 			}
 		default:
@@ -304,7 +291,7 @@ func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgq
 		}
 	}
 
-	return ShardingKeysMissing
+	return ErrShardingKeysMissing
 }
 
 func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
@@ -315,7 +302,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 	}
 
 	if len(parsedStmt.Stmts) > 1 {
-		return nil, ComplexQuery
+		return nil, ErrComplexQuery
 	}
 
 	stmt := parsedStmt.Stmts[0]
@@ -327,7 +314,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 		/*
 		* Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableShardingColumns(ctx, node); err != nil {
+		if err := qr.checkTableShardingColumns(ctx, node); err != nil {
 			return nil, err
 		}
 		return MultiMatchState{}, nil

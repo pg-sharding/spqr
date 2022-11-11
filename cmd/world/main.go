@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Logger.Fatal(err)
 	}
 }
 

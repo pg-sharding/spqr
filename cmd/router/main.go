@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -9,13 +10,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/app"
 	router "github.com/pg-sharding/spqr/router/pkg"
 )
@@ -39,7 +37,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.Fatal(err)
 	}
 }
 
@@ -81,7 +79,7 @@ var runCmd = &cobra.Command{
 
 		router, err := router.NewRouter(ctx, &rcfg)
 		if err != nil {
-			return errors.Wrap(err, "router failed to start")
+			return fmt.Errorf("failed to start router: %w", err)
 		}
 
 		app := app.NewApp(router)

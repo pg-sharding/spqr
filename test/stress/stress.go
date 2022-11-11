@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wal-g/tracelog"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
+	
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 const (
@@ -32,7 +32,7 @@ func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error)
 	for i := 0; i < retryCnt; i++ {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
 		if err != nil {
-			tracelog.ErrorLogger.PrintError(fmt.Errorf("error while connecting to postgresql: %w", err))
+			spqrlog.Logger.PrintError(fmt.Errorf("error while connecting to postgresql: %w", err))
 			continue
 		}
 		return db, nil
@@ -51,18 +51,18 @@ func simple() {
 
 			conn, err := getConn(ctx, dbname, 2)
 			if err != nil {
-				tracelog.ErrorLogger.PrintError(fmt.Errorf("stress test FAILED %w", err))
+				spqrlog.Logger.PrintError(fmt.Errorf("stress test FAILED %w", err))
 				panic(err)
 			}
 			defer func(conn *sqlx.DB) {
 				err := conn.Close()
 				if err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+					spqrlog.Logger.PrintError(err)
 				}
 			}(conn)
 
 			if _, err := conn.Query(fmt.Sprintf("SELECT * FROM %s WHERE i = %d", relation, 1+r.Intn(10))); err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+				spqrlog.Logger.PrintError(err)
 				panic(err)
 			}
 

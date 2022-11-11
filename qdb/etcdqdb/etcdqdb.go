@@ -68,7 +68,7 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
 	return err
 }
 
-func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
+func (q *EtcdQDB) DropAllKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -394,7 +394,7 @@ func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 	return nil
 }
 
-func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*qdb.ShardingRule, error) {
+func (q *EtcdQDB) DropAllShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send req to qdb")
 	resp, err := q.cli.Delete(ctx, shardingRulesNamespace, clientv3.WithPrefix())
 	if err != nil {

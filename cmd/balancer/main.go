@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeAdminConsole(ctx, &bCfg)
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Logger.Fatal(err)
 			wg.Done()
 		}(wg)
 
@@ -68,7 +68,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Logger.Fatal(err)
 	}
 }
 

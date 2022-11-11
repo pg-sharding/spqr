@@ -7,19 +7,17 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pg-sharding/spqr/router/pkg/rule"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/pkg/rule"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 )
+
+var FailedToResonseError = "failed to response an error: %w"
 
 type RuleRouter interface {
 	Shutdown() error
@@ -46,7 +44,7 @@ type RuleRouterImpl struct {
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	tracelog.InfoLogger.Printf("added world datashard to rrouter %v", key.Name)
+	spqrlog.Logger.Printf(spqrlog.LOG, "added world datashard to rrouter %v", key.Name)
 	return nil
 }
 
@@ -139,30 +137,12 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
-		for _, msg := range []pgproto3.BackendMessage{
-			&pgproto3.ErrorResponse{
-				Message: err.Error(),
-			},
-		} {
-			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure responce")
-			}
-		}
-		return nil, err
+		return nil, cl.ReplyAndReturnError(err)
 	}
 
 	beRule, err := r.rmgr.MatchKeyBackend(key)
 	if err != nil {
-		for _, msg := range []pgproto3.BackendMessage{
-			&pgproto3.ErrorResponse{
-				Message: err.Error(),
-			},
-		} {
-			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure responce")
-			}
-		}
-		return nil, err
+		return nil, cl.ReplyAndReturnError(err)
 	}
 
 	_ = cl.AssignRule(frRule)

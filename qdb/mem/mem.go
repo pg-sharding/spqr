@@ -12,14 +12,10 @@ import (
 
 type QrouterDBMem struct {
 	mu   sync.RWMutex
-	txmu sync.Mutex
-
 	freq  map[string]bool
 	krs   map[string]*qdb.KeyRange
 	locks map[string]*sync.RWMutex
-
 	shards map[string]*qdb.Shard
-
 	shrules map[string]*qdb.ShardingRule
 }
 
@@ -43,7 +39,7 @@ func (q *QrouterDBMem) DropShardingRule(ctx context.Context, id string) error {
 	return nil
 }
 
-func (q *QrouterDBMem) DropShardingRuleAll(ctx context.Context) ([]*qdb.ShardingRule, error) {
+func (q *QrouterDBMem) DropAllShardingRules(ctx context.Context) ([]*qdb.ShardingRule, error) {
 	//TODO implement me
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -99,7 +95,7 @@ func (q *QrouterDBMem) GetKeyRange(ctx context.Context, id string) (*qdb.KeyRang
 	return krs, nil
 }
 
-func (q *QrouterDBMem) DropKeyRangeAll(ctx context.Context) ([]*qdb.KeyRange, error) {
+func (q *QrouterDBMem) DropAllKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -207,7 +203,7 @@ func (q *QrouterDBMem) CheckLocked(ctx context.Context, KeyRangeID string) (*qdb
 	return krs, nil
 }
 
-func (q *QrouterDBMem) Unlock(_ context.Context, KeyRangeID string) error {
+func (q *QrouterDBMem) UnlockKeyRange(_ context.Context, KeyRangeID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

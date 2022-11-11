@@ -2,9 +2,9 @@ package qrouter
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgproto3/v2"
-	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -12,20 +12,17 @@ import (
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 )
 
+var _ QueryRouter = &LocalQrouter{}
+
 type LocalQrouter struct {
 	QueryRouter
 	ds     *datashards.DataShard
 	parser parser.QParser
 }
 
-var _ QueryRouter = &LocalQrouter{}
-
 func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, error) {
 	if len(shardMapping) != 1 {
-		errmsg := "local router support only single-datashard routing"
-		err := errors.New(errmsg)
-		spqrlog.Logger.PrintError(err)
-		return nil, err
+		return nil, fmt.Errorf("local router support only single-datashard routing")
 	}
 
 	l := &LocalQrouter{}

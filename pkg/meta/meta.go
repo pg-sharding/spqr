@@ -74,7 +74,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	case *spqrparser.DropAll:
 		switch stmt.Entity {
 		case spqrparser.EntityKeyRanges:
-			if krids, err := mgr.DropKeyRangeAll(ctx); err != nil {
+			if krids, err := mgr.DropAllKeyRanges(ctx); err != nil {
 				return err
 			} else {
 				return cli.DropKeyRange(ctx, func() []string {
@@ -88,7 +88,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 				}(), cl)
 			}
 		case spqrparser.EntityShardingRule:
-			if rules, err := mgr.DropShardingRuleAll(ctx); err != nil {
+			if rules, err := mgr.DropAllShardingRules(ctx); err != nil {
 				return err
 			} else {
 				return cli.DropShardingRule(ctx, func() string {
@@ -144,7 +144,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
 	case *spqrparser.Unlock:
-		if err := mgr.Unlock(ctx, stmt.KeyRangeID); err != nil {
+		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)

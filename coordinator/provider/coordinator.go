@@ -6,24 +6,21 @@ import (
 	"net"
 	"time"
 
-	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/routers"
-
-	"github.com/pg-sharding/spqr/qdb/ops"
-
-	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/clientinteractor"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/jackc/pgproto3/v2"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/models/routers"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/qdb/ops"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
@@ -216,7 +213,7 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	})
 }
 
-func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (qc *qdbCoordinator) DropAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all sharding keys")
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -244,8 +241,7 @@ func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.Sh
 		return nil, err
 	}
 
-	// Drop sharding rules from qdb.
-	rules, err := qc.db.DropShardingRuleAll(ctx)
+	rules, err := qc.db.DropAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +336,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 }
 
 func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
-	return qc.db.Unlock(ctx, keyRangeID)
+	return qc.db.UnlockKeyRange(ctx, keyRangeID)
 }
 
 // Split TODO: check bounds and keyRangeID (sourceID)
@@ -355,7 +351,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, req.SourceID); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, req.SourceID); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
@@ -380,7 +376,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld)
 }
 
-func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qc *qdbCoordinator) DropAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	// TODO: exclusive lock all routers
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all key ranges")
 
@@ -394,7 +390,7 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, 
 	}
 
 	// Drop key ranges from qdb.
-	rules, err := qc.db.DropKeyRangeAll(ctx)
+	rules, err := qc.db.DropAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -446,25 +442,25 @@ func (qc *qdbCoordinator) DropShardingRule(ctx context.Context, id string) error
 	return qc.db.DropShardingRule(ctx, id)
 }
 
-func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft)
+func (qc *qdbCoordinator) MergeKeyRanges(ctx context.Context, mergeKeyRange *kr.MergeKeyRange) error {
+	krLeft, err := qc.db.LockKeyRange(ctx, mergeKeyRange.KeyRangeIDLeft)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, mergeKeyRange.KeyRangeIDLeft); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
 
-	krRight, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight)
+	krRight, err := qc.db.LockKeyRange(ctx, mergeKeyRange.KeyRangeIDRight)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, mergeKeyRange.KeyRangeIDRight); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
@@ -514,7 +510,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	defer qc.db.Unlock(ctx, req.Krid)
+	defer qc.db.UnlockKeyRange(ctx, req.Krid)
 
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {

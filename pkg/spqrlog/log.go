@@ -88,6 +88,6 @@ func (el *errorLogger) PrintError(err error) {
 	el.logMp[ERROR].Printf("%v", err)
 }
 
-func (el *errorLogger) FatalOnError(err error) {
+func (el *errorLogger) Fatal(err error) {
 	el.logMp[FATAL].Fatalf("%v", err)
 }

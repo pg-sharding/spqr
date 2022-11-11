@@ -9,6 +9,8 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
+var ErrRuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
+
 func validateShard(ctx context.Context, qdb qdb.QrouterDB, id string) error {
 	_, err := qdb.GetShardInfo(ctx, id)
 	return err
@@ -42,8 +44,6 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	return qdb.AddKeyRange(ctx, keyRange)
 }
 
-var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
-
 func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string
 		}
 
 		if fullMatch {
-			return RuleIntersec
+			return ErrRuleIntersec
 		}
 	}
 

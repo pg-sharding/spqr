@@ -51,7 +51,7 @@ func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.D
 }
 
 func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
-	_, err := l.qr.DropKeyRangeAll(ctx)
+	_, err := l.qr.DropAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := l.qr.Unlock(ctx, id); err != nil {
+		if err := l.qr.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -157,7 +157,7 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 }
 
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
-	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
+	if err := l.qr.SplitKeyRange(ctx, &kr.SplitKeyRange{
 		Krid:     request.KeyRangeInfo.Krid,
 		SourceID: request.KeyRangeInfo.ShardId,
 		Bound:    request.Bound,

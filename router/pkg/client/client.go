@@ -10,18 +10,15 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/pg-sharding/spqr/pkg/client"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pg-sharding/spqr/router/pkg/server"
-	"github.com/pkg/errors"
 )
 
-var NotRouted = fmt.Errorf("client not routed")
+var ErrClientNotRouted = fmt.Errorf("client not routed")
 
 type RouterPreparedStatement struct {
 	query string
@@ -357,7 +354,7 @@ func (cl *PsqlClient) Server() server.Server {
 
 func (cl *PsqlClient) Unroute() error {
 	if cl.server == nil {
-		return NotRouted
+		return ErrClientNotRouted
 	}
 	cl.server = nil
 	return nil
@@ -476,10 +473,10 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 			return nil
 			// TODO:
 		case config.AuthNotOK:
-			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
+			return fmt.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 		case config.AuthClearText:
 			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
-				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
+				return fmt.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 			}
 			return nil
 		case config.AuthMD5:
@@ -487,7 +484,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		case config.AuthSCRAM:
 			fallthrough
 		default:
-			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
+			return fmt.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
 		}
 	}(); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
@@ -594,7 +591,7 @@ func (cl *PsqlClient) PasswordMD5() string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "received %T from client", msg)
 	return msg, err
 }
 
@@ -819,11 +816,18 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			return err
+			return fmt.Errorf("failed to response an error: %w", err)
 		}
 	}
 
 	return nil
+}
+
+func (cl *PsqlClient) ReplyAndReturnError(msg error) error {
+	if err := cl.ReplyErrMsg(msg.Error()); err != nil {
+		return err
+	}
+	return msg
 }
 
 func (cl *PsqlClient) Shutdown() error {
