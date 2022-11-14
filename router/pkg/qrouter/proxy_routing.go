@@ -331,7 +331,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 			return nil, err
 		}
 		return MultiMatchState{}, nil
-	case *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
+	case *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt, *pgquery.Node_IndexStmt:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return MultiMatchState{}, nil
