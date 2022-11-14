@@ -375,96 +375,101 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 // startup + ssl
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
+	
+	for {
+		var backend *pgproto3.Backend
 
-	var backend *pgproto3.Backend
+		var sm *pgproto3.StartupMessage
 
-	var sm *pgproto3.StartupMessage
 
-	headerRaw := make([]byte, 4)
+		headerRaw := make([]byte, 4)
 
-	_, err := cl.conn.Read(headerRaw)
-	if err != nil {
-		return err
-	}
-
-	msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
-	msg := make([]byte, msgSize)
-
-	_, err = cl.conn.Read(msg)
-	if err != nil {
-		return err
-	}
-
-	protoVer := binary.BigEndian.Uint32(msg)
-
-	switch protoVer {
-	case conn.SSLREQ:
-		if tlsconfig == nil {
-			cl.be = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-			spqrlog.Logger.Errorf("ssl mode is requested but ssl is disabled")
-			_ = cl.ReplyErrMsg("ssl mode is requested but ssl is disabled")
-			return fmt.Errorf("ssl mode is requested but ssl is disabled")
-		}
-
-		_, err := cl.conn.Write([]byte{'S'})
+		_, err := cl.conn.Read(headerRaw)
 		if err != nil {
 			return err
 		}
 
-		cl.conn = tls.Server(cl.conn, tlsconfig)
+		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
+		msg := make([]byte, msgSize)
 
-		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+		_, err = cl.conn.Read(msg)
+		if err != nil {
+			return err
+		}
 
-		frsm, err := backend.ReceiveStartupMessage()
+		protoVer := binary.BigEndian.Uint32(msg)
 
-		switch msg := frsm.(type) {
-		case *pgproto3.StartupMessage:
-			sm = msg
+		if protoVer == conn.SSLREQ && tlsconfig == nil {
+			_, err := cl.conn.Write([]byte{'N'})
+			if err != nil {
+				return err
+			}
+			// proceed next iter, for protocol version number or GSSAPI interaction
+			continue;
+		}
+
+		switch protoVer {
+		case conn.SSLREQ:
+			_, err := cl.conn.Write([]byte{'S'})
+			if err != nil {
+				return err
+			}
+
+			cl.conn = tls.Server(cl.conn, tlsconfig)
+
+			backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+
+			frsm, err := backend.ReceiveStartupMessage()
+
+			switch msg := frsm.(type) {
+			case *pgproto3.StartupMessage:
+				sm = msg
+			default:
+				return fmt.Errorf("got unexpected message type %T", frsm)
+			}
+
+			if err != nil {
+				return err
+			}
+		//
+		case pgproto3.ProtocolVersionNumber:
+			// reuse
+			sm = &pgproto3.StartupMessage{}
+			err = sm.Decode(msg)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+				return err
+			}
+			backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+			if err != nil {
+				spqrlog.Logger.PrintError(err)
+				return err
+			}
+		case conn.CANCELREQ:
+			return fmt.Errorf("cancel is not supported")
 		default:
-			return fmt.Errorf("got unexpected message type %T", frsm)
+			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
 
-		if err != nil {
-			return err
+		for k, v := range sm.Parameters {
+			cl.SetParam(k, v)
 		}
-	//
-	case pgproto3.ProtocolVersionNumber:
-		// reuse
-		sm = &pgproto3.StartupMessage{}
-		err = sm.Decode(msg)
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
-			return err
+
+		cl.startupMsg = sm
+		cl.be = backend
+
+		if tlsconfig != nil && protoVer != conn.SSLREQ {
+			if err := cl.Send(
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Message:  "SSL IS REQUIRED",
+				}); err != nil {
+				return err
+			}
 		}
-		backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
-			return err
-		}
-	case conn.CANCELREQ:
-		return fmt.Errorf("cancel is not supported")
-	default:
-		return fmt.Errorf("protocol number %d not supported", protoVer)
+
+		return nil
 	}
-
-	for k, v := range sm.Parameters {
-		cl.SetParam(k, v)
-	}
-
-	cl.startupMsg = sm
-	cl.be = backend
-
-	if tlsconfig != nil && protoVer != conn.SSLREQ {
-		if err := cl.Send(
-			&pgproto3.ErrorResponse{
-				Severity: "ERROR",
-				Message:  "SSL IS REQUIRED",
-			}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
