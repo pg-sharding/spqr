@@ -18,6 +18,9 @@ func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.Back
 	case *pgproto3.AuthenticationOk:
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
+		if berule.AuthRule == nil {
+			return fmt.Errorf("auth rule not set for %s-%s", berule.DB, berule.Usr)
+		}
 		hash := md5.New()
 		hash.Write([]byte(berule.AuthRule.Password + berule.Usr))
 		res := hash.Sum(nil)
