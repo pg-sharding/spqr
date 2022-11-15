@@ -12,7 +12,6 @@ import (
 
 	"github.com/pg-sharding/spqr/qdb/ops"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -21,7 +20,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/mem"
-	"github.com/pg-sharding/spqr/router/pkg/parser"
 )
 
 type ProxyQrouter struct {
@@ -39,8 +37,6 @@ type ProxyQrouter struct {
 	initialized *atomic.Bool
 
 	qdb qdb.QrouterDB
-
-	parser parser.QParser
 }
 
 func (qr *ProxyQrouter) Initialized() bool {
@@ -192,10 +188,6 @@ func NewProxyRouter(shardMapping map[string]*config.Shard) (*ProxyQrouter, error
 		}
 	}
 	return proxy, nil
-}
-
-func (qr *ProxyQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
-	return qr.parser.Parse(q)
 }
 
 func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {

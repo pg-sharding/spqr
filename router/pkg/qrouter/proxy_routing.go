@@ -26,6 +26,7 @@ func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
+var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("shardiung keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
@@ -80,6 +81,8 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 		}
 	}
 
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "failed to match key with ranges")
+
 	return nil, ComplexQuery
 }
 
@@ -122,6 +125,8 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 			return nil, ComplexQuery
 		}
 		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[colindx])
+	case *pgquery.Node_ColumnRef:
+		return nil, SkipColumn
 	default:
 		return nil, ComplexQuery
 	}
@@ -133,23 +138,31 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_BoolExpr:
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "bool expr routing")
-		var route *DataShardRoute
+		var route *DataShardRoute = nil
 		var err error
-		for i, inExpr := range texpr.BoolExpr.Args {
-			if i == 0 {
+		for _, inExpr := range texpr.BoolExpr.Args {
+			if route == nil {
 				route, err = qr.routeByClause(ctx, inExpr)
 				if err != nil {
-					return nil, err
+					// failed to parse some references
+					// ingore
+					continue
 				}
 			} else {
 				inRoute, err := qr.routeByClause(ctx, inExpr)
 				if err != nil {
-					return nil, err
+					// failed to parse some references
+					// ingore
+					continue
 				}
 				if inRoute.Matchedkr.ShardID != route.Matchedkr.ShardID {
 					return nil, CrossShardQueryUnsupported
 				}
 			}
+		}
+
+		if route == nil {
+			return nil, ComplexQuery
 		}
 
 		return route, nil
@@ -304,15 +317,10 @@ func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgq
 		}
 	}
 
-	return ShardingKeysMissing
+	return nil
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
-	parsedStmt, err := qr.parser.Stmt()
-
-	if err != nil {
-		return nil, err
-	}
+func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResult) (RoutingState, error) {
 
 	if len(parsedStmt.Stmts) > 1 {
 		return nil, ComplexQuery
@@ -331,6 +339,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 			return nil, err
 		}
 		return MultiMatchState{}, nil
+
+	case *pgquery.Node_IndexStmt: 	
+		/*
+		* Disallow to index on table which does not contain any sharding column
+		 */
+		// XXX: doit
+		return MultiMatchState{}, nil
 	case *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
@@ -341,9 +356,30 @@ func (qr *ProxyQrouter) Route(ctx context.Context) (RoutingState, error) {
 	case *pgquery.Node_CreateRoleStmt, *pgquery.Node_CreatedbStmt:
 		// forbid under separate setting
 		return MultiMatchState{}, nil
+	case *pgquery.Node_InsertStmt:
+		routes, err := qr.matchShards(ctx, stmt)
+		if err != nil {
+			switch err {
+			case ShardingKeysMissing:
+				return MultiMatchState{}, nil
+			}
+			return nil, err
+		}
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed shard %+v", routes)
+		switch v := routes.(type) {
+		case *DataShardRoute:
+			return ShardMatchState{
+				Routes: []*DataShardRoute{v},
+			}, nil
+		case *MultiMatchRoute:
+			return MultiMatchState{}, nil
+		}
+		return SkipRoutingState{}, nil
 	default:
 		routes, err := qr.matchShards(ctx, stmt)
 		if err != nil {
+			spqrlog.Logger.Errorf("parse error %v", err)
 			return nil, err
 		}
 

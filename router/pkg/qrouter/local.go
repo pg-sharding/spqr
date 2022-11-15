@@ -3,12 +3,12 @@ package qrouter
 import (
 	"context"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 )
 
@@ -60,7 +60,7 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard)
 	return nil
 }
 
-func (l *LocalQrouter) Route(_ context.Context) (RoutingState, error) {
+func (l *LocalQrouter) Route(_ context.Context, _ *pgquery.ParseResult) (RoutingState, error) {
 	return ShardMatchState{
 		Routes: []*DataShardRoute{
 			{
@@ -70,11 +70,4 @@ func (l *LocalQrouter) Route(_ context.Context) (RoutingState, error) {
 			},
 		},
 	}, nil
-}
-
-func (l *LocalQrouter) Parse(q *pgproto3.Query) (parser.ParseState, error) {
-	if stmt, err := l.parser.Parse(q); err == nil {
-		return stmt, nil
-	}
-	return parser.ParseStateQuery{}, nil
 }

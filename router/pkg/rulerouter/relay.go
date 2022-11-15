@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
 
@@ -66,6 +67,8 @@ type RelayStateImpl struct {
 	routingState qrouter.RoutingState
 
 	Qr      qrouter.QueryRouter
+	qp      parser.QParser
+	stmts   *pgquery.ParseResult
 	Cl      client.RouterClient
 	manager PoolMgr
 
@@ -211,7 +214,9 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
-	routingState, err := rst.Qr.Route(context.TODO())
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "rerouting client %p", rst.Client())
+
+	routingState, err := rst.Qr.Route(context.TODO(), rst.stmts)
 	if err != nil {
 		return err
 	}
@@ -493,7 +498,9 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.Query) {
 }
 
 func (rst *RelayStateImpl) Parse(q *pgproto3.Query) (parser.ParseState, error) {
-	return rst.Qr.Parse(q)
+	state, err := rst.qp.Parse(q)
+	rst.stmts, _ = rst.qp.Stmt()
+	return state, err
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}
