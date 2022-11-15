@@ -6,10 +6,8 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 
-	"github.com/jackc/pgproto3/v2"
-	"github.com/pg-sharding/spqr/router/pkg/parser"
-
 	"github.com/pkg/errors"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -60,9 +58,8 @@ type WorldRouteState struct {
 type QueryRouter interface {
 	meta.EntityMgr
 
-	Route(ctx context.Context) (RoutingState, error)
+	Route(ctx context.Context, stmt *pgquery.ParseResult) (RoutingState, error)
 
-	Parse(q *pgproto3.Query) (parser.ParseState, error)
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute
 

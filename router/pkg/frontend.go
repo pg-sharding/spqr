@@ -6,9 +6,9 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
 
@@ -26,7 +26,7 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 }
 
 func procQuery(rst rulerouter.RelayStateMgr, q *pgproto3.Query, cmngr rulerouter.PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v", q.String)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "%p received query %v", rst.Client(), q.String)
 	state, err := rst.Parse(q)
 	if err != nil {
 		return err
@@ -296,7 +296,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				return rst.Close()
 				// ok
 			default:
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client iter done with %v", err)
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with %v", rst.Client(), err)
 			}
 		}
 	}

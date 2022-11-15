@@ -136,7 +136,9 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 					qp.state = ParseStateSetLocalStmt{}
 					return qp.state, nil
 				}
-				if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_RESET {
+
+				switch q.VariableSetStmt.Kind {
+				case pgquery.VariableSetKind_VAR_RESET:
 					switch q.VariableSetStmt.Name {
 					case "session_authorization", "role":
 						qp.state = ParseStateResetMetadataStmt{
@@ -149,7 +151,11 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 						varStmt.Name = q.VariableSetStmt.Name
 						qp.state = varStmt
 					}
-				} else if q.VariableSetStmt.Kind == pgquery.VariableSetKind_VAR_SET_VALUE {
+
+				case pgquery.VariableSetKind_VAR_SET_MULTI:
+					qp.state = ParseStateSetLocalStmt{}
+					return qp.state, nil
+				case pgquery.VariableSetKind_VAR_SET_VALUE:
 					varStmt := ParseStateSetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name
 

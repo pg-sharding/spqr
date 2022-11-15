@@ -158,7 +158,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					return nil, err
 				}
 
-				spqrlog.Logger.Printf(spqrlog.DEBUG2, "multishard server init: got %T msg from %s shard", msg, m.activeShards[i].Name())
+				spqrlog.Logger.Printf(spqrlog.DEBUG2, "multishard server init: got %v msg from %s shard", msg, m.activeShards[i].Name())
 
 				switch retMsg := msg.(type) {
 				case *pgproto3.CopyOutResponse:
@@ -185,6 +185,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					// ignore
 					// XXX: do not ignore
 					continue
+				case *pgproto3.NoticeResponse:
+					// thats ok
+					continue
 				case *pgproto3.ErrorResponse:
 					if m.multistate != InitialState {
 						return nil, MultiShardSyncBroken
@@ -195,6 +198,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					rollback()
 					return msg, nil
 				default:
+
 					m.states[i] = ErrorState
 					rollback()
 					// sync is broken
