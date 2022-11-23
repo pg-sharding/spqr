@@ -28,6 +28,7 @@ type Client interface {
 	ID() string
 
 	ReplyErrMsg(errmsg string) error
+	ReplyRFQ() error
 	ReplyNotice(message string) error
 	ReplyDebugNotice(msg string) error
 	ReplyDebugNoticef(fmt string, args ...interface{}) error
