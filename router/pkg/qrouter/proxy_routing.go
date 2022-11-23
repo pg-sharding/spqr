@@ -359,9 +359,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	case *pgquery.Node_InsertStmt:
 		routes, err := qr.matchShards(ctx, stmt)
 		if err != nil {
-			switch err {
-			case ShardingKeysMissing:
-				return MultiMatchState{}, nil
+			if qr.cfg.MulticastUnroutableInsertStatement {
+				switch err {
+				case ShardingKeysMissing:
+					return MultiMatchState{}, nil
+				}
 			}
 			return nil, err
 		}

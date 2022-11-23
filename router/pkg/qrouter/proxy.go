@@ -34,6 +34,8 @@ type ProxyQrouter struct {
 	DataShardCfgs  map[string]*config.Shard
 	WorldShardCfgs map[string]*config.Shard
 
+	cfg *config.QRouter
+
 	initialized *atomic.Bool
 
 	qdb qdb.QrouterDB
@@ -160,7 +162,8 @@ func (qr *ProxyQrouter) WorldShards() []string {
 
 	return ret
 }
-func NewProxyRouter(shardMapping map[string]*config.Shard) (*ProxyQrouter, error) {
+
+func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter) (*ProxyQrouter, error) {
 	db, err := mem.NewQrouterDBMem()
 	if err != nil {
 		return nil, err
@@ -171,6 +174,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard) (*ProxyQrouter, error
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
 		initialized:    atomic.NewBool(false),
+		cfg: qcfg,
 	}
 
 	for name, shardCfg := range shardMapping {

@@ -69,12 +69,12 @@ type QueryRouter interface {
 	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
-func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard) (QueryRouter, error) {
+func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, qcfg *config.QRouter) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
 		return NewLocalQrouter(shardMapping)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping)
+		return NewProxyRouter(shardMapping, qcfg)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}
