@@ -54,7 +54,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	qtype := config.RouterMode(rcfg.RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 
-	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping)
+	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, &rcfg.Qr)
 	if err != nil {
 		return nil, err
 	}

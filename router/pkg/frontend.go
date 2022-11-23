@@ -220,7 +220,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			case *pgproto3.Terminate:
 				return nil
 			case *pgproto3.Sync:
-				return rst.ProcessMessage(q, true, true, cmngr)
+				return rst.Sync(true, true, cmngr)
 			case *pgproto3.Parse:
 				hash := murmur3.Sum64([]byte(q.Query))
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)

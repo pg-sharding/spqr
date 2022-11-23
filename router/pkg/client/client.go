@@ -831,6 +831,21 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 	return nil
 }
 
+func (cl *PsqlClient) ReplyRFQ() error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(conn.TXIDLE),
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+
 func (cl *PsqlClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{

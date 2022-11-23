@@ -48,6 +48,8 @@ type RelayStateMgr interface {
 	ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
+	Sync(waitForResp, replyCl bool, cmngr PoolMgr) error
+
 	TxStatus() conn.TXStatus
 	RouterMode() config.RouterMode
 }
@@ -214,7 +216,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "rerouting client %p", rst.Client())
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "rerouting client %p by %v", rst.Client(), rst.stmts)
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.stmts)
 	if err != nil {
@@ -550,6 +552,33 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
 		return ok, nil
 	}
+}
+
+func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error {
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "exetute sync for client relay %p", rst.Client())
+	// if we have no active connections, we have noting to sync 
+	if cmngr.ValidateReRoute(rst) {
+		return rst.Client().ReplyRFQ()
+	}
+	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
+		return err
+	}
+
+	if _, _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+		return err
+	}
+
+	if _, err := rst.RelayStep(&pgproto3.Sync{}, waitForResp, replyCl); err != nil {
+		return err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
+	return nil
 }
 
 func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error {
