@@ -7,7 +7,7 @@
 
 SPQR is a system for horizontal scaling of PostgreSQL via sharding. We appreciate any kind of feedback and contribution to the project.
 
-For more about SPQR, please see [docs/](docs/).
+For more about SPQR, please see [docs/](docs/) and [benchmarks/](benchmarks/).
 
 ## Main features
 
