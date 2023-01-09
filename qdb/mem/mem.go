@@ -82,6 +82,7 @@ func (q *QrouterDBMem) Share(key *qdb.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "sharing key with key %v", key.KeyRangeID)
 
 	q.locks[key.KeyRangeID].RLock()
+	q.locks[key.KeyRangeID].RUnlock()
 
 	return nil
 }
