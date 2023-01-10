@@ -48,7 +48,7 @@ shards:
     pwd: 12345678
     type: WORLD
     hosts:
-      - 'spqr_world_0_1:6432'
+      - 'spqr_world:6432'
 backend_rules:
   - usr: user1
     db: db1

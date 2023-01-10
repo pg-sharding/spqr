@@ -51,8 +51,8 @@ init:
 build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
-test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client 
+e2e: build_images
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client world
 
 stress: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
