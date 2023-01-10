@@ -1,32 +1,34 @@
 version: '3'
 
 services:
-    shardbase:
+    spqr-shard-image:
+        image: spqr-shard-image
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
-    spqrbase:
+    spqr-base-image:
+        image: spqr-base-image
         build:
             dockerfile: ./docker/spqr/Dockerfile
             context: .
     shard1:
-        image:
-            spqr_shardbase
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
         ports:
             - "7432:6432"
-        hostname: spqr_shard_1_1
+        hostname: spqr_shard_1
+        container_name: spqr_shard_1
     shard2:
-        image:
-            spqr_shardbase
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
         ports:
             - "7433:6432"
-        hostname: spqr_shard_2_1
+        hostname: spqr_shard_2
+        container_name: spqr_shard_2
     coordinator:
         build:
             dockerfile: ./docker/coordinator/Dockerfile
@@ -35,17 +37,10 @@ services:
             - "7002:7002"
             - "7003:7003"
         hostname: spqr_coordinator
-#    world1:
-#        image:
-#            spqr_shardbase
-#        build:
-#            dockerfile: ./docker/world/Dockerfile
-#            context: .
-#        hostname: spqr_world_0_1
-#        ports:
-#            - "7434:6432"
+        container_name: spqr_coordinator
     qdb01:
         image: 'bitnami/etcd:latest'
+        container_name: spqr_qdb_0_1
         hostname: spqr_qdb_0_1
         environment:
             ALLOW_NONE_AUTHENTICATION: "yes"
@@ -59,19 +54,16 @@ services:
         ports:
             - "8432:6432"
         hostname: spqr_router_1_1
+        container_name: spqr_router_1_1
     balancer:
         build:
             dockerfile: ./docker/balancer/Dockerfile
             context: .
         hostname: spqr_balancer
-    db0:
-        image:
-            spqr_shardbase
-        ports:
-            - "7435:6432"
-        hostname: spqr_db_0_1
+        container_name: spqr_balancer
     client:
         build:
             dockerfile: ./docker/tests/Dockerfile
             context: .
         hostname: spqr_client
+        container_name: spqr_client

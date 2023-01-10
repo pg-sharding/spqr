@@ -1,4 +1,4 @@
-FROM spqr_spqrbase
+FROM spqr-base-image
 
 # TODO: remove lines
 ADD /docker/balancer/cfg.yaml /spqr/docker/balancer/cfg.yaml

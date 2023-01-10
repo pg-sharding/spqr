@@ -26,7 +26,7 @@ shards:
     pwd: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_1_1:6432'
+      - 'spqr_shard_1:6432'
   sh2:
     tls:
       key_file: /etc/odyssey/ssl/server.key
@@ -37,7 +37,7 @@ shards:
     pwd: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_2_1:6432'
+      - 'spqr_shard_2:6432'
   w1:
     tls:
       key_file: /etc/odyssey/ssl/server.key
