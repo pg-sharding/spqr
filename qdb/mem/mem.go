@@ -21,6 +21,26 @@ type QrouterDBMem struct {
 	shards map[string]*qdb.Shard
 
 	shrules map[string]*qdb.ShardingRule
+
+	keyspaces map[string]*qdb.Keyspace
+}
+
+func (q *QrouterDBMem) AddKeyspace(ctx context.Context, ks *qdb.Keyspace) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.keyspaces[ks.ID] = ks
+
+	return nil
+}
+
+func (q *QrouterDBMem) ListKeyspace(ctx context.Context) ([]*qdb.Keyspace, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	var ret []*qdb.Keyspace
+	for _, v := range q.keyspaces {
+		ret = append(ret, v)
+	}
+	return ret, nil
 }
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {

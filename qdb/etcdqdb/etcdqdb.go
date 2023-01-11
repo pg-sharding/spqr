@@ -30,6 +30,7 @@ type EtcdQDB struct {
 
 const (
 	keyRangesNamespace     = "/keyranges"
+	keyspaceNamespace      = "/keyspaces"
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
@@ -41,6 +42,10 @@ func keyLockPath(key string) string {
 
 func keyRangeNodePath(key string) string {
 	return path.Join(keyRangesNamespace, key)
+}
+
+func keyspaceNodePath(key string) string {
+	return path.Join(keyspaceNamespace, key)
 }
 
 func routerNodePath(key string) string {
@@ -493,6 +498,40 @@ func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard,
 	}
 
 	return shardInfo, nil
+}
+
+func (q *EtcdQDB) AddKeyspace(ctx context.Context, keyspace *qdb.Keyspace) error {
+	resp, err := q.cli.Put(ctx, keyspaceNodePath(keyspace.ID), keyspace.ID)
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) ListKeyspace(ctx context.Context) ([]*qdb.Keyspace, error) {
+	namespacePrefix := keyspaceNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*qdb.Keyspace, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// A sharding rule supports no more than one column for a while.
+		var rule *qdb.Keyspace
+		err := json.Unmarshal(kv.Value, &rule)
+		if err != nil {
+			return nil, err
+		}
+
+		rules = append(rules, rule)
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "list keyspace resp %v", resp)
+	return rules, nil
 }
 
 var _ qdb.QrouterDB = &EtcdQDB{}

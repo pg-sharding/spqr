@@ -3,6 +3,7 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/keyspaces"
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/models/routers"
@@ -441,5 +442,18 @@ func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string, cl cli
 		}
 	}
 
+	return pi.completeMsg(0, cl)
+}
+
+func (pi *PSQLInteractor) AddKeyspace(ctx context.Context, ks *keyspaces.Keyspace, cl client.Client) error {
+	if err := pi.WriteHeader("add keyspace", cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("created keysapce with id %s", ks.ID()), cl); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
 	return pi.completeMsg(0, cl)
 }
