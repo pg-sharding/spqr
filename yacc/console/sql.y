@@ -341,13 +341,27 @@ sharding_rule_entry:
 
 sharding_rule_table_clause:
 	TABLE sharding_table_name
+	{
+       $$ = $2
+    }
 	| /*EMPTY*/	{ $$ = ""; }
 
 sharding_rule_column_clause:
 	COLUMN sharding_column_name
+	{
+		$$ = $2
+	}
+	|
+	COLUMNS sharding_column_name
+	{
+		$$ = $2
+	}/* to be backward-compatable*/
 
 sharding_rule_hash_function_clause:
 	HASH FUNCTION sharding_hash_function_name
+	{
+		$$ = $2
+	}
 	| /*EMPTY*/ { $$ = ""; }
 
 add_shard_stmt:

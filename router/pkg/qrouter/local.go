@@ -7,9 +7,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
 
 type LocalQrouter struct {
@@ -70,4 +71,9 @@ func (l *LocalQrouter) Route(_ context.Context, _ *pgquery.ParseResult) (Routing
 			},
 		},
 	}, nil
+}
+
+func (l *LocalQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+	/* Maybe err is local router would be better*/
+	return nil
 }
