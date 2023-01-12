@@ -47,8 +47,11 @@ func (r Router) ID() string {
 }
 
 type ShardingRule struct {
+	/* will be used to define order in composite key */
 	Colnames []string `json:"columns"`
 	Id       string   `json:"id"`
+	/* map columns name to hash function here */
+	// map[string]string
 }
 
 type Shard struct {
@@ -62,4 +65,8 @@ func NewShard(ID string, hosts []string) *Shard {
 		ID:    ID,
 		Hosts: hosts,
 	}
+}
+
+type Dataspace struct {
+	ID string `json:"id"`
 }

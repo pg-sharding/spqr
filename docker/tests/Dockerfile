@@ -1,4 +1,4 @@
-FROM spqr_spqrbase
+FROM spqr-base-image
 
 COPY --from=networld/grpcurl /grpcurl /usr/bin/
 

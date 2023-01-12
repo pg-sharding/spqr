@@ -5,6 +5,10 @@ import (
 )
 
 type QrouterDB interface {
+	/*
+	* sharding rules
+	 */
+	// AddShardingRule persists sharding rule to qdb
 	AddShardingRule(ctx context.Context, rule *ShardingRule) error
 
 	DropShardingRule(ctx context.Context, id string) error
@@ -12,6 +16,7 @@ type QrouterDB interface {
 
 	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
+	/* key ranges */
 	LockKeyRange(ctx context.Context, keyRangeID string) (*KeyRange, error)
 	Unlock(ctx context.Context, keyRangeID string) error
 
@@ -25,18 +30,21 @@ type QrouterDB interface {
 
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 
+	CheckLocked(ctx context.Context, KeyRangeID string) (*KeyRange, error)
+	Share(key *KeyRange) error
+
+	/* routers (coordinator info) */
 	AddRouter(ctx context.Context, r *Router) error
 	DeleteRouter(ctx context.Context, rID string) error
 	ListRouters(ctx context.Context) ([]*Router, error)
 	LockRouter(ctx context.Context, id string) error
 
-	Check(ctx context.Context, kr *KeyRange) bool
-	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
-
+	/* shards */
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShardInfo(ctx context.Context, shardID string) (*Shard, error)
 
-	CheckLocked(ctx context.Context, KeyRangeID string) (*KeyRange, error)
-	Share(key *KeyRange) error
+	/* dataspaces */
+	AddDataspace(ctx context.Context, ks *Dataspace) error
+	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 }

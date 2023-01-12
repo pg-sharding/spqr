@@ -49,10 +49,10 @@ init:
 	 go mod vendor
 
 build_images:
-	docker-compose build spqrbase shardbase
+	docker-compose build spqr-base-image spqr-shard-image
 
-test: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client 
+e2e: build_images
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client world
 
 stress: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
@@ -77,6 +77,6 @@ clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
 make regress: build_images
-	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator shard1 shard2 regress
+	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
 
 .PHONY: build gen

@@ -11,7 +11,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-13 golang
+    sudo postgresql-13 
 
 ENV PATH=$PATH:"/usr/lib/postgresql/13/lib/pgxs/src/test/regress"
 
@@ -19,4 +19,4 @@ COPY ./ /regress
 RUN chmod a+x /regress/run_tests.sh
 WORKDIR "/regress"
 
-ENTRYPOINT ["go", "run", "entrypoint.go"]
+ENTRYPOINT "./run_tests.sh"
