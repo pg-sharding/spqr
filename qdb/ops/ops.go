@@ -58,15 +58,15 @@ func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Colnames, colnames)
-		if len(rule.Colnames) != len(colnames) {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries[0].Column, colnames)
+		if len(rule.Entries) != len(colnames) {
 			continue
 		}
 
 		fullMatch := true
 
-		for _, v := range rule.Colnames {
-			if _, ok := checkSet[v]; !ok {
+		for _, v := range rule.Entries {
+			if _, ok := checkSet[v.Column]; !ok {
 				fullMatch = false
 				break
 			}

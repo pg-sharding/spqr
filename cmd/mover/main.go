@@ -66,7 +66,7 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key
 SELECT table_schema, table_name
 FROM information_schema.columns
 WHERE column_name=$1;
-`, key.Columns()[0])
+`, key.Entries()[0])
 	if err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ WHERE column_name=$1;
 		}()
 
 		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
-			key.Columns()[0], keyRange.LowerBound, key.Columns()[0], keyRange.UpperBound)
+			key.Entries()[0], keyRange.LowerBound, key.Entries()[0], keyRange.UpperBound)
 
 		spqrlog.Logger.Printf(spqrlog.ERROR, "executing %v", qry)
 
@@ -161,7 +161,7 @@ func main() {
 
 	if err := moveData(ctx,
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
-		shrule.NewShardingRule(shRule.Id, shRule.Colnames)); err != nil {
+		shrule.ShardingRuleFromDB(shRule)); err != nil {
 		spqrlog.Logger.PrintError(err)
 	}
 }

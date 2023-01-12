@@ -29,9 +29,15 @@ type DropStmt interface {
 	iDrop()
 }
 
+type ShardingRuleEntry struct {
+	Column       string
+	HashFunction string
+}
+
 type AddShardingRule struct {
-	ID       string
-	ColNames []string
+	ID        string
+	TableName string
+	Entries   []ShardingRuleEntry
 }
 
 type AddDataspace struct {
@@ -202,6 +208,9 @@ var reservedWords = map[string]int{
 	"host":           HOST,
 	"route":          ROUTE,
 	"dataspace":      DATASPACE,
+	"table":          TABLE,
+	"hash":           HASH,
+	"function":       FUNCTION,
 }
 
 // Tokenizer is the struct used to generate SQL

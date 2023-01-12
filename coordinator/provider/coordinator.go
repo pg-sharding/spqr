@@ -186,7 +186,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.NewShardingRule(rule.Id, rule.Colnames))
+		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 	}
 
 	return shRules, nil
@@ -194,17 +194,14 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
-	if err := qc.db.AddShardingRule(ctx, &qdb.ShardingRule{
-		Colnames: rule.Columns(),
-		Id:       rule.ID(),
-	}); err != nil {
+	if err := qc.db.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule)); err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewShardingRulesServiceClient(cc)
 		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
-			Rules: []*routerproto.ShardingRule{{Columns: rule.Columns()}},
+			Rules: []*routerproto.ShardingRule{shrule.ShardingRuleToProto(rule)},
 		})
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
@@ -573,7 +570,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *route
 	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, shRule := range shardingRules {
 		protoShardingRules = append(protoShardingRules,
-			&routerproto.ShardingRule{Columns: shRule.Colnames, Id: shRule.Id})
+			shrule.ShardingRuleToProto(shrule.ShardingRuleFromDB(shRule)))
 	}
 
 	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{

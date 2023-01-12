@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
-	"net"
-
 	"github.com/pg-sharding/spqr/pkg/models/routers"
+	"net"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -280,7 +279,13 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 
 	for _, rule := range rules {
 
-		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule %v with column set: %+v", rule.Id, rule.Columns()), cl); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule %v with column set: %+v", rule.Id, func() []string {
+			var ret []string
+			for _, el := range rule.Entries() {
+				ret = append(ret, el.Column)
+			}
+			return ret
+		}()), cl); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
@@ -326,7 +331,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created sharding column %s", rule.Columns()), cl); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created sharding rule with enrties: %+v", rule.Entries()), cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

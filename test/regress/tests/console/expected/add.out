@@ -28,9 +28,9 @@ ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
 (1 row)
 
 ADD SHARDING RULE rule1 COLUMNS id;
-      add sharding rule       
-------------------------------
- created sharding column [id]
+                        add sharding rule                        
+-----------------------------------------------------------------
+ created sharding rule with enrties: [{Column:id HashFunction:}]
 (1 row)
 
 SHOW key_ranges;
@@ -61,9 +61,9 @@ DROP KEY RANGE krid1;
 ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
 ERROR:  key range krid2 already present in qdb
 ADD SHARDING RULE rule1 COLUMNS id;
-      add sharding rule       
-------------------------------
- created sharding column [id]
+                        add sharding rule                        
+-----------------------------------------------------------------
+ created sharding rule with enrties: [{Column:id HashFunction:}]
 (1 row)
 
 SHOW key_ranges;

@@ -337,14 +337,10 @@ func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, err
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if len(rule.Columns()) != 1 {
+	if len(rule.Entries()) != 1 {
 		return fmt.Errorf("only single column sharding rules are supported for now")
 	}
-
-	return qr.qdb.AddShardingRule(ctx, &qdb.ShardingRule{
-		Id:       rule.ID(),
-		Colnames: rule.Columns(),
-	})
+	return qr.qdb.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule))
 }
 
 func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {

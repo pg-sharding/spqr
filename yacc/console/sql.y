@@ -32,6 +32,8 @@ package spqrparser
   bytes                []byte
   int                    int
   bool                   bool
+  entrieslist          []ShardingRuleEntry
+  shruleEntry            ShardingRuleEntry
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -52,8 +54,8 @@ package spqrparser
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str> SHARDING COLUMN KEY RANGE DATASPACE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 
@@ -67,6 +69,13 @@ package spqrparser
 %type <dropAll> drop_key_range_all_stmt drop_sharding_rules_all_stmt unregister_routers_all_stmt
 
 %type <add> add_shard_stmt add_key_range_stmt add_sharding_rule_stmt create_dataspace_stmt
+
+%type<entrieslist> sharding_rule_argument_list
+%type<shruleEntry> sharding_rule_entry
+
+%type<str> sharding_rule_table_clause
+%type<str> sharding_rule_column_clause
+%type<str> sharding_rule_hash_function_clause
 
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
@@ -88,7 +97,9 @@ package spqrparser
 %type<str> router_addr
 %type<str> shrule_id
 %type<str> dataspace_id
-%type<str> sharding_column_names
+%type<str> sharding_column_name
+%type<str> sharding_table_name
+%type<str> sharding_hash_function_name
 
 %start any_command
 
@@ -225,7 +236,19 @@ show_stmt:
 		$$ = &Show{Cmd: $2}
 	}
 
-sharding_column_names:
+sharding_column_name:
+	STRING
+	{
+		$$ = string($1)
+	}
+
+sharding_table_name:
+	STRING
+	{
+		$$ = string($1)
+	}
+
+sharding_hash_function_name:
 	STRING
 	{
 		$$ = string($1)
@@ -290,10 +313,55 @@ create_dataspace_stmt:
 //	}
 
 add_sharding_rule_stmt:
-	ADD SHARDING RULE shrule_id COLUMNS sharding_column_names
+	ADD SHARDING RULE shrule_id sharding_rule_table_clause sharding_rule_argument_list
 	{
-		$$ = &Add{Element: &AddShardingRule{ID: $4, ColNames: []string{$6}}}
+		$$ = &Add{Element: &AddShardingRule{ID: $4, TableName: $5, Entries: $6}}
 	}
+
+sharding_rule_argument_list: sharding_rule_entry
+    {
+      $$ = make([]ShardingRuleEntry, 0)
+      $$ = append($$, $1)
+    }
+    |
+    sharding_rule_argument_list sharding_rule_entry
+    {
+      $$ = append($1, $2)
+    }
+
+sharding_rule_entry:
+	sharding_rule_column_clause sharding_rule_hash_function_clause
+	{
+		$$ = ShardingRuleEntry{
+			Column: $1,
+			HashFunction: $2,
+		}
+	}
+
+sharding_rule_table_clause:
+	TABLE sharding_table_name
+	{
+       $$ = $2
+    }
+	| /*EMPTY*/	{ $$ = ""; }
+
+sharding_rule_column_clause:
+	COLUMN sharding_column_name
+	{
+		$$ = $2
+	}
+	|
+	COLUMNS sharding_column_name
+	{
+		$$ = $2
+	}/* to be backward-compatable*/
+
+sharding_rule_hash_function_clause:
+	HASH FUNCTION sharding_hash_function_name
+	{
+		$$ = $3
+	}
+	| /*EMPTY*/ { $$ = ""; }
 
 add_shard_stmt:
 	ADD SHARD shard_id WITH HOST address

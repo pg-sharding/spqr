@@ -82,7 +82,8 @@ func (q *QrouterDBMem) AddShardingRule(ctx context.Context, rule *qdb.ShardingRu
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %v", rule.Colnames)
+	/* Enhance TBD */
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %v", rule.Entries[0].Column)
 
 	q.shrules[rule.Id] = rule
 	return nil
