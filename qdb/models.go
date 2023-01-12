@@ -48,11 +48,11 @@ func (r Router) ID() string {
 
 type ShardingRuleEntry struct {
 	Column       string `json:"column"`
-	TableName    string `json:"table"`
 	HashFunction string `json:"hash"`
 }
 
 type ShardingRule struct {
+	TableName string `json:"table"`
 	/* important to correctly define order in composite key */
 	Entries []ShardingRuleEntry `json:"columns"`
 	Id      string              `json:"id"`

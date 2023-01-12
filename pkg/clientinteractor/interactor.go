@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
-	"net"
-
 	"github.com/pg-sharding/spqr/pkg/models/routers"
+	"net"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -332,13 +331,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created sharding column %s", func() []string {
-		var ret []string
-		for _, el := range rule.Entries() {
-			ret = append(ret, el.Column)
-		}
-		return ret
-	}()), cl); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created sharding rule with enrties: %+v", rule.Entries()), cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

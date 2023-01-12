@@ -61,12 +61,11 @@ func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr,
 		for _, el := range stmt.Entries {
 			argList = append(argList, shrule.ShardingRuleEntry{
 				Column:       el.Column,
-				TableName:    el.Table,
 				HashFunction: el.HashFunction,
 			})
 		}
 
-		shardingRule := shrule.NewShardingRule(stmt.ID, argList)
+		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, argList)
 		err := mngr.AddShardingRule(ctx, shardingRule)
 		if err != nil {
 			return err

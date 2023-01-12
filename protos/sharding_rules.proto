@@ -5,7 +5,6 @@ package spqr;
 option go_package = "spqr/proto";
 
 message ShardingRuleEntry {
-  string tableName = 1;
   string column = 2;
   string hashFunction = 3;
 }
@@ -13,7 +12,8 @@ message ShardingRuleEntry {
 
 message ShardingRule {
   string id = 1;
-  repeated ShardingRuleEntry ShardingRuleEntry = 2;
+  string tableName = 2;
+  repeated ShardingRuleEntry ShardingRuleEntry = 3;
 }
 
 message AddShardingRuleRequest {

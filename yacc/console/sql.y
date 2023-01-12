@@ -54,7 +54,7 @@ package spqrparser
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
@@ -313,9 +313,9 @@ create_dataspace_stmt:
 //	}
 
 add_sharding_rule_stmt:
-	ADD SHARDING RULE shrule_id sharding_rule_argument_list
+	ADD SHARDING RULE shrule_id sharding_rule_table_clause sharding_rule_argument_list
 	{
-		$$ = &Add{Element: &AddShardingRule{ID: $4, Entries: $5}}
+		$$ = &Add{Element: &AddShardingRule{ID: $4, TableName: $5, Entries: $6}}
 	}
 
 sharding_rule_argument_list: sharding_rule_entry
@@ -324,18 +324,17 @@ sharding_rule_argument_list: sharding_rule_entry
       $$ = append($$, $1)
     }
     |
-    sharding_rule_argument_list ',' sharding_rule_entry
+    sharding_rule_argument_list sharding_rule_entry
     {
-      $$ = append($1, $3)
-    };
+      $$ = append($1, $2)
+    }
 
 sharding_rule_entry:
-	sharding_rule_table_clause sharding_rule_column_clause sharding_rule_hash_function_clause
+	sharding_rule_column_clause sharding_rule_hash_function_clause
 	{
 		$$ = ShardingRuleEntry{
-			Table: $1,
-			Column: $2,
-			HashFunction: $3,
+			Column: $1,
+			HashFunction: $2,
 		}
 	}
 
@@ -360,7 +359,7 @@ sharding_rule_column_clause:
 sharding_rule_hash_function_clause:
 	HASH FUNCTION sharding_hash_function_name
 	{
-		$$ = $2
+		$$ = $3
 	}
 	| /*EMPTY*/ { $$ = ""; }
 
