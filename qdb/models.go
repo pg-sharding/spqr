@@ -67,6 +67,6 @@ func NewShard(ID string, hosts []string) *Shard {
 	}
 }
 
-type Keyspace struct {
+type Dataspace struct {
 	ID string `json:"id"`
 }

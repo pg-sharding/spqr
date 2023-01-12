@@ -3,7 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/keyspaces"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"math/rand"
 	"sync"
 
@@ -42,12 +42,12 @@ type ProxyQrouter struct {
 	qdb qdb.QrouterDB
 }
 
-func (qr *ProxyQrouter) ListKeyspace(ctx context.Context) ([]*keyspaces.Keyspace, error) {
+func (qr *ProxyQrouter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
 	//TODO implement me
 	return nil, ErrNotCoordinator
 }
 
-func (qr *ProxyQrouter) AddKeyspace(ctx context.Context, ks *keyspaces.Keyspace) error {
+func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
 	//TODO implement me
 	return ErrNotCoordinator
 }

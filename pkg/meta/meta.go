@@ -3,7 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/keyspaces"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -21,7 +21,7 @@ type EntityMgr interface {
 	shrule.ShardingRulesMgr
 	routers.RouterMgr
 	datashards.ShardsMgr
-	keyspaces.KeyspaceMgr
+	dataspaces.DataspaceMgr
 }
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
@@ -49,13 +49,13 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 
 func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := astmt.(type) {
-	case *spqrparser.AddKeyspace:
-		keyspace := keyspaces.NewKeyspace(stmt.ID)
-		err := mngr.AddKeyspace(ctx, keyspace)
+	case *spqrparser.AddDataspace:
+		dataspace := dataspaces.NewDataspace(stmt.ID)
+		err := mngr.AddDataspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
-		return cli.AddKeyspace(ctx, keyspace, cl)
+		return cli.AddDataspace(ctx, dataspace, cl)
 	case *spqrparser.AddShardingRule:
 		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.ColNames)
 		err := mngr.AddShardingRule(ctx, shardingRule)

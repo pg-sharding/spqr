@@ -63,7 +63,7 @@ const SHARDING = 57369
 const COLUMN = 57370
 const KEY = 57371
 const RANGE = 57372
-const KEYSPACE = 57373
+const DATASPACE = 57373
 const SHARDS = 57374
 const KEY_RANGES = 57375
 const ROUTERS = 57376
@@ -111,7 +111,7 @@ var yyToknames = [...]string{
 	"COLUMN",
 	"KEY",
 	"RANGE",
-	"KEYSPACE",
+	"DATASPACE",
 	"SHARDS",
 	"KEY_RANGES",
 	"ROUTERS",
@@ -807,7 +807,7 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line yacc/console/sql.y:282
 		{
-			yyVAL.add = &Add{Element: &AddKeyspace{ID: yyDollar[3].str}}
+			yyVAL.add = &Add{Element: &AddDataspace{ID: yyDollar[3].str}}
 		}
 	case 46:
 		yyDollar = yyS[yypt-6 : yypt+1]

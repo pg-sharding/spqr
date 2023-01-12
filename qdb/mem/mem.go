@@ -22,22 +22,22 @@ type QrouterDBMem struct {
 
 	shrules map[string]*qdb.ShardingRule
 
-	keyspaces map[string]*qdb.Keyspace
+	dataspaces map[string]*qdb.Dataspace
 }
 
-func (q *QrouterDBMem) AddKeyspace(ctx context.Context, ks *qdb.Keyspace) error {
+func (q *QrouterDBMem) AddDataspace(ctx context.Context, ks *qdb.Dataspace) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.keyspaces[ks.ID] = ks
+	q.dataspaces[ks.ID] = ks
 
 	return nil
 }
 
-func (q *QrouterDBMem) ListKeyspace(ctx context.Context) ([]*qdb.Keyspace, error) {
+func (q *QrouterDBMem) ListDataspaces(ctx context.Context) ([]*qdb.Dataspace, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	var ret []*qdb.Keyspace
-	for _, v := range q.keyspaces {
+	var ret []*qdb.Dataspace
+	for _, v := range q.dataspaces {
 		ret = append(ret, v)
 	}
 	return ret, nil
@@ -162,10 +162,6 @@ func (q *QrouterDBMem) DeleteRouter(ctx context.Context, rID string) error {
 
 func (q *QrouterDBMem) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	//TODO implement me
-	panic("implement me")
-}
-
-func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	panic("implement me")
 }
 

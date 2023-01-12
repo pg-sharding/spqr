@@ -53,7 +53,7 @@ package spqrparser
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE
-%token <str> SHARDING COLUMN KEY RANGE KEYSPACE
+%token <str> SHARDING COLUMN KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 
@@ -66,7 +66,7 @@ package spqrparser
 %type <drop> drop_sharding_colimn_stmt drop_key_range_stmt
 %type <dropAll> drop_key_range_all_stmt drop_sharding_rules_all_stmt unregister_routers_all_stmt
 
-%type <add> add_shard_stmt add_key_range_stmt add_sharding_rule_stmt create_keyspace_stmt
+%type <add> add_shard_stmt add_key_range_stmt add_sharding_rule_stmt create_dataspace_stmt
 
 %type <unlock> unlock_stmt unlock_key_range_stmt
 %type <lock> lock_stmt lock_key_range_stmt
@@ -87,7 +87,7 @@ package spqrparser
 %type<str> router_id
 %type<str> router_addr
 %type<str> shrule_id
-%type<str> keyspace_id
+%type<str> dataspace_id
 %type<str> sharding_column_names
 
 %start any_command
@@ -180,7 +180,7 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| create_keyspace_stmt
+	| create_dataspace_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -237,7 +237,7 @@ shrule_id:
 		$$ = string($1)
 	}
 
-keyspace_id:
+dataspace_id:
 	STRING
 	{
 		$$ = string($1)
@@ -277,16 +277,16 @@ add_key_range_stmt:
 		$$ = &Add{Element: &AddKeyRange{LowerBound: $6, UpperBound: $8, ShardID: $11, KeyRangeID: $4}}
 	}
 
-create_keyspace_stmt:
-	CREATE KEYSPACE keyspace_id
+create_dataspace_stmt:
+	CREATE DATASPACE dataspace_id
 	{
-		$$ = &Add{Element: &AddKeyspace{ID: $3}}
+		$$ = &Add{Element: &AddDataspace{ID: $3}}
 	}
 
-//alter_keyspace_stmt:
-//	ALTER KEYSPACE keyspace_id AD SHARDING RULE shrule_id
+//alter_dataspace_stmt:
+//	ALTER DATASPACE dataspace_id AD SHARDING RULE shrule_id
 //	{
-//		$$ = &Alter{Element: &AlterKeyspace{ID: $3}}
+//		$$ = &Alter{Element: &AlterDataspace{ID: $3}}
 //	}
 
 add_sharding_rule_stmt:

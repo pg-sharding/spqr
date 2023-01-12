@@ -34,7 +34,7 @@ type AddShardingRule struct {
 	ColNames []string
 }
 
-type AddKeyspace struct {
+type AddDataspace struct {
 	ID string
 }
 
@@ -52,7 +52,7 @@ type AddShard struct {
 
 func (*AddKeyRange) iAdd()     {}
 func (*AddShard) iAdd()        {}
-func (*AddKeyspace) iAdd()     {}
+func (*AddDataspace) iAdd()    {}
 func (*AddShardingRule) iAdd() {}
 
 type SplitKeyRange struct {
@@ -152,7 +152,7 @@ func (*Listen) iStatement()           {}
 func (*MoveKeyRange) iStatement()     {}
 func (*SplitKeyRange) iStatement()    {}
 func (*UniteKeyRange) iStatement()    {}
-func (*AddKeyspace) iStatement()      {}
+func (*AddDataspace) iStatement()     {}
 func (*AddShardingRule) iStatement()  {}
 func (*AddKeyRange) iStatement()      {}
 func (*AddShard) iStatement()         {}
@@ -201,7 +201,7 @@ var reservedWords = map[string]int{
 	"address":        ADDRESS,
 	"host":           HOST,
 	"route":          ROUTE,
-	"keyspace":       KEYSPACE,
+	"dataspace":      DATASPACE,
 }
 
 // Tokenizer is the struct used to generate SQL

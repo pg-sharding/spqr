@@ -39,16 +39,12 @@ type QrouterDB interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 	LockRouter(ctx context.Context, id string) error
 
-	/* TODO: probably drop those */
-	Check(ctx context.Context, kr *KeyRange) bool
-	Watch(krid string, status *KeyRangeStatus, notifyio chan<- interface{}) error
-
 	/* shards */
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShardInfo(ctx context.Context, shardID string) (*Shard, error)
 
-	/* keyspaces */
-	AddKeyspace(ctx context.Context, ks *Keyspace) error
-	ListKeyspace(ctx context.Context) ([]*Keyspace, error)
+	/* dataspaces */
+	AddDataspace(ctx context.Context, ks *Dataspace) error
+	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 }
