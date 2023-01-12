@@ -168,7 +168,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 		return route, nil
 
 	case *pgquery.Node_AExpr:
-		if texpr.AExpr.Kind != pgquery.A_Expr_Kind_AEXPR_OP {
+		if !(texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_OP || texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_BETWEEN) {
 			return nil, ComplexQuery
 		}
 
@@ -183,7 +183,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 			return nil, ShardingKeysMissing
 		}
 
-		route, err := qr.RouteKeyWithRanges(ctx, -1, texpr.AExpr.Rexpr)
+		route, err := qr.RouteKeyWithRanges(ctx, 0, texpr.AExpr.Rexpr)
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +340,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		}
 		return MultiMatchState{}, nil
 
-	case *pgquery.Node_IndexStmt: 	
+	case *pgquery.Node_IndexStmt:
 		/*
 		* Disallow to index on table which does not contain any sharding column
 		 */
