@@ -21,6 +21,26 @@ type QrouterDBMem struct {
 	shards map[string]*qdb.Shard
 
 	shrules map[string]*qdb.ShardingRule
+
+	dataspaces map[string]*qdb.Dataspace
+}
+
+func (q *QrouterDBMem) AddDataspace(ctx context.Context, ks *qdb.Dataspace) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.dataspaces[ks.ID] = ks
+
+	return nil
+}
+
+func (q *QrouterDBMem) ListDataspaces(ctx context.Context) ([]*qdb.Dataspace, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	var ret []*qdb.Dataspace
+	for _, v := range q.dataspaces {
+		ret = append(ret, v)
+	}
+	return ret, nil
 }
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
@@ -142,10 +162,6 @@ func (q *QrouterDBMem) DeleteRouter(ctx context.Context, rID string) error {
 
 func (q *QrouterDBMem) ListRouters(ctx context.Context) ([]*qdb.Router, error) {
 	//TODO implement me
-	panic("implement me")
-}
-
-func (q *QrouterDBMem) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
 	panic("implement me")
 }
 

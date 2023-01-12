@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"math/rand"
 	"sync"
 
@@ -39,6 +40,16 @@ type ProxyQrouter struct {
 	initialized *atomic.Bool
 
 	qdb qdb.QrouterDB
+}
+
+func (qr *ProxyQrouter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
+	//TODO implement me
+	return nil, ErrNotCoordinator
+}
+
+func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
+	//TODO implement me
+	return ErrNotCoordinator
 }
 
 func (qr *ProxyQrouter) Initialized() bool {
@@ -174,7 +185,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter)
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
 		initialized:    atomic.NewBool(false),
-		cfg: qcfg,
+		cfg:            qcfg,
 	}
 
 	for name, shardCfg := range shardMapping {

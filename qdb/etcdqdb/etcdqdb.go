@@ -30,6 +30,7 @@ type EtcdQDB struct {
 
 const (
 	keyRangesNamespace     = "/keyranges"
+	dataspaceNamespace     = "/dataspaces"
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
@@ -41,6 +42,10 @@ func keyLockPath(key string) string {
 
 func keyRangeNodePath(key string) string {
 	return path.Join(keyRangesNamespace, key)
+}
+
+func dataspaceNodePath(key string) string {
+	return path.Join(dataspaceNamespace, key)
 }
 
 func routerNodePath(key string) string {
@@ -114,11 +119,7 @@ func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
 	return nil
 }
 
-func (q *EtcdQDB) Watch(krid string, status *qdb.KeyRangeStatus, notifyio chan<- interface{}) error {
-	return nil
-}
-
-const keyspace = "key_space"
+const dataspace = "key_space"
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
@@ -181,7 +182,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, keyRangeID string) (*qdb.Key
 	}(sess)
 
 	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*qdb.KeyRange, error) {
-		mu := concurrency.NewMutex(sess, keyspace)
+		mu := concurrency.NewMutex(sess, dataspace)
 		err = mu.Lock(ctx)
 		if err != nil {
 			return nil, err
@@ -264,7 +265,7 @@ func (q *EtcdQDB) Unlock(ctx context.Context, keyRangeID string) error {
 	defer sess.Close()
 
 	unlocker := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) error {
-		mu := concurrency.NewMutex(sess, keyspace)
+		mu := concurrency.NewMutex(sess, dataspace)
 		err = mu.Lock(ctx)
 		if err != nil {
 			return err
@@ -361,10 +362,6 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*qdb.KeyRange, error) {
 	}
 
 	return ret, nil
-}
-
-func (q *EtcdQDB) Check(ctx context.Context, kr *qdb.KeyRange) bool {
-	return true
 }
 
 func (q *EtcdQDB) AddShardingRule(ctx context.Context, shRule *qdb.ShardingRule) error {
@@ -493,6 +490,40 @@ func (q *EtcdQDB) GetShardInfo(ctx context.Context, shardID string) (*qdb.Shard,
 	}
 
 	return shardInfo, nil
+}
+
+func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *qdb.Dataspace) error {
+	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), dataspace.ID)
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "put resp %v", resp)
+	return nil
+}
+
+func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*qdb.Dataspace, error) {
+	namespacePrefix := dataspaceNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*qdb.Dataspace, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// A sharding rule supports no more than one column for a while.
+		var rule *qdb.Dataspace
+		err := json.Unmarshal(kv.Value, &rule)
+		if err != nil {
+			return nil, err
+		}
+
+		rules = append(rules, rule)
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "list dataspace resp %v", resp)
+	return rules, nil
 }
 
 var _ qdb.QrouterDB = &EtcdQDB{}
