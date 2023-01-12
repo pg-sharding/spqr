@@ -280,7 +280,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 
 	for _, rule := range rules {
 
-		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule %v with column set: %+v", rule.Id, rule.Columns()), cl); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule %v with column set: %+v", rule.Id, rule.Entries()), cl); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
@@ -326,7 +326,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created sharding column %s", rule.Columns()), cl); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created sharding column %s", rule.Entries()), cl); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

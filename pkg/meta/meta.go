@@ -57,7 +57,16 @@ func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr,
 		}
 		return cli.AddDataspace(ctx, dataspace, cl)
 	case *spqrparser.AddShardingRule:
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.ColNames)
+		argList := make([]shrule.ShardingRuleEntry, 0)
+		for _, el := range stmt.Entries {
+			argList = append(argList, shrule.ShardingRuleEntry{
+				Column:       el.Column,
+				TableName:    el.Table,
+				HashFunction: el.HashFunction,
+			})
+		}
+
+		shardingRule := shrule.NewShardingRule(stmt.ID, argList)
 		err := mngr.AddShardingRule(ctx, shardingRule)
 		if err != nil {
 			return err

@@ -69,7 +69,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := l.qr.AddShardingRule(ctx, shrule.NewShardingRule(rule.Id, rule.Columns))
+		err := l.qr.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
 
 		if err != nil {
 			return nil, err
@@ -88,10 +88,7 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 	var shardingRules []*protos.ShardingRule
 
 	for _, rule := range rules {
-		shardingRules = append(shardingRules, &protos.ShardingRule{
-			Columns: rule.Columns(),
-			Id:      rule.ID(),
-		})
+		shardingRules = append(shardingRules, shrule.ShardingRuleToProto(rule))
 	}
 
 	return &protos.ListShardingRuleReply{

@@ -15,7 +15,7 @@ type ShardingRulesService struct {
 
 func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := s.impl.AddShardingRule(ctx, shrule.NewShardingRule(rule.Id, rule.Columns))
+		err := s.impl.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
 		if err != nil {
 			return nil, err
 		}
@@ -33,9 +33,7 @@ func (s ShardingRulesService) ListShardingRules(ctx context.Context, request *pr
 	var shardingRules []*protos.ShardingRule
 
 	for _, rule := range rules {
-		shardingRules = append(shardingRules, &protos.ShardingRule{
-			Columns: rule.Columns(),
-		})
+		shardingRules = append(shardingRules, shrule.ShardingRuleToProto(rule))
 	}
 
 	return &protos.ListShardingRuleReply{

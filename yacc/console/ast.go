@@ -29,9 +29,15 @@ type DropStmt interface {
 	iDrop()
 }
 
+type ShardingRuleEntry struct {
+	Table        string
+	Column       string
+	HashFunction string
+}
+
 type AddShardingRule struct {
-	ID       string
-	ColNames []string
+	ID      string
+	Entries []ShardingRuleEntry
 }
 
 type AddDataspace struct {

@@ -46,12 +46,16 @@ func (r Router) ID() string {
 	return r.Id
 }
 
+type ShardingRuleEntry struct {
+	Column       string `json:"column"`
+	TableName    string `json:"table"`
+	HashFunction string `json:"hash"`
+}
+
 type ShardingRule struct {
-	/* will be used to define order in composite key */
-	Colnames []string `json:"columns"`
-	Id       string   `json:"id"`
-	/* map columns name to hash function here */
-	// map[string]string
+	/* important to correctly define order in composite key */
+	Entries []ShardingRuleEntry `json:"columns"`
+	Id      string              `json:"id"`
 }
 
 type Shard struct {
