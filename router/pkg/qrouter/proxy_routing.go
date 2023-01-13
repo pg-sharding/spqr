@@ -3,12 +3,30 @@ package qrouter
 import (
 	"context"
 	"fmt"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
+
+type RoutingMetadataContext struct {
+	// this maps table names to its query-defined restrictions
+	// All columns in query should be considered in context of its table,
+	// to distinguish composite join/select queries routing schemas
+	//
+	// For example,
+	// SELECT * FROM a join b WHERE a.c1 = <val> and b.c2 = <val>
+	// and
+	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
+	// can be routed with different rules
+	rels map[string][]string
+
+	// last matched routing rule or nul
+	routingRule *qdb.ShardingRule
+	offsets     []int
+	// TODO: include client ops and metadata here
+}
 
 func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
 	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
@@ -30,14 +48,14 @@ var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("shardiung keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
-func (qr *ProxyQrouter) DeparseExprCol(expr *pgquery.Node) ([]string, error) {
+func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node) ([]string, error) {
 	var colnames []string
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing column name %T", expr.Node)
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_ColumnRef:
 		for _, node := range texpr.ColumnRef.Fields {
-			spqrlog.Logger.Printf(spqrlog.DEBUG4, "columnref field %T", node.Node)
+			spqrlog.Logger.Printf(spqrlog.DEBUG4, "columnref field %v", node.Node)
 
 			switch colname := node.Node.(type) {
 			case *pgquery.Node_String_:
@@ -97,14 +115,14 @@ func getbytes(val *pgquery.Node) (string, error) {
 	}
 }
 
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, expr *pgquery.Node) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_RowExpr:
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "looking for row expr with columns %+v", texpr.RowExpr.Args[colindx])
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "looking for row expr with columns %+v", texpr.RowExpr.Args[meta.offsets[0]])
 
-		switch valexpr := texpr.RowExpr.Args[colindx].Node.(type) {
+		switch valexpr := texpr.RowExpr.Args[meta.offsets[0]].Node.(type) {
 		case *pgquery.Node_AConst:
 			val, err := getbytes(valexpr.AConst.Val)
 			if err != nil {
@@ -124,7 +142,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 		if len(texpr.List.Items) == 0 {
 			return nil, ComplexQuery
 		}
-		return qr.RouteKeyWithRanges(ctx, colindx, texpr.List.Items[colindx])
+		return qr.RouteKeyWithRanges(ctx, texpr.List.Items[meta.offsets[0]], meta)
 	case *pgquery.Node_ColumnRef:
 		return nil, SkipColumn
 	default:
@@ -132,27 +150,28 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, colindx int, exp
 	}
 }
 
-func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_BoolExpr:
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "bool expr routing")
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "boolean expr routing")
+
 		var route *DataShardRoute = nil
 		var err error
 		for _, inExpr := range texpr.BoolExpr.Args {
 			if route == nil {
-				route, err = qr.routeByClause(ctx, inExpr)
+				route, err = qr.routeByClause(ctx, inExpr, meta)
 				if err != nil {
 					// failed to parse some references
-					// ingore
+					// ignore
 					continue
 				}
 			} else {
-				inRoute, err := qr.routeByClause(ctx, inExpr)
+				inRoute, err := qr.routeByClause(ctx, inExpr, meta)
 				if err != nil {
 					// failed to parse some references
-					// ingore
+					// ignore
 					continue
 				}
 				if inRoute.Matchedkr.ShardID != route.Matchedkr.ShardID {
@@ -172,18 +191,18 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 			return nil, ComplexQuery
 		}
 
-		colnames, err := qr.DeparseExprCol(texpr.AExpr.Lexpr)
+		colnames, err := qr.DeparseExprShardingEntries(texpr.AExpr.Lexpr)
 		if err != nil {
 			return nil, err
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colnames)
-
-		if err := ops.CheckShardingRule(ctx, qr.qdb, colnames); err == nil {
+		//
+		if _, err := ops.MatchShardingRule(ctx, qr.qdb, "", colnames); err == nil {
 			return nil, ShardingKeysMissing
 		}
 
-		route, err := qr.RouteKeyWithRanges(ctx, 0, texpr.AExpr.Rexpr)
+		route, err := qr.RouteKeyWithRanges(ctx, texpr.AExpr.Rexpr, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -193,9 +212,9 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node) (
 	}
 }
 
-func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node *pgquery.Node) (ShardRoute, error) {
-
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node, meta *RoutingMetadataContext) (ShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", node.Node)
+
 	switch q := node.Node.(type) {
 	case *pgquery.Node_SelectStmt:
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "select stmt values list len is %d", len(q.SelectStmt.ValuesLists))
@@ -204,13 +223,13 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, colindx int, node
 		}
 		// route using first tuple from `VALUES` clause
 		valNode := q.SelectStmt.ValuesLists[0]
-		return qr.RouteKeyWithRanges(ctx, colindx, valNode)
+		return qr.RouteKeyWithRanges(ctx, valNode, meta)
 	}
 
 	return nil, ComplexQuery
 }
 
-func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt) (ShardRoute, error) {
+func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt, meta *RoutingMetadataContext) (ShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
 	switch stmt := qstmt.Stmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
@@ -218,7 +237,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		if clause == nil {
 			return &MultiMatchRoute{}, nil
 		}
-		shroute, err := qr.routeByClause(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -227,26 +246,39 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 		}
 		return shroute, nil
 	case *pgquery.Node_InsertStmt:
+
+		var cols []string
+		var colindxs []int
 		for cindx, c := range stmt.InsertStmt.Cols {
-			if sr, err := func() (ShardRoute, error) {
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
-				switch res := c.Node.(type) {
-				case *pgquery.Node_ResTarget:
-					spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking insert colname %v, %T", res.ResTarget.Name, stmt.InsertStmt.SelectStmt.Node)
-					if err := ops.CheckShardingRule(ctx, qr.qdb, []string{res.ResTarget.Name}); err == nil {
-						return nil, ShardingKeysMissing
-					}
-					return qr.DeparseSelectStmt(ctx, cindx, stmt.InsertStmt.SelectStmt)
-				default:
-					return nil, ShardingKeysMissing
-				}
-			}(); err != nil {
-				continue
-			} else {
-				return sr, nil
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+			switch res := c.Node.(type) {
+			case *pgquery.Node_ResTarget:
+				cols = append(cols, res.ResTarget.Name)
+				colindxs = append(colindxs, cindx)
+			default:
+				return nil, ShardingKeysMissing
 			}
 		}
-		return nil, ShardingKeysMissing
+
+		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, "", cols); err == nil {
+			return nil, ShardingKeysMissing
+		} else {
+			meta.routingRule = rule
+			// compute matched sharding rule offsets
+			offsets := make([]int, 0)
+			j := 0
+			for i, s := range cols {
+				if j == len(rule.Entries) {
+					break
+				}
+				if s == rule.Entries[j].Column {
+					offsets = append(offsets, i)
+				}
+			}
+
+			meta.offsets = offsets
+			return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt, meta)
+		}
 
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
@@ -254,7 +286,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return &MultiMatchRoute{}, nil
 		}
 
-		shroute, err := qr.routeByClause(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -268,7 +300,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return &MultiMatchRoute{}, nil
 		}
 
-		shroute, err := qr.routeByClause(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -288,7 +320,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 			return &MultiMatchRoute{}, nil
 		}
 
-		shroute, err := qr.routeByClause(ctx, clause)
+		shroute, err := qr.routeByClause(ctx, clause, meta)
 		if err != nil {
 			return nil, err
 		}
@@ -303,20 +335,24 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt)
 
 var ParseError = fmt.Errorf("parsing stmt error")
 
-func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgquery.Node_CreateStmt) error {
+// CheckTableIsRoutable Given table create statment, check if it is routable with some sharding rule
+func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.Node_CreateStmt) error {
 
+	var entries []string
+	/* Collect sharding rule entries list from create statement */
 	for _, elt := range node.CreateStmt.TableElts {
 		switch eltTar := elt.Node.(type) {
 		case *pgquery.Node_ColumnDef:
-			// TODO: multi-column sharding rules checks
-			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.RuleIntersec {
-				return nil
-			}
+			// hashing function name unneeded for sharding rules matching purpose
+			entries = append(entries, eltTar.ColumnDef.Colname)
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG3, "current table elt type is %T %v", elt, elt)
 		}
 	}
 
+	if _, err := ops.MatchShardingRule(ctx, qr.qdb, node.CreateStmt.Relation.Relname, entries); err == ops.RuleIntersec {
+		return nil
+	}
 	return nil
 }
 
@@ -326,16 +362,22 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		return nil, ComplexQuery
 	}
 
+	/*
+	* Currently, deparse only first query from multi-statement query msg (Enhance)
+	 */
 	stmt := parsedStmt.Stmts[0]
 
 	switch node := stmt.Stmt.Node.(type) {
 	case *pgquery.Node_VariableSetStmt:
+		/*
+		* SET x = y etc, do not dispatch any statement to shards, just process this in router
+		 */
 		return MultiMatchState{}, nil
 	case *pgquery.Node_CreateStmt: // XXX: need alter table which renames sharding column to non-sharding column check
 		/*
 		* Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableShardingColumns(ctx, node); err != nil {
+		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return nil, err
 		}
 		return MultiMatchState{}, nil
@@ -357,7 +399,9 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		// forbid under separate setting
 		return MultiMatchState{}, nil
 	case *pgquery.Node_InsertStmt:
-		routes, err := qr.matchShards(ctx, stmt)
+		routes, err := qr.matchShards(ctx, stmt, &RoutingMetadataContext{
+			rels: map[string][]string{},
+		})
 		if err != nil {
 			if qr.cfg.MulticastUnroutableInsertStatement {
 				switch err {
@@ -379,7 +423,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		}
 		return SkipRoutingState{}, nil
 	default:
-		routes, err := qr.matchShards(ctx, stmt)
+		// SELECT, UPDATE and/or DELETE stmts, which
+		// would be routed with their WHERE clause
+		routes, err := qr.matchShards(ctx, stmt, &RoutingMetadataContext{
+			rels: map[string][]string{},
+		})
 		if err != nil {
 			spqrlog.Logger.Errorf("parse error %v", err)
 			return nil, err
