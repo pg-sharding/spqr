@@ -77,6 +77,10 @@ clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
 make regress: build_images
+<<<<<<< Updated upstream
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator shard1 shard2 regress
+=======
+	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+>>>>>>> Stashed changes
 
 .PHONY: build gen

@@ -70,7 +70,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
-			if err := qr.qdb.Share(krkey); err != nil {
+			if err := qr.qdb.ShareKeyRange(krkey.KeyRangeID); err != nil {
 				return nil, err
 			}
 
@@ -309,7 +309,7 @@ func (qr *ProxyQrouter) CheckTableShardingColumns(ctx context.Context, node *pgq
 		switch eltTar := elt.Node.(type) {
 		case *pgquery.Node_ColumnDef:
 			// TODO: multi-column sharding rules checks
-			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.RuleIntersec {
+			if err := ops.CheckShardingRule(ctx, qr.qdb, []string{eltTar.ColumnDef.Colname}); err == ops.ErrRuleIntersects {
 				return nil
 			}
 		default:

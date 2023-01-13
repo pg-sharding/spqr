@@ -7,18 +7,14 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pg-sharding/spqr/router/pkg/rule"
-
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pkg/errors"
+	"github.com/pg-sharding/spqr/router/pkg/rule"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 )
 
 type RuleRouter interface {
@@ -26,10 +22,6 @@ type RuleRouter interface {
 	Reload(configPath string) error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
-
-	AddDataShard(key qdb.ShardKey) error
-	AddWorldShard(key qdb.ShardKey) error
-	AddShardInstance(key qdb.ShardKey, host string)
 
 	Config() *config.Router
 }
@@ -43,19 +35,6 @@ type RuleRouterImpl struct {
 
 	mu   sync.Mutex
 	rcfg *config.Router
-}
-
-func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	tracelog.InfoLogger.Printf("added world datashard to rrouter %v", key.Name)
-	return nil
-}
-
-func (r *RuleRouterImpl) AddShardInstance(key qdb.ShardKey, host string) {
-	panic("implement me")
-}
-
-func (r *RuleRouterImpl) AddDataShard(key qdb.ShardKey) error {
-	return nil
 }
 
 func (r *RuleRouterImpl) Shutdown() error {

@@ -8,6 +8,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+	"github.com/pg-sharding/spqr/router/pkg/parser"
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 )
@@ -15,7 +22,6 @@ import (
 type LocalQrouter struct {
 	QueryRouter
 	ds     *datashards.DataShard
-	parser parser.QParser
 }
 
 var _ QueryRouter = &LocalQrouter{}

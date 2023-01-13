@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type QrouterDBMem struct {
@@ -17,11 +16,15 @@ type QrouterDBMem struct {
 	freq  map[string]bool
 	krs   map[string]*qdb.KeyRange
 	locks map[string]*sync.RWMutex
-
 	shards map[string]*qdb.Shard
-
 	shrules map[string]*qdb.ShardingRule
+<<<<<<< Updated upstream
 }
+=======
+	dataspaces map[string]*qdb.Dataspace
+}
+
+>>>>>>> Stashed changes
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
@@ -270,4 +273,20 @@ func (q *QrouterDBMem) LockRouter(ctx context.Context, id string) error {
 	return nil
 }
 
-var _ qdb.QrouterDB = &QrouterDBMem{}
+func (q *QrouterDBMem) AddDataspace(ctx context.Context, ks *qdb.Dataspace) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.dataspaces[ks.ID] = ks
+
+	return nil
+}
+
+func (q *QrouterDBMem) ListDataspaces(ctx context.Context) ([]*qdb.Dataspace, error) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	var ret []*qdb.Dataspace
+	for _, v := range q.dataspaces {
+		ret = append(ret, v)
+	}
+	return ret, nil
+}

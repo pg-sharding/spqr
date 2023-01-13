@@ -3,11 +3,15 @@ package meta
 import (
 	"context"
 	"fmt"
+<<<<<<< Updated upstream
 	"strings"
 
+=======
+>>>>>>> Stashed changes
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/routers"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
@@ -22,7 +26,7 @@ type EntityMgr interface {
 	datashards.ShardsManager
 }
 
-var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
+var ErrUnknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
 func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := dstmt.(type) {
@@ -61,7 +65,7 @@ func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr,
 		}
 		return cli.AddKeyRange(ctx, req, cl)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -74,33 +78,9 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	case *spqrparser.DropAll:
 		switch stmt.Entity {
 		case spqrparser.EntityKeyRanges:
-			if krids, err := mgr.DropKeyRangeAll(ctx); err != nil {
-				return err
-			} else {
-				return cli.DropKeyRange(ctx, func() []string {
-					var ret []string
-
-					for _, krcurr := range krids {
-						ret = append(ret, krcurr.ID)
-					}
-
-					return ret
-				}(), cl)
-			}
+			return mgr.DropKeyRangeAll(ctx)
 		case spqrparser.EntityShardingRule:
-			if rules, err := mgr.DropShardingRuleAll(ctx); err != nil {
-				return err
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
-
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}(), cl)
-			}
+			return mgr.DropShardingRuleAll(ctx)
 		case spqrparser.EntityRouters:
 			return cli.ReportError(fmt.Errorf("unimplememnted"), cl)
 		default:
@@ -151,7 +131,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	case *spqrparser.Show:
 		return ProcessShow(ctx, stmt, mgr, cli, cl)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }
 
@@ -191,6 +171,6 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli
 
 		return cli.ShardingRules(ctx, resp, cl)
 	default:
-		return unknownCoordinatorCommand
+		return ErrUnknownCoordinatorCommand
 	}
 }

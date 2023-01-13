@@ -10,24 +10,13 @@ DROP KEY RANGE ALL;
 ----------------
 (0 rows)
 
---DROP SHARDING RULE ALL; -- does not work
-DROP SHARDING RULE r1;
+DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
  dropped sharding rule r1
-(1 row)
-
-DROP SHARDING RULE r2;
-    drop sharding rule    
---------------------------
  dropped sharding rule r2
-(1 row)
-
-DROP SHARDING RULE r3;
-    drop sharding rule    
---------------------------
  dropped sharding rule r3
-(1 row)
+(3 row)
 
 DROP SHARDING RULE wrong;
      drop sharding rule      

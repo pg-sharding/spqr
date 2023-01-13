@@ -1,10 +1,5 @@
 package qdb
 
-type ShardKey struct {
-	Name string
-	RW   bool
-}
-
 type KeyRange struct {
 	LowerBound []byte `json:"from"`
 	UpperBound []byte `json:"to"`
@@ -53,7 +48,6 @@ type ShardingRule struct {
 
 type Shard struct {
 	ID string `json:"id"`
-	// change to slice of strings, as shard may contain many instances
 	Hosts []string `json:"hosts"`
 }
 

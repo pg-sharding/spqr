@@ -9,12 +9,9 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-func validateShard(ctx context.Context, qdb qdb.QrouterDB, id string) error {
-	_, err := qdb.GetShardInfo(ctx, id)
-	return err
-}
+var ErrRuleIntersects = fmt.Errorf("sharding rule intersects with existing one")
 
-func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
 
 	// TODO: do real validate
@@ -42,9 +39,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	return qdb.AddKeyRange(ctx, keyRange)
 }
 
-var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
-
-func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
+func CheckShardingRule(ctx context.Context, qdb qdb.QDB, colnames []string) error {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
 		return err
@@ -73,17 +68,18 @@ func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string
 		}
 
 		if fullMatch {
-			return RuleIntersec
+			return ErrRuleIntersects
 		}
 	}
 
 	return nil
 }
 
-func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
 	// TODO: check lock are properly hold while updating
 
-	if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
+	_, err := qdb.GetShard(ctx, keyRange.ShardID)
+	if err != nil {
 		return err
 	}
 
