@@ -43,29 +43,13 @@ type ProxyQrouter struct {
 }
 
 func (qr *ProxyQrouter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	resp, err := qr.qdb.ListDataspaces(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retDsp []*dataspaces.Dataspace
-
-	for _, dsp := range resp {
-		retDsp = append(retDsp, &dataspaces.Dataspace{
-			Id: dsp.ID,
-		})
-	}
-	return retDsp, nil
+	//TODO implement me
+	return nil, ErrNotCoordinator
 }
 
-func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-	return qr.qdb.AddDataspace(ctx, &qdb.Dataspace{
-		ID: ds.Id,
-	})
+func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
+	//TODO implement me
+	return ErrNotCoordinator
 }
 
 func (qr *ProxyQrouter) Initialized() bool {

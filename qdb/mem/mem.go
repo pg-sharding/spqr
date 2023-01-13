@@ -45,12 +45,11 @@ func (q *QrouterDBMem) ListDataspaces(ctx context.Context) ([]*qdb.Dataspace, er
 
 func NewQrouterDBMem() (*QrouterDBMem, error) {
 	return &QrouterDBMem{
-		freq:       map[string]bool{},
-		krs:        map[string]*qdb.KeyRange{},
-		locks:      map[string]*sync.RWMutex{},
-		shards:     map[string]*qdb.Shard{},
-		shrules:    map[string]*qdb.ShardingRule{},
-		dataspaces: map[string]*qdb.Dataspace{},
+		freq:    map[string]bool{},
+		krs:     map[string]*qdb.KeyRange{},
+		locks:   map[string]*sync.RWMutex{},
+		shards:  map[string]*qdb.Shard{},
+		shrules: map[string]*qdb.ShardingRule{},
 	}, nil
 }
 
