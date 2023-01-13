@@ -25,6 +25,11 @@ type RoutingMetadataContext struct {
 	// last matched routing rule or nul
 	routingRule *qdb.ShardingRule
 	offsets     []int
+
+	// needed to parse
+	// SELECT * FROM t1 a where a.i = 1
+	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
+	tableAlises map[string]string
 	// TODO: include client ops and metadata here
 }
 
@@ -212,27 +217,69 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, m
 	}
 }
 
-func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, node *pgquery.Node, meta *RoutingMetadataContext) (ShardRoute, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val node is %T", node.Node)
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgquery.Node, meta *RoutingMetadataContext) (ShardRoute, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val selectStmt is %T", selectStmt)
 
-	switch q := node.Node.(type) {
+	switch q := selectStmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "select stmt values list len is %d", len(q.SelectStmt.ValuesLists))
+
 		if len(q.SelectStmt.ValuesLists) == 0 {
 			return nil, ComplexQuery
 		}
+		//
+		//switch q := selectStmt.SelectStmt.FromClause.(type) {
+		//case *pgquery.RangeVar:
+		//	meta.tableAlises[q.Alias.Aliasname] = q.Relname
+		//}
+
 		// route using first tuple from `VALUES` clause
 		valNode := q.SelectStmt.ValuesLists[0]
 		return qr.RouteKeyWithRanges(ctx, valNode, meta)
+	default:
+		return nil, ComplexQuery
+	}
+}
+
+func (qr *ProxyQrouter) deparseFromNode(node *pgquery.Node, meta *RoutingMetadataContext) error {
+	switch q := node.Node.(type) {
+	case *pgquery.Node_RangeVar:
+		meta.tableAlises[q.RangeVar.Alias.Aliasname] = q.RangeVar.Relname
+	case *pgquery.Node_JoinExpr:
+		if err := qr.deparseFromNode(q.JoinExpr.Rarg, meta); err != nil {
+			return err
+		}
+		if err := qr.deparseFromNode(q.JoinExpr.Larg, meta); err != nil {
+			return err
+		}
+	default:
+		// other cases to consider
 	}
 
-	return nil, ComplexQuery
+	return nil
+}
+
+func (qr *ProxyQrouter) deparseFromClauseList(clause []*pgquery.Node, meta *RoutingMetadataContext) error {
+	for _, node := range clause {
+		err := qr.deparseFromNode(node, meta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt, meta *RoutingMetadataContext) (ShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
 	switch stmt := qstmt.Stmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
+		if stmt.SelectStmt.FromClause != nil {
+			// collect table alias names, if any
+			// for single-table queries, process as usual
+			if err := qr.deparseFromClauseList(stmt.SelectStmt.FromClause, meta); err != nil {
+				return nil, err
+			}
+		}
 		clause := stmt.SelectStmt.WhereClause
 		if clause == nil {
 			return &MultiMatchRoute{}, nil
@@ -357,6 +404,9 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.
 }
 
 func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResult) (RoutingState, error) {
+	if parsedStmt == nil {
+		return nil, ComplexQuery
+	}
 
 	if len(parsedStmt.Stmts) > 1 {
 		return nil, ComplexQuery
