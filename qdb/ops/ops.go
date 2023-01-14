@@ -44,40 +44,45 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 
 var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
 
-func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
+func MatchShardingRule(ctx context.Context, qdb qdb.QrouterDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d rules", len(rules))
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking relation %s with %d sharding rules", relationName, len(rules))
 
-	checkSet := make(map[string]struct{}, len(colnames))
+	/*
+	* Create set to search column names in `shardingEntries`
+	 */
+	checkSet := make(map[string]struct{}, len(shardingEntries))
 
-	for _, k := range colnames {
+	for _, k := range shardingEntries {
 		checkSet[k] = struct{}{}
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries[0].Column, colnames)
-		if len(rule.Entries) != len(colnames) {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries, shardingEntries)
+		// Simple optimisation
+		if len(rule.Entries) > len(shardingEntries) {
 			continue
 		}
 
-		fullMatch := true
+		allColumnsMatched := true
 
 		for _, v := range rule.Entries {
 			if _, ok := checkSet[v.Column]; !ok {
-				fullMatch = false
+				allColumnsMatched = false
 				break
 			}
 		}
 
-		if fullMatch {
-			return RuleIntersec
+		/* In this rule, we successfully matched all columns */
+		if allColumnsMatched {
+			return rule, RuleIntersec
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
