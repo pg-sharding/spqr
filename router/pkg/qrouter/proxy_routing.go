@@ -164,6 +164,10 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.No
 		if len(texpr.List.Items) == 0 {
 			return nil, ComplexQuery
 		}
+		if len(meta.offsets) == 0 {
+			// TBD: check between routing case properly
+			return qr.RouteKeyWithRanges(ctx, texpr.List.Items[0], meta)
+		}
 		return qr.RouteKeyWithRanges(ctx, texpr.List.Items[meta.offsets[0]], meta)
 	case *pgquery.Node_ColumnRef:
 		return nil, SkipColumn
@@ -329,7 +333,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt,
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns %+v and offset indexes %+v", cols, colindxs)
 
-		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, "", cols); err == nil {
+		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, stmt.InsertStmt.Relation.Relname, cols); err == nil {
 			return nil, ShardingKeysMissing
 		} else {
 			meta.routingRule = rule
