@@ -327,6 +327,8 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt,
 			}
 		}
 
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns %+v and offset indexes %+v", cols, colindxs)
+
 		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, "", cols); err == nil {
 			return nil, ShardingKeysMissing
 		} else {

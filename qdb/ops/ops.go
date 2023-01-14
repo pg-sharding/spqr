@@ -61,8 +61,9 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QrouterDB, relationName stri
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries[0].Column, shardingEntries)
-		if len(rule.Entries) != len(shardingEntries) {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries, shardingEntries)
+		// Simple optimisation
+		if len(rule.Entries) > len(shardingEntries) {
 			continue
 		}
 
