@@ -37,6 +37,11 @@ SELECT * FROM xxtt1 WHERE w_id >= 1;
 SELECT * FROM xxtt1 WHERE w_id >= 20;
 SELECT * FROM xxtt1 WHERE w_id >= 21;
 
+-- check that aliases works
+SELECT * FROM xxtt1 a WHERE a.w_id >= 1;
+SELECT * FROM xxtt1 a WHERE a.w_id >= 20;
+SELECT * FROM xxtt1 a WHERE a.w_id >= 21;
+
 DROP TABLE xx;
 DROP TABLE xxtt1;
 
