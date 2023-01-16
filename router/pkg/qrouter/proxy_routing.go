@@ -110,7 +110,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
-			if err := qr.qdb.Share(krkey); err != nil {
+			if err := qr.qdb.ShareKeyRange(krkey.KeyRangeID); err != nil {
 				return nil, err
 			}
 
@@ -423,7 +423,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.
 		}
 	}
 
-	if _, err := ops.MatchShardingRule(ctx, qr.qdb, node.CreateStmt.Relation.Relname, entries); err == ops.RuleIntersec {
+	if _, err := ops.MatchShardingRule(ctx, qr.qdb, node.CreateStmt.Relation.Relname, entries); err == ops.ErrRuleIntersect {
 		return nil
 	}
 	return nil

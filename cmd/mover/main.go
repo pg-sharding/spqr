@@ -12,7 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb/etcdqdb"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -151,7 +151,7 @@ func main() {
 		return
 	}
 
-	db, err := etcdqdb.NewEtcdQDB(*etcdAddr)
+	db, err := qdb.NewEtcdQDB(*etcdAddr)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
 		return

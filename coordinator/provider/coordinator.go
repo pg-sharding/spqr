@@ -55,7 +55,7 @@ func DialRouter(r *routers.Router) (*grpc.ClientConn, error) {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-	db qdb.QrouterDB
+	db qdb.QDB
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -122,7 +122,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 // NewCoordinator side efferc: runs async goroutine that checks
 // spqr router`s availability
-func NewCoordinator(db qdb.QrouterDB) *qdbCoordinator {
+func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 	cc := &qdbCoordinator{
 		db: db,
 	}
@@ -337,7 +337,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 }
 
 func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
-	return qc.db.Unlock(ctx, keyRangeID)
+	return qc.db.UnlockKeyRange(ctx, keyRangeID)
 }
 
 // Split TODO: check bounds and keyRangeID (sourceID)
@@ -352,7 +352,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, req.SourceID); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, req.SourceID); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
@@ -377,7 +377,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, krOld)
 }
 
-func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "qdb coordinator dropping all key ranges")
 
@@ -387,22 +387,10 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, 
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop key range response %v", dropResp)
 		return err
 	}); err != nil {
-		return nil, err
+		return err
 	}
 
-	// Drop key ranges from qdb.
-	rules, err := qc.db.DropKeyRangeAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []*kr.KeyRange
-
-	for _, v := range rules {
-		ret = append(ret, kr.KeyRangeFromDB(v))
-	}
-
-	return ret, nil
+	return qc.db.DropKeyRangeAll(ctx)
 }
 
 func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
@@ -450,7 +438,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
@@ -461,7 +449,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}
 
 	defer func() {
-		if err := qc.db.Unlock(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
 	}()
@@ -511,7 +499,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	defer qc.db.Unlock(ctx, req.Krid)
+	defer qc.db.UnlockKeyRange(ctx, req.Krid)
 
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
