@@ -11,11 +11,11 @@ import (
 type MemQDB struct {
 	mu sync.RWMutex
 
-	freq    map[string]bool
-	krs     map[string]*KeyRange
-	locks   map[string]*sync.RWMutex
-	shards  map[string]*Shard
-	shrules map[string]*ShardingRule
+	freq       map[string]bool
+	krs        map[string]*KeyRange
+	locks      map[string]*sync.RWMutex
+	shards     map[string]*Shard
+	shrules    map[string]*ShardingRule
 	dataspaces map[string]*Dataspace
 }
 
@@ -23,20 +23,18 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB() (*MemQDB, error) {
 	return &MemQDB{
-		freq:    map[string]bool{},
-		krs:     map[string]*KeyRange{},
-		locks:   map[string]*sync.RWMutex{},
-		shards:  map[string]*Shard{},
-		shrules: map[string]*ShardingRule{},
+		freq:       map[string]bool{},
+		krs:        map[string]*KeyRange{},
+		locks:      map[string]*sync.RWMutex{},
+		shards:     map[string]*Shard{},
+		shrules:    map[string]*ShardingRule{},
 		dataspaces: map[string]*Dataspace{},
 	}, nil
 }
 
-
 // ==============================================================================
 //                               SHARDING RULES
 // ==============================================================================
-
 
 func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "add sharding rule %v", rule.Entries[0].Column)
@@ -159,7 +157,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 		l.Unlock()
 	}
 
-	return nil 
+	return nil
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
@@ -228,8 +226,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: sharing key with key %v", id)
 
 	q.locks[id].RLock()
-	q.locks[id].RUnlock()
-
+	defer q.locks[id].RUnlock()
 
 	return nil
 }
