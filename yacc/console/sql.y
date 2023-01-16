@@ -424,22 +424,22 @@ key_range_stmt:
 	}
 
 lock_key_range_stmt:
-	LOCK KEY RANGE internal_id
+	LOCK key_range_stmt
 	{
-		$$ = &Lock{KeyRangeID: $4}
+		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
 	}
 
 unlock_key_range_stmt:
-	UNLOCK KEY RANGE internal_id
+	UNLOCK key_range_stmt
 	{
-		$$ = &Unlock{KeyRangeID: $4}
+		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
 	}
 
 
 split_key_range_stmt:
-	SPLIT KEY RANGE internal_id FROM internal_id BY key_range_spec_bound
+	SPLIT key_range_stmt FROM internal_id BY key_range_spec_bound
 	{
-		$$ = &SplitKeyRange{KeyRangeID: $4, KeyRangeFromID: $6, Border: $8}
+		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
 	}
 
 kill_stmt:
@@ -449,15 +449,15 @@ kill_stmt:
 	}
 
 move_key_range_stmt:
-	MOVE KEY RANGE internal_id TO internal_id
+	MOVE key_range_stmt TO internal_id
 	{
-		$$ = &MoveKeyRange{KeyRangeID: $4, DestShardID: $6}
+		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
 
 unite_key_range_stmt:
-	UNITE KEY RANGE internal_id WITH internal_id
+	UNITE key_range_stmt WITH internal_id
 	{
-		$$ = &UniteKeyRange{KeyRangeIDL: $4, KeyRangeIDR: $5}
+		$$ = &UniteKeyRange{KeyRangeIDL: $2.KeyRangeID, KeyRangeIDR: $4}
 	}
 
 listen_stmt:
