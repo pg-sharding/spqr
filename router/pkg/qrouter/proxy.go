@@ -8,15 +8,15 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/pg-sharding/spqr/pkg/models/routers"
-	"github.com/pg-sharding/spqr/qdb/ops"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/routers"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/qdb/ops"
 )
 
 type ProxyQrouter struct {
@@ -412,4 +412,3 @@ func (qr *ProxyQrouter) GetShardInfo(ctx context.Context, shardID string) (*data
 func (qr *ProxyQrouter) Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	return nil
 }
-

@@ -6,8 +6,8 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 
-	"github.com/pkg/errors"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
+	"github.com/pkg/errors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
