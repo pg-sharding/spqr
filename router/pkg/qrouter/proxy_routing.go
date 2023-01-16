@@ -6,7 +6,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
@@ -24,9 +23,7 @@ type RoutingMetadataContext struct {
 	rels  map[string][]string
 	exprs map[string]map[string]*pgquery.Node
 
-	// last matched routing rule or nul
-	routingRule *qdb.ShardingRule
-	offsets     []int
+	offsets []int
 
 	// needed to parse
 	// SELECT * FROM t1 a where a.i = 1
@@ -36,7 +33,9 @@ type RoutingMetadataContext struct {
 	// For
 	// INSERT INTO x VALUES(**)
 	// routing
-	ValuesLists []*pgquery.Node
+	ValuesLists    []*pgquery.Node
+	InsertStmtCols []string
+	InsertStmtRel  string
 
 	// TODO: include client ops and metadata here
 }
@@ -335,45 +334,27 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt,
 
 		return qr.routeByClause(ctx, clause, meta)
 	case *pgquery.Node_InsertStmt:
-
 		var cols []string
-		var colindxs []int
-		for cindx, c := range stmt.InsertStmt.Cols {
+
+		for _, c := range stmt.InsertStmt.Cols {
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
 			switch res := c.Node.(type) {
 			case *pgquery.Node_ResTarget:
 				cols = append(cols, res.ResTarget.Name)
-				colindxs = append(colindxs, cindx)
 			default:
 				return ShardingKeysMissing
 			}
 		}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns %+v and offset indexes %+v", cols, colindxs)
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed insert statement columns %+v", cols)
 
-		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, stmt.InsertStmt.Relation.Relname, cols); err == nil {
-			if selectStmt := stmt.InsertStmt.SelectStmt; selectStmt != nil {
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing insert stmt on select clause")
-				return qr.DeparseSelectStmt(ctx, selectStmt, meta)
-			}
-			return ShardingKeysMissing
-		} else {
-			meta.routingRule = rule
-			// compute matched sharding rule offsets
-			offsets := make([]int, 0)
-			j := 0
-			for i, s := range cols {
-				if j == len(rule.Entries) {
-					break
-				}
-				if s == rule.Entries[j].Column {
-					offsets = append(offsets, i)
-				}
-			}
-
-			meta.offsets = offsets
-			return qr.DeparseSelectStmt(ctx, stmt.InsertStmt.SelectStmt, meta)
+		meta.InsertStmtCols = cols
+		meta.InsertStmtRel = stmt.InsertStmt.Relation.Relname
+		if selectStmt := stmt.InsertStmt.SelectStmt; selectStmt != nil {
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing insert stmt on select clause")
+			return qr.DeparseSelectStmt(ctx, selectStmt, meta)
 		}
+		return ShardingKeysMissing
 
 	case *pgquery.Node_UpdateStmt:
 		clause := stmt.UpdateStmt.WhereClause
@@ -517,17 +498,34 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		}
 	}
 
-	if meta.ValuesLists != nil {
-		// only firt value from value list
-		currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[0], meta)
-		if err != nil {
-			return nil, err
-		}
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
-		if route == nil {
-			route = currroute
-		} else {
-			route = combine(route, currroute)
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed values list %+v, insertStmtCols %+v", meta.ValuesLists, meta.InsertStmtCols)
+	if meta.ValuesLists != nil && len(meta.InsertStmtCols) != 0 {
+		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, meta.InsertStmtRel, meta.InsertStmtCols); err != nil {
+			// compute matched sharding rule offsets
+			offsets := make([]int, 0)
+			j := 0
+			for i, s := range meta.InsertStmtCols {
+				if j == len(rule.Entries) {
+					break
+				}
+				if s == rule.Entries[j].Column {
+					offsets = append(offsets, i)
+				}
+			}
+
+			meta.offsets = offsets
+
+			// only firt value from value list
+			currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[0], meta)
+			if err != nil {
+				return nil, err
+			}
+			spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
+			if route == nil {
+				route = currroute
+			} else {
+				route = combine(route, currroute)
+			}
 		}
 	}
 
