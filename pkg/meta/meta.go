@@ -26,7 +26,7 @@ type EntityMgr interface {
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
-func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor) error {
+func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -71,7 +71,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 	}
 }
 
-func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor) error {
+func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.DataspaceDefinition:
 		dataspace := dataspaces.NewDataspace(stmt.ID)
@@ -106,7 +106,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
@@ -161,7 +161,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	}
 }
 
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli clientinteractor.PSQLInteractor) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 	switch stmt.Cmd {
 	case spqrparser.ShowShardsStr:

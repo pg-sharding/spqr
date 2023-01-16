@@ -646,7 +646,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
-	cli := clientinteractor.PSQLInteractor{}
+	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status
 		msg, err := cl.Receive()

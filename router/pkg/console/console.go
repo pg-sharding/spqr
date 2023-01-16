@@ -60,7 +60,7 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
-func (l *Local) processQueryInternal(ctx context.Context, cli clientinteractor.PSQLInteractor, q string) error {
+func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -73,7 +73,7 @@ func (l *Local) processQueryInternal(ctx context.Context, cli clientinteractor.P
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(ctx, *clientinteractor.NewPSQLInteractor(cl), q)
+	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
 }
 
 const greeting = `
