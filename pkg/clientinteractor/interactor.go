@@ -3,9 +3,10 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/routers"
-	"net"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"

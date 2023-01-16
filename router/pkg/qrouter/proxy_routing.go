@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"

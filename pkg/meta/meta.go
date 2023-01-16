@@ -3,8 +3,9 @@ package meta
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -28,35 +29,59 @@ var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
 func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := dstmt.(type) {
-	case *spqrparser.DropKeyRange:
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
-		err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
-		if err != nil {
-			return cli.ReportError(err, cl)
+	case *spqrparser.KeyRangeSelector:
+		if stmt.KeyRangeID == "*" {
+			if err := mngr.DropKeyRangeAll(ctx); err != nil {
+				return err
+			} else {
+				return cli.DropKeyRange(ctx, []string{}, cl)
+			}
+		} else {
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
+			err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
+			if err != nil {
+				return cli.ReportError(err, cl)
+			}
+			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
 		}
-		return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID}, cl)
-	case *spqrparser.DropShardingRule:
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.ID)
-		err := mngr.DropShardingRule(ctx, stmt.ID)
-		if err != nil {
-			return cli.ReportError(err, cl)
+	case *spqrparser.ShardingRuleSelector:
+		if stmt.ID == "*" {
+			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
+				return err
+			} else {
+				return cli.DropShardingRule(ctx, func() string {
+					var ret []string
+
+					for _, rule := range rules {
+						ret = append(ret, rule.ID())
+					}
+
+					return strings.Join(ret, ",")
+				}(), cl)
+			}
+		} else {
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.ID)
+			err := mngr.DropShardingRule(ctx, stmt.ID)
+			if err != nil {
+				return cli.ReportError(err, cl)
+			}
+			return cli.DropShardingRule(ctx, stmt.ID, cl)
 		}
-		return cli.DropShardingRule(ctx, stmt.ID, cl)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
 }
 
-func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
+func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli clientinteractor.PSQLInteractor, cl client.Client) error {
 	switch stmt := astmt.(type) {
-	case *spqrparser.AddDataspace:
+	case *spqrparser.DataspaceDefinition:
 		dataspace := dataspaces.NewDataspace(stmt.ID)
 		err := mngr.AddDataspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
 		return cli.AddDataspace(ctx, dataspace, cl)
-	case *spqrparser.AddShardingRule:
+	case *spqrparser.ShardingRuleDefinition:
 		argList := make([]shrule.ShardingRuleEntry, 0)
 		for _, el := range stmt.Entries {
 			argList = append(argList, shrule.ShardingRuleEntry{
@@ -71,7 +96,7 @@ func processAdd(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr,
 			return err
 		}
 		return cli.AddShardingRule(ctx, shardingRule, cl)
-	case *spqrparser.AddKeyRange:
+	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
 			return cli.ReportError(err, cl)
@@ -86,35 +111,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli, cl)
-	case *spqrparser.Add:
-		return processAdd(ctx, stmt.Element, mgr, cli, cl)
-	case *spqrparser.DropAll:
-		switch stmt.Entity {
-		case spqrparser.EntityKeyRanges:
-			if err := mgr.DropKeyRangeAll(ctx); err != nil {
-				return err
-			} else {
-				return cli.DropKeyRange(ctx, []string{}, cl)
-			}
-		case spqrparser.EntityShardingRule:
-			if rules, err := mgr.DropShardingRuleAll(ctx); err != nil {
-				return err
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
-
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}(), cl)
-			}
-		case spqrparser.EntityRouters:
-			return cli.ReportError(fmt.Errorf("unimplememnted"), cl)
-		default:
-			return fmt.Errorf("unknown entity to drop")
-		}
+	case *spqrparser.Create:
+		return processCreate(ctx, stmt.Element, mgr, cli, cl)
 	case *spqrparser.MoveKeyRange:
 		move := &kr.MoveKeyRange{
 			ShardId: stmt.DestShardID,
