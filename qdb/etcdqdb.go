@@ -34,7 +34,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 		return nil, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "NewEtcdQDB, %s %#v", addr, cli)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: NewEtcdQDB, %s %#v", addr, cli)
 
 	return &EtcdQDB{
 		cli: cli,
@@ -80,13 +80,13 @@ func dataspaceNodePath(key string) string {
 
 
 func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "adding sharding rule %v", rule.Entries[0].Column)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: adding sharding rule %v", rule.Entries[0].Column)
 	rawShardingRule, err := json.Marshal(rule)
 	if err != nil {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "send req to qdb")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: send req to qdb")
 	resp, err := q.cli.Put(ctx, shardingRuleNodePath(rule.Id), string(rawShardingRule))
 	if err != nil {
 		return err
@@ -97,7 +97,7 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error
 }
 
 func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "drop sharding rule %v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: drop sharding rule %v", id)
 	resp, err := q.cli.Delete(ctx, shardingRuleNodePath(id))
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "drop all sharding rules")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: drop all sharding rules")
 	resp, err := q.cli.Delete(ctx, shardingRulesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, err
 }
 
 func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "get sharding rule %v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: get sharding rule %v", id)
 	resp, err := q.cli.Get(ctx, shardingRuleNodePath(id), clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 }
 
 func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "list sharding rules")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list sharding rules")
 	namespacePrefix := shardingRulesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
@@ -166,7 +166,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "add key range %+v", keyRange)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add key range %+v", keyRange)
 
 	rawKeyRange, err := json.Marshal(keyRange)
 
@@ -206,14 +206,14 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 }
 
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "get key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: get key range %+v", id)
 	krret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "get key range responce %v %v", krret, err)
 	return krret, err
 }
 
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "update key range %+v", keyRange)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: update key range %+v", keyRange)
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
@@ -230,7 +230,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 }
 
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "drop all key ranges")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: drop all key ranges")
 	resp, err := q.cli.Delete(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return err
@@ -242,7 +242,7 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 const keyspace = "key_space"
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "drop key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: drop key range %+v", id)
 	resp, err := q.cli.Delete(ctx, keyRangeNodePath(id))
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "delete resp %v", resp)
 	return err
@@ -250,7 +250,7 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 
 
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "list all key ranges")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list all key ranges")
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -273,7 +273,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 }
 
 func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "lock key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: lock key range %+v", id)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -340,7 +340,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 }
 
 func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "unlock key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: unlock key range %+v", id)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -396,13 +396,13 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 }
 
 func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "check locked key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: check locked key range %+v", id)
 	// implement or remove me
 	return nil, nil
 }
 
 func (q *EtcdQDB) ShareKeyRange(id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "share key range %+v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: share key range %+v", id)
 	// implement or remove me
 	return nil
 }
@@ -414,7 +414,7 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 
 
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "add router %v", r)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add router %v", r)
 	bts, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -429,7 +429,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 }
 
 func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "delete router %v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: delete router %v", id)
 	resp, err := q.cli.Delete(ctx, routerNodePath(id))
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -441,7 +441,7 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 }
 
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "list routers")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list routers")
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -466,7 +466,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 }
 
 func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "lock router %v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: lock router %v", id)
 	return nil
 }
 
@@ -476,7 +476,7 @@ func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
 
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "add shard %+v", shard)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add shard %+v", shard)
 	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Hosts[0])
 	if err != nil {
 		return err
@@ -487,7 +487,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 }
 
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "list shards")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list shards")
 	namespacePrefix := shardsNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
@@ -508,7 +508,7 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 }
 
 func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "get shard %v", id)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: get shard %v", id)
 	nodePath := shardNodePath(id)
 
 	resp, err := q.cli.Get(ctx, nodePath)
@@ -533,7 +533,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "add shard %+v", dataspace)
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add shard %+v", dataspace)
 	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), dataspace.ID)
 	if err != nil {
 		return err
@@ -544,7 +544,7 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 }
 
 func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "list dataspaces")
+	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list dataspaces")
 	namespacePrefix := dataspaceNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
