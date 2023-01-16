@@ -42,6 +42,10 @@ SELECT * FROM xxtt1 a WHERE a.w_id >= 1;
 SELECT * FROM xxtt1 a WHERE a.w_id >= 20;
 SELECT * FROM xxtt1 a WHERE a.w_id >= 21;
 
+-- check that `INSERT FROM SELECT` works
+INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+SELECT * FROM xx WHERE w_id >= 20;
+
 DROP TABLE xx;
 DROP TABLE xxtt1;
 
