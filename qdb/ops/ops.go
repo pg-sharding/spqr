@@ -5,13 +5,40 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
-func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
+func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %+v", rule)
+
+	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
+		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
+	}
+
+	existsRules, err := qdb.ListShardingRules(ctx)
+	if err != nil {
+		return err
+	}
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "sharding rule present in qdb: %+v", existsRules)
+
+	for _, v := range existsRules {
+		v_gen := shrule.ShardingRuleFromDB(v)
+		if rule.Absorbs(v_gen) {
+			return fmt.Errorf("sharding rule %v absorbs existing rule %v", rule.Id, v_gen.Id)
+		}
+		if v_gen.Absorbs(rule) {
+			return fmt.Errorf("sharding rule %v will be absorbed by %v present in qdb", rule.Id, v_gen.Id)
+		}
+	}
+
+	return qdb.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule))
+}
+
+func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
 
 	// TODO: do real validate
@@ -19,8 +46,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRa
 	//	return err
 	//}
 
-	if _, err := qdb.GetKeyRange(ctx, keyRange.KeyRangeID); err == nil {
-		return fmt.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
+	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
+		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx)
@@ -32,11 +59,11 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRa
 	for _, v := range existsKrids {
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
 			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
-	return qdb.AddKeyRange(ctx, keyRange)
+	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
 func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
@@ -80,7 +107,7 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, sh
 	return nil, nil
 }
 
-func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
+func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	// TODO: check lock are properly hold while updating
 
 	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
@@ -94,14 +121,14 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.Ke
 
 	for _, v := range krids {
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %s", v.KeyRangeID)
-		if v.KeyRangeID == keyRange.KeyRangeID {
+		if v.KeyRangeID == keyRange.ID {
 			// update req
 			continue
 		}
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) || kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
-	return qdb.UpdateKeyRange(ctx, keyRange)
+	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
 }
