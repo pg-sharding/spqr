@@ -118,8 +118,10 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 				_ = cl.ReplyErrMsg(err.Error())
 				// continue to consume input
 			}
+		case *pgproto3.Terminate:
+			return nil
 		default:
-			spqrlog.Logger.Printf(spqrlog.ERROR, "got unexpected postgresql proto message with type %T", v)
+			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
 		}
 	}
 }

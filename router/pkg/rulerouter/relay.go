@@ -138,7 +138,6 @@ func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 
 func (rst *RelayStateImpl) Close() error {
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
-		spqrlog.Logger.PrintError(err)
 		_ = rst.Cl.Close()
 		return err
 	}
