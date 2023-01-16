@@ -221,12 +221,13 @@ func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 		return err
 	}
 
-	krmv.ShardID = req.ShardId
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krmv)
+	var reqKr = kr.KeyRangeFromDB(krmv)
+	reqKr.ShardID = req.ShardId
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, reqKr)
 }
 
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-	var krRight *qdb.KeyRange
+
 	var krleft *qdb.KeyRange
 	var err error
 
@@ -257,6 +258,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 		return err
 	}
 
+	var krRight *kr.KeyRange
 	krRight.LowerBound = krleft.LowerBound
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krRight)
@@ -284,7 +286,7 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 		},
 	)
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew.ToSQL()); err != nil {
+	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
 		return err
 	}
 	krOld.UpperBound = req.Bound
@@ -346,10 +348,7 @@ func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, err
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if len(rule.Entries()) != 1 {
-		return fmt.Errorf("only single column sharding rules are supported for now")
-	}
-	return qr.qdb.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule))
+	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
 }
 
 func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -370,11 +369,11 @@ func (qr *ProxyQrouter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
+	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 func (qr *ProxyQrouter) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")

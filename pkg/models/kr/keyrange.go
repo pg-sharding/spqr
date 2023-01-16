@@ -62,7 +62,7 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 	}
 }
 
-func (kr *KeyRange) ToSQL() *qdb.KeyRange {
+func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		LowerBound: kr.LowerBound,
 		UpperBound: kr.UpperBound,

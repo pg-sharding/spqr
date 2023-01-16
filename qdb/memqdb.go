@@ -57,14 +57,18 @@ func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-	//TODO implement me
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ret, err := q.ListShardingRules(ctx)
-	if err != nil {
-		return nil, err
+	var ret []*ShardingRule
+	for _, v := range q.shrules {
+		ret = append(ret, v)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
 
 	q.shrules = make(map[string]*ShardingRule)
 

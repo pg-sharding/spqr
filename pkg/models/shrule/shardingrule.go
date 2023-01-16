@@ -93,3 +93,20 @@ func ShardingRuleFromProto(rule *proto.ShardingRule) *ShardingRule {
 
 	return ret
 }
+
+func (shrule *ShardingRule) Includes(rule *ShardingRule) bool {
+	exCols := map[string]struct{}{}
+	for _, entry := range shrule.Entries() {
+		exCols[entry.Column] = struct{}{}
+	}
+
+	for _, entry := range rule.Entries() {
+		// our sharding rule does not have this, column
+		// so router can distinguish routing rules
+		if _, ok := exCols[entry.Column]; !ok {
+			return false
+		}
+	}
+
+	return true
+}
