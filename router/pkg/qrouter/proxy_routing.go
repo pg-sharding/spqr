@@ -106,7 +106,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 		return nil, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d key ranges", len(krs))
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking key %s with %d key ranges", key, len(krs))
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
@@ -142,7 +142,8 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.No
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_RowExpr:
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "looking for row expr with columns %+v", texpr.RowExpr.Args[meta.offsets[0]])
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "looking for row expr with columns %+v",
+			texpr.RowExpr.Args[meta.offsets[0]])
 
 		switch valexpr := texpr.RowExpr.Args[meta.offsets[0]].Node.(type) {
 		case *pgquery.Node_AConst:
@@ -243,19 +244,30 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgque
 
 	switch q := selectStmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
-
-		if len(q.SelectStmt.ValuesLists) == 0 {
-			return nil, ComplexQuery
+		if clause := q.SelectStmt.FromClause; clause != nil {
+			// route `insert into rel select from` stmt
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing select from clause, %+v", clause)
+			if err := qr.deparseFromClauseList(clause, meta); err != nil {
+				return nil, err
+			}
 		}
-		//
-		//switch q := selectStmt.SelectStmt.FromClause.(type) {
-		//case *pgquery.RangeVar:
-		//	meta.tableAliases[q.Alias.Aliasname] = q.Relname
-		//}
 
-		// route using first tuple from `VALUES` clause
-		valNode := q.SelectStmt.ValuesLists[0]
-		return qr.RouteKeyWithRanges(ctx, valNode, meta)
+		if clause := q.SelectStmt.WhereClause; clause != nil {
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing select where clause, %+v", clause)
+
+			shard, err := qr.routeByClause(ctx, clause, meta)
+			if err == nil {
+				return shard, nil
+			}
+		}
+
+		if list := q.SelectStmt.ValuesLists; len(list) != 0 {
+			// route using first tuple from `VALUES` clause
+			valNode := q.SelectStmt.ValuesLists[0]
+			return qr.RouteKeyWithRanges(ctx, valNode, meta)
+		}
+
+		return nil, ComplexQuery
 	default:
 		return nil, ComplexQuery
 	}
@@ -334,6 +346,10 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt,
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns %+v and offset indexes %+v", cols, colindxs)
 
 		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, stmt.InsertStmt.Relation.Relname, cols); err == nil {
+			if selectStmt := stmt.InsertStmt.SelectStmt; selectStmt != nil {
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing insert stmt on select clause")
+				return qr.DeparseSelectStmt(ctx, selectStmt, meta)
+			}
 			return nil, ShardingKeysMissing
 		} else {
 			meta.routingRule = rule

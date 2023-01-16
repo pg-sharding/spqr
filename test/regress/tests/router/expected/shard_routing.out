@@ -135,6 +135,17 @@ NOTICE: send query to shard(s) : sh2
  -211212 | 2121221 |   23
 (5 rows)
 
+-- check that `INSERT FROM SELECT` works
+INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM xx WHERE w_id >= 20;
+NOTICE: send query to shard(s) : sh1
+ w_id 
+------
+   20
+   20
+(2 rows)
+
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxtt1;
