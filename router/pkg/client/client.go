@@ -473,7 +473,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {

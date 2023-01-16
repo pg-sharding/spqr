@@ -307,7 +307,7 @@ create_dataspace_stmt:
 	}
 
 //alter_dataspace_stmt:
-//	ALTER DATASPACE dataspace_id AD SHARDING RULE shrule_id
+//	ALTER DATASPACE dataspace_id ADD SHARDING RULE shrule_id
 //	{
 //		$$ = &Alter{Element: &AlterDataspace{ID: $3}}
 //	}
