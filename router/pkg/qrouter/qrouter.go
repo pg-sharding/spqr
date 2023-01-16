@@ -19,6 +19,23 @@ const NOSHARD = ""
 type ShardRoute interface {
 }
 
+func combine(sh1, sh2 ShardRoute) ShardRoute {
+	switch shq1 := sh1.(type) {
+	case *MultiMatchRoute:
+		return &MultiMatchRoute{}
+	case *DataShardRoute:
+		switch shq2 := sh2.(type) {
+		case *MultiMatchRoute:
+			return &MultiMatchRoute{}
+		case *DataShardRoute:
+			if shq2.Shkey.Name == shq1.Shkey.Name {
+				return sh1
+			}
+		}
+	}
+	return &MultiMatchRoute{}
+}
+
 type DataShardRoute struct {
 	ShardRoute
 
