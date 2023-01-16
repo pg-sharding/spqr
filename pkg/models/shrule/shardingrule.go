@@ -36,7 +36,7 @@ func (s *ShardingRule) Entries() []ShardingRuleEntry {
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
-		Id:        rule.Id,
+		Id:        rule.ID,
 		TableName: rule.TableName,
 	}
 	for _, el := range rule.Entries {
@@ -51,7 +51,7 @@ func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 
 func ShardingRuleToDB(rule *ShardingRule) *qdb.ShardingRule {
 	ret := &qdb.ShardingRule{
-		Id:        rule.Id,
+		ID:        rule.Id,
 		TableName: rule.TableName,
 	}
 	for _, el := range rule.entries {
