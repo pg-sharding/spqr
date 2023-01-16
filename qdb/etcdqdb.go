@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"sort"
 	"sync"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
-
 
 type EtcdQDB struct {
 	cli *clientv3.Client
@@ -73,11 +73,9 @@ func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
 }
 
-
 // ==============================================================================
 //                               SHARDING RULES
 // ==============================================================================
-
 
 func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: adding sharding rule %v", rule.Entries[0].Column)
@@ -87,7 +85,7 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error
 	}
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: send req to qdb")
-	resp, err := q.cli.Put(ctx, shardingRuleNodePath(rule.Id), string(rawShardingRule))
+	resp, err := q.cli.Put(ctx, shardingRuleNodePath(rule.ID), string(rawShardingRule))
 	if err != nil {
 		return err
 	}
@@ -155,15 +153,17 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 		rules = append(rules, rule)
 	}
 
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "list sharding rules resp %v", resp)
 	return rules, nil
 }
 
-
 // ==============================================================================
 //                                 KEY RANGES
 // ==============================================================================
-
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add key range %+v", keyRange)
@@ -248,7 +248,6 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 	return err
 }
 
-
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list all key ranges")
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -268,6 +267,10 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 
 		ret = append(ret, &krCurr)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	})
 
 	return ret, nil
 }
@@ -407,11 +410,9 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 	return nil
 }
 
-
 // ==============================================================================
 //                                  ROUTERS
 // ==============================================================================
-
 
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add router %v", r)
@@ -419,7 +420,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	if err != nil {
 		return err
 	}
-	resp, err := q.cli.Put(ctx, routerNodePath(r.ID()), string(bts))
+	resp, err := q.cli.Put(ctx, routerNodePath(r.ID), string(bts))
 	if err != nil {
 		return err
 	}
@@ -462,6 +463,10 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 		ret = append(ret, &st)
 	}
 
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
 	return ret, nil
 }
 
@@ -473,7 +478,6 @@ func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
 // ==============================================================================
 //                                  SHARDS
 // ==============================================================================
-
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add shard %+v", shard)
@@ -503,6 +507,10 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 		}
 		shards = append(shards, shard)
 	}
+
+	sort.Slice(shards, func(i, j int) bool {
+		return shards[i].ID < shards[j].ID
+	})
 
 	return shards, nil
 }
@@ -563,6 +571,10 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 
 		rules = append(rules, rule)
 	}
+
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "list dataspace resp %v", resp)
 	return rules, nil

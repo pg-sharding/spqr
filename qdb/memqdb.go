@@ -3,6 +3,7 @@ package qdb
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -41,7 +42,7 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.shrules[rule.Id] = rule
+	q.shrules[rule.ID] = rule
 	return nil
 }
 
@@ -87,6 +88,11 @@ func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 	for _, v := range q.shrules {
 		ret = append(ret, v)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
 	return ret, nil
 }
 
@@ -164,11 +170,16 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: list all key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
+
 	var ret []*KeyRange
 
 	for _, el := range q.krs {
 		ret = append(ret, el)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	})
 
 	return ret, nil
 }
@@ -276,6 +287,11 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 			ID: k,
 		})
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
 	return ret, nil
 }
 
@@ -312,5 +328,10 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	for _, v := range q.dataspaces {
 		ret = append(ret, v)
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
 	return ret, nil
 }

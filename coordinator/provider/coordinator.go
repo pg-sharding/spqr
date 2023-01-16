@@ -76,9 +76,9 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 		if err := func() error {
 			for _, r := range rtrs {
-				spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v", r.Id)
+				spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v", r.ID)
 				internalR := &routers.Router{
-					Id:      r.Id,
+					Id:      r.ID,
 					AdmAddr: r.Address,
 				}
 
@@ -94,10 +94,10 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					return err
 				}
 
-				spqrlog.Logger.Printf(spqrlog.DEBUG4, "router %v status %v", r.Id, resp)
+				spqrlog.Logger.Printf(spqrlog.DEBUG4, "router %v status %v", r.ID, resp)
 				switch resp.Status {
 				case routerproto.RouterStatus_CLOSED:
-					if err := qc.db.LockRouter(ctx, r.Id); err != nil {
+					if err := qc.db.LockRouter(ctx, r.ID); err != nil {
 						return err
 					}
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
@@ -144,11 +144,11 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	for _, rtr := range rtrs {
 		// TODO: run cb`s async
 		cc, err := DialRouter(&routers.Router{
-			Id:      rtr.ID(),
+			Id:      rtr.ID,
 			AdmAddr: rtr.Addr(),
 		})
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID(), err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID, err)
 		if err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*routers.Router, e
 
 	for _, v := range resp {
 		retRouters = append(retRouters, &routers.Router{
-			Id:      v.Id,
+			Id:      v.ID,
 			AdmAddr: v.Address,
 		})
 	}
@@ -283,7 +283,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	// notify all routers
 	for _, r := range resp {
 		cc, err := DialRouter(&routers.Router{
-			Id:      r.ID(),
+			Id:      r.ID,
 			AdmAddr: r.Addr(),
 		})
 
