@@ -41,52 +41,70 @@ type ParseState interface{}
 type ParseStateTXBegin struct {
 	ParseState
 }
+
 type ParseStateTXRollback struct {
 	ParseState
 }
+
 type ParseStateTXCommit struct {
 	ParseState
 }
+
 type ParseStateQuery struct {
 	ParseState
 }
+
 type ParseStateEmptyQuery struct {
 	ParseState
 }
+
 type ParseStateErr struct {
 	ParseState
 }
+
 type ParseStateSkip struct {
 	ParseState
 }
+
 type ParseStateSetStmt struct {
 	ParseState
 	Name  string
 	Value string
 }
+
 type ParseStateSetLocalStmt struct {
 	ParseState
 }
+
 type ParseStateResetStmt struct {
 	ParseState
 	Name string
 }
+
 type ParseStateResetAllStmt struct {
 	ParseState
 }
+
 type ParseStateResetMetadataStmt struct {
 	ParseState
 	Setting string
 }
+
 type ParseStatePrepareStmt struct {
 	ParseState
 	Name  string
 	Query string
 }
+
 type ParseStateExecute struct {
 	ParseState
 	ParamsQuerySuf string
 	Name           string
+}
+
+type ParseStateExplain struct {
+	ParseState
+	Query *pgquery.Node
 }
 
 func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
@@ -110,6 +128,10 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 
 		for _, node := range pstmt.GetStmts() {
 			switch q := node.Stmt.Node.(type) {
+			case *pgquery.Node_ExplainStmt:
+				varStmt := ParseStateExplain{}
+				varStmt.Query = q.ExplainStmt.Query
+				return varStmt, nil
 			case *pgquery.Node_ExecuteStmt:
 				varStmt := ParseStateExecute{}
 				varStmt.Name = q.ExecuteStmt.Name

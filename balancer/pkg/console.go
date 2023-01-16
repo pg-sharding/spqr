@@ -70,7 +70,7 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 }
 
 func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	cli := clientinteractor.PSQLInteractor{}
+	cli := clientinteractor.NewPSQLInteractor(cl)
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 				spqrlog.Logger.Errorf("failed to show key ranges: %w", err)
 			}
 
-			return cli.KeyRanges(keyRanges, cl)
+			return cli.KeyRanges(keyRanges)
 
 		default:
 			spqrlog.Logger.Printf(spqrlog.INFO, "Unknown default %s", stmt.Cmd)
@@ -110,7 +110,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 			spqrlog.Logger.Errorf("failed to split key range by border %s: %#v", border, err)
 		}
 
-		return cli.SplitKeyRange(ctx, split, cl)
+		return cli.SplitKeyRange(ctx, split)
 
 	case *spqrparser.UniteKeyRange:
 		unite := &kr.UniteKeyRange{
@@ -146,7 +146,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		moveKeyRange := &kr.MoveKeyRange{Krid: stmt.KeyRangeID, ShardId: stmt.DestShardID}
 
-		return cli.MoveKeyRange(ctx, moveKeyRange, cl)
+		return cli.MoveKeyRange(ctx, moveKeyRange)
 
 	case *spqrparser.Lock:
 		// TODO: get key range by ID.
@@ -156,7 +156,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 			spqrlog.Logger.Errorf("failed to lock key range %s: %#v", stmt.KeyRangeID, err)
 		}
 
-		return cli.LockKeyRange(ctx, stmt.KeyRangeID, cl)
+		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
 
 	case *spqrparser.Unlock:
 		// TODO: get key range by ID.
@@ -166,7 +166,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 			spqrlog.Logger.Errorf("failed to unlock key range %s: %#v", stmt.KeyRangeID, err)
 		}
 
-		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID, cl)
+		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 
 	case *spqrparser.Shutdown:
 		//t.stchan <- struct{}{}

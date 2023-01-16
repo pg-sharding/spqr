@@ -660,20 +660,20 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
-				_ = cli.ReportError(err, cl)
+				_ = cli.ReportError(err)
 				continue
 			}
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
 
-			if err := meta.Proc(ctx, tstmt, qc, cli, cl); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, cli); err != nil {
 				spqrlog.Logger.PrintError(err)
-				_ = cli.ReportError(err, cl)
+				_ = cli.ReportError(err)
 			} else {
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "processed ok\n")
 			}
 		default:
-			return cli.ReportError(fmt.Errorf("unsupported msg type %T", msg), cl)
+			return cli.ReportError(fmt.Errorf("unsupported msg type %T", msg))
 		}
 	}
 }

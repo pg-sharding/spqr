@@ -168,6 +168,9 @@ func procQuery(rst rulerouter.RelayStateMgr, q *pgproto3.Query, cmngr rulerouter
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
+	case parser.ParseStateExplain:
+		rst.Client().ReplyErrMsg("not implemented")
+		return nil
 	default:
 		rst.AddQuery(*q)
 		_, err := rst.ProcessMessageBuf(true, true, cmngr)
