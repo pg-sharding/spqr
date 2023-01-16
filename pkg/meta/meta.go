@@ -32,7 +32,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
 			if err := mngr.DropKeyRangeAll(ctx); err != nil {
-				return err
+				return cli.ReportError(err, cl)
 			} else {
 				return cli.DropKeyRange(ctx, []string{}, cl)
 			}
@@ -47,7 +47,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 	case *spqrparser.ShardingRuleSelector:
 		if stmt.ID == "*" {
 			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
-				return err
+				return cli.ReportError(err, cl)
 			} else {
 				return cli.DropShardingRule(ctx, func() string {
 					var ret []string

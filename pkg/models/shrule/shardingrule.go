@@ -94,7 +94,7 @@ func ShardingRuleFromProto(rule *proto.ShardingRule) *ShardingRule {
 	return ret
 }
 
-func (shrule *ShardingRule) Absorbs(rule *ShardingRule) bool {
+func (shrule *ShardingRule) Includes(rule *ShardingRule) bool {
 	exCols := map[string]struct{}{}
 	for _, entry := range shrule.Entries() {
 		exCols[entry.Column] = struct{}{}

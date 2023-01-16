@@ -27,11 +27,11 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 
 	for _, v := range existsRules {
 		v_gen := shrule.ShardingRuleFromDB(v)
-		if rule.Absorbs(v_gen) {
-			return fmt.Errorf("sharding rule %v absorbs existing rule %v", rule.Id, v_gen.Id)
+		if rule.Includes(v_gen) {
+			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, v_gen.Id)
 		}
-		if v_gen.Absorbs(rule) {
-			return fmt.Errorf("sharding rule %v will be absorbed by %v present in qdb", rule.Id, v_gen.Id)
+		if v_gen.Includes(rule) {
+			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, v_gen.Id)
 		}
 	}
 
