@@ -22,23 +22,24 @@ package spqrparser
 	drop                   *Drop
 	create                 *Create
 
+	kill                   *Kill
+	lock                   *Lock
+	unlock                 *Unlock
+
 	ds                     *DataspaceDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
 	sharding_rule          *ShardingRuleDefinition
 
 	register_router        *RegisterRouter
-
 	unregister_router      *UnregisterRouter
-	kill                   *Kill
-	dropAll                *DropAll
-	lock                   *Lock
-	shutdown               *Shutdown
-	listen                 *Listen
-	unlock                 *Unlock
+	
 	split                  *SplitKeyRange
 	move                   *MoveKeyRange
 	unite                  *UniteKeyRange
+
+	shutdown               *Shutdown
+	listen                 *Listen
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -89,9 +90,6 @@ package spqrparser
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
-
-%type <dropAll> drop_key_range_all_stmt drop_sharding_rules_all_stmt unregister_routers_all_stmt
-
 %type<entrieslist> sharding_rule_argument_list
 %type<shruleEntry> sharding_rule_entry
 
@@ -99,8 +97,8 @@ package spqrparser
 %type<str> sharding_rule_column_clause
 %type<str> sharding_rule_hash_function_clause
 
-%type <unlock> unlock_stmt unlock_key_range_stmt
-%type <lock> lock_stmt lock_key_range_stmt
+%type <unlock> unlock_stmt
+%type <lock> lock_stmt
 %type <shutdown> shutdown_stmt
 %type <listen> listen_stmt
 %type <split> split_key_range_stmt
@@ -117,9 +115,7 @@ package spqrparser
 %type<str> internal_id
 
 %type<str> router_addr
-%type<str> sharding_column_name
-%type<str> sharding_table_name
-%type<str> sharding_hash_function_name
+%type<str> ref_name
 
 %start any_command
 
@@ -146,18 +142,6 @@ command:
 	| drop_stmt
 	{
 		setParseTree(yylex, $1)
-	}
-	| drop_key_range_all_stmt
-	{
-        setParseTree(yylex, $1)
-    }
-	| drop_sharding_rules_all_stmt
-	{
-	    setParseTree(yylex, $1)
-	}
-	| unregister_routers_all_stmt
-	{
-	    setParseTree(yylex, $1)
 	}
 	| lock_stmt
 	{
@@ -242,10 +226,20 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2}
 	}
+	|
+    DROP KEY RANGE ALL
+    {
+        $$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
+    }
 	| DROP sharding_rule_stmt
 	{
 		$$ = &Drop{Element: $2}
 	}
+	|
+	DROP SHARDING RULE ALL
+    {
+        $$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
+    }
 
 add_stmt:
 	ADD sharding_rule_define_stmt
@@ -290,23 +284,12 @@ show_stmt:
 		$$ = &Show{Cmd: $2}
 	}
 
-sharding_column_name:
+ref_name:
 	STRING
 	{
 		$$ = string($1)
 	}
 
-sharding_table_name:
-	STRING
-	{
-		$$ = string($1)
-	}
-
-sharding_hash_function_name:
-	STRING
-	{
-		$$ = string($1)
-	}
 
 key_range_spec_bound:
     STRING
@@ -327,7 +310,11 @@ address:
 	}
 
 lock_stmt:
-	lock_key_range_stmt
+	LOCK key_range_stmt
+	{
+		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
+	}
+	// or lock someting else
 
 
 dataspace_define_stmt:
@@ -369,25 +356,25 @@ sharding_rule_entry:
 	}
 
 sharding_rule_table_clause:
-	TABLE sharding_table_name
+	TABLE ref_name
 	{
        $$ = $2
     }
 	| /*EMPTY*/	{ $$ = ""; }
 
 sharding_rule_column_clause:
-	COLUMN sharding_column_name
+	COLUMN ref_name
 	{
 		$$ = $2
 	}
 	|
-	COLUMNS sharding_column_name
+	COLUMNS ref_name
 	{
 		$$ = $2
 	}/* to be backward-compatable*/
 
 sharding_rule_hash_function_clause:
-	HASH FUNCTION sharding_hash_function_name
+	HASH FUNCTION ref_name
 	{
 		$$ = $3
 	}
@@ -409,7 +396,10 @@ shard_define_stmt:
 
 
 unlock_stmt:
-	unlock_key_range_stmt
+	UNLOCK key_range_stmt
+	{
+		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
+	}
 
 sharding_rule_stmt:
 	SHARDING RULE internal_id
@@ -422,19 +412,6 @@ key_range_stmt:
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
-
-lock_key_range_stmt:
-	LOCK key_range_stmt
-	{
-		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
-	}
-
-unlock_key_range_stmt:
-	UNLOCK key_range_stmt
-	{
-		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
-	}
-
 
 split_key_range_stmt:
 	SPLIT key_range_stmt FROM internal_id BY key_range_spec_bound
@@ -487,32 +464,16 @@ register_router_stmt:
 		$$ = &RegisterRouter{ID: $3, Addr: $5}
 	}
 
-drop_key_range_all_stmt:
-    DROP KEY RANGE ALL
-    {
-        $$ = &DropAll{Entity: EntityKeyRanges}
-    }
-
-
-drop_sharding_rules_all_stmt:
-    DROP SHARDING RULE ALL
-    {
-        $$ = &DropAll{Entity: EntityShardingRule}
-    }
-
-
-unregister_routers_all_stmt:
-    UNREGISTER ROUTER ALL
-    {
-        $$ = &DropAll{Entity: EntityRouters}
-    }
-
 unregister_router_stmt:
 	UNREGISTER ROUTER internal_id
 	{
 		$$ = &UnregisterRouter{ID: $3}
-	}
-
+	} 
+	|
+	UNREGISTER ROUTER ALL
+    {
+        $$ = &UnregisterRouter{ID: `*`}
+    }
 
 %%
 

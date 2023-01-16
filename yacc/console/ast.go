@@ -98,10 +98,6 @@ const (
 	EntityShardingRule = "SHARDING_RULE"
 )
 
-type DropAll struct {
-	Entity string
-}
-
 type Lock struct {
 	KeyRangeID string
 }
@@ -150,7 +146,6 @@ type Statement interface {
 func (*Show) iStatement()                   {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
-func (*DropAll) iStatement()                {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
