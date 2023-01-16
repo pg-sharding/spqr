@@ -20,7 +20,8 @@ type RoutingMetadataContext struct {
 	// and
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
-	rels map[string][]string
+	rels  map[string][]string
+	exprs map[string]map[string]*pgquery.Node
 
 	// last matched routing rule or nul
 	routingRule *qdb.ShardingRule
@@ -62,7 +63,8 @@ var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
-func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *RoutingMetadataContext) (string, error) {
+// returns alias and column name
+func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *RoutingMetadataContext) (string, string, error) {
 	var colnames []string
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing column name %T", expr.Node)
@@ -75,25 +77,25 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 			case *pgquery.Node_String_:
 				colnames = append(colnames, colname.String_.Str)
 			default:
-				return "", ComplexQuery
+				return "", "", ComplexQuery
 			}
 		}
 	default:
-		return "", ComplexQuery
+		return "", "", ComplexQuery
 	}
 
 	switch len(colnames) {
 	case 1:
 		// pure table column ref
-		return colnames[0], nil
+		return "", colnames[0], nil
 	case 2:
 		//
 		meta.rels[meta.tableAliases[colnames[0]]] = append(meta.rels[meta.tableAliases[colnames[0]]],
 			colnames[1])
 
-		return colnames[1], nil
+		return colnames[0], colnames[1], nil
 	default:
-		return "", ComplexQuery
+		return "", "", ComplexQuery
 	}
 }
 
@@ -218,15 +220,31 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, m
 			return nil, ComplexQuery
 		}
 
-		colname, err := qr.DeparseExprShardingEntries(texpr.AExpr.Lexpr, meta)
+		alias, colname, err := qr.DeparseExprShardingEntries(texpr.AExpr.Lexpr, meta)
 		if err != nil {
 			return nil, err
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colname)
-		// TBD: postpone routing from here to root of parsing tree
-		if _, err := ops.MatchShardingRule(ctx, qr.qdb, "", []string{colname}); err == nil {
-			return nil, ShardingKeysMissing
+
+		if resolvedRelation, ok := meta.tableAliases[alias]; ok {
+			// TBD: postpone routing from here to root of parsing tree
+			if _, err := ops.MatchShardingRule(ctx, qr.qdb, resolvedRelation, []string{colname}); err == nil {
+				return nil, ShardingKeysMissing
+			}
+		} else {
+			// TBD: postpone routing from here to root of parsing tree
+			if len(meta.rels) > 1 {
+				// ambiguity in column aliasing
+				return nil, ComplexQuery
+			}
+			tname := ""
+			for tbl := range meta.rels {
+				tname = tbl
+			}
+			if _, err := ops.MatchShardingRule(ctx, qr.qdb, tname, []string{colname}); err == nil {
+				return nil, ShardingKeysMissing
+			}
 		}
 
 		route, err := qr.RouteKeyWithRanges(ctx, texpr.AExpr.Rexpr, meta)
@@ -274,8 +292,12 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgque
 }
 
 func (qr *ProxyQrouter) deparseFromNode(node *pgquery.Node, meta *RoutingMetadataContext) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing from node %+v", node)
 	switch q := node.Node.(type) {
 	case *pgquery.Node_RangeVar:
+		if _, ok := meta.rels[q.RangeVar.Relname]; !ok {
+			meta.rels[q.RangeVar.Relname] = nil
+		}
 		if q.RangeVar.Alias != nil {
 			/* remember table alias */
 			meta.tableAliases[q.RangeVar.Alias.Aliasname] = q.RangeVar.Relname
