@@ -148,7 +148,7 @@ func getbytes(val *pgquery.Node) (string, error) {
 }
 
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing key ranges %T", expr.Node)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing by key ranges %T", expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_RowExpr:
@@ -523,7 +523,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		if err != nil {
 			return nil, err
 		}
-		route = combine(route, currroute)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
+		if route == nil {
+			route = currroute
+		} else {
+			route = combine(route, currroute)
+		}
+	}
+
+	if route == nil {
+		return MultiMatchState{}, nil
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed shard route %+v", route)
