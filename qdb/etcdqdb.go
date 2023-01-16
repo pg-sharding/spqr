@@ -154,7 +154,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 	}
 
 	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID <= rules[i].ID
+		return rules[i].ID < rules[j].ID
 	})
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "list sharding rules resp %v", resp)
@@ -269,7 +269,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].KeyRangeID <= ret[i].KeyRangeID
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
 	})
 
 	return ret, nil
@@ -464,7 +464,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID <= ret[i].ID
+		return ret[i].ID < ret[j].ID
 	})
 
 	return ret, nil
@@ -509,7 +509,7 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	}
 
 	sort.Slice(shards, func(i, j int) bool {
-		return shards[i].ID <= shards[i].ID
+		return shards[i].ID < shards[j].ID
 	})
 
 	return shards, nil
@@ -573,7 +573,7 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	}
 
 	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID <= rules[i].ID
+		return rules[i].ID < rules[j].ID
 	})
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "list dataspace resp %v", resp)

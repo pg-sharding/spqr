@@ -90,7 +90,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID <= ret[i].ID
+		return ret[i].ID < ret[j].ID
 	})
 
 	return ret, nil
@@ -178,7 +178,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].KeyRangeID <= ret[i].KeyRangeID
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
 	})
 
 	return ret, nil
@@ -289,7 +289,7 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID <= ret[i].ID
+		return ret[i].ID < ret[j].ID
 	})
 
 	return ret, nil
@@ -330,7 +330,7 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID <= ret[i].ID
+		return ret[i].ID < ret[j].ID
 	})
 
 	return ret, nil
