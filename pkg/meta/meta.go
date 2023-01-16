@@ -91,18 +91,10 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli cl
 	case *spqrparser.DropAll:
 		switch stmt.Entity {
 		case spqrparser.EntityKeyRanges:
-			if krids, err := mgr.DropKeyRangeAll(ctx); err != nil {
+			if err := mgr.DropKeyRangeAll(ctx); err != nil {
 				return err
 			} else {
-				return cli.DropKeyRange(ctx, func() []string {
-					var ret []string
-
-					for _, krcurr := range krids {
-						ret = append(ret, krcurr.ID)
-					}
-
-					return ret
-				}(), cl)
+				return cli.DropKeyRange(ctx, []string{}, cl)
 			}
 		case spqrparser.EntityShardingRule:
 			if rules, err := mgr.DropShardingRuleAll(ctx); err != nil {

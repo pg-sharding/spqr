@@ -3,24 +3,20 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"math/rand"
 	"sync"
 
 	"go.uber.org/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/routers"
-
 	"github.com/pg-sharding/spqr/qdb/ops"
-
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/mem"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 )
 
 type ProxyQrouter struct {
@@ -39,8 +35,10 @@ type ProxyQrouter struct {
 
 	initialized *atomic.Bool
 
-	qdb qdb.QrouterDB
+	qdb qdb.QDB
 }
+
+var _ QueryRouter = &ProxyQrouter{}
 
 func (qr *ProxyQrouter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
 	qr.mu.Lock()
@@ -123,17 +121,12 @@ func (qr *ProxyQrouter) DropKeyRange(ctx context.Context, id string) error {
 	return qr.qdb.DropKeyRange(ctx, id)
 }
 
-func (qr *ProxyQrouter) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyQrouter) DropKeyRangeAll(ctx context.Context) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "dropping all key range")
-	resp, err := qr.qdb.DropKeyRangeAll(ctx)
-	var krid []*kr.KeyRange
-	for _, krcurr := range resp {
-		krid = append(krid, kr.KeyRangeFromDB(krcurr))
-	}
-	return krid, err
+	return qr.qdb.DropKeyRangeAll(ctx)
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
@@ -191,7 +184,7 @@ func (qr *ProxyQrouter) WorldShards() []string {
 }
 
 func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter) (*ProxyQrouter, error) {
-	db, err := mem.NewQrouterDBMem()
+	db, err := qdb.NewMemQDB()
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +217,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter)
 func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
-	if krmv, err = qr.qdb.CheckLocked(ctx, req.Krid); err != nil {
+	if krmv, err = qr.qdb.CheckLockedKeyRange(ctx, req.Krid); err != nil {
 		return err
 	}
 
@@ -240,8 +233,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.Unlock(ctx, keyRangeID)
+	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -252,8 +245,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.Unlock(ctx, keyRangeID)
+	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -276,8 +269,8 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 	if krOld, err = qr.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, krid string) {
-		err := qdb.Unlock(ctx, krid)
+	defer func(qdb qdb.QDB, ctx context.Context, krid string) {
+		err := qdb.UnlockKeyRange(ctx, krid)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
@@ -310,7 +303,7 @@ func (qr *ProxyQrouter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyR
 }
 
 func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
-	return qr.qdb.Unlock(ctx, krid)
+	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 
 func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
@@ -420,4 +413,3 @@ func (qr *ProxyQrouter) Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatu
 	return nil
 }
 
-var _ QueryRouter = &ProxyQrouter{}

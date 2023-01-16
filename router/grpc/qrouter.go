@@ -51,8 +51,7 @@ func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.D
 }
 
 func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
-	_, err := l.qr.DropKeyRangeAll(ctx)
-	if err != nil {
+	if err := l.qr.DropKeyRangeAll(ctx); err != nil{
 		return nil, err
 	}
 	return &protos.DropAllKeyRangesResponse{}, nil

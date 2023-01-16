@@ -9,12 +9,9 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-func validateShard(ctx context.Context, qdb qdb.QrouterDB, id string) error {
-	_, err := qdb.GetShardInfo(ctx, id)
-	return err
-}
+var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
-func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
 
 	// TODO: do real validate
@@ -42,9 +39,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	return qdb.AddKeyRange(ctx, keyRange)
 }
 
-var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
-
-func MatchShardingRule(ctx context.Context, qdb qdb.QrouterDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
+func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
@@ -78,17 +73,17 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QrouterDB, relationName stri
 
 		/* In this rule, we successfully matched all columns */
 		if allColumnsMatched {
-			return rule, RuleIntersec
+			return rule, ErrRuleIntersect
 		}
 	}
 
 	return nil, nil
 }
 
-func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *qdb.KeyRange) error {
 	// TODO: check lock are properly hold while updating
 
-	if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
+	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
 
