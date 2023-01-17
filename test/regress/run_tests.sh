@@ -32,4 +32,9 @@ run_tests "console" "regress_router" "7432"
 run_tests "coordinator" "regress_coordinator" "7002"
 
 # test if diffs are empty
-cat /regress/tests/**/regression.diffs | [ -t 0 ] && exit 0 || exit 1
+cat /regress/tests/**/regression.diffs > /regress/tests/combined.diffs 2>&-
+
+if test -s /regress/tests/combined.diffs; then
+    exit 1
+fi
+exit 0
