@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
@@ -41,5 +42,29 @@ func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.Back
 		return shard.Send(&pgproto3.PasswordMessage{Password: berule.AuthRule.Password})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
+	}
+}
+
+func AuthFrontend(cl client.Client, authRule *config.AuthCfg) error {
+	switch authRule.Method {
+	case config.AuthOK:
+		return nil
+		// TODO:
+	case config.AuthNotOK:
+		return fmt.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
+	case config.AuthClearText:
+		if cl.PasswordCT() != authRule.Password {
+			return fmt.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
+		}
+		return nil
+	case config.AuthMD5:
+		if cl.PasswordMD5() != authRule.Password {
+			return fmt.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
+		}
+		return nil
+	case config.AuthSCRAM:
+		fallthrough
+	default:
+		return fmt.Errorf("invalid auth method %v", authRule.Method)
 	}
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pg-sharding/spqr/router/pkg/server"
-	"github.com/pkg/errors"
 )
 
 var NotRouted = fmt.Errorf("client not routed")
@@ -474,29 +473,10 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "processing auth for %v %v\n", cl.Usr(), cl.DB())
 
-	if err := func() error {
-		switch cl.Rule().AuthRule.Method {
-		case config.AuthOK:
-			return nil
-			// TODO:
-		case config.AuthNotOK:
-			return errors.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
-		case config.AuthClearText:
-			if cl.PasswordCT() != cl.Rule().AuthRule.Password {
-				return errors.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
-			}
-			return nil
-		case config.AuthMD5:
-			fallthrough
-		case config.AuthSCRAM:
-			fallthrough
-		default:
-			return errors.Errorf("invalid auth method %v", cl.Rule().AuthRule.Method)
-		}
-	}(); err != nil {
+	if err := conn.AuthFrontend(cl, cl.Rule().AuthRule); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: "auth failed",
+				Message: fmt.Sprintf("auth failed %s", err.Error()),
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
