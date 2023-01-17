@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb/etcdqdb"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 var cfgPath string
@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := etcdqdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+		db, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 		if err != nil {
 			spqrlog.Logger.FatalOnError(err)
 			// exit

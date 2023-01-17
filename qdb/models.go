@@ -26,14 +26,14 @@ const (
 
 type Router struct {
 	Address string      `json:"address"`
-	Id      string      `json:"id"`
+	ID      string      `json:"id"`
 	State   RouterState `json:"state,omitempty"`
 }
 
 func NewRouter(addr, id string, rst RouterState) *Router {
 	return &Router{
 		Address: addr,
-		Id:      id,
+		ID:      id,
 		State:   rst,
 	}
 }
@@ -42,21 +42,19 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-func (r Router) ID() string {
-	return r.Id
+type ShardingRuleEntry struct {
+	Column       string `json:"column"`
+	HashFunction string `json:"hash"`
 }
 
 type ShardingRule struct {
-	/* will be used to define order in composite key */
-	Colnames []string `json:"columns"`
-	Id       string   `json:"id"`
-	/* map columns name to hash function here */
-	// map[string]string
+	ID        string              `json:"id"`
+	TableName string              `json:"table"`
+	Entries   []ShardingRuleEntry `json:"columns"`
 }
 
 type Shard struct {
-	ID string `json:"id"`
-	// change to slice of strings, as shard may contain many instances
+	ID    string   `json:"id"`
 	Hosts []string `json:"hosts"`
 }
 

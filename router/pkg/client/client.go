@@ -375,12 +375,11 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 // startup + ssl
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
-	
+
 	for {
 		var backend *pgproto3.Backend
 
 		var sm *pgproto3.StartupMessage
-
 
 		headerRaw := make([]byte, 4)
 
@@ -405,7 +404,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return err
 			}
 			// proceed next iter, for protocol version number or GSSAPI interaction
-			continue;
+			continue
 		}
 
 		switch protoVer {
@@ -473,7 +472,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "Processing auth for %v %v\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "processing auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := func() error {
 		switch cl.Rule().AuthRule.Method {
@@ -844,7 +843,6 @@ func (cl *PsqlClient) ReplyRFQ() error {
 
 	return nil
 }
-
 
 func (cl *PsqlClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{

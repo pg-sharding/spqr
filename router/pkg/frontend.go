@@ -6,9 +6,9 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/pkg/parser"
 	"github.com/pg-sharding/spqr/router/pkg/server"
 	"github.com/spaolacci/murmur3"
 
@@ -168,6 +168,9 @@ func procQuery(rst rulerouter.RelayStateMgr, q *pgproto3.Query, cmngr rulerouter
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
+	case parser.ParseStateExplain:
+		rst.Client().ReplyErrMsg("not implemented")
+		return nil
 	default:
 		rst.AddQuery(*q)
 		_, err := rst.ProcessMessageBuf(true, true, cmngr)

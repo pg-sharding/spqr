@@ -3,24 +3,20 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"math/rand"
 	"sync"
 
 	"go.uber.org/atomic"
 
-	"github.com/pg-sharding/spqr/pkg/models/routers"
-
-	"github.com/pg-sharding/spqr/qdb/ops"
-
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
+	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/routers"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/qdb/mem"
+	"github.com/pg-sharding/spqr/qdb/ops"
 )
 
 type ProxyQrouter struct {
@@ -39,17 +35,35 @@ type ProxyQrouter struct {
 
 	initialized *atomic.Bool
 
-	qdb qdb.QrouterDB
+	qdb qdb.QDB
 }
+
+var _ QueryRouter = &ProxyQrouter{}
 
 func (qr *ProxyQrouter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	//TODO implement me
-	return nil, ErrNotCoordinator
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	resp, err := qr.qdb.ListDataspaces(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var retDsp []*dataspaces.Dataspace
+
+	for _, dsp := range resp {
+		retDsp = append(retDsp, &dataspaces.Dataspace{
+			Id: dsp.ID,
+		})
+	}
+	return retDsp, nil
 }
 
-func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
-	//TODO implement me
-	return ErrNotCoordinator
+func (qr *ProxyQrouter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+	return qr.qdb.AddDataspace(ctx, &qdb.Dataspace{
+		ID: ds.Id,
+	})
 }
 
 func (qr *ProxyQrouter) Initialized() bool {
@@ -107,17 +121,12 @@ func (qr *ProxyQrouter) DropKeyRange(ctx context.Context, id string) error {
 	return qr.qdb.DropKeyRange(ctx, id)
 }
 
-func (qr *ProxyQrouter) DropKeyRangeAll(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *ProxyQrouter) DropKeyRangeAll(ctx context.Context) error {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
 	spqrlog.Logger.Printf(spqrlog.LOG, "dropping all key range")
-	resp, err := qr.qdb.DropKeyRangeAll(ctx)
-	var krid []*kr.KeyRange
-	for _, krcurr := range resp {
-		krid = append(krid, kr.KeyRangeFromDB(krcurr))
-	}
-	return krid, err
+	return qr.qdb.DropKeyRangeAll(ctx)
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
@@ -175,7 +184,7 @@ func (qr *ProxyQrouter) WorldShards() []string {
 }
 
 func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter) (*ProxyQrouter, error) {
-	db, err := mem.NewQrouterDBMem()
+	db, err := qdb.NewMemQDB()
 	if err != nil {
 		return nil, err
 	}
@@ -208,24 +217,25 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, qcfg *config.QRouter)
 func (qr *ProxyQrouter) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
-	if krmv, err = qr.qdb.CheckLocked(ctx, req.Krid); err != nil {
+	if krmv, err = qr.qdb.CheckLockedKeyRange(ctx, req.Krid); err != nil {
 		return err
 	}
 
-	krmv.ShardID = req.ShardId
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krmv)
+	var reqKr = kr.KeyRangeFromDB(krmv)
+	reqKr.ShardID = req.ShardId
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, reqKr)
 }
 
 func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-	var krRight *qdb.KeyRange
+
 	var krleft *qdb.KeyRange
 	var err error
 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.Unlock(ctx, keyRangeID)
+	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -236,8 +246,8 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, keyRangeID string) {
-		err := qdb.Unlock(ctx, keyRangeID)
+	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
+		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 			return
@@ -248,6 +258,7 @@ func (qr *ProxyQrouter) Unite(ctx context.Context, req *kr.UniteKeyRange) error 
 		return err
 	}
 
+	var krRight *kr.KeyRange
 	krRight.LowerBound = krleft.LowerBound
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krRight)
@@ -260,8 +271,8 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 	if krOld, err = qr.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QrouterDB, ctx context.Context, krid string) {
-		err := qdb.Unlock(ctx, krid)
+	defer func(qdb qdb.QDB, ctx context.Context, krid string) {
+		err := qdb.UnlockKeyRange(ctx, krid)
 		if err != nil {
 			spqrlog.Logger.PrintError(err)
 		}
@@ -275,7 +286,7 @@ func (qr *ProxyQrouter) Split(ctx context.Context, req *kr.SplitKeyRange) error 
 		},
 	)
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew.ToSQL()); err != nil {
+	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
 		return err
 	}
 	krOld.UpperBound = req.Bound
@@ -294,7 +305,7 @@ func (qr *ProxyQrouter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyR
 }
 
 func (qr *ProxyQrouter) Unlock(ctx context.Context, krid string) error {
-	return qr.qdb.Unlock(ctx, krid)
+	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 
 func (qr *ProxyQrouter) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
@@ -337,14 +348,7 @@ func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, err
 }
 
 func (qr *ProxyQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if len(rule.Columns()) != 1 {
-		return fmt.Errorf("only single column sharding rules are supported for now")
-	}
-
-	return qr.qdb.AddShardingRule(ctx, &qdb.ShardingRule{
-		Id:       rule.ID(),
-		Colnames: rule.Columns(),
-	})
+	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
 }
 
 func (qr *ProxyQrouter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -365,11 +369,11 @@ func (qr *ProxyQrouter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (qr *ProxyQrouter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
+	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 func (qr *ProxyQrouter) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.ToSQL())
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")
@@ -407,5 +411,3 @@ func (qr *ProxyQrouter) GetShardInfo(ctx context.Context, shardID string) (*data
 func (qr *ProxyQrouter) Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error {
 	return nil
 }
-
-var _ QueryRouter = &ProxyQrouter{}

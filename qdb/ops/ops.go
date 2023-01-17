@@ -5,16 +5,40 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-func validateShard(ctx context.Context, qdb qdb.QrouterDB, id string) error {
-	_, err := qdb.GetShardInfo(ctx, id)
-	return err
+var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
+
+func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %+v", rule)
+
+	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
+		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
+	}
+
+	existsRules, err := qdb.ListShardingRules(ctx)
+	if err != nil {
+		return err
+	}
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "sharding rule present in qdb: %+v", existsRules)
+
+	for _, v := range existsRules {
+		v_gen := shrule.ShardingRuleFromDB(v)
+		if rule.Includes(v_gen) {
+			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, v_gen.Id)
+		}
+		if v_gen.Includes(rule) {
+			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, v_gen.Id)
+		}
+	}
+
+	return qdb.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule))
 }
 
-func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
 
 	// TODO: do real validate
@@ -22,8 +46,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	//	return err
 	//}
 
-	if _, err := qdb.GetKeyRange(ctx, keyRange.KeyRangeID); err == nil {
-		return fmt.Errorf("key range %v already present in qdb", keyRange.KeyRangeID)
+	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
+		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx)
@@ -35,55 +59,62 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb
 	for _, v := range existsKrids {
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
 			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
-	return qdb.AddKeyRange(ctx, keyRange)
+	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
-var RuleIntersec = fmt.Errorf("sharding rule intersects with existing one")
-
-func CheckShardingRule(ctx context.Context, qdb qdb.QrouterDB, colnames []string) error {
+func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
 	rules, err := qdb.ListShardingRules(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %d rules", len(rules))
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking relation %s with %d sharding rules", relationName, len(rules))
 
-	checkSet := make(map[string]struct{}, len(colnames))
+	/*
+	* Create set to search column names in `shardingEntries`
+	 */
+	checkSet := make(map[string]struct{}, len(shardingEntries))
 
-	for _, k := range colnames {
+	for _, k := range shardingEntries {
 		checkSet[k] = struct{}{}
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Colnames, colnames)
-		if len(rule.Colnames) != len(colnames) {
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries, shardingEntries)
+		// Simple optimisation
+		if len(rule.Entries) > len(shardingEntries) {
 			continue
 		}
 
-		fullMatch := true
+		if rule.TableName != "" && rule.TableName != relationName {
+			continue
+		}
 
-		for _, v := range rule.Colnames {
-			if _, ok := checkSet[v]; !ok {
-				fullMatch = false
+		allColumnsMatched := true
+
+		for _, v := range rule.Entries {
+			if _, ok := checkSet[v.Column]; !ok {
+				allColumnsMatched = false
 				break
 			}
 		}
 
-		if fullMatch {
-			return RuleIntersec
+		/* In this rule, we successfully matched all columns */
+		if allColumnsMatched {
+			return rule, ErrRuleIntersect
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
-func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *qdb.KeyRange) error {
+func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	// TODO: check lock are properly hold while updating
 
-	if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
+	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
 
@@ -94,14 +125,14 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QrouterDB, keyRange *
 
 	for _, v := range krids {
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %s", v.KeyRangeID)
-		if v.KeyRangeID == keyRange.KeyRangeID {
+		if v.KeyRangeID == keyRange.ID {
 			// update req
 			continue
 		}
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) || kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.KeyRangeID, v.KeyRangeID)
+			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
-	return qdb.UpdateKeyRange(ctx, keyRange)
+	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
 }

@@ -60,7 +60,7 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
-func (l *Local) processQueryInternal(ctx context.Context, cli clientinteractor.PSQLInteractor, q string, cl client.Client) error {
+func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
@@ -69,11 +69,11 @@ func (l *Local) processQueryInternal(ctx context.Context, cli clientinteractor.P
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
-	return meta.Proc(ctx, tstmt, l.Qrouter, cli, cl)
+	return meta.Proc(ctx, tstmt, l.Qrouter, cli)
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(ctx, clientinteractor.PSQLInteractor{}, q, cl)
+	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
 }
 
 const greeting = `
@@ -118,8 +118,10 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 				_ = cl.ReplyErrMsg(err.Error())
 				// continue to consume input
 			}
+		case *pgproto3.Terminate:
+			return nil
 		default:
-			spqrlog.Logger.Printf(spqrlog.ERROR, "got unexpected postgresql proto message with type %T", v)
+			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
 		}
 	}
 }

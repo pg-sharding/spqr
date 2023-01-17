@@ -9,11 +9,11 @@ type Show struct {
 	Cmd string
 }
 
-type Add struct {
+type Create struct {
 	Element Statement
 }
 
-func (*Add) iStatement() {}
+func (*Create) iStatement() {}
 
 type Drop struct {
 	Element Statement
@@ -21,39 +21,45 @@ type Drop struct {
 
 func (*Drop) iStatement() {}
 
-type AddStmt interface {
-	iAdd()
+type CreateStmt interface {
+	iCreate()
 }
 
 type DropStmt interface {
 	iDrop()
 }
 
-type AddShardingRule struct {
-	ID       string
-	ColNames []string
-}
-
-type AddDataspace struct {
+type DataspaceDefinition struct {
 	ID string
 }
 
-type AddKeyRange struct {
+type ShardingRuleDefinition struct {
+	ID        string
+	TableName string
+	Entries   []ShardingRuleEntry
+}
+
+type ShardingRuleEntry struct {
+	Column       string
+	HashFunction string
+}
+
+type KeyRangeDefinition struct {
 	LowerBound []byte
 	UpperBound []byte
 	ShardID    string
 	KeyRangeID string
 }
 
-type AddShard struct {
+type ShardDefinition struct {
 	Id    string
 	Hosts []string
 }
 
-func (*AddKeyRange) iAdd()     {}
-func (*AddShard) iAdd()        {}
-func (*AddDataspace) iAdd()    {}
-func (*AddShardingRule) iAdd() {}
+func (*KeyRangeDefinition) iCreate()     {}
+func (*ShardDefinition) iCreate()        {}
+func (*DataspaceDefinition) iCreate()    {}
+func (*ShardingRuleDefinition) iCreate() {}
 
 type SplitKeyRange struct {
 	Border         []byte
@@ -71,11 +77,11 @@ type MoveKeyRange struct {
 	KeyRangeID  string
 }
 
-type DropKeyRange struct {
+type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
-type DropShardingRule struct {
+type ShardingRuleSelector struct {
 	ID string
 }
 
@@ -83,18 +89,14 @@ type DropRoutersAll struct{}
 
 func (*DropRoutersAll) iStatement() {}
 
-func (*DropKeyRange) iDrop()     {}
-func (*DropShardingRule) iDrop() {}
+func (*KeyRangeSelector) iDrop()     {}
+func (*ShardingRuleSelector) iDrop() {}
 
 const (
 	EntityRouters      = "ROUTERS"
 	EntityKeyRanges    = "KEY_RANGES"
 	EntityShardingRule = "SHARDING_RULE"
 )
-
-type DropAll struct {
-	Entity string
-}
 
 type Lock struct {
 	KeyRangeID string
@@ -141,22 +143,21 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()             {}
-func (*DropKeyRange) iStatement()     {}
-func (*DropShardingRule) iStatement() {}
-func (*DropAll) iStatement()          {}
-func (*Lock) iStatement()             {}
-func (*Unlock) iStatement()           {}
-func (*Shutdown) iStatement()         {}
-func (*Listen) iStatement()           {}
-func (*MoveKeyRange) iStatement()     {}
-func (*SplitKeyRange) iStatement()    {}
-func (*UniteKeyRange) iStatement()    {}
-func (*AddDataspace) iStatement()     {}
-func (*AddShardingRule) iStatement()  {}
-func (*AddKeyRange) iStatement()      {}
-func (*AddShard) iStatement()         {}
-func (*Kill) iStatement()             {}
+func (*Show) iStatement()                   {}
+func (*KeyRangeSelector) iStatement()       {}
+func (*ShardingRuleSelector) iStatement()   {}
+func (*Lock) iStatement()                   {}
+func (*Unlock) iStatement()                 {}
+func (*Shutdown) iStatement()               {}
+func (*Listen) iStatement()                 {}
+func (*MoveKeyRange) iStatement()           {}
+func (*SplitKeyRange) iStatement()          {}
+func (*UniteKeyRange) iStatement()          {}
+func (*DataspaceDefinition) iStatement()    {}
+func (*ShardingRuleDefinition) iStatement() {}
+func (*KeyRangeDefinition) iStatement()     {}
+func (*ShardDefinition) iStatement()        {}
+func (*Kill) iStatement()                   {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
@@ -202,6 +203,9 @@ var reservedWords = map[string]int{
 	"host":           HOST,
 	"route":          ROUTE,
 	"dataspace":      DATASPACE,
+	"table":          TABLE,
+	"hash":           HASH,
+	"function":       FUNCTION,
 }
 
 // Tokenizer is the struct used to generate SQL

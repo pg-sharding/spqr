@@ -7,9 +7,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
 
-	pgquery "github.com/pganalyze/pg_query_go/v2"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
+	pgquery "github.com/pganalyze/pg_query_go/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -138,7 +138,6 @@ func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 
 func (rst *RelayStateImpl) Close() error {
 	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
-		spqrlog.Logger.PrintError(err)
 		_ = rst.Cl.Close()
 		return err
 	}
@@ -557,7 +556,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error {
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "exetute sync for client relay %p", rst.Client())
-	// if we have no active connections, we have noting to sync 
+	// if we have no active connections, we have noting to sync
 	if cmngr.ValidateReRoute(rst) {
 		return rst.Client().ReplyRFQ()
 	}

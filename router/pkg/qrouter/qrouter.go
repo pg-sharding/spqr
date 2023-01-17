@@ -6,8 +6,8 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 
-	"github.com/pkg/errors"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
+	"github.com/pkg/errors"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -17,6 +17,23 @@ import (
 const NOSHARD = ""
 
 type ShardRoute interface {
+}
+
+func combine(sh1, sh2 ShardRoute) ShardRoute {
+	switch shq1 := sh1.(type) {
+	case *MultiMatchRoute:
+		return &MultiMatchRoute{}
+	case *DataShardRoute:
+		switch shq2 := sh2.(type) {
+		case *MultiMatchRoute:
+			return &MultiMatchRoute{}
+		case *DataShardRoute:
+			if shq2.Shkey.Name == shq1.Shkey.Name {
+				return sh1
+			}
+		}
+	}
+	return &MultiMatchRoute{}
 }
 
 type DataShardRoute struct {
