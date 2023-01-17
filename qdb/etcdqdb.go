@@ -415,7 +415,7 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add router %v", r)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "etcdqdb: add router %v", r)
 	bts, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -430,25 +430,25 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 }
 
 func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: delete router %v", id)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "etcdqdb: delete router %v", id)
 	resp, err := q.cli.Delete(ctx, routerNodePath(id))
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "del resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "etcdqdb: del resp %v", resp)
 	return nil
 }
 
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
-	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: list routers")
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "etcdqdb: list routers")
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "got resp %v", resp)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "etcdqdb: list routers: got resp %v", resp)
 	var ret []*Router
 
 	for _, e := range resp.Kvs {

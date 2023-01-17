@@ -12,8 +12,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/routers"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
@@ -341,8 +341,8 @@ func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, erro
 	return ret, nil
 }
 
-func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*routers.Router, error) {
-	return []*routers.Router{{
+func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+	return []*topology.Router{{
 		Id: "local",
 	}}, nil
 }
@@ -392,7 +392,7 @@ func (qr *ProxyQrouter) DropShardingRuleAll(ctx context.Context) ([]*shrule.Shar
 	return retRules, nil
 }
 
-func (qr *ProxyQrouter) RegisterRouter(ctx context.Context, r *routers.Router) error {
+func (qr *ProxyQrouter) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator
 }
 
@@ -400,7 +400,7 @@ func (qr *ProxyQrouter) UnregisterRouter(ctx context.Context, id string) error {
 	return ErrNotCoordinator
 }
 
-func (qr *ProxyQrouter) SyncRouterMetadata(ctx context.Context, router *routers.Router) error {
+func (qr *ProxyQrouter) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
 }
 

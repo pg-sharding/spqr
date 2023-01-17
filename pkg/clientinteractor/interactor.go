@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
-	"github.com/pg-sharding/spqr/pkg/models/routers"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -389,7 +389,7 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 	return nil
 }
 
-func (pi *PSQLInteractor) Routers(resp []*routers.Router) error {
+func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 	if err := pi.WriteHeader("show routers"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err

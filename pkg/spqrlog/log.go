@@ -74,10 +74,8 @@ func (el *errorLogger) Printf(severity Severity, fmt string, args ...interface{}
 	}
 }
 
-func (el *errorLogger) Fatalf(severity Severity, fmt string, args ...interface{}) {
-	if defaultLogLevel <= severity {
-		el.logMp[severity].Fatalf(fmt, args)
-	}
+func (el *errorLogger) Fatalf(fmt string, args ...interface{}) {
+	el.logMp[FATAL].Fatalf(fmt, args)
 }
 
 func (el *errorLogger) Errorf(fmt string, args ...interface{}) {

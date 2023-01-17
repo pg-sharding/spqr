@@ -7,10 +7,10 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/routers"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -19,7 +19,7 @@ import (
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	shrule.ShardingRulesMgr
-	routers.RouterMgr
+	topology.RouterMgr
 	datashards.ShardsMgr
 	dataspaces.DataspaceMgr
 }
@@ -121,7 +121,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli *c
 		return cli.MoveKeyRange(ctx, move)
 
 	case *spqrparser.RegisterRouter:
-		newRouter := &routers.Router{
+		newRouter := &topology.Router{
 			Id:      stmt.ID,
 			AdmAddr: stmt.Addr,
 		}
