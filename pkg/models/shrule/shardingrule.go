@@ -1,8 +1,6 @@
 package shrule
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/pg-sharding/spqr/qdb"
@@ -28,9 +26,6 @@ type ShardingRule struct {
 }
 
 func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry) *ShardingRule {
-	if id == "" || id == "*" {
-		id, _ = randomHex(6)
-	}
 	return &ShardingRule{
 		Id:        id,
 		TableName: tableName,
@@ -138,12 +133,4 @@ func (shrule *ShardingRule) Includes(rule *ShardingRule) bool {
 	}
 
 	return true
-}
-
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-	  return "", err
-	}
-	return hex.EncodeToString(bytes), nil
 }
