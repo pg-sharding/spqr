@@ -18,6 +18,7 @@ type MemQDB struct {
 	shards     map[string]*Shard
 	shrules    map[string]*ShardingRule
 	dataspaces map[string]*Dataspace
+	routers    map[string]*Router
 }
 
 var _ QDB = &MemQDB{}
@@ -30,6 +31,7 @@ func NewMemQDB() (*MemQDB, error) {
 		shards:     map[string]*Shard{},
 		shrules:    map[string]*ShardingRule{},
 		dataspaces: map[string]*Dataspace{},
+		routers:    map[string]*Router{},
 	}, nil
 }
 
@@ -251,15 +253,39 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
-	panic("implement me")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "memqdb: add router %+v", r)
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.routers[r.ID] = r
+	return nil
 }
 
 func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
-	panic("implement me")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "memqdb: delete router %+v", id)
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.routers, id)
+	return nil
 }
 
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
-	panic("implement me")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "memqdb: list routers")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	var ret []*Router
+	for _, v := range q.routers {
+		// TODO replace with new
+		ret = append(ret, v)
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
+	return ret, nil
 }
 
 func (q *MemQDB) LockRouter(ctx context.Context, id string) error {
