@@ -872,7 +872,7 @@ yydefault:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line yacc/console/sql.y:350
 		{
-			str, err := randomHex(16)
+			str, err := randomHex(6)
 			if err != nil {
 				panic(err)
 			}
@@ -946,7 +946,7 @@ yydefault:
 		yyDollar = yyS[yypt-9 : yypt+1]
 //line yacc/console/sql.y:411
 		{
-			str, err := randomHex(16)
+			str, err := randomHex(6)
 			if err != nil {
 				panic(err)
 			}
@@ -962,7 +962,7 @@ yydefault:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line yacc/console/sql.y:427
 		{
-			str, err := randomHex(16)
+			str, err := randomHex(6)
 			if err != nil {
 				panic(err)
 			}

@@ -348,7 +348,7 @@ sharding_rule_define_stmt:
 	|
 	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list
 	{
-		str, err := randomHex(16)
+		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
@@ -409,7 +409,7 @@ key_range_define_stmt:
 	|
 	KEY RANGE FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
 	{
-		str, err := randomHex(16)
+		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
@@ -425,7 +425,7 @@ shard_define_stmt:
 	|
 	SHARD WITH HOST address
 	{
-		str, err := randomHex(16)
+		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
