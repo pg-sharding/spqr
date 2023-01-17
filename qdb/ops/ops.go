@@ -89,6 +89,10 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, sh
 			continue
 		}
 
+		if rule.TableName != "" && rule.TableName != relationName {
+			continue
+		}
+
 		allColumnsMatched := true
 
 		for _, v := range rule.Entries {

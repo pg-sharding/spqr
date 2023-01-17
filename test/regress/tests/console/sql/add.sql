@@ -1,7 +1,6 @@
 DROP SHARDING RULE ALL;
 DROP KEY RANGE ALL;
 
-
 SHOW key_ranges;
 SHOW sharding_rules;
 
@@ -24,3 +23,7 @@ ADD SHARDING RULE rule1 COLUMNS id;
 SHOW key_ranges;
 SHOW sharding_rules;
 
+ADD SHARDING RULE cat TABLE orders COLUMN iid;
+ADD SHARDING RULE dog TABLE delivery COLUMN order_id;
+
+SHOW sharding_rules;

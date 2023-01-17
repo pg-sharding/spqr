@@ -39,9 +39,9 @@ ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
 (1 row)
 
 ADD SHARDING RULE rule1 COLUMNS id;
-                        add sharding rule                        
------------------------------------------------------------------
- created sharding rule with enrties: [{Column:id HashFunction:}]
+                            add sharding rule                            
+-------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
 ADD SHARDING RULE rule1 COLUMNS id;
@@ -56,9 +56,9 @@ SHOW key_ranges;
 (2 rows)
 
 SHOW sharding_rules;
-          listing sharding rules           
--------------------------------------------
- sharding rule rule1 with column set: [id]
+                     listing sharding rules                      
+-----------------------------------------------------------------
+ sharding rule rule1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
 DROP SHARDING RULE rule1;
@@ -76,9 +76,9 @@ DROP KEY RANGE krid1;
 ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
 ERROR:  key range krid2 already present in qdb
 ADD SHARDING RULE rule1 COLUMNS id;
-                        add sharding rule                        
------------------------------------------------------------------
- created sharding rule with enrties: [{Column:id HashFunction:}]
+                            add sharding rule                            
+-------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
 SHOW key_ranges;
@@ -88,8 +88,28 @@ SHOW key_ranges;
 (1 row)
 
 SHOW sharding_rules;
-          listing sharding rules           
--------------------------------------------
- sharding rule rule1 with column set: [id]
+                     listing sharding rules                      
+-----------------------------------------------------------------
+ sharding rule rule1 for table (*) with columns [id, hash: x->x]
 (1 row)
+
+ADD SHARDING RULE cat TABLE orders COLUMN iid;
+                              add sharding rule                              
+-----------------------------------------------------------------------------
+ created sharding rule cat for table (orders) with columns [iid, hash: x->x]
+(1 row)
+
+ADD SHARDING RULE dog TABLE delivery COLUMN order_id;
+                                 add sharding rule                                  
+------------------------------------------------------------------------------------
+ created sharding rule dog for table (delivery) with columns [order_id, hash: x->x]
+(1 row)
+
+SHOW sharding_rules;
+                           listing sharding rules                           
+----------------------------------------------------------------------------
+ sharding rule cat for table (orders) with columns [iid, hash: x->x]
+ sharding rule dog for table (delivery) with columns [order_id, hash: x->x]
+ sharding rule rule1 for table (*) with columns [id, hash: x->x]
+(3 rows)
 

@@ -1,0 +1,27 @@
+CREATE TABLE orders(iid INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE delivery(iid INT PRIMARY KEY, order_id INT, FOREIGN KEY(order_id) REFERENCES orders(iid));
+NOTICE: send query to shard(s) : sh1,sh2
+INSERT INTO orders(iid) VALUES (5);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO delivery(iid,order_id) VALUES (10, 5);
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM delivery;
+NOTICE: send query to shard(s) : sh1,sh2
+ iid | order_id 
+-----+----------
+  10 |        5
+(1 row)
+
+SELECT * FROM delivery JOIN orders ON order_id = iid;
+NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  column reference "iid" is ambiguous
+LINE 1: SELECT * FROM delivery JOIN orders ON order_id = iid;
+                                                         ^
+SELECT * FROM delivery JOIN orders ON delivery.order_id = orders.iid;
+NOTICE: send query to shard(s) : sh1,sh2
+ iid | order_id | iid 
+-----+----------+-----
+  10 |        5 |   5
+(1 row)
+

@@ -48,15 +48,13 @@ type ShardingRuleEntry struct {
 }
 
 type ShardingRule struct {
-	TableName string `json:"table"`
-	/* important to correctly define order in composite key */
-	Entries []ShardingRuleEntry `json:"columns"`
-	ID      string              `json:"id"`
+	ID        string              `json:"id"`
+	TableName string              `json:"table"`
+	Entries   []ShardingRuleEntry `json:"columns"`
 }
 
 type Shard struct {
-	ID string `json:"id"`
-	// change to slice of strings, as shard may contain many instances
+	ID    string   `json:"id"`
 	Hosts []string `json:"hosts"`
 }
 

@@ -4,8 +4,6 @@ export PGDATABASE=regress
 export PGUSER=regress
 export PGSSLMODE=disable
 
-STATUS=0
-
 run_tests () {
     DIR=$1  # router
     HOST=$2 # regress_router
@@ -25,10 +23,6 @@ run_tests () {
 
     # show diff if it exists
     if test -f /regress/tests/$DIR/regression.diffs; then cat /regress/tests/$DIR/regression.diffs; fi
-
-    if [ $status -ne 0 ]; then
-        STATUS=$status
-    fi
 }
 
 
@@ -37,5 +31,5 @@ run_tests "router" "regress_router" "6432"
 run_tests "console" "regress_router" "7432"
 run_tests "coordinator" "regress_coordinator" "7002"
 
-exit $STATUS
-
+# test if diffs are empty
+cat /regress/tests/**/regression.diffs | [ -t 0 ] && exit 0 || exit 1

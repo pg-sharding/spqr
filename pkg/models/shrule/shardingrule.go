@@ -1,6 +1,10 @@
 package shrule
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+
 	"github.com/pg-sharding/spqr/qdb"
 	proto "github.com/pg-sharding/spqr/router/protos"
 )
@@ -10,15 +14,23 @@ type ShardingRuleEntry struct {
 	HashFunction string
 }
 
+func NewShardingRuleEntry(column string, hashFunction string) *ShardingRuleEntry {
+	return &ShardingRuleEntry{
+		Column:       column,
+		HashFunction: hashFunction,
+	}
+}
+
 type ShardingRule struct {
 	Id        string
 	TableName string
 	entries   []ShardingRuleEntry
 }
 
-// local TableName sharding rule -> route to world
-
 func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry) *ShardingRule {
+	if id == "" || id == "*" {
+		id, _ = randomHex(6)
+	}
 	return &ShardingRule{
 		Id:        id,
 		TableName: tableName,
@@ -32,6 +44,23 @@ func (s *ShardingRule) ID() string {
 
 func (s *ShardingRule) Entries() []ShardingRuleEntry {
 	return s.entries
+}
+
+func (s *ShardingRule) String() string {
+	tableName := s.TableName
+	if tableName == "" {
+		tableName = "*"
+	}
+
+	entries := func() []string {
+		var ret []string
+		for _, el := range s.Entries() {
+			ret = append(ret, fmt.Sprintf("%v, hash: x->x", el.Column))
+		}
+		return ret
+	}()
+
+	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v", s.Id, tableName, entries)
 }
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
@@ -109,4 +138,12 @@ func (shrule *ShardingRule) Includes(rule *ShardingRule) bool {
 	}
 
 	return true
+}
+
+func randomHex(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+	  return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
