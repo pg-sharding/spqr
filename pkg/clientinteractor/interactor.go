@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/routers"
@@ -280,12 +281,38 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 
 func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing sharding rules")
-	if err := pi.WriteHeader("listing sharding rules"); err != nil {
-		return err
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			TextOidFD("Sharding Rule ID"),
+			TextOidFD("Table Name"),
+			TextOidFD("Columns"),
+		}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
 	}
 
 	for _, rule := range rules {
-		if err := pi.WriteDataRow(rule.String()); err != nil {
+		var entries strings.Builder
+		for _, entry := range rule.Entries() {
+			entries.WriteString(entry.Column)
+		}
+		tableName := "*"
+		if rule.TableName != "" {
+			tableName = rule.TableName
+		}
+
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(rule.Id),
+				[]byte(tableName),
+				[]byte(entries.String()),
+			},
+		}); err != nil {
+			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
