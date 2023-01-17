@@ -6,10 +6,12 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW sharding_rules;
-          listing sharding rules          
-------------------------------------------
- sharding rule r1 with column set: [w_id]
- sharding rule r2 with column set: [id]
- sharding rule r3 with column set: [bid]
-(3 rows)
+                          listing sharding rules                           
+---------------------------------------------------------------------------
+ sharding rule r1 for table (*) with columns [w_id, hash: x->x]
+ sharding rule r2 for table (*) with columns [id, hash: x->x]
+ sharding rule r3 for table (*) with columns [bid, hash: x->x]
+ sharding rule t1 for table (orders) with columns [iid, hash: x->x]
+ sharding rule t2 for table (delivery) with columns [order_id, hash: x->x]
+(5 rows)
 

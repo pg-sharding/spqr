@@ -279,23 +279,13 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 }
 
 func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing sharding rules")
 	if err := pi.WriteHeader("listing sharding rules"); err != nil {
-		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing sharding rules")
-
 	for _, rule := range rules {
-
-		if err := pi.WriteDataRow(fmt.Sprintf("sharding rule %v with column set: %+v", rule.Id, func() []string {
-			var ret []string
-			for _, el := range rule.Entries() {
-				ret = append(ret, el.Column)
-			}
-			return ret
-		}())); err != nil {
-			spqrlog.Logger.PrintError(err)
+		if err := pi.WriteDataRow(rule.String()); err != nil {
 			return err
 		}
 	}
@@ -340,7 +330,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created sharding rule with enrties: %+v", rule.Entries())); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created %s", rule.String())); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
