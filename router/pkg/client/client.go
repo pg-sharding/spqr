@@ -568,9 +568,9 @@ func (cl *PsqlClient) PasswordCT() string {
 	return cl.receivepasswd()
 }
 
-func (cl *PsqlClient) PasswordMD5() string {
+func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 	_ = cl.be.Send(&pgproto3.AuthenticationMD5Password{
-		Salt: [4]byte{1, 3, 3, 7},
+		Salt: salt,
 	})
 
 	return cl.receivepasswd()
