@@ -37,7 +37,7 @@ type Client interface {
 	Init(cfg *tls.Config) error
 
 	PasswordCT() string
-	PasswordMD5() string
+	PasswordMD5(salt [4]byte) string
 
 	StartupMessage() *pgproto3.StartupMessage
 

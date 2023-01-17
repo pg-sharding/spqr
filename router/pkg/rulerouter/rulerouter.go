@@ -70,6 +70,7 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 			defaultFrontendRule = frontendRule
 			continue
 		}
+		spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding frontend rule %+v", frontendRule)
 		key := *route.NewRouteKey(frontendRule.Usr, frontendRule.DB)
 		frontendRules[key] = frontendRule
 	}
