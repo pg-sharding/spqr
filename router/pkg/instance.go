@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -182,7 +183,26 @@ func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
 	if err := cl.Init(r.frTLS); err != nil {
 		return err
 	}
+
+	err := r.validateUser(cl)
+	if err != nil {
+		cl.Send(&pgproto3.ErrorResponse{
+			Message: "User is unauthorized",
+		})
+		return err
+	}
+
 	return r.AdmConsole.Serve(ctx, cl)
+}
+
+func (r *InstanceImpl) validateUser(cl *client.PsqlClient) error {
+	for _, rule := range r.RuleRouter.Config().FrontendRules {
+		if rule.Usr == cl.Usr() {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("admin console auth failed: no such user")
 }
 
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
