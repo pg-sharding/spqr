@@ -1,9 +1,20 @@
 
 %{
-
 package spqrparser
 
+import (
+	"crypto/rand"
+	"encoding/hex"
+)
 
+
+func randomHex(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+	  return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
 %}
 
 // fields inside this union end up as the fields in a structure known
@@ -334,6 +345,15 @@ sharding_rule_define_stmt:
 	{
 		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5}
 	}
+	|
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list
+	{
+		str, err := randomHex(6)
+		if err != nil {
+			panic(err)
+		}
+		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4}
+	}
 
 sharding_rule_argument_list: sharding_rule_entry
     {
@@ -382,16 +402,34 @@ sharding_rule_hash_function_clause:
 
 
 key_range_define_stmt:
-       KEY RANGE internal_id FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
-       {
-            $$ = &KeyRangeDefinition{LowerBound: $5, UpperBound: $7, ShardID: $10, KeyRangeID: $3}
-       }
+	KEY RANGE internal_id FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
+	{
+		$$ = &KeyRangeDefinition{LowerBound: $5, UpperBound: $7, ShardID: $10, KeyRangeID: $3}
+	}
+	|
+	KEY RANGE FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
+	{
+		str, err := randomHex(6)
+		if err != nil {
+			panic(err)
+		}
+		$$ = &KeyRangeDefinition{LowerBound: $4, UpperBound: $6, ShardID: $9, KeyRangeID: "kr"+str}
+	}
 
 
 shard_define_stmt:
 	SHARD internal_id WITH HOST address
 	{
 		$$ = &ShardDefinition{Id: $2, Hosts: []string{$5}}
+	}
+	|
+	SHARD WITH HOST address
+	{
+		str, err := randomHex(6)
+		if err != nil {
+			panic(err)
+		}
+		$$ = &ShardDefinition{Id: "shard" + str, Hosts: []string{$4}}
 	}
 
 
