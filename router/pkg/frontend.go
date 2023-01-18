@@ -26,7 +26,7 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 }
 
 func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query %v from %p", rst.Client(), query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query '%v' from %p", query, rst.Client())
 	state, err := rst.Parse(query)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			TxStatus: byte(conn.TXACT),
 		})
 	case parser.ParseStateTXCommit:
-		if !cmngr.ConnIsActive(rst) {
+		if !cmngr.ConnectionActive(rst) {
 			// TODO: do stmh
 		}
 		rst.AddQuery(msg)
@@ -82,7 +82,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 
-		if cmngr.ConnIsActive(rst) {
+		if cmngr.ConnectionActive(rst) {
 			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
 				return err
 			}
@@ -96,7 +96,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			TxStatus: byte(rst.TxStatus()),
 		})
 	case parser.ParseStateResetMetadataStmt:
-		if cmngr.ConnIsActive(rst) {
+		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			if err != nil {
@@ -126,7 +126,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateResetAllStmt:
 		rst.Client().ResetAll()
 
-		if cmngr.ConnIsActive(rst) {
+		if cmngr.ConnectionActive(rst) {
 			if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
 				return err
 			}
@@ -136,7 +136,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			TxStatus: byte(rst.TxStatus()),
 		})
 	case parser.ParseStateSetLocalStmt:
-		if cmngr.ConnIsActive(rst) {
+		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
@@ -178,6 +178,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	}
 }
 
+// ProcessMessage
 func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	if cl.Rule().PoolMode == config.PoolModeTransaction && !cl.Rule().PoolPreparedStatement {
 		switch q := msg.(type) {
@@ -187,7 +188,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 			return rst.ProcessMessage(q, true, true, cmngr)
 		case *pgproto3.Parse:
 			// q.Query
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return procQuery(rst, q.Query, q, cmngr)
 		case *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
 			return rst.ProcessMessage(q, false, true, cmngr)
 		case *pgproto3.Query:
@@ -241,10 +242,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		}
 		return err
 	case *pgproto3.FunctionCall:
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", cl)
 		return rst.ProcessMessage(q, false, true, cmngr)
 	case *pgproto3.Execute:
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "simply fire parse stmt to connection")
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", cl)
 		return rst.ProcessMessage(q, true, true, cmngr)
 	case *pgproto3.Bind:
 		query := cl.PreparedStatementQueryByName(q.PreparedStatement)
@@ -302,7 +303,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				return rst.Close()
 				// ok
 			default:
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with %v", rst.Client(), err)
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with error: %v", rst.Client(), err)
 			}
 		}
 	}

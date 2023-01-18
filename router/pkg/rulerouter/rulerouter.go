@@ -178,7 +178,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "client auth OK")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: auth succeeded", cl)
 
 	if err != nil {
 		spqrlog.Logger.PrintError(err)

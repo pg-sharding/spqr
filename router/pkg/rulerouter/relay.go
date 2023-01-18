@@ -3,6 +3,7 @@ package rulerouter
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/parser"
@@ -295,7 +296,14 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to %v", rst.Cl.Usr(), rst.Cl.DB(), shardRoutes)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %p (route %s:%s) to shards %s", rst.Cl, rst.Cl.Usr(), rst.Cl.DB(), func() string {
+		var shardDesc []string
+		for _, sh := range shardRoutes {
+			shardDesc = append(shardDesc, sh.Shkey.Name)
+		}
+
+		return strings.Join(shardDesc, ", ")
+	}())
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
@@ -555,9 +563,9 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 
 func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error {
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "exetute sync for client relay %p", rst.Client())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "exeсute sync for client relay %p", rst.Client())
 	// if we have no active connections, we have noting to sync
-	if cmngr.ValidateReRoute(rst) {
+	if !cmngr.ConnectionActive(rst) {
 		return rst.Client().ReplyRFQ()
 	}
 	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
