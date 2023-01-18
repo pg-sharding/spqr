@@ -86,13 +86,13 @@ func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServ
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "send msg to server %+v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "single-shard %p sending msg to server %T", srv, query)
 	return srv.shard.Send(query)
 }
 
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	msg, err := srv.shard.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "recv msg from server %T", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "single-shard %p recv msg from server %T", srv, msg)
 	return msg, err
 }
 

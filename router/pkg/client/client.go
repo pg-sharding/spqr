@@ -145,6 +145,9 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 		if k == "options" {
 			continue
 		}
+		if k == "password" {
+			continue
+		}
 
 		query.String += fmt.Sprintf("SET %s='%s';", k, v)
 	}
@@ -578,17 +581,17 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client %p", msg, cl)
 	return msg, err
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
 	return cl.be.Send(msg)
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
 	ch := make(chan error)
 	go func() {
 		ch <- cl.be.Send(msg)
@@ -639,9 +642,12 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process query %s", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process query %T", cl, query)
 	_ = cl.ReplyDebugNoticef("executing your query %v", query)
 
+	if cl.server == nil {
+		return conn.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
+	}
 	if err := cl.server.Send(query); err != nil {
 		return 0, false, err
 	}
@@ -700,7 +706,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 			ok = false
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type from server: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "received msg type from server: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -712,7 +718,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 }
 
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process command %+v", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process command %+v", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -735,7 +741,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf(v.Message)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "got msg type from server: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
