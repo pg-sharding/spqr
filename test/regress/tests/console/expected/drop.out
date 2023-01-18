@@ -28,7 +28,7 @@ SHOW key_ranges;
 (0 rows)
 
 SHOW sharding_rules;
- Sharding Rule ID | Table Name | Columns 
-------------------+------------+---------
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
 (0 rows)
 

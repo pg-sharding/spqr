@@ -287,6 +287,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 			TextOidFD("Sharding Rule ID"),
 			TextOidFD("Table Name"),
 			TextOidFD("Columns"),
+			TextOidFD("Hash Function"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -297,8 +298,15 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 
 	for _, rule := range rules {
 		var entries strings.Builder
+		var hashFunctions strings.Builder
 		for _, entry := range rule.Entries() {
 			entries.WriteString(entry.Column)
+
+			if entry.HashFunction == "" {
+				hashFunctions.WriteString("x->x")
+			} else {
+				hashFunctions.WriteString(entry.HashFunction)
+			}
 		}
 		tableName := "*"
 		if rule.TableName != "" {
@@ -310,6 +318,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 				[]byte(rule.Id),
 				[]byte(tableName),
 				[]byte(entries.String()),
+				[]byte(hashFunctions.String()),
 			},
 		}); err != nil {
 			spqrlog.Logger.PrintError(err)
