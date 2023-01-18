@@ -22,8 +22,8 @@ SHOW key_ranges;
 (0 rows)
 
 SHOW sharding_rules;
- listing sharding rules 
-------------------------
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
 (0 rows)
 
 ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
@@ -56,9 +56,9 @@ SHOW key_ranges;
 (2 rows)
 
 SHOW sharding_rules;
-                     listing sharding rules                      
------------------------------------------------------------------
- sharding rule rule1 for table (*) with columns [id, hash: x->x]
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
+ rule1            | *          | id      | x->x
 (1 row)
 
 DROP SHARDING RULE rule1;
@@ -88,9 +88,9 @@ SHOW key_ranges;
 (1 row)
 
 SHOW sharding_rules;
-                     listing sharding rules                      
------------------------------------------------------------------
- sharding rule rule1 for table (*) with columns [id, hash: x->x]
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
+ rule1            | *          | id      | x->x
 (1 row)
 
 ADD SHARDING RULE cat TABLE orders COLUMN iid;
@@ -106,10 +106,10 @@ ADD SHARDING RULE dog TABLE delivery COLUMN order_id;
 (1 row)
 
 SHOW sharding_rules;
-                           listing sharding rules                           
-----------------------------------------------------------------------------
- sharding rule cat for table (orders) with columns [iid, hash: x->x]
- sharding rule dog for table (delivery) with columns [order_id, hash: x->x]
- sharding rule rule1 for table (*) with columns [id, hash: x->x]
+ Sharding Rule ID | Table Name | Columns  | Hash Function 
+------------------+------------+----------+---------------
+ cat              | orders     | iid      | x->x
+ dog              | delivery   | order_id | x->x
+ rule1            | *          | id       | x->x
 (3 rows)
 
