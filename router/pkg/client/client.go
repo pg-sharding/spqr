@@ -578,17 +578,17 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client %p", msg, cl)
 	return msg, err
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
 	return cl.be.Send(msg)
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
 	ch := make(chan error)
 	go func() {
 		ch <- cl.be.Send(msg)
