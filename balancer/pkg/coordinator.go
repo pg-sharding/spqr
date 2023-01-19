@@ -88,7 +88,7 @@ func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
 }
 
 func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
-	respList, err := c.shardServiceClient.ListShards(context.Background(), &routerproto.ListShardRequest{})
+	respList, err := c.shardServiceClient.ListShards(context.Background(), &routerproto.ListShardsRequest{})
 	if err != nil {
 		return nil, err
 	}

@@ -311,11 +311,9 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	defer q.mu.Unlock()
 
 	var ret []*Shard
-	for k := range q.shards {
+	for _, v := range q.shards {
 		// TODO replace with new
-		ret = append(ret, &Shard{
-			ID: k,
-		})
+		ret = append(ret, v)
 	}
 
 	sort.Slice(ret, func(i, j int) bool {

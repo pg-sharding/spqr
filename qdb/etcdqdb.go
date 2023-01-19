@@ -481,7 +481,11 @@ func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add shard %+v", shard)
-	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), shard.Hosts[0])
+	bytes, err := json.Marshal(shard)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), string(bytes))
 	if err != nil {
 		return err
 	}
