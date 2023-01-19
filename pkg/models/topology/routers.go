@@ -7,8 +7,8 @@ import (
 )
 
 type Router struct {
-	Id      string
-	AdmAddr string
+	ID      string
+	Address string
 }
 
 type RouterMgr interface {
@@ -19,5 +19,8 @@ type RouterMgr interface {
 }
 
 func RouterToProto(r *Router) *protos.Router {
-	return &protos.Router{}
+	return &protos.Router{
+		Id:     r.ID,
+		Adress: r.Address,
+	}
 }

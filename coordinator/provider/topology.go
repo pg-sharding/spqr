@@ -2,9 +2,9 @@ package provider
 
 import (
 	context "context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
@@ -14,36 +14,12 @@ type TopologyService struct {
 	impl coordinator.Coordinator
 }
 
-func (r *TopologyService) ListRouters(ctx context.Context, request *protos.ListRouterRequest) (*protos.ListRouterReply, error) {
-	routers, err := r.impl.ListRouters(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var routersReply []*protos.Router
-
-	for _, router := range routers {
-		routersReply = append(routersReply, topology.RouterToProto(router))
-	}
-
-	return &protos.ListRouterReply{
-		Routers: routersReply,
-	}, nil
+func (r *TopologyService) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
-func (r *TopologyService) AddRouters(ctx context.Context, request *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
-	routers, err := r.impl.ListRouters(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var routersReply []*protos.Router
-
-	for _, router := range routers {
-		routersReply = append(routersReply, topology.RouterToProto(router))
-	}
-
-	return &protos.AddRouterReply{}, nil
+func (r *TopologyService) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func NewTopologyService(impl coordinator.Coordinator) *TopologyService {

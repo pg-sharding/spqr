@@ -17,14 +17,14 @@ message Router {
 }
 
 service RouterService {
-  rpc ListRouter (ListRouterRequest) returns (ListRouterReply) {}
+  rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
   rpc AddRouter (AddRouterRequest) returns (AddRouterReply) {}
 }
 
 
-message ListRouterRequest {}
+message ListRoutersRequest {}
 
-message ListRouterReply {
+message ListRoutersReply {
 	repeated Router routers = 1;
 }
 

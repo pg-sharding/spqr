@@ -432,7 +432,7 @@ func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 	}
 
 	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.Id, msg.AdmAddr)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address)); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}

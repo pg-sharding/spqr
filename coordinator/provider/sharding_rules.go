@@ -41,7 +41,7 @@ func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *p
 	}, nil
 }
 
-func NewShardingRules(impl coordinator.Coordinator) *ShardingRulesService {
+func NewShardingRulesServer(impl coordinator.Coordinator) *ShardingRulesService {
 	return &ShardingRulesService{
 		impl: impl,
 	}
