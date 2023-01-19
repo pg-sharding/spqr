@@ -347,7 +347,7 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 }
 
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "flush message buff")
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: flushing message buffer", rst.Client())
 
 	ok := true
 
@@ -429,7 +429,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		return nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "complete relay iter with TX %s", func(b conn.TXStatus) string {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "cleint %p: complete relay iter with TX %s", rst.Client(), func(b conn.TXStatus) string {
 		switch b {
 		case conn.TXIDLE:
 			return "idle"
@@ -497,7 +497,7 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 }
 
 func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding %T", q)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay: adding %T to message buffer", rst.Client(), q)
 	rst.msgBuf = append(rst.msgBuf, q)
 }
 
@@ -550,10 +550,6 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 	}
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Logger.PrintError(err)
-			return false, err
-		}
 		return false, err
 	} else {
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
@@ -562,8 +558,8 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 }
 
 func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay exeсuting sync for client", rst.Client())
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "exeсute sync for client relay %p", rst.Client())
 	// if we have no active connections, we have noting to sync
 	if !cmngr.ConnectionActive(rst) {
 		return rst.Client().ReplyRFQ()
@@ -573,10 +569,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 	}
 
 	if _, _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Logger.PrintError(err)
-			return err
-		}
+		/* Relay flush completes relay */
 		return err
 	}
 

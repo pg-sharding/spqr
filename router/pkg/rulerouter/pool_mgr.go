@@ -99,7 +99,7 @@ func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
 
 func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	ash := rst.ActiveShards()
-	spqrlog.Logger.Printf(spqrlog.LOG, "end of tx unrouting from %v", ash)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p end of transaction, unrouting from active shards %v", rst.Client(), ash)
 	rst.ActiveShardsReset()
 
 	if err := t.UnRouteCB(rst.Client(), ash); err != nil {
