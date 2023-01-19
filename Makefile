@@ -33,6 +33,11 @@ build_balancer:
 build_mover:
 	go build -o spqr-mover  ./cmd/mover/main.go
 
+build_coorctl:
+	go build -o coorctl ./cmd/ctl/coorctl.go
+
+build_ctlutil: build_coorctl
+
 build: build_balancer build_coordinator build_router build_stress  build_mover build_world build_worldmock
 
 gogen:
