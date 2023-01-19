@@ -12,7 +12,7 @@ enum RouterStatus {
 
 message Router {
   string id = 1;
-  string adress = 2;
+  string address = 2;
   RouterStatus status = 3;
 }
 
@@ -29,8 +29,7 @@ message ListRoutersReply {
 }
 
 message AddRouterRequest {
-  string id = 1;
-  string addr = 2;
+   Router router = 1;
 }
 
 message AddRouterReply {

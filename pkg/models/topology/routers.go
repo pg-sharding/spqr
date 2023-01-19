@@ -4,6 +4,7 @@ import (
 	"context"
 
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type Router struct {
@@ -20,7 +21,21 @@ type RouterMgr interface {
 
 func RouterToProto(r *Router) *protos.Router {
 	return &protos.Router{
-		Id:     r.ID,
-		Adress: r.Address,
+		Id:      r.ID,
+		Address: r.Address,
+	}
+}
+
+func RouterFromProto(r *protos.Router) *Router {
+	return &Router{
+		ID:      r.Id,
+		Address: r.Address,
+	}
+}
+
+func RouterToDB(r *Router) *qdb.Router {
+	return &qdb.Router{
+		ID:      r.ID,
+		Address: r.Address,
 	}
 }

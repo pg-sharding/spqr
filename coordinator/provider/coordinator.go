@@ -178,6 +178,10 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 	return retRouters, nil
 }
 
+func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
+	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
+}
+
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListShardingRules(ctx)
 	if err != nil {
