@@ -581,17 +581,17 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "Received %T from client %p", msg, cl)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: received message %T", cl, msg)
 	return msg, err
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: sending %T", cl, msg)
 	return cl.be.Send(msg)
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending %T to client %p", msg, cl)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: sending %T", cl, msg)
 	ch := make(chan error)
 	go func() {
 		ch <- cl.be.Send(msg)
@@ -606,7 +606,7 @@ func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) 
 
 func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 	if cl.r != nil {
-		return fmt.Errorf("client already has assigned route")
+		return fmt.Errorf("client %p already has assigned route", cl)
 	}
 
 	cl.r = r
@@ -614,13 +614,13 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy %T", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 	return cl.server.Send(query)
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "process copy end %T", query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy end %T", cl, query)
 	if err := cl.server.Send(*query); err != nil {
 		return err
 	}
@@ -706,7 +706,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 			ok = false
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "received msg type from server: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "received msg type from server %p: %T", cl.server, v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
