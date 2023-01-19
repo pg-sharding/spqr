@@ -9,23 +9,31 @@ enum RouterStatus {
   OPENED = 1;
 }
 
-service RouterService {
-  rpc Open(OpenRequest) returns (OpenReply) {}
-  rpc GetStatus(GetStatusRequest) returns (GetStatusReply) {}
-  rpc Close(CloseRequest) returns (CloseReply) {}
+
+message Router {
+  string id = 1;
+  string adress = 2;
+  RouterStatus status = 3;
 }
 
-message OpenRequest {}
+service RouterService {
+  rpc ListRouter (ListRouterRequest) returns (ListRouterReply) {}
+  rpc AddRouter (AddRouterRequest) returns (AddRouterReply) {}
+}
 
-message OpenReply {}
 
-message CloseRequest {}
+message ListRouterRequest {}
 
-message CloseReply {}
+message ListRouterReply {
+	repeated Router routers = 1;
+}
 
-message GetStatusRequest {}
+message AddRouterRequest {
+  string id = 1;
+  string addr = 2;
+}
 
-message GetStatusReply {
-  RouterStatus status = 1;
+message AddRouterReply {
+  string id = 1;
 }
 

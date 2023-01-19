@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/qdb"
-	proto "github.com/pg-sharding/spqr/router/protos"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type ShardingRuleEntry struct {

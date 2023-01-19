@@ -2,6 +2,8 @@ package topology
 
 import (
 	"context"
+
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type Router struct {
@@ -14,4 +16,8 @@ type RouterMgr interface {
 	ListRouters(ctx context.Context) ([]*Router, error)
 	UnregisterRouter(ctx context.Context, id string) error
 	SyncRouterMetadata(ctx context.Context, router *Router) error
+}
+
+func RouterToProto(r *Router) *protos.Router {
+	return &protos.Router{}
 }

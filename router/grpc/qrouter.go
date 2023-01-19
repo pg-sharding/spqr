@@ -8,8 +8,8 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
-	protos "github.com/pg-sharding/spqr/router/protos"
 )
 
 type LocalQrouterServer struct {
@@ -19,23 +19,23 @@ type LocalQrouterServer struct {
 	qr qrouter.QueryRouter
 }
 
-func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRequest) (*protos.OpenReply, error) {
+func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
 	l.qr.Initialize()
-	return &protos.OpenReply{}, nil
+	return &protos.OpenRouterReply{}, nil
 }
 
-func (l *LocalQrouterServer) GetStatus(ctx context.Context, request *protos.GetStatusRequest) (*protos.GetStatusReply, error) {
+func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *protos.GetRouterStatusRequest) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
-		return &protos.GetStatusReply{
+		return &protos.GetRouterStatusReply{
 			Status: protos.RouterStatus_OPENED,
 		}, nil
 	}
-	return &protos.GetStatusReply{
+	return &protos.GetRouterStatusReply{
 		Status: protos.RouterStatus_CLOSED,
 	}, nil
 }
 
-func (l *LocalQrouterServer) Close(ctx context.Context, request *protos.CloseRequest) (*protos.CloseReply, error) {
+func (l *LocalQrouterServer) Close(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -16,7 +16,7 @@ message ShardInfo {
 
 //TODO is ListShards returns all types of shards or only data-shards?
 service ShardService {
-  rpc ListShards (ShardRequest) returns (ShardReply) {}
+  rpc ListShards (ListShardRequest) returns (ListShardReply) {}
   rpc AddDataShard (AddShardRequest) returns (AddShardReply) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (AddShardReply) {}
   rpc GetShardInfo (ShardRequest) returns (ShardInfoReply) {}
@@ -26,11 +26,14 @@ message ShardInfoReply {
   ShardInfo shard_info = 1;
 }
 
+message ListShardRequest {
+}
+
 message ShardRequest {
   string id = 1;
 }
 
-message ShardReply {
+message ListShardReply {
 	repeated Shard shards = 1;
 }
 

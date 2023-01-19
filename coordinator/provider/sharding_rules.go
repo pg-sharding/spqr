@@ -5,7 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	protos "github.com/pg-sharding/spqr/router/protos"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type ShardingRulesService struct {
@@ -13,7 +13,7 @@ type ShardingRulesService struct {
 	impl coordinator.Coordinator
 }
 
-func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
 		err := s.impl.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
 		if err != nil {
@@ -24,7 +24,7 @@ func (s ShardingRulesService) AddShardingRules(ctx context.Context, request *pro
 	return &protos.AddShardingRuleReply{}, nil
 }
 
-func (s ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
+func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	rules, err := s.impl.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err

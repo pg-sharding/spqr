@@ -4,40 +4,26 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-service RoutersService {
-  rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
-  rpc AddRouters (AddRoutersRequest) returns (AddRoutersReply) {}
-  rpc ShutdownRouter (ShutdownRouterRequest) returns (ShutdownRouterReply) {}
+
+import "protos/router.proto";
+
+service TopologyService {
+  rpc OpenRouter(OpenRouterRequest) returns (OpenRouterReply) {}
+  rpc GetRouterStatus(GetRouterStatusRequest) returns (GetRouterStatusReply) {}
+  rpc CloseRouter(CloseRouterRequest) returns (CloseRouterReply) {}
 }
 
-// key range is mapped to shard
-message RouterEndpoint {
+message OpenRouterRequest {}
 
-  string listenAddr = 1;
+message OpenRouterReply {}
 
-  string id = 2;
+message CloseRouterRequest {}
+
+message CloseRouterReply {}
+
+message GetRouterStatusRequest {}
+
+message GetRouterStatusReply {
+  RouterStatus status = 1;
 }
 
-message ListRoutersRequest {
-
-}
-
-message AddRoutersRequest {
-  RouterEndpoint router = 1;
-}
-
-message ListRoutersReply {
-  repeated RouterEndpoint routers = 1;
-}
-
-message AddRoutersReply {
-
-}
-
-message ShutdownRouterRequest {
-  string routerID = 1;
-}
-
-message ShutdownRouterReply {
-
-}
