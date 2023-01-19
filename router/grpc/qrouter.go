@@ -16,10 +16,11 @@ type LocalQrouterServer struct {
 	protos.UnimplementedKeyRangeServiceServer
 	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
+	protos.UnimplementedTopologyServiceServer
 	qr qrouter.QueryRouter
 }
 
-func (l *LocalQrouterServer) Open(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
+func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
 	l.qr.Initialize()
 	return &protos.OpenRouterReply{}, nil
 }
@@ -35,7 +36,7 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *proto
 	}, nil
 }
 
-func (l *LocalQrouterServer) Close(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
+func (l *LocalQrouterServer) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -175,6 +176,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
 	protos.RegisterKeyRangeServiceServer(server, lqr)
 	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
+	protos.RegisterTopologyServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
