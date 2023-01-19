@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RouterServiceClient interface {
-	ListRouter(ctx context.Context, in *ListRouterRequest, opts ...grpc.CallOption) (*ListRouterReply, error)
+	ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error)
 	AddRouter(ctx context.Context, in *AddRouterRequest, opts ...grpc.CallOption) (*AddRouterReply, error)
 }
 
@@ -34,9 +34,9 @@ func NewRouterServiceClient(cc grpc.ClientConnInterface) RouterServiceClient {
 	return &routerServiceClient{cc}
 }
 
-func (c *routerServiceClient) ListRouter(ctx context.Context, in *ListRouterRequest, opts ...grpc.CallOption) (*ListRouterReply, error) {
-	out := new(ListRouterReply)
-	err := c.cc.Invoke(ctx, "/spqr.RouterService/ListRouter", in, out, opts...)
+func (c *routerServiceClient) ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error) {
+	out := new(ListRoutersReply)
+	err := c.cc.Invoke(ctx, "/spqr.RouterService/ListRouters", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (c *routerServiceClient) AddRouter(ctx context.Context, in *AddRouterReques
 // All implementations must embed UnimplementedRouterServiceServer
 // for forward compatibility
 type RouterServiceServer interface {
-	ListRouter(context.Context, *ListRouterRequest) (*ListRouterReply, error)
+	ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error)
 	AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error)
 	mustEmbedUnimplementedRouterServiceServer()
 }
@@ -65,8 +65,8 @@ type RouterServiceServer interface {
 type UnimplementedRouterServiceServer struct {
 }
 
-func (UnimplementedRouterServiceServer) ListRouter(context.Context, *ListRouterRequest) (*ListRouterReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListRouter not implemented")
+func (UnimplementedRouterServiceServer) ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRouters not implemented")
 }
 func (UnimplementedRouterServiceServer) AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRouter not implemented")
@@ -84,20 +84,20 @@ func RegisterRouterServiceServer(s grpc.ServiceRegistrar, srv RouterServiceServe
 	s.RegisterService(&RouterService_ServiceDesc, srv)
 }
 
-func _RouterService_ListRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListRouterRequest)
+func _RouterService_ListRouters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRoutersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RouterServiceServer).ListRouter(ctx, in)
+		return srv.(RouterServiceServer).ListRouters(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/spqr.RouterService/ListRouter",
+		FullMethod: "/spqr.RouterService/ListRouters",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RouterServiceServer).ListRouter(ctx, req.(*ListRouterRequest))
+		return srv.(RouterServiceServer).ListRouters(ctx, req.(*ListRoutersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -128,8 +128,8 @@ var RouterService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RouterServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ListRouter",
-			Handler:    _RouterService_ListRouter_Handler,
+			MethodName: "ListRouters",
+			Handler:    _RouterService_ListRouters_Handler,
 		},
 		{
 			MethodName: "AddRouter",

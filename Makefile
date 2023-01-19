@@ -33,10 +33,15 @@ build_balancer:
 build_mover:
 	go build -o spqr-mover  ./cmd/mover/main.go
 
+build_coorctl:
+	go build -o coorctl ./cmd/ctl/coorctl.go
+
+build_ctlutil: build_coorctl
+
 build: build_balancer build_coordinator build_router build_stress  build_mover build_world build_worldmock
 
 gogen:
-	protoc --go_out=./router --go_opt=paths=source_relative --go-grpc_out=./router --go-grpc_opt=paths=source_relative \
+	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
 	protos/* 
 
 yaccgen:

@@ -23,12 +23,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	router "github.com/pg-sharding/spqr/router/pkg"
 	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/datashard"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	routerproto "github.com/pg-sharding/spqr/router/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -50,7 +50,7 @@ var _ router.Router = &routerConn{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	// TODO: add creds
-	return grpc.Dial(r.AdmAddr, grpc.WithInsecure())
+	return grpc.Dial(r.Address, grpc.WithInsecure())
 }
 
 type qdbCoordinator struct {
@@ -78,8 +78,8 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 			for _, r := range rtrs {
 				spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v", r.ID)
 				internalR := &topology.Router{
-					Id:      r.ID,
-					AdmAddr: r.Address,
+					ID:      r.ID,
+					Address: r.Address,
 				}
 
 				cc, err := DialRouter(internalR)
@@ -87,9 +87,9 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					return err
 				}
 
-				rrClient := routerproto.NewRouterServiceClient(cc)
+				rrClient := routerproto.NewTopologyServiceClient(cc)
 
-				resp, err := rrClient.GetStatus(ctx, &routerproto.GetStatusRequest{})
+				resp, err := rrClient.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 				if err != nil {
 					return err
 				}
@@ -103,7 +103,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
 						return err
 					}
-					if _, err := rrClient.Open(ctx, &routerproto.OpenRequest{}); err != nil {
+					if _, err := rrClient.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
 						return err
 					}
 				case routerproto.RouterStatus_OPENED:
@@ -144,8 +144,8 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	for _, rtr := range rtrs {
 		// TODO: run cb`s async
 		cc, err := DialRouter(&topology.Router{
-			Id:      rtr.ID,
-			AdmAddr: rtr.Addr(),
+			ID:      rtr.ID,
+			Address: rtr.Addr(),
 		})
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID, err)
@@ -170,12 +170,16 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 
 	for _, v := range resp {
 		retRouters = append(retRouters, &topology.Router{
-			Id:      v.ID,
-			AdmAddr: v.Address,
+			ID:      v.ID,
+			Address: v.Address,
 		})
 	}
 
 	return retRouters, nil
+}
+
+func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
+	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
@@ -283,8 +287,8 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	// notify all routers
 	for _, r := range resp {
 		cc, err := DialRouter(&topology.Router{
-			Id:      r.ID,
-			AdmAddr: r.Addr(),
+			ID:      r.ID,
+			Address: r.Addr(),
 		})
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
@@ -591,8 +595,8 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got resp %v while adding kr %v", resp.String(), keyRange)
 	}
 
-	rCl := routerproto.NewRouterServiceClient(cc)
-	if resp, err := rCl.Open(ctx, &routerproto.OpenRequest{}); err != nil {
+	rCl := routerproto.NewTopologyServiceClient(cc)
+	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
 		return err
 	} else {
 		spqrlog.Logger.Printf(spqrlog.DEBUG4, "open router response %v", resp)
@@ -603,8 +607,8 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	// TODO: list routers and deduplicate
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.AdmAddr, r.Id)
-	return qc.db.AddRouter(ctx, qdb.NewRouter(r.AdmAddr, r.Id, qdb.CLOSED))
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "try to register router %v %v", r.Address, r.ID)
+	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.CLOSED))
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {

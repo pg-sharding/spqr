@@ -6,7 +6,7 @@ import (
 	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	shards "github.com/pg-sharding/spqr/router/protos"
+	shards "github.com/pg-sharding/spqr/pkg/protos"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

@@ -122,8 +122,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli *c
 
 	case *spqrparser.RegisterRouter:
 		newRouter := &topology.Router{
-			Id:      stmt.ID,
-			AdmAddr: stmt.Addr,
+			ID:      stmt.ID,
+			Address: stmt.Addr,
 		}
 
 		if err := mgr.RegisterRouter(ctx, newRouter); err != nil {

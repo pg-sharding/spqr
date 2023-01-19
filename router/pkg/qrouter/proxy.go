@@ -343,7 +343,7 @@ func (qr *ProxyQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, erro
 
 func (qr *ProxyQrouter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return []*topology.Router{{
-		Id: "local",
+		ID: "local",
 	}}, nil
 }
 

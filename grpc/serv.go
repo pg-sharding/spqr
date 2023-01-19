@@ -3,7 +3,7 @@ package shhttp
 import (
 	"context"
 
-	shards "github.com/pg-sharding/spqr/router/protos"
+	shards "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type ShardServer struct {
@@ -16,8 +16,8 @@ func (s *ShardServer) AddShard(ctx context.Context, request *shards.AddShardRequ
 
 var _ shards.ShardServiceServer = &ShardServer{}
 
-func (*ShardServer) ListShards(context.Context, *shards.ShardRequest) (*shards.ShardReply, error) {
-	return &shards.ShardReply{
+func (*ShardServer) ListShards(context.Context, *shards.ListShardRequest) (*shards.ListShardReply, error) {
+	return &shards.ListShardReply{
 		Shards: nil,
 	}, nil
 }

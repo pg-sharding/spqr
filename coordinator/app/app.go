@@ -13,7 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
-	shards "github.com/pg-sharding/spqr/router/protos"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type App struct {
@@ -75,14 +75,16 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "Coordinator Service %v", app.coordinator)
 
 	krserv := provider.NewKeyRangeService(app.coordinator)
-	rrserv := provider.NewRoutersService(app.coordinator)
-	shardingRulesServ := provider.NewShardingRules(app.coordinator)
+	rrserv := provider.NewRouterService(app.coordinator)
+	toposerv := provider.NewTopologyService(app.coordinator)
+	shardingRulesServ := provider.NewShardingRulesServer(app.coordinator)
 	shardServ := provider.NewShardServer(app.coordinator)
 
-	shards.RegisterKeyRangeServiceServer(serv, krserv)
-	shards.RegisterRoutersServiceServer(serv, rrserv)
-	shards.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
-	shards.RegisterShardServiceServer(serv, shardServ)
+	protos.RegisterKeyRangeServiceServer(serv, krserv)
+	protos.RegisterRouterServiceServer(serv, rrserv)
+	protos.RegisterTopologyServiceServer(serv, toposerv)
+	protos.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
+	protos.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
 

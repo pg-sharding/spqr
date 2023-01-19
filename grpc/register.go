@@ -1,7 +1,7 @@
 package shhttp
 
 import (
-	shards "github.com/pg-sharding/spqr/router/protos"
+	shards "github.com/pg-sharding/spqr/pkg/protos"
 	"google.golang.org/grpc"
 )
 
