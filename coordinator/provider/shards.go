@@ -41,7 +41,7 @@ func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorl
 }
 
 // TODO: remove ShardRequest.
-func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardRequest) (*protos.ListShardReply, error) {
+func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
 	shardList, err := s.impl.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardRequest
 		})
 	}
 
-	return &protos.ListShardReply{
+	return &protos.ListShardsReply{
 		Shards: protoShards,
 	}, nil
 }
