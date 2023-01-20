@@ -11,6 +11,10 @@ import (
 )
 
 var cfgPath string
+var qdbImpl string
+
+var qdbImplEtcd = "etcd"
+var qdbImplMem = "mem"
 
 var rootCmd = &cobra.Command{
 	Use: "spqr-coordinator --config `path-to-config`",
@@ -24,11 +28,26 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
-		if err != nil {
-			spqrlog.Logger.FatalOnError(err)
-			// exit
+		var db qdb.QDB
+		var err error
+
+		switch qdbImpl {
+		case qdbImplEtcd:
+			db, err = qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+			if err != nil {
+				spqrlog.Logger.FatalOnError(err)
+				// exit
+			}
+		case qdbImplMem:
+			db, err = qdb.NewMemQDB()
+			if err != nil {
+				spqrlog.Logger.FatalOnError(err)
+				// exit
+			}
+		default:
+			spqrlog.Logger.Fatalf("qdb implementation %s is invalid", qdbImpl)
 		}
+
 		coordinator := provider.NewCoordinator(db)
 
 		app := app.NewApp(coordinator)
@@ -42,6 +61,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", qdbImplEtcd, "which implementation of QDB to use.")
 }
 
 func Execute() {

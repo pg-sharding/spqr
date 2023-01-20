@@ -7,7 +7,7 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	protos "github.com/pg-sharding/spqr/router/protos"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type ShardServer struct {
@@ -41,7 +41,7 @@ func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorl
 }
 
 // TODO: remove ShardRequest.
-func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ShardRequest) (*protos.ShardReply, error) {
+func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
 	shardList, err := s.impl.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ShardRequest) (*
 		})
 	}
 
-	return &protos.ShardReply{
+	return &protos.ListShardsReply{
 		Shards: protoShards,
 	}, nil
 }

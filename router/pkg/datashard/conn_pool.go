@@ -74,7 +74,7 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.Backe
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
 		c.mu.Unlock()
-		spqrlog.Logger.Printf(spqrlog.LOG, "got cached connection from pool")
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool %p	: reuse cached shard connection %p", c, sh)
 		return sh, nil
 	}
 	c.mu.Unlock()
@@ -181,7 +181,7 @@ func checkRw(sh Shard) (bool, error) {
 		}
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "checkRw: got %v row", qt)
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p checking read-write: result datarow %+v", sh, qt)
 			if len(qt.Values) == 1 && len(qt.Values[0]) == 1 && qt.Values[0][0] == 'f' {
 				res = true
 			}
@@ -196,8 +196,8 @@ func checkRw(sh Shard) (bool, error) {
 }
 
 func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance conntion to shard %s", key.Name)
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "acquire conn to %s", key.Name)
 	hosts := s.shardMapping[key.Name].Hosts
 	rand.Shuffle(len(hosts), func(i, j int) {
 		hosts[j], hosts[i] = hosts[i], hosts[j]

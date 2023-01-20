@@ -89,7 +89,7 @@ var runCmd = &cobra.Command{
 		go func() {
 			for {
 				s := <-sigs
-				spqrlog.Logger.Printf(spqrlog.LOG, "got signal %v", s)
+				spqrlog.Logger.Printf(spqrlog.LOG, "received signal %v", s)
 
 				switch s {
 				case syscall.SIGUSR1:

@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v2"
 )
 
 type QParser struct {
 	stmt  *pgquery.ParseResult
-	query *pgproto3.Query
+	query string
 	state ParseState
 }
 
@@ -20,7 +19,7 @@ func (qp *QParser) Reset() {
 }
 
 func (qp *QParser) Stmt() (*pgquery.ParseResult, error) {
-	parsedStmt, err := pgquery.Parse(qp.query.String)
+	parsedStmt, err := pgquery.Parse(qp.query)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +31,7 @@ func (qp *QParser) State() ParseState {
 	return qp.state
 }
 
-func (qp *QParser) Query() *pgproto3.Query {
+func (qp *QParser) Query() string {
 	return qp.query
 }
 
@@ -107,15 +106,15 @@ type ParseStateExplain struct {
 	Query *pgquery.Node
 }
 
-func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
+func (qp *QParser) Parse(query string) (ParseState, error) {
 	qp.query = query
 
-	pstmt, err := pgquery.Parse(query.String)
+	pstmt, err := pgquery.Parse(query)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
 
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query.String, err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query, err)
 	} else {
 		qp.state = ParseStateQuery{}
 
@@ -135,7 +134,7 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 			case *pgquery.Node_ExecuteStmt:
 				varStmt := ParseStateExecute{}
 				varStmt.Name = q.ExecuteStmt.Name
-				ss := strings.Split(strings.Split(strings.ToLower(query.String), "execute")[1], strings.ToLower(varStmt.Name))[1]
+				ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
 
 				varStmt.ParamsQuerySuf = ss
 				qp.state = varStmt
@@ -145,9 +144,9 @@ func (qp *QParser) Parse(query *pgproto3.Query) (ParseState, error) {
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
 				varStmt.Name = q.PrepareStmt.Name
 				// prepare *name* as *query*
-				ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query.String), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
+				ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
 				varStmt.Query = ss
-				qp.query.String = ss
+				qp.query = ss
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
 				qp.state = varStmt
 				return qp.state, nil

@@ -2,7 +2,7 @@ package kr
 
 import (
 	"github.com/pg-sharding/spqr/qdb"
-	proto "github.com/pg-sharding/spqr/router/protos"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 

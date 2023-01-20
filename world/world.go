@@ -3,10 +3,9 @@ package world
 import (
 	"net"
 
-	shhttp "github.com/pg-sharding/spqr/grpc"
 	"github.com/pg-sharding/spqr/pkg/config"
+	shards "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	shards "github.com/pg-sharding/spqr/router/protos"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -28,7 +27,6 @@ func NewWorld(rcfg *config.Router) *World {
 
 func (w *World) Run() error {
 	serv := grpc.NewServer()
-	shhttp.Register(serv)
 	reflection.Register(serv)
 
 	worldShard := getWorldShard(w.rcfg.ShardMapping)

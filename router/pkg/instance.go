@@ -121,7 +121,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "pre route ok")
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "clint %p: prerouting phase succeeded", psqlclient)
 
 	cmngr, err := rulerouter.MatchConnectionPooler(psqlclient, r.RuleRouter.Config())
 	if err != nil {

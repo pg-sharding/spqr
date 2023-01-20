@@ -2,13 +2,15 @@ package rule
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	"sync"
 )
 
 type MatchMgr[T any] interface {
 	MatchKey(key route.Key) (*T, error)
+	UnderlyingEntityName() string
 }
 
 type RulesMgr interface {
@@ -77,6 +79,12 @@ type MgrImpl[T any] struct {
 	rule map[route.Key]*T
 
 	defaultRuleAllocator func(key route.Key) *T
+
+	underlyingEntityName string
+}
+
+func (r *MgrImpl[T]) UnderlyingEntityName() string {
+	return r.underlyingEntityName
 }
 
 func (m *MgrImpl[T]) MatchKey(key route.Key) (*T, error) {
@@ -94,7 +102,7 @@ func (m *MgrImpl[T]) MatchKey(key route.Key) (*T, error) {
 	}
 
 	return nil, fmt.Errorf("failed to route frontend for client:"+
-		" route for user:%s and db:%s is unconfigured", key.Usr(), key.DB())
+		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), m.UnderlyingEntityName())
 }
 
 func NewMgr(frmp map[route.Key]*config.FrontendRule,
@@ -115,6 +123,7 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				PoolPreparedStatement: dfr.PoolPreparedStatement,
 			}
 		},
+		underlyingEntityName: "frontend rules",
 	}
 
 	be := &MgrImpl[config.BackendRule]{
@@ -129,6 +138,7 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				AuthRule: dbe.AuthRule,
 			}
 		},
+		underlyingEntityName: "backend rules",
 	}
 
 	ret := &RulesMgrImpl{
