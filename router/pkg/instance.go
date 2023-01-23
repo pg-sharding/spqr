@@ -178,7 +178,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 }
 
 func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl, err := r.RuleRouter.PreRoute(conn)
+	cl, err := r.RuleRouter.PreRouteAdm(conn)
 	if err != nil {
 		return err
 	}

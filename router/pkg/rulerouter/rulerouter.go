@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	rconn "github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/route"
@@ -25,6 +26,7 @@ type RuleRouter interface {
 	Shutdown() error
 	Reload(configPath string) error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
+	PreRouteAdm(conn net.Conn) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
 	AddDataShard(key qdb.ShardKey) error
@@ -187,6 +189,37 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	_ = rt.AddClient(cl)
 	if err := cl.AssignRoute(rt); err != nil {
 		return nil, err
+	}
+
+	return cl, nil
+}
+
+func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
+	cl := rclient.NewPsqlClient(conn)
+	if err := cl.Init(r.tlsconfig); err != nil {
+		return nil, err
+	}
+
+	key := *route.NewRouteKey(cl.Usr(), cl.DB())
+	frRule, err := r.rmgr.MatchKeyFrontend(key)
+	if err != nil {
+		for _, msg := range []pgproto3.BackendMessage{
+			&pgproto3.ErrorResponse{
+				Message: err.Error(),
+			},
+		} {
+			if err := cl.Send(msg); err != nil {
+				return nil, errors.Wrap(err, "failed to make route failure responce")
+			}
+		}
+		return nil, err
+	}
+
+	cl.AssignRule(frRule)
+
+	if err := rconn.AuthFrontend(cl, frRule.AuthRule); err != nil {
+		_ = cl.ReplyErrMsg(err.Error())
+		return cl, err
 	}
 
 	return cl, nil
