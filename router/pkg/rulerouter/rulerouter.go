@@ -203,15 +203,7 @@ func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
-		for _, msg := range []pgproto3.BackendMessage{
-			&pgproto3.ErrorResponse{
-				Message: err.Error(),
-			},
-		} {
-			if err := cl.Send(msg); err != nil {
-				return nil, errors.Wrap(err, "failed to make route failure responce")
-			}
-		}
+		cl.ReplyErrMsg("failed to make route failure response")
 		return nil, err
 	}
 

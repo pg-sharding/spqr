@@ -4,7 +4,7 @@ sleep 20
 
 set -ex
 
-psql "host=spqr_router_1_1 port=7432 sslmode=disable" -c "SHOW key_ranges;"|| {
+psql "host=spqr_router_1_1 port=7432 sslmode=disable user=user1 dbname=db1" -c "SHOW key_ranges;"|| {
 	echo "ERROR: tests failed"
 	exit 1
 }
