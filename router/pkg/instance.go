@@ -178,10 +178,11 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 }
 
 func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl := client.NewPsqlClient(conn)
-	if err := cl.Init(r.frTLS); err != nil {
+	cl, err := r.RuleRouter.PreRouteAdm(conn)
+	if err != nil {
 		return err
 	}
+
 	return r.AdmConsole.Serve(ctx, cl)
 }
 
