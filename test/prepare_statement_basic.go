@@ -23,6 +23,19 @@ func getC() (net.Conn, error) {
 
 var okerr = errors.New("something")
 
+func readCnt(fr *pgproto3.Frontend, count int) error {
+	for i := 0; i < count; i++ {
+		if msg, err := fr.Receive(); err != nil {
+			return err
+		} else {
+			spqrlog.Logger.Printf(spqrlog.INFO, "received %T msg", msg)
+		}
+	}
+
+	return nil
+}
+
+
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
 		if msg, err := fr.Receive(); err != nil {
