@@ -25,13 +25,14 @@ backend_rules:
     db: db1
     pool_discard: true
     pool_rollback: true
+    auth_rule:
+      password: strong
 
 shards:
   sh1:
     tls:
-      key_file: /etc/odyssey/ssl/server.key
+      root_cert_file: /path/to/root.ca
       sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
     db: db1
     usr: user1
     pwd: 12345678
@@ -40,9 +41,8 @@ shards:
       - '192.168.233.2:6432'
   sh2:
     tls:
-      key_file: /etc/odyssey/ssl/server.key
+      root_cert_file: /path/to/root.ca
       sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
     db: db1
     usr: user1
     pwd: 12345678
@@ -51,9 +51,8 @@ shards:
       - '192.168.233.3:6432'
   w1:
     tls:
-      key_file: /etc/odyssey/ssl/server.key
+      root_cert_file: /path/to/root.ca
       sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
     db: db1
     usr: user1
     pwd: 12345678

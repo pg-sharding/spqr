@@ -310,7 +310,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 	}
 
 	query := rst.Cl.ConstructClientParams()
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting user params %s", query.String)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting params for client %p: %s", rst.Cl, query.String)
 	_, _, err = rst.Cl.ProcQuery(query, true, false)
 	return err
 }
