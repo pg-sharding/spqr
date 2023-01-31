@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/route"
-	"github.com/wal-g/tracelog"
 )
 
 type RoutePool interface {
@@ -44,7 +43,7 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	for _, rt := range r.pool {
 		go func(rt *route.Route) {
 			if err := cb(rt); err != nil {
-				tracelog.InfoLogger.Printf("error while notifying route %v", err)
+				spqrlog.Logger.Printf(spqrlog.INFO, "error while notifying route %v", err)
 			}
 		}(rt)
 	}
@@ -83,7 +82,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	defer r.mu.Unlock()
 
 	if nroute, ok := r.pool[key]; ok {
-		tracelog.InfoLogger.Printf("match route %v", key)
+		spqrlog.Logger.Printf(spqrlog.INFO, "match route %v", key)
 		return nroute, nil
 	}
 

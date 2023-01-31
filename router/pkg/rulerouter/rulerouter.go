@@ -19,7 +19,6 @@ import (
 	rclient "github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/route"
 	"github.com/pkg/errors"
-	"github.com/wal-g/tracelog"
 )
 
 type RuleRouter interface {
@@ -48,7 +47,7 @@ type RuleRouterImpl struct {
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	tracelog.InfoLogger.Printf("added world datashard to rrouter %v", key.Name)
+	spqrlog.Logger.Printf(spqrlog.INFO, "added world datashard to rrouter %v", key.Name)
 	return nil
 }
 

@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/wal-g/tracelog"
 )
 
 type Pool interface {
@@ -48,7 +47,9 @@ func (c *PoolImpl) Shutdown() error {
 
 	for _, cl := range c.pool {
 		go func(cl Client) {
-			tracelog.InfoLogger.PrintError(cl.Shutdown())
+			if err := cl.Shutdown(); err != nil {
+				spqrlog.Logger.PrintError(err)
+			}
 		}(cl)
 	}
 

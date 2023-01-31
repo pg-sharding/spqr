@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wal-g/tracelog"
-
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 )
@@ -107,7 +105,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 		if err == nil {
 			break
 		}
-		//tracelog.ErrorLogger.PrintError(err)
+		//spqrlog.Logger.PrintError(err)
 		fmt.Println("Error: trying to init state by coordinator, but got an error ", err)
 		time.Sleep(b.retryTime)
 	}
@@ -115,7 +113,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	for shard, keyRanges := range shardToKeyRanges {
 		shardDistances, err := b.installation.GetKeyDistanceByRanges(shard, keyRanges)
 		if err != nil {
-			tracelog.DebugLogger.PrintError(err)
+			spqrlog.Logger.PrintError(err)
 			continue
 		}
 		for rng, dist := range shardDistances {
@@ -187,7 +185,7 @@ func (b *Balancer) tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup) {
 	_stats, err := b.installation.GetShardStats(shard, keyRanges)
 
 	if err != nil {
-		//tracelog.ErrorLogger.PrintError(err)
+		//spqrlog.Logger.PrintError(err)
 		fmt.Println("Error: ", err)
 		return
 	}
@@ -583,7 +581,7 @@ func (b *Balancer) runTask(task *Action) error {
 	var err error
 
 	for task.actionStage != actionStageDone {
-		tracelog.InfoLogger.Printf("Action stage: %v", task.actionStage)
+		spqrlog.Logger.Printf(spqrlog.INFO, "Action stage: %v", task.actionStage)
 
 		switch task.actionStage {
 		case actionStagePlan:
@@ -709,11 +707,11 @@ func (b *Balancer) planTasks() {
 
 	shardStats, err := b.installation.GetShardStats(shard, keyRanges)
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(err)
+		spqrlog.Logger.PrintError(err)
 		return
 	}
 
-	tracelog.InfoLogger.Printf("Plan tasks. ShardStats: %#v", shardStats)
+	spqrlog.Logger.Printf(spqrlog.INFO, "Plan tasks. ShardStats: %#v", shardStats)
 
 	b.bestTask = Task{}
 	for i := 0; i < b.plannerCount; i++ {
@@ -807,7 +805,7 @@ func (b *Balancer) BrutForceStrategy() {
 		reload := b.reloadRequired
 		b.muReload.Unlock()
 		if !reload {
-			tracelog.InfoLogger.Println("Check coordinator for reloading requirements")
+			spqrlog.Logger.Printf(spqrlog.INFO, "Check coordinator for reloading requirements")
 			reload, err = b.coordinator.isReloadRequired()
 			if err != nil {
 				fmt.Println("Error while spqr.isReloadRequired call: ", err)

@@ -18,7 +18,6 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	github.com/wal-g/tracelog v0.0.0-20210121175938-897a155375e3
 	go.etcd.io/etcd/client/v3 v3.5.4
 	go.uber.org/atomic v1.9.0
 	golang.yandex/hasql v1.0.0

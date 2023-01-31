@@ -5,15 +5,14 @@ import (
 	"net"
 	"os"
 
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/pg-sharding/spqr/router/pkg/route"
-
 	"github.com/jackc/pgproto3/v2"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/pkg/client"
+	"github.com/pg-sharding/spqr/router/pkg/datashard"
+	"github.com/pg-sharding/spqr/router/pkg/route"
 )
 
 type WorldMock struct {
@@ -26,7 +25,6 @@ func (w *WorldMock) Run() error {
 
 	listener, err := net.Listen("tcp", ":6432")
 	if err != nil {
-		tracelog.ErrorLogger.PrintError(err)
 		return err
 	}
 	defer listener.Close()
@@ -55,7 +53,7 @@ func (w *WorldMock) Run() error {
 
 			go func() {
 				if err := w.serv(c); err != nil {
-					tracelog.ErrorLogger.PrintError(err)
+					spqrlog.Logger.PrintError(err)
 				}
 			}()
 
@@ -72,7 +70,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	tracelog.InfoLogger.Printf("initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.INFO, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
 
 	if err := cl.AssignRule(&config.FrontendRule{
 		AuthRule: &config.AuthCfg{
@@ -87,24 +85,24 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 	if err := cl.Auth(r); err != nil {
 		return err
 	}
-	tracelog.InfoLogger.Printf("client auth OK")
+	spqrlog.Logger.Printf(spqrlog.INFO, "client auth OK")
 
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			tracelog.ErrorLogger.Printf("failed to received msg %w", err)
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)
 			return err
 		}
 
-		tracelog.InfoLogger.Printf("received msg %v", msg)
+		spqrlog.Logger.Printf(spqrlog.INFO, "received msg %v", msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
-			tracelog.InfoLogger.Printf("received prep stmt %v %v", v.Name, v.Query)
+			spqrlog.Logger.Printf(spqrlog.INFO, "received prep stmt %v %v", v.Name, v.Query)
 			break
 		case *pgproto3.Query:
 
-			tracelog.InfoLogger.Printf("received message %v", v.String)
+			spqrlog.Logger.Printf(spqrlog.INFO, "received message %v", v.String)
 
 			_ = cl.ReplyDebugNotice("you are receiving the message from the mock world shard")
 
@@ -136,7 +134,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 			}()
 
 			if err != nil {
-				tracelog.ErrorLogger.PrintError(err)
+				spqrlog.Logger.PrintError(err)
 			}
 
 		default:
