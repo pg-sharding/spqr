@@ -43,9 +43,6 @@ shards:
     tls:
       root_cert_file: /path/to/root.ca
       sslmode: disable
-    db: db1
-    usr: user1
-    pwd: 12345678
     type: DATA
     hosts:
       - '192.168.233.3:6432'
