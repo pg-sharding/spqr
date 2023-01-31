@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/test/logproxy"
 	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 )
 
 var rootCmd = &cobra.Command{
@@ -18,21 +18,15 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.FatalOnError(err)
 	}
 }
 
 var runCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
-		pr := logproxy.NewProxy()
-		err := pr.Run()
-		if err != nil {
-			tracelog.ErrorLogger.FatalOnError(err)
-		}
-
-		return err
+		pr := &logproxy.Proxy{}
+		return pr.Run()
 	},
 }
 

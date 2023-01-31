@@ -13,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/wal-g/tracelog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/app"
@@ -27,8 +26,8 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "./spqr-router run --config `path-to-config-folder`",
-	Short: "sqpr-rr",
+	Use:   "spqr-router run --config `path-to-config-folder`",
+	Short: "sqpr-router",
 	Long:  "spqr-router",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
@@ -39,7 +38,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		tracelog.ErrorLogger.Fatal(err)
+		spqrlog.Logger.FatalOnError(err)
 	}
 }
 
