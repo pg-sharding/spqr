@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"math/rand"
+	"net"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
@@ -269,7 +270,8 @@ func NewConnPool(mapping map[string]*config.Shard) DBPool {
 		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
 		shard := mapping[shardKey.Name]
 
-		tlsconfig, err := shard.TLS.Init(shard.Hosts[0])
+		addr, _, _ := net.SplitHostPort(host)
+		tlsconfig, err := shard.TLS.Init(addr)
 		if err != nil {
 			return nil, err
 		}
