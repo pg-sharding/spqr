@@ -196,7 +196,7 @@ func checkRw(sh Shard) (bool, error) {
 }
 
 func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance conntion to shard %s", key.Name)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance conntion to shard %s", s, key.Name)
 
 	hosts := s.shardMapping[key.Name].Hosts
 	rand.Shuffle(len(hosts), func(i, j int) {
@@ -266,14 +266,12 @@ func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
 
 func NewConnPool(mapping map[string]*config.Shard) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
-		spqrlog.Logger.Printf(spqrlog.LOG, "acquire new connection to %v", host)
 		shard := mapping[shardKey.Name]
 
 		tlsconfig, err := shard.TLS.Init(shard.Hosts[0])
 		if err != nil {
 			return nil, err
 		}
-
 		pgi, err := conn.NewInstanceConn(host, tlsconfig)
 		if err != nil {
 			return nil, err

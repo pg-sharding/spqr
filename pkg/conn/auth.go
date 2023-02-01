@@ -14,7 +14,7 @@ import (
 )
 
 func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "Auth type proc %T\n", msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "backend shard %p: auth type proc %T\n", shard, msg)
 
 	switch v := msg.(type) {
 	case *pgproto3.AuthenticationOk:

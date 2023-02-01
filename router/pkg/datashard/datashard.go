@@ -160,7 +160,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 		case pgproto3.AuthenticationResponseMessage:
 			err := conn.AuthBackend(sh.dedicated, sh.beRule, v)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to perform backend auth %w", err)
+				spqrlog.Logger.Errorf("failed to perform backend auth %v", err)
 				return err
 			}
 		case *pgproto3.ErrorResponse:
