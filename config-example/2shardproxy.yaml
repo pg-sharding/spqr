@@ -44,9 +44,6 @@ shards:
       key_file: /etc/odyssey/ssl/server.key
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
-    db: db1
-    usr: user1
-    pwd: 12345678
     type: DATA
     hosts:
       - 'localhost:5550'
@@ -55,11 +52,7 @@ shards:
       key_file: /etc/odyssey/ssl/server.key
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
-    db: db1
-    usr: user1
-    pwd: 12345678
     type: DATA
     target_session_attrs: "read-write"
     hosts:
       - 'localhost:5551'
-      - 'localhost:5432'

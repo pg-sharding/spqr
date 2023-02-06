@@ -44,7 +44,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *pgquery.RawStmt, cli 
 		// forbid under separate setting
 		return cli.ReportStmtRoutedToAllShards(ctx)
 	case *pgquery.Node_InsertStmt:
-		err := qr.matchShards(ctx, stmt, meta)
+		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			if qr.cfg.MulticastUnroutableInsertStatement {
 				switch err {
@@ -57,7 +57,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *pgquery.RawStmt, cli 
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
-		err := qr.matchShards(ctx, stmt, meta)
+		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			spqrlog.Logger.Errorf("parse error %v", err)
 			return cli.ReportError(err)
