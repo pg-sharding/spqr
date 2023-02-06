@@ -316,8 +316,11 @@ func (qr *ProxyQrouter) deparseFromClauseList(clause []*pgquery.Node, meta *Rout
 	return nil
 }
 
-func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt, meta *RoutingMetadataContext) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "mathcing qstmt %T", qstmt.Stmt.Node)
+func (qr *ProxyQrouter) deparseShardingMapping(
+	ctx context.Context,
+	qstmt *pgquery.RawStmt,
+	meta *RoutingMetadataContext) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "matching qstmt %T", qstmt.Stmt.Node)
 	switch stmt := qstmt.Stmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
 		if stmt.SelectStmt.FromClause != nil {
@@ -337,7 +340,7 @@ func (qr *ProxyQrouter) matchShards(ctx context.Context, qstmt *pgquery.RawStmt,
 		var cols []string
 
 		for _, c := range stmt.InsertStmt.Cols {
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "col tp is %T", c.Node)
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "column type is %T", c.Node)
 			switch res := c.Node.(type) {
 			case *pgquery.Node_ResTarget:
 				cols = append(cols, res.ResTarget.Name)
@@ -400,7 +403,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.
 			// hashing function name unneeded for sharding rules matching purpose
 			entries = append(entries, eltTar.ColumnDef.Colname)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG3, "current table elt type is %T %v", elt, elt)
+			spqrlog.Logger.Printf(spqrlog.DEBUG3, "current table element type is %T %v", elt, elt)
 		}
 	}
 
@@ -424,6 +427,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	 */
 	stmt := parsedStmt.Stmts[0]
 	meta := NewRoutingMetadataContext()
+
+	/*
+	* Step 1: traverse query tree and deparse mapping from
+	* columns to their values (either contant or expression).
+	* Note that exact (routing) value of (sharding) column may not be
+	* known after this phase, as it can be Parse Step of Extended proto.
+	 */
 
 	switch node := stmt.Stmt.Node.(type) {
 	case *pgquery.Node_VariableSetStmt:
@@ -457,7 +467,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		// forbid under separate setting
 		return MultiMatchState{}, nil
 	case *pgquery.Node_InsertStmt:
-		err := qr.matchShards(ctx, stmt, meta)
+		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			if qr.cfg.MulticastUnroutableInsertStatement {
 				switch err {
@@ -470,12 +480,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
-		err := qr.matchShards(ctx, stmt, meta)
+		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			spqrlog.Logger.Errorf("parse error %v", err)
 			return nil, err
 		}
 	}
+
+	/*
+	* Step 2: match all deparsed rules to sharding rules.
+	 */
 
 	var route ShardRoute
 	route = nil
