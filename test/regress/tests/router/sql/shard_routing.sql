@@ -52,6 +52,10 @@ SELECT * FROM xx WHERE w_id >= 20;
 INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a;
 SELECT * FROM xxtt1 WHERE w_id = 20;
 
+-- check that complex UPDATE works
+UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where w_id=20 and xxtt1.j=a.j;
+SELECT * FROM xxtt1 WHERE w_id = 20;
+
 DROP TABLE xx;
 DROP TABLE xxtt1;
 

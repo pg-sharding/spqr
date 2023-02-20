@@ -78,7 +78,7 @@ var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *RoutingMetadataContext) (string, string, error) {
 	var colnames []string
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing column name %T", expr.Node)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing column name %T, value: %v", expr.Node, expr.Node)
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_ColumnRef:
 		for _, node := range texpr.ColumnRef.Fields {
@@ -151,7 +151,7 @@ func getbytes(val *pgquery.Node) (string, error) {
 }
 
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing by key ranges %T", expr.Node)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "routing by key ranges %T, value: %v", expr.Node, expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_RowExpr:
@@ -191,7 +191,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.No
 }
 
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T", expr.Node)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed stmt type %T, value: %v", expr.Node, expr.Node)
 
 	switch texpr := expr.Node.(type) {
 	case *pgquery.Node_BoolExpr:
@@ -252,7 +252,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, m
 }
 
 func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgquery.Node, meta *RoutingMetadataContext) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val selectStmt is %T", selectStmt)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "val selectStmt is %T, %v", selectStmt, selectStmt)
 
 	switch q := selectStmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
@@ -501,12 +501,15 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	route = nil
 	if meta.exprs != nil {
 		// traverse each deparsed relation from query
+		var route_err error
 		for tname, cols := range meta.rels {
 			if _, err := ops.MatchShardingRule(ctx, qr.qdb, tname, cols); err != nil {
 				for _, col := range cols {
 					currroute, err := qr.RouteKeyWithRanges(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
-						return nil, err
+						route_err = err
+						spqrlog.Logger.Printf(spqrlog.DEBUG1, "Temporarily skip the route error: %v", route_err)
+						continue
 					}
 					if route == nil {
 						route = currroute
@@ -515,6 +518,9 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 					}
 				}
 			}
+		}
+		if route == nil && route_err != nil {
+			return nil, route_err
 		}
 	}
 
