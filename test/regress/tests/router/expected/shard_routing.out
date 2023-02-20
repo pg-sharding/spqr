@@ -146,6 +146,27 @@ NOTICE: send query to shard(s) : sh1
    20
 (2 rows)
 
+-- check that `INSERT FROM SELECT` with constant works
+INSERT INTO xx (w_id) SELECT 20;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM xx WHERE w_id >= 20;
+NOTICE: send query to shard(s) : sh1
+ w_id 
+------
+   20
+   20
+   20
+(3 rows)
+
+INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a;
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM xxtt1 WHERE w_id = 20;
+NOTICE: send query to shard(s) : sh1
+ i | j  | w_id 
+---+----+------
+   | 10 |   20
+(1 row)
+
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxtt1;
