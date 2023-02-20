@@ -37,6 +37,10 @@ type RoutingMetadataContext struct {
 	InsertStmtCols []string
 	InsertStmtRel  string
 
+	// For
+	// INSERT INTO x (...) SELECT ...
+	TargetList []*pgquery.Node
+
 	// TODO: include client ops and metadata here
 }
 
@@ -252,6 +256,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgque
 
 	switch q := selectStmt.Node.(type) {
 	case *pgquery.Node_SelectStmt:
+		meta.TargetList = q.SelectStmt.TargetList
 		if clause := q.SelectStmt.FromClause; clause != nil {
 			// route `insert into rel select from` stmt
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsing select from clause, %+v", clause)
@@ -414,6 +419,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.
 }
 
 func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResult) (RoutingState, error) {
+	var insert_err error
 	if parsedStmt == nil {
 		return nil, ComplexQuery
 	}
@@ -475,7 +481,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 					return MultiMatchState{}, nil
 				}
 			}
-			return nil, err
+			insert_err = err
 		}
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
@@ -513,11 +519,12 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed values list %+v, insertStmtCols %+v", meta.ValuesLists, meta.InsertStmtCols)
-	if meta.ValuesLists != nil && len(meta.InsertStmtCols) != 0 {
+	if len(meta.InsertStmtCols) != 0 {
 		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, meta.InsertStmtRel, meta.InsertStmtCols); err != nil {
 			// compute matched sharding rule offsets
 			offsets := make([]int, 0)
 			j := 0
+			// TODO: check mapping by rules with multiple columns
 			for i, s := range meta.InsertStmtCols {
 				if j == len(rule.Entries) {
 					break
@@ -528,17 +535,38 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 			}
 
 			meta.offsets = offsets
+			routed := false
+			if insert_err != nil {
+				if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
+					currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]].GetResTarget().Val, meta)
+					if err != nil {
+						return nil, err
+					}
 
-			// only firt value from value list
-			currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[0], meta)
-			if err != nil {
-				return nil, err
+					spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
+					routed = true
+					if route == nil {
+						route = currroute
+					} else {
+						route = combine(route, currroute)
+					}
+				} else {
+					return nil, insert_err
+				}
 			}
-			spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
-			if route == nil {
-				route = currroute
-			} else {
-				route = combine(route, currroute)
+
+			if !routed && meta.ValuesLists != nil {
+				// only first value from value list
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[0], meta)
+				if err != nil {
+					return nil, err
+				}
+				spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed route from %+v", currroute)
+				if route == nil {
+					route = currroute
+				} else {
+					route = combine(route, currroute)
+				}
 			}
 		}
 	}

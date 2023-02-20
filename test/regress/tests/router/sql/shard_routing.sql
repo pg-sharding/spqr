@@ -46,6 +46,12 @@ SELECT * FROM xxtt1 a WHERE a.w_id >= 21;
 INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 SELECT * FROM xx WHERE w_id >= 20;
 
+-- check that `INSERT FROM SELECT` with constant works
+INSERT INTO xx (w_id) SELECT 20;
+SELECT * FROM xx WHERE w_id >= 20;
+INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a;
+SELECT * FROM xxtt1 WHERE w_id = 20;
+
 DROP TABLE xx;
 DROP TABLE xxtt1;
 
