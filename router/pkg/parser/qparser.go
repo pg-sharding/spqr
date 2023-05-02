@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
 type QParser struct {
@@ -183,11 +183,11 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 					for _, node := range q.VariableSetStmt.Args {
 						switch nq := node.Node.(type) {
 						case *pgquery.Node_AConst:
-							switch act := nq.AConst.Val.Node.(type) {
-							case *pgquery.Node_String_:
-								varStmt.Value = act.String_.Str
-							case *pgquery.Node_Integer:
-								varStmt.Value = fmt.Sprintf("%d", act.Integer.Ival)
+							switch act := nq.AConst.Val.(type) {
+							case *pgquery.A_Const_Sval:
+								varStmt.Value = act.Sval.Sval
+							case *pgquery.A_Const_Ival:
+								varStmt.Value = fmt.Sprintf("%d", act.Ival.Ival)
 							}
 						}
 					}

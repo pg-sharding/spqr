@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
-	pgquery "github.com/pganalyze/pg_query_go/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"

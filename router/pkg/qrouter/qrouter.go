@@ -6,7 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 
-	pgquery "github.com/pganalyze/pg_query_go/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 	"github.com/pkg/errors"
 
 	"github.com/pg-sharding/spqr/pkg/config"

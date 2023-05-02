@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb/ops"
-	pgquery "github.com/pganalyze/pg_query_go/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
 type RoutingMetadataContext struct {
@@ -86,7 +86,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 
 			switch colname := node.Node.(type) {
 			case *pgquery.Node_String_:
-				colnames = append(colnames, colname.String_.Str)
+				colnames = append(colnames, colname.String_.Sval)
 			default:
 				return "", "", ComplexQuery
 			}
@@ -139,12 +139,12 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, ComplexQuery
 }
 
-func getbytes(val *pgquery.Node) (string, error) {
-	switch valt := val.Node.(type) {
-	case *pgquery.Node_Integer:
-		return fmt.Sprintf("%d", valt.Integer.Ival), nil
-	case *pgquery.Node_String_:
-		return valt.String_.Str, nil
+func getbytes(val *pgquery.A_Const) (string, error) {
+	switch valt := val.Val.(type) {
+	case *pgquery.A_Const_Ival:
+		return fmt.Sprintf("%d", valt.Ival.Ival), nil
+	case *pgquery.A_Const_Sval:
+		return valt.Sval.Sval, nil
 	default:
 		return "", ComplexQuery
 	}
@@ -160,7 +160,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.No
 
 		switch valexpr := texpr.RowExpr.Args[meta.offsets[0]].Node.(type) {
 		case *pgquery.Node_AConst:
-			val, err := getbytes(valexpr.AConst.Val)
+			val, err := getbytes(valexpr.AConst)
 			if err != nil {
 				return nil, err
 			}
@@ -169,7 +169,7 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.No
 			return nil, ComplexQuery
 		}
 	case *pgquery.Node_AConst:
-		val, err := getbytes(texpr.AConst.Val)
+		val, err := getbytes(texpr.AConst)
 		if err != nil {
 			return nil, err
 		}
