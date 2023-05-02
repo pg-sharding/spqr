@@ -5,7 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v2"
+	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
 func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *pgquery.RawStmt, cli *clientinteractor.PSQLInteractor) error {

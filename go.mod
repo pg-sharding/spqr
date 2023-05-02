@@ -12,7 +12,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/libp2p/go-reuseport v0.2.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pganalyze/pg_query_go/v2 v2.1.2
+	github.com/pganalyze/pg_query_go/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.5.0
