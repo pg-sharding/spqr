@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -397,6 +398,27 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 var ParseError = fmt.Errorf("parsing stmt error")
 
+/*
+key: value[, key1: value1...]
+*/
+func parseComment(comm string) string {
+	fields := strings.Fields(comm)
+	for i := 0; i+1 < len(fields); i += 2 {
+		key := fields[i]
+		key = key[:len(key)-1] // drop colon
+		value := fields[i+1]
+		if value[len(value)-1] == ',' {
+			value = value[:len(value)-1]
+		}
+
+		if key == "sharding_key" {
+			return value
+		}
+	}
+
+	return ""
+}
+
 // CheckTableIsRoutable Given table create statment, check if it is routable with some sharding rule
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.Node_CreateStmt) error {
 
@@ -442,6 +464,18 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	 */
 
 	switch node := stmt.Stmt.Node.(type) {
+	case *pgquery.Node_CommentStmt:
+		key := parseComment(node.CommentStmt.Comment)
+		if key != "" {
+			ds, err := qr.deparseKeyWithRangesInternal(ctx, key)
+			if err != nil {
+				return SkipRoutingState{}, err
+			}
+			return ShardMatchState{
+				Routes: []*DataShardRoute{ds},
+			}, nil
+		}
+
 	case *pgquery.Node_VariableSetStmt:
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router
