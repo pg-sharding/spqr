@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/sevlyar/go-daemon"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -54,8 +56,39 @@ var runCmd = &cobra.Command{
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
+		rcfg, err := config.LoadRouterCfg(rcfgPath)
+		if err != nil {
+			return err
+		}
+
+		if rcfg.Daemonize {
+
+			cntxt := &daemon.Context{
+				PidFileName: rcfg.PidFileName,
+				PidFilePerm: 0644,
+				LogFileName: rcfg.LogFileName,
+				LogFilePerm: 0640,
+				WorkDir:     "./",
+				Umask:       027,
+				Args:        args,
+			}
+
+			d, err := cntxt.Reborn()
+			if err != nil {
+				log.Fatal("Unable to run: ", err)
+			}
+			if d != nil {
+				return nil
+			}
+			defer cntxt.Release()
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "daemon started")
+		}
+
+		ctx, cancelCtx := context.WithCancel(context.Background())
+		defer cancelCtx()
+
 		var pprofFile *os.File
-		var err error
 		if saveProfie {
 			pprofFile, err = os.Create(profileFile)
 			if err != nil {
@@ -66,14 +99,6 @@ var runCmd = &cobra.Command{
 				return err
 			}
 		}
-
-		rcfg, err := config.LoadRouterCfg(rcfgPath)
-		if err != nil {
-			return err
-		}
-
-		ctx, cancelCtx := context.WithCancel(context.Background())
-		defer cancelCtx()
 
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
