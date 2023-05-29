@@ -28,8 +28,9 @@ func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.Back
 		/* password may be configured in partially-calculated
 		 * form to hide original passwd string
 		 */
-		if berule.AuthRule.Password[0:3] == "md5" {
-			res = []byte(berule.AuthRule.Password)
+		/*35=len("md5") + 2  * 16*/
+		if len(berule.AuthRule.Password) == 35 && berule.AuthRule.Password[0:3] == "md5" {
+			res = []byte(berule.AuthRule.Password[3:])
 		} else {
 			hash := md5.New()
 			hash.Write([]byte(berule.AuthRule.Password + berule.Usr))

@@ -29,6 +29,11 @@ const (
 type Router struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"`
 
+	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
+
+	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
+	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
+
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
