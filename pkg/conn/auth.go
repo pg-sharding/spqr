@@ -35,10 +35,11 @@ func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.Back
 			hash := md5.New()
 			hash.Write([]byte(berule.AuthRule.Password + berule.Usr))
 			res = hash.Sum(nil)
+			res = []byte(hex.EncodeToString(res))
 		}
 
 		hashSalted := md5.New()
-		hashSalted.Write([]byte(hex.EncodeToString(res)))
+		hashSalted.Write(res)
 		hashSalted.Write([]byte{v.Salt[0], v.Salt[1], v.Salt[2], v.Salt[3]})
 		resSalted := hashSalted.Sum(nil)
 
@@ -56,15 +57,15 @@ func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.Back
 	}
 }
 
-func AuthFrontend(cl client.Client, authRule *config.AuthCfg) error {
-	switch authRule.Method {
+func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
+	switch rule.AuthRule.Method {
 	case config.AuthOK:
 		return nil
 		// TODO:
 	case config.AuthNotOK:
 		return fmt.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 	case config.AuthClearText:
-		if cl.PasswordCT() != authRule.Password {
+		if cl.PasswordCT() != rule.AuthRule.Password {
 			return fmt.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 		}
 		return nil
@@ -79,19 +80,32 @@ func AuthFrontend(cl client.Client, authRule *config.AuthCfg) error {
 		resp := cl.PasswordMD5(salt)
 
 		hash := md5.New()
-		hash.Write([]byte(authRule.Password))
+
+		/* Accept encrypted version of passwd */
+		if len(rule.AuthRule.Password) == 35 && rule.AuthRule.Password[0:3] == "md5" {
+			hash.Write([]byte(rule.AuthRule.Password[3:]))
+		} else {
+			innerhash := md5.New()
+			innerhash.Write([]byte(rule.AuthRule.Password + rule.Usr))
+
+			innerres := innerhash.Sum(nil)
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "inner hash: %v", innerres)
+
+			hash.Write([]byte(hex.EncodeToString(innerres)))
+		}
 		hash.Write([]byte{salt[0], salt[1], salt[2], salt[3]})
 		saltedPasswd := hash.Sum(nil)
 
 		token := "md5" + hex.EncodeToString(saltedPasswd)
 
 		if resp != token {
-			return fmt.Errorf("route %v %v: md5 password mismatch", cl.Usr(), cl.DB())
+			return fmt.Errorf("[frontend_auth] route %v %v: md5 password mismatch", cl.Usr(), cl.DB())
 		}
 		return nil
 	case config.AuthSCRAM:
 		fallthrough
 	default:
-		return fmt.Errorf("invalid auth method %v", authRule.Method)
+		return fmt.Errorf("invalid auth method %v", rule.AuthRule.Method)
 	}
 }

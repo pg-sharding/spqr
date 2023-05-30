@@ -474,9 +474,9 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "processing auth for %v %v\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "processing frontend auth for %v %v\n", cl.Usr(), cl.DB())
 
-	if err := conn.AuthFrontend(cl, cl.Rule().AuthRule); err != nil {
+	if err := conn.AuthFrontend(cl, cl.Rule()); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
 				Message: fmt.Sprintf("auth failed %s", err.Error()),
@@ -496,6 +496,8 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 			return err
 		}
 	}
+
+	spqrlog.Logger.Printf(spqrlog.LOG, "client connection for %v %v accepted\n", cl.Usr(), cl.DB())
 
 	ps, err := rt.Params()
 	if err != nil {

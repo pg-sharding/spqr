@@ -145,6 +145,7 @@ func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.Shard, beRule *c
 
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 	err := sh.dedicated.Send(sm)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "shard conn %p startup msg: %+v", sh, sm)
 	if err != nil {
 		return err
 	}
