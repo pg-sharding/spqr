@@ -50,19 +50,36 @@ func (app *App) Run() error {
 func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "serve psql on %v", config.CoordinatorConfig().Addr)
+	var lwg sync.WaitGroup
 
-	listener, err := net.Listen("tcp", config.CoordinatorConfig().Addr)
-
-	if err != nil {
-		return err
+	listen := map[string]struct{}{
+		"localhost":                     {},
+		config.CoordinatorConfig().Addr: {},
 	}
 
-	for {
-		conn, err := listener.Accept()
-		spqrlog.Logger.PrintError(err)
-		_ = app.coordinator.ProcClient(context.TODO(), conn)
+	lwg.Add(len(listen))
+
+	for addr := range listen {
+		go func(addr string) {
+			defer lwg.Done()
+			spqrlog.Logger.Printf(spqrlog.LOG, "serve psql on %v", addr)
+
+			listener, err := net.Listen("tcp", addr)
+
+			if err != nil {
+				spqrlog.Logger.Errorf("error trying to bind psql on %v: %v", addr, err)
+				return
+			}
+
+			for {
+				conn, err := listener.Accept()
+				spqrlog.Logger.PrintError(err)
+				_ = app.coordinator.ProcClient(context.TODO(), conn)
+			}
+		}(addr)
 	}
+	lwg.Wait()
+	return nil
 }
 
 func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
