@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net"
+	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -24,17 +25,34 @@ func NewApp(sg *router.InstanceImpl) *App {
 }
 
 func (app *App) ServeRouter(ctx context.Context) error {
-	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort)
-	listener, err := reuse.Listen("tcp", address)
-	if err != nil {
-		return err
-	}
-	defer func(listener net.Listener) {
-		_ = listener.Close()
-	}(listener)
+	var lwg sync.WaitGroup
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s by postgresql proto", address)
-	return app.spqr.Run(ctx, listener)
+	listen := map[string]struct{}{
+		net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterPort):                       {},
+		net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort): {},
+	}
+
+	lwg.Add(len(listen))
+
+	for addr := range listen {
+		go func(address string) {
+			defer lwg.Done()
+			listener, err := reuse.Listen("tcp", address)
+			if err != nil {
+				spqrlog.Logger.Errorf("failed to listen psql %v", err)
+				return
+			}
+			defer func(listener net.Listener) {
+				_ = listener.Close()
+			}(listener)
+
+			spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s by postgresql proto", address)
+			app.spqr.Run(ctx, listener)
+		}(addr)
+	}
+	lwg.Wait()
+
+	return nil
 }
 
 func (app *App) ServeAdminConsole(ctx context.Context) error {
