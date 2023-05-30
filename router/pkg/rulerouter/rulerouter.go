@@ -137,6 +137,10 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, err
 	}
 
+	if cl.DB() == "spqr-console" {
+		return cl, nil
+	}
+
 	// match client frontend rule
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
