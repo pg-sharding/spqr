@@ -16,6 +16,15 @@ frontend_tls:
   sslmode: disable
 
 frontend_rules:
+  - usr: md5test
+    db: db1
+    pool_mode: TRANSACTION
+    pool_prepared_statement: true
+    auth_rule:
+      auth_method: 'md5'
+#      password: '1'
+#     md5("1md5test")
+      password: 'md530a094812a8deb360615bef1f3db0695'
   - usr: user1
     db: db1
     pool_mode: TRANSACTION
@@ -30,6 +39,15 @@ frontend_rules:
       auth_method: ok
 
 backend_rules:
+  - usr: md5test
+    db: db1
+    pool_discard: false
+    pool_rollback: true
+    auth_rule:
+      auth_method: 'md5'
+#      password: '1'
+#     md5("1md5test")
+      password: 'md530a094812a8deb360615bef1f3db0695'
   - usr: user1
     db: db1
     pool_discard: false
@@ -51,4 +69,3 @@ shards:
     target_session_attrs: "read-write"
     hosts:
       - 'localhost:5551'
-      - 'localhost:5432'
