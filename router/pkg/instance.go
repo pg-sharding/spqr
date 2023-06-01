@@ -114,20 +114,24 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn) error {
-	psqlclient, err := r.RuleRouter.PreRoute(netconn)
+	routerClient, err := r.RuleRouter.PreRoute(netconn)
 	if err != nil {
 		_ = netconn.Close()
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "clint %p: prerouting phase succeeded", psqlclient)
+	if routerClient.DB() == "spqr-console" {
+		return r.AdmConsole.Serve(context.Background(), routerClient)
+	}
 
-	cmngr, err := rulerouter.MatchConnectionPooler(psqlclient, r.RuleRouter.Config())
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "clint %p: prerouting phase succeeded", routerClient)
+
+	cmngr, err := rulerouter.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
 		return err
 	}
 
-	return Frontend(r.Qrouter, psqlclient, cmngr, r.RuleRouter.Config())
+	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config())
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {

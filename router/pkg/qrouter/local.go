@@ -77,3 +77,7 @@ func (l *LocalQrouter) AddShardingRule(ctx context.Context, rule *shrule.Shardin
 	/* Maybe err is local router would be better*/
 	return nil
 }
+
+func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	return nil, nil
+}
