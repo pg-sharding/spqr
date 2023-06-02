@@ -55,8 +55,8 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) AddDataShard(shkey kr.ShardKey) error {
-	sh, err := m.pool.Connection(shkey, m.rule)
+func (m *MultiShardServer) AddDataShard(shkey kr.ShardKey, tsa string) error {
+	sh, err := m.pool.Connection(shkey, m.rule, tsa)
 	if err != nil {
 		return err
 	}

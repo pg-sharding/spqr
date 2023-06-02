@@ -17,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/router/pkg/client"
 	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+
 	"github.com/pg-sharding/spqr/router/pkg/server"
 )
 
@@ -27,7 +28,7 @@ type RelayStateMgr interface {
 
 	Reroute() error
 	ShouldRetry(err error) bool
-	Parse(query string) (parser.ParseState, error)
+	Parse(query string) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
@@ -230,6 +231,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		}
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case qrouter.ShardMatchState:
+		// TBD: do it better
 		return rst.procRoutes(v.Routes)
 	case qrouter.SkipRoutingState:
 		return ErrSkipQuery
@@ -506,10 +508,10 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 	rst.smsgBuf = append(rst.smsgBuf, q)
 }
 
-func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, error) {
-	state, err := rst.qp.Parse(query)
+func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
+	state, comm, err := rst.qp.Parse(query)
 	rst.stmts, _ = rst.qp.Stmt()
-	return state, err
+	return state, comm, err
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}

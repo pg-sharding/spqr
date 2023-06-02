@@ -52,8 +52,9 @@ type RoutingState interface {
 type ShardMatchState struct {
 	RoutingState
 
-	Routes []*DataShardRoute
-	keys   []*kr.KeyRange
+	Routes             []*DataShardRoute
+	keys               []*kr.KeyRange
+	TargetSessionAttrs string
 }
 
 type MultiMatchRoute struct {

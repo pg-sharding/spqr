@@ -106,12 +106,33 @@ type ParseStateExplain struct {
 	Query *pgquery.Node
 }
 
-func (qp *QParser) Parse(query string) (ParseState, error) {
+func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.query = query
 
 	pstmt, err := pgquery.Parse(query)
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
+
+	comment := ""
+	for i := 0; i+4 < len(query); i++ {
+
+		if !(query[i] == '/' && query[i+1] == '*') {
+			continue
+		}
+		j := i + 2
+
+		for ; j+1 < len(query); j++ {
+			if query[j] == '*' && query[j+1] == '/' {
+				break
+			}
+		}
+
+		if j+1 >= len(query) {
+			break
+		}
+
+		comment = query[i+2 : j]
+	}
 
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query, err)
@@ -122,7 +143,7 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 
 		if len(pstmt.GetStmts()) == 0 {
 			qp.state = ParseStateEmptyQuery{}
-			return qp.state, nil
+			return qp.state, comment, nil
 		}
 
 		for _, node := range pstmt.GetStmts() {
@@ -130,7 +151,7 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 			case *pgquery.Node_ExplainStmt:
 				varStmt := ParseStateExplain{}
 				varStmt.Query = q.ExplainStmt.Query
-				return varStmt, nil
+				return varStmt, comment, nil
 			case *pgquery.Node_ExecuteStmt:
 				varStmt := ParseStateExecute{}
 				varStmt.Name = q.ExecuteStmt.Name
@@ -138,7 +159,7 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 
 				varStmt.ParamsQuerySuf = ss
 				qp.state = varStmt
-				return varStmt, nil
+				return varStmt, comment, nil
 			case *pgquery.Node_PrepareStmt:
 				varStmt := ParseStatePrepareStmt{}
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
@@ -149,13 +170,14 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 				qp.query = ss
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
 				qp.state = varStmt
-				return qp.state, nil
+
+				return qp.state, comment, nil
 			//case *pgquery.Node_ExecuteStmt:
 			//	query.ExecuteStmt.Name
 			case *pgquery.Node_VariableSetStmt:
 				if q.VariableSetStmt.IsLocal {
 					qp.state = ParseStateSetLocalStmt{}
-					return qp.state, nil
+					return qp.state, comment, nil
 				}
 
 				switch q.VariableSetStmt.Kind {
@@ -175,7 +197,7 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 
 				case pgquery.VariableSetKind_VAR_SET_MULTI:
 					qp.state = ParseStateSetLocalStmt{}
-					return qp.state, nil
+					return qp.state, comment, nil
 				case pgquery.VariableSetKind_VAR_SET_VALUE:
 					varStmt := ParseStateSetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name
@@ -194,23 +216,23 @@ func (qp *QParser) Parse(query string) (ParseState, error) {
 
 					qp.state = varStmt
 				}
-				return qp.state, nil
+				return qp.state, comment, nil
 			case *pgquery.Node_TransactionStmt:
 				switch q.TransactionStmt.Kind {
 				case pgquery.TransactionStmtKind_TRANS_STMT_BEGIN:
 					qp.state = ParseStateTXBegin{}
-					return qp.state, nil
+					return qp.state, comment, nil
 				case pgquery.TransactionStmtKind_TRANS_STMT_COMMIT:
 					qp.state = ParseStateTXCommit{}
-					return qp.state, nil
+					return qp.state, comment, nil
 				case pgquery.TransactionStmtKind_TRANS_STMT_ROLLBACK:
 					qp.state = ParseStateTXRollback{}
-					return qp.state, nil
+					return qp.state, comment, nil
 				}
 			default:
 			}
 		}
 	}
 
-	return ParseStateQuery{}, nil
+	return ParseStateQuery{}, comment, nil
 }

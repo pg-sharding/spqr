@@ -47,6 +47,10 @@ type RouterClient interface {
 	Route() *route.Route
 	Rule() *config.FrontendRule
 
+	/* Client target-session-attrs policy */
+	GetTsa() string
+	SetTsa(string)
+
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error)
@@ -72,6 +76,9 @@ type PsqlClient struct {
 
 	id        string
 	prepStmts map[string]string
+
+	/* target-session-attrs */
+	tsa string
 
 	be *pgproto3.Backend
 
@@ -343,6 +350,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 		conn:           pgconn,
 		startupMsg:     &pgproto3.StartupMessage{},
 		prepStmts:      map[string]string{},
+		tsa:            config.TargetSessionAttrsAny,
 	}
 	cl.id = "dwoiewiwe"
 
@@ -848,6 +856,14 @@ func (cl *PsqlClient) Shutdown() error {
 
 	_ = cl.conn.Close()
 	return nil
+}
+
+func (cl *PsqlClient) GetTsa() string {
+	return cl.tsa
+}
+
+func (cl *PsqlClient) SetTsa(s string) {
+	cl.tsa = s
 }
 
 var _ RouterClient = &PsqlClient{}

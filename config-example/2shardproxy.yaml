@@ -53,6 +53,6 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     type: DATA
-    target_session_attrs: "read-write"
     hosts:
       - 'localhost:5551'
+      - 'localhost:5552'
