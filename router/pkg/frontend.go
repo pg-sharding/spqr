@@ -27,9 +27,29 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 
 func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query '%v' from %p", query, rst.Client())
-	state, err := rst.Parse(query)
+	state, comment, err := rst.Parse(query)
 	if err != nil {
 		return err
+	}
+
+	mp, err := parser.ParseComment(comment)
+	if err == nil {
+		// if val, ok := mp["sharding_key"]; ok {
+		// 	ds, err := qr.deparseKeyWithRangesInternal(ctx, val)
+		// 	if err != nil {
+		// 		return SkipRoutingState{}, err
+		// 	}
+		// 	return ShardMatchState{
+		// 		Routes: []*DataShardRoute{ds},
+		// 	}, nil
+		// }
+		if val, ok := mp["target-session-attrs"]; ok {
+			// TBD: validate
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parse tsa %s from comment", val)
+
+			rst.Client().SetTsa(val)
+		}
 	}
 
 	switch st := state.(type) {

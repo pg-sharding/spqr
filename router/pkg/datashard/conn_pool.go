@@ -99,7 +99,7 @@ func (c *cPool) Put(sh Shard) error {
 var _ Pool = &cPool{}
 
 type DBPool interface {
-	Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error)
+	Connection(key kr.ShardKey, rule *config.BackendRule, tsa string) (Shard, error)
 	Put(shkey kr.ShardKey, sh Shard) error
 
 	Check(key kr.ShardKey) bool
@@ -196,15 +196,15 @@ func checkRw(sh Shard) (bool, error) {
 	}
 }
 
-func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule) (Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance conntion to shard %s", s, key.Name)
+func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance connection to shard %s with tsa: %s", s, key.Name, TargetSessionAttrs)
 
 	hosts := s.shardMapping[key.Name].Hosts
 	rand.Shuffle(len(hosts), func(i, j int) {
 		hosts[j], hosts[i] = hosts[i], hosts[j]
 	})
 
-	switch s.shardMapping[key.Name].TargetSessionAttrs {
+	switch TargetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:

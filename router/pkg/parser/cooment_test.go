@@ -1,4 +1,4 @@
-package qrouter
+package parser
 
 import (
 	"fmt"
@@ -70,7 +70,7 @@ func TestParseComment(t *testing.T) {
 		},
 	} {
 
-		mp, err := parseComment(tt.sample)
+		mp, err := ParseComment(tt.sample)
 
 		if tt.err != nil {
 			assert.Error(err)

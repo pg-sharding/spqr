@@ -84,10 +84,9 @@ const (
 )
 
 type Shard struct {
-	TargetSessionAttrs string     `json:"target_session_attrs" toml:"target_session_attrs" yaml:"target_session_attrs"`
-	Hosts              []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type               ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS                *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	Hosts []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
+	Type  ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
 func LoadRouterCfg(cfgPath string) (Router, error) {
