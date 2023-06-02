@@ -670,7 +670,12 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	}
 
 	if route == nil {
-		return MultiMatchState{}, nil
+		switch qr.cfg.DefaultRouteBehaviour {
+		case "BLOCK":
+			return SkipRoutingState{}, fmt.Errorf("failed to match query to any sharding rule")
+		default:
+			return MultiMatchState{}, nil
+		}
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed shard route %+v", route)
