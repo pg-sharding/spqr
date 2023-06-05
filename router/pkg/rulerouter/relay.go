@@ -504,7 +504,7 @@ func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 }
 
 func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding silent %T", q)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding silent %T %v", q, q)
 	rst.smsgBuf = append(rst.smsgBuf, q)
 }
 

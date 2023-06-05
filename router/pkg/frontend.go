@@ -204,14 +204,40 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
 			return nil
-		case *pgproto3.Sync, *pgproto3.FunctionCall:
+		case *pgproto3.Sync:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
+			return rst.ProcessMessage(q, true, true, cmngr)
+		case *pgproto3.FunctionCall:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
 			return rst.ProcessMessage(q, true, true, cmngr)
 		case *pgproto3.Parse:
-			// q.Query
+			// copy interface
+			cpQ := *q
+			q = &cpQ
 			return procQuery(rst, q.Query, q, cmngr)
-		case *pgproto3.Execute, *pgproto3.Bind, *pgproto3.Describe:
+		case *pgproto3.Execute:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
+			return rst.ProcessMessage(q, false, true, cmngr)
+		case *pgproto3.Bind:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
+			return rst.ProcessMessage(q, false, true, cmngr)
+		case *pgproto3.Describe:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
 			return rst.ProcessMessage(q, false, true, cmngr)
 		case *pgproto3.Query:
+			// copy interface
+			cpQ := *q
+			q = &cpQ
 			return procQuery(rst, q.String, q, cmngr)
 		default:
 			return nil
@@ -224,6 +250,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 	case *pgproto3.Sync:
 		return rst.Sync(true, true, cmngr)
 	case *pgproto3.Parse:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
+
 		hash := murmur3.Sum64([]byte(q.Query))
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
 		if err := cl.ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
@@ -233,6 +263,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		// simply reply witch ok parse complete
 		return cl.ReplyParseComplete()
 	case *pgproto3.Describe:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
+
 		if q.ObjectType == 'P' {
 			if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
 				return err
@@ -262,12 +296,21 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		}
 		return err
 	case *pgproto3.FunctionCall:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", cl)
 		return rst.ProcessMessage(q, false, true, cmngr)
 	case *pgproto3.Execute:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", cl)
 		return rst.ProcessMessage(q, true, true, cmngr)
 	case *pgproto3.Bind:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
 		query := cl.PreparedStatementQueryByName(q.PreparedStatement)
 		hash := murmur3.Sum64([]byte(query))
 
@@ -286,6 +329,9 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 
 		return rst.RelayRunCommand(q, false, true)
 	case *pgproto3.Query:
+		// copy interface
+		cpQ := *q
+		q = &cpQ
 		return procQuery(rst, q.String, q, cmngr)
 	default:
 		return nil
