@@ -1,0 +1,47 @@
+DROP TABLE IF EXISTS transactions_test;
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE transactions_test (id int);
+NOTICE: send query to shard(s) : sh1,sh2
+BEGIN;
+SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+INSERT INTO transactions_test (id) VALUES (1);
+SELECT * FROM transactions_test WHERE id = 1;;
+ id 
+----
+  1
+(1 row)
+
+ROLLBACK;
+SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+BEGIN;
+SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+INSERT INTO transactions_test (id) VALUES (1);
+SELECT * FROM transactions_test WHERE id = 1;;
+ id 
+----
+  1
+(1 row)
+
+COMMIT;
+SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+(1 row)
+

@@ -81,7 +81,7 @@ pooler_run:
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
 
-make regress: build_images
+regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
 
 .PHONY: build gen
