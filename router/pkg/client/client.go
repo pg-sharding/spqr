@@ -751,7 +751,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf(v.Message)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", cl, v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
