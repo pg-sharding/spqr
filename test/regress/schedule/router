@@ -3,4 +3,6 @@ test: multishard_routing
 test: mixed_routing
 test: copy_routing
 test: joins
+test: target_session_attrs
+test: transactions
 test: with_tables
