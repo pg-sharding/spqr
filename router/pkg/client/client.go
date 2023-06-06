@@ -350,7 +350,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 		conn:           pgconn,
 		startupMsg:     &pgproto3.StartupMessage{},
 		prepStmts:      map[string]string{},
-		tsa:            config.TargetSessionAttrsAny,
+		tsa:            config.TargetSessionAttrsRW,
 	}
 	cl.id = "dwoiewiwe"
 
