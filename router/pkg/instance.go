@@ -120,16 +120,25 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 		return err
 	}
 
+	defer netconn.Close()
+
 	if routerClient.DB() == "spqr-console" {
 		return r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "clint %p: prerouting phase succeeded", routerClient)
+	if routerClient.CancelMsg() != nil {
+		return r.RuleRouter.CancelCleint(routerClient.CancelMsg())
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: prerouting phase succeeded", routerClient)
 
 	cmngr, err := rulerouter.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
 		return err
 	}
+
+	r.RuleRouter.AddClient(routerClient)
+	defer r.RuleRouter.ReleaseClient(routerClient)
 
 	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config())
 }

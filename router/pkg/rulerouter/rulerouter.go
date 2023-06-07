@@ -2,6 +2,7 @@ package rulerouter
 
 import (
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -32,6 +33,13 @@ type RuleRouter interface {
 	AddWorldShard(key qdb.ShardKey) error
 	AddShardInstance(key qdb.ShardKey, host string)
 
+	CancelCleint(csm *pgproto3.CancelRequest) error
+	AddClient(
+		cl rclient.RouterClient)
+
+	ReleaseClient(
+		cl rclient.RouterClient)
+
 	Config() *config.Router
 }
 
@@ -44,6 +52,9 @@ type RuleRouterImpl struct {
 
 	mu   sync.Mutex
 	rcfg *config.Router
+
+	clmu sync.Mutex
+	clmp map[uint32]rclient.RouterClient
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
@@ -127,6 +138,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		lg:        log.New(os.Stdout, "router", 0),
 		tlsconfig: tlsconfig,
+		clmp:      map[uint32]rclient.RouterClient{},
 	}
 }
 
@@ -137,11 +149,15 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, err
 	}
 
+	if cl.CancelMsg() != nil {
+		return cl, nil
+	}
+
 	if cl.DB() == "spqr-console" {
 		return cl, nil
 	}
 
-	// match client frontend rule
+	// match client to frontend rule
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
@@ -199,6 +215,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 
 func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
+
 	if err := cl.Init(r.tlsconfig); err != nil {
 		return nil, err
 	}
@@ -247,6 +264,35 @@ func (r *RuleRouterImpl) Config() *config.Router {
 	defer r.mu.Unlock()
 
 	return r.rcfg
+}
+
+func (r *RuleRouterImpl) AddClient(cl rclient.RouterClient) {
+	r.clmu.Lock()
+	defer r.clmu.Unlock()
+	r.clmp[cl.GetCancelPid()] = cl
+}
+
+func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
+	r.clmu.Lock()
+	defer r.clmu.Unlock()
+	delete(r.clmp, cl.GetCancelPid())
+}
+
+func (r *RuleRouterImpl) CancelCleint(csm *pgproto3.CancelRequest) error {
+	r.clmu.Lock()
+	defer r.clmu.Unlock()
+
+	if cl, ok := r.clmp[csm.ProcessID]; ok {
+		if cl.GetCancelKey() != csm.SecretKey {
+			return fmt.Errorf("cancel sekret does not match")
+		}
+		if cl.Server() != nil {
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
+			return cl.Server().Cancel()
+		}
+		return nil
+	}
+	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }
 
 var _ RuleRouter = &RuleRouterImpl{}
