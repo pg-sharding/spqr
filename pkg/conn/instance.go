@@ -39,6 +39,10 @@ type DBInstance interface {
 	Close() error
 	Status() InstanceStatus
 	SetStatus(status InstanceStatus)
+
+	Cancel(csm *pgproto3.CancelRequest) error
+
+	Tls() *tls.Config
 }
 
 type PostgreSQLInstance struct {
@@ -47,6 +51,8 @@ type PostgreSQLInstance struct {
 
 	hostname string
 	status   InstanceStatus
+
+	tlsconfig *tls.Config
 }
 
 func (pgi *PostgreSQLInstance) SetStatus(status InstanceStatus) {
@@ -80,9 +86,10 @@ func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
 	}
 
 	instance := &PostgreSQLInstance{
-		hostname: host,
-		conn:     netconn,
-		status:   NotInitialized,
+		hostname:  host,
+		conn:      netconn,
+		status:    NotInitialized,
+		tlsconfig: tlsconfig,
 	}
 
 	if tlsconfig != nil {
@@ -96,6 +103,10 @@ func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
 
 	instance.frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(instance.conn), instance.conn)
 	return instance, nil
+}
+
+func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
+	return pgi.frontend.Send(csm)
 }
 
 func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
@@ -129,6 +140,10 @@ func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
 	}
 }
 
+func (pgi *PostgreSQLInstance) Tls() *tls.Config {
+	return pgi.tlsconfig
+}
+
 var _ DBInstance = &PostgreSQLInstance{}
 
 func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
@@ -159,10 +174,4 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	pgi.conn = tls.Client(pgi.conn, tlsconfig)
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "initaited backend connection with TLS (%p)", pgi)
 	return nil
-}
-
-func (pgi *PostgreSQLInstance) Cancel() error {
-	msg := &pgproto3.CancelRequest{}
-
-	return pgi.frontend.Send(msg)
 }

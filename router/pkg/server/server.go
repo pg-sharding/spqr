@@ -27,6 +27,8 @@ type Server interface {
 	AddDataShard(shardKey kr.ShardKey, tsa string) error
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 
+	Cancel() error
+
 	Reset() error
 	Sync() int
 }

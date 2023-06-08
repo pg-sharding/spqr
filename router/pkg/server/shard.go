@@ -100,4 +100,8 @@ func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
 	return srv.shard.Cleanup(rule)
 }
 
+func (srv *ShardServer) Cancel() error {
+	return srv.shard.Cancel()
+}
+
 var _ Server = &ShardServer{}

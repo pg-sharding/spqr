@@ -379,4 +379,12 @@ func (m *MultiShardServer) Sync() int {
 	panic("implement me")
 }
 
+func (m *MultiShardServer) Cancel() error {
+	var err error
+	for _, sh := range m.activeShards {
+		err = sh.Cancel()
+	}
+	return err
+}
+
 var _ Server = &MultiShardServer{}

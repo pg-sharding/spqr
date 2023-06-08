@@ -22,9 +22,10 @@ type RoutePool interface {
 }
 
 type RoutePoolImpl struct {
-	mu           sync.Mutex
-	pool         map[route.Key]*route.Route
-	shardMapping map[string]*config.Shard
+	mu            sync.Mutex
+	pool          map[route.Key]*route.Route
+	shardMapping  map[string]*config.Shard
+	clientMapping map[int] /*backend id*/ client.Client
 }
 
 var _ RoutePool = &RoutePoolImpl{}

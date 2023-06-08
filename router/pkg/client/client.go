@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
@@ -57,15 +58,28 @@ type RouterClient interface {
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
+
+	CancelMsg() *pgproto3.CancelRequest
+
+	GetCancelPid() uint32
+	GetCancelKey() uint32
+
 	Close() error
 }
 
 type PsqlClient struct {
 	client.Client
+
 	activeParamSet      map[string]string
 	savepointParamSet   map[string]map[string]string
 	savepointParamTxCnt map[string]int
 	beginTxParamSet     map[string]string
+
+	/* cancel */
+	csm *pgproto3.CancelRequest
+
+	cancel_pid uint32
+	cancel_key uint32
 
 	txCnt int
 
@@ -84,6 +98,14 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 	server     server.Server
+}
+
+func (cl *PsqlClient) GetCancelPid() uint32 {
+	return cl.cancel_pid
+}
+
+func (cl *PsqlClient) GetCancelKey() uint32 {
+	return cl.cancel_key
 }
 
 func copymap(params map[string]string) map[string]string {
@@ -382,7 +404,7 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	return nil
 }
 
-// startup + ssl
+// startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
 
@@ -455,10 +477,17 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return err
 			}
 		case conn.CANCELREQ:
-			return fmt.Errorf("cancel is not supported")
+			cl.csm = &pgproto3.CancelRequest{}
+			if err = cl.csm.Decode(msg); err != nil {
+				return err
+			}
+
+			return nil
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
+
+		/* setup client params */
 
 		for k, v := range sm.Parameters {
 			cl.SetParam(k, v)
@@ -466,6 +495,11 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		cl.startupMsg = sm
 		cl.be = backend
+
+		cl.cancel_key = rand.Uint32()
+		cl.cancel_pid = rand.Uint32()
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p cancel key/pid: %d %d", cl, cl.cancel_key, cl.cancel_pid)
 
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
@@ -520,6 +554,13 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		}); err != nil {
 			return err
 		}
+	}
+
+	if err := cl.Send(&pgproto3.BackendKeyData{
+		ProcessID: cl.cancel_pid,
+		SecretKey: cl.cancel_key,
+	}); err != nil {
+		return err
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
@@ -751,7 +792,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf(v.Message)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", v)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", cl, v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -867,6 +908,10 @@ func (cl *PsqlClient) SetTsa(s string) {
 }
 
 var _ RouterClient = &PsqlClient{}
+
+func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
+	return cl.csm
+}
 
 type FakeClient struct {
 	RouterClient

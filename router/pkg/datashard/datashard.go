@@ -30,6 +30,8 @@ type Shard interface {
 	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
 
+	Cancel() error
+
 	Params() ParameterSet
 	Close() error
 }
@@ -75,6 +77,9 @@ type Conn struct {
 
 	dedicated conn.DBInstance
 	ps        ParameterSet
+
+	backend_key_pid    uint32
+	backend_key_secret uint32
 }
 
 func (sh *Conn) Close() error {
@@ -85,6 +90,23 @@ func (sh *Conn) Close() error {
 
 func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
+}
+
+func (sh *Conn) Cancel() error {
+	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), nil /* no tls for cancel */)
+	if err != nil {
+		return err
+	}
+	defer pgiTmp.Close()
+
+	msg := &pgproto3.CancelRequest{
+		ProcessID: sh.backend_key_pid,
+		SecretKey: sh.backend_key_secret,
+	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "sendind cancel msg %v over %p", msg, &pgiTmp)
+
+	return pgiTmp.Cancel(msg)
 }
 
 func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
@@ -172,9 +194,13 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 				Value: v.Value,
 			}) {
 				spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored parameter status %v %v", v.Name, v.Value)
+			} else {
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "parameter status %v %v", v.Name, v.Value)
 			}
 		case *pgproto3.BackendKeyData:
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored backend key data %v %v", v.ProcessID, v.SecretKey)
+			sh.backend_key_pid = v.ProcessID
+			sh.backend_key_secret = v.SecretKey
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "backend key data %v %v", v.ProcessID, v.SecretKey)
 		default:
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "unexpected msg type received %T", v)
 		}
