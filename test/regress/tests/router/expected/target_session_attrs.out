@@ -30,4 +30,4 @@ NOTICE: send query to shard(s) : sh2
 SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
 NOTICE: send query to shard(s) : sh2
 ERROR:  failed to find replica
-message type 0x5a arrived from server while idle
+ERROR:  failed to find replica

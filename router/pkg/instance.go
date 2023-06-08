@@ -127,7 +127,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 	}
 
 	if routerClient.CancelMsg() != nil {
-		return r.RuleRouter.CancelCleint(routerClient.CancelMsg())
+		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: prerouting phase succeeded", routerClient)

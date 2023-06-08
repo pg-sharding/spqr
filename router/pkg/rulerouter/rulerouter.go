@@ -33,12 +33,10 @@ type RuleRouter interface {
 	AddWorldShard(key qdb.ShardKey) error
 	AddShardInstance(key qdb.ShardKey, host string)
 
-	CancelCleint(csm *pgproto3.CancelRequest) error
-	AddClient(
-		cl rclient.RouterClient)
+	CancelClient(csm *pgproto3.CancelRequest) error
+	AddClient(cl rclient.RouterClient)
 
-	ReleaseClient(
-		cl rclient.RouterClient)
+	ReleaseClient(cl rclient.RouterClient)
 
 	Config() *config.Router
 }
@@ -278,13 +276,13 @@ func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 	delete(r.clmp, cl.GetCancelPid())
 }
 
-func (r *RuleRouterImpl) CancelCleint(csm *pgproto3.CancelRequest) error {
+func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
 
 	if cl, ok := r.clmp[csm.ProcessID]; ok {
 		if cl.GetCancelKey() != csm.SecretKey {
-			return fmt.Errorf("cancel sekret does not match")
+			return fmt.Errorf("cancel secret does not match")
 		}
 		if cl.Server() != nil {
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
