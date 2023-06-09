@@ -66,8 +66,6 @@ var runCmd = &cobra.Command{
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
-				LogFileName: rcfg.LogFileName,
-				LogFilePerm: 0640,
 				WorkDir:     "./",
 				Umask:       027,
 				Args:        args,

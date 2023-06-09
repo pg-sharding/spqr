@@ -543,7 +543,6 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 
 	ps, err := rt.Params()
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
