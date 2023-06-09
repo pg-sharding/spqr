@@ -55,12 +55,12 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		rcfg, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
 
+		spqrlog.RebornLogger(rcfg.LogFileName)
 		if rcfg.Daemonize {
 
 			cntxt := &daemon.Context{
@@ -130,7 +130,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Logger.PrintError(err)
 					}
-					spqrlog.ReloadLogger()
+					spqrlog.RebornLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
 					cancelCtx()
 					return
