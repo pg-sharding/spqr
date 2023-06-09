@@ -51,6 +51,10 @@ func NewErrorLogger(out io.Writer) *errorLogger {
 	return el
 }
 
+func ReloadLogger() {
+	Logger = NewErrorLogger(os.Stdout)
+}
+
 var Logger = NewErrorLogger(os.Stdout)
 
 var defaultLogLevel = INFO

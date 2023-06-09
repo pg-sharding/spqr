@@ -130,6 +130,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Logger.PrintError(err)
 					}
+					spqrlog.ReloadLogger()
 				case syscall.SIGINT, syscall.SIGTERM:
 					cancelCtx()
 					return
