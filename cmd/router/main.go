@@ -115,6 +115,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
+					spqrlog.RebornLogger(rcfg.LogFileName)
 					// write profile
 					pprof.StopCPUProfile()
 
