@@ -34,26 +34,41 @@ var mp = map[string]Severity{
 	"ERROR":   ERROR,
 	"FATAL":   FATAL,
 }
+var defaultLogLevel = INFO
+var Logger = NewErrorLogger("")
 
 type errorLogger struct {
+	file  *os.File
 	logMp map[Severity]*log.Logger
 }
 
-func NewErrorLogger(out io.Writer) *errorLogger {
-	el := &errorLogger{
-		logMp: make(map[Severity]*log.Logger),
+func NewErrorLogger(filepath string) *errorLogger {
+	file, writer, err := newWriter(filepath)
+	if err != nil {
+		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
 	}
 
+	logMp := make(map[Severity]*log.Logger)
 	for k, v := range mp {
-		el.logMp[v] = log.New(out, k+": ", log.LstdFlags|log.Lmicroseconds)
+		logMp[v] = log.New(writer, k+": ", log.LstdFlags|log.Lmicroseconds)
 	}
 
-	return el
+	return &errorLogger{
+		file:  file,
+		logMp: logMp,
+	}
 }
 
-var Logger = NewErrorLogger(os.Stdout)
-
-var defaultLogLevel = INFO
+func RebornLogger(filepath string) {
+	if filepath == "" { //
+		return // this means os.Stdout, so no need to open new file
+	}
+	oldFile := Logger.file
+	Logger = NewErrorLogger(filepath)
+	if oldFile != nil {
+		oldFile.Close()
+	}
+}
 
 func UpdateDefaultLogLevel(val string) error {
 	if len(val) == 0 {
@@ -88,4 +103,15 @@ func (el *errorLogger) PrintError(err error) {
 
 func (el *errorLogger) FatalOnError(err error) {
 	el.logMp[FATAL].Fatalf("%v", err)
+}
+
+func newWriter(filepath string) (*os.File, io.Writer, error) {
+	if filepath == "" {
+		return nil, os.Stdout, nil
+	}
+	f, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return f, f, nil
 }

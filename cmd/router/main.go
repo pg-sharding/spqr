@@ -55,19 +55,17 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-
 		rcfg, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
 
+		spqrlog.RebornLogger(rcfg.LogFileName)
 		if rcfg.Daemonize {
 
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
-				LogFileName: rcfg.LogFileName,
-				LogFilePerm: 0640,
 				WorkDir:     "./",
 				Umask:       027,
 				Args:        args,
@@ -117,6 +115,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
+					spqrlog.RebornLogger(rcfg.LogFileName)
 					// write profile
 					pprof.StopCPUProfile()
 
@@ -130,6 +129,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Logger.PrintError(err)
 					}
+					spqrlog.RebornLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
 					cancelCtx()
 					return
