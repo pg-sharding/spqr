@@ -101,7 +101,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 		// pure table column ref
 		return "", colnames[0], nil
 	case 2:
-		// check that column matches sharding rule
+		// aliased table column ref
 		return colnames[0], colnames[1], nil
 	default:
 		return "", "", ComplexQuery
