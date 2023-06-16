@@ -344,6 +344,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 	_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
 
+	defer rst.Close()
+
 	var msg pgproto3.FrontendMessage
 	var err error
 
@@ -366,10 +368,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
-				return rst.Close()
+				return nil
 				// ok
 			default:
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with error: %v", rst.Client(), err)
+				rst.Client().ReplyErrMsg(err.Error())
 			}
 		}
 	}

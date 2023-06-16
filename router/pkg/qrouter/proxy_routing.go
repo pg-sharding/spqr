@@ -101,10 +101,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 		// pure table column ref
 		return "", colnames[0], nil
 	case 2:
-		//
-		meta.rels[meta.tableAliases[colnames[0]]] = append(meta.rels[meta.tableAliases[colnames[0]]],
-			colnames[1])
-
+		// check that column matches sharding rule
 		return colnames[0], colnames[1], nil
 	default:
 		return "", "", ComplexQuery
@@ -218,6 +215,24 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, m
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colname)
+
+		if rls, err := qr.qdb.ListShardingRules(ctx); err != nil {
+			return err
+		} else {
+			ok := false
+			for i := range rls {
+				for _, c := range rls[i].Entries {
+					if c.Column == colname {
+						ok = true
+						break
+					}
+				}
+			}
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "skip column %v: no rule mathing", colname)
+			if !ok {
+				return nil
+			}
+		}
 
 		if resolvedRelation, ok := meta.tableAliases[alias]; ok {
 			// TBD: postpone routing from here to root of parsing tree
@@ -517,6 +532,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 						spqrlog.Logger.Printf(spqrlog.DEBUG1, "Temporarily skip the route error: %v", route_err)
 						continue
 					}
+					spqrlog.Logger.Printf(spqrlog.DEBUG5, "calculated route %+v for table/cols %v %+v", currroute, tname, cols)
 					if route == nil {
 						route = currroute
 					} else {
