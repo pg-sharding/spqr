@@ -27,27 +27,27 @@ You are now connected to database "spqr-console" as user "reshke".
 (1 row)
 
 You are now connected to database "regress" as user "reshke".
-psql:test/regress/tests/router/sql/joins.sql:10: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/joins.sql:11: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/joins.sql:13: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:14: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:15: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:16: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:18: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:19: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:20: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:21: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:23: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
   1 |    1
@@ -56,7 +56,7 @@ psql:test/regress/tests/router/sql/joins.sql:23: NOTICE: send query to shard(s) 
  25 |   25
 (4 rows)
 
-psql:test/regress/tests/router/sql/joins.sql:25: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
   1 |    1
@@ -69,10 +69,10 @@ psql:test/regress/tests/router/sql/joins.sql:25: NOTICE: send query to shard(s) 
  25 |   25
 (8 rows)
 
-psql:test/regress/tests/router/sql/joins.sql:27: ERROR:  too complex query to parse
-psql:test/regress/tests/router/sql/joins.sql:29: NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  too complex query to parse
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
-psql:test/regress/tests/router/sql/joins.sql:30: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
 
 		SQPR router admin console

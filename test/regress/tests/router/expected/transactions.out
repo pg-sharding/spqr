@@ -1,4 +1,3 @@
-\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,82 +5,78 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
-ADD SHARDING RULE t1 COLUMNS id;
+You are now connected to database "spqr-console" as user "reshke".
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 100 ROUTE TO sh1;
           add key range          
 ---------------------------------
  created key range from 1 to 100
 (1 row)
 
-ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
            add key range           
 -----------------------------------
  created key range from 101 to 200
 (1 row)
 
-\c regress
-DROP TABLE IF EXISTS transactions_test;
+You are now connected to database "regress" as user "reshke".
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE transactions_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2
--- check that rollbacked changes do no apply
-BEGIN;
-SELECT * FROM transactions_test WHERE id = 1;;
+CREATE TABLE
+BEGIN
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
-INSERT INTO transactions_test (id) VALUES (1);
-SELECT * FROM transactions_test WHERE id = 1;;
+INSERT 0 1
  id 
 ----
   1
 (1 row)
 
-ROLLBACK;
-SELECT * FROM transactions_test WHERE id = 1;;
+ROLLBACK
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
--- check that commited changes present
-BEGIN;
-SELECT * FROM transactions_test WHERE id = 1;;
+BEGIN
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
-INSERT INTO transactions_test (id) VALUES (1);
-SELECT * FROM transactions_test WHERE id = 1;;
+INSERT 0 1
  id 
 ----
   1
 (1 row)
 
-COMMIT;
-SELECT * FROM transactions_test WHERE id = 1;;
+COMMIT
 NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
+(1 row)
+
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+    drop sharding rule    
+--------------------------
+ dropped sharding rule t1
 (1 row)
 

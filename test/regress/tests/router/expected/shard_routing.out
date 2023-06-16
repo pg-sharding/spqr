@@ -32,23 +32,23 @@ You are now connected to database "spqr-console" as user "reshke".
 (1 row)
 
 You are now connected to database "regress" as user "reshke".
-psql:test/regress/tests/router/sql/shard_routing.sql:11: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/shard_routing.sql:12: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/shard_routing.sql:13: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/shard_routing.sql:15: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:16: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:17: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:18: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:19: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:22: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
     1
@@ -56,50 +56,50 @@ psql:test/regress/tests/router/sql/shard_routing.sql:22: NOTICE: send query to s
    20
 (3 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:23: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
 (1 row)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:24: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
  w_id 
 ------
    21
    30
 (2 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:26: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:27: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:28: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:30: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:31: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:32: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:34: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:35: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:36: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:38: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:39: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:40: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:42: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:43: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:44: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:46: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 
 -----+--------+------
      |        |    1
@@ -114,12 +114,12 @@ psql:test/regress/tests/router/sql/shard_routing.sql:46: NOTICE: send query to s
  -12 | 123123 |   15
 (10 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:47: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  i | j | w_id 
 ---+---+------
 (0 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:48: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
     i    |    j    | w_id 
 ---------+---------+------
          |         |   21
@@ -129,7 +129,7 @@ psql:test/regress/tests/router/sql/shard_routing.sql:48: NOTICE: send query to s
  -211212 | 2121221 |   23
 (5 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:51: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 
 -----+--------+------
      |        |    1
@@ -144,12 +144,12 @@ psql:test/regress/tests/router/sql/shard_routing.sql:51: NOTICE: send query to s
  -12 | 123123 |   15
 (10 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:52: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  i | j | w_id 
 ---+---+------
 (0 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:53: NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh2
     i    |    j    | w_id 
 ---------+---------+------
          |         |   21
@@ -159,18 +159,18 @@ psql:test/regress/tests/router/sql/shard_routing.sql:53: NOTICE: send query to s
  -211212 | 2121221 |   23
 (5 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:56: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:57: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
    20
 (2 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:60: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:61: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
@@ -178,27 +178,27 @@ psql:test/regress/tests/router/sql/shard_routing.sql:61: NOTICE: send query to s
    20
 (3 rows)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:62: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/shard_routing.sql:63: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  i | j  | w_id 
 ---+----+------
    | 10 |   20
 (1 row)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:66: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
 UPDATE 1
-psql:test/regress/tests/router/sql/shard_routing.sql:67: NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1
  i | j  | w_id 
 ---+----+------
  1 | 10 |   20
 (1 row)
 
-psql:test/regress/tests/router/sql/shard_routing.sql:69: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
-psql:test/regress/tests/router/sql/shard_routing.sql:70: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
-psql:test/regress/tests/router/sql/shard_routing.sql:71: NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
 
 		SQPR router admin console

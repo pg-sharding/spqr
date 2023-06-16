@@ -6,7 +6,40 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
-psql:test/regress/tests/router/sql/transactions.sql:2: ERROR:  sharding rule t1 already present in qdb
-psql:test/regress/tests/router/sql/transactions.sql:3: ERROR:  key range krid1 intersects with krid2 present in qdb
-psql:test/regress/tests/router/sql/transactions.sql:4: ERROR:  key range krid2 already present in qdb
-psql:test/regress/tests/router/sql/transactions.sql:6: error: \connect: connection to server at "localhost" (::1), port 6432 failed: ERROR:  database "regress" does not exist
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+ERROR:  key range krid1 intersects with kridi1 present in qdb
+           add key range           
+-----------------------------------
+ created key range from 101 to 200
+(1 row)
+
+You are now connected to database "regress" as user "reshke".
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+ERROR:  too complex query to parse
+ERROR:  too complex query to parse
+ERROR:  too complex query to parse
+ERROR:  too complex query to parse
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,t1
+(1 row)
+
