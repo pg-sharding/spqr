@@ -476,7 +476,15 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 			return nil, err
 		}
 		return MultiMatchState{}, nil
-
+	case *pgquery.Node_VacuumStmt:
+		/* Send vacuum to each shard */
+		return MultiMatchState{}, nil
+	case *pgquery.Node_VacuumRelation:
+		/* Send vacuum to each shard */
+		return MultiMatchState{}, nil
+	case *pgquery.Node_ClusterStmt:
+		/* Send vacuum to each shard */
+		return MultiMatchState{}, nil
 	case *pgquery.Node_IndexStmt:
 		/*
 		* Disallow to index on table which does not contain any sharding column
