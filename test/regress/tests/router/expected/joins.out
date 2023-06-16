@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 \c spqr-console
+=======
+>>>>>>> More tests
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,11 +9,16 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+<<<<<<< HEAD
 DROP KEY RANGE ALL;
+=======
+You are now connected to database "spqr-console" as user "reshke".
+>>>>>>> More tests
  drop key range 
 ----------------
 (0 rows)
 
+<<<<<<< HEAD
 DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
@@ -64,10 +72,78 @@ INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
+=======
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,r2
+(1 row)
+
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+                           add sharding rule                            
+------------------------------------------------------------------------
+ created sharding rule r2 for table (*) with columns [w_id, hash: x->x]
+(1 row)
+
+         add key range          
+--------------------------------
+ created key range from 0 to 10
+(1 row)
+
+          add key range          
+---------------------------------
+ created key range from 11 to 30
+(1 row)
+
+You are now connected to database "regressiondb" as user "reshke".
+psql:test/regress/tests/router/sql/joins.sql:13: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/joins.sql:14: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/joins.sql:16: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:17: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:18: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:19: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:21: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:22: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:23: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:24: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/joins.sql:26: NOTICE: send query to shard(s) : sh1,sh2
+>>>>>>> More tests
  id | w_id 
 ----+------
-  1 |    1
  15 |   15
  25 |   25
-(3 rows)
+  1 |    1
+ 10 |   10
+(4 rows)
 
+psql:test/regress/tests/router/sql/joins.sql:28: NOTICE: send query to shard(s) : sh1,sh2
+ id | w_id 
+----+------
+ 15 |   15
+ 15 |   25
+ 25 |   15
+ 25 |   25
+  1 |    1
+  1 |   10
+ 10 |    1
+ 10 |   10
+(8 rows)
+
+psql:test/regress/tests/router/sql/joins.sql:30: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/joins.sql:32: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+psql:test/regress/tests/router/sql/joins.sql:33: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE

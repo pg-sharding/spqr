@@ -1,0 +1,69 @@
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r1
+(1 row)
+
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+         add key range          
+--------------------------------
+ created key range from 1 to 10
+(1 row)
+
+          add key range          
+---------------------------------
+ created key range from 11 to 30
+(1 row)
+
+You are now connected to database "regressiondb" as user "reshke".
+psql:test/regress/tests/router/sql/error.sql:11: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/error.sql:13: NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+psql:test/regress/tests/router/sql/error.sql:14: NOTICE: send query to shard(s) : sh1,sh2
+psql:test/regress/tests/router/sql/error.sql:14: ERROR:  column "ixxxd" does not exist
+LINE 1: SELECT * FROM x WHERE ixxxd = 1;
+                              ^
+psql:test/regress/tests/router/sql/error.sql:15: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/error.sql:16: NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+psql:test/regress/tests/router/sql/error.sql:18: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r1
+(1 row)
+

@@ -1,0 +1,73 @@
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+       drop sharding rule       
+--------------------------------
+ dropped sharding rule r1,r2,r3
+(1 row)
+
+                          add sharding rule                          
+---------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [i, hash: x->x]
+(1 row)
+
+         add key range          
+--------------------------------
+ created key range from 0 to 10
+(1 row)
+
+          add key range          
+---------------------------------
+ created key range from 11 to 20
+(1 row)
+
+You are now connected to database "regressiondb" as user "reshke".
+psql:test/regress/tests/router/sql/single_shard_joins.sql:11: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/single_shard_joins.sql:13: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/single_shard_joins.sql:15: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/single_shard_joins.sql:16: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/single_shard_joins.sql:18: NOTICE: send query to shard(s) : sh2
+ i  | j  
+----+----
+ 12 | 12
+ 12 | 13
+(2 rows)
+
+psql:test/regress/tests/router/sql/single_shard_joins.sql:19: NOTICE: send query to shard(s) : sh2
+ i | j 
+---+---
+(0 rows)
+
+psql:test/regress/tests/router/sql/single_shard_joins.sql:21: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/single_shard_joins.sql:22: NOTICE: send query to shard(s) : sh2
+ i  | j  | i  | j  
+----+----+----+----
+ 12 | 12 | 12 | 12
+ 12 | 13 | 12 | 12
+ 12 | 12 | 12 | 13
+ 12 | 13 | 12 | 13
+(4 rows)
+
+psql:test/regress/tests/router/sql/single_shard_joins.sql:24: NOTICE: send query to shard(s) : sh2
+ i  | j  | i  | j  
+----+----+----+----
+ 12 | 12 | 12 | 12
+ 12 | 13 | 12 | 13
+(2 rows)
+
+psql:test/regress/tests/router/sql/single_shard_joins.sql:26: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+You are now connected to database "db1" as user "reshke".
