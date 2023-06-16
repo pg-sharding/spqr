@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 CREATE SHARDING RULE r1 COLUMN i;
                           add sharding rule                          
 ---------------------------------------------------------------------
@@ -26,19 +25,14 @@ CREATE KEY RANGE kridi2 from 11 to 20 route to sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE sshjt1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO sshjt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO sshjt1 (i, j) VALUES(12, 12);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO sshjt1 (i, j) VALUES(12, 13);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 SELECT * FROM sshjt1 WHERE i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  
@@ -75,7 +69,6 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE sshjt1;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -84,7 +77,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
@@ -26,13 +25,10 @@ ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE tsa_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO tsa_test (id) VALUES (22);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 -- you could specify target-session-attrs anywhere in your query
 SELECT pg_is_in_recovery() /* target-session-attrs: read-write */ , id FROM tsa_test WHERE id = 22;
 NOTICE: send query to shard(s) : sh1
@@ -61,7 +57,6 @@ NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
 DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -70,7 +65,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

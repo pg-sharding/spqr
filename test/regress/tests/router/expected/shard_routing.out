@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 ADD SHARDING RULE r1 COLUMNS w_id;
                            add sharding rule                            
 ------------------------------------------------------------------------
@@ -38,31 +37,22 @@ ADD KEY RANGE krid3 FROM 21 TO 30 ROUTE TO sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 CREATE TABLE xxerr (i int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO xx (w_id) VALUES (1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xx (w_id) VALUES (10);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xx (w_id) VALUES (20);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xx (w_id) VALUES (21);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xx (w_id) VALUES (30);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 SELECT * FROM xx WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
  w_id 
@@ -89,49 +79,34 @@ NOTICE: send query to shard(s) : sh2
 
 INSERT INTO xxtt1 (w_id) VALUES(1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (w_id) VALUES(15);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (w_id) VALUES(21);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(15, 15);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(21, 21);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxtt1 (w_id, i) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (w_id, i) VALUES(15, -12);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (w_id, i) VALUES(21, 12);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(1, 1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(-12, 15);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id) VALUES(2121221, 21);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxtt1 (i, j, w_id) VALUES(-12, 1, 1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (i, w_id, j) VALUES(-12, 15, 123123);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 23);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 
@@ -202,7 +177,6 @@ NOTICE: send query to shard(s) : sh2
 -- check that `INSERT FROM SELECT` works
 INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 SELECT * FROM xx WHERE w_id >= 20;
 NOTICE: send query to shard(s) : sh1
  w_id 
@@ -214,7 +188,6 @@ NOTICE: send query to shard(s) : sh1
 -- check that `INSERT FROM SELECT` with constant works
 INSERT INTO xx (w_id) SELECT 20;
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 SELECT * FROM xx WHERE w_id >= 20;
 NOTICE: send query to shard(s) : sh1
  w_id 
@@ -226,7 +199,6 @@ NOTICE: send query to shard(s) : sh1
 
 INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a;
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 SELECT * FROM xxtt1 WHERE w_id = 20;
 NOTICE: send query to shard(s) : sh1
  i | j  | w_id 
@@ -237,7 +209,6 @@ NOTICE: send query to shard(s) : sh1
 -- check that complex UPDATE works
 UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where w_id=20 and xxtt1.j=a.j;
 NOTICE: send query to shard(s) : sh1
-UPDATE 1
 SELECT * FROM xxtt1 WHERE w_id = 20;
 NOTICE: send query to shard(s) : sh1
  i | j  | w_id 
@@ -247,13 +218,10 @@ NOTICE: send query to shard(s) : sh1
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 DROP TABLE xxtt1;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 DROP TABLE xxerr;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -262,7 +230,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

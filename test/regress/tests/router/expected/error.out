@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
@@ -37,10 +36,8 @@ CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE x(id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
@@ -62,7 +59,6 @@ NOTICE: send query to shard(s) : sh1
 
 DROP TABLE x;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -71,7 +67,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

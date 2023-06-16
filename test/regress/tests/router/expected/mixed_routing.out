@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 -- check that numeric type works
 ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
@@ -27,34 +26,24 @@ ADD KEY RANGE krid2 FROM 11 TO 100 ROUTE TO sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE xxmixed(id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO xxmixed (id) VALUES(1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(10);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(11);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(20);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(21);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(22);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(29);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixed (id) VALUES(30);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 SELECT * FROM xxmixed ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id 
@@ -141,7 +130,6 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -150,7 +138,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
@@ -182,25 +169,18 @@ ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-F
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE xxmixeduuid(id uuid);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxmixeduuid (id) VALUES('FA98123B-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixeduuid (id) VALUES('1234AAAA-98AB-0000-0000-BCAD0192EFEF');
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF');
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0000-0000-000000000000');
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 SELECT * FROM xxmixeduuid WHERE id > '00000000-0000-0000-0000-000000000000' ORDER BY id;
 NOTICE: send query to shard(s) : sh1
                   id                  
@@ -234,7 +214,6 @@ NOTICE: send query to shard(s) : sh2
 
 DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -243,7 +222,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

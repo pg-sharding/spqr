@@ -6,7 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 CREATE SHARDING RULE r1 COLUMN id;
                           add sharding rule                           
 ----------------------------------------------------------------------
@@ -32,37 +31,26 @@ CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
 (1 row)
 
 \c regress
-You are now connected to database "regress" as user "reshke".
 CREATE TABLE xjoin(id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 CREATE TABLE yjoin(w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
 INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xjoin (id) values(10);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO xjoin (id) values(15);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO xjoin (id) values(25);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO yjoin (w_id) values(10);
 NOTICE: send query to shard(s) : sh1
-INSERT 0 1
 INSERT INTO yjoin (w_id) values(15);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
-INSERT 0 1
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
@@ -92,10 +80,8 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 ERROR:  too complex query to parse
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE
 \c spqr-console
 
 		SQPR router admin console
@@ -104,7 +90,6 @@ DROP TABLE
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-You are now connected to database "spqr-console" as user "reshke".
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
