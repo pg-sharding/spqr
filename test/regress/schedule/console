@@ -4,3 +4,4 @@ test: show_key_ranges
 test: show_sharding_rules
 test: drop
 test: add
+test: teardown

@@ -36,7 +36,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 				return cli.DropKeyRange(ctx, []string{})
 			}
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.KeyRangeID)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s", stmt.KeyRangeID)
 			err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
 			if err != nil {
 				return cli.ReportError(err)
@@ -59,7 +59,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 				}())
 			}
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s to %s", stmt.ID)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s", stmt.ID)
 			err := mngr.DropShardingRule(ctx, stmt.ID)
 			if err != nil {
 				return cli.ReportError(err)
