@@ -7,17 +7,6 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
-(1 row)
-
 CREATE SHARDING RULE r1 COLUMN i;
                           add sharding rule                          
 ---------------------------------------------------------------------
@@ -87,5 +76,23 @@ NOTICE: send query to shard(s) : sh2
 DROP TABLE sshjt1;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
-\c db1
-You are now connected to database "db1" as user "reshke".
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+    drop sharding rule    
+--------------------------
+ dropped sharding rule r1
+(1 row)
+

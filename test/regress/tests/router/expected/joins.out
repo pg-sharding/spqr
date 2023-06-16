@@ -67,10 +67,10 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
- 15 |   15
- 25 |   25
   1 |    1
  10 |   10
+ 15 |   15
+ 25 |   25
 (4 rows)
 
 -- result is not full

@@ -1,6 +1,4 @@
 \c spqr-console
-DROP KEY RANGE ALL;
-DROP SHARDING RULE ALL;
 CREATE SHARDING RULE r1 COLUMN i;
 CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
 CREATE KEY RANGE kridi2 from 11 to 20 route to sh2;
@@ -23,4 +21,6 @@ SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;
 
 DROP TABLE sshjt1;
-\c db1
+\c spqr-console
+DROP KEY RANGE ALL;
+DROP SHARDING RULE ALL;

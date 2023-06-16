@@ -41,13 +41,13 @@ ADD KEY RANGE krid3 FROM 21 TO 30 ROUTE TO sh2;
 You are now connected to database "regress" as user "reshke".
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-ERROR:  relation "xx" already exists
+CREATE TABLE
 CREATE TABLE xxerr (i int);
 NOTICE: send query to shard(s) : sh1,sh2
-ERROR:  relation "xxerr" already exists
+CREATE TABLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-ERROR:  relation "xxtt1" already exists
+CREATE TABLE
 INSERT INTO xx (w_id) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
@@ -70,18 +70,14 @@ NOTICE: send query to shard(s) : sh1
     1
    10
    20
-    1
-   10
-   20
-(6 rows)
+(3 rows)
 
 SELECT * FROM xx WHERE w_id >= 20;
 NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
-   20
-(2 rows)
+(1 row)
 
 SELECT * FROM xx WHERE w_id >= 21;
 NOTICE: send query to shard(s) : sh2
@@ -89,9 +85,7 @@ NOTICE: send query to shard(s) : sh2
 ------
    21
    30
-   21
-   30
-(4 rows)
+(2 rows)
 
 INSERT INTO xxtt1 (w_id) VALUES(1);
 NOTICE: send query to shard(s) : sh1
@@ -208,16 +202,14 @@ NOTICE: send query to shard(s) : sh2
 -- check that `INSERT FROM SELECT` works
 INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 NOTICE: send query to shard(s) : sh1
-INSERT 0 2
+INSERT 0 1
 SELECT * FROM xx WHERE w_id >= 20;
 NOTICE: send query to shard(s) : sh1
  w_id 
 ------
    20
    20
-   20
-   20
-(4 rows)
+(2 rows)
 
 -- check that `INSERT FROM SELECT` with constant works
 INSERT INTO xx (w_id) SELECT 20;
@@ -230,9 +222,7 @@ NOTICE: send query to shard(s) : sh1
    20
    20
    20
-   20
-   20
-(5 rows)
+(3 rows)
 
 INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a;
 NOTICE: send query to shard(s) : sh1
