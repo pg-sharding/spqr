@@ -102,10 +102,6 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 		return "", colnames[0], nil
 	case 2:
 		// check that column matches sharding rule
-
-		meta.rels[meta.tableAliases[colnames[0]]] = append(meta.rels[meta.tableAliases[colnames[0]]],
-			colnames[1])
-
 		return colnames[0], colnames[1], nil
 	default:
 		return "", "", ComplexQuery
