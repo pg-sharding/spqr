@@ -5,8 +5,7 @@ CREATE SHARDING RULE r2 COLUMN w_id;
 CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
 CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
 
-\c regressiondb
-
+\c regress
 
 CREATE TABLE xjoin(id int);
 CREATE TABLE yjoin(w_id int);

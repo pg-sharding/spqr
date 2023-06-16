@@ -6,7 +6,162 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
-psql:test/regress/tests/router/sql/mixed_routing.sql:4: ERROR:  sharding rule t1 already present in qdb
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
 psql:test/regress/tests/router/sql/mixed_routing.sql:5: ERROR:  key range krid1 intersects with kridi1 present in qdb
-psql:test/regress/tests/router/sql/mixed_routing.sql:6: ERROR:  key range krid2 already present in qdb
-psql:test/regress/tests/router/sql/mixed_routing.sql:8: error: \connect: connection to server at "localhost" (::1), port 6432 failed: ERROR:  database "regress" does not exist
+psql:test/regress/tests/router/sql/mixed_routing.sql:6: ERROR:  key range krid2 intersects with kridi2 present in qdb
+You are now connected to database "regress" as user "reshke".
+psql:test/regress/tests/router/sql/mixed_routing.sql:10: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+psql:test/regress/tests/router/sql/mixed_routing.sql:11: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/mixed_routing.sql:12: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:13: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:14: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:15: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:17: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:18: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:19: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:20: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:22: NOTICE: send query to shard(s) : sh1,sh2
+ id 
+----
+  1
+ 10
+ 11
+ 20
+(4 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:23: NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+ 10
+(2 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:24: NOTICE: send query to shard(s) : sh2
+ id 
+----
+ 11
+ 20
+(2 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:25: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:27: NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+ 10
+(2 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:28: NOTICE: send query to shard(s) : sh2
+ id 
+----
+(0 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:29: NOTICE: send query to shard(s) : sh2
+ id 
+----
+ 20
+(1 row)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:30: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/mixed_routing.sql:31: ERROR:  too complex query to parse
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,t1
+(1 row)
+
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+                                            add key range                                            
+-----------------------------------------------------------------------------------------------------
+ created key range from 00000000-0000-0000-0000-000000000000 to 88888888-8888-8888-8888-888888888888
+(1 row)
+
+                                            add key range                                            
+-----------------------------------------------------------------------------------------------------
+ created key range from 88888888-8888-8888-8888-888888888889 to FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
+(1 row)
+
+You are now connected to database "regress" as user "reshke".
+psql:test/regress/tests/router/sql/mixed_routing.sql:43: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+psql:test/regress/tests/router/sql/mixed_routing.sql:44: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/mixed_routing.sql:45: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:46: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:47: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:48: NOTICE: send query to shard(s) : sh2
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:49: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
+psql:test/regress/tests/router/sql/mixed_routing.sql:51: NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 00000000-0000-0ea0-0fab-ab031389ff09
+ 1234aaaa-98ab-0000-0000-bcad0192efef
+(2 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:52: NOTICE: send query to shard(s) : sh1
+                  id                  
+--------------------------------------
+ 00000000-0000-0000-0000-000000000000
+ 00000000-0000-0ea0-0fab-ab031389ff09
+ 1234aaaa-98ab-0000-0000-bcad0192efef
+(3 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:53: NOTICE: send query to shard(s) : sh1
+ id 
+----
+(0 rows)
+
+psql:test/regress/tests/router/sql/mixed_routing.sql:54: NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ fa98123b-0000-0ea0-0fab-ab031389ff09
+ ffffffff-ffff-ffff-ffff-ffffffffffff
+(2 rows)
+
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+    drop sharding rule    
+--------------------------
+ dropped sharding rule t1
+(1 row)
+

@@ -11,10 +11,62 @@ You are now connected to database "spqr-console" as user "reshke".
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-psql:test/regress/tests/router/sql/copy_routing.sql:3: ERROR:  key range krid1 intersects with kridi1 present in qdb
+         add key range          
+--------------------------------
+ created key range from 1 to 29
+(1 row)
+
            add key range           
 -----------------------------------
  created key range from 30 to 4000
 (1 row)
 
-psql:test/regress/tests/router/sql/copy_routing.sql:6: error: \connect: connection to server at "localhost" (::1), port 6432 failed: ERROR:  database "regress" does not exist
+You are now connected to database "regress" as user "reshke".
+psql:test/regress/tests/router/sql/copy_routing.sql:7: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
+psql:test/regress/tests/router/sql/copy_routing.sql:9: NOTICE: send query to shard(s) : sh1
+COPY 5
+psql:test/regress/tests/router/sql/copy_routing.sql:20: NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  2
+  3
+  4
+  5
+(5 rows)
+
+psql:test/regress/tests/router/sql/copy_routing.sql:22: NOTICE: send query to shard(s) : sh2
+COPY 8
+psql:test/regress/tests/router/sql/copy_routing.sql:37: NOTICE: send query to shard(s) : sh2
+ id 
+----
+  1
+  2
+  3
+  4
+  5
+ 12
+ 22
+ 23
+(8 rows)
+
+psql:test/regress/tests/router/sql/copy_routing.sql:39: NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+You are now connected to database "spqr-console" as user "reshke".
+ drop key range 
+----------------
+(0 rows)
+
+    drop sharding rule    
+--------------------------
+ dropped sharding rule t1
+(1 row)
+

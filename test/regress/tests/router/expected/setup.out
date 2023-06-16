@@ -1,0 +1,2 @@
+psql:test/regress/tests/router/sql/setup.sql:1: NOTICE: send query to shard(s) : sh1,sh2
+CREATE DATABASE

@@ -1,3 +1,6 @@
+
+test: setup
+
 test: shard_routing
 test: multishard_routing
 test: mixed_routing

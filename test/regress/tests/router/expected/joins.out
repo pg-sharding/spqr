@@ -6,42 +6,57 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
-psql:test/regress/tests/router/sql/joins.sql:3: ERROR:  sharding rule r1 already present in qdb
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
                            add sharding rule                            
 ------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x]
 (1 row)
 
-psql:test/regress/tests/router/sql/joins.sql:5: ERROR:  key range kridi1 already present in qdb
-psql:test/regress/tests/router/sql/joins.sql:6: ERROR:  key range kridi2 already present in qdb
-You are now connected to database "regressiondb" as user "reshke".
+         add key range          
+--------------------------------
+ created key range from 0 to 10
+(1 row)
+
+          add key range          
+---------------------------------
+ created key range from 11 to 30
+(1 row)
+
+You are now connected to database "regress" as user "reshke".
+psql:test/regress/tests/router/sql/joins.sql:10: NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE
 psql:test/regress/tests/router/sql/joins.sql:11: NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
-psql:test/regress/tests/router/sql/joins.sql:12: NOTICE: send query to shard(s) : sh1,sh2
-CREATE TABLE
+psql:test/regress/tests/router/sql/joins.sql:13: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
 psql:test/regress/tests/router/sql/joins.sql:14: NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:15: NOTICE: send query to shard(s) : sh1
+psql:test/regress/tests/router/sql/joins.sql:15: NOTICE: send query to shard(s) : sh2
 INSERT 0 1
 psql:test/regress/tests/router/sql/joins.sql:16: NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:17: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/joins.sql:18: NOTICE: send query to shard(s) : sh1
+INSERT 0 1
 psql:test/regress/tests/router/sql/joins.sql:19: NOTICE: send query to shard(s) : sh1
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:20: NOTICE: send query to shard(s) : sh1
+psql:test/regress/tests/router/sql/joins.sql:20: NOTICE: send query to shard(s) : sh2
 INSERT 0 1
 psql:test/regress/tests/router/sql/joins.sql:21: NOTICE: send query to shard(s) : sh2
 INSERT 0 1
-psql:test/regress/tests/router/sql/joins.sql:22: ERROR:  too complex query to parse
-psql:test/regress/tests/router/sql/joins.sql:24: NOTICE: send query to shard(s) : sh1,sh2
+psql:test/regress/tests/router/sql/joins.sql:23: NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
   1 |    1
  10 |   10
  15 |   15
-(3 rows)
+ 25 |   25
+(4 rows)
 
-psql:test/regress/tests/router/sql/joins.sql:26: NOTICE: send query to shard(s) : sh1,sh2
+psql:test/regress/tests/router/sql/joins.sql:25: NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
   1 |    1
@@ -49,12 +64,15 @@ psql:test/regress/tests/router/sql/joins.sql:26: NOTICE: send query to shard(s) 
  10 |    1
  10 |   10
  15 |   15
-(5 rows)
+ 15 |   25
+ 25 |   15
+ 25 |   25
+(8 rows)
 
-psql:test/regress/tests/router/sql/joins.sql:28: ERROR:  too complex query to parse
-psql:test/regress/tests/router/sql/joins.sql:30: NOTICE: send query to shard(s) : sh1,sh2
+psql:test/regress/tests/router/sql/joins.sql:27: ERROR:  too complex query to parse
+psql:test/regress/tests/router/sql/joins.sql:29: NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
-psql:test/regress/tests/router/sql/joins.sql:31: NOTICE: send query to shard(s) : sh1,sh2
+psql:test/regress/tests/router/sql/joins.sql:30: NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
 
 		SQPR router admin console
@@ -68,8 +86,8 @@ You are now connected to database "spqr-console" as user "reshke".
 ----------------
 (0 rows)
 
-        drop sharding rule         
------------------------------------
- dropped sharding rule r1,r2,t1,t2
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,r2
 (1 row)
 

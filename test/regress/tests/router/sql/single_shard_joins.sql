@@ -1,4 +1,3 @@
---CREATE DATABASE regressiondb IF NOT EXISTS;
 \c spqr-console
 DROP KEY RANGE ALL;
 DROP SHARDING RULE ALL;
@@ -6,7 +5,7 @@ CREATE SHARDING RULE r1 COLUMN i;
 CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
 CREATE KEY RANGE kridi2 from 11 to 20 route to sh2;
 
-\c regressiondb
+\c regress
 
 CREATE TABLE sshjt1(i int, j int);
 
