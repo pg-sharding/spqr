@@ -1,26 +1,64 @@
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,r2
+(1 row)
+
+ADD SHARDING RULE t1 COLUMNS id;
+                          add sharding rule                           
+----------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+ADD KEY RANGE krid1 FROM 1 TO 100 ROUTE TO sh1;
+          add key range          
+---------------------------------
+ created key range from 1 to 100
+(1 row)
+
+ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
+           add key range           
+-----------------------------------
+ created key range from 101 to 200
+(1 row)
+
+\c regress
 DROP TABLE IF EXISTS tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE tsa_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO tsa_test (id) VALUES (22);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
 -- you could specify target-session-attrs anywhere in your query
 SELECT pg_is_in_recovery() /* target-session-attrs: read-write */ , id FROM tsa_test WHERE id = 22;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
 (1 row)
 
 /* target-session-attrs: read-write */ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
 (1 row)
 
 SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
  pg_is_in_recovery | id 
 -------------------+----
  f                 | 22
@@ -28,5 +66,5 @@ NOTICE: send query to shard(s) : sh2
 
 -- read-only is also supported but there is no high availability cluster in our tests yet, so it returns error
 -- SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
--- NOTICE: send query to shard(s) : sh2
+-- NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
