@@ -24,3 +24,4 @@ INSERT INTO yjoin (w_id) values(15);
 INSERT INTO yjoin (w_id) values(25);
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
+SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;

@@ -356,7 +356,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
-				return rst.Close()
+				return nil
 				// ok
 			default:
 				_ = rst.UnRouteWithError(rst.ActiveShards(), err)
