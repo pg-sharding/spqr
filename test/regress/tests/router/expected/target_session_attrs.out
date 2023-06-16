@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,26 +7,42 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+ADD KEY RANGE krid1 FROM 1 TO 100 ROUTE TO sh1;
 ERROR:  key range krid1 intersects with kridi1 present in qdb
+ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
            add key range           
 -----------------------------------
  created key range from 101 to 200
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE tsa_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+INSERT INTO tsa_test (id) VALUES (22);
 ERROR:  too complex query to parse
+-- you could specify target-session-attrs anywhere in your query
+SELECT pg_is_in_recovery() /* target-session-attrs: read-write */ , id FROM tsa_test WHERE id = 22;
 ERROR:  too complex query to parse
+/* target-session-attrs: read-write */ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22;
 ERROR:  too complex query to parse
+SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
 ERROR:  too complex query to parse
+-- read-only is also supported but there is no high availability cluster in our tests yet, so it returns error
+-- SELECT pg_is_in_recovery() /* target-session-attrs: read-only */ , id FROM tsa_test WHERE id = 22;
+-- NOTICE: send query to shard(s) : sh1
+-- ERROR:  failed to find replica
+DROP TABLE tsa_test;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -34,10 +51,12 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
      drop sharding rule      
 -----------------------------
  dropped sharding rule r1,t1

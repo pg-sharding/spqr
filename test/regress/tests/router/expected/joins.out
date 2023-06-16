@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,56 +7,74 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+CREATE SHARDING RULE r1 COLUMN id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+CREATE SHARDING RULE r2 COLUMN w_id;
                            add sharding rule                            
 ------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x]
 (1 row)
 
+CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
          add key range          
 --------------------------------
  created key range from 0 to 10
 (1 row)
 
+CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
           add key range          
 ---------------------------------
  created key range from 11 to 30
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE xjoin(id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+CREATE TABLE yjoin(w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xjoin (id) values(10);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xjoin (id) values(15);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xjoin (id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO yjoin (w_id) values(10);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO yjoin (w_id) values(15);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
-  1 |    1
- 10 |   10
  15 |   15
  25 |   25
+  1 |    1
+ 10 |   10
 (4 rows)
 
+-- result is not full
+SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
@@ -69,11 +88,15 @@ NOTICE: send query to shard(s) : sh1,sh2
  25 |   25
 (8 rows)
 
+SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 ERROR:  too complex query to parse
+DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -82,10 +105,12 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
      drop sharding rule      
 -----------------------------
  dropped sharding rule r1,r2

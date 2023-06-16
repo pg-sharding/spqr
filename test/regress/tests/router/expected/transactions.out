@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,63 +7,84 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+ADD KEY RANGE krid1 FROM 1 TO 100 ROUTE TO sh1;
           add key range          
 ---------------------------------
  created key range from 1 to 100
 (1 row)
 
+ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
            add key range           
 -----------------------------------
  created key range from 101 to 200
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE transactions_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+-- check that rollbacked changes do no apply
+BEGIN;
 BEGIN
+SELECT * FROM transactions_test WHERE id = 1;;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+INSERT INTO transactions_test (id) VALUES (1);
 INSERT 0 1
+SELECT * FROM transactions_test WHERE id = 1;;
  id 
 ----
   1
 (1 row)
 
+ROLLBACK;
 ROLLBACK
+SELECT * FROM transactions_test WHERE id = 1;;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+-- check that commited changes present
+BEGIN;
 BEGIN
+SELECT * FROM transactions_test WHERE id = 1;;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+INSERT INTO transactions_test (id) VALUES (1);
 INSERT 0 1
+SELECT * FROM transactions_test WHERE id = 1;;
  id 
 ----
   1
 (1 row)
 
+COMMIT;
 COMMIT
+SELECT * FROM transactions_test WHERE id = 1;;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
 (1 row)
 
+DROP TABLE transactions_test;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -71,10 +93,12 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
  dropped sharding rule t1

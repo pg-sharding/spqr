@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,53 +7,69 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+-- check that numeric type works
+ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
          add key range          
 --------------------------------
  created key range from 1 to 10
 (1 row)
 
+ADD KEY RANGE krid2 FROM 11 TO 100 ROUTE TO sh2;
           add key range           
 ----------------------------------
  created key range from 11 to 100
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE xxmixed(id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+INSERT INTO xxmixed (id) VALUES(1);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(10);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(11);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(20);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(21);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(22);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(29);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixed (id) VALUES(30);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+SELECT * FROM xxmixed ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
  id 
 ----
-  1
- 10
  11
  20
  21
  22
  29
  30
+  1
+ 10
 (8 rows)
 
+SELECT * FROM xxmixed WHERE id <= 10 ORDER BY id;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
@@ -60,6 +77,7 @@ NOTICE: send query to shard(s) : sh1
  10
 (2 rows)
 
+SELECT * FROM xxmixed WHERE id <= 20 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
@@ -67,6 +85,7 @@ NOTICE: send query to shard(s) : sh2
  20
 (2 rows)
 
+SELECT * FROM xxmixed WHERE id <= 30 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
@@ -78,6 +97,7 @@ NOTICE: send query to shard(s) : sh2
  30
 (6 rows)
 
+SELECT * FROM xxmixed WHERE id BETWEEN 1 AND 25 ORDER BY id;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
@@ -85,11 +105,13 @@ NOTICE: send query to shard(s) : sh1
  10
 (2 rows)
 
+SELECT * FROM xxmixed WHERE id BETWEEN 13 AND 18 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
 (0 rows)
 
+SELECT * FROM xxmixed WHERE id BETWEEN 19 AND 30 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
@@ -100,6 +122,7 @@ NOTICE: send query to shard(s) : sh2
  30
 (5 rows)
 
+SELECT * FROM xxmixed WHERE id BETWEEN 21 AND 22 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
@@ -107,6 +130,7 @@ NOTICE: send query to shard(s) : sh2
  22
 (2 rows)
 
+SELECT * FROM xxmixed WHERE id BETWEEN 22 AND 30 ORDER BY id;
 NOTICE: send query to shard(s) : sh2
  id 
 ----
@@ -115,8 +139,10 @@ NOTICE: send query to shard(s) : sh2
  30
 (3 rows)
 
+DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -125,43 +151,57 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
  dropped sharding rule t1
 (1 row)
 
+-- check that uuid type works
+ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+ADD KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 TO 88888888-8888-8888-8888-888888888888 ROUTE TO sh1;
                                             add key range                                            
 -----------------------------------------------------------------------------------------------------
  created key range from 00000000-0000-0000-0000-000000000000 to 88888888-8888-8888-8888-888888888888
 (1 row)
 
+ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;
                                             add key range                                            
 -----------------------------------------------------------------------------------------------------
  created key range from 88888888-8888-8888-8888-888888888889 to FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE xxmixeduuid(id uuid);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xxmixeduuid (id) VALUES('FA98123B-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixeduuid (id) VALUES('1234AAAA-98AB-0000-0000-BCAD0192EFEF');
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF');
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0000-0000-000000000000');
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+SELECT * FROM xxmixeduuid WHERE id > '00000000-0000-0000-0000-000000000000' ORDER BY id;
 NOTICE: send query to shard(s) : sh1
                   id                  
 --------------------------------------
@@ -169,6 +209,7 @@ NOTICE: send query to shard(s) : sh1
  1234aaaa-98ab-0000-0000-bcad0192efef
 (2 rows)
 
+SELECT * FROM xxmixeduuid WHERE id >= '00000000-0000-0000-0000-000000000000' ORDER BY id;
 NOTICE: send query to shard(s) : sh1
                   id                  
 --------------------------------------
@@ -177,11 +218,13 @@ NOTICE: send query to shard(s) : sh1
  1234aaaa-98ab-0000-0000-bcad0192efef
 (3 rows)
 
+SELECT * FROM xxmixeduuid WHERE id >= '88888888-8888-8888-8888-888888888888' ORDER BY id;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+SELECT * FROM xxmixeduuid WHERE id <= 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF' ORDER BY id;
 NOTICE: send query to shard(s) : sh2
                   id                  
 --------------------------------------
@@ -189,8 +232,10 @@ NOTICE: send query to shard(s) : sh2
  ffffffff-ffff-ffff-ffff-ffffffffffff
 (2 rows)
 
+DROP TABLE xxmixeduuid;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -199,10 +244,12 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
  dropped sharding rule t1

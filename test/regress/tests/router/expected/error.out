@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,50 +7,63 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
    drop sharding rule   
 ------------------------
  dropped sharding rule 
 (1 row)
 
+CREATE SHARDING RULE r1 COLUMN id;
                           add sharding rule                           
 ----------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
+CREATE KEY RANGE kridi1 from 1 to 10 route to sh1;
          add key range          
 --------------------------------
  created key range from 1 to 10
 (1 row)
 
+CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
           add key range          
 ---------------------------------
  created key range from 11 to 30
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE x(id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+SELECT * FROM x WHERE ixxxd = 1;
 NOTICE: send query to shard(s) : sh1,sh2
 ERROR:  column "ixxxd" does not exist
 LINE 1: SELECT * FROM x WHERE ixxxd = 1;
                               ^
+SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
 ERROR:  too complex query to parse
+SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
 ----
 (0 rows)
 
+DROP TABLE x;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -58,10 +72,12 @@ DROP TABLE
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
     drop sharding rule    
 --------------------------
  dropped sharding rule r1

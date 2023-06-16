@@ -1,3 +1,4 @@
+\c spqr-console
 
 		SQPR router admin console
 	Here you can configure your routing rules
@@ -6,39 +7,50 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 You are now connected to database "spqr-console" as user "reshke".
+DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
+DROP SHARDING RULE ALL;
    drop sharding rule   
 ------------------------
  dropped sharding rule 
 (1 row)
 
+CREATE SHARDING RULE r1 COLUMN i;
                           add sharding rule                          
 ---------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [i, hash: x->x]
 (1 row)
 
+CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
          add key range          
 --------------------------------
  created key range from 0 to 10
 (1 row)
 
+CREATE KEY RANGE kridi2 from 11 to 20 route to sh2;
           add key range          
 ---------------------------------
  created key range from 11 to 20
 (1 row)
 
+\c regress
 You are now connected to database "regress" as user "reshke".
+CREATE TABLE sshjt1(i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE
+INSERT INTO sshjt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
 INSERT 0 1
+INSERT INTO sshjt1 (i, j) VALUES(12, 12);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+INSERT INTO sshjt1 (i, j) VALUES(12, 13);
 NOTICE: send query to shard(s) : sh2
 INSERT 0 1
+SELECT * FROM sshjt1 WHERE i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  
 ----+----
@@ -46,12 +58,15 @@ NOTICE: send query to shard(s) : sh2
  12 | 13
 (2 rows)
 
+SELECT * FROM sshjt1 WHERE i = 12 AND  j =1;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
 (0 rows)
 
+SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
 ERROR:  too complex query to parse
+SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  
 ----+----+----+----
@@ -61,6 +76,7 @@ NOTICE: send query to shard(s) : sh2
  12 | 13 | 12 | 13
 (4 rows)
 
+SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  
 ----+----+----+----
@@ -68,6 +84,8 @@ NOTICE: send query to shard(s) : sh2
  12 | 13 | 12 | 13
 (2 rows)
 
+DROP TABLE sshjt1;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE
+\c db1
 You are now connected to database "db1" as user "reshke".
