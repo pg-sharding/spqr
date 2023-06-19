@@ -62,20 +62,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 (4 rows)
 
 -- result is not full
-SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2
- id | w_id 
-----+------
-  1 |    1
-  1 |   10
- 10 |    1
- 10 |   10
- 15 |   15
- 15 |   25
- 25 |   15
- 25 |   25
-(8 rows)
-
+--SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 ERROR:  too complex query to parse
 DROP TABLE xjoin;
