@@ -374,7 +374,7 @@ func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 		prepStmts:      map[string]string{},
 		tsa:            config.TargetSessionAttrsRW,
 	}
-	cl.id = "dwoiewiwe"
+	cl.id = fmt.Sprintf("%p", cl)
 
 	return cl
 }

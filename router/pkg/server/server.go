@@ -24,7 +24,7 @@ type Server interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddDataShard(shardKey kr.ShardKey, tsa string) error
+	AddDataShard(clid string, shardKey kr.ShardKey, tsa string) error
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 
 	Cancel() error
