@@ -20,6 +20,7 @@ SELECT * FROM delivery JOIN orders ON order_id = id;
 SELECT * FROM delivery JOIN orders ON delivery.order_id = orders.id;
 
 DROP TABLE orders CASCADE;
+DROP TABLE delivery;
 
 \c spqr-console
 DROP KEY RANGE ALL;

@@ -64,6 +64,8 @@ NOTICE: send query to shard(s) : sh1,sh2
 
 DROP TABLE orders CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE delivery;
+NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
 		SQPR router admin console
