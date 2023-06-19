@@ -50,7 +50,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection to %v back to pool\n", srv.shard.Instance().Hostname())
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &srv.shard, srv.shard.Instance().Hostname())
 	if err := srv.pool.Put(shkey, srv.shard); err != nil {
 		return err
 	}

@@ -170,6 +170,7 @@ func checkRw(sh Shard) (bool, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "select pg_is_in_recovery()",
 	}); err != nil {
+		spqrlog.Logger.Errorf("shard %p encounter error while sending read-write check %v", err)
 		return false, err
 	}
 
