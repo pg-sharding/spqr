@@ -75,7 +75,7 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
 		c.mu.Unlock()
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool %p for client %s: reuse cached shard connection %p", c, clid, sh)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
 		return sh, nil
 	}
 	c.mu.Unlock()
@@ -205,7 +205,8 @@ func checkRw(sh Shard) (bool, error) {
 func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance connection to shard %s with tsa: %s", s, key.Name, TargetSessionAttrs)
 
-	hosts := s.shardMapping[key.Name].Hosts
+	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
+	copy(hosts, s.shardMapping[key.Name].Hosts)
 	rand.Shuffle(len(hosts), func(i, j int) {
 		hosts[j], hosts[i] = hosts[i], hosts[j]
 	})
