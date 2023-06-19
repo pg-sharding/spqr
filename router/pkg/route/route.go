@@ -78,7 +78,7 @@ func (r *Route) Params() (datashard.ParameterSet, error) {
 		break
 	}
 
-	serv, err := r.servPool.Connection(anyK, r.beRule, "")
+	serv, err := r.servPool.Connection("internal", anyK, r.beRule, "")
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
 		return datashard.ParameterSet{}, err

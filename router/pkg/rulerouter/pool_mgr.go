@@ -78,7 +78,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 
 	for _, shkey := range sh {
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding shard with tsa %s", client.GetTsa())
-		if err := client.Server().AddDataShard(shkey, client.GetTsa()); err != nil {
+		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
 			return err
 		}
 	}
@@ -144,7 +144,7 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 	}
 
 	for _, shkey := range sh {
-		if err := client.Server().AddDataShard(shkey, client.GetTsa()); err != nil {
+		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
 			return err
 		}
 	}

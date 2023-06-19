@@ -59,14 +59,14 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 	return nil
 }
 
-func (srv *ShardServer) AddDataShard(shkey kr.ShardKey, tsa string) error {
+func (srv *ShardServer) AddDataShard(clid string, shkey kr.ShardKey, tsa string) error {
 	if srv.shard != nil {
 		return fmt.Errorf("single datashard " +
 			"server does not support more than 1 datashard connection simultaneously")
 	}
 
 	var err error
-	if srv.shard, err = srv.pool.Connection(shkey, srv.rule, tsa); err != nil {
+	if srv.shard, err = srv.pool.Connection(clid, shkey, srv.rule, tsa); err != nil {
 		return err
 	}
 

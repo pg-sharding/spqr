@@ -17,7 +17,7 @@ import (
 )
 
 type Pool interface {
-	Connection(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
+	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
 	Cut(host string) []Shard
 	Put(host Shard) error
 	List() []Shard
@@ -66,7 +66,7 @@ func (c *cPool) List() []Shard {
 	return ret
 }
 
-func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
+func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
 	c.mu.Lock()
 
 	var sh Shard
@@ -75,7 +75,7 @@ func (c *cPool) Connection(shardKey kr.ShardKey, host string, rule *config.Backe
 		sh, shds = shds[0], shds[1:]
 		c.pool[host] = shds
 		c.mu.Unlock()
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool %p	: reuse cached shard connection %p", c, sh)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool %p for client %s: reuse cached shard connection %p", c, clid, sh)
 		return sh, nil
 	}
 	c.mu.Unlock()
@@ -99,7 +99,7 @@ func (c *cPool) Put(sh Shard) error {
 var _ Pool = &cPool{}
 
 type DBPool interface {
-	Connection(key kr.ShardKey, rule *config.BackendRule, tsa string) (Shard, error)
+	Connection(clid string, key kr.ShardKey, rule *config.BackendRule, tsa string) (Shard, error)
 	Put(shkey kr.ShardKey, sh Shard) error
 
 	Check(key kr.ShardKey) bool
@@ -197,7 +197,7 @@ func checkRw(sh Shard) (bool, error) {
 	}
 }
 
-func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
+func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance connection to shard %s with tsa: %s", s, key.Name, TargetSessionAttrs)
 
 	hosts := s.shardMapping[key.Name].Hosts
@@ -210,9 +210,9 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule,
 		fallthrough
 	case config.TargetSessionAttrsAny:
 		for _, host := range hosts {
-			shard, err := s.poolRO.Connection(key, host, rule)
+			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			return shard, nil
@@ -220,9 +220,9 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule,
 		return nil, fmt.Errorf("failed to get connection to any shard host")
 	case config.TargetSessionAttrsRO:
 		for _, host := range hosts {
-			shard, err := s.poolRO.Connection(key, host, rule)
+			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
@@ -238,9 +238,9 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule,
 		return nil, fmt.Errorf("failed to find replica")
 	case config.TargetSessionAttrsRW:
 		for _, host := range hosts {
-			shard, err := s.poolRO.Connection(key, host, rule)
+			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
