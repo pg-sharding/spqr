@@ -209,18 +209,21 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule,
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-
-		shard, err := s.poolRO.Connection(key, hosts[0], rule)
-		if err != nil {
-			return nil, err
+		for _, host := range hosts {
+			shard, err := s.poolRO.Connection(key, host, rule)
+			if err != nil {
+				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				continue
+			}
+			return shard, nil
 		}
-
-		return shard, nil
+		return nil, fmt.Errorf("failed to get connection to any shard host")
 	case config.TargetSessionAttrsRO:
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(key, host, rule)
 			if err != nil {
-				return nil, err
+				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
 				_ = shard.Close()
@@ -237,7 +240,8 @@ func (s *InstancePoolImpl) Connection(key kr.ShardKey, rule *config.BackendRule,
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(key, host, rule)
 			if err != nil {
-				return nil, err
+				spqrlog.Logger.Errorf("failed to get connection to %s: %v", host, err)
+				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
 				_ = shard.Close()
