@@ -359,7 +359,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				return nil
 				// ok
 			default:
-				_ = rst.UnRouteWithError(rst.ActiveShards(), err)
+				return rst.UnRouteWithError(rst.ActiveShards(), err)
 			}
 		}
 
