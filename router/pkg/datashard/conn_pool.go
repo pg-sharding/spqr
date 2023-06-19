@@ -180,6 +180,7 @@ func checkRw(sh Shard) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p recieved %+v during check rw", sh, msg)
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p checking read-write: result datarow %+v", sh, qt)
