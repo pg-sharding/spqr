@@ -5,13 +5,35 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+ADD SHARDING RULE rule1 COLUMNS id;
+                            add sharding rule                            
+-------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+ADD SHARDING RULE rule2 COLUMNS idx;
+                            add sharding rule                             
+--------------------------------------------------------------------------
+ created sharding rule rule2 for table (*) with columns [idx, hash: x->x]
+(1 row)
+
+ADD SHARDING RULE rule3 COLUMNS idy;
+                            add sharding rule                             
+--------------------------------------------------------------------------
+ created sharding rule rule3 for table (*) with columns [idy, hash: x->x]
+(1 row)
+
 SHOW sharding_rules;
- Sharding Rule ID | Table Name | Columns  | Hash Function 
-------------------+------------+----------+---------------
- r1               | *          | w_id     | x->x
- r2               | *          | id       | x->x
- r3               | *          | bid      | x->x
- t1               | orders     | iid      | x->x
- t2               | delivery   | order_id | x->x
-(5 rows)
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
+ rule1            | *          | id      | x->x
+ rule2            | *          | idx     | x->x
+ rule3            | *          | idy     | x->x
+(3 rows)
+
+DROP SHARDING RULE ALL;
+           drop sharding rule            
+-----------------------------------------
+ dropped sharding rule rule1,rule2,rule3
+(1 row)
 
