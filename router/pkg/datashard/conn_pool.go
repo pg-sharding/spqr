@@ -179,6 +179,7 @@ func checkRw(sh Shard) (bool, error) {
 	for {
 		msg, err := sh.Receive()
 		if err != nil {
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p recieved error %v during check rw", sh, err)
 			return false, err
 		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p recieved %+v during check rw", sh, msg)
@@ -191,8 +192,11 @@ func checkRw(sh Shard) (bool, error) {
 
 		case *pgproto3.ReadyForQuery:
 			if conn.TXStatus(qt.TxStatus) != conn.TXIDLE {
+				spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p got unsync connection while calculating rw %v", sh, qt.TxStatus)
 				return false, fmt.Errorf("connection unsync while acquirind it")
 			}
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p calculated rw res %+v", sh, res)
 			return res, nil
 		}
 	}
