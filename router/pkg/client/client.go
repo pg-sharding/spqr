@@ -637,7 +637,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: sending %T", cl, msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: sending %+v", cl, msg)
 	return cl.be.Send(msg)
 }
 

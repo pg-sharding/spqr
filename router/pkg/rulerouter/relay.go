@@ -199,10 +199,9 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	}
 
 	if err := rst.Connect(routes); err != nil {
-		spqrlog.Logger.Errorf("encounter %v while initialing server connection", err)
+		spqrlog.Logger.Errorf("client %s encounter %v while initialing server connection", rst.Cl.ID(), err)
 
 		_ = rst.Reset()
-		_ = rst.Cl.ReplyErrMsg(err.Error())
 		return err
 	}
 
@@ -554,7 +553,6 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
 	} else {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
 		return ok, nil
 	}
 }
@@ -578,8 +576,6 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 	if _, err := rst.RelayStep(&pgproto3.Sync{}, waitForResp, replyCl); err != nil {
 		return err
 	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards())
 	return nil
 }
 
@@ -600,7 +596,5 @@ func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForR
 	if err := rst.CompleteRelay(replyCl); err != nil {
 		return err
 	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %v", rst.ActiveShards())
 	return nil
 }
