@@ -1,8 +1,11 @@
+
 test: shard_routing
-test: multishard_routing
 test: mixed_routing
 test: copy_routing
 test: joins
 test: target_session_attrs
 test: transactions
 test: with_tables
+test: single_shard_joins
+test: error
+

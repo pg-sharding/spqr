@@ -1,13 +1,10 @@
 \c spqr-console
-DROP KEY RANGE ALL;
-DROP SHARDING RULE ALL;
 ADD SHARDING RULE t1 COLUMNS id;
 ADD KEY RANGE krid1 FROM 1 TO 100 ROUTE TO sh1;
 ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
 
 \c regress
 
-DROP TABLE IF EXISTS transactions_test;
 CREATE TABLE transactions_test (id int);
 
 -- check that rollbacked changes do no apply
@@ -27,3 +24,9 @@ SELECT * FROM transactions_test WHERE id = 1;;
 COMMIT;
 
 SELECT * FROM transactions_test WHERE id = 1;;
+
+DROP TABLE transactions_test;
+
+\c spqr-console
+DROP KEY RANGE ALL;
+DROP SHARDING RULE ALL;

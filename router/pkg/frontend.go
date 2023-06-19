@@ -356,7 +356,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
-				return rst.Close()
+				return nil
 				// ok
 			default:
 				_ = rst.UnRouteWithError(rst.ActiveShards(), err)
@@ -371,8 +371,8 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				return nil
 				// ok
 			default:
+				// fix all reply err to client to be here
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with error: %v", rst.Client(), err)
-				rst.Client().ReplyErrMsg(err.Error())
 			}
 		}
 	}

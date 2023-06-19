@@ -6,17 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-         drop sharding rule          
--------------------------------------
- dropped sharding rule cat,dog,rule1
-(1 row)
-
 ADD SHARDING RULE r1 COLUMNS w_id;
                            add sharding rule                            
 ------------------------------------------------------------------------
@@ -231,3 +220,24 @@ DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxtt1;
 NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE xxerr;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,r2
+(1 row)
+

@@ -30,7 +30,7 @@ if [[ -z "$POSTGRES_DB" ]]; then
 fi
 
 # Create users
-sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES_USER WITH LOGIN" -d postgres >> $SETUP_LOG 2>&1 || {
+sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES_USER WITH LOGIN SUPERUSER" -d postgres >> $SETUP_LOG 2>&1 || {
     echo "ERROR: users creation failed, examine the log"
     cat "$SETUP_LOG"
     exit 1

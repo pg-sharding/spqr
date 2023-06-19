@@ -579,7 +579,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %+v", rst.ActiveShards())
 	return nil
 }
 
@@ -601,6 +601,6 @@ func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForR
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %v", rst.ActiveShards)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "active shards are %v", rst.ActiveShards())
 	return nil
 }

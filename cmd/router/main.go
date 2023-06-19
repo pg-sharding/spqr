@@ -109,6 +109,7 @@ var runCmd = &cobra.Command{
 		app := app.NewApp(router)
 
 		go func() {
+			defer cancelCtx()
 			for {
 				s := <-sigs
 				spqrlog.Logger.Printf(spqrlog.LOG, "received signal %v", s)
@@ -116,6 +117,7 @@ var runCmd = &cobra.Command{
 				switch s {
 				case syscall.SIGUSR1:
 					spqrlog.RebornLogger(rcfg.LogFileName)
+				case syscall.SIGUSR2:
 					// write profile
 					pprof.StopCPUProfile()
 
@@ -131,7 +133,6 @@ var runCmd = &cobra.Command{
 					}
 					spqrlog.RebornLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
-					cancelCtx()
 					return
 				default:
 					return

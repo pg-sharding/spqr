@@ -1,26 +1,34 @@
+
 \c spqr-console
-DROP KEY RANGE ALL;
-DROP SHARDING RULE ALL;
-
-ADD SHARDING RULE r1 COLUMNS w_id;
-ADD SHARDING RULE r2 COLUMNS id;
-
-ADD KEY RANGE krid1 FROM 1 TO 20 ROUTE TO sh1;
-ADD KEY RANGE krid2 FROM 21 TO 30 ROUTE TO sh2;
+CREATE SHARDING RULE r1 COLUMN id;
+CREATE SHARDING RULE r2 COLUMN w_id;
+CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
+CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
 
 \c regress
-DROP TABLE IF EXISTS xjoin;
-CREATE TABLE xjoin(id int);
 
-DROP TABLE IF EXISTS yjoin;
+CREATE TABLE xjoin(id int);
 CREATE TABLE yjoin(w_id int);
 
 INSERT INTO xjoin (id) values(1);
+INSERT INTO xjoin (id) values(10);
 INSERT INTO xjoin (id) values(15);
 INSERT INTO xjoin (id) values(25);
 
 INSERT INTO yjoin (w_id) values(1);
+INSERT INTO yjoin (w_id) values(10);
 INSERT INTO yjoin (w_id) values(15);
 INSERT INTO yjoin (w_id) values(25);
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
+-- result is not full
+--SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
+
+SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
+
+DROP TABLE xjoin;
+DROP TABLE yjoin;
+
+\c spqr-console
+DROP KEY RANGE ALL;
+DROP SHARDING RULE ALL;

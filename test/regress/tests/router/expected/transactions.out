@@ -6,17 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
 ADD SHARDING RULE t1 COLUMNS id;
                           add sharding rule                           
 ----------------------------------------------------------------------
@@ -36,8 +25,6 @@ ADD KEY RANGE krid2 FROM 101 TO 200 ROUTE TO sh2;
 (1 row)
 
 \c regress
-DROP TABLE IF EXISTS transactions_test;
-NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE transactions_test (id int);
 NOTICE: send query to shard(s) : sh1,sh2
 -- check that rollbacked changes do no apply
@@ -83,5 +70,26 @@ NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
+(1 row)
+
+DROP TABLE transactions_test;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+    drop sharding rule    
+--------------------------
+ dropped sharding rule t1
 (1 row)
 

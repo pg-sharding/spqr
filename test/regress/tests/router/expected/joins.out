@@ -6,60 +6,49 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
-ADD SHARDING RULE r1 COLUMNS w_id;
-                           add sharding rule                            
-------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x]
-(1 row)
-
-ADD SHARDING RULE r2 COLUMNS id;
+CREATE SHARDING RULE r1 COLUMN id;
                           add sharding rule                           
 ----------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [id, hash: x->x]
+ created sharding rule r1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 20 ROUTE TO sh1;
+CREATE SHARDING RULE r2 COLUMN w_id;
+                           add sharding rule                            
+------------------------------------------------------------------------
+ created sharding rule r2 for table (*) with columns [w_id, hash: x->x]
+(1 row)
+
+CREATE KEY RANGE kridi1 from 0 to 10 route to sh1;
          add key range          
 --------------------------------
- created key range from 1 to 20
+ created key range from 0 to 10
 (1 row)
 
-ADD KEY RANGE krid2 FROM 21 TO 30 ROUTE TO sh2;
+CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
           add key range          
 ---------------------------------
- created key range from 21 to 30
+ created key range from 11 to 30
 (1 row)
 
 \c regress
-DROP TABLE IF EXISTS xjoin;
-NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xjoin(id int);
-NOTICE: send query to shard(s) : sh1,sh2
-DROP TABLE IF EXISTS yjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE yjoin(w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xjoin (id) values(1);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO xjoin (id) values(15);
+INSERT INTO xjoin (id) values(10);
 NOTICE: send query to shard(s) : sh1
+INSERT INTO xjoin (id) values(15);
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xjoin (id) values(25);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(1);
 NOTICE: send query to shard(s) : sh1
-INSERT INTO yjoin (w_id) values(15);
+INSERT INTO yjoin (w_id) values(10);
 NOTICE: send query to shard(s) : sh1
+INSERT INTO yjoin (w_id) values(15);
+NOTICE: send query to shard(s) : sh2
 INSERT INTO yjoin (w_id) values(25);
 NOTICE: send query to shard(s) : sh2
 SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
@@ -67,7 +56,35 @@ NOTICE: send query to shard(s) : sh1,sh2
  id | w_id 
 ----+------
   1 |    1
+ 10 |   10
  15 |   15
  25 |   25
-(3 rows)
+(4 rows)
+
+-- result is not full
+--SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
+SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
+ERROR:  too complex query to parse
+DROP TABLE xjoin;
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE yjoin;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule r1,r2
+(1 row)
 
