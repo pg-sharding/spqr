@@ -5,21 +5,56 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+         add key range          
+--------------------------------
+ created key range from 1 to 10
+(1 row)
+
+ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+          add key range          
+---------------------------------
+ created key range from 11 to 20
+(1 row)
+
+ADD SHARDING RULE rule1 COLUMNS id;
+                            add sharding rule                            
+-------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x]
+(1 row)
+
+ADD SHARDING RULE rule1 COLUMNS id;
+ERROR:  sharding rule rule1 already present in qdb
+ADD SHARDING RULE rule2 COLUMNS id;
+ERROR:  sharding rule rule2 inlude existing rule rule1
+SHOW key_ranges;
+ Key range ID | Shard ID | Lower bound | Upper bound 
+--------------+----------+-------------+-------------
+ krid1        | sh1      | 1           | 10
+ krid2        | sh1      | 11          | 20
+(2 rows)
+
+SHOW sharding_rules;
+ Sharding Rule ID | Table Name | Columns | Hash Function 
+------------------+------------+---------+---------------
+ rule1            | *          | id      | x->x
+(1 row)
+
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
-DROP SHARDING RULE ALL;
-          drop sharding rule          
---------------------------------------
- dropped sharding rule r1,r2,r3,t1,t2
-(1 row)
-
 DROP SHARDING RULE wrong;
      drop sharding rule      
 -----------------------------
  dropped sharding rule wrong
+(1 row)
+
+DROP SHARDING RULE ALL;
+     drop sharding rule      
+-----------------------------
+ dropped sharding rule rule1
 (1 row)
 
 SHOW key_ranges;
