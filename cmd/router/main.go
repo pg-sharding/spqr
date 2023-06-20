@@ -9,16 +9,13 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
-
+	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/sevlyar/go-daemon"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/app"
-	router "github.com/pg-sharding/spqr/router/pkg"
+	router "github.com/pg-sharding/spqr/router"
 )
 
 var (
@@ -36,12 +33,6 @@ var rootCmd = &cobra.Command{
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
-	}
 }
 
 func init() {
@@ -176,5 +167,7 @@ var runCmd = &cobra.Command{
 }
 
 func main() {
-	Execute()
+	if err := rootCmd.Execute(); err != nil {
+		spqrlog.Logger.FatalOnError(err)
+	}
 }

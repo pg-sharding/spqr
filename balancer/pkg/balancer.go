@@ -3,7 +3,6 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -14,7 +13,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/pkg/client"
+	"github.com/pg-sharding/spqr/router/client"
 )
 
 // TODO use only one place to store strings
@@ -38,8 +37,6 @@ type Balancer struct {
 
 	// that ones used only by planner
 	keyStats   map[string]Stats
-	muKeyStats sync.Mutex
-
 	bestTask Task
 
 	splits int
@@ -647,7 +644,7 @@ func (b *Balancer) runTask(task *Action) error {
 			task.actionStage = actionStageMerge
 
 		default:
-			return errors.New(fmt.Sprint("Not known actionStage: ", task.actionStage))
+			return fmt.Errorf("not known actionStage: %s", task.actionStage)
 		}
 
 		for {

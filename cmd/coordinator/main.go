@@ -1,20 +1,14 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
-
 	"github.com/pg-sharding/spqr/coordinator/app"
-	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
+	"github.com/spf13/cobra"
 )
 
 var cfgPath string
 var qdbImpl string
-
-var qdbImplEtcd = "etcd"
-var qdbImplMem = "mem"
 
 var rootCmd = &cobra.Command{
 	Use: "spqr-coordinator --config `path-to-config`",
@@ -28,48 +22,22 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		var db qdb.QDB
-		var err error
-
-		switch qdbImpl {
-		case qdbImplEtcd:
-			db, err = qdb.NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
-			if err != nil {
-				spqrlog.Logger.FatalOnError(err)
-				// exit
-			}
-		case qdbImplMem:
-			db, err = qdb.NewMemQDB()
-			if err != nil {
-				spqrlog.Logger.FatalOnError(err)
-				// exit
-			}
-		default:
-			spqrlog.Logger.Fatalf("qdb implementation %s is invalid", qdbImpl)
+		app, err := app.NewApp(qdbImpl)
+		if err != nil {
+			return err
 		}
 
-		coordinator := provider.NewCoordinator(db)
-
-		app := app.NewApp(coordinator)
-
-		err = app.Run()
-		spqrlog.Logger.PrintError(err)
-
-		return err
+		return app.Run()
 	},
 }
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
-	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", qdbImplEtcd, "which implementation of QDB to use.")
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
-	}
+	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 }
 
 func main() {
-	Execute()
+	if err := rootCmd.Execute(); err != nil {
+		spqrlog.Logger.FatalOnError(err)
+	}
 }

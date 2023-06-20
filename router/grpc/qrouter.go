@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"google.golang.org/grpc/reflection"
-
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
-	"github.com/pg-sharding/spqr/router/pkg/qrouter"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/qrouter"
+	"google.golang.org/grpc/reflection"
 )
 
 type LocalQrouterServer struct {

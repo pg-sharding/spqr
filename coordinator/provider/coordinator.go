@@ -8,16 +8,12 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-
 	"github.com/pg-sharding/spqr/qdb/ops"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	"github.com/jackc/pgproto3/v2"
 	"google.golang.org/grpc"
-
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -25,10 +21,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
-	router "github.com/pg-sharding/spqr/router/pkg"
-	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/pg-sharding/spqr/router/pkg/route"
+	router "github.com/pg-sharding/spqr/router"
+	psqlclient "github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/datashard"
+	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -687,7 +683,7 @@ func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.Da
 }
 
 func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
-	panic("implement me")
+	return fmt.Errorf("implement AddWorldShard")
 }
 
 func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {

@@ -504,7 +504,7 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("query routed to all shards (multishard)")); err != nil {
+	if err := pi.WriteDataRow("query routed to all shards (multishard)"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

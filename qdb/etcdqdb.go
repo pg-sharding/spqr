@@ -42,6 +42,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
+	keyspace               = "key_space"
 	keyRangesNamespace     = "/keyranges"
 	dataspaceNamespace     = "/dataspaces"
 	routersNamespace       = "/routers"
@@ -167,7 +168,6 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: add key range %+v", keyRange)
-
 	rawKeyRange, err := json.Marshal(keyRange)
 
 	if err != nil {
@@ -193,7 +193,6 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 	switch len(raw.Kvs) {
 	case 1:
 		ret := KeyRange{}
-
 		if err := json.Unmarshal(raw.Kvs[0].Value, &ret); err != nil {
 			return nil, err
 		}
@@ -207,15 +206,14 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: get key range %+v", id)
-	krret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "get key range responce %v %v", krret, err)
-	return krret, err
+	ret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "get key range responce %v %v", ret, err)
+	return ret, err
 }
 
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: update key range %+v", keyRange)
 	rawKeyRange, err := json.Marshal(keyRange)
-
 	if err != nil {
 		return err
 	}
@@ -235,11 +233,10 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "got delete with prefix reps %+v", resp)
 	return nil
 }
-
-const keyspace = "key_space"
 
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: drop key range %+v", id)
@@ -284,22 +281,14 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	if err != nil {
 		return nil, err
 	}
-
-	defer func(sess *concurrency.Session) {
-		err := sess.Close()
-		if err != nil {
-
-		}
-	}(sess)
+	defer closeSession(sess)
 
 	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*KeyRange, error) {
 		mu := concurrency.NewMutex(sess, keyspace)
-		err = mu.Lock(ctx)
-		if err != nil {
+		if err = mu.Lock(ctx); err != nil {
 			return nil, err
 		}
-
-		defer mu.Unlock(ctx)
+		defer unlockMutex(mu, ctx)
 
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
 		if err != nil {
@@ -351,22 +340,14 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-
-	defer sess.Close()
+	defer closeSession(sess)
 
 	unlocker := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) error {
 		mu := concurrency.NewMutex(sess, keyspace)
-		err = mu.Lock(ctx)
-		if err != nil {
+		if err = mu.Lock(ctx); err != nil {
 			return err
 		}
-
-		defer func(mu *concurrency.Mutex, ctx context.Context) {
-			err := mu.Unlock(ctx)
-			if err != nil {
-				spqrlog.Logger.PrintError(err)
-			}
-		}(mu, ctx)
+		defer unlockMutex(mu, ctx)
 
 		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
 		if err != nil {
@@ -400,14 +381,12 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 
 func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: check locked key range %+v", id)
-	// implement or remove me
-	return nil, nil
+	return nil, fmt.Errorf("implement CheckLockedKeyRange")
 }
 
 func (q *EtcdQDB) ShareKeyRange(id string) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "etcdqdb: share key range %+v", id)
-	// implement or remove me
-	return nil
+	return fmt.Errorf("implement ShareKeyRange")
 }
 
 // ==============================================================================

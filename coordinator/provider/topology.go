@@ -15,11 +15,11 @@ type TopologyService struct {
 }
 
 func (r *TopologyService) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
-	return nil, fmt.Errorf("unimplemented")
+	return nil, fmt.Errorf("implement OpenRouter")
 }
 
 func (r *TopologyService) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
-	return nil, fmt.Errorf("unimplemented")
+	return nil, fmt.Errorf("implemented CloseRouter")
 }
 
 func NewTopologyService(impl coordinator.Coordinator) *TopologyService {

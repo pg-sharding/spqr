@@ -28,7 +28,7 @@ var shkey = flag.String("sharding-key", "", "")
 var etcdAddr = flag.String("etcd-addr", "", "")
 
 // TODO: use schema
-var schema = flag.String("shema", "", "")
+// var schema = flag.String("shema", "", "")
 
 type ProxyW struct {
 	w io.WriteCloser
@@ -158,6 +158,10 @@ func main() {
 	}
 
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return 
+	}
 
 	if err := moveData(ctx,
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},

@@ -3,10 +3,10 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -27,7 +27,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	}
 
 	if (c.CertFile != "" && c.KeyFile == "") || (c.CertFile == "" && c.KeyFile != "") {
-		return nil, errors.New(`both "cert_file" and "key_file" are required`)
+		return nil, fmt.Errorf(`both "cert_file" and "key_file" are required`)
 	}
 
 	tlsConfig := &tls.Config{}
@@ -65,7 +65,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 			for i, asn1Data := range certificates {
 				cert, err := x509.ParseCertificate(asn1Data)
 				if err != nil {
-					return errors.New("failed to parse certificate from server: " + err.Error())
+					return errors.Wrap(err, "failed to parse certificate from server: ")
 				}
 				certs[i] = cert
 			}
@@ -86,7 +86,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	case "verify-full":
 		tlsConfig.ServerName = host
 	default:
-		return nil, errors.New("sslmode is invalid")
+		return nil, fmt.Errorf("sslmode is invalid")
 	}
 
 	if c.RootCertFile != "" {
@@ -99,7 +99,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 		}
 
 		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, errors.New("unable to add CA to cert pool")
+			return nil, fmt.Errorf("unable to add CA to cert pool")
 		}
 
 		tlsConfig.RootCAs = caCertPool

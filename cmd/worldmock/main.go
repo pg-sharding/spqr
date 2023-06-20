@@ -2,24 +2,17 @@ package main
 
 import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/test/worldmock"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
 	Use:  "worldmock run",
-	Long: "Stateless Postgres ParamsQuerySuf Router",
+	Long: "Stateless Postgres Mocked World Shard",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
-	}
 }
 
 var cfgPath string
@@ -28,7 +21,7 @@ var addr string
 var runCmd = &cobra.Command{
 	Use: "run",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		w := worldmock.NewWorldMock(addr)
+		w := NewWorldMock(addr)
 		return w.Run()
 	},
 }
@@ -40,5 +33,7 @@ func init() {
 }
 
 func main() {
-	Execute()
+	if err := rootCmd.Execute(); err != nil {
+		spqrlog.Logger.FatalOnError(err)
+	}
 }
