@@ -14,7 +14,7 @@ type KeyRange struct {
 	right string
 }
 
-//TODO mb add cache to that function
+// TODO mb add cache to that function
 func keyToBigInt(key *string) *big.Int {
 	num := big.NewInt(0)
 	k := big.NewInt(256)
@@ -27,7 +27,7 @@ func keyToBigInt(key *string) *big.Int {
 	return num
 }
 
-//TODO mb add cache to that function
+// TODO mb add cache to that function
 // TODO: add tests and check correctness.
 func bigIntToKey(num *big.Int) *string {
 	numCopy := new(big.Int).Set(num)

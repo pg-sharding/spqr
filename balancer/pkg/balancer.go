@@ -37,7 +37,7 @@ type Balancer struct {
 	muLeftBorders sync.Mutex
 
 	// that ones used only by planner
-	keyStats   map[string]Stats
+	keyStats map[string]Stats
 
 	bestTask Task
 
@@ -356,8 +356,8 @@ func (b *Balancer) setTaskProfitByLength(startRange KeyRange, task *Task, keySta
 	return res
 }
 
-//TODO mb add cache
-//TODO may be upper border of subrange is required
+// TODO mb add cache
+// TODO may be upper border of subrange is required
 func (b *Balancer) getSubrange(leftKey *string, keyRange KeyRange) KeyRange {
 	rightSubrange := KeyRange{*leftKey, keyRange.right}
 	rightKeyInt := new(big.Int).Mul(b.keysInOneTransfer, b.keyDistanceByRanges[keyRange.left])

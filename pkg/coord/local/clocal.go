@@ -186,7 +186,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	var krleft *qdb.KeyRange
 	var err error
 
-	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil {  //nolint:all TODO
+	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil { //nolint:all TODO
 		return err
 	}
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {

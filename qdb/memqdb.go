@@ -145,7 +145,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: drop key range %+v", id)
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	
+
 	delete(q.krs, id)
 	delete(q.freq, id)
 	delete(q.locks, id)

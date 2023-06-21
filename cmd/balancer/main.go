@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	cfgPath  string
+	cfgPath string
 )
 
 var rootCmd = &cobra.Command{

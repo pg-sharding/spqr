@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		
+
 		coordinator := provider.NewCoordinator(db)
 		app := app.NewApp(coordinator)
 		return app.Run()

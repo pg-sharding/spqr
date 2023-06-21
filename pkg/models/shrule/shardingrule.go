@@ -3,8 +3,8 @@ package shrule
 import (
 	"fmt"
 
-	"github.com/pg-sharding/spqr/qdb"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type ShardingRuleEntry struct {

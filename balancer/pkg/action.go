@@ -3,7 +3,7 @@ package pkg
 type ActionStage int64
 
 const (
-	actionStagePlan     ActionStage = iota
+	actionStagePlan ActionStage = iota
 	actionStageSplit
 	actionStageLock
 	actionStageTransfer

@@ -9,13 +9,14 @@ import (
 	"runtime/pprof"
 	"sync"
 	"syscall"
-	"github.com/pg-sharding/spqr/router/app"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/sevlyar/go-daemon"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
+
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	router "github.com/pg-sharding/spqr/router"
+	"github.com/pg-sharding/spqr/router/app"
+	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -74,7 +75,6 @@ var runCmd = &cobra.Command{
 					spqrlog.Logger.PrintError(err)
 				}
 			}()
-			
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "daemon started")
 		}

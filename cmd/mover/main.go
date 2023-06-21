@@ -160,7 +160,7 @@ func main() {
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
-		return 
+		return
 	}
 
 	if err := moveData(ctx,

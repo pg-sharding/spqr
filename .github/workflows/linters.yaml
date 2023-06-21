@@ -23,3 +23,14 @@ jobs:
         with:
           version: latest
           args: --timeout=10m --out-format=colored-line-number
+  goimports:
+    runs-on: ubuntu-latest
+    name: goimports check
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: goimports check
+        uses: DarthBenro008/goimports-check-action@v0.1.0
+        with:
+          root-path: './' # The relative root path to run goimports
+          excludes: "./yacc/

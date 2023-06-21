@@ -5,11 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/models/topology"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 // TDB: move to util

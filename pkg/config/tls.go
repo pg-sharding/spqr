@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pkg/errors"
 )
 
 // https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION

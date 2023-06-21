@@ -17,7 +17,7 @@ import (
 	"golang.yandex/hasql/checkers"
 )
 
-//TODO tests
+// TODO tests
 type dbAction struct {
 	id          uint64      `db:"id"`
 	dbname      string      `db:"dbname"`
