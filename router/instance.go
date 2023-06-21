@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -54,7 +53,10 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	/* TODO: fix by adding configurable setting */
-	qdb, _ := qdb.NewMemQDB()
+	qdb, _ := qdb.NewMemQDB(rcfg.Workdir, []string{
+		rcfg.InitSQL,
+		rcfg.AutoConf,
+	})
 
 	lc := local.NewLocalCoordinator(qdb)
 
@@ -65,6 +67,10 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr)
 	if err != nil {
 		return nil, err
+	}
+
+	if !rcfg.UnderCoordinator {
+		qr.Initialize()
 	}
 
 	// frontend
@@ -81,35 +87,6 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 		return nil, err
-	}
-
-	if !rcfg.UnderCoordinator {
-		for _, fname := range []string{
-			rcfg.InitSQL,
-			rcfg.AutoConf,
-		} {
-			if len(fname) == 0 {
-				continue
-			}
-			queries, err := localConsole.Qlog().Recover(ctx, fname)
-			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
-				return nil, err
-			}
-
-			spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
-			for _, query := range queries {
-				spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
-				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-					spqrlog.Logger.PrintError(err)
-					return nil, err
-				}
-			}
-
-			spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
-		}
-
-		qr.Initialize()
 	}
 
 	return &InstanceImpl{

@@ -1,63 +1,57 @@
 module github.com/pg-sharding/spqr
 
-go 1.18
+go 1.19
 
 require (
-	github.com/BurntSushi/toml v1.2.0
-	github.com/golang/protobuf v1.5.2
-	github.com/jackc/pgproto3/v2 v2.3.0
-	github.com/jackc/pgx/v4 v4.16.1
-	github.com/jmoiron/sqlx v1.3.5
+	github.com/BurntSushi/toml v1.3.2
+	github.com/golang/protobuf v1.5.3
+	github.com/jackc/pgproto3/v2 v2.3.2
+	github.com/jackc/pgx/v4 v4.18.1
 	github.com/juju/errors v1.0.0
-	github.com/lib/pq v1.10.6
-	github.com/libp2p/go-reuseport v0.2.0
+	github.com/lib/pq v1.10.9
+	github.com/libp2p/go-reuseport v0.3.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pganalyze/pg_query_go/v4 v4.2.0
+	github.com/pganalyze/pg_query_go/v4 v4.2.1
 	github.com/pkg/errors v0.9.1
+	github.com/sevlyar/go-daemon v0.1.6
 	github.com/spaolacci/murmur3 v1.1.0
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.7.0
+	github.com/stretchr/testify v1.8.4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
-	go.etcd.io/etcd/client/v3 v3.5.4
-	go.uber.org/atomic v1.9.0
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+	go.etcd.io/etcd/client/v3 v3.5.9
+	go.uber.org/atomic v1.11.0
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	golang.yandex/hasql v1.0.0
-	google.golang.org/grpc v1.48.0
+	google.golang.org/grpc v1.56.0
 	gopkg.in/yaml.v2 v2.4.0
-)
-
-require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/goware/modvendor v0.5.0 // indirect
-	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
-	github.com/mattn/go-zglob v0.0.4 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/sevlyar/go-daemon v0.1.6 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.12.1 // indirect
+	github.com/jackc/pgconn v1.14.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
-	github.com/jackc/pgtype v1.11.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgtype v1.14.0 // indirect
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.2
-	go.etcd.io/etcd/api/v3 v3.5.4 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.4 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

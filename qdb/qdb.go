@@ -38,12 +38,12 @@ type QDB interface {
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 }
 
-func NewQDB(qdbType string) (QDB, error) {
+func NewQDB(qdbType string, workdir string) (QDB, error) {
 	switch qdbType {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 	case "mem":
-		return NewMemQDB()
+		return NewMemQDB(workdir, []string{})
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}

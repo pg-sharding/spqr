@@ -7,15 +7,20 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb/qlog"
 )
 
-type LocalQlog struct{}
-
-func NewLocalQlog() *LocalQlog {
-	return &LocalQlog{}
+type LocalQlog struct {
+	fname string
 }
 
-func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
+func NewLocalQlog(fname string) qlog.Qlog {
+	return &LocalQlog{
+		fname: fname,
+	}
+}
+
+func (dw *LocalQlog) DumpQuery(ctx context.Context, q string) error {
 
 	// TODO: use
 	//ctxQLog, cf := context.WithTimeout(ctx, time.Second * 5)
@@ -23,7 +28,7 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	//
 	//ctxQLog.Deadline()
 
-	file, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(dw.fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
 		return err
@@ -35,13 +40,13 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	return nil
 }
 
-func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+func (dw *LocalQlog) Recover(ctx context.Context) ([]string, error) {
+	if _, err := os.Stat(dw.fname); os.IsNotExist(err) {
 		return []string{}, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "%s found", path)
-	file, err := os.Open(path)
+	spqrlog.Logger.Printf(spqrlog.LOG, "%s found", dw.fname)
+	file, err := os.Open(dw.fname)
 	if err != nil {
 		return nil, err
 	}

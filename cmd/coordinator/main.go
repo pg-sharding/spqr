@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := qdb.NewQDB(qdbImpl)
+		db, err := qdb.NewQDB(qdbImpl, config.CoordinatorConfig().Workdir)
 		if err != nil {
 			return err
 		}

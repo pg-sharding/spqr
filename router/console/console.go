@@ -14,8 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/qlog"
-	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -30,7 +28,6 @@ type Local struct {
 	cfg     *tls.Config
 	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
-	qlogger qlog.Qlog
 
 	stchan chan struct{}
 }
@@ -45,7 +42,6 @@ func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRo
 	return &Local{
 		Coord:   coord,
 		RRouter: rrouter,
-		qlogger: qlogprovider.NewLocalQlog(),
 		cfg:     cfg,
 		stchan:  stchan,
 	}, nil
@@ -121,8 +117,4 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
 		}
 	}
-}
-
-func (l *Local) Qlog() qlog.Qlog {
-	return l.qlogger
 }

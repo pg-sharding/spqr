@@ -31,6 +31,8 @@ type Router struct {
 
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
 
+	Workdir string `json:"workdir" toml:"workdir" yaml:"workdir"`
+
 	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
 	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
 
