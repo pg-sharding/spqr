@@ -38,7 +38,6 @@ type Balancer struct {
 
 	// that ones used only by planner
 	keyStats   map[string]Stats
-	muKeyStats sync.Mutex
 
 	bestTask Task
 
@@ -571,8 +570,8 @@ func (b *Balancer) applyTask(task Task, shardStats map[string]map[string]Stats) 
 				fmt.Println("hmm")
 			}
 		}
-		q = len(b.leftBorders)
-		w = len(b.leftBordersToRightBorders)
+		q = len(b.leftBorders)               //nolint:all TODO wtf
+		w = len(b.leftBordersToRightBorders) //nolint:all TODO wtf
 		fmt.Println("hmm")
 	}
 }

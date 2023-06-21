@@ -1,7 +1,6 @@
 package pkg
 
 type Task struct {
-	id        int
 	keyRange  KeyRange
 	shardFrom Shard
 	shardTo   Shard

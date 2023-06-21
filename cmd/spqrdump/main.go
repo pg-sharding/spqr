@@ -20,7 +20,7 @@ import (
 
 func Dial(addr string) (*grpc.ClientConn, error) {
 	// TODO: add creds
-	return grpc.Dial(addr, grpc.WithInsecure())
+	return grpc.Dial(addr, grpc.WithInsecure()) //nolint:all
 }
 
 var rootCmd = &cobra.Command{
@@ -83,12 +83,16 @@ func getconn() (*pgproto3.Frontend, error) {
 
 	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(cc), cc)
 
-	frontend.Send(&pgproto3.StartupMessage{
+	if err := frontend.Send(&pgproto3.StartupMessage{
 		ProtocolVersion: conn.SSLREQ,
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	resp := make([]byte, 1)
-	cc.Read(resp)
+	if _, err := cc.Read(resp); err != nil {
+		return nil, err
+	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "startup got %v", resp)
 	cc = tls.Client(cc, &tls.Config{
@@ -124,9 +128,11 @@ func DumpRulesPSQL() error {
 		return err
 	}
 
-	frontend.Send(&pgproto3.Query{
+	if err := frontend.Send(&pgproto3.Query{
 		String: "SHOW key_ranges;",
-	})
+	}); err != nil {
+		return err
+	}
 
 	for {
 		if msg, err := frontend.Receive(); err != nil {
@@ -161,9 +167,11 @@ func DumpKeyRangesPSQL() error {
 		return err
 	}
 
-	frontend.Send(&pgproto3.Query{
+	if err := frontend.Send(&pgproto3.Query{
 		String: "SHOW sharding_rules;",
-	})
+	}); err != nil {
+		return err
+	}
 
 	for {
 		if msg, err := frontend.Receive(); err != nil {

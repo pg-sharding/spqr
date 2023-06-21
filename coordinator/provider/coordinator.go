@@ -50,7 +50,7 @@ var _ router.Router = &routerConn{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	// TODO: add creds
-	return grpc.Dial(r.Address, grpc.WithInsecure())
+	return grpc.Dial(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
 type qdbCoordinator struct {
@@ -148,7 +148,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			Address: rtr.Addr(),
 		})
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %s", rtr.ID, err.Error())
 		if err != nil {
 			return err
 		}
@@ -291,7 +291,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 			Address: r.Addr(),
 		})
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %s", r, err.Error())
 		if err != nil {
 			return err
 		}
@@ -503,7 +503,11 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	defer qc.db.UnlockKeyRange(ctx, req.Krid)
+	defer func() {
+		if err := qc.db.UnlockKeyRange(ctx, req.Krid); err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+	}()
 
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krmv)); err != nil {
@@ -546,7 +550,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	cc, err := DialRouter(qRouter)
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %w", qRouter, err)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %s", qRouter, err.Error())
 	if err != nil {
 		return err
 	}
@@ -655,7 +659,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		// TODO: check leader status
 		msg, err := cl.Receive()
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %s", err.Error())
 			return err
 		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received msg %v", msg)

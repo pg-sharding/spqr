@@ -3,15 +3,15 @@ package pkg
 type ActionStage int64
 
 const (
-	actionStagePlan     ActionStage = 0
-	actionStageSplit                = 1
-	actionStageLock                 = 2
-	actionStageTransfer             = 3
-	actionStageMove                 = 4
-	actionStageUnlock               = 5
-	actionStageRemove               = 6
-	actionStageMerge                = 7
-	actionStageDone                 = 7
+	actionStagePlan     ActionStage = iota
+	actionStageSplit
+	actionStageLock
+	actionStageTransfer
+	actionStageMove
+	actionStageUnlock
+	actionStageRemove
+	actionStageMerge
+	actionStageDone
 )
 
 type Action struct {
