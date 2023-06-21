@@ -148,7 +148,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			Address: rtr.Addr(),
 		})
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %s", rtr.ID, err.Error())
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %s", rtr.ID, err)
 		if err != nil {
 			return err
 		}
@@ -286,12 +286,11 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 
 	// notify all routers
 	for _, r := range resp {
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v", r)
 		cc, err := DialRouter(&topology.Router{
 			ID:      r.ID,
 			Address: r.Addr(),
 		})
-
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %s", r, err.Error())
 		if err != nil {
 			return err
 		}
@@ -549,8 +548,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	cc, err := DialRouter(qRouter)
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %s", qRouter, err.Error())
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %s", qRouter, err)
 	if err != nil {
 		return err
 	}
@@ -659,7 +657,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		// TODO: check leader status
 		msg, err := cl.Receive()
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %s", err.Error())
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %s", err)
 			return err
 		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received msg %v", msg)

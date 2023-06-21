@@ -87,7 +87,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		case spqrparser.ShowKeyRangesStr:
 			keyRanges, err := c.console.showKeyRanges()
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to show key ranges: %s", err.Error())
+				spqrlog.Logger.Errorf("failed to show key ranges: %s", err)
 			}
 
 			return cli.KeyRanges(keyRanges)

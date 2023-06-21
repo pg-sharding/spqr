@@ -514,7 +514,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 	if err := conn.AuthFrontend(cl, cl.Rule()); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: fmt.Sprintf("auth failed %s", err.Error()),
+				Message: fmt.Sprintf("auth failed %s", err),
 			},
 		} {
 			if err := cl.Send(msg); err != nil {

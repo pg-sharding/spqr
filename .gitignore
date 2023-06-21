@@ -4,7 +4,6 @@ vendor
 tmp
 spqr-router
 spqr-coordinator
-spqr-stress
 spqr-worldmock
 spqr-balancer
 spqr-mover

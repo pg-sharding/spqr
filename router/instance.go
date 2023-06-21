@@ -155,7 +155,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	closer, err := r.initJaegerTracer(r.RuleRouter.Config())
 	if err != nil {
-		return fmt.Errorf("could not initialize jaeger tracer: %s", err.Error())
+		return fmt.Errorf("could not initialize jaeger tracer: %s", err)
 	}
 	defer func() { _ = closer.Close() }()
 

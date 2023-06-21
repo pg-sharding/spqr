@@ -330,6 +330,9 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 }
 
 func (pi *PSQLInteractor) ReportError(err error) error {
+	if err == nil {
+		return nil
+	}
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{Severity: "ERROR",
 			Message: err.Error(),

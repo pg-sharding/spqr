@@ -69,13 +69,13 @@ pooler_run:
 	./spqr-router run -c ./config-example/localrouter.yaml
 
 clean:
-	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-balancer
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 
 regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
 
 lint:
 	golangci-lint run --timeout=10m --out-format=colored-line-number
-	
+
 
 .PHONY: build gen

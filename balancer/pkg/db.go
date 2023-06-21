@@ -154,7 +154,7 @@ func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) (stri
 
 	host, portFromAddr, err := net.SplitHostPort(addr)
 	if err != nil {
-		return "", fmt.Errorf("invalid host spec: %s", err.Error())
+		return "", fmt.Errorf("invalid host spec: %s", err)
 	}
 	connParams = append(connParams, "host="+host)
 	connParams = append(connParams, "port="+portFromAddr)

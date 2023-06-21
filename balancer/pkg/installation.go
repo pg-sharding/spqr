@@ -218,7 +218,7 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 	}
 	conn, err := GetMasterConn((*i.shardClusters)[toShard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
-		fmt.Printf("can't find master of shard %d: %s", fromShard.id, err.Error())
+		fmt.Printf("can't find master of shard %d: %s", fromShard.id, err)
 	}
 	defer conn.Close()
 
