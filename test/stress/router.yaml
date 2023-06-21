@@ -1,0 +1,35 @@
+host: 'stress_router'
+router_port: '6432'
+admin_console_port: '7432'
+init_sql: /spqr/test/stress/init.sql
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: FATAL
+show_notice_messages: false
+frontend_rules:
+  - db: stress
+    usr: stress
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+shards:
+  sh1:
+    db: stress
+    usr: stress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_1:6432'
+  sh2:
+    db: stress
+    usr: stress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_2:6432'
+
+backend_rules:
+  - db: stress
+    usr: stress
+    pool_discard: true
+    pool_rollback: true

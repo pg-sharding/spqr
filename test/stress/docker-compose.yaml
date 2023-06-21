@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+    shard1:
+        image:
+            spqr-shard-image
+        environment:
+            - POSTGRES_USER=stress
+            - POSTGRES_DB=stress
+        ports:
+            - "7432:6432"
+        hostname: spqr_shard_1
+        container_name: spqr_shard_1
+    shard2:
+        image:
+            spqr-shard-image
+        environment:
+            - POSTGRES_USER=stress
+            - POSTGRES_DB=stress
+        ports:
+            - "7433:6432"
+        hostname: spqr_shard_2
+        container_name: spqr_shard_2
+    router:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6432:6432"
+        environment:
+            - SPQR_CONFIG=/spqr/test/stress/router.yaml
+        hostname: stress_router
+        container_name: stress_router
+        depends_on:
+           - "shard1"
+           - "shard2"
+
+    stress:
+        build:
+            context: .
+        hostname: stress_tests
+        container_name: stress_tests
+        depends_on:
+            - "router"
