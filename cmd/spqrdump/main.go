@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/decode"
@@ -71,14 +73,29 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 	}
 }
 
-func DumpRulesPSQL() error {
-	conn, err := net.Dial("tcp", endpoint)
+func getconn() (*pgproto3.Frontend, error) {
+
+	cc, err := net.Dial("tcp", endpoint)
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
-		return err
+		return nil, err
 	}
 
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
+	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(cc), cc)
+
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: conn.SSLREQ,
+	})
+
+	resp := make([]byte, 1)
+	cc.Read(resp)
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "startup got %v", resp)
+	cc = tls.Client(cc, &tls.Config{
+		InsecureSkipVerify: true,
+	})
+
+	frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(cc), cc)
 
 	if err := frontend.Send(&pgproto3.StartupMessage{
 		ProtocolVersion: 196608,
@@ -89,11 +106,21 @@ func DumpRulesPSQL() error {
 		},
 	}); err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
-		return err
+		return nil, err
 	}
 
 	if err := waitRFQ(frontend); err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		return nil, err
+	}
+
+	return frontend, nil
+}
+
+func DumpRulesPSQL() error {
+
+	frontend, err := getconn()
+	if err != nil {
 		return err
 	}
 
@@ -128,28 +155,9 @@ func DumpRulesPSQL() error {
 }
 
 func DumpKeyRangesPSQL() error {
-	conn, err := net.Dial("tcp", endpoint)
+
+	frontend, err := getconn()
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
-	}
-
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
-
-	if err := frontend.Send(&pgproto3.StartupMessage{
-		ProtocolVersion: 196608,
-		Parameters: map[string]string{
-			"user":     "user1",
-			"database": "spqr-console",
-			"password": passwd,
-		},
-	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
-		return err
-	}
-
-	if err := waitRFQ(frontend); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		return err
 	}
 
