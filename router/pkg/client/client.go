@@ -632,7 +632,7 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: received message %T", cl, msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: received message %+v", cl, msg)
 	return msg, err
 }
 
