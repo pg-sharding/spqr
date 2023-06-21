@@ -54,12 +54,12 @@ func NewRoutingMetadataContext() *RoutingMetadataContext {
 }
 
 func (qr *ProxyQrouter) routeByIndx(i []byte) *kr.KeyRange {
-	krs, _ := qr.qdb.ListKeyRanges(context.TODO())
+	krs, _ := qr.mgr.ListKeyRanges(context.TODO())
 
 	for _, keyRange := range krs {
 		spqrlog.Logger.Printf(spqrlog.DEBUG2, "comparing %v with key range %v %v", i, keyRange.LowerBound, keyRange.UpperBound)
 		if kr.CmpRangesLess(keyRange.LowerBound, i) && kr.CmpRangesLess(i, keyRange.UpperBound) {
-			return kr.KeyRangeFromDB(keyRange)
+			return keyRange
 		}
 	}
 
@@ -111,7 +111,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *Rou
 func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key string) (*DataShardRoute, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "checking key %s", key)
 
-	krs, err := qr.qdb.ListKeyRanges(ctx)
+	krs, err := qr.mgr.ListKeyRanges(ctx)
 
 	if err != nil {
 		return nil, err
@@ -121,13 +121,13 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
-			if err := qr.qdb.ShareKeyRange(krkey.KeyRangeID); err != nil {
+			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
 				return nil, err
 			}
 
 			return &DataShardRoute{
 				Shkey:     kr.ShardKey{Name: krkey.ShardID},
-				Matchedkr: kr.KeyRangeFromDB(krkey),
+				Matchedkr: krkey,
 			}, nil
 		}
 	}
@@ -216,12 +216,12 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, m
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG5, "deparsed columns references %+v", colname)
 
-		if rls, err := qr.qdb.ListShardingRules(ctx); err != nil {
+		if rls, err := qr.mgr.ListShardingRules(ctx); err != nil {
 			return err
 		} else {
 			ok := false
 			for i := range rls {
-				for _, c := range rls[i].Entries {
+				for _, c := range rls[i].Entries() {
 					if c.Column == colname {
 						ok = true
 						break
@@ -428,7 +428,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.
 		}
 	}
 
-	if _, err := ops.MatchShardingRule(ctx, qr.qdb, node.CreateStmt.Relation.Relname, entries); err == ops.ErrRuleIntersect {
+	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.CreateStmt.Relation.Relname, entries); err == ops.ErrRuleIntersect {
 		return nil
 	}
 	return nil
@@ -532,7 +532,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := ops.MatchShardingRule(ctx, qr.qdb, tname, cols); err != nil {
+			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols); err != nil {
 				for _, col := range cols {
 					currroute, err := qr.RouteKeyWithRanges(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
@@ -556,16 +556,16 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "deparsed values list %+v, insertStmtCols %+v", meta.ValuesLists, meta.InsertStmtCols)
 	if len(meta.InsertStmtCols) != 0 {
-		if rule, err := ops.MatchShardingRule(ctx, qr.qdb, meta.InsertStmtRel, meta.InsertStmtCols); err != nil {
+		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols); err != nil {
 			// compute matched sharding rule offsets
 			offsets := make([]int, 0)
 			j := 0
 			// TODO: check mapping by rules with multiple columns
 			for i, s := range meta.InsertStmtCols {
-				if j == len(rule.Entries) {
+				if j == len(rule.Entries()) {
 					break
 				}
-				if s == rule.Entries[j].Column {
+				if s == rule.Entries()[j].Column {
 					offsets = append(offsets, i)
 				}
 			}

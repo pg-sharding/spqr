@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/router/pkg/client"
@@ -24,6 +27,7 @@ type InstanceImpl struct {
 	RuleRouter rulerouter.RuleRouter
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
+	Mgr        meta.EntityMgr
 
 	stchan chan struct{}
 	addr   string
@@ -50,11 +54,16 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
+	/* TODO: fix by adding configurable setting */
+	qdb, _ := qdb.NewMemQDB()
+
+	lc := local.NewLocalCoordinator(qdb)
+
 	// qrouter init
 	qtype := config.RouterMode(rcfg.RouterMode)
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 
-	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, &rcfg.Qr)
+	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +78,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	rr := rulerouter.NewRouter(frTLS, rcfg)
 
 	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(frTLS, qr, rr, stchan)
+	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan)
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 		return nil, err
@@ -108,6 +117,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		RuleRouter: rr,
 		Qrouter:    qr,
 		AdmConsole: localConsole,
+		Mgr:        lc,
 		stchan:     stchan,
 		frTLS:      frTLS,
 	}, nil

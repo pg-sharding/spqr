@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc/reflection"
 
@@ -17,7 +18,8 @@ type LocalQrouterServer struct {
 	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
-	qr qrouter.QueryRouter
+	qr  qrouter.QueryRouter
+	mgr meta.EntityMgr
 }
 
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
@@ -43,7 +45,7 @@ func (l *LocalQrouterServer) CloseRouter(ctx context.Context, request *protos.Cl
 
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		err := l.qr.DropKeyRange(ctx, id)
+		err := l.mgr.DropKeyRange(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -52,14 +54,14 @@ func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.D
 }
 
 func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
-	if err := l.qr.DropKeyRangeAll(ctx); err != nil {
+	if err := l.mgr.DropKeyRangeAll(ctx); err != nil {
 		return nil, err
 	}
 	return &protos.DropAllKeyRangesResponse{}, nil
 }
 
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.qr.Move(ctx, &kr.MoveKeyRange{Krid: request.KeyRange.Krid, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.KeyRange.Krid, ShardId: request.ToShardId})
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +71,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
-		err := l.qr.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
+		err := l.mgr.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
 
 		if err != nil {
 			return nil, err
@@ -80,7 +82,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 }
 
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := l.qr.ListShardingRules(ctx)
+	rules, err := l.mgr.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +101,7 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dropping sharding rules %v", request.Id)
 	for _, id := range request.Id {
-		if err := l.qr.DropShardingRule(ctx, id); err != nil {
+		if err := l.mgr.DropShardingRule(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -108,7 +110,7 @@ func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *pro
 }
 
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.qr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
+	err := l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +123,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKey
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "listing key ranges")
 
-	krsqdb, err := l.qr.ListKeyRanges(ctx)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +139,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKey
 
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if _, err := l.qr.LockKeyRange(ctx, id); err != nil {
+		if _, err := l.mgr.LockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -146,7 +148,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := l.qr.Unlock(ctx, id); err != nil {
+		if err := l.mgr.Unlock(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -154,7 +156,7 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 }
 
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
-	if err := l.qr.Split(ctx, &kr.SplitKeyRange{
+	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		Krid:     request.KeyRangeInfo.Krid,
 		SourceID: request.KeyRangeInfo.ShardId,
 		Bound:    request.Bound,
@@ -165,10 +167,11 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter) {
+func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr) {
 
 	lqr := &LocalQrouterServer{
-		qr: qrouter,
+		qr:  qrouter,
+		mgr: mgr,
 	}
 
 	reflection.Register(server)
