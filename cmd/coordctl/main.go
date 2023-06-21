@@ -32,8 +32,8 @@ var (
 )
 
 func DialCoordinator(r *topology.Router) (*grpc.ClientConn, error) {
-	// TODO: add creds
-	return grpc.Dial(r.Address, grpc.WithInsecure())
+	// TODO: add creds, remove WithInsecure
+	return grpc.Dial(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
 var rootCmd = &cobra.Command{

@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -193,7 +194,7 @@ func AddHostStats(stats *map[string]map[string]Stats, additionalStats *map[strin
 func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	cluster, ok := (*i.shardClusters)[shard.id]
 	if !ok {
-		return nil, fmt.Errorf("Not known shard %d", shard.id)
+		return nil, errors.New(fmt.Sprintf("Not known shard %d", shard.id))
 	}
 
 	nodes := cluster.Nodes()

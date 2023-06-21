@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 
@@ -38,7 +37,7 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 }
 
 func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
-	return nil, fmt.Errorf("implement AddWorldShard")
+	panic("implement me")
 }
 
 // TODO: remove ShardRequest.

@@ -380,8 +380,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		return qr.routeByClause(ctx, clause, meta)
 	case *pgquery.Node_CopyStmt:
 		if !stmt.CopyStmt.IsFrom {
-			// COPY TO STOUT
-
+			return fmt.Errorf("copy from stdout is not implemented")
 		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG3, "copy query was: %s", qstmt.Stmt.String())
 		clause := stmt.CopyStmt.WhereClause

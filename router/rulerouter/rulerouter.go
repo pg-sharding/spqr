@@ -223,7 +223,10 @@ func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error
 		return nil, err
 	}
 
-	cl.AssignRule(frRule)
+	if err := cl.AssignRule(frRule); err != nil {
+		_ = cl.ReplyErrMsg("failed to assign rule")
+		return nil, err
+	}
 
 	if err := rconn.AuthFrontend(cl, frRule); err != nil {
 		_ = cl.ReplyErrMsg(err.Error())

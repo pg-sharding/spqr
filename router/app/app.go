@@ -45,7 +45,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			}(listener)
 
 			spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s by postgresql proto", address)
-			app.spqr.Run(ctx, listener)
+			_ = app.spqr.Run(ctx, listener)
 		}(addr)
 	}
 	lwg.Wait()

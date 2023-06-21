@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -37,6 +38,8 @@ type Balancer struct {
 
 	// that ones used only by planner
 	keyStats   map[string]Stats
+	muKeyStats sync.Mutex
+
 	bestTask Task
 
 	splits int
@@ -644,7 +647,7 @@ func (b *Balancer) runTask(task *Action) error {
 			task.actionStage = actionStageMerge
 
 		default:
-			return fmt.Errorf("not known actionStage: %s", task.actionStage)
+			return errors.New(fmt.Sprint("Not known actionStage: ", task.actionStage))
 		}
 
 		for {

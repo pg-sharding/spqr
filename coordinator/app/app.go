@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -21,14 +20,10 @@ type App struct {
 	coordinator coordinator.Coordinator
 }
 
-func NewApp(qdbType string) (*App, error) {
-	db, err := qdb.NewQDB(qdbType)
-	if err != nil {
-		return nil, err
-	}
+func NewApp(c coordinator.Coordinator) *App {
 	return &App{
-		coordinator: provider.NewCoordinator(db),
-	}, nil
+		coordinator: c,
+	}
 }
 
 func (app *App) Run() error {

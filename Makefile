@@ -24,16 +24,13 @@ build_coordinator:
 build_router: 
 	go build -o spqr-router ./cmd/router
 
-build_stress:
-	go build -o spqr-stress ./test/stress
-
 build_mover:
 	go build -o spqr-mover  ./cmd/mover
 
 build_worldmock:
 	go build -o spqr-worldmock ./cmd/worldmock
 
-build: build_balancer build_coordinator build_coorctl build_router build_stress  build_mover build_worldmock
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 gogen:
 	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
@@ -55,9 +52,7 @@ e2e: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
 stress: build_images
-	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
-	docker-compose build client
-	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
+	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
 run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01

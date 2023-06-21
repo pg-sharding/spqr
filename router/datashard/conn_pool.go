@@ -36,15 +36,10 @@ func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *con
 }
 
 func (c *cPool) Cut(host string) []Shard {
-	var ret []Shard
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, instance := range c.pool[host] {
-		ret = append(ret, instance)
-	}
-
+	ret := append([]Shard{}, c.pool[host]...)
 	c.pool[host] = nil
 
 	return ret
@@ -165,7 +160,7 @@ func checkRw(sh Shard) (bool, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "select pg_is_in_recovery()",
 	}); err != nil {
-		spqrlog.Logger.Errorf("shard %p encounter error while sending read-write check %v", sh.Name(), err)
+		spqrlog.Logger.Errorf("shard %s encounter error while sending read-write check %v", sh.Name(), err)
 		return false, err
 	}
 

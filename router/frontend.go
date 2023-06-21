@@ -67,7 +67,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		})
 	case parser.ParseStateTXCommit:
 		if !cmngr.ConnectionActive(rst) {
-			// TODO: do stmh
+			return fmt.Errorf("no connection to shards")
 		}
 		rst.AddQuery(msg)
 		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
@@ -188,7 +188,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			return err
 		}
 	case parser.ParseStateExplain:
-		rst.Client().ReplyErrMsg("not implemented")
+		_ = rst.Client().ReplyErrMsg("parse state explain is not implemented")
 		return nil
 	default:
 		rst.AddQuery(msg)
@@ -290,7 +290,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		var err error
 		if err = rst.RelayRunCommand(q, false, false); err != nil {
 			if rst.ShouldRetry(err) {
-				// TODO: fix retry logic
+				return fmt.Errorf("retry logic for prepared statements is not implemented")
 			}
 		}
 		return err

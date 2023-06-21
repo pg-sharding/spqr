@@ -53,7 +53,6 @@ var runCmd = &cobra.Command{
 
 		spqrlog.RebornLogger(rcfg.LogFileName)
 		if rcfg.Daemonize {
-
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
@@ -69,7 +68,13 @@ var runCmd = &cobra.Command{
 			if d != nil {
 				return nil
 			}
-			defer cntxt.Release()
+
+			defer func() {
+				if err := cntxt.Release(); err != nil {
+					spqrlog.Logger.PrintError(err)
+				}
+			}()
+			
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "daemon started")
 		}

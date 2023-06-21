@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -136,10 +137,10 @@ func (m *mock) lockKeyRange(rng KeyRange) error {
 		_ = m.ranges
 		_ = m.shardToKeyRanges
 		_ = m.stats
-		return fmt.Errorf("key range does not exist")
+		return errors.New("Key range does not exist")
 	}
 	if m.lockedKeyRanges[rng] {
-		return fmt.Errorf("already locked")
+		return errors.New("Already locked")
 	}
 	m.lockedKeyRanges[rng] = true
 	m.foo()
@@ -174,11 +175,11 @@ func (m *mock) unlockKeyRange(rng KeyRange) error {
 	m.foo()
 	_, ok := m.ranges[rng]
 	if !ok {
-		return fmt.Errorf("key range does not exist")
+		return errors.New("Key range does not exist")
 	}
 	_, ok = m.lockedKeyRanges[rng]
 	if !ok {
-		return fmt.Errorf("already unlocked")
+		return errors.New("Already unlocked")
 	}
 	delete(m.lockedKeyRanges, rng)
 	m.foo()
@@ -241,7 +242,7 @@ func (m *mock) splitKeyRange(border *string, _, _ string) error {
 	}
 	_, ok := m.ranges[rng]
 	if !ok {
-		return fmt.Errorf("key range does not exist")
+		return errors.New("Key range does not exist")
 	}
 	shard := m.keyRangeToShard[rng]
 	delete(m.shardToKeyRanges[shard], rng)
@@ -279,12 +280,12 @@ func (m *mock) mergeKeyRanges(border *string) error {
 			return nil
 		}
 		// actionStageSplit by border greater than all ranges
-		return fmt.Errorf("split by border greater than all ranges ", border)
+		return errors.New(fmt.Sprint("Split by border greater than all ranges ", border))
 	}
 	leftRng := KeyRange{m.leftBorders[rightInd-1], m.leftBorders[rightInd]}
 	rightRng := KeyRange{m.leftBorders[rightInd], m.leftBorders[rightInd+1]}
 	if *border != leftRng.right || *border != rightRng.left {
-		return fmt.Errorf("something goes wrong...")
+		return errors.New(fmt.Sprint("Something goes wrong..."))
 	}
 	if m.keyRangeToShard[leftRng] != m.keyRangeToShard[rightRng] {
 		// it's ok, because we try actionStageMerge by every transfered border
@@ -293,15 +294,15 @@ func (m *mock) mergeKeyRanges(border *string) error {
 	newRng := KeyRange{left: leftRng.left, right: rightRng.right}
 	_, ok := m.ranges[leftRng]
 	if !ok {
-		return fmt.Errorf("key range", leftRng, "does not exist")
+		return errors.New(fmt.Sprint("Key range", leftRng, "does not exist"))
 	}
 	_, ok = m.ranges[rightRng]
 	if !ok {
-		return fmt.Errorf("key range", rightRng, "does not exist")
+		return errors.New(fmt.Sprint("Key range", rightRng, "does not exist"))
 	}
 	shard := m.keyRangeToShard[leftRng]
 	if shard != m.keyRangeToShard[rightRng] {
-		return fmt.Errorf("key ranges in different shards")
+		return errors.New("Key ranges in different shards")
 	}
 	delete(m.shardToKeyRanges[shard], leftRng)
 	delete(m.shardToKeyRanges[shard], rightRng)
@@ -354,7 +355,7 @@ func (m *mock) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	}
 	if !found {
 		m.foo()
-		return fmt.Errorf("key ranges not found")
+		return errors.New("key ranges not found")
 	}
 
 	for key := range m.keys {
@@ -382,4 +383,18 @@ func (m *mock) isReloadRequired() (bool, error) {
 
 func (m *mock) Init(_, _, _, _, _ string, _ *map[int]*hasql.Cluster, _ int) error {
 	return nil
+}
+
+func local_test() {
+	fmt.Println("1")
+	m := mock{}
+	fmt.Println("2")
+	m.init()
+	fmt.Println("3")
+	db := MockDb{}
+	_ = db.Init([]string{}, 0, "", "", "")
+	b := Balancer{}
+	b.Init(&m, &m, &m, &db)
+	b.BrutForceStrategy()
+	fmt.Println("4")
 }

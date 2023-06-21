@@ -99,14 +99,14 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Query: d.Query,
 	}, false, false); err != nil {
 		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
+			return fmt.Errorf("retry logic for prepared statements is not implemented")
 		}
 		return err
 	}
 
 	if _, err := rst.RelayStep(&pgproto3.Sync{}, true, false); err != nil {
 		if rst.ShouldRetry(err) {
-			// TODO: fix retry logic
+			return fmt.Errorf("retry logic for prepared statements is not implemented")
 		}
 		return err
 	}
@@ -528,10 +528,10 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMg
 		}
 		return ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = cl.ReplyErrMsg(fmt.Sprintf("failed to match any datashard"))
+		_ = cl.ReplyErrMsg("failed to match any datashard")
 		return ErrSkipQuery
 	case qrouter.ParseError:
-		_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
+		_ = cl.ReplyErrMsg("skip executing this query, wait for next")
 		return ErrSkipQuery
 	default:
 		_ = rst.UnRouteWithError(nil, err)

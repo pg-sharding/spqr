@@ -5,12 +5,13 @@ import (
 	"math/rand"
 	"sync"
 
+	"go.uber.org/atomic"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"go.uber.org/atomic"
 )
 
 type ProxyQrouter struct {

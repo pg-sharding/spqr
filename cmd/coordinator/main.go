@@ -2,8 +2,10 @@ package main
 
 import (
 	"github.com/pg-sharding/spqr/coordinator/app"
+	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 )
 
@@ -22,11 +24,13 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		app, err := app.NewApp(qdbImpl)
+		db, err := qdb.NewQDB(qdbImpl)
 		if err != nil {
 			return err
 		}
-
+		
+		coordinator := provider.NewCoordinator(db)
+		app := app.NewApp(coordinator)
 		return app.Run()
 	},
 }

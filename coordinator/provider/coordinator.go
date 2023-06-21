@@ -8,12 +8,16 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+
 	"github.com/pg-sharding/spqr/qdb/ops"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+
 	"github.com/jackc/pgproto3/v2"
 	"google.golang.org/grpc"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -683,7 +687,7 @@ func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.Da
 }
 
 func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
-	return fmt.Errorf("implement AddWorldShard")
+	panic("implement me")
 }
 
 func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
