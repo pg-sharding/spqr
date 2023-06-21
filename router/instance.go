@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/initdb"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -53,10 +54,16 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	/* TODO: fix by adding configurable setting */
-	qdb, _ := qdb.NewMemQDB(rcfg.Workdir, []string{
+	qdb, err := qdb.NewMemQDB()
+	if err != nil {
+		return nil, err
+	}
+	if err := initdb.InitDB(qdb, rcfg.Workdir, []string{
 		rcfg.InitSQL,
 		rcfg.AutoConf,
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	lc := local.NewLocalCoordinator(qdb)
 

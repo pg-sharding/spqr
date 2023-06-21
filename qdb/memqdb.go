@@ -3,15 +3,12 @@ package qdb
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/console"
 
 	"github.com/pg-sharding/spqr/qdb/qlog"
-	qlogpr "github.com/pg-sharding/spqr/qdb/qlog/provider"
 )
 
 type MemQDB struct {
@@ -30,7 +27,7 @@ type MemQDB struct {
 
 var _ QDB = &MemQDB{}
 
-func NewMemQDB(wordir string, initfiles []string) (*MemQDB, error) {
+func NewMemQDB() (*MemQDB, error) {
 	memdb := &MemQDB{
 		freq:       map[string]bool{},
 		krs:        map[string]*KeyRange{},
@@ -39,24 +36,6 @@ func NewMemQDB(wordir string, initfiles []string) (*MemQDB, error) {
 		shrules:    map[string]*ShardingRule{},
 		dataspaces: map[string]*Dataspace{},
 		routers:    map[string]*Router{},
-		log:        qlogpr.NewLocalQlog(filepath.Join(wordir, "qlog.ql")),
-	}
-
-	tmpC, err := console.NewConsole(lc)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range initfiles {
-		tmpq := qlogpr.NewLocalQlog(file)
-		qs, err := tmpq.Recover(context.TODO())
-		if err != nil {
-			return nil, err
-		}
-		for _, q := range qs {
-			tmpC.ProcessQuery(context.TODO(), q)
-		}
 	}
 
 	return memdb, nil

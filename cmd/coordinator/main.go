@@ -4,6 +4,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/initdb"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
@@ -27,6 +28,15 @@ var rootCmd = &cobra.Command{
 		db, err := qdb.NewQDB(qdbImpl, config.CoordinatorConfig().Workdir)
 		if err != nil {
 			return err
+		}
+
+		if qdbImpl == "mem" {
+			if err != nil {
+				return err
+			}
+			if err := initdb.InitDB(db, config.CoordinatorConfig().Workdir, []string{}); err != nil {
+				return err
+			}
 		}
 
 		coordinator := provider.NewCoordinator(db)

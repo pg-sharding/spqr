@@ -15,7 +15,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/rulerouter"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+
+	"github.com/pg-sharding/spqr/pkg/console"
 )
 
 type Console interface {
@@ -53,20 +54,8 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
-func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
-	tstmt, err := spqrparser.Parse(q)
-	if err != nil {
-		spqrlog.Logger.PrintError(err)
-		return err
-	}
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
-
-	return meta.Proc(ctx, tstmt, l.Coord, cli)
-}
-
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
+	return console.ProcessQueryConsole(ctx, clientinteractor.NewPSQLInteractor(cl), q, l.Coord)
 }
 
 const greeting = `
