@@ -2,16 +2,16 @@ name: linters
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
 
 permissions:
   contents: read
 
 jobs:
   golangci:
-    name: lint
+    name: golangci-lint check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
@@ -33,4 +33,4 @@ jobs:
         uses: DarthBenro008/goimports-check-action@v0.1.0
         with:
           root-path: './' # The relative root path to run goimports
-          excludes: "./yacc/
+          excludes: "./yacc/"
