@@ -113,7 +113,7 @@ func DumpRulesPSQL() error {
 				id := string(v.Values[0])
 				shard := string(v.Values[1])
 
-				fmt.Printf("%s\n",
+				fmt.Printf("%s;\n",
 					decode.DecodeKeyRange(
 						&protos.KeyRangeInfo{
 							KeyRange: &protos.KeyRange{LowerBound: l, UpperBound: r},
@@ -128,7 +128,65 @@ func DumpRulesPSQL() error {
 }
 
 func DumpKeyRangesPSQL() error {
-	return nil
+	conn, err := net.Dial("tcp", endpoint)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
+
+	if err := frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters: map[string]string{
+			"user":     "user1",
+			"database": "spqr-console",
+			"password": passwd,
+		},
+	}); err != nil {
+		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		return err
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		return err
+	}
+
+	frontend.Send(&pgproto3.Query{
+		String: "SHOW sharding_rules;",
+	})
+
+	for {
+		if msg, err := frontend.Receive(); err != nil {
+			return err
+		} else {
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %+v msg", msg)
+			switch v := msg.(type) {
+			case *pgproto3.DataRow:
+				col := string(v.Values[2])
+				id := string(v.Values[0])
+				tablename := string(v.Values[1])
+
+				fmt.Printf("%s;\n",
+					decode.DecodeRule(
+						&protos.ShardingRule{
+							Id:        id,
+							TableName: tablename,
+							ShardingRuleEntry: []*protos.ShardingRuleEntry{
+								{
+									Column: col,
+								},
+							},
+						}),
+				)
+			case *pgproto3.ErrorResponse:
+				return fmt.Errorf("failed to wait for RQF: %s", v.Message)
+			case *pgproto3.ReadyForQuery:
+				return nil
+			}
+		}
+	}
 }
 
 func DumpKeyRanges() error {
