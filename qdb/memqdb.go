@@ -49,7 +49,7 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 }
 
 func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
-	//TODO implement me
+	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: drop sharding rule %v", id)
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -59,7 +59,7 @@ func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-
+	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: drop sharding rule all")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -141,16 +141,20 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	return nil
 }
 
-func (q *MemQDB) DropKeyRange(ctx context.Context, KeyRangeID string) error {
+func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
+	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: drop key range %+v", id)
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	delete(q.krs, KeyRangeID)
-	delete(q.freq, KeyRangeID)
-	delete(q.locks, KeyRangeID)
+
+	delete(q.krs, id)
+	delete(q.freq, id)
+	delete(q.locks, id)
+
 	return nil
 }
 
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
+	spqrlog.Logger.Printf(spqrlog.LOG, "memqdb: drop all key ranges")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -197,7 +201,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 
 	krs, ok := q.krs[id]
 	if !ok {
-		return nil, fmt.Errorf("no sush krid")
+		return nil, fmt.Errorf("key range '%s' does not exist", id)
 	}
 
 	q.freq[id] = true

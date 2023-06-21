@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -113,33 +112,9 @@ func (c *Coordinator) ShardsList() (*map[int]routerproto.ShardInfo, error) {
 }
 
 func (c *Coordinator) waitTilDone(operationID string) error {
-	ctx := context.Background()
-	retries := 0
-	request := &routerproto.GetOperationRequest{
-		OperationId: operationID,
-	}
-
 	// TODO: skip waiting because the operation service is not implemented.
 	time.Sleep(time.Second)
-
 	return nil
-
-	for {
-		resp, err := c.operationServiceClient.GetOperation(ctx, request)
-		if err == nil {
-			if resp.Operation.Status == routerproto.OperationStatus_DONE {
-				return nil
-			}
-			time.Sleep(time.Millisecond * time.Duration(defaultSleepMS))
-			continue
-		}
-		retries++
-		fmt.Printf("got error while trying to get operation %s: %s", operationID, err)
-		if retries >= c.maxRetriesCount {
-			return err
-		}
-		time.Sleep(time.Millisecond * time.Duration(defaultSleepMS))
-	}
 }
 
 func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
@@ -166,14 +141,14 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 }
 
 func (c *Coordinator) isReloadRequired() (bool, error) {
+	// resp, err := c.balancerServiceClient.ReloadRequired(context.Background(), &routerproto.ReloadRequest{})
+	// if err != nil {
+	// 	return false, err
+	// }
+
+	// return resp.ReloadRequired, nil
+
 	return false, nil //TODO: temporary skip: the ReloadRequired method is not implemented.
-
-	resp, err := c.balancerServiceClient.ReloadRequired(context.Background(), &routerproto.ReloadRequest{})
-	if err != nil {
-		return false, err
-	}
-
-	return resp.ReloadRequired, nil
 }
 
 func (c *Coordinator) lockKeyRange(rng KeyRange) error {

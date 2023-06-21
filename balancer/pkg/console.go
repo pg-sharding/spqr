@@ -87,7 +87,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		case spqrparser.ShowKeyRangesStr:
 			keyRanges, err := c.console.showKeyRanges()
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to show key ranges: %w", err)
+				spqrlog.Logger.Errorf("failed to show key ranges: %s", err)
 			}
 
 			return cli.KeyRanges(keyRanges)
@@ -136,7 +136,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		shardID, err := strconv.Atoi(stmt.DestShardID)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to detect shard ID: %#v", stmt.DestShardID, err)
+			spqrlog.Logger.Errorf("failed to detect shard %s: %#v", stmt.DestShardID, err)
 		}
 
 		err = c.coord.moveKeyRange(keyRangeBorders, Shard{id: shardID})

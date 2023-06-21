@@ -90,11 +90,11 @@ func (el *errorLogger) Printf(severity Severity, fmt string, args ...interface{}
 }
 
 func (el *errorLogger) Fatalf(fmt string, args ...interface{}) {
-	el.logMp[FATAL].Fatalf(fmt, args)
+	el.logMp[FATAL].Fatalf(fmt, args...)
 }
 
 func (el *errorLogger) Errorf(fmt string, args ...interface{}) {
-	el.logMp[ERROR].Printf(fmt, args)
+	el.logMp[ERROR].Printf(fmt, args...)
 }
 
 func (el *errorLogger) PrintError(err error) {

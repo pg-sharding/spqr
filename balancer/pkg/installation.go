@@ -3,7 +3,6 @@ package pkg
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -186,7 +185,7 @@ func AddHostStats(stats *map[string]map[string]Stats, additionalStats *map[strin
 			if !ok {
 				(*stats)[leftBorder][border] = Stats{}
 			}
-			AddStats((*stats)[leftBorder][border], (*additionalStats)[leftBorder][border])
+			_ = AddStats((*stats)[leftBorder][border], (*additionalStats)[leftBorder][border])
 		}
 	}
 }
@@ -194,7 +193,7 @@ func AddHostStats(stats *map[string]map[string]Stats, additionalStats *map[strin
 func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	cluster, ok := (*i.shardClusters)[shard.id]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("Not known shard %d", shard.id))
+		return nil, fmt.Errorf("not known shard %d", shard.id)
 	}
 
 	nodes := cluster.Nodes()
@@ -202,7 +201,7 @@ func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[str
 	for _, node := range nodes {
 		hostStats, err := i.GetHostStats(node, keyRanges)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Can't read stats from node %s because of %s", node, err))
+			fmt.Printf("can't read stats from node %s because of %s", node, err)
 			continue
 		}
 		AddHostStats(&res, &hostStats)
@@ -219,7 +218,7 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 	}
 	conn, err := GetMasterConn((*i.shardClusters)[toShard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Can't find master of shard %d: %s", fromShard.id, err))
+		fmt.Printf("can't find master of shard %d: %s", fromShard.id, err)
 	}
 	defer conn.Close()
 
@@ -264,7 +263,7 @@ func (i *Installation) prepareShardFDW(fromShard Shard, toShard Shard, serverNam
 func (i *Installation) GetTableSchema(shard Shard) ([]Column, error) {
 	conn, err := GetMasterConn((*i.shardClusters)[shard.id], i.retriesCount, defaultSleepMS)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Can't find master of shard %d: %s", shard.id, err))
+		fmt.Printf("Can't find master of shard %d: %s", shard.id, err)
 	}
 	defer conn.Close()
 

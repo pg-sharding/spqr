@@ -10,15 +10,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/sevlyar/go-daemon"
-
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	router "github.com/pg-sharding/spqr/router"
 	"github.com/pg-sharding/spqr/router/app"
-	router "github.com/pg-sharding/spqr/router/pkg"
+	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -36,12 +34,6 @@ var rootCmd = &cobra.Command{
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
-	}
 }
 
 func init() {
@@ -62,7 +54,6 @@ var runCmd = &cobra.Command{
 
 		spqrlog.RebornLogger(rcfg.LogFileName)
 		if rcfg.Daemonize {
-
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
@@ -78,7 +69,12 @@ var runCmd = &cobra.Command{
 			if d != nil {
 				return nil
 			}
-			defer cntxt.Release()
+
+			defer func() {
+				if err := cntxt.Release(); err != nil {
+					spqrlog.Logger.PrintError(err)
+				}
+			}()
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "daemon started")
 		}
@@ -176,5 +172,7 @@ var runCmd = &cobra.Command{
 }
 
 func main() {
-	Execute()
+	if err := rootCmd.Execute(); err != nil {
+		spqrlog.Logger.FatalOnError(err)
+	}
 }

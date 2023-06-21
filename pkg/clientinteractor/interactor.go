@@ -330,6 +330,9 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 }
 
 func (pi *PSQLInteractor) ReportError(err error) error {
+	if err == nil {
+		return nil
+	}
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{Severity: "ERROR",
 			Message: err.Error(),
@@ -504,7 +507,7 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("query routed to all shards (multishard)")); err != nil {
+	if err := pi.WriteDataRow("query routed to all shards (multishard)"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}

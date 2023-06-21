@@ -2,6 +2,9 @@ package qdb
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/config"
 )
 
 type QDB interface {
@@ -33,4 +36,15 @@ type QDB interface {
 
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
+}
+
+func NewQDB(qdbType string) (QDB, error) {
+	switch qdbType {
+	case "etcd":
+		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+	case "mem":
+		return NewMemQDB()
+	default:
+		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
+	}
 }

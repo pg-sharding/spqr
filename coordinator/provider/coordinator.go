@@ -25,10 +25,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
-	router "github.com/pg-sharding/spqr/router/pkg"
-	psqlclient "github.com/pg-sharding/spqr/router/pkg/client"
-	"github.com/pg-sharding/spqr/router/pkg/datashard"
-	"github.com/pg-sharding/spqr/router/pkg/route"
+	router "github.com/pg-sharding/spqr/router"
+	psqlclient "github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/datashard"
+	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -50,7 +50,7 @@ var _ router.Router = &routerConn{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	// TODO: add creds
-	return grpc.Dial(r.Address, grpc.WithInsecure())
+	return grpc.Dial(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
 type qdbCoordinator struct {
@@ -148,7 +148,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			Address: rtr.Addr(),
 		})
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %w", rtr.ID, err)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "dialing router %v, err %s", rtr.ID, err)
 		if err != nil {
 			return err
 		}
@@ -286,12 +286,11 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 
 	// notify all routers
 	for _, r := range resp {
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v", r)
 		cc, err := DialRouter(&topology.Router{
 			ID:      r.ID,
 			Address: r.Addr(),
 		})
-
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "dialing router %v, err %w", r, err)
 		if err != nil {
 			return err
 		}
@@ -503,7 +502,11 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	defer qc.db.UnlockKeyRange(ctx, req.Krid)
+	defer func() {
+		if err := qc.db.UnlockKeyRange(ctx, req.Krid); err != nil {
+			spqrlog.Logger.PrintError(err)
+		}
+	}()
 
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krmv)); err != nil {
@@ -545,8 +548,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	cc, err := DialRouter(qRouter)
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %w", qRouter, err)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing router %v, err %s", qRouter, err)
 	if err != nil {
 		return err
 	}
@@ -655,7 +657,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		// TODO: check leader status
 		msg, err := cl.Receive()
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %w", err)
+			spqrlog.Logger.Printf(spqrlog.ERROR, "failed to received msg %s", err)
 			return err
 		}
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "received msg %v", msg)

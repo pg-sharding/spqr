@@ -1,8 +1,8 @@
 package kr
 
 import (
-	"github.com/pg-sharding/spqr/qdb"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 

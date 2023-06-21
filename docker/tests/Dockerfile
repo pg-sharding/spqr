@@ -2,8 +2,6 @@ FROM spqr-base-image
 
 COPY --from=networld/grpcurl /grpcurl /usr/bin/
 
-RUN mv /spqr/spqr-stress /usr/local/bin/spqr-stress
-
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

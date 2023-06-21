@@ -12,33 +12,25 @@ yacc-deps:
 deps:
 	go mod download
 
-build_coordinator: 
-	go build -o spqr-coordinator cmd/coordinator/main.go
-
-build_router: 
-	go build -o spqr-router cmd/router/main.go
-
-build_world: 
-	go build -o spqr-world cmd/world/main.go
-
-build_stress:
-	go build -o spqr-stress test/stress/stress.go
-
-build_worldmock:
-	go build -o spqr-worldmock ./cmd/worldmock/main.go
-
 build_balancer:
-	go build -o spqr-balancer ./cmd/balancer/main.go
-
-build_mover:
-	go build -o spqr-mover  ./cmd/mover/main.go
+	go build -o spqr-balancer ./cmd/balancer
 
 build_coorctl:
-	go build -o coorctl ./cmd/ctl/coorctl.go
+	go build -o coorctl ./cmd/coordctl
 
-build_ctlutil: build_coorctl
+build_coordinator: 
+	go build -o spqr-coordinator ./cmd/coordinator
 
-build: build_balancer build_coordinator build_router build_stress  build_mover build_world build_worldmock
+build_router: 
+	go build -o spqr-router ./cmd/router
+
+build_mover:
+	go build -o spqr-mover  ./cmd/mover
+
+build_worldmock:
+	go build -o spqr-worldmock ./cmd/worldmock
+
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 gogen:
 	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
@@ -57,12 +49,10 @@ build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
 e2e: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client world
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
 stress: build_images
-	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
-	docker-compose build client
-	docker-compose run --entrypoint /usr/local/bin/stress_test.sh client
+	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
 run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
@@ -79,9 +69,13 @@ pooler_run:
 	./spqr-router run -c ./config-example/localrouter.yaml
 
 clean:
-	rm -f spqr-router spqr-coordinator spqr-mover spqr-stress spqr-worldmock spqr-world spqr-balancer
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 
 regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
+
+lint:
+	golangci-lint run --timeout=10m --out-format=colored-line-number
+
 
 .PHONY: build gen

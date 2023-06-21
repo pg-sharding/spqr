@@ -9,7 +9,7 @@ on:
 jobs:
 
   build:
-    name: Build
+    name: build
     runs-on: ubuntu-latest
     steps:
 
@@ -29,5 +29,5 @@ jobs:
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
-    - name: Build
+    - name: build
       run: make build

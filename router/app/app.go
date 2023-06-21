@@ -5,13 +5,11 @@ import (
 	"net"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
 	reuse "github.com/libp2p/go-reuseport"
-	"google.golang.org/grpc"
-
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	router "github.com/pg-sharding/spqr/router"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
-	router "github.com/pg-sharding/spqr/router/pkg"
+	"google.golang.org/grpc"
 )
 
 type App struct {
@@ -47,7 +45,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			}(listener)
 
 			spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s by postgresql proto", address)
-			app.spqr.Run(ctx, listener)
+			_ = app.spqr.Run(ctx, listener)
 		}(addr)
 	}
 	lwg.Wait()

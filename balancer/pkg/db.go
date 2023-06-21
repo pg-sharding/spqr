@@ -3,7 +3,6 @@ package pkg
 import (
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -18,10 +17,9 @@ import (
 	"golang.yandex/hasql/checkers"
 )
 
-//TODO tests
+// TODO tests
 type dbAction struct {
 	id          uint64      `db:"id"`
-	tableName   string      `db:"table_name"`
 	dbname      string      `db:"dbname"`
 	actionStage ActionStage `db:"action_stage"`
 	isRunning   bool        `db:"is_running"`
@@ -59,7 +57,6 @@ var (
 	//actionsDBName = "actions"
 	actionsDBName        = "postgres"
 	actionsDBUser        = "user1"
-	actionsDBPassword    = ""
 	actionsDBSslMode     = "disable"
 	actionsDBSslRootCert = ""
 	defaultSleepMS       = 10000
@@ -132,7 +129,10 @@ func AddrToHostPort(addr string) (string, int) {
 func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert string) (*hasql.Cluster, error) {
 	nodes := make([]hasql.Node, 0, len(addrs))
 	for _, addr := range addrs {
-		connString := ConnString(addr, dbname, user, password, sslMode, sslRootCert)
+		connString, err := ConnString(addr, dbname, user, password, sslMode, sslRootCert)
+		if err != nil {
+			return nil, err
+		}
 		spqrlog.Logger.Printf(spqrlog.INFO, "Connection string: %v", connString)
 
 		db, err := sql.Open("pgx", connString)
@@ -149,12 +149,12 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }
 
-func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) string {
+func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) (string, error) {
 	var connParams []string
 
 	host, portFromAddr, err := net.SplitHostPort(addr)
 	if err != nil {
-		// invalid host spec
+		return "", fmt.Errorf("invalid host spec: %s", err)
 	}
 	connParams = append(connParams, "host="+host)
 	connParams = append(connParams, "port="+portFromAddr)
@@ -185,7 +185,7 @@ func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) strin
 		connParams = append(connParams, "sslmode=require")
 	}
 
-	return strings.Join(connParams, " ")
+	return strings.Join(connParams, " "), nil
 }
 
 func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.Conn, error) {
@@ -198,8 +198,8 @@ func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.Conn,
 	return GetNodeConn(context.TODO(), node, retries, sleepMS)
 }
 
-func GetNodeConn(ctx context.Context, node hasql.Node, retries int, sleepMS int) (*sql.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(sleepMS))
+func GetNodeConn(parentctx context.Context, node hasql.Node, retries int, sleepMS int) (*sql.Conn, error) {
+	ctx, cancel := context.WithTimeout(parentctx, time.Millisecond*time.Duration(sleepMS))
 	defer cancel()
 
 	conn, err := node.DB().Conn(ctx)
@@ -511,9 +511,4 @@ func (m *MockDb) GetAndRun() (Action, bool, error) {
 	}
 
 	return Action{}, false, nil
-}
-
-func toPgHex(s string) string {
-	hx := hex.EncodeToString([]byte(s))
-	return fmt.Sprintf("\\x%s", hx)
 }

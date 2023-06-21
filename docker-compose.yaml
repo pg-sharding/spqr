@@ -61,16 +61,6 @@ services:
             context: .
         hostname: spqr_balancer
         container_name: spqr_balancer
-    world:
-        image:
-            spqr_shardbase
-        build:
-            dockerfile: ./docker/world/Dockerfile
-            context: .
-        hostname: spqr_world
-        container_name: spqr_world
-        ports:
-            - "7434:6432"
     client:
         build:
             dockerfile: ./docker/tests/Dockerfile
