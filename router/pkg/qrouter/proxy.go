@@ -44,21 +44,15 @@ func (qr *ProxyQrouter) Initialize() bool {
 }
 
 func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
-	qr.mu.Lock()
-	defer qr.mu.Unlock()
-
-	var ret []*DataShardRoute
-
-	for name := range qr.DataShardCfgs {
-		ret = append(ret, &DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: name,
-				RW:   true,
-			},
-		})
+	rc, _ := qr.mgr.ListShards(context.TODO())
+	rv := make([]*DataShardRoute, 0, len(rc))
+	for _, el := range rc {
+		rv = append(rv, &DataShardRoute{Shkey: kr.ShardKey{
+			Name: el.ID,
+			RW:   false,
+		}})
 	}
-
-	return ret
+	return rv
 }
 
 func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
@@ -86,7 +80,6 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
 
 func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter) (*ProxyQrouter, error) {
 	proxy := &ProxyQrouter{
-		DataShardCfgs:  map[string]*config.Shard{},
 		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    atomic.NewBool(false),
 		cfg:            qcfg,

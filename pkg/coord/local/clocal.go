@@ -368,26 +368,9 @@ func (lc *LocalCoordinator) ShareKeyRange(id string) error {
 }
 
 func NewLocalCoordinator(db qdb.QDB) meta.EntityMgr {
-
-	lc := &LocalCoordinator{
+	return &LocalCoordinator{
 		DataShardCfgs:  map[string]*config.Shard{},
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
 	}
-
-	// for name, shardCfg := range shardMapping {
-	// 	switch shardCfg.Type {
-	// 	case config.WorldShard:
-	// 	case config.DataShard:
-	// 		fallthrough // default is datashard
-	// 	default:
-	// 		if err := proxy.AddDataShard(context.TODO(), &datashards.DataShard{
-	// 			ID:  name,
-	// 			Cfg: shardCfg,
-	// 		}); err != nil {
-	// 			return nil, err
-	// 		}
-	// 	}
-	// }
-	return lc
 }
