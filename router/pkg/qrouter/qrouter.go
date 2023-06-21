@@ -12,7 +12,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/qdb"
 )
 
 const NOSHARD = ""
@@ -76,8 +75,6 @@ type WorldRouteState struct {
 }
 
 type QueryRouter interface {
-	meta.EntityMgr
-
 	Route(ctx context.Context, stmt *pgquery.ParseResult) (RoutingState, error)
 
 	WorldShardsRoutes() []*DataShardRoute
@@ -85,16 +82,14 @@ type QueryRouter interface {
 
 	Initialized() bool
 	Initialize() bool
-
-	Subscribe(krid string, keyRangeStatus *qdb.KeyRangeStatus, noitfyio chan<- interface{}) error
 }
 
-func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, qcfg *config.QRouter) (QueryRouter, error) {
+func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
 		return NewLocalQrouter(shardMapping)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, qcfg)
+		return NewProxyRouter(shardMapping, mgr, qcfg)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}

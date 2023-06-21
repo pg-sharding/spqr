@@ -42,7 +42,7 @@ func DumpRules() error {
 		spqrlog.Logger.Errorf("failed to dump endpoint rules: %v", err)
 	} else {
 		for _, rule := range rules.Rules {
-			fmt.Printf("%s", decode.DecodeRule(rule))
+			fmt.Printf("%s;\n", decode.DecodeRule(rule))
 		}
 	}
 
@@ -61,7 +61,7 @@ func DumpKeyRanges() error {
 		spqrlog.Logger.Errorf("failed to dump endpoint rules: %v", err)
 	} else {
 		for _, krg := range keys.KeyRangesInfo {
-			fmt.Printf("%s", decode.DecodeKeyRange(krg))
+			fmt.Printf("%s;\n", decode.DecodeKeyRange(krg))
 		}
 	}
 

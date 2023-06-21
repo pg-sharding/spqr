@@ -22,6 +22,8 @@ type EntityMgr interface {
 	topology.RouterMgr
 	datashards.ShardsMgr
 	dataspaces.DataspaceMgr
+
+	ShareKeyRange(id string) error
 }
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")

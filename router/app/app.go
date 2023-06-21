@@ -77,7 +77,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 	}
 
 	server := grpc.NewServer()
-	rgrpc.Register(server, app.spqr.Qrouter)
+	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr)
 	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR GRPC API is ready on %s", address)
 	go func() {
 		_ = server.Serve(listener)

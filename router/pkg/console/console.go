@@ -18,7 +18,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/router/pkg/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/pkg/qlog/provider"
-	"github.com/pg-sharding/spqr/router/pkg/qrouter"
 	"github.com/pg-sharding/spqr/router/pkg/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -31,7 +30,7 @@ type Console interface {
 
 type Local struct {
 	cfg     *tls.Config
-	Qrouter qrouter.QueryRouter
+	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
 
@@ -44,9 +43,9 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, qrouter qrouter.QueryRouter, rrouter rulerouter.RuleRouter, stchan chan struct{}) (*Local, error) {
+func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}) (*Local, error) {
 	return &Local{
-		Qrouter: qrouter,
+		Coord:   coord,
 		RRouter: rrouter,
 		qlogger: qlogprovider.NewLocalQlog(),
 		cfg:     cfg,
@@ -69,7 +68,7 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
-	return meta.Proc(ctx, tstmt, l.Qrouter, cli)
+	return meta.Proc(ctx, tstmt, l.Coord, cli)
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {

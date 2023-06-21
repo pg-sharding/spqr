@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -66,8 +67,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
-func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, shardingEntries []string) (*qdb.ShardingRule, error) {
-	rules, err := qdb.ListShardingRules(ctx)
+func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName string, shardingEntries []string) (*shrule.ShardingRule, error) {
+	rules, err := mgr.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +84,9 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, sh
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries, shardingEntries)
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries(), shardingEntries)
 		// Simple optimisation
-		if len(rule.Entries) > len(shardingEntries) {
+		if len(rule.Entries()) > len(shardingEntries) {
 			continue
 		}
 
@@ -95,7 +96,7 @@ func MatchShardingRule(ctx context.Context, qdb qdb.QDB, relationName string, sh
 
 		allColumnsMatched := true
 
-		for _, v := range rule.Entries {
+		for _, v := range rule.Entries() {
 			if _, ok := checkSet[v.Column]; !ok {
 				allColumnsMatched = false
 				break
