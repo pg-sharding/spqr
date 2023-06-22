@@ -16,12 +16,11 @@ func getC() (net.Conn, error) {
 }
 
 func main() {
-
 	reader := bufio.NewReader(os.Stdin)
 
 	conn, err := getC()
 	if err != nil {
-		fmt.Printf("failed %w", err)
+		fmt.Printf("failed %v", err)
 		return
 	}
 
@@ -35,13 +34,13 @@ func main() {
 	}
 
 	if err := frontend.Send(&sm); err != nil {
-		fmt.Printf("failed %w", err)
+		fmt.Printf("failed %v", err)
 		return
 	}
 
 	r, err := frontend.Receive()
 	if err != nil {
-		fmt.Printf("failed %w", err)
+		fmt.Printf("failed %v", err)
 		return
 	}
 	fmt.Printf("resp: %v\n", r)
@@ -61,13 +60,13 @@ func main() {
 		}
 
 		if err := frontend.Send(msg); err != nil {
-			fmt.Printf("failed %w", err)
+			fmt.Printf("failed %v", err)
 			return
 		}
 
 		_, err = frontend.Receive()
 		if err != nil {
-			fmt.Printf("failed %w", err)
+			fmt.Printf("failed %v", err)
 			return
 		}
 
@@ -79,16 +78,15 @@ func main() {
 			Name:       name,
 		}
 		if err := frontend.Send(msg2); err != nil {
-			fmt.Printf("failed %w", err)
+			fmt.Printf("failed %v", err)
 			return
 		}
 
 		r, err := frontend.Receive()
 		if err != nil {
-			fmt.Printf("failed %w", err)
+			fmt.Printf("failed %v", err)
 			return
 		}
 		fmt.Printf("resp: %v\n", r)
 	}
-
 }

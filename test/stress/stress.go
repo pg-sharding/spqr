@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 )
 
@@ -110,11 +110,7 @@ var cmdTest = &cobra.Command{
 
 		go simple()
 
-		select {
-		case <-ctx.Done():
-			fmt.Printf("stress test executed OK")
-		}
-
+		<-ctx.Done()
 		return nil
 	},
 	SilenceUsage:  true,
