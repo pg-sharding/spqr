@@ -7,5 +7,6 @@ test: target_session_attrs
 test: transactions
 test: with_tables
 test: single_shard_joins
+test: multishard
 test: error
 
