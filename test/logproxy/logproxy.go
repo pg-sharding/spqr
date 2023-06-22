@@ -60,7 +60,6 @@ func (p *Proxy) Run() error {
 					spqrlog.Logger.PrintError(err)
 				}
 			}()
-
 		}
 	}
 }
@@ -102,9 +101,7 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
 			spqrlog.Logger.Printf(spqrlog.INFO, "received prep stmt %v %v", v.Name, v.Query)
-			break
 		case *pgproto3.Query:
-
 			spqrlog.Logger.Printf(spqrlog.INFO, "received message %v", v.String)
 		default:
 		}

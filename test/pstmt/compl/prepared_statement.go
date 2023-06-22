@@ -20,6 +20,7 @@ var concurrency int
 var sleepTo int
 var updTx bool
 
+// nolint
 func prep(wg *sync.WaitGroup) {
 	ctx, cf := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cf()

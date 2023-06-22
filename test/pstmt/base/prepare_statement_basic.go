@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -23,6 +22,7 @@ func getC() (net.Conn, error) {
 
 var okerr = errors.New("something")
 
+// nolint
 func readCnt(fr *pgproto3.Frontend, count int) error {
 	for i := 0; i < count; i++ {
 		if msg, err := fr.Receive(); err != nil {
@@ -34,7 +34,6 @@ func readCnt(fr *pgproto3.Frontend, count int) error {
 
 	return nil
 }
-
 
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
@@ -56,14 +55,14 @@ func prepLong(fr *pgproto3.Frontend, waitforres bool) error {
 	if *doErr {
 		if err := fr.Send(&pgproto3.Parse{
 			Name:  "s1",
-			Query: fmt.Sprintf("SELECT 1/0"),
+			Query: "SELECT 1/0",
 		}); err != nil {
 			return err
 		}
 	} else {
 		if err := fr.Send(&pgproto3.Parse{
 			Name:  "s1",
-			Query: fmt.Sprintf("SELECT 1"),
+			Query: "SELECT 1",
 		}); err != nil {
 			return err
 		}
@@ -112,7 +111,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 
 	conn, err := getC()
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to get conn %w", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to get conn %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -130,7 +129,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 			"password": "12345678",
 		},
 	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %w", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -139,7 +138,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 	time.Sleep(200 * time.Millisecond)
 
 	if err := waitRFQ(frontend); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %w", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -147,7 +146,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 	}
 
 	if err := prepLong(frontend, waitforres); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "prep failed %w", err)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "prep failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
