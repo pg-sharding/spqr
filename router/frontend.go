@@ -121,13 +121,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			}
 		}
 
-		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
-			return err
-		}
-
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.TxStatus()),
-		})
+		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "RESET")
 	case parser.ParseStateResetMetadataStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
@@ -149,37 +143,19 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			rst.Client().ResetParam("role")
 		}
 
-		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
-			return err
-		}
-
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.TxStatus()),
-		})
+		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "RESET")
 	case parser.ParseStateResetAllStmt:
 		rst.Client().ResetAll()
 
-		if cmngr.ConnectionActive(rst) {
-			if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("RESET")}); err != nil {
-				return err
-			}
-		}
-
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.TxStatus()),
-		})
+		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "RESET")
 	case parser.ParseStateSetLocalStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
-		if err := rst.Client().Send(&pgproto3.CommandComplete{CommandTag: []byte("SET")}); err != nil {
-			return err
-		}
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.TxStatus()),
-		})
+
+		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
 	case parser.ParseStatePrepareStmt:
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {
@@ -212,8 +188,8 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if cl.Rule().PoolMode == config.PoolModeTransaction && !cl.Rule().PoolPreparedStatement {
+func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	if rst.Client().Rule().PoolMode == config.PoolModeTransaction && !rst.Client().Rule().PoolPreparedStatement {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
 			return nil
@@ -269,12 +245,12 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 
 		hash := murmur3.Sum64([]byte(q.Query))
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
-		if err := cl.ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
+		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 			return err
 		}
-		cl.StorePreparedStatement(q.Name, q.Query)
+		rst.Client().StorePreparedStatement(q.Name, q.Query)
 		// simply reply witch ok parse complete
-		return cl.ReplyParseComplete()
+		return rst.Client().ReplyParseComplete()
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
@@ -286,10 +262,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 			}
 			return nil
 		}
-		query := cl.PreparedStatementQueryByName(q.Name)
+		query := rst.Client().PreparedStatementQueryByName(q.Name)
 		hash := murmur3.Sum64([]byte(query))
 
-		if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+		if err := rst.PrepareRelayStep(cmngr); err != nil {
 			return err
 		}
 
@@ -312,22 +288,22 @@ func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulero
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", cl)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", rst.Client())
 		return rst.ProcessMessage(q, false, true, cmngr)
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", cl)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", rst.Client())
 		return rst.ProcessMessage(q, true, true, cmngr)
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		query := cl.PreparedStatementQueryByName(q.PreparedStatement)
+		query := rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
 		hash := murmur3.Sum64([]byte(query))
 
-		if err := rst.PrepareRelayStep(cl, cmngr); err != nil {
+		if err := rst.PrepareRelayStep(cmngr); err != nil {
 			return err
 		}
 
@@ -376,7 +352,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			}
 		}
 
-		if err := ProcessMessage(qr, cl, cmngr, rst, msg); err != nil {
+		if err := ProcessMessage(qr, cmngr, rst, msg); err != nil {
 			switch err {
 			case io.ErrUnexpectedEOF:
 				fallthrough

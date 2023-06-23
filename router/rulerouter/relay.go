@@ -43,7 +43,7 @@ type RelayStateMgr interface {
 
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) error
-	PrepareRelayStep(cl client.RouterClient, cmngr PoolMgr) error
+	PrepareRelayStep(cmngr PoolMgr) error
 	ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
@@ -511,8 +511,8 @@ func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error
 
 var _ RelayStateMgr = &RelayStateImpl{}
 
-func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s (client %p)", cl.Usr(), cl.DB(), cl)
+func (rst *RelayStateImpl) PrepareRelayStep(cmngr PoolMgr) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s (client %p)", rst.Client().Usr(), rst.Client().DB(), rst.Client())
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
@@ -522,16 +522,15 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMg
 	case nil:
 		return nil
 	case ErrSkipQuery:
-		//_ = cl.ReplyErrMsg(fmt.Sprintf("skip executing this query, wait for next"))
-		if err := cl.ReplyErrMsg(err.Error()); err != nil {
+		if err := rst.Client().ReplyErrMsg(err.Error()); err != nil {
 			return err
 		}
 		return ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = cl.ReplyErrMsg("failed to match any datashard")
+		_ = rst.Client().ReplyErrMsg("failed to match any datashard")
 		return ErrSkipQuery
 	case qrouter.ParseError:
-		_ = cl.ReplyErrMsg("skip executing this query, wait for next")
+		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next")
 		return ErrSkipQuery
 	default:
 		_ = rst.UnRouteWithError(nil, err)
@@ -542,7 +541,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cl client.RouterClient, cmngr PoolMg
 }
 
 func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr PoolMgr) (bool, error) {
-	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
 
@@ -560,7 +559,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 	if !cmngr.ConnectionActive(rst) {
 		return rst.Client().ReplyRFQ()
 	}
-	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}
 
@@ -577,7 +576,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 
 func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "relay step: proccess message for client %p", &rst.Cl)
-	if err := rst.PrepareRelayStep(rst.Cl, cmngr); err != nil {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}
 
