@@ -8,9 +8,9 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -33,8 +33,8 @@ type RelayStateMgr interface {
 	ActiveShardsReset()
 	TxActive() bool
 
-	SetTxStatus(status conn.TXStatus)
-	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error)
+	SetTxStatus(status txstatus.TXStatus)
+	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, error)
 
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
 	CompleteRelay(replyCl bool) error
@@ -49,12 +49,12 @@ type RelayStateMgr interface {
 
 	Sync(waitForResp, replyCl bool, cmngr PoolMgr) error
 
-	TxStatus() conn.TXStatus
+	TxStatus() txstatus.TXStatus
 	RouterMode() config.RouterMode
 }
 
 type RelayStateImpl struct {
-	txStatus   conn.TXStatus
+	txStatus   txstatus.TXStatus
 	CopyActive bool
 
 	activeShards   []kr.ShardKey
@@ -76,7 +76,7 @@ type RelayStateImpl struct {
 	smsgBuf []pgproto3.FrontendMessage
 }
 
-func (rst *RelayStateImpl) SetTxStatus(status conn.TXStatus) {
+func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	//TODO implement me
 	rst.txStatus = status
 }
@@ -86,7 +86,7 @@ func (rst *RelayStateImpl) Client() client.RouterClient {
 	return rst.Cl
 }
 
-func (rst *RelayStateImpl) TxStatus() conn.TXStatus {
+func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 	return rst.txStatus
 }
 
@@ -119,7 +119,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:       nil,
-		txStatus:           conn.TXIDLE,
+		txStatus:           txstatus.TXIDLE,
 		msgBuf:             nil,
 		traceMsgs:          false,
 		Qr:                 qr,
@@ -143,7 +143,7 @@ func (rst *RelayStateImpl) Close() error {
 }
 
 func (rst *RelayStateImpl) TxActive() bool {
-	return rst.txStatus == conn.TXACT
+	return rst.txStatus == txstatus.TXACT
 }
 
 func (rst *RelayStateImpl) ActiveShardsReset() {
@@ -156,7 +156,7 @@ func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
 
 func (rst *RelayStateImpl) Reset() error {
 	rst.activeShards = nil
-	rst.txStatus = conn.TXIDLE
+	rst.txStatus = txstatus.TXIDLE
 
 	_ = rst.Cl.Reset()
 
@@ -333,7 +333,7 @@ func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp 
 		if err := rst.manager.TXBeginCB(rst); err != nil {
 			return err
 		}
-		rst.txStatus = conn.TXACT
+		rst.txStatus = txstatus.TXACT
 	}
 
 	return rst.Cl.ProcCommand(v, waitForResp, replyCl)
@@ -343,14 +343,14 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 	return rst.Cl.ProcCommand(msg, waitForResp, replyCl)
 }
 
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
+func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: flushing message buffer", rst.Client())
 
 	ok := true
 
-	flusher := func(buff []pgproto3.FrontendMessage, waitForResp, replyCl bool) (conn.TXStatus, error) {
+	flusher := func(buff []pgproto3.FrontendMessage, waitForResp, replyCl bool) (txstatus.TXStatus, error) {
 
-		var txst conn.TXStatus
+		var txst txstatus.TXStatus
 		var err error
 		var txok bool
 
@@ -366,7 +366,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v waitForResp: %v replyCl: %v", v, waitForResp, replyCl)
 			if txst, txok, err = rst.Cl.ProcQuery(v, waitForResp, replyCl); err != nil {
 				ok = false
-				return conn.TXERR, err
+				return txstatus.TXERR, err
 			} else {
 				ok = ok && txok
 			}
@@ -377,7 +377,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 		return txst, nil
 	}
 
-	var txst conn.TXStatus
+	var txst txstatus.TXStatus
 	var err error
 
 	buf := rst.smsgBuf
@@ -395,13 +395,13 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (conn.TXSt
 	}
 
 	if err := rst.CompleteRelay(replyCl); err != nil {
-		return conn.TXERR, false, err
+		return txstatus.TXERR, false, err
 	}
 
 	return txst, ok, nil
 }
 
-func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, error) {
+func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, error) {
 	if !rst.TxActive() {
 		if err := rst.manager.TXBeginCB(rst); err != nil {
 			return 0, err
@@ -410,8 +410,8 @@ func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp b
 
 	bt, _, err := rst.Cl.ProcQuery(msg, waitForResp, replyCl)
 	if err != nil {
-		rst.SetTxStatus(conn.TXERR)
-		return conn.TXERR, err
+		rst.SetTxStatus(txstatus.TXERR)
+		return txstatus.TXERR, err
 	}
 	rst.SetTxStatus(bt)
 	return rst.txStatus, nil
@@ -426,13 +426,13 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		return nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "cleint %p: complete relay iter with TX %s", rst.Client(), func(b conn.TXStatus) string {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "cleint %p: complete relay iter with TX %s", rst.Client(), func(b txstatus.TXStatus) string {
 		switch b {
-		case conn.TXIDLE:
+		case txstatus.TXIDLE:
 			return "idle"
-		case conn.TXACT:
+		case txstatus.TXACT:
 			return "active"
-		case conn.TXERR:
+		case txstatus.TXERR:
 			return "err"
 		default:
 			return "unknown"
@@ -445,7 +445,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "unroute multishard route")
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(conn.TXIDLE),
+				TxStatus: byte(txstatus.TXIDLE),
 			}); err != nil {
 				return err
 			}
@@ -455,7 +455,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	}
 
 	switch rst.txStatus {
-	case conn.TXIDLE:
+	case txstatus.TXIDLE:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
 				TxStatus: byte(rst.txStatus),
@@ -469,9 +469,9 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		}
 
 		return nil
-	case conn.TXERR:
+	case txstatus.TXERR:
 		fallthrough
-	case conn.TXACT:
+	case txstatus.TXACT:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
 				TxStatus: byte(rst.txStatus),
@@ -480,7 +480,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 		return nil
-	case conn.TXCONT:
+	case txstatus.TXCONT:
 		return nil
 	default:
 		err := fmt.Errorf("unknown tx status %v", rst.txStatus)

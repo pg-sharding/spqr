@@ -7,9 +7,9 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pkg/errors"
 )
@@ -89,7 +89,7 @@ func (t *TxConnManager) ConnectionActive(rst RelayStateMgr) bool {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst RelayStateMgr) bool {
-	return rst.ActiveShards() == nil || rst.TxStatus() == conn.TXIDLE
+	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
 
 func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {

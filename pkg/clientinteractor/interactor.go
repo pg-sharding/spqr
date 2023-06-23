@@ -8,9 +8,9 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
@@ -38,7 +38,7 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.CommandComplete{CommandTag: []byte(fmt.Sprintf("SELECT %d", rowCnt))},
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -338,7 +338,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 			Message: err.Error(),
 		},
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {

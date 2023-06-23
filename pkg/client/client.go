@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type Pmgr interface {
@@ -32,6 +33,9 @@ type Client interface {
 	ReplyNotice(message string) error
 	ReplyDebugNotice(msg string) error
 	ReplyDebugNoticef(fmt string, args ...interface{}) error
+
+	ReplyWarningMsg(st txstatus.TXStatus, msg string) error
+	ReplyWarningf(st txstatus.TXStatus, fmt string, args ...interface{}) error
 	DefaultReply() error
 
 	Init(cfg *tls.Config) error

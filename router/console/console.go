@@ -8,12 +8,12 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -91,7 +91,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 			Message: greeting,
 		},
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {

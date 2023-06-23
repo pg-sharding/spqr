@@ -6,8 +6,8 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -53,6 +53,10 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
+		if rst.TxStatus() != txstatus.TXIDLE {
+			// ignore this
+			return rst.Client().ReplyWarningf(rst.TxStatus(), "there is already transaction in progress")
+		}
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
 
@@ -63,7 +67,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		}
 
 		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXACT),
+			TxStatus: byte(txstatus.TXACT),
 		})
 	case parser.ParseStateTXCommit:
 		if !cmngr.ConnectionActive(rst) {
@@ -197,7 +201,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	}
 }
 
-// ProcessMessage
+// ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	if cl.Rule().PoolMode == config.PoolModeTransaction && !cl.Rule().PoolPreparedStatement {
 		switch q := msg.(type) {
@@ -372,6 +376,9 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			default:
 				// fix all reply err to client to be here
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with error: %v", rst.Client(), err)
+				if rst.TxStatus() != txstatus.TXIDLE {
+					return rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client sync lost, reset connection"))
+				}
 			}
 		}
 	}
