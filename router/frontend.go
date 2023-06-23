@@ -61,15 +61,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
 
-		if err := rst.Client().Send(&pgproto3.CommandComplete{
-			CommandTag: []byte("BEGIN"),
-		}); err != nil {
-			return err
-		}
-
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXACT),
-		})
+		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
