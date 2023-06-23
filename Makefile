@@ -59,17 +59,24 @@ run: build_images
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
+proxy_2sh_run:
+	./spqr-router run -c ./examples/2shardproxy.yaml -d
+
 proxy_run:
-	./spqr-router run -c ./config-example/router.yaml
+	./spqr-router run -c ./examples/router.yaml
 
 coordinator_run:
-	./spqr-coordinator run -c ./config-example/coordinator.yaml
+	./spqr-coordinator run -c ./examples/coordinator.yaml
 
 pooler_run:
-	./spqr-router run -c ./config-example/localrouter.yaml
+	./spqr-router run -c ./examples/localrouter.yaml
 
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
+
+
+regress_local: proxy_2sh_run
+	./script/regress_local.sh
 
 regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
