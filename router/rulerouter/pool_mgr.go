@@ -89,7 +89,7 @@ func (t *TxConnManager) ConnectionActive(rst RelayStateMgr) bool {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst RelayStateMgr) bool {
-	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
+	return rst.TxStatus() == txstatus.TXIDLE
 }
 
 func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
@@ -100,12 +100,9 @@ func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	ash := rst.ActiveShards()
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p end of transaction, unrouting from active shards %v", rst.Client(), ash)
 	rst.ActiveShardsReset()
+	rst.SetTxStatus(txstatus.TXIDLE)
 
-	if err := t.UnRouteCB(rst.Client(), ash); err != nil {
-		return err
-	}
-
-	return nil
+	return t.UnRouteCB(rst.Client(), ash)
 }
 
 type SessConnManager struct {
@@ -131,6 +128,7 @@ func (s *SessConnManager) TXBeginCB(rst RelayStateMgr) error {
 }
 
 func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
+	rst.SetTxStatus(txstatus.TXIDLE)
 	return nil
 }
 
