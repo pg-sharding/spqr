@@ -52,6 +52,7 @@ type RouterClient interface {
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
+	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
 
 	CancelMsg() *pgproto3.CancelRequest
 
@@ -313,6 +314,21 @@ func (cl *PsqlClient) Reply(msg string) error {
 	return nil
 }
 
+func (cl *PsqlClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: []byte(commandTag)},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(st),
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cl *PsqlClient) ReplyParseComplete() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ParseComplete{},
@@ -356,14 +372,11 @@ func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...interface{}) e
 	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...))
 }
 
-func (cl *PsqlClient) ReplyWarningMsg(st txstatus.TXStatus, errmsg string) error {
+func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
 			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
 			Severity: "WARNING",
-		},
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(st),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -374,8 +387,8 @@ func (cl *PsqlClient) ReplyWarningMsg(st txstatus.TXStatus, errmsg string) error
 	return nil
 }
 
-func (cl *PsqlClient) ReplyWarningf(st txstatus.TXStatus, fmtString string, args ...interface{}) error {
-	return cl.ReplyWarningMsg(st, fmt.Sprintf(fmtString, args...))
+func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error {
+	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
 }
 
 func (cl *PsqlClient) ID() string {

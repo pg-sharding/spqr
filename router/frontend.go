@@ -55,7 +55,8 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateTXBegin:
 		if rst.TxStatus() != txstatus.TXIDLE {
 			// ignore this
-			return rst.Client().ReplyWarningf(rst.TxStatus(), "there is already transaction in progress")
+			rst.Client().ReplyWarningf("there is already transaction in progress")
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 		}
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
@@ -70,8 +71,12 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			TxStatus: byte(txstatus.TXACT),
 		})
 	case parser.ParseStateTXCommit:
+		if rst.TxStatus() != txstatus.TXACT {
+			rst.Client().ReplyWarningf("there is no transaction in progress")
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
+		}
 		if !cmngr.ConnectionActive(rst) {
-			return fmt.Errorf("no connection to shards")
+			return fmt.Errorf("client relay has no connection to shards")
 		}
 		rst.AddQuery(msg)
 		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
@@ -80,6 +85,11 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		}
 		return err
 	case parser.ParseStateTXRollback:
+		if rst.TxStatus() != txstatus.TXACT {
+			rst.Client().ReplyWarningf("there is no transaction in progress")
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
+		}
+
 		rst.AddQuery(msg)
 		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
 		if ok {
