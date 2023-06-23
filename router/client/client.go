@@ -898,7 +898,7 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 	if cl.ReplyClientId {
 		clerrmsg = fmt.Sprintf("client %p: error %v", cl, errmsg)
 	} else {
-		clerrmsg = fmt.Sprintf("error %v", errmsg)
+		clerrmsg = errmsg
 	}
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
