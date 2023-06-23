@@ -454,8 +454,6 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	}
 
 	switch rst.TxStatus() {
-	case txstatus.TXERR:
-		fallthrough
 	case txstatus.TXIDLE:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
@@ -470,6 +468,8 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		}
 
 		return nil
+	case txstatus.TXERR:
+		fallthrough
 	case txstatus.TXACT:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
