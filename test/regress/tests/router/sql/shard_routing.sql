@@ -42,6 +42,10 @@ INSERT INTO xxtt1 (i, w_id) VALUES(2121221, 21);
 INSERT INTO xxtt1 (i, j, w_id) VALUES(-12, 1, 1);
 INSERT INTO xxtt1 (i, w_id, j) VALUES(-12, 15, 123123);
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 23);
+INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
+INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
+INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
+INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 SELECT * FROM xxtt1 WHERE w_id >= 20;
@@ -51,6 +55,10 @@ SELECT * FROM xxtt1 WHERE w_id >= 21;
 SELECT * FROM xxtt1 a WHERE a.w_id >= 1;
 SELECT * FROM xxtt1 a WHERE a.w_id >= 20;
 SELECT * FROM xxtt1 a WHERE a.w_id >= 21;
+
+
+SELECT * FROM xxtt1 a WHERE a.w_id = 21 and j + i != 0;
+SELECT * FROM xxtt1 a WHERE a.w_id = 21 and w_id <= 30 and j + i != 0;
 
 -- check that `INSERT FROM SELECT` works
 INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
