@@ -859,7 +859,7 @@ func (cl *PsqlClient) Params() map[string]string {
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message:  errmsg,
+			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
 			Severity: "ERROR",
 		},
 		&pgproto3.ReadyForQuery{
