@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/datashard"
 	"github.com/pg-sharding/spqr/router/route"
@@ -125,7 +125,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 					&pgproto3.DataRow{Values: [][]byte{[]byte("row1")}},
 					&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
 					&pgproto3.ReadyForQuery{
-						TxStatus: byte(conn.TXIDLE),
+						TxStatus: byte(txstatus.TXIDLE),
 					},
 				} {
 					if err := cl.Send(msg); err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type Pool interface {
@@ -181,7 +182,7 @@ func checkRw(sh Shard) (bool, error) {
 			}
 
 		case *pgproto3.ReadyForQuery:
-			if conn.TXStatus(qt.TxStatus) != conn.TXIDLE {
+			if txstatus.TXStatus(qt.TxStatus) != txstatus.TXIDLE {
 				spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p got unsync connection while calculating rw %v", sh, qt.TxStatus)
 				return false, fmt.Errorf("connection unsync while acquirind it")
 			}

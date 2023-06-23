@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 )
@@ -47,10 +48,11 @@ type RouterClient interface {
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error)
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error)
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
+	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
 
 	CancelMsg() *pgproto3.CancelRequest
 
@@ -312,6 +314,21 @@ func (cl *PsqlClient) Reply(msg string) error {
 	return nil
 }
 
+func (cl *PsqlClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.CommandComplete{CommandTag: []byte(commandTag)},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(st),
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cl *PsqlClient) ReplyParseComplete() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ParseComplete{},
@@ -353,6 +370,25 @@ func (cl *PsqlClient) ReplyDebugNotice(msg string) error {
 
 func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...interface{}) error {
 	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...))
+}
+
+func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.ErrorResponse{
+			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
+			Severity: "WARNING",
+		},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error {
+	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
 }
 
 func (cl *PsqlClient) ID() string {
@@ -572,7 +608,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -699,19 +735,19 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (conn.TXStatus, bool, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process query %T", cl, query)
 	_ = cl.ReplyDebugNoticef("executing your query %v", query)
 
 	if cl.server == nil {
-		return conn.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
+		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
 	}
 	if err := cl.server.Send(query); err != nil {
 		return 0, false, err
 	}
 
 	if !waitForResp {
-		return conn.TXCONT, true, nil
+		return txstatus.TXCONT, true, nil
 	}
 
 	ok := true
@@ -751,15 +787,15 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 					}
 				}
 			}(); err != nil {
-				return conn.TXERR, false, err
+				return txstatus.TXERR, false, err
 			}
 		case *pgproto3.ReadyForQuery:
-			return conn.TXStatus(v.TxStatus), ok, nil
+			return txstatus.TXStatus(v.TxStatus), ok, nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return conn.TXERR, false, err
+					return txstatus.TXERR, false, err
 				}
 			}
 			ok = false
@@ -768,7 +804,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return conn.TXERR, false, err
+					return txstatus.TXERR, false, err
 				}
 			}
 		}
@@ -863,7 +899,7 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 			Severity: "ERROR",
 		},
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -877,7 +913,7 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 func (cl *PsqlClient) ReplyRFQ() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(conn.TXIDLE),
+			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {

@@ -14,15 +14,6 @@ const CANCELREQ = 80877102
 const SSLREQ = 80877103
 const GSSREQ = 80877104
 
-type TXStatus byte
-
-const (
-	TXIDLE = TXStatus(73)
-	TXERR  = TXStatus(69)
-	TXACT  = TXStatus(84)
-	TXCONT = TXStatus(1)
-)
-
 type InstanceStatus string
 
 const NotInitialized = InstanceStatus("NOT_INITIALIZED")
