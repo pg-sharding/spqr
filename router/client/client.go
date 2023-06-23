@@ -76,7 +76,8 @@ type PsqlClient struct {
 	cancel_pid uint32
 	cancel_key uint32
 
-	txCnt int
+	txCnt         int
+	ReplyClientId bool
 
 	rule *config.FrontendRule
 	conn net.Conn
@@ -893,9 +894,15 @@ func (cl *PsqlClient) Params() map[string]string {
 }
 
 func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
+	var clerrmsg string
+	if cl.ReplyClientId {
+		clerrmsg = fmt.Sprintf("client %p: error %v", cl, errmsg)
+	} else {
+		clerrmsg = errmsg
+	}
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
+			Message:  clerrmsg,
 			Severity: "ERROR",
 		},
 		&pgproto3.ReadyForQuery{
