@@ -183,7 +183,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 			} else {
 				go func() {
 					if err := r.serv(conn); err != nil {
-						spqrlog.Logger.PrintError(err)
+						spqrlog.Logger.Printf(spqrlog.ERROR, "error serving client: %v", err)
 					}
 				}()
 			}

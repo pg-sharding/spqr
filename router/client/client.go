@@ -423,7 +423,19 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got protoc version %d for client %p", protoVer, cl)
+
 		if protoVer == conn.SSLREQ && tlsconfig == nil {
+			_, err := cl.conn.Write([]byte{'N'})
+			if err != nil {
+				return err
+			}
+			// proceed next iter, for protocol version number or GSSAPI interaction
+			continue
+		}
+
+		if protoVer == conn.GSSREQ {
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
 				return err
@@ -476,6 +488,8 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			}
 
 			return nil
+		case conn.GSSREQ:
+			/* TODO: Support */
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
