@@ -10,8 +10,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
-const SSLREQ = 80877103
 const CANCELREQ = 80877102
+const SSLREQ = 80877103
+const GSSREQ = 80877104
 
 type TXStatus byte
 

@@ -432,6 +432,15 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			continue
 		}
 
+		if protoVer == conn.GSSREQ {
+			_, err := cl.conn.Write([]byte{'N'})
+			if err != nil {
+				return err
+			}
+			// proceed next iter, for protocol version number or GSSAPI interaction
+			continue
+		}
+
 		switch protoVer {
 		case conn.SSLREQ:
 			_, err := cl.conn.Write([]byte{'S'})
@@ -476,6 +485,8 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			}
 
 			return nil
+		case conn.GSSREQ:
+			/* TODO: Support */
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
