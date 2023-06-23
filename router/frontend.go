@@ -87,7 +87,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
 			rst.Client().ReplyWarningf("there is no transaction in progress")
-			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "ROLLBACK")
 		}
 
 		rst.AddQuery(msg)
