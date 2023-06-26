@@ -268,7 +268,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 			}
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host: %s", total_msg)
+		return nil, fmt.Errorf("failed to get connection to any shard host within %+v: %s", hosts, total_msg)
 	case config.TargetSessionAttrsRO:
 		total_msg := ""
 
@@ -290,7 +290,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find replica: %s", total_msg)
+		return nil, fmt.Errorf("shard %s failed to find replica within %+v: %s", key.Name, hosts, total_msg)
 	case config.TargetSessionAttrsRW:
 		total_msg := ""
 		for _, host := range hosts {
@@ -311,7 +311,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find primary: %s", total_msg)
+		return nil, fmt.Errorf("shard %s failed to find primary within %+v: %s", key.Name, hosts, total_msg)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
