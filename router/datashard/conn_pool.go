@@ -262,56 +262,58 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				total_msg += err.Error()
+				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host within %+v: %s", hosts, total_msg)
+		return nil, fmt.Errorf("failed to get connection to any shard host within %s", total_msg)
 	case config.TargetSessionAttrsRO:
 		total_msg := ""
 
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				total_msg += err.Error()
+				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
-				total_msg += err.Error()
+				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = shard.Close()
 				continue
 			} else if ch {
+				total_msg += fmt.Sprintf("host %s: read-only check fail", host)
 				_ = s.poolRO.Put(shard)
 				continue
 			}
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("shard %s failed to find replica within %+v: %s", key.Name, hosts, total_msg)
+		return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
 	case config.TargetSessionAttrsRW:
 		total_msg := ""
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
-				total_msg += err.Error()
+				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
-				total_msg += err.Error()
+				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = shard.Close()
 				continue
 			} else if !ch {
+				total_msg += fmt.Sprintf("host %s: read-write check fail", host)
 				_ = s.poolRO.Put(shard)
 				continue
 			}
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("shard %s failed to find primary within %+v: %s", key.Name, hosts, total_msg)
+		return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
