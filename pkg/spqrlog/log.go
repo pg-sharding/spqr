@@ -97,7 +97,7 @@ func (el *errorLogger) ClientErrorf(fmt string, clientId string, args ...interfa
 	nArsg := make([]interface{}, 0)
 	nArsg = append(nArsg, clientId)
 	nArsg = append(nArsg, args...)
-	el.logMp[ERROR].Printf("client %s"+fmt, nArsg...)
+	el.logMp[ERROR].Printf("[client %s] "+fmt, nArsg...)
 }
 
 func (el *errorLogger) Errorf(fmt string, args ...interface{}) {
