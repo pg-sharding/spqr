@@ -136,11 +136,8 @@ func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 }
 
 func (rst *RelayStateImpl) Close() error {
-	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != client.NotRouted {
-		_ = rst.Cl.Close()
-		return err
-	}
-	return rst.Cl.Close()
+	defer rst.Cl.Close()
+	return rst.manager.UnRouteCB(rst.Cl, rst.activeShards)
 }
 
 func (rst *RelayStateImpl) TxActive() bool {
@@ -176,13 +173,12 @@ func (rst *RelayStateImpl) Flush() {
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
 
 func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
-	//
+	// if there is no routes configurted, there is nowhere to route to
 	if len(routes) == 0 {
 		return qrouter.MatchShardError
 	}
 
-	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil && err != client.NotRouted {
-		spqrlog.Logger.PrintError(err)
+	if err := rst.manager.UnRouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
 	}
 
@@ -190,13 +186,13 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	for _, shr := range routes {
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
-	//
+	// TDB: hide under setting
 	if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
 		return err
 	}
 
 	if err := rst.Connect(routes); err != nil {
-		spqrlog.Logger.Errorf("client %s encounter %v while initialing server connection", rst.Cl.ID(), err)
+		spqrlog.Logger.Errorf("client %s encounter '%v' while initialing server connection", rst.Cl.ID(), err)
 
 		_ = rst.Reset()
 		return err

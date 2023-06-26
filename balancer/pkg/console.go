@@ -87,7 +87,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		case spqrparser.ShowKeyRangesStr:
 			keyRanges, err := c.console.showKeyRanges()
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to show key ranges: %s", err)
+				spqrlog.Logger.ClientErrorf("failed to show key ranges: %s", cl.ID(), err)
 			}
 
 			return cli.KeyRanges(keyRanges)
@@ -107,7 +107,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		border := string(stmt.Border)
 		err := c.coord.splitKeyRange(&border, split.Krid, stmt.KeyRangeFromID)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to split key range by border %s: %#v", border, err)
+			spqrlog.Logger.ClientErrorf("failed to split key range by border %s: %#v", cl.ID(), border, err)
 		}
 
 		return cli.SplitKeyRange(ctx, split)
@@ -122,7 +122,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		border := stmt.KeyRangeIDR
 		err := c.coord.mergeKeyRanges(&border)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to merge key ranges %s and %s: %#v", stmt.KeyRangeIDL, stmt.KeyRangeIDR, err)
+			spqrlog.Logger.ClientErrorf("failed to merge key ranges %s and %s: %#v", cl.ID(), stmt.KeyRangeIDL, stmt.KeyRangeIDR, err)
 		}
 
 		return cli.MergeKeyRanges(ctx, unite, cl)
@@ -136,12 +136,12 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		shardID, err := strconv.Atoi(stmt.DestShardID)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to detect shard %s: %#v", stmt.DestShardID, err)
+			spqrlog.Logger.ClientErrorf("failed to detect shard %s: %#v", cl.ID(), stmt.DestShardID, err)
 		}
 
 		err = c.coord.moveKeyRange(keyRangeBorders, Shard{id: shardID})
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to move key range %s to shard %v: %#v", stmt.KeyRangeID, stmt.DestShardID, err)
+			spqrlog.Logger.ClientErrorf("failed to move key range %s to shard %v: %#v", cl.ID(), stmt.KeyRangeID, stmt.DestShardID, err)
 		}
 
 		moveKeyRange := &kr.MoveKeyRange{Krid: stmt.KeyRangeID, ShardId: stmt.DestShardID}
@@ -153,7 +153,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		keyRange := KeyRange{}
 		err := c.coord.lockKeyRange(keyRange)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to lock key range %s: %#v", stmt.KeyRangeID, err)
+			spqrlog.Logger.ClientErrorf("failed to lock key range %s: %#v", cl.ID(), stmt.KeyRangeID, err)
 		}
 
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
@@ -163,7 +163,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		keyRange := KeyRange{}
 		err := c.coord.unlockKeyRange(keyRange)
 		if err != nil {
-			spqrlog.Logger.Errorf("failed to unlock key range %s: %#v", stmt.KeyRangeID, err)
+			spqrlog.Logger.ClientErrorf("failed to unlock key range %s: %#v", cl.ID(), stmt.KeyRangeID, err)
 		}
 
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)

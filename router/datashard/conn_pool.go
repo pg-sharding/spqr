@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -13,6 +14,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
+
+const defaultInstanceConnectionLimit = 50
 
 type Pool interface {
 	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
@@ -24,6 +27,8 @@ type Pool interface {
 type cPool struct {
 	mu   sync.Mutex
 	pool map[string][]Shard
+
+	queues map[string]chan struct{}
 
 	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
 }
@@ -60,18 +65,61 @@ func (c *cPool) List() []Shard {
 }
 
 func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
-	c.mu.Lock()
+	connLimit := defaultInstanceConnectionLimit
+	if rule.ConnectionLimit != 0 {
+		connLimit = rule.ConnectionLimit
+	}
+
+	/* create channels for host, if not yet */
+	{
+		c.mu.Lock()
+
+		if _, ok := c.queues[host]; !ok {
+			c.queues[host] = make(chan struct{})
+			for tok := 0; tok < connLimit; tok++ {
+				c.queues[host] <- struct{}{}
+			}
+		}
+
+		c.mu.Unlock()
+	}
+
+	if err := func() error {
+		for rep := 0; rep < 10; rep++ {
+			select {
+			case <-time.After(50 * time.Millisecond):
+				spqrlog.Logger.ClientErrorf("still waiting for backend connection to host %s", clid, host)
+			case <-c.queues[host]:
+				return nil
+			}
+		}
+
+		return fmt.Errorf("failed to get connection to host %s due to too much concurrent conections", host)
+	}(); err != nil {
+		return nil, err
+	}
+
+	/* acquired tok */
+	defer func() {
+		c.queues[host] <- struct{}{}
+	}()
 
 	var sh Shard
 
-	if shds, ok := c.pool[host]; ok && len(shds) > 0 {
-		sh, shds = shds[0], shds[1:]
-		c.pool[host] = shds
+	/* reuse cached connection, if any */
+	{
+		c.mu.Lock()
+
+		if shds, ok := c.pool[host]; ok && len(shds) > 0 {
+			sh, shds = shds[0], shds[1:]
+			c.pool[host] = shds
+			c.mu.Unlock()
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
+			return sh, nil
+		}
+
 		c.mu.Unlock()
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
-		return sh, nil
 	}
-	c.mu.Unlock()
 
 	// do not hold lock on poolRW while allocate new connection
 	var err error

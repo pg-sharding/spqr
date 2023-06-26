@@ -498,7 +498,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			case *pgproto3.StartupMessage:
 				sm = msg
 			default:
-				return fmt.Errorf("got unexpected message type %T", frsm)
+				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
 
 			if err != nil {
