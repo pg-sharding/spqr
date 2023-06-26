@@ -93,6 +93,13 @@ func (el *errorLogger) Fatalf(fmt string, args ...interface{}) {
 	el.logMp[FATAL].Fatalf(fmt, args...)
 }
 
+func (el *errorLogger) ClientErrorf(fmt string, clientId string, args ...interface{}) {
+	nArsg := make([]interface{}, 0)
+	nArsg = append(nArsg, clientId)
+	nArsg = append(nArsg, args...)
+	el.logMp[ERROR].Printf("client %s"+fmt, nArsg...)
+}
+
 func (el *errorLogger) Errorf(fmt string, args ...interface{}) {
 	el.logMp[ERROR].Printf(fmt, args...)
 }

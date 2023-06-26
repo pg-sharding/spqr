@@ -419,7 +419,8 @@ func (cl *PsqlClient) Server() server.Server {
 
 func (cl *PsqlClient) Unroute() error {
 	if cl.server == nil {
-		return NotRouted
+		/* TBD: raise error here sometimes? */
+		return nil
 	}
 	cl.server = nil
 	return nil
@@ -498,7 +499,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			case *pgproto3.StartupMessage:
 				sm = msg
 			default:
-				return fmt.Errorf("got unexpected message type %T", frsm)
+				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
 
 			if err != nil {
@@ -583,7 +584,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "client connection for %v %v accepted\n", cl.Usr(), cl.DB())
+	spqrlog.Logger.Printf(spqrlog.LOG, "client %s connection for %v %v accepted\n", cl.ID(), cl.Usr(), cl.DB())
 
 	ps, err := rt.Params()
 	if err != nil {
@@ -934,7 +935,7 @@ func (cl *PsqlClient) ReplyRFQ() error {
 func (cl *PsqlClient) Shutdown() error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message: "worldmock is shutdown, your connection closed",
+			Message: "backend is shutdown, your connection closed",
 		},
 		&pgproto3.ReadyForQuery{},
 	} {

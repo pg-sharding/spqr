@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -13,6 +14,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
+
+const defaultInstanceConnectionLimit = 50
 
 type Pool interface {
 	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
@@ -25,6 +28,8 @@ type cPool struct {
 	mu   sync.Mutex
 	pool map[string][]Shard
 
+	queues map[string]chan struct{}
+
 	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
 }
 
@@ -33,6 +38,7 @@ func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *con
 		connectionAllocateFn: connectionAllocFn,
 		mu:                   sync.Mutex{},
 		pool:                 map[string][]Shard{},
+		queues:               map[string]chan struct{}{},
 	}
 }
 
@@ -60,18 +66,58 @@ func (c *cPool) List() []Shard {
 }
 
 func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
-	c.mu.Lock()
+	connLimit := defaultInstanceConnectionLimit
+	if rule.ConnectionLimit != 0 {
+		connLimit = rule.ConnectionLimit
+	}
+
+	/* create channels for host, if not yet */
+	{
+		c.mu.Lock()
+
+		if _, ok := c.queues[host]; !ok {
+			c.queues[host] = make(chan struct{}, connLimit)
+			for tok := 0; tok < connLimit; tok++ {
+				c.queues[host] <- struct{}{}
+			}
+		}
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "initialized %p pool queue with %d tokens", c, connLimit)
+
+		c.mu.Unlock()
+	}
+
+	if err := func() error {
+		for rep := 0; rep < 10; rep++ {
+			select {
+			case <-time.After(50 * time.Millisecond):
+				spqrlog.Logger.ClientErrorf("still waiting for backend connection to host %s", clid, host)
+			case <-c.queues[host]:
+				return nil
+			}
+		}
+
+		return fmt.Errorf("failed to get connection to host %s due to too much concurrent conections", host)
+	}(); err != nil {
+		return nil, err
+	}
 
 	var sh Shard
 
-	if shds, ok := c.pool[host]; ok && len(shds) > 0 {
-		sh, shds = shds[0], shds[1:]
-		c.pool[host] = shds
+	/* reuse cached connection, if any */
+	{
+		c.mu.Lock()
+
+		if shds, ok := c.pool[host]; ok && len(shds) > 0 {
+			sh, shds = shds[0], shds[1:]
+			c.pool[host] = shds
+			c.mu.Unlock()
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
+			return sh, nil
+		}
+
 		c.mu.Unlock()
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
-		return sh, nil
 	}
-	c.mu.Unlock()
 
 	// do not hold lock on poolRW while allocate new connection
 	var err error
@@ -85,6 +131,12 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 func (c *cPool) Put(sh Shard) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	/* acquired tok, release it */
+	defer func() {
+		c.queues[sh.Instance().Hostname()] <- struct{}{}
+	}()
+
 	c.pool[sh.Instance().Hostname()] = append(c.pool[sh.Instance().Hostname()], sh)
 	return nil
 }
@@ -194,7 +246,7 @@ func checkRw(sh Shard) (bool, error) {
 }
 
 func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance connection to shard %s with tsa: %s", s, key.Name, TargetSessionAttrs)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
 
 	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
 	copy(hosts, s.shardMapping[key.Name].Hosts)
@@ -206,23 +258,29 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
+		total_msg := ""
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host")
+		return nil, fmt.Errorf("failed to get connection to any shard host: %s", total_msg)
 	case config.TargetSessionAttrsRO:
+		total_msg := ""
+
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
+				total_msg += err.Error()
 				_ = shard.Close()
 				continue
 			} else if ch {
@@ -232,15 +290,18 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find replica")
+		return nil, fmt.Errorf("failed to find replica: %s", total_msg)
 	case config.TargetSessionAttrsRW:
+		total_msg := ""
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
+				total_msg += err.Error()
 				_ = shard.Close()
 				continue
 			} else if !ch {
@@ -250,7 +311,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find primary")
+		return nil, fmt.Errorf("failed to find primary: %s", total_msg)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
