@@ -353,7 +353,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				// ok
 			default:
 				// fix all reply err to client to be here
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p iter done with error: %v", rst.Client(), err)
+				spqrlog.Logger.Printf(spqrlog.ERROR, "client %p iter done with error: %v", rst.Client(), err)
 				if rst.TxStatus() != txstatus.TXIDLE {
 					return rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client sync lost, reset connection"))
 				}
