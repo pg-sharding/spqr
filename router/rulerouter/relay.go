@@ -69,6 +69,7 @@ type RelayStateImpl struct {
 	Qr      qrouter.QueryRouter
 	qp      parser.QParser
 	stmts   *pgquery.ParseResult
+	plainQ  string
 	Cl      client.RouterClient
 	manager PoolMgr
 
@@ -216,7 +217,7 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.stmts)
 	if err != nil {
-		return err
+		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
@@ -506,6 +507,7 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
 	state, comm, err := rst.qp.Parse(query)
 	rst.stmts, _ = rst.qp.Stmt()
+	rst.plainQ = query
 	return state, comm, err
 }
 
