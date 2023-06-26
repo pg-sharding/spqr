@@ -91,7 +91,7 @@ func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "%p acquire new connection to %v with tls %v", instance, host, tlsconfig != nil)
+	spqrlog.Logger.Printf(spqrlog.LOG, "instance acquire new connection to %v with tls %v", host, tlsconfig != nil)
 
 	instance.frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(instance.conn), instance.conn)
 	return instance, nil

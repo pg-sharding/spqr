@@ -56,9 +56,10 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 				return nil
 			}
 			return &config.BackendRule{
-				Usr:      key.Usr(),
-				DB:       key.DB(),
-				AuthRule: dbe.AuthRule,
+				Usr:             key.Usr(),
+				DB:              key.DB(),
+				AuthRule:        dbe.AuthRule,
+				ConnectionLimit: dbe.ConnectionLimit,
 			}
 		},
 	}
@@ -133,9 +134,10 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				return nil
 			}
 			return &config.BackendRule{
-				Usr:      key.Usr(),
-				DB:       key.DB(),
-				AuthRule: dbe.AuthRule,
+				Usr:             key.Usr(),
+				DB:              key.DB(),
+				AuthRule:        dbe.AuthRule,
+				ConnectionLimit: dbe.ConnectionLimit,
 			}
 		},
 		underlyingEntityName: "backend rules",

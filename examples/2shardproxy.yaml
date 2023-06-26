@@ -34,9 +34,11 @@ frontend_rules:
 backend_rules:
   - usr: user1
     db: db1
+    connection_limit: 20
     pool_discard: false
     pool_rollback: true
   - pool_default: true
+    connection_limit: 2
     pool_discard: false
     pool_rollback: true
 

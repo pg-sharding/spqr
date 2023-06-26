@@ -38,6 +38,7 @@ func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *con
 		connectionAllocateFn: connectionAllocFn,
 		mu:                   sync.Mutex{},
 		pool:                 map[string][]Shard{},
+		queues:               map[string]chan struct{}{},
 	}
 }
 
@@ -75,11 +76,13 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 		c.mu.Lock()
 
 		if _, ok := c.queues[host]; !ok {
-			c.queues[host] = make(chan struct{})
+			c.queues[host] = make(chan struct{}, connLimit)
 			for tok := 0; tok < connLimit; tok++ {
 				c.queues[host] <- struct{}{}
 			}
 		}
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG5, "initialized %p pool queue with %d tokens", c, connLimit)
 
 		c.mu.Unlock()
 	}
@@ -98,11 +101,6 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 	}(); err != nil {
 		return nil, err
 	}
-
-	/* acquired tok */
-	defer func() {
-		c.queues[host] <- struct{}{}
-	}()
 
 	var sh Shard
 
@@ -133,6 +131,12 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 func (c *cPool) Put(sh Shard) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	/* acquired tok, release it */
+	defer func() {
+		c.queues[sh.Instance().Hostname()] <- struct{}{}
+	}()
+
 	c.pool[sh.Instance().Hostname()] = append(c.pool[sh.Instance().Hostname()], sh)
 	return nil
 }
@@ -242,7 +246,7 @@ func checkRw(sh Shard) (bool, error) {
 }
 
 func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "instance pool %p: acquiring new instance connection to shard %s with tsa: %s", s, key.Name, TargetSessionAttrs)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
 
 	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
 	copy(hosts, s.shardMapping[key.Name].Hosts)
@@ -254,23 +258,29 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
+		total_msg := ""
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host")
+		return nil, fmt.Errorf("failed to get connection to any shard host: %s", total_msg)
 	case config.TargetSessionAttrsRO:
+		total_msg := ""
+
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
+				total_msg += err.Error()
 				_ = shard.Close()
 				continue
 			} else if ch {
@@ -280,15 +290,18 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find replica")
+		return nil, fmt.Errorf("failed to find replica: %s", total_msg)
 	case config.TargetSessionAttrsRW:
+		total_msg := ""
 		for _, host := range hosts {
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
+				total_msg += err.Error()
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
+				total_msg += err.Error()
 				_ = shard.Close()
 				continue
 			} else if !ch {
@@ -298,7 +311,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to find primary")
+		return nil, fmt.Errorf("failed to find primary: %s", total_msg)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
