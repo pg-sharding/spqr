@@ -148,7 +148,9 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 
 	r.RuleRouter.AddClient(routerClient)
 	defer r.RuleRouter.ReleaseClient(routerClient)
-	defer routerClient.Route().ReleaseClient(routerClient)
+	defer func() {
+		_ = routerClient.Route().ReleaseClient(routerClient)
+	}()
 
 	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config())
 }

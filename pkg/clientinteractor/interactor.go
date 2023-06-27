@@ -65,12 +65,20 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 	}
 }
 
-func (pi *PSQLInteractor) WriteHeader(stmt string) error {
-	return pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{TextOidFD(stmt)}})
+func (pi *PSQLInteractor) WriteHeader(stmts ...string) error {
+	var desc []pgproto3.FieldDescription
+	for _, stmt := range stmts {
+		desc = append(desc, TextOidFD(stmt))
+	}
+	return pi.cl.Send(&pgproto3.RowDescription{Fields: desc})
 }
 
-func (pi *PSQLInteractor) WriteDataRow(msg string) error {
-	return pi.cl.Send(&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}})
+func (pi *PSQLInteractor) WriteDataRow(msgs ...string) error {
+	vals := make([][]byte, 0)
+	for _, msg := range msgs {
+		vals = append(vals, []byte(msg))
+	}
+	return pi.cl.Send(&pgproto3.DataRow{Values: vals})
 }
 
 func (pi *PSQLInteractor) Databases(dbs []string) error {
@@ -280,13 +288,13 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 }
 
 func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) error {
-	if err := pi.WriteHeader("show clients"); err != nil {
+	if err := pi.WriteHeader("client id", "user", "dbname"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	for _, cl := range clients {
-		if err := pi.WriteDataRow(fmt.Sprintf("client id %s", cl.ID())); err != nil {
+		if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB()); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}

@@ -214,7 +214,7 @@ show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules, ClientsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

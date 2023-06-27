@@ -737,7 +737,7 @@ yydefault:
 //line yacc/console/sql.y:215
 		{
 			switch v := string(yyDollar[1].str); v {
-			case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules:
+			case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules, ClientsStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr
