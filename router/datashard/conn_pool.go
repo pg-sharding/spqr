@@ -211,7 +211,7 @@ var _ DBPool = &InstancePoolImpl{}
 
 func checkRw(sh Shard) (bool, error) {
 	if err := sh.Send(&pgproto3.Query{
-		String: "select pg_is_in_recovery()",
+		String: "SHOW transaction_read_only",
 	}); err != nil {
 		spqrlog.Logger.Errorf("shard %s encounter error while sending read-write check %v", sh.Name(), err)
 		return false, err
@@ -229,7 +229,7 @@ func checkRw(sh Shard) (bool, error) {
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p checking read-write: result datarow %+v", sh, qt)
-			if len(qt.Values) == 1 && len(qt.Values[0]) == 1 && qt.Values[0][0] == 'f' {
+			if len(qt.Values) == 1 && len(qt.Values[0]) == 3 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'f' && qt.Values[0][2] == 'f' {
 				res = true
 			}
 
@@ -276,7 +276,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
+				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
@@ -284,7 +284,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 				_ = shard.Close()
 				continue
 			} else if ch {
-				total_msg += fmt.Sprintf("host %s: read-only check fail", host)
+				total_msg += fmt.Sprintf("host %s: read-only check fail ", host)
 				_ = s.poolRO.Put(shard)
 				continue
 			}
@@ -298,7 +298,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 			shard, err := s.poolRO.Connection(clid, key, host, rule)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
+				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
 			if ch, err := checkRw(shard); err != nil {
@@ -306,7 +306,7 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 				_ = shard.Close()
 				continue
 			} else if !ch {
-				total_msg += fmt.Sprintf("host %s: read-write check fail", host)
+				total_msg += fmt.Sprintf("host %s: read-write check fail ", host)
 				_ = s.poolRO.Put(shard)
 				continue
 			}

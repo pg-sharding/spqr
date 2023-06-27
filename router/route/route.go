@@ -88,7 +88,6 @@ func (r *Route) Params() (datashard.ParameterSet, error) {
 	r.params = serv.Params()
 
 	if err := r.servPool.Put(anyK, serv); err != nil {
-		err := r.servPool.Put(anyK, serv)
 		return nil, err
 	}
 

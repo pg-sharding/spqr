@@ -70,7 +70,14 @@ func (m *MultiShardServer) AddDataShard(clid string, shkey kr.ShardKey, tsa stri
 func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error {
 	for _, activeShard := range m.activeShards {
 		if activeShard.Name() == sh.Name {
-			return activeShard.Cleanup(rule)
+			err := activeShard.Cleanup(rule)
+
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &activeShard, activeShard.Instance().Hostname())
+			if err := m.pool.Put(sh, activeShard); err != nil {
+				return err
+			}
+
+			return err
 		}
 	}
 
