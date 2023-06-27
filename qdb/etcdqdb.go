@@ -207,7 +207,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "etcdqdb: get key range %+v", id)
 	ret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "get key range responce %v %v", ret, err)
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "get key range response %v %v", ret, err)
 	return ret, err
 }
 

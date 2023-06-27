@@ -287,7 +287,7 @@ func (m *mock) mergeKeyRanges(border *string) error {
 		return fmt.Errorf("something goes wrong...")
 	}
 	if m.keyRangeToShard[leftRng] != m.keyRangeToShard[rightRng] {
-		// it's ok, because we try actionStageMerge by every transfered border
+		// it's ok, because we try actionStageMerge by every transferred border
 		return nil
 	}
 	newRng := KeyRange{left: leftRng.left, right: rightRng.right}

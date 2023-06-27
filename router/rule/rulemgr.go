@@ -9,8 +9,7 @@ import (
 )
 
 type MatchMgr[T any] interface {
-	MatchKey(key route.Key) (*T, error)
-	UnderlyingEntityName() string
+	MatchKey(key route.Key, underlyingEntityName string) (*T, error)
 }
 
 type RulesMgr interface {
@@ -69,26 +68,19 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 }
 
 func (F *RulesMgrImpl) MatchKeyFrontend(key route.Key) (*config.FrontendRule, error) {
-	return F.fe.MatchKey(key)
+	return F.fe.MatchKey(key, "frontend rules")
 }
 
 func (F *RulesMgrImpl) MatchKeyBackend(key route.Key) (*config.BackendRule, error) {
-	return F.be.MatchKey(key)
+	return F.be.MatchKey(key, "backend rules")
 }
 
 type MgrImpl[T any] struct {
 	rule map[route.Key]*T
-
 	defaultRuleAllocator func(key route.Key) *T
-
-	underlyingEntityName string
 }
 
-func (r *MgrImpl[T]) UnderlyingEntityName() string {
-	return r.underlyingEntityName
-}
-
-func (m *MgrImpl[T]) MatchKey(key route.Key) (*T, error) {
+func (m *MgrImpl[T]) MatchKey(key route.Key, underlyingEntityName string) (*T, error) {
 	matchRule, ok := m.rule[key]
 	if ok {
 		return matchRule, nil
@@ -102,8 +94,8 @@ func (m *MgrImpl[T]) MatchKey(key route.Key) (*T, error) {
 		return matchRule, nil
 	}
 
-	return nil, fmt.Errorf("failed to route frontend for client:"+
-		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), m.UnderlyingEntityName())
+	return nil, fmt.Errorf("failed to route frontend for client:" +
+		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), underlyingEntityName)
 }
 
 func NewMgr(frmp map[route.Key]*config.FrontendRule,
@@ -124,7 +116,6 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				PoolPreparedStatement: dfr.PoolPreparedStatement,
 			}
 		},
-		underlyingEntityName: "frontend rules",
 	}
 
 	be := &MgrImpl[config.BackendRule]{
@@ -140,7 +131,6 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				ConnectionLimit: dbe.ConnectionLimit,
 			}
 		},
-		underlyingEntityName: "backend rules",
 	}
 
 	ret := &RulesMgrImpl{

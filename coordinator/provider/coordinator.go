@@ -238,7 +238,7 @@ func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.Sh
 		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
 			Id: ids,
 		})
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules responce %v", dropResp)
+		spqrlog.Logger.Printf(spqrlog.DEBUG4, "drop sharding rules response %v", dropResp)
 
 		return err
 	}); err != nil {

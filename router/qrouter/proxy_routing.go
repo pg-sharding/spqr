@@ -397,7 +397,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 var ParseError = fmt.Errorf("parsing stmt error")
 
-// CheckTableIsRoutable Given table create statment, check if it is routable with some sharding rule
+// CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.Node_CreateStmt) error {
 
 	var entries []string
