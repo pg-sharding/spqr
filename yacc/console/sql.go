@@ -737,10 +737,10 @@ yydefault:
 //line yacc/console/sql.y:215
 		{
 			switch v := string(yyDollar[1].str); v {
-			case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingRules:
+			case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules, ClientsStr:
 				yyVAL.str = v
 			default:
-				yyVAL.str = ShowUnsupportedStr
+				yyVAL.str = UnsupportedStr
 			}
 		}
 	case 28:
@@ -748,7 +748,7 @@ yydefault:
 //line yacc/console/sql.y:226
 		{
 			switch v := string(yyDollar[1].str); v {
-			case KillClientsStr:
+			case ClientsStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = "unsupp"

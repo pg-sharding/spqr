@@ -40,11 +40,10 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	defer r.mu.Unlock()
 
 	for _, rt := range r.pool {
-		go func(rt *route.Route) {
-			if err := cb(rt); err != nil {
-				spqrlog.Logger.Printf(spqrlog.INFO, "error while notifying route %v", err)
-			}
-		}(rt)
+		if err := cb(rt); err != nil {
+			spqrlog.Logger.Printf(spqrlog.INFO, "error while notifying route %v", err)
+			return err
+		}
 	}
 
 	return nil
