@@ -78,12 +78,10 @@ type RelayStateImpl struct {
 }
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
-	//TODO implement me
 	rst.txStatus = status
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
-	//TODO implement me
 	return rst.Cl
 }
 
@@ -219,7 +217,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	switch v := routingState.(type) {
 	case qrouter.MultiMatchState:
 		if rst.TxActive() {
-			return fmt.Errorf("ddl is forbidden inside multi-shard transation")
+			return fmt.Errorf("ddl is forbidden inside multi-shard transition")
 		}
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case qrouter.ShardMatchState:
@@ -423,7 +421,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		return nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "cleint %p: complete relay iter with TX %s", rst.Client(), func(b txstatus.TXStatus) string {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: complete relay iter with TX %s", rst.Client(), func(b txstatus.TXStatus) string {
 		switch b {
 		case txstatus.TXIDLE:
 			return "idle"
@@ -573,7 +571,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 }
 
 func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "relay step: proccess message for client %p", &rst.Cl)
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "relay step: process message for client %p", &rst.Cl)
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}

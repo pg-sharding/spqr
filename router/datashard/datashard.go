@@ -115,6 +115,11 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	return sh.dedicated.Receive()
 }
 
+
+func (sh *Conn) String() string {
+	return sh.name
+}
+
 func (sh *Conn) Name() string {
 	return sh.name
 }
