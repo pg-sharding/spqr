@@ -279,9 +279,23 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "listing sharding rules")
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) error {
+	if err := pi.WriteHeader("show clients"); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
 
+	for _, cl := range clients {
+		if err := pi.WriteDataRow(fmt.Sprintf("client id %s", cl.ID())); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(len(clients))
+}
+
+func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Sharding Rule ID"),

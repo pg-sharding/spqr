@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -104,7 +105,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
@@ -153,16 +154,16 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, cli *c
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Show:
-		return ProcessShow(ctx, stmt, mgr, cli)
+		return ProcessShow(ctx, stmt, mgr, pool, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
 }
 
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 	switch stmt.Cmd {
-	case spqrparser.ShowShardsStr:
+	case spqrparser.ShardsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
 			return err
@@ -174,26 +175,35 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, cli
 			})
 		}
 		return cli.Shards(ctx, resp)
-	case spqrparser.ShowKeyRangesStr:
+	case spqrparser.KeyRangesStr:
 		ranges, err := mngr.ListKeyRanges(ctx)
 		if err != nil {
 			return err
 		}
 		return cli.KeyRanges(ranges)
-	case spqrparser.ShowRoutersStr:
+	case spqrparser.RoutersStr:
 		resp, err := mngr.ListRouters(ctx)
 		if err != nil {
 			return err
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShowShardingRules:
+	case spqrparser.ShardingRules:
 		resp, err := mngr.ListShardingRules(ctx)
 		if err != nil {
 			return err
 		}
 
 		return cli.ShardingRules(ctx, resp)
+	case spqrparser.ClientsStr:
+
+		var resp []client.Client
+		pool.ClientPoolForeach(func(cl client.Client) error {
+			resp = append(resp, cl)
+			return nil
+		})
+
+		return cli.Clients(ctx, resp)
 	default:
 		return unknownCoordinatorCommand
 	}

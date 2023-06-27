@@ -69,7 +69,7 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 	return nil
 }
 
-func NewClientPool() *PoolImpl {
+func NewClientPool() Pool {
 	return &PoolImpl{
 		pool: map[string]Client{},
 		mu:   sync.Mutex{},

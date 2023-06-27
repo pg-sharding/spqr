@@ -21,6 +21,8 @@ import (
 )
 
 type RuleRouter interface {
+	client.Pool
+
 	Shutdown() error
 	Reload(configPath string) error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
@@ -201,11 +203,12 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		spqrlog.Logger.PrintError(err)
 		return nil, err
 	}
-	_ = rt.AddClient(cl)
 	if err := cl.AssignRoute(rt); err != nil {
 		return nil, err
 	}
-
+	if err := rt.AddClient(cl); err != nil {
+		return nil, err
+	}
 	return cl, nil
 }
 
@@ -292,6 +295,20 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 		return nil
 	}
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
+}
+
+func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.Client) error) error {
+	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
+		return route.NofityClients(cb)
+	})
+}
+
+func (rr *RuleRouterImpl) Pop(cl client.Client) error {
+	return nil
+}
+
+func (rr *RuleRouterImpl) Put(cl client.Client) error {
+	return nil
 }
 
 var _ RuleRouter = &RuleRouterImpl{}

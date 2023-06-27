@@ -214,10 +214,10 @@ show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ShowDatabasesStr, ShowRoutersStr, ShowPoolsStr, ShowShardsStr, ShowKeyRangesStr, ShowShardingRules:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules:
 			$$ = v
 		default:
-			$$ = ShowUnsupportedStr
+			$$ = UnsupportedStr
 		}
 	}
 
@@ -225,7 +225,7 @@ kill_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case KillClientsStr:
+		case ClientsStr:
 			$$ = v
 		default:
 			$$ = "unsupp"

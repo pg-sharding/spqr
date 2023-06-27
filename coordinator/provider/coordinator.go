@@ -672,7 +672,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 
 			spqrlog.Logger.Printf(spqrlog.DEBUG5, "parsed %v %T", v.String, tstmt)
 
-			if err := meta.Proc(ctx, tstmt, qc, cli); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, nil, cli); err != nil {
 				spqrlog.Logger.PrintError(err)
 				_ = cli.ReportError(err)
 			} else {
