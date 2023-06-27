@@ -198,10 +198,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, poo
 	case spqrparser.ClientsStr:
 
 		var resp []client.Client
-		pool.ClientPoolForeach(func(cl client.Client) error {
+		if err := pool.ClientPoolForeach(func(cl client.Client) error {
 			resp = append(resp, cl)
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
 
 		return cli.Clients(ctx, resp)
 	default:
