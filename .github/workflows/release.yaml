@@ -32,7 +32,10 @@ jobs:
         run: |
           export TAG=${GITHUB_REF##*/}
           VERSION=${TAG} make package
-          ls -la ..
-          gh release create ${TAG} --title "Release ${TAG}" ../*.tar.gz
+          echo $(echo ../* | grep -v '^../spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^\.\./spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^..\/spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^\.\.\/spqr$' | tr '\n' ' ')
+          gh release create ${TAG} --title "Release ${TAG}" $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
