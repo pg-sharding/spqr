@@ -3,35 +3,17 @@ package datashard
 import (
 	"crypto/tls"
 	"fmt"
-	"sync"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+
+	"github.com/pg-sharding/spqr/pkg/auth"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
-
-type Shard interface {
-	Cfg() *config.Shard
-
-	Name() string
-	SHKey() kr.ShardKey
-
-	Send(query pgproto3.FrontendMessage) error
-	Receive() (pgproto3.BackendMessage, error)
-
-	AddTLSConf(cfg *tls.Config) error
-	Cleanup(rule *config.FrontendRule) error
-
-	ConstructSM() *pgproto3.StartupMessage
-	Instance() conn.DBInstance
-
-	Cancel() error
-
-	Params() ParameterSet
-	Close() error
-}
 
 func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 	sm := &pgproto3.StartupMessage{
@@ -46,40 +28,31 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 	return sm
 }
 
-type ParameterStatus struct {
-	Name  string
-	Value string
-}
-
-type ParameterSet map[string]string
-
-func (ps ParameterSet) Save(status ParameterStatus) bool {
-	if _, ok := ps[status.Name]; ok {
-		return false
-	}
-	ps[status.Name] = status.Value
-	return true
-}
-
 type Conn struct {
 	beRule             *config.BackendRule
 	cfg                *config.Shard
 	name               string
-	mu                 sync.Mutex
 	dedicated          conn.DBInstance
-	ps                 ParameterSet
+	ps                 shard.ParameterSet
 	backend_key_pid    uint32
 	backend_key_secret uint32
+
+	sync_in  int64
+	sync_out int64
+
+	status txstatus.TXStatus
 }
 
 func (sh *Conn) Close() error {
-	sh.mu.Lock()
-	defer sh.mu.Unlock()
 	return sh.dedicated.Close()
 }
 
 func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
+}
+
+func (sh *Conn) Sync() int64 {
+	return sh.sync_out - sh.sync_in
 }
 
 func (sh *Conn) Cancel() error {
@@ -108,13 +81,23 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 }
 
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
+	/* handle copy properly */
+	sh.sync_in++
 	return sh.dedicated.Send(query)
 }
 
 func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
-	return sh.dedicated.Receive()
+	msg, err := sh.dedicated.Receive()
+	if err != nil {
+		return nil, err
+	}
+	switch v := msg.(type) {
+	case *pgproto3.ReadyForQuery:
+		sh.sync_in++
+		sh.status = txstatus.TXStatus(v.TxStatus)
+	}
+	return msg, nil
 }
-
 
 func (sh *Conn) String() string {
 	return sh.name
@@ -128,7 +111,7 @@ func (sh *Conn) Cfg() *config.Shard {
 	return sh.cfg
 }
 
-var _ Shard = &Conn{}
+var _ shard.Shard = &Conn{}
 
 func (sh *Conn) SHKey() kr.ShardKey {
 	return kr.ShardKey{
@@ -136,16 +119,21 @@ func (sh *Conn) SHKey() kr.ShardKey {
 	}
 }
 
-func (sh *Conn) Params() ParameterSet {
+func (sh *Conn) Params() shard.ParameterSet {
 	return sh.ps
 }
 
-func NewShard(key kr.ShardKey, pgi conn.DBInstance, cfg *config.Shard, beRule *config.BackendRule) (Shard, error) {
+func NewShard(
+	key kr.ShardKey,
+	pgi conn.DBInstance,
+	cfg *config.Shard,
+	beRule *config.BackendRule) (shard.Shard, error) {
+
 	dtSh := &Conn{
 		cfg:    cfg,
 		name:   key.Name,
 		beRule: beRule,
-		ps:     ParameterSet{},
+		ps:     shard.ParameterSet{},
 	}
 
 	dtSh.dedicated = pgi
@@ -176,7 +164,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ReadyForQuery:
 			return nil
 		case pgproto3.AuthenticationResponseMessage:
-			err := conn.AuthBackend(sh.dedicated, sh.beRule, v)
+			err := auth.AuthBackend(sh.dedicated, sh.beRule, v)
 			if err != nil {
 				spqrlog.Logger.Errorf("failed to perform backend auth %v", err)
 				return err
@@ -184,7 +172,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf(v.Message)
 		case *pgproto3.ParameterStatus:
-			if !sh.ps.Save(ParameterStatus{
+			if !sh.ps.Save(shard.ParameterStatus{
 				Name:  v.Name,
 				Value: v.Value,
 			}) {
@@ -206,7 +194,7 @@ func (sh *Conn) fire(q string) error {
 	if err := sh.Send(&pgproto3.Query{
 		String: q,
 	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "error firing request to conn")
+		spqrlog.Logger.Printf(spqrlog.DEBUG2, "error firing request to conn")
 		return err
 	}
 
@@ -214,11 +202,13 @@ func (sh *Conn) fire(q string) error {
 		if msg, err := sh.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "rollback resp %T", msg)
+			spqrlog.Logger.Printf(spqrlog.DEBUG2, "shard %p rollback resp %T", sh, msg)
 
-			switch msg.(type) {
+			switch v := msg.(type) {
 			case *pgproto3.ReadyForQuery:
-				return nil
+				if v.TxStatus == byte(txstatus.TXIDLE) {
+					return nil
+				}
 			}
 		}
 	}
@@ -238,4 +228,12 @@ func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 	}
 
 	return nil
+}
+
+func (sh *Conn) SetTxStatus(tx txstatus.TXStatus) {
+	sh.status = tx
+}
+
+func (sh *Conn) TxStatus() txstatus.TXStatus {
+	return sh.status
 }

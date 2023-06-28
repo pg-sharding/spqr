@@ -8,10 +8,10 @@ import (
 	"github.com/jackc/pgproto3/v2"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/datashard"
 	"github.com/pg-sharding/spqr/router/route"
 )
 
@@ -86,7 +86,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 	}
 
 	r := route.NewRoute(nil, nil, nil)
-	r.SetParams(datashard.ParameterSet{})
+	r.SetParams(shard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return err
 	}

@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	rconn "github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
@@ -231,7 +231,7 @@ func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error
 		return nil, err
 	}
 
-	if err := rconn.AuthFrontend(cl, frRule); err != nil {
+	if err := auth.AuthFrontend(cl, frRule); err != nil {
 		_ = cl.ReplyErrMsg(err.Error())
 		return cl, err
 	}

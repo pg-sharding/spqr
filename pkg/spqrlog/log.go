@@ -89,6 +89,15 @@ func (el *errorLogger) Printf(severity Severity, fmt string, args ...interface{}
 	}
 }
 
+func (el *errorLogger) ClientPrintf(severity Severity, fmt string, clientId string, args ...interface{}) {
+	if defaultLogLevel <= severity {
+		nArsg := make([]interface{}, 0)
+		nArsg = append(nArsg, clientId)
+		nArsg = append(nArsg, args...)
+		el.Printf(severity, fmt, nArsg...)
+	}
+}
+
 func (el *errorLogger) Fatalf(fmt string, args ...interface{}) {
 	el.logMp[FATAL].Fatalf(fmt, args...)
 }

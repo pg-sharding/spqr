@@ -23,7 +23,6 @@ type DBInstance interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	CheckRW() (bool, error)
 	ReqBackendSsl(*tls.Config) error
 
 	Hostname() string
@@ -99,37 +98,6 @@ func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
 
 func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	return pgi.frontend.Send(csm)
-}
-
-func (pgi *PostgreSQLInstance) CheckRW() (bool, error) {
-	msg := &pgproto3.Query{
-		String: "SELECT pg_is_in_recovery()",
-	}
-
-	if err := pgi.frontend.Send(msg); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while checking rw %v", err)
-		return false, err
-	}
-
-	bmsg, err := pgi.frontend.Receive()
-
-	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while checking rw %v", err)
-		return false, err
-	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got reply from %v: %T", pgi.hostname, bmsg)
-
-	switch v := bmsg.(type) {
-	case *pgproto3.DataRow:
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "got datarow %v", v.Values)
-
-		if len(v.Values) == 1 && v.Values[0] != nil && v.Values[0][0] == byte('t') {
-			return true, nil
-		}
-		return false, nil
-	default:
-		return false, fmt.Errorf("unexcepted")
-	}
 }
 
 func (pgi *PostgreSQLInstance) Tls() *tls.Config {

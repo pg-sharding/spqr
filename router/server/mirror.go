@@ -3,14 +3,15 @@ package server
 import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/router/datashard"
+	"github.com/pg-sharding/spqr/pkg/datashard"
+	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
 func NewMultiShardServer(rule *config.BackendRule, pool datashard.DBPool) (Server, error) {
 	ret := &MultiShardServer{
 		rule:         rule,
 		pool:         pool,
-		activeShards: []datashard.Shard{},
+		activeShards: []shard.Shard{},
 	}
 
 	return ret, nil
@@ -36,4 +37,8 @@ func (LoadMirroringServer) Send(query pgproto3.FrontendMessage) error {
 }
 func (LoadMirroringServer) Receive() (pgproto3.BackendMessage, error) {
 	return nil, nil
+}
+
+func (m *LoadMirroringServer) Datashards() []shard.Shard {
+	return []shard.Shard{}
 }
