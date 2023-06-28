@@ -346,7 +346,7 @@ func (s *InstancePoolImpl) Connection(
 
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "discarding unsync connection %p", sh)
+		spqrlog.Logger.Printf(spqrlog.ERROR, "discarding unsync connection %p, sync %d", sh, sh.Sync())
 		return s.poolRO.Discard(sh)
 	}
 	return s.poolRO.Put(sh)

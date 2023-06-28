@@ -93,7 +93,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
-		sh.sync_in++
+		sh.sync_out++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 	}
 	return msg, nil
