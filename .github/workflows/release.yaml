@@ -32,5 +32,7 @@ jobs:
         run: |
           export TAG=${GITHUB_REF##*/}
           VERSION=${TAG} make package
+          ls -la
           gh release create ${TAG} --title "Release ${TAG}" *.tar.gz
-        
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
