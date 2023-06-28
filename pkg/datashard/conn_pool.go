@@ -95,8 +95,8 @@ func (c *cPool) Connection(
 	if err := func() error {
 		for rep := 0; rep < 10; rep++ {
 			select {
-			case <-time.After(50 * time.Millisecond):
-				spqrlog.Logger.ClientErrorf("still waiting for backend connection to host %s", clid, host)
+			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
+				spqrlog.Logger.ClientPrintf(spqrlog.LOG, "still waiting for backend connection to host %s", clid, host)
 			case <-c.queues[host]:
 				return nil
 			}
