@@ -83,6 +83,8 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
 	sh.sync_in++
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p connection send message %+v, sync in %d", sh, query, sh.sync_in)
 	return sh.dedicated.Send(query)
 }
 
@@ -96,6 +98,8 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		sh.sync_out++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 	}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p connection recieved message %+v, sync out %d", sh, msg, sh.sync_out)
 	return msg, nil
 }
 
@@ -130,10 +134,12 @@ func NewShard(
 	beRule *config.BackendRule) (shard.Shard, error) {
 
 	dtSh := &Conn{
-		cfg:    cfg,
-		name:   key.Name,
-		beRule: beRule,
-		ps:     shard.ParameterSet{},
+		cfg:      cfg,
+		name:     key.Name,
+		beRule:   beRule,
+		ps:       shard.ParameterSet{},
+		sync_in:  1, /* startup message */
+		sync_out: 0,
 	}
 
 	dtSh.dedicated = pgi
