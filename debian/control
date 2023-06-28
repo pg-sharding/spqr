@@ -1,0 +1,14 @@
+Source: spqr
+Section: database
+Priority: optional
+Maintainer: Kirill Reshke <reshke@yandex-team.ru>
+Build-Depends: 
+Standards-Version: 3.8.0
+Homepage: https://github.com/pg-sharding/spqr
+
+Package: spqr-combo
+Conflicts: 
+Architecture: any
+Depends: 
+Description: Stateless PostgreSQL Query Router
+ This package will install all SPQR binaries into /usr/bin

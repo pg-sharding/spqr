@@ -84,5 +84,9 @@ regress: build_images
 lint:
 	golangci-lint run --timeout=10m --out-format=colored-line-number
 
+package:
+	sed -i 's/SPQR_VERSION/${VERSION}/g' debian/changelog
+	dpkg-buildpackage -us -uc
+
 
 .PHONY: build gen

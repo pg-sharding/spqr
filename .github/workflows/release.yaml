@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags: ['[0-9]+\.[0-9]+\.[0-9]+']
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.17
+        id: go
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+          if [ -f Gopkg.toml ]; then
+              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+              dep ensure
+          fi
+          sudo apt update && sudo apt install -y debhelper
+
+      - name: build package
+        run: |
+          export TAG=${GITHUB_REF##*/}
+          VERSION=${TAG} make package
+          echo $(echo ../* | grep -v '^../spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^\.\./spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^..\/spqr$' | tr '\n' ' ')
+          echo $(echo ../* | grep -v '^\.\.\/spqr$' | tr '\n' ' ')
+          gh release create ${TAG} --title "Release ${TAG}" $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
