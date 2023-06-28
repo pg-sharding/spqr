@@ -1,4 +1,4 @@
-package conn
+package auth
 
 import (
 	"crypto/md5"
@@ -7,13 +7,14 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
-func AuthBackend(shard DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
+func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "backend shard %p: auth type proc %T\n", shard, msg)
 
 	switch v := msg.(type) {

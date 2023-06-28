@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
 type Pmgr interface {
@@ -54,6 +55,8 @@ type Client interface {
 
 	Shutdown() error
 	Reset() error
+
+	Shards() []shard.Shard
 
 	Reply(msg string) error
 }

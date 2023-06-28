@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/pg-sharding/spqr/qdb/ops"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	router "github.com/pg-sharding/spqr/router"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
-	"github.com/pg-sharding/spqr/router/datashard"
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -636,7 +636,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 	}
 
 	r := route.NewRoute(nil, nil, nil)
-	r.SetParams(datashard.ParameterSet{})
+	r.SetParams(shard.ParameterSet{})
 	if err := cl.Auth(r); err != nil {
 		return nil, err
 	}

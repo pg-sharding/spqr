@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
@@ -18,45 +19,46 @@ import (
 const defaultInstanceConnectionLimit = 50
 
 type Pool interface {
-	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
-	Cut(host string) []Shard
-	Put(host Shard) error
-	List() []Shard
+	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
+	Cut(host string) []shard.Shard
+	Put(host shard.Shard) error
+	Discard(sh shard.Shard) error
+	List() []shard.Shard
 }
 
 type cPool struct {
 	mu   sync.Mutex
-	pool map[string][]Shard
+	pool map[string][]shard.Shard
 
 	queues map[string]chan struct{}
 
-	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)
+	connectionAllocateFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
 }
 
-func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error)) *cPool {
+func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)) *cPool {
 	return &cPool{
 		connectionAllocateFn: connectionAllocFn,
 		mu:                   sync.Mutex{},
-		pool:                 map[string][]Shard{},
+		pool:                 map[string][]shard.Shard{},
 		queues:               map[string]chan struct{}{},
 	}
 }
 
-func (c *cPool) Cut(host string) []Shard {
+func (c *cPool) Cut(host string) []shard.Shard {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	ret := append([]Shard{}, c.pool[host]...)
+	ret := append([]shard.Shard{}, c.pool[host]...)
 	c.pool[host] = nil
 
 	return ret
 }
 
-func (c *cPool) List() []Shard {
+func (c *cPool) List() []shard.Shard {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var ret []Shard
+	var ret []shard.Shard
 
 	for _, llist := range c.pool {
 		ret = append(ret, llist...)
@@ -65,7 +67,10 @@ func (c *cPool) List() []Shard {
 	return ret
 }
 
-func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
+func (c *cPool) Connection(
+	clid string,
+	shardKey kr.ShardKey,
+	host string, rule *config.BackendRule) (shard.Shard, error) {
 	connLimit := defaultInstanceConnectionLimit
 	if rule.ConnectionLimit != 0 {
 		connLimit = rule.ConnectionLimit
@@ -102,7 +107,7 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 		return nil, err
 	}
 
-	var sh Shard
+	var sh shard.Shard
 
 	/* reuse cached connection, if any */
 	{
@@ -128,7 +133,20 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string, rule 
 	return sh, nil
 }
 
-func (c *cPool) Put(sh Shard) error {
+func (c *cPool) Discard(sh shard.Shard) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
+
+	/* acquired tok, release it */
+	defer func() {
+		c.queues[sh.Instance().Hostname()] <- struct{}{}
+	}()
+
+	return sh.Close()
+}
+
+func (c *cPool) Put(sh shard.Shard) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &sh, sh.Instance().Hostname())
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -144,8 +162,8 @@ func (c *cPool) Put(sh Shard) error {
 var _ Pool = &cPool{}
 
 type DBPool interface {
-	Connection(clid string, key kr.ShardKey, rule *config.BackendRule, tsa string) (Shard, error)
-	Put(shkey kr.ShardKey, sh Shard) error
+	Connection(clid string, key kr.ShardKey, rule *config.BackendRule, tsa string) (shard.Shard, error)
+	Put(sh shard.Shard) error
 
 	Check(key kr.ShardKey) bool
 
@@ -153,7 +171,7 @@ type DBPool interface {
 
 	ShardMapping() map[string]*config.Shard
 
-	List() []Shard
+	List() []shard.Shard
 }
 
 type InstancePoolImpl struct {
@@ -203,13 +221,13 @@ func (s *InstancePoolImpl) Check(key kr.ShardKey) bool {
 	//return len(s.poolRW[key]) > 0
 }
 
-func (s *InstancePoolImpl) List() []Shard {
+func (s *InstancePoolImpl) List() []shard.Shard {
 	return append(s.poolRO.List(), s.poolRW.List()...)
 }
 
 var _ DBPool = &InstancePoolImpl{}
 
-func checkRw(sh Shard) (bool, error) {
+func checkRw(sh shard.Shard) (bool, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
 	}); err != nil {
@@ -245,7 +263,11 @@ func checkRw(sh Shard) (bool, error) {
 	}
 }
 
-func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config.BackendRule, TargetSessionAttrs string) (Shard, error) {
+func (s *InstancePoolImpl) Connection(
+	clid string,
+	key kr.ShardKey,
+	rule *config.BackendRule,
+	TargetSessionAttrs string) (shard.Shard, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
 
 	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
@@ -281,11 +303,11 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 			}
 			if ch, err := checkRw(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				_ = shard.Close()
+				_ = s.poolRO.Discard(shard)
 				continue
 			} else if ch {
 				total_msg += fmt.Sprintf("host %s: read-only check fail ", host)
-				_ = s.poolRO.Put(shard)
+				_ = s.Put(shard)
 				continue
 			}
 
@@ -303,11 +325,11 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 			}
 			if ch, err := checkRw(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				_ = shard.Close()
+				_ = s.poolRO.Discard(shard)
 				continue
 			} else if !ch {
 				total_msg += fmt.Sprintf("host %s: read-write check fail ", host)
-				_ = s.poolRO.Put(shard)
+				_ = s.Put(shard)
 				continue
 			}
 
@@ -319,19 +341,12 @@ func (s *InstancePoolImpl) Connection(clid string, key kr.ShardKey, rule *config
 	}
 }
 
-func (s *InstancePoolImpl) Put(shkey kr.ShardKey, sh Shard) error {
-	switch shkey.RW {
-	case true:
-		return s.poolRW.Put(sh)
-	case false:
-		return s.poolRO.Put(sh)
-	default:
-		panic("never")
-	}
+func (s *InstancePoolImpl) Put(sh shard.Shard) error {
+	return s.poolRO.Put(sh)
 }
 
 func NewConnPool(mapping map[string]*config.Shard) DBPool {
-	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (Shard, error) {
+	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
 		shard := mapping[shardKey.Name]
 
 		addr, _, _ := net.SplitHostPort(host)

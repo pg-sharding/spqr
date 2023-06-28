@@ -5,9 +5,10 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/datashard"
 )
 
 type Key struct {
@@ -44,7 +45,7 @@ type Route struct {
 	mu sync.Mutex
 	// protects this
 	cachedParams bool
-	params       datashard.ParameterSet
+	params       shard.ParameterSet
 }
 
 func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
@@ -53,18 +54,18 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		frRule:   frRule,
 		servPool: datashard.NewConnPool(mapping),
 		clPool:   client.NewClientPool(),
-		params:   datashard.ParameterSet{},
+		params:   shard.ParameterSet{},
 	}
 }
 
-func (r *Route) SetParams(ps datashard.ParameterSet) {
+func (r *Route) SetParams(ps shard.ParameterSet) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cachedParams = true
 	r.params = ps
 }
 
-func (r *Route) Params() (datashard.ParameterSet, error) {
+func (r *Route) Params() (shard.ParameterSet, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -81,13 +82,13 @@ func (r *Route) Params() (datashard.ParameterSet, error) {
 	serv, err := r.servPool.Connection("internal", anyK, r.beRule, "")
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
-		return datashard.ParameterSet{}, err
+		return shard.ParameterSet{}, err
 	}
 
 	r.cachedParams = true
 	r.params = serv.Params()
 
-	if err := r.servPool.Put(anyK, serv); err != nil {
+	if err := r.servPool.Put(serv); err != nil {
 		return nil, err
 	}
 

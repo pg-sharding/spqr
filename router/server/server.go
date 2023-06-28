@@ -4,6 +4,8 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type PrepStmtDesc struct {
@@ -18,6 +20,7 @@ type PreparedStatementHolder interface {
 
 type Server interface {
 	PreparedStatementHolder
+	txstatus.TxStatusMgr
 
 	Name() string
 	Send(query pgproto3.FrontendMessage) error
@@ -25,6 +28,7 @@ type Server interface {
 
 	AddDataShard(clid string, shardKey kr.ShardKey, tsa string) error
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
+	Datashards() []shard.Shard
 
 	Cancel() error
 

@@ -6,16 +6,18 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/datashard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type ShardServer struct {
 	rule *config.BackendRule
 
 	pool  datashard.DBPool
-	shard datashard.Shard
+	shard shard.Shard
 	mp    map[uint64]string
 }
 
@@ -50,8 +52,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &srv.shard, srv.shard.Instance().Hostname())
-	if err := srv.pool.Put(shkey, srv.shard); err != nil {
+	if err := srv.pool.Put(srv.shard); err != nil {
 		return err
 	}
 
@@ -86,13 +87,13 @@ func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServ
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "single-shard %p sending msg to server %T", srv, query)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "single-shard %p sending msg to server %T", srv, query)
 	return srv.shard.Send(query)
 }
 
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	msg, err := srv.shard.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "single-shard %p recv msg from server %T", srv, msg)
+	spqrlog.Logger.Printf(spqrlog.DEBUG5, "single-shard %p recv msg from server %T, tx status: %d", srv, msg, srv.TxStatus())
 	return msg, err
 }
 
@@ -102,6 +103,18 @@ func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
 
 func (srv *ShardServer) Cancel() error {
 	return srv.shard.Cancel()
+}
+
+func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
+	srv.shard.SetTxStatus(tx)
+}
+
+func (srv *ShardServer) TxStatus() txstatus.TXStatus {
+	return srv.shard.TxStatus()
+}
+
+func (srv *ShardServer) Datashards() []shard.Shard {
+	return []shard.Shard{srv.shard}
 }
 
 var _ Server = &ShardServer{}
