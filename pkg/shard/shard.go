@@ -36,6 +36,8 @@ type Shard interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
+	Sync() int64
+
 	AddTLSConf(cfg *tls.Config) error
 	Cleanup(rule *config.FrontendRule) error
 

@@ -33,5 +33,5 @@ type Server interface {
 	Cancel() error
 
 	Reset() error
-	Sync() int
+	Sync() int64
 }

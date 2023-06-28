@@ -120,7 +120,8 @@ var (
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	rollback := func() {
 		for i := range m.activeShards {
-			if m.states[i] == ShardRFQState {
+			spqrlog.Logger.Printf(spqrlog.DEBUG5, "rollback shard %p in multishard after error", m.activeShards[i])
+			if m.activeShards[i].Sync() == 0 {
 				continue
 			}
 			// error state or something else
@@ -138,7 +139,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					case *pgproto3.ReadyForQuery:
 						return
 					default:
-						spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: got %T message from %s shard while rollback after error", msg, m.activeShards[i].Name())
+						spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: recived %T message from %s shard while rollback after error", msg, m.activeShards[i].Name())
 					}
 				}
 			}(i)
@@ -383,7 +384,7 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 	return nil
 }
 
-func (m *MultiShardServer) Sync() int {
+func (m *MultiShardServer) Sync() int64 {
 	//TODO implement me
 	panic("implement me")
 }

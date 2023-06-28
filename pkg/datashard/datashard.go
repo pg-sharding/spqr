@@ -37,6 +37,9 @@ type Conn struct {
 	backend_key_pid    uint32
 	backend_key_secret uint32
 
+	sync_in  int64
+	sync_out int64
+
 	status txstatus.TXStatus
 }
 
@@ -46,6 +49,10 @@ func (sh *Conn) Close() error {
 
 func (sh *Conn) Instance() conn.DBInstance {
 	return sh.dedicated
+}
+
+func (sh *Conn) Sync() int64 {
+	return sh.sync_out - sh.sync_in
 }
 
 func (sh *Conn) Cancel() error {
@@ -74,6 +81,8 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 }
 
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
+	/* handle copy properly */
+	sh.sync_in++
 	return sh.dedicated.Send(query)
 }
 
@@ -84,6 +93,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
+		sh.sync_in++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 	}
 	return msg, nil

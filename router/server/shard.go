@@ -34,9 +34,8 @@ func (srv *ShardServer) PrepareStatement(hash uint64) {
 	srv.mp[hash] = "yes"
 }
 
-func (srv *ShardServer) Sync() int {
-	//TODO implement me
-	panic("implement me")
+func (srv *ShardServer) Sync() int64 {
+	return srv.shard.Sync()
 }
 
 func (srv *ShardServer) Reset() error {
