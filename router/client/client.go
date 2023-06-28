@@ -399,7 +399,7 @@ func (cl *PsqlClient) ID() string {
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {
-	if cl.server == nil {
+	if cl.server != nil {
 		return cl.server.Datashards()
 	}
 	return nil

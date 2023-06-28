@@ -294,9 +294,15 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 	}
 
 	for _, cl := range clients {
-
-		for _, sh := range cl.Shards() {
-			if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname()); err != nil {
+		if len(cl.Shards()) > 0 {
+			for _, sh := range cl.Shards() {
+				if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname()); err != nil {
+					spqrlog.Logger.PrintError(err)
+					return err
+				}
+			}
+		} else {
+			if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), "no backend connection"); err != nil {
 				spqrlog.Logger.PrintError(err)
 				return err
 			}
