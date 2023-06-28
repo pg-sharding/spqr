@@ -19,6 +19,8 @@ import (
 )
 
 type RelayStateMgr interface {
+	txstatus.TxStatusMgr
+
 	Reset() error
 	StartTrace()
 	Flush()
@@ -33,7 +35,6 @@ type RelayStateMgr interface {
 	ActiveShardsReset()
 	TxActive() bool
 
-	SetTxStatus(status txstatus.TXStatus)
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, error)
 
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
@@ -49,7 +50,6 @@ type RelayStateMgr interface {
 
 	Sync(waitForResp, replyCl bool, cmngr PoolMgr) error
 
-	TxStatus() txstatus.TXStatus
 	RouterMode() config.RouterMode
 }
 

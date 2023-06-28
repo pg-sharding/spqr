@@ -40,13 +40,19 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 }
 
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+	var anyerr error
+	anyerr = nil
 	for _, shkey := range sh {
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p unrouting from datashard %v", cl, shkey.Name)
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			_ = cl.Unroute()
-			return err
+			anyerr = err
 		}
 	}
+	if anyerr != nil {
+		return anyerr
+	}
+
 	return cl.Unroute()
 }
 
@@ -113,13 +119,17 @@ func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.S
 }
 
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+	var anyerr error
+	anyerr = nil
+
 	for _, shkey := range sh {
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
-			return err
+			//
+			anyerr = err
 		}
 	}
 
-	return nil
+	return anyerr
 }
 
 func (s *SessConnManager) TXBeginCB(rst RelayStateMgr) error {

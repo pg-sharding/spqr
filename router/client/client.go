@@ -10,9 +10,11 @@ import (
 	"net"
 
 	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/route"
@@ -396,6 +398,13 @@ func (cl *PsqlClient) ID() string {
 	return cl.id
 }
 
+func (cl *PsqlClient) Shards() []shard.Shard {
+	if cl.server != nil {
+		return cl.server.Datashards()
+	}
+	return nil
+}
+
 func NewPsqlClient(pgconn net.Conn) *PsqlClient {
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
@@ -461,7 +470,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "got protoc version %d for client %p", protoVer, cl)
+		spqrlog.Logger.ClientPrintf(spqrlog.DEBUG5, "received protocol version %d", cl.ID(), protoVer)
 
 		if protoVer == conn.SSLREQ && tlsconfig == nil {
 			_, err := cl.conn.Write([]byte{'N'})
@@ -563,7 +572,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 func (cl *PsqlClient) Auth(rt *route.Route) error {
 	spqrlog.Logger.Printf(spqrlog.LOG, "processing frontend auth for %v %v\n", cl.Usr(), cl.DB())
 
-	if err := conn.AuthFrontend(cl, cl.Rule()); err != nil {
+	if err := auth.AuthFrontend(cl, cl.Rule()); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
 				Message: fmt.Sprintf("auth failed %s", err),
