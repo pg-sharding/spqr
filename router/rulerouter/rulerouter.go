@@ -309,11 +309,18 @@ func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.Client) error)
 	})
 }
 
-func (rr *RuleRouterImpl) Pop(cl client.Client) error {
-	return nil
+func (rr *RuleRouterImpl) Pop(clientID string) (bool, error) {
+	var popped = false
+	err := rr.routePool.NotifyRoutes(func(route *route.Route) error {
+		ok, nestedErr := route.ReleaseClient(clientID)
+		popped = popped || ok
+		return nestedErr
+	})
+
+	return popped, err
 }
 
-func (rr *RuleRouterImpl) Put(cl client.Client) error {
+func (rr *RuleRouterImpl) Put(id client.Client) error {
 	return nil
 }
 

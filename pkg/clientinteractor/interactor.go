@@ -549,6 +549,19 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) KillClient(clientID string) error {
+	if err := pi.WriteHeader("kill client"); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("the client %s was killed", clientID)); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shard) error {
 	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname"); err != nil {
 		spqrlog.Logger.PrintError(err)

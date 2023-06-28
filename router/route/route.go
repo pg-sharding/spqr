@@ -114,6 +114,7 @@ func (r *Route) NofityClients(cb func(cl client.Client) error) error {
 func (r *Route) AddClient(cl client.Client) error {
 	return r.clPool.Put(cl)
 }
-func (r *Route) ReleaseClient(cl client.Client) error {
-	return r.clPool.Pop(cl)
+
+func (r *Route) ReleaseClient(clientID string) (bool, error) {
+	return r.clPool.Pop(clientID)
 }
