@@ -236,7 +236,7 @@ func checkRw(sh shard.Shard) (bool, string, error) {
 	}
 
 	res := false
-	reason := ""
+	reason := "zero datarow recieved"
 
 	for {
 		msg, err := sh.Receive()
