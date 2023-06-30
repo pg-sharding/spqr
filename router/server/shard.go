@@ -13,12 +13,21 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
-type ShardServer struct {
-	rule *config.BackendRule
+var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
+type ShardServer struct {
+	rule  *config.BackendRule
 	pool  datashard.DBPool
 	shard shard.Shard
 	mp    map[uint64]string
+}
+
+func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServer {
+	return &ShardServer{
+		rule: rule,
+		pool: spool,
+		mp:   make(map[uint64]string),
+	}
 }
 
 func (srv *ShardServer) HasPrepareStatement(hash uint64) bool {
@@ -27,6 +36,9 @@ func (srv *ShardServer) HasPrepareStatement(hash uint64) bool {
 }
 
 func (srv *ShardServer) Name() string {
+	if srv.shard == nil {
+		return ""
+	}
 	return srv.shard.Name()
 }
 
@@ -35,14 +47,24 @@ func (srv *ShardServer) PrepareStatement(hash uint64) {
 }
 
 func (srv *ShardServer) Sync() int64 {
+	if srv.shard == nil {
+		return 0
+	}
 	return srv.shard.Sync()
 }
 
 func (srv *ShardServer) Reset() error {
+	if srv.shard == nil {
+		return ErrShardUnavailable
+	}
 	return nil
 }
 
 func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
+	if srv.shard == nil {
+		return nil
+	}
+
 	if srv.shard.SHKey().Name != shkey.Name {
 		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
@@ -74,19 +96,17 @@ func (srv *ShardServer) AddDataShard(clid string, shkey kr.ShardKey, tsa string)
 }
 
 func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
-	return srv.shard.AddTLSConf(cfg)
-}
-
-func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServer {
-	return &ShardServer{
-		rule: rule,
-		pool: spool,
-		mp:   make(map[uint64]string),
+	if srv.shard == nil {
+		return ErrShardUnavailable
 	}
+	return srv.shard.AddTLSConf(cfg)
 }
 
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "single-shard %p sending msg to server %T", srv, query)
+	if srv.shard == nil {
+		return ErrShardUnavailable
+	}
 	return srv.shard.Send(query)
 }
 
@@ -97,18 +117,29 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 }
 
 func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
+	if srv.shard == nil {
+		return ErrShardUnavailable
+	}
 	return srv.shard.Cleanup(rule)
 }
 
 func (srv *ShardServer) Cancel() error {
+	if srv.shard == nil {
+		return ErrShardUnavailable
+	}
 	return srv.shard.Cancel()
 }
 
 func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
-	srv.shard.SetTxStatus(tx)
+	if srv.shard != nil {
+		srv.shard.SetTxStatus(tx)
+	}
 }
 
 func (srv *ShardServer) TxStatus() txstatus.TXStatus {
+	if srv.shard == nil {
+		return txstatus.TXERR
+	}
 	return srv.shard.TxStatus()
 }
 
