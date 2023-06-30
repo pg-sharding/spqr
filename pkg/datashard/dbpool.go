@@ -163,7 +163,12 @@ func (c *cPool) Connection(
 		return nil, err
 	}
 
+	c.mu.Lock()
+
 	c.active[sh.ID()] = sh
+
+	c.mu.Unlock()
+
 	return sh, nil
 }
 
