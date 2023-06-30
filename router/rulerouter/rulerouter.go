@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
@@ -22,6 +23,7 @@ import (
 
 type RuleRouter interface {
 	client.Pool
+	shard.ShardIterator
 
 	Shutdown() error
 	Reload(configPath string) error
@@ -70,6 +72,10 @@ func (r *RuleRouterImpl) AddDataShard(key qdb.ShardKey) error {
 
 func (r *RuleRouterImpl) Shutdown() error {
 	return r.routePool.Shutdown()
+}
+
+func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shard) error) error {
+	return r.routePool.ForEach(cb)
 }
 
 func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[route.Key]*config.BackendRule, *config.FrontendRule, *config.BackendRule) {

@@ -39,6 +39,7 @@ type Conn struct {
 
 	sync_in  int64
 	sync_out int64
+	id       string
 
 	status txstatus.TXStatus
 }
@@ -123,6 +124,18 @@ func (sh *Conn) SHKey() kr.ShardKey {
 	}
 }
 
+func (sh *Conn) ID() string {
+	return sh.id
+}
+
+func (sh *Conn) Usr() string {
+	return sh.beRule.Usr
+}
+
+func (sh *Conn) DB() string {
+	return sh.beRule.DB
+}
+
 func (sh *Conn) Params() shard.ParameterSet {
 	return sh.ps
 }
@@ -141,6 +154,8 @@ func NewShard(
 		sync_in:  1, /* startup message */
 		sync_out: 0,
 	}
+
+	dtSh.id = fmt.Sprintf("%p", dtSh)
 
 	dtSh.dedicated = pgi
 

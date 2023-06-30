@@ -19,16 +19,21 @@ import (
 const defaultInstanceConnectionLimit = 50
 
 type Pool interface {
+	shard.ShardIterator
+
 	Connection(clid string, shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
 	Cut(host string) []shard.Shard
 	Put(host shard.Shard) error
 	Discard(sh shard.Shard) error
+
 	List() []shard.Shard
 }
 
 type cPool struct {
 	mu   sync.Mutex
 	pool map[string][]shard.Shard
+
+	active map[string]shard.Shard
 
 	queues map[string]chan struct{}
 
@@ -41,6 +46,7 @@ func NewPool(connectionAllocFn func(shardKey kr.ShardKey, host string, rule *con
 		mu:                   sync.Mutex{},
 		pool:                 map[string][]shard.Shard{},
 		queues:               map[string]chan struct{}{},
+		active:               make(map[string]shard.Shard),
 	}
 }
 
@@ -54,6 +60,26 @@ func (c *cPool) Cut(host string) []shard.Shard {
 	return ret
 }
 
+func (c *cPool) ForEach(cb func(sh shard.Shard) error) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, shds := range c.pool {
+		for _, sh := range shds {
+			if err := cb(sh); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, sh := range c.active {
+		if err := cb(sh); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *cPool) List() []shard.Shard {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -62,6 +88,10 @@ func (c *cPool) List() []shard.Shard {
 
 	for _, llist := range c.pool {
 		ret = append(ret, llist...)
+	}
+
+	for _, sh := range c.active {
+		ret = append(ret, sh)
 	}
 
 	return ret
@@ -111,11 +141,13 @@ func (c *cPool) Connection(
 
 	/* reuse cached connection, if any */
 	{
+		/* TDB: per-bucket lock */
 		c.mu.Lock()
 
 		if shds, ok := c.pool[host]; ok && len(shds) > 0 {
 			sh, shds = shds[0], shds[1:]
 			c.pool[host] = shds
+			c.active[sh.ID()] = sh
 			c.mu.Unlock()
 			spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
 			return sh, nil
@@ -130,18 +162,24 @@ func (c *cPool) Connection(
 	if err != nil {
 		return nil, err
 	}
+
+	c.active[sh.ID()] = sh
 	return sh, nil
 }
 
 func (c *cPool) Discard(sh shard.Shard) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
 
+	err := sh.Close()
 	/* acquired tok, release it */
-	defer func() {
-		c.queues[sh.Instance().Hostname()] <- struct{}{}
-	}()
+	c.queues[sh.Instance().Hostname()] <- struct{}{}
 
-	return sh.Close()
+	c.mu.Lock()
+	delete(c.active, sh.ID())
+
+	c.mu.Unlock()
+
+	return err
 }
 
 func (c *cPool) Put(sh shard.Shard) error {
@@ -151,9 +189,9 @@ func (c *cPool) Put(sh shard.Shard) error {
 	defer c.mu.Unlock()
 
 	/* acquired tok, release it */
-	defer func() {
-		c.queues[sh.Instance().Hostname()] <- struct{}{}
-	}()
+	c.queues[sh.Instance().Hostname()] <- struct{}{}
+
+	delete(c.active, sh.ID())
 
 	c.pool[sh.Instance().Hostname()] = append(c.pool[sh.Instance().Hostname()], sh)
 	return nil
@@ -162,14 +200,16 @@ func (c *cPool) Put(sh shard.Shard) error {
 var _ Pool = &cPool{}
 
 type DBPool interface {
+	shard.ShardIterator
+
 	Connection(clid string, key kr.ShardKey, rule *config.BackendRule, tsa string) (shard.Shard, error)
 	Put(sh shard.Shard) error
-
-	Check(key kr.ShardKey) bool
 
 	UpdateHostStatus(shard, hostname string, rw bool) error
 
 	ShardMapping() map[string]*config.Shard
+
+	ForEach(cb func(sh shard.Shard) error) error
 
 	List() []shard.Shard
 }
@@ -211,23 +251,17 @@ func (s *InstancePoolImpl) UpdateHostStatus(shard, hostname string, rw bool) err
 	return nil
 }
 
-func (s *InstancePoolImpl) Check(key kr.ShardKey) bool {
-
-	return true
-	//
-	//s.mu.LockKeyRange()
-	//defer s.mu.Unlock()
-	//
-	//return len(s.poolRW[key]) > 0
-}
-
 func (s *InstancePoolImpl) List() []shard.Shard {
 	return append(s.poolRO.List(), s.poolRW.List()...)
 }
 
+func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
+	return s.poolRO.ForEach(cb)
+}
+
 var _ DBPool = &InstancePoolImpl{}
 
-func checkRw(sh shard.Shard) (bool, string, error) {
+func checkTSA(sh shard.Shard) (bool, string, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
 	}); err != nil {
@@ -304,7 +338,7 @@ func (s *InstancePoolImpl) Connection(
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
-			if ch, reason, err := checkRw(shard); err != nil {
+			if ch, reason, err := checkTSA(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = s.poolRO.Discard(shard)
 				continue
@@ -326,7 +360,7 @@ func (s *InstancePoolImpl) Connection(
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
-			if ch, reason, err := checkRw(shard); err != nil {
+			if ch, reason, err := checkTSA(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = s.poolRO.Discard(shard)
 				continue
@@ -352,7 +386,7 @@ func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	return s.poolRO.Put(sh)
 }
 
-func NewConnPool(mapping map[string]*config.Shard) DBPool {
+func NewDBPool(mapping map[string]*config.Shard) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
 		shard := mapping[shardKey.Name]
 

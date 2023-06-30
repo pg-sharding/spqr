@@ -73,6 +73,8 @@ type RelayStateImpl struct {
 	Cl      client.RouterClient
 	manager PoolMgr
 
+	maintain_params bool
+
 	msgBuf  []pgproto3.FrontendMessage
 	smsgBuf []pgproto3.FrontendMessage
 }
@@ -126,6 +128,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager P
 		manager:            manager,
 		WorldShardFallback: rcfg.WorldShardFallback,
 		routerMode:         config.RouterMode(rcfg.RouterMode),
+		maintain_params:    rcfg.MaintainParams,
 	}
 }
 
@@ -300,10 +303,11 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
 	}
-
-	query := rst.Cl.ConstructClientParams()
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting params for client %p: %s", rst.Cl, query.String)
-	_, _, err = rst.Cl.ProcQuery(query, true, false)
+	if rst.maintain_params {
+		query := rst.Cl.ConstructClientParams()
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting params for client %p: %s", rst.Cl, query.String)
+		_, _, err = rst.Cl.ProcQuery(query, true, false)
+	}
 	return err
 }
 
