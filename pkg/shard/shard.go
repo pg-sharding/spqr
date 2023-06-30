@@ -32,6 +32,9 @@ type Shard interface {
 
 	Name() string
 	SHKey() kr.ShardKey
+	ID() string
+	Usr() string
+	DB() string
 
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
@@ -48,4 +51,8 @@ type Shard interface {
 
 	Params() ParameterSet
 	Close() error
+}
+
+type ShardIterator interface {
+	ForEach(cb func(sh Shard) error) error
 }

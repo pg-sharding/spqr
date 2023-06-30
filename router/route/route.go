@@ -52,7 +52,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	return &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: datashard.NewConnPool(mapping),
+		servPool: datashard.NewDBPool(mapping),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}

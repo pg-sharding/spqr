@@ -28,9 +28,10 @@ type InstanceImpl struct {
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
 
-	stchan chan struct{}
-	addr   string
-	frTLS  *tls.Config
+	stchan     chan struct{}
+	addr       string
+	frTLS      *tls.Config
+	WithJaeger bool
 }
 
 func (r *InstanceImpl) ID() string {
@@ -119,6 +120,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		Mgr:        lc,
 		stchan:     stchan,
 		frTLS:      frTLS,
+		WithJaeger: rcfg.WithJaeger,
 	}, nil
 }
 
@@ -156,11 +158,13 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
-	closer, err := r.initJaegerTracer(r.RuleRouter.Config())
-	if err != nil {
-		return fmt.Errorf("could not initialize jaeger tracer: %s", err)
+	if r.WithJaeger {
+		closer, err := r.initJaegerTracer(r.RuleRouter.Config())
+		if err != nil {
+			return fmt.Errorf("could not initialize jaeger tracer: %s", err)
+		}
+		defer func() { _ = closer.Close() }()
 	}
-	defer func() { _ = closer.Close() }()
 
 	cChan := make(chan net.Conn)
 

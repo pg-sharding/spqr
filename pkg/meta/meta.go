@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -105,7 +106,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool client.Pool, shi shard.ShardIterator, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
@@ -122,7 +123,6 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool c
 		}
 
 		return cli.MoveKeyRange(ctx, move)
-
 	case *spqrparser.RegisterRouter:
 		newRouter := &topology.Router{
 			ID:      stmt.ID,
@@ -154,15 +154,26 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool c
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Show:
-		return ProcessShow(ctx, stmt, mgr, pool, cli)
+		return ProcessShow(ctx, stmt, mgr, pool, shi, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
 }
 
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, pool client.Pool, shi shard.ShardIterator, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 	switch stmt.Cmd {
+	case spqrparser.BackendConnectionsStr:
+
+		var resp []shard.Shard
+		if err := shi.ForEach(func(cl shard.Shard) error {
+			resp = append(resp, cl)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return cli.BackendConnections(ctx, resp)
 	case spqrparser.ShardsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {

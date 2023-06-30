@@ -66,7 +66,7 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
-	return meta.Proc(ctx, tstmt, l.Coord, l.RRouter, cli)
+	return meta.Proc(ctx, tstmt, l.Coord, l.RRouter, l.RRouter, cli)
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {

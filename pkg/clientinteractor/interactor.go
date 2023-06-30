@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -296,6 +297,9 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 	for _, cl := range clients {
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
+				if sh == nil {
+					continue
+				}
 				if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname()); err != nil {
 					spqrlog.Logger.PrintError(err)
 					return err
@@ -543,4 +547,22 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 		return err
 	}
 	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shard) error {
+	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname"); err != nil {
+		spqrlog.Logger.PrintError(err)
+		return err
+	}
+
+	for _, sh := range shs {
+
+		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB()); err != nil {
+			spqrlog.Logger.PrintError(err)
+			return err
+		}
+
+	}
+
+	return pi.CompleteMsg(len(shs))
 }

@@ -76,7 +76,7 @@ func (F *RulesMgrImpl) MatchKeyBackend(key route.Key) (*config.BackendRule, erro
 }
 
 type MgrImpl[T any] struct {
-	rule map[route.Key]*T
+	rule                 map[route.Key]*T
 	defaultRuleAllocator func(key route.Key) *T
 }
 
@@ -94,7 +94,7 @@ func (m *MgrImpl[T]) MatchKey(key route.Key, underlyingEntityName string) (*T, e
 		return matchRule, nil
 	}
 
-	return nil, fmt.Errorf("failed to route frontend for client:" +
+	return nil, fmt.Errorf("failed to route frontend for client:"+
 		" route for user:%s and db:%s is unconfigured in %s", key.Usr(), key.DB(), underlyingEntityName)
 }
 
@@ -133,11 +133,10 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 		},
 	}
 
-	ret := &RulesMgrImpl{
+	return &RulesMgrImpl{
 		fe: fe,
 		be: be,
 	}
-	return ret
 }
 
 var _ MatchMgr[interface{}] = &MgrImpl[interface{}]{}

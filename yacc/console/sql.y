@@ -72,7 +72,7 @@ func randomHex(n int) (string, error) {
 // CMDS
 %type <statement> command
 
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES
+%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES BACKEND_CONNECTIONS
 
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
@@ -209,12 +209,13 @@ POOLS
 | KEY_RANGES
 | ROUTERS
 | SHARDING_RULES
+| BACKEND_CONNECTIONS
 
 show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, KeyRangesStr, ShardingRules, ClientsStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
