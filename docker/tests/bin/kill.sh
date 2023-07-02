@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sleep 20
+
 set -ex
 
 function clearID() {
@@ -13,10 +15,10 @@ test "$out" = " client id | user | dbname | server_id
 
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" <<EOH &
 select 1;
-SELECT pg_sleep(5);
+SELECT pg_sleep(20);
 EOH
 
-sleep 1
+sleep 10
 
 clientID=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' --csv | head -2 | tail -1 | awk -F ',' '{print $1 }')
 
