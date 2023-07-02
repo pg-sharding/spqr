@@ -55,6 +55,7 @@ type Client interface {
 
 	Shutdown() error
 	Reset() error
+	Close() error
 
 	Shards() []shard.Shard
 

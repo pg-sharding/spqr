@@ -60,8 +60,6 @@ type RouterClient interface {
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
-
-	Close() error
 }
 
 type PsqlClient struct {

@@ -38,7 +38,7 @@ func (c *PoolImpl) Pop(id string) (bool, error) {
 	var err error
 	cl, ok := c.pool[id]
 	if ok {
-		err = cl.Shutdown()
+		err = cl.Close()
 		delete(c.pool, id)
 	}
 
