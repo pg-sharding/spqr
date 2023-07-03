@@ -294,11 +294,9 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 		if cl.GetCancelKey() != csm.SecretKey {
 			return fmt.Errorf("cancel secret does not match")
 		}
-		if cl.Server() != nil {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
-			return cl.Server().Cancel()
-		}
-		return nil
+
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
+		return cl.Server().Cancel()
 	}
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }
