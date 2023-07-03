@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -95,7 +96,10 @@ type PsqlClient struct {
 	be *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
-	server     server.Server
+
+	/* protects server */
+	mu     sync.Mutex
+	server server.Server
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
@@ -345,6 +349,9 @@ func (cl *PsqlClient) ReplyParseComplete() error {
 }
 
 func (cl *PsqlClient) Reset() error {
+	cl.mu.Lock()
+	defer cl.mu.Unlock()
+
 	if cl.server == nil {
 		return nil
 	}
@@ -422,11 +429,18 @@ func (cl *PsqlClient) Rule() *config.FrontendRule {
 	return cl.rule
 }
 
+/* this is for un-protected access for client's server variable, in cases when
+concurrent Unroute() is impossible */
+
 func (cl *PsqlClient) Server() server.Server {
 	return cl.server
 }
 
+/* This method can be called concurrently with Cancel() */
 func (cl *PsqlClient) Unroute() error {
+	cl.mu.Lock()
+	defer cl.mu.Unlock()
+
 	if cl.server == nil {
 		/* TBD: raise error here sometimes? */
 		return nil
