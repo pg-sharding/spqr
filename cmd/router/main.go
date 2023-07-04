@@ -85,13 +85,18 @@ var runCmd = &cobra.Command{
 		defer cancelCtx()
 
 		var pprofFile *os.File
+
+		spqrlog.Logger.Printf(spqrlog.FATAL, "cpu prof save prof %t", saveProfie)
+
 		if saveProfie {
 			pprofFile, err = os.Create(profileFile)
 			if err != nil {
+				spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof error %v", err)
 				return err
 			}
-			spqrlog.Logger.Printf(spqrlog.LOG, "starting cpu prof with %s", profileFile)
+			spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof with %s", profileFile)
 			if err := pprof.StartCPUProfile(pprofFile); err != nil {
+				spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof error %v", err)
 				return err
 			}
 		}
@@ -116,11 +121,14 @@ var runCmd = &cobra.Command{
 				case syscall.SIGUSR1:
 					spqrlog.RebornLogger(rcfg.LogFileName)
 				case syscall.SIGUSR2:
-					// write profile
-					pprof.StopCPUProfile()
+					if saveProfie {
+						// write profile
+						pprof.StopCPUProfile()
+						spqrlog.Logger.Printf(spqrlog.FATAL, "writing cpu prof")
 
-					if err := pprofFile.Close(); err != nil {
-						spqrlog.Logger.PrintError(err)
+						if err := pprofFile.Close(); err != nil {
+							spqrlog.Logger.PrintError(err)
+						}
 					}
 					return
 				case syscall.SIGHUP:
@@ -131,6 +139,15 @@ var runCmd = &cobra.Command{
 					}
 					spqrlog.RebornLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
+					if saveProfie {
+						// write profile
+						pprof.StopCPUProfile()
+
+						spqrlog.Logger.Printf(spqrlog.FATAL, "writing cpu prof")
+						if err := pprofFile.Close(); err != nil {
+							spqrlog.Logger.PrintError(err)
+						}
+					}
 					return
 				default:
 					return
