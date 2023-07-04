@@ -57,6 +57,7 @@ type Client interface {
 	Reset() error
 
 	Shards() []shard.Shard
+	Cancel() error
 
 	Reply(msg string) error
 }
