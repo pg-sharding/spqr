@@ -296,7 +296,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 		}
 
 		spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
-		return cl.Server().Cancel()
+		return cl.Cancel()
 	}
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }

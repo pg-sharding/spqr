@@ -449,6 +449,18 @@ func (cl *PsqlClient) Unroute() error {
 	return nil
 }
 
+/* This method can be called concurrently with Unroute() */
+func (cl *PsqlClient) Cancel() error {
+	cl.mu.Lock()
+	defer cl.mu.Unlock()
+
+	if cl.server == nil {
+		/* TBD: raise error here sometimes? */
+		return nil
+	}
+	return cl.Server().Cancel()
+}
+
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	if cl.rule != nil {
 		return fmt.Errorf("client has active rule %s:%s", rule.Usr, rule.DB)
