@@ -1,6 +1,5 @@
 package console
 
-import "C"
 import (
 	"context"
 	"crypto/tls"
