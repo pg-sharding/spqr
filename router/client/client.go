@@ -909,6 +909,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		Interface("query", query).
 		Msg("client process command")
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
+
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	if err := cl.server.Send(query); err != nil {

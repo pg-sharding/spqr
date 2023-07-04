@@ -42,6 +42,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Zero.Error().Err(err)
 	}
 }

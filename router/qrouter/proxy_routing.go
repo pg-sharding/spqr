@@ -6,9 +6,11 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb/ops"
-	pgquery "github.com/pganalyze/pg_query_go/v4"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type RoutingMetadataContext struct {
@@ -22,7 +24,7 @@ type RoutingMetadataContext struct {
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
 	rels  map[string][]string
-	exprs map[string]map[string]*pgquery.Node
+	exprs map[string]map[string]string
 
 	offsets []int
 
@@ -34,85 +36,70 @@ type RoutingMetadataContext struct {
 	// For
 	// INSERT INTO x VALUES(**)
 	// routing
-	ValuesLists    []*pgquery.Node
+	ValuesLists    []lyx.Node
 	InsertStmtCols []string
 	InsertStmtRel  string
 
 	// For
-	// INSERT INTO x (...) SELECT ...
-	TargetList []*pgquery.Node
+	// INSERT INTO x (...) SELECT 7
+	TargetList []lyx.Node
+
+	rls []*shrule.ShardingRule
+	krs []*kr.KeyRange
 
 	// TODO: include client ops and metadata here
 }
 
-func NewRoutingMetadataContext() *RoutingMetadataContext {
+func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
+	for i := range m.rls {
+		for _, c := range m.rls[i].Entries() {
+			if c.Column == colname {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func NewRoutingMetadataContext(krs []*kr.KeyRange, rls []*shrule.ShardingRule) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		rels:         map[string][]string{},
 		tableAliases: map[string]string{},
-		exprs:        map[string]map[string]*pgquery.Node{},
+		exprs:        map[string]map[string]string{},
+		krs:          krs,
+		rls:          rls,
 	}
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
 var SkipColumn = fmt.Errorf("skip column for routing")
-var ShardingKeysMissing = fmt.Errorf("shardiung keys are missing in query")
+var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
 // returns alias and column name
-func (qr *ProxyQrouter) DeparseExprShardingEntries(expr *pgquery.Node, meta *RoutingMetadataContext) (string, string, error) {
-	var colnames []string
-	spqrlog.Zero.Debug().
-		Type("node-type", expr.Node).
-		Interface("node", expr.Node).
-		Msg("deparsing column name")
-	switch texpr := expr.Node.(type) {
-	case *pgquery.Node_ColumnRef:
-		for _, node := range texpr.ColumnRef.Fields {
-			spqrlog.Zero.Debug().
-				Interface("node", node.Node).
-				Msg("columnref field")
 
-			switch colname := node.Node.(type) {
-			case *pgquery.Node_String_:
-				colnames = append(colnames, colname.String_.Sval)
-			default:
-				return "", "", ComplexQuery
-			}
-		}
-	default:
-		return "", "", ComplexQuery
-	}
-
-	switch len(colnames) {
-	case 1:
-		// pure table column ref
-		return "", colnames[0], nil
-	case 2:
-		// aliased table column ref
-		return colnames[0], colnames[1], nil
+func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingMetadataContext) (string, string, error) {
+	switch q := expr.(type) {
+	case *lyx.ColumnRef:
+		return q.TableAlias, q.ColName, nil
 	default:
 		return "", "", ComplexQuery
 	}
 }
 
-func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key string) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key string, meta *RoutingMetadataContext) (*DataShardRoute, error) {
 	spqrlog.Zero.Debug().
 		Str("key", key).
 		Msg("checking key")
-	krs, err := qr.mgr.ListKeyRanges(ctx)
-
-	if err != nil {
-		return nil, err
-	}
 
 	spqrlog.Zero.Debug().
 		Str("key", key).
-		Int("key-ranges-count", len(krs)).
+		Int("key-ranges-count", len(meta.krs)).
 		Msg("checking key with key ranges")
 
-	for _, krkey := range krs {
+	for _, krkey := range meta.krs {
 		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
 			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
 				return nil, err
@@ -130,174 +117,106 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, ComplexQuery
 }
 
-func getbytes(val *pgquery.A_Const) (string, error) {
-	switch valt := val.Val.(type) {
-	case *pgquery.A_Const_Ival:
-		return fmt.Sprintf("%d", valt.Ival.Ival), nil
-	case *pgquery.A_Const_Sval:
-		return valt.Sval.Sval, nil
-	default:
-		return "", ComplexQuery
-	}
-}
-
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
-	spqrlog.Zero.Debug().
-		Type("node-type", expr.Node).
-		Interface("node", expr.Node).
-		Msg("routing by key ranges")
-
-	switch texpr := expr.Node.(type) {
-	case *pgquery.Node_RowExpr:
-		spqrlog.Zero.Debug().
-			Interface("args", texpr.RowExpr.Args[meta.offsets[0]]).
-			Msg("looking for row expr with columns")
-
-		switch valexpr := texpr.RowExpr.Args[meta.offsets[0]].Node.(type) {
-		case *pgquery.Node_AConst:
-			val, err := getbytes(valexpr.AConst)
-			if err != nil {
-				return nil, err
-			}
-			return qr.deparseKeyWithRangesInternal(ctx, val)
-		default:
-			return nil, ComplexQuery
-		}
-	case *pgquery.Node_AConst:
-		val, err := getbytes(texpr.AConst)
-		if err != nil {
-			return nil, err
-		}
-		return qr.deparseKeyWithRangesInternal(ctx, val)
-	case *pgquery.Node_List:
-		if len(texpr.List.Items) == 0 {
-			return nil, ComplexQuery
-		}
-		if len(meta.offsets) == 0 {
-			// TBD: check between routing case properly
-			return qr.RouteKeyWithRanges(ctx, texpr.List.Items[0], meta)
-		}
-		return qr.RouteKeyWithRanges(ctx, texpr.List.Items[meta.offsets[0]], meta)
-	case *pgquery.Node_ColumnRef:
-		return nil, SkipColumn
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
+	switch e := expr.(type) {
+	case *lyx.AExprConst:
+		return qr.deparseKeyWithRangesInternal(ctx, e.Value, meta)
 	default:
 		return nil, ComplexQuery
 	}
 }
 
-func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr *pgquery.Node, meta *RoutingMetadataContext) error {
-	spqrlog.Zero.Debug().
-		Type("stmt-type", expr.Node).
-		Interface("value", expr.Node).
-		Msg("deparsed stmt")
+/* deparse sharding column-value pair from query Where clause */
+func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) error {
 
-	switch texpr := expr.Node.(type) {
-	case *pgquery.Node_BoolExpr:
-		spqrlog.Zero.Debug().Msg("boolean expr routing")
-		var err error
-		for _, inExpr := range texpr.BoolExpr.Args {
-			if err = qr.routeByClause(ctx, inExpr, meta); err != nil {
-				// failed to parse some references
-				// ignore
-				continue
+	queue := make([]lyx.Node, 0)
+	queue = append(queue, expr)
+
+	for len(queue) != 0 {
+		var curr lyx.Node
+		curr, queue = queue[len(queue)-1], queue[:len(queue)-1]
+
+		switch texpr := curr.(type) {
+		case *lyx.AExprOp:
+
+			switch lft := texpr.Left.(type) {
+			case *lyx.ColumnRef:
+				/* simple key-value pair */
+				switch rght := texpr.Right.(type) {
+				case *lyx.AExprConst:
+					alias, colname := lft.TableAlias, lft.ColName
+
+					if !meta.CheckColumnRls(colname) {
+						spqrlog.Zero.Debug().
+							Str("colname", colname).
+							Msg("skip column due no rule mathing")
+						continue
+					}
+
+					if resolvedRelation, ok := meta.tableAliases[alias]; ok {
+						// TBD: postpone routing from here to root of parsing tree
+
+						meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
+						if _, ok := meta.exprs[resolvedRelation]; !ok {
+							meta.exprs[resolvedRelation] = map[string]string{}
+						}
+						meta.exprs[resolvedRelation][colname] = rght.Value
+					} else {
+						// TBD: postpone routing from here to root of parsing tree
+						if len(meta.rels) > 1 {
+							// ambiguity in column aliasing
+							return ComplexQuery
+						}
+						for tbl := range meta.rels {
+							resolvedRelation = tbl
+						}
+
+						meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
+						if _, ok := meta.exprs[resolvedRelation]; !ok {
+							meta.exprs[resolvedRelation] = map[string]string{}
+						}
+
+						spqrlog.Zero.Debug().
+							Str("relation", resolvedRelation).
+							Str("column", colname).
+							Msg("adding expr to relation column")
+						meta.exprs[resolvedRelation][colname] = rght.Value
+					}
+				default:
+					queue = append(queue, texpr.Left, texpr.Right)
+				}
+			default:
+				/* Consider there cases */
+				// if !(texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_OP || texpr.Kind == pgquery.A_Expr_Kind_AEXPR_BETWEEN) {
+				// 	return ComplexQuery
+				// }
+
+				queue = append(queue, texpr.Left, texpr.Right)
 			}
-		}
-		return nil
-
-	case *pgquery.Node_AExpr:
-		if !(texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_OP || texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_BETWEEN) {
+		case *lyx.ColumnRef:
+			/* colref = colref case, skip */
+		case *lyx.AExprConst:
+			/* should not happend */
+		case *lyx.AExprEmpty:
+			/*skip*/
+		default:
 			return ComplexQuery
 		}
-
-		alias, colname, err := qr.DeparseExprShardingEntries(texpr.AExpr.Lexpr, meta)
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Str("colname", colname).
-			Msg("deparsed columns references")
-
-		if rls, err := qr.mgr.ListShardingRules(ctx); err != nil {
-			return err
-		} else {
-			ok := false
-			for i := range rls {
-				for _, c := range rls[i].Entries() {
-					if c.Column == colname {
-						ok = true
-						break
-					}
-				}
-			}
-			spqrlog.Zero.Debug().
-				Str("colname", colname).
-				Msg("skip column due no rule mathing")
-			if !ok {
-				return nil
-			}
-		}
-
-		if resolvedRelation, ok := meta.tableAliases[alias]; ok {
-			// TBD: postpone routing from here to root of parsing tree
-
-			meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
-			if _, ok := meta.exprs[resolvedRelation]; !ok {
-				meta.exprs[resolvedRelation] = map[string]*pgquery.Node{}
-			}
-			spqrlog.Zero.Debug().
-				Str("relation", resolvedRelation).
-				Str("column", colname).
-				Msg("adding expr")
-			meta.exprs[resolvedRelation][colname] = texpr.AExpr.Rexpr
-		} else {
-			// TBD: postpone routing from here to root of parsing tree
-			if len(meta.rels) > 1 {
-				// ambiguity in column aliasing
-				return ComplexQuery
-			}
-			for tbl := range meta.rels {
-				resolvedRelation = tbl
-			}
-
-			meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
-			if _, ok := meta.exprs[resolvedRelation]; !ok {
-				meta.exprs[resolvedRelation] = map[string]*pgquery.Node{}
-			}
-
-			spqrlog.Zero.Debug().
-				Str("relation", resolvedRelation).
-				Str("column", colname).
-				Msg("adding expr to relation column")
-			meta.exprs[resolvedRelation][colname] = texpr.AExpr.Rexpr
-		}
-
-		return nil
-	default:
-		return ComplexQuery
 	}
+	return nil
 }
 
-func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgquery.Node, meta *RoutingMetadataContext) error {
-	spqrlog.Zero.Debug().
-		Type("statement-type", selectStmt).
-		Interface("select-statement", selectStmt).
-		Msg("deparsing select from clause")
-
-	switch q := selectStmt.Node.(type) {
-	case *pgquery.Node_SelectStmt:
-		meta.TargetList = q.SelectStmt.TargetList
-		if clause := q.SelectStmt.FromClause; clause != nil {
+func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *RoutingMetadataContext) error {
+	switch s := selectStmt.(type) {
+	case *lyx.Select:
+		if clause := s.FromClause; clause != nil {
 			// route `insert into rel select from` stmt
-			spqrlog.Zero.Debug().
-				Interface("clause", clause).
-				Msg("deparsing select from clause")
 			if err := qr.deparseFromClauseList(clause, meta); err != nil {
 				return err
 			}
 		}
 
-		if clause := q.SelectStmt.WhereClause; clause != nil {
+		if clause := s.Where; clause != nil {
 			spqrlog.Zero.Debug().
 				Interface("clause", clause).
 				Msg("deparsing select where clause")
@@ -306,48 +225,50 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt *pgque
 				return nil
 			}
 		}
-
-		if list := q.SelectStmt.ValuesLists; len(list) != 0 {
-			// route using first tuple from `VALUES` clause
-			meta.ValuesLists = q.SelectStmt.ValuesLists
-			return nil
-		}
-
-		return ComplexQuery
-	default:
-		return ComplexQuery
 	}
+
+	/* SELECT * FROM VALUES() ... */
+	// if list := selectStmt.; len(list) != 0 {
+	// 	// route using first tuple from `VALUES` clause
+	// 	meta.ValuesLists = q.SelectStmt.ValuesLists
+	// 	return nil
+	// }
+
+	return ComplexQuery
 }
 
-func (qr *ProxyQrouter) deparseFromNode(node *pgquery.Node, meta *RoutingMetadataContext) error {
+/* deparses from  cluase  */
+func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("deparsing from node")
-
-	switch q := node.Node.(type) {
-	case *pgquery.Node_RangeVar:
-		if _, ok := meta.rels[q.RangeVar.Relname]; !ok {
-			meta.rels[q.RangeVar.Relname] = nil
+	switch q := node.(type) {
+	case *lyx.RangeVar:
+		if _, ok := meta.rels[q.RelationName]; !ok {
+			meta.rels[q.RelationName] = nil
 		}
-		if q.RangeVar.Alias != nil {
+		if q.Alias != "" {
 			/* remember table alias */
-			meta.tableAliases[q.RangeVar.Alias.Aliasname] = q.RangeVar.Relname
+			meta.tableAliases[q.Alias] = q.RelationName
 		}
-	case *pgquery.Node_JoinExpr:
-		if err := qr.deparseFromNode(q.JoinExpr.Rarg, meta); err != nil {
+	case *lyx.JoinExpr:
+		if err := qr.deparseFromNode(q.Rarg, meta); err != nil {
 			return err
 		}
-		if err := qr.deparseFromNode(q.JoinExpr.Larg, meta); err != nil {
+		if err := qr.deparseFromNode(q.Larg, meta); err != nil {
 			return err
 		}
 	default:
 		// other cases to consider
+		// lateral join, natual, etc
+
 	}
 
 	return nil
 }
 
-func (qr *ProxyQrouter) deparseFromClauseList(clause []*pgquery.Node, meta *RoutingMetadataContext) error {
+func (qr *ProxyQrouter) deparseFromClauseList(
+	clause []lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	for _, node := range clause {
 		err := qr.deparseFromNode(node, meta)
 		if err != nil {
@@ -360,72 +281,72 @@ func (qr *ProxyQrouter) deparseFromClauseList(clause []*pgquery.Node, meta *Rout
 
 func (qr *ProxyQrouter) deparseShardingMapping(
 	ctx context.Context,
-	qstmt *pgquery.RawStmt,
+	qstmt lyx.Node,
 	meta *RoutingMetadataContext) error {
-	spqrlog.Zero.Debug().
-		Type("qstmt", qstmt.Stmt.Node).
-		Msg("matching qstmt")
-	switch stmt := qstmt.Stmt.Node.(type) {
-	case *pgquery.Node_SelectStmt:
-		if stmt.SelectStmt.FromClause != nil {
+	switch stmt := qstmt.(type) {
+	case *lyx.Select:
+		if stmt.FromClause != nil {
 			// collect table alias names, if any
 			// for single-table queries, process as usual
-			if err := qr.deparseFromClauseList(stmt.SelectStmt.FromClause, meta); err != nil {
+			if err := qr.deparseFromClauseList(stmt.FromClause, meta); err != nil {
 				return err
 			}
 		}
-		clause := stmt.SelectStmt.WhereClause
+		clause := stmt.Where
 		if clause == nil {
 			return nil
 		}
 
 		return qr.routeByClause(ctx, clause, meta)
-	case *pgquery.Node_InsertStmt:
-		var cols []string
 
-		for _, c := range stmt.InsertStmt.Cols {
-			spqrlog.Zero.Debug().Type("column-type", c.Node).Msg("")
-			switch res := c.Node.(type) {
-			case *pgquery.Node_ResTarget:
-				cols = append(cols, res.ResTarget.Name)
-			default:
-				return ShardingKeysMissing
-			}
-		}
+	case *lyx.Insert:
+		cols := stmt.Columns
 
 		spqrlog.Zero.Debug().
 			Strs("statements", cols).
 			Msg("deparsed insert statement columns")
 
+		meta.ValuesLists = stmt.Values
+
 		meta.InsertStmtCols = cols
-		meta.InsertStmtRel = stmt.InsertStmt.Relation.Relname
-		if selectStmt := stmt.InsertStmt.SelectStmt; selectStmt != nil {
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			meta.InsertStmtRel = q.RelationName
+		default:
+			return ComplexQuery
+		}
+
+		if selectStmt := stmt.SubSelect; selectStmt != nil {
 			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-			return qr.DeparseSelectStmt(ctx, selectStmt, meta)
+			_ = qr.DeparseSelectStmt(ctx, selectStmt, meta)
+			/* try target list */
+			spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
+			/* this target list for some insert (...) sharding column */
+			meta.TargetList = selectStmt.(*lyx.Select).TargetList
 		}
-		return ShardingKeysMissing
 
-	case *pgquery.Node_UpdateStmt:
-		clause := stmt.UpdateStmt.WhereClause
+		return nil
+	case *lyx.Update:
+		clause := stmt.Where
 		if clause == nil {
 			return nil
 		}
 		return qr.routeByClause(ctx, clause, meta)
-	case *pgquery.Node_DeleteStmt:
-		clause := stmt.DeleteStmt.WhereClause
+	case *lyx.Delete:
+		clause := stmt.Where
 		if clause == nil {
 			return nil
 		}
 
 		return qr.routeByClause(ctx, clause, meta)
-	case *pgquery.Node_CopyStmt:
-		if !stmt.CopyStmt.IsFrom {
-			return fmt.Errorf("copy from stdout is not implemented")
+	case *lyx.Copy:
+		if stmt.IsFrom {
+			return fmt.Errorf("copy from stdin is not implemented")
 		}
-		spqrlog.Zero.Debug().
-			Str("query", qstmt.Stmt.String()).
-			Msg("copy query was")
-		clause := stmt.CopyStmt.WhereClause
+
+		clause := stmt.Where
+
 		if clause == nil {
 			// will not work
 			return nil
@@ -434,49 +355,48 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		return qr.routeByClause(ctx, clause, meta)
 	}
 
-	return ComplexQuery
+	return nil
 }
 
 var ParseError = fmt.Errorf("parsing stmt error")
 
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
-func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *pgquery.Node_CreateStmt) error {
+
+func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable, meta *RoutingMetadataContext) error {
+
 	var entries []string
 	/* Collect sharding rule entries list from create statement */
-	for _, elt := range node.CreateStmt.TableElts {
-		switch eltTar := elt.Node.(type) {
-		case *pgquery.Node_ColumnDef:
-			// hashing function name unneeded for sharding rules matching purpose
-			entries = append(entries, eltTar.ColumnDef.Colname)
-		default:
-			spqrlog.Zero.Debug().
-				Type("type", elt).
-				Interface("elt", elt).
-				Msg("current table element")
-		}
+	for _, elt := range node.TableElts {
+		// hashing function name unneeded for sharding rules matching purpose
+		entries = append(entries, elt.ColName)
 	}
 
-	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.CreateStmt.Relation.Relname, entries); err == ops.ErrRuleIntersect {
+	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.TableName, entries, meta.rls); err == ops.ErrRuleIntersect {
 		return nil
 	}
-	return nil
+	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResult) (RoutingState, error) {
-	var insert_err error
-	if parsedStmt == nil {
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState, error) {
+	if stmt == nil {
 		return nil, ComplexQuery
 	}
-
-	if len(parsedStmt.Stmts) > 1 {
-		return nil, ComplexQuery
-	}
-
 	/*
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
-	stmt := parsedStmt.Stmts[0]
-	meta := NewRoutingMetadataContext()
+
+	krs, err := qr.mgr.ListKeyRanges(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rls, err := qr.mgr.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	meta := NewRoutingMetadataContext(krs, rls)
 
 	tsa := config.TargetSessionAttrsAny
 
@@ -487,49 +407,58 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 	* known after this phase, as it can be Parse Step of Extended proto.
 	 */
 
-	switch node := stmt.Stmt.Node.(type) {
-	case *pgquery.Node_CommentStmt:
-		// shold not happen
+	switch node := stmt.(type) {
 
-	case *pgquery.Node_VariableSetStmt:
+	/* TDB: comments? */
+	// case *pgquery.Node_CommentStmt:
+	// 	// shold not happen
+
+	case *lyx.VarSet:
+		/* TBD: maybe skip all set stmts? */
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router
 		 */
 		return MultiMatchState{}, nil
-	case *pgquery.Node_CreateStmt: // XXX: need alter table which renames sharding column to non-sharding column check
+		// XXX: need alter table which renames sharding column to non-sharding column check
+
+	case *lyx.CreateTable:
 		/*
 		* Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
+		if err := qr.CheckTableIsRoutable(ctx, node, meta); err != nil {
 			return nil, err
 		}
 		return MultiMatchState{}, nil
-	case *pgquery.Node_VacuumStmt:
+	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
 		return MultiMatchState{}, nil
-	case *pgquery.Node_VacuumRelation:
+	case *lyx.Analyze:
 		/* Send vacuum to each shard */
 		return MultiMatchState{}, nil
-	case *pgquery.Node_ClusterStmt:
+	case *lyx.Cluster:
 		/* Send vacuum to each shard */
 		return MultiMatchState{}, nil
-	case *pgquery.Node_IndexStmt:
+	case *lyx.Index:
 		/*
 		* Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: doit
 		return MultiMatchState{}, nil
-	case *pgquery.Node_AlterTableStmt, *pgquery.Node_DropStmt, *pgquery.Node_TruncateStmt:
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return MultiMatchState{}, nil
-	case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+
+		/*
+			case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+				// forbid under separate setting
+				return MultiMatchState{}, nil
+		*/
+	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
 		return MultiMatchState{}, nil
-	case *pgquery.Node_CreateRoleStmt, *pgquery.Node_CreatedbStmt:
-		// forbid under separate setting
-		return MultiMatchState{}, nil
-	case *pgquery.Node_InsertStmt:
+	case *lyx.Insert:
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			if qr.cfg.MulticastUnroutableInsertStatement {
@@ -538,14 +467,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 					return MultiMatchState{}, nil
 				}
 			}
-			insert_err = err
+			return nil, err
 		}
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
-			spqrlog.Zero.Err(err).Msg("parse error")
 			return nil, err
 		}
 	}
@@ -560,9 +488,9 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols); err != nil {
+			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, meta.rls); err != nil {
 				for _, col := range cols {
-					currroute, err := qr.RouteKeyWithRanges(ctx, meta.exprs[tname][col], meta)
+					currroute, err := qr.deparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
 						route_err = err
 						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
@@ -586,9 +514,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 		}
 	}
 
-	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists).Interface("insertStmtCols", meta.InsertStmtCols)
+	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists)
+	spqrlog.Zero.Debug().Interface("insertStmtCols", meta.InsertStmtCols)
+
 	if len(meta.InsertStmtCols) != 0 {
-		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols); err != nil {
+		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols, meta.rls); err != nil {
 			// compute matched sharding rule offsets
 			offsets := make([]int, 0)
 			j := 0
@@ -603,13 +533,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 			}
 
 			meta.offsets = offsets
+
 			routed := false
-			if insert_err != nil {
-				if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-					currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]].GetResTarget().Val, meta)
-					if err != nil {
-						return nil, err
-					}
+			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta)
+				if err != nil {
+					/* failed, ignore */
+				} else {
 
 					spqrlog.Zero.Debug().
 						Interface("current-route", currroute).
@@ -620,29 +550,28 @@ func (qr *ProxyQrouter) Route(ctx context.Context, parsedStmt *pgquery.ParseResu
 					} else {
 						route = combine(route, currroute)
 					}
-				} else {
-					return nil, insert_err
 				}
 			}
 
-			if !routed && meta.ValuesLists != nil {
+			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
 				// only first value from value list
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[0], meta)
-				if err != nil {
-					return nil, err
-				}
-				spqrlog.Zero.Debug().
-					Interface("current-route", currroute).
-					Msg("deparsed route from current route")
-				if route == nil {
-					route = currroute
+
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta)
+				if err != nil { /* failed, ignore */
+
 				} else {
-					route = combine(route, currroute)
+					spqrlog.Zero.Debug().
+						Interface("current-route", currroute).
+						Msg("deparsed route from current route")
+					if route == nil {
+						route = currroute
+					} else {
+						route = combine(route, currroute)
+					}
 				}
 			}
 		}
 	}
-
 	if route == nil {
 		switch qr.cfg.DefaultRouteBehaviour {
 		case "BLOCK":

@@ -117,9 +117,8 @@ var runCmd = &cobra.Command{
 				return err
 			}
 
-      if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
+			if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
 				spqrlog.Zero.Info().
-
 					Err(err).
 					Msg("got an error while starting cpu profile")
 				return err

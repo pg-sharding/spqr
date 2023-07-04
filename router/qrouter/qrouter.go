@@ -8,8 +8,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v4"
 	"github.com/pkg/errors"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 const NOSHARD = ""
@@ -75,7 +76,7 @@ type WorldRouteState struct {
 }
 
 type QueryRouter interface {
-	Route(ctx context.Context, stmt *pgquery.ParseResult) (RoutingState, error)
+	Route(ctx context.Context, stmt lyx.Node) (RoutingState, error)
 
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute

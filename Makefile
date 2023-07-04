@@ -37,6 +37,7 @@ gogen:
 	protos/* 
 
 yaccgen:
+	goyacc -o yacc/router/sql.go -p yy yacc/router/sql.y
 	goyacc -o yacc/console/sql.go -p yy yacc/console/sql.y
 
 gen: gogen yaccgen

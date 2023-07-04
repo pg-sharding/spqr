@@ -186,7 +186,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if rst.Client().Rule().PoolMode == config.PoolModeTransaction && !rst.Client().Rule().PoolPreparedStatement {
+	if rst.Client().Rule().PoolMode != config.PoolModeTransaction || !rst.Client().Rule().PoolPreparedStatement {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
 			return nil
@@ -245,6 +245,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 			Str("name", q.Name).
 			Str("query", q.Query).
 			Uint64("hash", hash)
+
 		if rst.PgprotoDebug() {
 			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 				return err

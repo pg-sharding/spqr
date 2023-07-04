@@ -9,7 +9,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v4"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type LocalQrouter struct {
@@ -59,7 +60,7 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard)
 	return nil
 }
 
-func (l *LocalQrouter) Route(_ context.Context, _ *pgquery.ParseResult) (RoutingState, error) {
+func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node) (RoutingState, error) {
 	return ShardMatchState{
 		Routes: []*DataShardRoute{
 			{
