@@ -102,7 +102,7 @@ var runCmd = &cobra.Command{
 		}
 
 		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+                signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		router, err := router.NewRouter(ctx, &rcfg)
 		if err != nil {
