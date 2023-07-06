@@ -123,11 +123,14 @@ func (c *cPool) Connection(
 	}
 
 	if err := func() error {
+		c.mu.Lock()
+		queueC := c.queues[host]
+		c.mu.Unlock()
 		for rep := 0; rep < 10; rep++ {
 			select {
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
 				spqrlog.Logger.ClientPrintf(spqrlog.LOG, "still waiting for backend connection to host %s", clid, host)
-			case <-c.queues[host]:
+			case <-queueC:
 				return nil
 			}
 		}
@@ -176,10 +179,12 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
 
 	err := sh.Close()
+
+	c.mu.Lock()
+
 	/* acquired tok, release it */
 	c.queues[sh.Instance().Hostname()] <- struct{}{}
 
-	c.mu.Lock()
 	delete(c.active, sh.ID())
 
 	c.mu.Unlock()

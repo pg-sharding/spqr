@@ -69,6 +69,8 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 }
 
 func (r *RoutePoolImpl) Shutdown() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, rt := range r.pool {
 		rt := rt
 		go func() {
