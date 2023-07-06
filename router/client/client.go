@@ -98,7 +98,7 @@ type PsqlClient struct {
 	startupMsg *pgproto3.StartupMessage
 
 	/* protects server */
-	mu     sync.Mutex
+	mu     sync.RWMutex
 	server server.Server
 }
 
@@ -191,6 +191,8 @@ func (cl *PsqlClient) ResetAll() {
 }
 
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 
@@ -406,6 +408,8 @@ func (cl *PsqlClient) ID() string {
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	if cl.server != nil {
 		return cl.server.Datashards()
 	}
@@ -747,11 +751,15 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy %T", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	return cl.server.Send(query)
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy end %T", cl, query)
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	if err := cl.server.Send(*query); err != nil {
 		return err
 	}
@@ -775,7 +783,8 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process query %T", cl, query)
 	_ = cl.ReplyDebugNoticef("executing your query %v", query)
-
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	if cl.server == nil {
 		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
 	}
@@ -851,7 +860,8 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process command %+v", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
-
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
 	if err := cl.server.Send(query); err != nil {
 		return err
 	}
@@ -884,6 +894,8 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 }
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
+	cl.mu.Lock()
+	defer cl.mu.Unlock()
 	if cl.server != nil {
 		return fmt.Errorf("client already has active connection")
 	}
