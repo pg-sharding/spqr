@@ -12,6 +12,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/connectiterator"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -22,8 +24,7 @@ import (
 )
 
 type RuleRouter interface {
-	client.Pool
-	shard.ShardIterator
+	connectiterator.ConnectIterator
 
 	Shutdown() error
 	Reload(configPath string) error
@@ -320,6 +321,10 @@ func (rr *RuleRouterImpl) Pop(clientID string) (bool, error) {
 
 func (rr *RuleRouterImpl) Put(id client.Client) error {
 	return nil
+}
+
+func (rr *RuleRouterImpl) ForEachPool(cb func(pool.Pool) error) error {
+	return rr.routePool.ForEachPool(cb)
 }
 
 var _ RuleRouter = &RuleRouterImpl{}

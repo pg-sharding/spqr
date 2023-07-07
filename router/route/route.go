@@ -5,8 +5,8 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -36,11 +36,13 @@ func (r *Key) String() string {
 }
 
 type Route struct {
+	pool.PoolIterator
+
 	beRule *config.BackendRule
 	frRule *config.FrontendRule
 
 	clPool   client.Pool
-	servPool datashard.DBPool
+	servPool pool.DBPool
 
 	mu sync.Mutex
 	// protects this
@@ -49,13 +51,15 @@ type Route struct {
 }
 
 func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
-	return &Route{
+	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: datashard.NewDBPool(mapping),
+		servPool: pool.NewDBPool(mapping),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}
+	_ = route.servPool.InitRule(beRule)
+	return route
 }
 
 func (r *Route) SetParams(ps shard.ParameterSet) {
@@ -79,7 +83,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		break
 	}
 
-	serv, err := r.servPool.Connection("internal", anyK, r.beRule, "")
+	serv, err := r.servPool.Connection("internal", anyK, "")
 	if err != nil {
 		spqrlog.Logger.PrintError(err)
 		return shard.ParameterSet{}, err
@@ -95,7 +99,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	return r.params, nil
 }
 
-func (r *Route) ServPool() datashard.DBPool {
+func (r *Route) ServPool() pool.DBPool {
 	return r.servPool
 }
 
@@ -117,4 +121,8 @@ func (r *Route) AddClient(cl client.Client) error {
 
 func (r *Route) ReleaseClient(clientID string) (bool, error) {
 	return r.clPool.Pop(clientID)
+}
+
+func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
+	return r.servPool.ForEachPool(cb)
 }

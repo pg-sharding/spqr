@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/route"
@@ -12,6 +13,7 @@ import (
 
 type RoutePool interface {
 	shard.ShardIterator
+	pool.PoolIterator
 
 	MatchRoute(key route.Key,
 		beRule *config.BackendRule,
@@ -100,4 +102,13 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 
 	r.pool[key] = nroute
 	return nroute, nil
+}
+
+func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, route := range r.pool {
+		_ = route.ForEachPool(cb)
+	}
+	return nil
 }

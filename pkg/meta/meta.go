@@ -7,8 +7,10 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -106,7 +108,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool client.Pool, shi shard.ShardIterator, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
@@ -154,9 +156,9 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool c
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Show:
-		return ProcessShow(ctx, stmt, mgr, pool, shi, cli)
+		return ProcessShow(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.Kill:
-		return ProcessKill(ctx, stmt, mgr, pool, cli)
+		return ProcessKill(ctx, stmt, mgr, ci, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -179,13 +181,13 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 	}
 }
 
-func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, pool client.Pool, shi shard.ShardIterator, cli *clientinteractor.PSQLInteractor) error {
+func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
 		var resp []shard.Shard
-		if err := shi.ForEach(func(cl shard.Shard) error {
+		if err := ci.ForEach(func(cl shard.Shard) error {
 			resp = append(resp, cl)
 			return nil
 		}); err != nil {
@@ -226,9 +228,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, poo
 
 		return cli.ShardingRules(ctx, resp)
 	case spqrparser.ClientsStr:
-
 		var resp []client.Client
-		if err := pool.ClientPoolForeach(func(cl client.Client) error {
+		if err := ci.ClientPoolForeach(func(cl client.Client) error {
 			resp = append(resp, cl)
 			return nil
 		}); err != nil {
@@ -236,6 +237,16 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, poo
 		}
 
 		return cli.Clients(ctx, resp)
+	case spqrparser.PoolsStr:
+		var respPools []pool.Pool
+		if err := ci.ForEachPool(func(p pool.Pool) error {
+			respPools = append(respPools, p)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return cli.Pools(ctx, respPools)
 	default:
 		return unknownCoordinatorCommand
 	}
