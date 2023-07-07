@@ -14,7 +14,7 @@ import (
 
 /* pool for single host */
 
-type hostPool struct {
+type shardPool struct {
 	mu   sync.Mutex
 	pool []shard.Shard
 
@@ -29,15 +29,15 @@ type hostPool struct {
 	ConnectionLimit int
 }
 
-var _ Pool = &hostPool{}
+var _ Pool = &shardPool{}
 
-func NewHostPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
+func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
 	if beRule.ConnectionLimit != 0 {
 		connLimit = beRule.ConnectionLimit
 	}
 
-	ret := &hostPool{
+	ret := &shardPool{
 		mu:              sync.Mutex{},
 		pool:            nil,
 		active:          make(map[string]shard.Shard),
@@ -56,7 +56,7 @@ func NewHostPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 	return ret
 }
 
-func (h *hostPool) Cut(host string) []shard.Shard {
+func (h *shardPool) Cut(host string) []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -66,7 +66,7 @@ func (h *hostPool) Cut(host string) []shard.Shard {
 	return ret
 }
 
-func (h *hostPool) Connection(
+func (h *shardPool) Connection(
 	clid string,
 	shardKey kr.ShardKey,
 	host string) (shard.Shard, error) {
@@ -119,7 +119,7 @@ func (h *hostPool) Connection(
 	return sh, nil
 }
 
-func (h *hostPool) Discard(sh shard.Shard) error {
+func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
 
 	/* do not hold mutex while cleanup server connection */
@@ -136,7 +136,7 @@ func (h *hostPool) Discard(sh shard.Shard) error {
 	return err
 }
 
-func (h *hostPool) Put(sh shard.Shard) error {
+func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &sh, sh.Instance().Hostname())
 
 	h.mu.Lock()
@@ -151,7 +151,7 @@ func (h *hostPool) Put(sh shard.Shard) error {
 	return nil
 }
 
-func (h *hostPool) ForEach(cb func(sh shard.Shard) error) error {
+func (h *shardPool) ForEach(cb func(sh shard.Shard) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -169,7 +169,7 @@ func (h *hostPool) ForEach(cb func(sh shard.Shard) error) error {
 	return nil
 }
 
-func (h *hostPool) List() []shard.Shard {
+func (h *shardPool) List() []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -188,7 +188,7 @@ type cPool struct {
 	beRule *config.BackendRule
 }
 
-func NewPool(allocFn ConnectionAllocFn) MultiHostPool {
+func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	return &cPool{
 		pools: sync.Map{},
 		alloc: allocFn,
@@ -196,9 +196,16 @@ func NewPool(allocFn ConnectionAllocFn) MultiHostPool {
 }
 
 func (c *cPool) ForEach(cb func(sh shard.Shard) error) error {
-
 	c.pools.Range(func(key, value any) bool {
-		value.(Pool).ForEach(cb)
+		_ = value.(Pool).ForEach(cb)
+		return true
+	})
+
+	return nil
+}
+func (c *cPool) ForEachPool(cb func(p Pool) error) error {
+	c.pools.Range(func(key, value any) bool {
+		_ = cb(value.(Pool))
 		return true
 	})
 
@@ -218,7 +225,7 @@ func (c *cPool) List() []shard.Shard {
 func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
-		pool = NewHostPool(c.alloc, c.beRule)
+		pool = NewshardPool(c.alloc, c.beRule)
 		c.pools.Store(host, pool)
 	} else {
 		pool = val.(Pool)
@@ -254,4 +261,4 @@ func (c *cPool) InitRule(rule *config.BackendRule) error {
 	return nil
 }
 
-var _ MultiHostPool = &cPool{}
+var _ MultiShardPool = &cPool{}

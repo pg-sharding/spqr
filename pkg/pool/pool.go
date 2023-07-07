@@ -19,8 +19,9 @@ type Pool interface {
 	List() []shard.Shard
 }
 
-type MultiHostPool interface {
+type MultiShardPool interface {
 	shard.ShardIterator
+	PoolInterator
 	Pool
 
 	InitRule(rule *config.BackendRule) error
@@ -36,7 +37,7 @@ type ConnectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.Back
 type DBPool interface {
 	shard.ShardIterator
 	PoolInterator
-	MultiHostPool
+	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
 }

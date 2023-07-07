@@ -16,7 +16,7 @@ import (
 )
 
 type InstancePoolImpl struct {
-	pool MultiHostPool
+	pool MultiShardPool
 
 	mu sync.Mutex
 
@@ -130,11 +130,11 @@ func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 }
 
 func (s *InstancePoolImpl) ForEachPool(cb func(pool Pool) error) error {
-	return nil
+	return s.pool.ForEachPool(cb)
 }
 
-func (s *InstancePoolImpl) Cut(string) []shard.Shard {
-	return nil
+func (s *InstancePoolImpl) Cut(host string) []shard.Shard {
+	return s.pool.Cut(host)
 }
 
 func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
