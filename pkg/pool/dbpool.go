@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -16,12 +15,7 @@ import (
 )
 
 type InstancePoolImpl struct {
-	pool MultiShardPool
-
-	mu sync.Mutex
-
-	primaries map[string]string
-
+	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
 }
 
@@ -142,8 +136,7 @@ func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
 }
 
 func NewDBPool(mapping map[string]*config.Shard) DBPool {
-	var allocator ConnectionAllocFn
-	allocator = func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
+	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
 		shard := mapping[shardKey.Name]
 
 		addr, _, _ := net.SplitHostPort(host)
@@ -164,7 +157,6 @@ func NewDBPool(mapping map[string]*config.Shard) DBPool {
 
 	return &InstancePoolImpl{
 		pool:         NewPool(allocator),
-		primaries:    map[string]string{},
 		shardMapping: mapping,
 	}
 }

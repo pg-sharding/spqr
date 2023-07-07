@@ -34,7 +34,6 @@ const (
 )
 
 type MultiShardServer struct {
-	rule         *config.BackendRule
 	activeShards []shard.Shard
 
 	states []ShardState
