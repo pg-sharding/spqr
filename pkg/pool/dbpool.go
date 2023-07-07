@@ -15,6 +15,7 @@ import (
 )
 
 type InstancePoolImpl struct {
+	Pool
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
 }

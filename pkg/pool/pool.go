@@ -16,19 +16,23 @@ type Pool interface {
 	Put(host shard.Shard) error
 	Discard(sh shard.Shard) error
 
+	UsedConnectionCount() int
+	IdleConnectionCount() int
+	QueueResidualSize() int
+
 	List() []shard.Shard
 }
 
 type MultiShardPool interface {
 	shard.ShardIterator
-	PoolInterator
+	PoolIterator
 	Pool
 
 	InitRule(rule *config.BackendRule) error
 	Cut(host string) []shard.Shard
 }
 
-type PoolInterator interface {
+type PoolIterator interface {
 	ForEachPool(cb func(p Pool) error) error
 }
 
@@ -36,7 +40,7 @@ type ConnectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.Back
 
 type DBPool interface {
 	shard.ShardIterator
-	PoolInterator
+	PoolIterator
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard

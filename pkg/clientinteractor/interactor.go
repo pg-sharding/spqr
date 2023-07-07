@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 
@@ -110,22 +111,28 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 	return pi.CompleteMsg(len(dbs))
 }
 
-func (pi *PSQLInteractor) Pools() error {
-	if err := pi.WriteHeader("show pools"); err != nil {
+func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
+	if err := pi.WriteHeader(
+		"pool id",
+		"used connection count",
+		"idle connections",
+		"queue residual size"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	for _, msg := range []string{
-		"show pools",
-	} {
-		if err := pi.WriteDataRow(msg); err != nil {
+	for _, p := range ps {
+		if err := pi.WriteDataRow(
+			fmt.Sprintf("%p", p),
+			fmt.Sprintf("%d", p.UsedConnectionCount()),
+			fmt.Sprintf("%d", p.IdleConnectionCount()),
+			fmt.Sprintf("%d", p.QueueResidualSize())); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
 
-	return pi.CompleteMsg(0)
+	return pi.CompleteMsg(len(ps))
 }
 
 func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {

@@ -36,6 +36,8 @@ func (r *Key) String() string {
 }
 
 type Route struct {
+	pool.PoolIterator
+
 	beRule *config.BackendRule
 	frRule *config.FrontendRule
 
@@ -119,4 +121,8 @@ func (r *Route) AddClient(cl client.Client) error {
 
 func (r *Route) ReleaseClient(clientID string) (bool, error) {
 	return r.clPool.Pop(clientID)
+}
+
+func (r *Route) ForEachPool(cb func(pool.Pool) error) error {
+	return r.servPool.ForEachPool(cb)
 }

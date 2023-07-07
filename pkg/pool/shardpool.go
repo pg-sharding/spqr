@@ -66,6 +66,24 @@ func (h *shardPool) Cut(host string) []shard.Shard {
 	return ret
 }
 
+func (s *shardPool) UsedConnectionCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.active)
+}
+
+func (s *shardPool) IdleConnectionCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.pool)
+}
+
+func (s *shardPool) QueueResidualSize() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.queue)
+}
+
 func (h *shardPool) Connection(
 	clid string,
 	shardKey kr.ShardKey,
@@ -179,7 +197,8 @@ func (h *shardPool) List() []shard.Shard {
 /* pool with many hosts */
 
 type cPool struct {
-	PoolInterator
+	PoolIterator
+	Pool
 
 	pools sync.Map
 
@@ -230,7 +249,7 @@ func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string) (shar
 	} else {
 		pool = val.(Pool)
 	}
-	return pool.(Pool).Connection(clid, shardKey, host)
+	return pool.Connection(clid, shardKey, host)
 }
 
 func (c *cPool) Cut(host string) []shard.Shard {
