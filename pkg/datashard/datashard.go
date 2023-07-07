@@ -39,6 +39,9 @@ type Conn struct {
 
 	sync_in  int64
 	sync_out int64
+
+	tx_served int64
+
 	id       string
 
 	status txstatus.TXStatus
@@ -54,6 +57,10 @@ func (sh *Conn) Instance() conn.DBInstance {
 
 func (sh *Conn) Sync() int64 {
 	return sh.sync_out - sh.sync_in
+}
+
+func (sh *Conn) TxServed() int64 {
+	return sh.tx_served
 }
 
 func (sh *Conn) Cancel() error {
@@ -98,6 +105,9 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	case *pgproto3.ReadyForQuery:
 		sh.sync_out++
 		sh.status = txstatus.TXStatus(v.TxStatus)
+		if sh.status == txstatus.TXIDLE {
+			sh.tx_served++
+		}
 	}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p connection recieved message %+v, sync out %d", sh, msg, sh.sync_out)

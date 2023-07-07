@@ -24,6 +24,7 @@ var (
 	saveProfie  bool
 	profileFile string
 	daemonize   bool
+	logLevel	string
 )
 
 var rootCmd = &cobra.Command{
@@ -42,6 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
 	rootCmd.PersistentFlags().BoolVar(&saveProfie, "profile", false, "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -55,6 +57,17 @@ var runCmd = &cobra.Command{
 		}
 
 		spqrlog.RebornLogger(rcfg.LogFileName)
+
+		// Logger
+		rlogLevel := rcfg.LogLevel
+		if logLevel != "" {
+			rlogLevel = logLevel
+		}
+
+		if err := spqrlog.UpdateDefaultLogLevel(rlogLevel); err != nil {
+			return err
+		}
+
 		if rcfg.Daemonize || daemonize {
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,

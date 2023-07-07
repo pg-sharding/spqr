@@ -49,11 +49,6 @@ func (r *InstanceImpl) Initialized() bool {
 var _ Router = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
-	// Logger
-	if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
-		return nil, err
-	}
-
 	/* TODO: fix by adding configurable setting */
 	qdb, _ := qdb.NewMemQDB()
 
