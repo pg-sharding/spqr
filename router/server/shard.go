@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -17,17 +17,15 @@ import (
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	rule  *config.BackendRule
-	pool  datashard.DBPool
+	pool  pool.DBPool
 	shard shard.Shard
 	mp    map[uint64]string
 	// protects shard
 	mu sync.RWMutex
 }
 
-func NewShardServer(rule *config.BackendRule, spool datashard.DBPool) *ShardServer {
+func NewShardServer(spool pool.DBPool) *ShardServer {
 	return &ShardServer{
-		rule: rule,
 		pool: spool,
 		mp:   make(map[uint64]string),
 		mu:   sync.RWMutex{},
@@ -80,16 +78,16 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 
 	defer func() {
 		srv.shard = nil
-	} ()
+	}()
 
 	if srv.shard.SHKey().Name != shkey.Name {
 		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
 	}
 
 	if srv.shard.Sync() != 0 {
-		/* will automaticly discard connection, 
+		/* will automaticly discard connection,
 		but we will not perform cleanup, which may stuck forever */
-		return srv.pool.Put(srv.shard);
+		return srv.pool.Put(srv.shard)
 	}
 
 	if err := srv.cleanupLockFree(rule); err != nil {
@@ -112,7 +110,7 @@ func (srv *ShardServer) AddDataShard(clid string, shkey kr.ShardKey, tsa string)
 	}
 
 	var err error
-	if srv.shard, err = srv.pool.Connection(clid, shkey, srv.rule, tsa); err != nil {
+	if srv.shard, err = srv.pool.Connection(clid, shkey, tsa); err != nil {
 		return err
 	}
 

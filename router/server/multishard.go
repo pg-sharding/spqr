@@ -6,8 +6,8 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -41,7 +41,7 @@ type MultiShardServer struct {
 
 	multistate MultishardState
 
-	pool datashard.DBPool
+	pool pool.DBPool
 
 	status txstatus.TXStatus
 
@@ -59,7 +59,7 @@ func (m *MultiShardServer) Reset() error {
 }
 
 func (m *MultiShardServer) AddDataShard(clid string, shkey kr.ShardKey, tsa string) error {
-	sh, err := m.pool.Connection(clid, shkey, m.rule, tsa)
+	sh, err := m.pool.Connection(clid, shkey, tsa)
 	if err != nil {
 		return err
 	}

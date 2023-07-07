@@ -278,13 +278,13 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 	var err error
 
 	if len(shardRoutes) > 1 {
-		serv, err = server.NewMultiShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
+		serv, err = server.NewMultiShardServer(rst.Cl.Route().ServPool())
 		if err != nil {
 			return err
 		}
 	} else {
 		_ = rst.Cl.ReplyDebugNotice("open a connection to the single data shard")
-		serv = server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
+		serv = server.NewShardServer(rst.Cl.Route().ServPool())
 	}
 
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
@@ -314,7 +314,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 func (rst *RelayStateImpl) ConnectWorld() error {
 	_ = rst.Cl.ReplyDebugNotice("open a connection to the single data shard")
 
-	serv := server.NewShardServer(rst.Cl.Route().BeRule(), rst.Cl.Route().ServPool())
+	serv := server.NewShardServer(rst.Cl.Route().ServPool())
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
 		return err
 	}
