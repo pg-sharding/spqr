@@ -10,7 +10,7 @@ type Pool interface {
 	ClientPoolForeach(cb func(client Client) error) error
 
 	Put(client Client) error
-	Pop(client Client) error
+	Pop(id string) (bool, error)
 
 	Shutdown() error
 }
@@ -31,13 +31,18 @@ func (c *PoolImpl) Put(client Client) error {
 	return nil
 }
 
-func (c *PoolImpl) Pop(client Client) error {
+func (c *PoolImpl) Pop(id string) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	delete(c.pool, client.ID())
+	var err error
+	cl, ok := c.pool[id]
+	if ok {
+		err = cl.Close()
+		delete(c.pool, id)
+	}
 
-	return nil
+	return ok, err
 }
 
 func (c *PoolImpl) Shutdown() error {

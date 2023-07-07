@@ -81,6 +81,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
+%token <str> CLIENT
 
 
 %type<sharding_rule_selector> sharding_rule_stmt
@@ -124,6 +125,7 @@ func randomHex(n int) (string, error) {
 %type<bytes> key_range_spec_bound
 
 %type<str> internal_id
+%type<str> target
 
 %type<str> router_addr
 %type<str> ref_name
@@ -209,6 +211,7 @@ POOLS
 | KEY_RANGES
 | ROUTERS
 | SHARDING_RULES
+| CLIENT
 | BACKEND_CONNECTIONS
 
 show_statement_type:
@@ -226,7 +229,7 @@ kill_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case ClientsStr:
+		case ClientStr:
 			$$ = v
 		default:
 			$$ = "unsupp"
@@ -310,6 +313,12 @@ key_range_spec_bound:
     }
 
 internal_id:
+	STRING
+	{
+		$$ = string($1)
+	}
+
+target:
 	STRING
 	{
 		$$ = string($1)
@@ -459,9 +468,9 @@ split_key_range_stmt:
 	}
 
 kill_stmt:
-	KILL kill_statement_type
+	KILL kill_statement_type target
 	{
-		$$ = &Kill{Cmd: $2}
+		$$ = &Kill{Cmd: $2, Target: $3}
 	}
 
 move_key_range_stmt:

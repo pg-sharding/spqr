@@ -112,7 +112,8 @@ type Listen struct {
 type Shutdown struct{}
 
 type Kill struct {
-	Cmd string
+	Cmd    string
+	Target string
 }
 
 // coordinator
@@ -137,6 +138,10 @@ const (
 	PoolsStr              = "pools"
 	BackendConnectionsStr = "backend_connections"
 	UnsupportedStr        = "unsupported"
+)
+
+const (
+	ClientStr = "client"
 )
 
 // Statement represents a statement.
@@ -167,6 +172,7 @@ var reservedWords = map[string]int{
 	"pools":               POOLS,
 	"servers":             SERVERS,
 	"clients":             CLIENTS,
+	"client":              CLIENT,
 	"databases":           DATABASES,
 	"show":                SHOW,
 	"stats":               STATS,

@@ -155,6 +155,25 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, pool c
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Show:
 		return ProcessShow(ctx, stmt, mgr, pool, shi, cli)
+	case *spqrparser.Kill:
+		return ProcessKill(ctx, stmt, mgr, pool, cli)
+	default:
+		return unknownCoordinatorCommand
+	}
+}
+
+func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
+	spqrlog.Logger.Printf(spqrlog.DEBUG4, "kill %s stmt", stmt.Cmd)
+	switch stmt.Cmd {
+	case spqrparser.ClientStr:
+		ok, err := pool.Pop(stmt.Target)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("No such client %s", stmt.Target)
+		}
+		return cli.KillClient(stmt.Target)
 	default:
 		return unknownCoordinatorCommand
 	}
