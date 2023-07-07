@@ -78,8 +78,18 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return nil
 	}
 
+	defer func() {
+		srv.shard = nil
+	} ()
+
 	if srv.shard.SHKey().Name != shkey.Name {
 		return fmt.Errorf("active datashard does not match unrouted: %v != %v", srv.shard.SHKey().Name, shkey.Name)
+	}
+
+	if srv.shard.Sync() != 0 {
+		/* will automaticly discard connection, 
+		but we will not perform cleanup, which may stuck forever */
+		return srv.pool.Put(srv.shard);
 	}
 
 	if err := srv.cleanupLockFree(rule); err != nil {
@@ -90,7 +100,6 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 		return err
 	}
 
-	srv.shard = nil
 	return nil
 }
 

@@ -13,3 +13,18 @@ type TxStatusMgr interface {
 	SetTxStatus(status TXStatus)
 	TxStatus() TXStatus
 }
+
+
+func StatusToString(s TXStatus) string {
+	switch s {
+	case TXIDLE:
+		return "IDLE"
+	case TXERR:
+		return "ERROR"
+	case TXACT:
+		return "ACTIVE"
+	case TXCONT:
+		return "INTERNAL STATE"
+	}
+	return "invalid"
+}

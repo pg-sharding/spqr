@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"strconv"
 
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -550,14 +551,14 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 }
 
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shard) error {
-	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname"); err != nil {
+	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	for _, sh := range shs {
 
-		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB()); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), txstatus.StatusToString(sh.TxStatus())); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}
