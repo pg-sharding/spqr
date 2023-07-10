@@ -7,7 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	pgquery "github.com/pganalyze/pg_query_go/v4"
 	"github.com/pkg/errors"
 )
@@ -18,7 +17,7 @@ type ShardRoute interface {
 }
 
 func combine(sh1, sh2 ShardRoute) ShardRoute {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "combine route %+v with %+v", sh1, sh2)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG5, "combine route %+v with %+v", sh1, sh2)
 	switch shq1 := sh1.(type) {
 	case *MultiMatchRoute:
 		return sh2

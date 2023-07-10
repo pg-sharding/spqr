@@ -59,7 +59,7 @@ type RuleRouterImpl struct {
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	spqrlog.Logger.Printf(spqrlog.INFO, "added world datashard to rrouter %v", key.Name)
+	// // spqrlog.Logger.Printf(spqrlog.INFO, "added world datashard to rrouter %v", key.Name)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 			defaultFrontendRule = frontendRule
 			continue
 		}
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding frontend rule %+v", frontendRule)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding frontend rule %+v", frontendRule)
 		key := *route.NewRouteKey(frontendRule.Usr, frontendRule.DB)
 		frontendRules[key] = frontendRule
 	}
@@ -204,10 +204,10 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: auth succeeded", cl)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: auth succeeded", cl)
 
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		// spqrlog.Logger.PrintError(err)
 		return nil, err
 	}
 	if err := cl.AssignRoute(rt); err != nil {
@@ -296,7 +296,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 			return fmt.Errorf("cancel secret does not match")
 		}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
 		return cl.Cancel()
 	}
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)

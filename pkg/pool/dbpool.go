@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datashard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
@@ -26,7 +25,7 @@ func (s *InstancePoolImpl) Connection(
 	clid string,
 	key kr.ShardKey,
 	TargetSessionAttrs string) (shard.Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
 
 	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
 	copy(hosts, s.shardMapping[key.Name].Hosts)
@@ -43,7 +42,7 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
+				// spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
 				continue
 			}
 			return shard, nil
@@ -56,7 +55,7 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
+				// spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
 			if ch, reason, err := tsa.CheckTSA(shard); err != nil {
@@ -78,7 +77,7 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
+				// spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
 			if ch, reason, err := tsa.CheckTSA(shard); err != nil {
@@ -118,7 +117,7 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
 
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "discarding unsync connection %p, sync %d", sh, sh.Sync())
+		// spqrlog.Logger.Printf(spqrlog.ERROR, "discarding unsync connection %p, sync %d", sh, sh.Sync())
 		return s.pool.Discard(sh)
 	}
 	return s.pool.Put(sh)

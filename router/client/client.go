@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
@@ -119,7 +118,7 @@ func copymap(params map[string]string) map[string]string {
 }
 
 func (cl *PsqlClient) StartTx() {
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "start new params set")
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG4, "start new params set")
 	cl.beginTxParamSet = copymap(cl.activeParamSet)
 	cl.savepointParamSet = nil
 	cl.savepointParamTxCnt = nil
@@ -191,7 +190,7 @@ func (cl *PsqlClient) ResetAll() {
 func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "process parse %v", query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 
 	if err := cl.server.Send(query); err != nil {
@@ -239,11 +238,11 @@ func (cl *PsqlClient) ResetParam(name string) {
 	} else {
 		delete(cl.activeParamSet, name)
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "activeParamSet are now %+v", cl.activeParamSet)
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG2, "activeParamSet are now %+v", cl.activeParamSet)
 }
 
 func (cl *PsqlClient) SetParam(name, value string) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client param %v %v", name, value)
+	// // // spqrlog.Logger.Printf(spqrlog.DEBUG1, "client param %v %v", name, value)
 	if name == "options" {
 		i := 0
 		j := 0
@@ -287,7 +286,7 @@ func (cl *PsqlClient) SetParam(name, value string) {
 			}
 			i = j + 1
 
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed pgoption param %v %v", opname, opvalue)
+			// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed pgoption param %v %v", opname, opvalue)
 			cl.activeParamSet[opname] = opvalue
 		}
 
@@ -474,7 +473,7 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 
 // startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
+	// // spqrlog.Logger.Printf(spqrlog.LOG, "init client connection with ssl: %t", tlsconfig != nil)
 
 	for {
 		var backend *pgproto3.Backend
@@ -498,7 +497,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
-		spqrlog.Logger.ClientPrintf(spqrlog.DEBUG5, "received protocol version %d", cl.ID(), protoVer)
+		// // spqrlog.Logger.ClientPrintf(spqrlog.DEBUG5, "received protocol version %d", cl.ID(), protoVer)
 
 		if protoVer == conn.SSLREQ && tlsconfig == nil {
 			_, err := cl.conn.Write([]byte{'N'})
@@ -510,7 +509,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		}
 
 		if protoVer == conn.GSSREQ {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "negotiate gss enc request")
+			// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
 				return err
@@ -548,12 +547,12 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			sm = &pgproto3.StartupMessage{}
 			err = sm.Decode(msg)
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				// // spqrlog.Logger.PrintError(err)
 				return err
 			}
 			backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				// spqrlog.Logger.PrintError(err)
 				return err
 			}
 		case conn.CANCELREQ:
@@ -581,7 +580,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		cl.cancel_key = rand.Uint32()
 		cl.cancel_pid = rand.Uint32()
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p cancel key/pid: %d %d", cl, cl.cancel_key, cl.cancel_pid)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p cancel key/pid: %d %d", cl, cl.cancel_key, cl.cancel_pid)
 
 		if tlsconfig != nil && protoVer != conn.SSLREQ {
 			if err := cl.Send(
@@ -598,7 +597,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "processing frontend auth for %v %v\n", cl.Usr(), cl.DB())
+	// spqrlog.Logger.Printf(spqrlog.LOG, "processing frontend auth for %v %v\n", cl.Usr(), cl.DB())
 
 	if err := auth.AuthFrontend(cl, cl.Rule()); err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
@@ -621,11 +620,11 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "client %s connection for %v %v accepted\n", cl.ID(), cl.Usr(), cl.DB())
+	// spqrlog.Logger.Printf(spqrlog.LOG, "client %s connection for %v %v accepted\n", cl.ID(), cl.Usr(), cl.DB())
 
 	ps, err := rt.Params()
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		// spqrlog.Logger.PrintError(err)
 		return err
 	}
 
@@ -714,17 +713,17 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
 
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: received message %+v", cl, msg)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: received message %+v", cl, msg)
 	return msg, err
 }
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: sending %+v", cl, msg)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG5, "client %p: sending %+v", cl, msg)
 	return cl.be.Send(msg)
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: sending %T", cl, msg)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG3, "client %p: sending %T", cl, msg)
 	ch := make(chan error)
 	go func() {
 		ch <- cl.be.Send(msg)
@@ -747,7 +746,7 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy %T", cl, query)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy %T", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
@@ -755,7 +754,7 @@ func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy end %T", cl, query)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: process copy end %T", cl, query)
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	if err := cl.server.Send(*query); err != nil {
@@ -779,7 +778,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process query %T", cl, query)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process query %T", cl, query)
 	_ = cl.ReplyDebugNoticef("executing your query %v", query)
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
@@ -844,7 +843,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			}
 			ok = false
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "received msg type from server %p: %T", cl.server, v)
+			// spqrlog.Logger.Printf(spqrlog.DEBUG2, "received msg type from server %p: %T", cl.server, v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
@@ -856,7 +855,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 }
 
 func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process command %+v", cl, query)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "cleint %p process command %+v", cl, query)
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
@@ -880,7 +879,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf(v.Message)
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", cl, v)
+			// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p msg type from server: %T", cl, v)
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {

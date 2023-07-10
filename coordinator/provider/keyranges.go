@@ -146,7 +146,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unite keyrange %#v", uniteKeyRange)
 
 	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
 		return &protos.ModifyReply{}, nil
 	}
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pkg/errors"
 )
 
@@ -107,7 +106,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	}
 
 	if c.CertFile != "" && c.KeyFile != "" {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "loading tls cert file %s, key file %s", c.CertFile, c.KeyFile)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG2, "loading tls cert file %s, key file %s", c.CertFile, c.KeyFile)
 		cert, err := tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
 		if err != nil {
 			return nil, fmt.Errorf("unable to X509 key pair: %w", err)

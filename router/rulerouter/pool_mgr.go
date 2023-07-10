@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pkg/errors"
@@ -43,7 +42,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	var anyerr error
 	anyerr = nil
 	for _, shkey := range sh {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p unrouting from datashard %v", cl, shkey.Name)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p unrouting from datashard %v", cl, shkey.Name)
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			_ = cl.Unroute()
 			anyerr = err
@@ -81,7 +80,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	}
 
 	for _, shkey := range sh {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding shard with tsa %s", client.GetTsa())
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding shard with tsa %s", client.GetTsa())
 		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
 			return err
 		}
@@ -104,7 +103,7 @@ func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
 
 func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	ash := rst.ActiveShards()
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p end of transaction, unrouting from active shards %v", rst.Client(), ash)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p end of transaction, unrouting from active shards %v", rst.Client(), ash)
 	rst.ActiveShardsReset()
 
 	return t.UnRouteCB(rst.Client(), ash)

@@ -3,13 +3,11 @@ package rulerouter
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
@@ -193,7 +191,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	}
 
 	if err := rst.Connect(routes); err != nil {
-		spqrlog.Logger.Errorf("client %s encounter '%v' while initialing server connection", rst.Cl.ID(), err)
+		// spqrlog.Logger.Errorf("client %s encounter '%v' while initialing server connection", rst.Cl.ID(), err)
 
 		_ = rst.Reset()
 		return err
@@ -210,7 +208,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	span.SetTag("user", rst.Cl.Usr())
 	span.SetTag("db", rst.Cl.DB())
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "rerouting client %p by %v", rst.Client(), rst.stmts)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "rerouting client %p by %v", rst.Client(), rst.stmts)
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.stmts)
 	if err != nil {
@@ -291,21 +289,21 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %p (route %s:%s) to shards %s", rst.Cl, rst.Cl.Usr(), rst.Cl.DB(), func() string {
-		var shardDesc []string
-		for _, sh := range shardRoutes {
-			shardDesc = append(shardDesc, sh.Shkey.Name)
-		}
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %p (route %s:%s) to shards %s", rst.Cl, rst.Cl.Usr(), rst.Cl.DB(), func() string {
+	// 	var shardDesc []string
+	// 	for _, sh := range shardRoutes {
+	// 		shardDesc = append(shardDesc, sh.Shkey.Name)
+	// 	}
 
-		return strings.Join(shardDesc, ", ")
-	}())
+	// 	return strings.Join(shardDesc, ", ")
+	// }())
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
 	}
 	if rst.maintain_params {
 		query := rst.Cl.ConstructClientParams()
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting params for client %p: %s", rst.Cl, query.String)
+		// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "setting params for client %p: %s", rst.Cl, query.String)
 		_, _, err = rst.Cl.ProcQuery(query, true, false)
 	}
 	return err
@@ -319,7 +317,7 @@ func (rst *RelayStateImpl) ConnectWorld() error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "route cl %s:%s to world datashard", rst.Cl.Usr(), rst.Cl.DB())
 	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
@@ -343,7 +341,7 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 }
 
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: flushing message buffer", rst.Client())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: flushing message buffer", rst.Client())
 
 	ok := true
 
@@ -362,7 +360,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 
 			var v *pgproto3.Query
 			v, buff = buff[0].(*pgproto3.Query), buff[1:]
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v waitForResp: %v replyCl: %v", v, waitForResp, replyCl)
+			// spqrlog.Logger.Printf(spqrlog.DEBUG1, "flushing %+v waitForResp: %v replyCl: %v", v, waitForResp, replyCl)
 			if txst, txok, err = rst.Cl.ProcQuery(v, waitForResp, replyCl); err != nil {
 				ok = false
 				return txstatus.TXERR, err
@@ -425,23 +423,23 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		return nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: complete relay iter with TX %s", rst.Client(), func(b txstatus.TXStatus) string {
-		switch b {
-		case txstatus.TXIDLE:
-			return "idle"
-		case txstatus.TXACT:
-			return "active"
-		case txstatus.TXERR:
-			return "err"
-		default:
-			return "unknown"
-		}
-	}(rst.txStatus))
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: complete relay iter with TX %s", rst.Client(), func(b txstatus.TXStatus) string {
+	// 	switch b {
+	// 	case txstatus.TXIDLE:
+	// 		return "idle"
+	// 	case txstatus.TXACT:
+	// 		return "active"
+	// 	case txstatus.TXERR:
+	// 		return "err"
+	// 	default:
+	// 		return "unknown"
+	// 	}
+	// }(rst.txStatus))
 
 	switch rst.routingState.(type) {
 	case qrouter.MultiMatchState:
 		// TODO: explicitly forbid transaction, or hadnle it properly
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "unroute multishard route")
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "unroute multishard route")
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXIDLE),
@@ -493,12 +491,12 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 }
 
 func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay: adding %T to message buffer", rst.Client(), q)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay: adding %T to message buffer", rst.Client(), q)
 	rst.msgBuf = append(rst.msgBuf, q)
 }
 
 func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding silent %T %v", q, q)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding silent %T %v", q, q)
 	rst.smsgBuf = append(rst.smsgBuf, q)
 }
 
@@ -512,7 +510,7 @@ func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error
 var _ RelayStateMgr = &RelayStateImpl{}
 
 func (rst *RelayStateImpl) PrepareRelayStep(cmngr PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s (client %p)", rst.Client().Usr(), rst.Client().DB(), rst.Client())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "preparing relay step for %s %s (client %p)", rst.Client().Usr(), rst.Client().DB(), rst.Client())
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
@@ -553,7 +551,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 }
 
 func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay exeсuting sync for client", rst.Client())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p relay exeсuting sync for client", rst.Client())
 
 	// if we have no active connections, we have noting to sync
 	if !cmngr.ConnectionActive(rst) {
@@ -575,14 +573,14 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr PoolMgr) error 
 }
 
 func (rst *RelayStateImpl) ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "relay step: process message for client %p", &rst.Cl)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG3, "relay step: process message for client %p", &rst.Cl)
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}
 
 	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
 		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Logger.PrintError(err)
+			// spqrlog.Logger.PrintError(err)
 			return err
 		}
 		return err

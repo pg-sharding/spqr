@@ -12,7 +12,6 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"golang.yandex/hasql"
 	"golang.yandex/hasql/checkers"
 )
@@ -133,7 +132,7 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 		if err != nil {
 			return nil, err
 		}
-		spqrlog.Logger.Printf(spqrlog.INFO, "Connection string: %v", connString)
+		// spqrlog.Logger.Printf(spqrlog.INFO, "Connection string: %v", connString)
 
 		db, err := sql.Open("pgx", connString)
 		if err != nil {
@@ -144,7 +143,7 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 		nodes = append(nodes, hasql.NewNode(addr, db))
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "Nodes: %v", nodes)
+	// spqrlog.Logger.Printf(spqrlog.INFO, "Nodes: %v", nodes)
 
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }

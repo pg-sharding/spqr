@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type Key struct {
@@ -85,7 +84,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 
 	serv, err := r.servPool.Connection("internal", anyK, "")
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		// spqrlog.Logger.PrintError(err)
 		return shard.ParameterSet{}, err
 	}
 

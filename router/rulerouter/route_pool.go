@@ -7,7 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/route"
 )
 
@@ -52,7 +51,7 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 
 	for _, rt := range r.pool {
 		if err := cb(rt); err != nil {
-			spqrlog.Logger.Printf(spqrlog.INFO, "error while notifying route %v", err)
+			// // spqrlog.Logger.Printf(spqrlog.INFO, "error while notifying route %v", err)
 			return err
 		}
 	}
@@ -93,11 +92,11 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	defer r.mu.Unlock()
 
 	if nroute, ok := r.pool[key]; ok {
-		spqrlog.Logger.Printf(spqrlog.INFO, "match route %v", key)
+		// // spqrlog.Logger.Printf(spqrlog.INFO, "match route %v", key)
 		return nroute, nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "allocate route %v", key)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG4, "allocate route %v", key)
 	nroute := route.NewRoute(beRule, frRule, r.shardMapping)
 
 	r.pool[key] = nroute

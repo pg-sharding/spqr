@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 /* pool for single host */
@@ -51,7 +50,7 @@ func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 		ret.queue <- struct{}{}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "initialized %p pool queue with %d tokens", ret, connLimit)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG5, "initialized %p pool queue with %d tokens", ret, connLimit)
 
 	return ret
 }
@@ -93,7 +92,7 @@ func (h *shardPool) Connection(
 		for rep := 0; rep < 10; rep++ {
 			select {
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
-				spqrlog.Logger.ClientPrintf(spqrlog.LOG, "still waiting for backend connection to host %s", clid, host)
+				// spqrlog.Logger.ClientPrintf(spqrlog.LOG, "still waiting for backend connection to host %s", clid, host)
 			case <-h.queue:
 				return nil
 			}
@@ -115,7 +114,7 @@ func (h *shardPool) Connection(
 			sh, h.pool = h.pool[0], h.pool[1:]
 			h.active[sh.ID()] = sh
 			h.mu.Unlock()
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
+			// spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
 			return sh, nil
 		}
 
@@ -138,7 +137,7 @@ func (h *shardPool) Connection(
 }
 
 func (h *shardPool) Discard(sh shard.Shard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
 
 	/* do not hold mutex while cleanup server connection */
 	err := sh.Close()
@@ -155,7 +154,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 }
 
 func (h *shardPool) Put(sh shard.Shard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &sh, sh.Instance().Hostname())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &sh, sh.Instance().Hostname())
 
 	h.mu.Lock()
 	defer h.mu.Unlock()

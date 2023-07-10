@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
@@ -25,7 +24,7 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 }
 
 func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query '%v' from %p", query, rst.Client())
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query '%v' from %p", query, rst.Client())
 	state, comment, err := rst.Parse(query)
 	if err != nil {
 		return err
@@ -45,7 +44,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parse tsa %s from comment", val)
+			// spqrlog.Logger.Printf(spqrlog.DEBUG2, "parse tsa %s from comment", val)
 
 			rst.Client().SetTsa(val)
 		}
@@ -151,7 +150,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStatePrepareStmt:
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "sql level prep statement pooling support is on")
+			// spqrlog.Logger.Printf(spqrlog.DEBUG1, "sql level prep statement pooling support is on")
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
 			return rst.Client().ReplyParseComplete()
 		} else {
@@ -236,7 +235,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 		q = &cpQ
 
 		hash := murmur3.Sum64([]byte(q.Query))
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "name %v, query %v, hash %d", q.Name, q.Query, hash)
 		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 			return err
 		}
@@ -280,13 +279,13 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", rst.Client())
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p function call: simply fire parse stmt to connection", rst.Client())
 		return rst.ProcessMessage(q, false, true, cmngr)
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", rst.Client())
+		// spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p execute prepared statement: simply fire parse stmt to connection", rst.Client())
 		return rst.ProcessMessage(q, true, true, cmngr)
 	case *pgproto3.Bind:
 		// copy interface
@@ -320,7 +319,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 }
 
 func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rcfg *config.Router) error {
-	spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s (client %p)", cl.Usr(), cl.DB(), cl)
+	// spqrlog.Logger.Printf(spqrlog.INFO, "process frontend for route %s %s (client %p)", cl.Usr(), cl.DB(), cl)
 
 	_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
@@ -353,7 +352,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				// ok
 			default:
 				// fix all reply err to client to be here
-				spqrlog.Logger.Printf(spqrlog.ERROR, "client %p iter done with error: %v", rst.Client(), err)
+				// spqrlog.Logger.Printf(spqrlog.ERROR, "client %p iter done with error: %v", rst.Client(), err)
 				if rst.TxStatus() != txstatus.TXIDLE {
 					return rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client sync lost, reset connection"))
 				}
