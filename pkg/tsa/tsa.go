@@ -2,12 +2,57 @@ package tsa
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
+
+type TSAChecker interface {
+	CheckTSA(sh shard.Shard) (bool, string, error)
+}
+
+type CacheEntry struct {
+	result    bool
+	comment   string
+	lastCheck int64
+}
+
+type CachedTSAChecker struct {
+	mu    sync.Mutex
+	cache map[string]CacheEntry
+}
+
+func NewTSAChecker() TSAChecker {
+	return &CachedTSAChecker{
+		mu:    sync.Mutex{},
+		cache: map[string]CacheEntry{},
+	}
+}
+
+func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (bool, string, error) {
+	ctsa.mu.Lock()
+	defer ctsa.mu.Unlock()
+
+	n := time.Now().UnixNano()
+	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n-e.lastCheck < time.Second.Nanoseconds() {
+		return e.result, e.comment, nil
+	}
+
+	res, comment, err := CheckTSA(sh)
+	if err != nil {
+		return res, comment, err
+	}
+	ctsa.cache[sh.Instance().Hostname()] = CacheEntry{
+		lastCheck: n,
+		comment:   comment,
+		result:    res,
+	}
+	return res, comment, nil
+}
 
 /* target session attr utility */
 
