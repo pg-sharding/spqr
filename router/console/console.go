@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
@@ -59,11 +58,11 @@ type TopoCntl interface {
 func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		// // spqrlog.Logger.PrintError(err)
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
 
 	return meta.Proc(ctx, tstmt, l.Coord, l.RRouter, cli)
 }
@@ -94,12 +93,12 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			spqrlog.Logger.PrintError(err)
+			// spqrlog.Logger.PrintError(err)
 			return err
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "console.ProcClient start")
+	// spqrlog.Logger.Printf(spqrlog.LOG, "console.ProcClient start")
 
 	for {
 		msg, err := cl.Receive()
@@ -117,7 +116,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		case *pgproto3.Terminate:
 			return nil
 		default:
-			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
+			// spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
 		}
 	}
 }

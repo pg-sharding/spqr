@@ -5,8 +5,6 @@ import (
 	"context"
 	"os"
 	"strings"
-
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type LocalQlog struct{}
@@ -40,7 +38,7 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 		return []string{}, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "%s found", path)
+	// spqrlog.Logger.Printf(spqrlog.LOG, "%s found", path)
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -48,7 +46,7 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			// spqrlog.Logger.PrintError(err)
 		}
 	}(file)
 

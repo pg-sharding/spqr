@@ -7,14 +7,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %+v", rule)
+	// // spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding sharding rule %+v", rule)
 
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
 		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
@@ -24,7 +23,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	if err != nil {
 		return err
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "sharding rule present in qdb: %+v", existsRules)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG4, "sharding rule present in qdb: %+v", existsRules)
 
 	for _, v := range existsRules {
 		v_gen := shrule.ShardingRuleFromDB(v)
@@ -40,7 +39,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 }
 
 func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding key range %+v", keyRange)
 
 	// TODO: do real validate
 	//if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
@@ -55,7 +54,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	if err != nil {
 		return err
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "keys present in qdb: %+v", existsKrids)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG4, "keys present in qdb: %+v", existsKrids)
 
 	for _, v := range existsKrids {
 		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
@@ -72,7 +71,7 @@ func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName str
 	if err != nil {
 		return nil, err
 	}
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking relation %s with %d sharding rules", relationName, len(rules))
+	// spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking relation %s with %d sharding rules", relationName, len(rules))
 
 	/*
 	* Create set to search column names in `shardingEntries`
@@ -84,7 +83,7 @@ func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName str
 	}
 
 	for _, rule := range rules {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries(), shardingEntries)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking %+v against %+v", rule.Entries(), shardingEntries)
 		// Simple optimisation
 		if len(rule.Entries()) > len(shardingEntries) {
 			continue
@@ -125,7 +124,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 	}
 
 	for _, v := range krids {
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %s", v.KeyRangeID)
+		// spqrlog.Logger.Printf(spqrlog.DEBUG5, "checking with %s", v.KeyRangeID)
 		if v.KeyRangeID == keyRange.ID {
 			// update req
 			continue

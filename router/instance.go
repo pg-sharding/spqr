@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/console"
@@ -56,7 +55,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 
 	// qrouter init
 	qtype := config.RouterMode(rcfg.RouterMode)
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG1, "creating QueryRouter with type %s", qtype)
 
 	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr)
 	if err != nil {
@@ -75,7 +74,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan)
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
+		// spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 		return nil, err
 	}
 
@@ -89,20 +88,20 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 			}
 			queries, err := localConsole.Qlog().Recover(ctx, fname)
 			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
+				// spqrlog.Logger.Printf(spqrlog.ERROR, "failed to initialize router: %v", err)
 				return nil, err
 			}
 
-			spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
+			// spqrlog.Logger.Printf(spqrlog.INFO, "executing init sql")
 			for _, query := range queries {
-				spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
+				// spqrlog.Logger.Printf(spqrlog.INFO, "query: %s", query)
 				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-					spqrlog.Logger.PrintError(err)
+					// spqrlog.Logger.PrintError(err)
 					return nil, err
 				}
 			}
 
-			spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
+			// spqrlog.Logger.Printf(spqrlog.INFO, "Successfully init %d queries from %s", len(queries), fname)
 		}
 
 		qr.Initialize()
@@ -136,7 +135,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: prerouting phase succeeded", routerClient)
+	// spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p: prerouting phase succeeded", routerClient)
 
 	cmngr, err := rulerouter.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
@@ -185,7 +184,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 			} else {
 				go func() {
 					if err := r.serv(conn); err != nil {
-						spqrlog.Logger.Printf(spqrlog.ERROR, "error serving client: %v", err)
+						// spqrlog.Logger.Printf(spqrlog.ERROR, "error serving client: %v", err)
 					}
 				}()
 			}
@@ -195,7 +194,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 		case <-ctx.Done():
 			_ = r.RuleRouter.Shutdown()
 			_ = listener.Close()
-			spqrlog.Logger.Printf(spqrlog.LOG, "psql server done")
+			// spqrlog.Logger.Printf(spqrlog.LOG, "psql server done")
 			return nil
 		}
 	}
@@ -231,12 +230,12 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 		select {
 		case <-ctx.Done():
 			_ = listener.Close()
-			spqrlog.Logger.Printf(spqrlog.LOG, "admin sever done")
+			// spqrlog.Logger.Printf(spqrlog.LOG, "admin sever done")
 			return nil
 		case conn := <-cChan:
 			go func() {
 				if err := r.servAdm(ctx, conn); err != nil {
-					spqrlog.Logger.PrintError(err)
+					// spqrlog.Logger.PrintError(err)
 				}
 			}()
 		}
