@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"github.com/xdg-go/scram"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -81,6 +82,66 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		}
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: rule.Password})
+	case *pgproto3.AuthenticationSASL:
+		var rule *config.AuthCfg
+		if berule.AuthRules == nil {
+			rule = berule.DefaultAuthRule
+		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
+			rule = berule.AuthRules[shard.ShardName()]
+		} else {
+			rule = berule.DefaultAuthRule
+		}
+		clientSHA256, err := scram.SHA256.NewClient(berule.Usr, rule.Password, "")
+		if err != nil {
+			return err
+		}
+
+		conv := clientSHA256.NewConversation()
+		var serverMsg string
+
+		firstMsg, err := conv.Step(serverMsg)
+		if err != nil {
+			return err
+		}
+
+		if err = shard.Send(&pgproto3.SASLInitialResponse{
+			AuthMechanism: "SCRAM-SHA-256",
+			Data:          []byte(firstMsg),
+		}); err != nil {
+			return err
+		}
+		serverMsgRaw, err := shard.Receive()
+		if err != nil {
+			return err
+		}
+		switch serverMsgRaw := serverMsgRaw.(type) {
+		case *pgproto3.AuthenticationSASLContinue:
+			serverMsg = string(serverMsgRaw.Data)
+		default:
+			return fmt.Errorf("unexpected server message type: %T", serverMsgRaw)
+		}
+		//serverMsg = string(serverMsgRaw.Encode([]byte{}))
+
+		secondMsg, err := conv.Step(serverMsg)
+		if err != nil {
+			return err
+		}
+		if err = shard.Send(&pgproto3.SASLResponse{Data: []byte(secondMsg)}); err != nil {
+			return err
+		}
+		serverMsgRaw, err = shard.Receive()
+		if err != nil {
+			return err
+		}
+		switch serverMsgRaw := serverMsgRaw.(type) {
+		case *pgproto3.AuthenticationSASLFinal:
+			serverMsg = string(serverMsgRaw.Data)
+		default:
+			return fmt.Errorf("unexpected server message type: %T", serverMsgRaw)
+		}
+
+		_, err = conv.Step(serverMsg)
+		return err
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}
