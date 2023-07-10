@@ -147,7 +147,7 @@ func NewDBPool(mapping map[string]*config.Shard) DBPool {
 		if err != nil {
 			return nil, err
 		}
-		pgi, err := conn.NewInstanceConn(host, tlsconfig)
+		pgi, err := conn.NewInstanceConn(host, shardKey.Name, tlsconfig)
 		if err != nil {
 			return nil, err
 		}

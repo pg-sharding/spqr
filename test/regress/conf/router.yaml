@@ -33,3 +33,10 @@ backend_rules:
     usr: regress
     pool_discard: true
     pool_rollback: true
+    auth_rules:
+      sh1:
+        auth_method: md5
+        password: 12345678
+      sh2:
+        auth_method: md5
+        password: 12345678
