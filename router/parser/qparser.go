@@ -19,11 +19,6 @@ func (qp *QParser) Reset() {
 }
 
 func (qp *QParser) Stmt() (*pgquery.ParseResult, error) {
-	parsedStmt, err := pgquery.Parse(qp.query)
-	if err != nil {
-		return nil, err
-	}
-	qp.stmt = parsedStmt
 	return qp.stmt, nil
 }
 
@@ -109,10 +104,6 @@ type ParseStateExplain struct {
 func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.query = query
 
-	pstmt, err := pgquery.Parse(query)
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
-
 	comment := ""
 	for i := 0; i+4 < len(query); i++ {
 
@@ -134,103 +125,110 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		comment = query[i+2 : j]
 	}
 
+	pstmt, err := pgquery.Parse(query)
+
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query, err)
-	} else {
-		qp.state = ParseStateQuery{}
+		return ParseStateQuery{}, comment, err
+	}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "%v", pstmt.GetStmts())
+	qp.stmt = pstmt
 
-		if len(pstmt.GetStmts()) == 0 {
-			qp.state = ParseStateEmptyQuery{}
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
+
+	qp.state = ParseStateQuery{}
+
+	spqrlog.Logger.Printf(spqrlog.DEBUG2, "%v", pstmt.GetStmts())
+
+	if len(pstmt.GetStmts()) == 0 {
+		qp.state = ParseStateEmptyQuery{}
+		return qp.state, comment, nil
+	}
+
+	for _, node := range pstmt.GetStmts() {
+		switch q := node.Stmt.Node.(type) {
+		case *pgquery.Node_ExplainStmt:
+			varStmt := ParseStateExplain{}
+			varStmt.Query = q.ExplainStmt.Query
+			return varStmt, comment, nil
+		case *pgquery.Node_ExecuteStmt:
+			varStmt := ParseStateExecute{}
+			varStmt.Name = q.ExecuteStmt.Name
+			ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
+
+			varStmt.ParamsQuerySuf = ss
+			qp.state = varStmt
+			return varStmt, comment, nil
+		case *pgquery.Node_PrepareStmt:
+			varStmt := ParseStatePrepareStmt{}
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+			varStmt.Name = q.PrepareStmt.Name
+			// prepare *name* as *query*
+			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
+			varStmt.Query = ss
+			qp.query = ss
+			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
+			qp.state = varStmt
+
 			return qp.state, comment, nil
-		}
-
-		for _, node := range pstmt.GetStmts() {
-			switch q := node.Stmt.Node.(type) {
-			case *pgquery.Node_ExplainStmt:
-				varStmt := ParseStateExplain{}
-				varStmt.Query = q.ExplainStmt.Query
-				return varStmt, comment, nil
-			case *pgquery.Node_ExecuteStmt:
-				varStmt := ParseStateExecute{}
-				varStmt.Name = q.ExecuteStmt.Name
-				ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
-
-				varStmt.ParamsQuerySuf = ss
-				qp.state = varStmt
-				return varStmt, comment, nil
-			case *pgquery.Node_PrepareStmt:
-				varStmt := ParseStatePrepareStmt{}
-				spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
-				varStmt.Name = q.PrepareStmt.Name
-				// prepare *name* as *query*
-				ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
-				varStmt.Query = ss
-				qp.query = ss
-				spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
-				qp.state = varStmt
-
+		//case *pgquery.Node_ExecuteStmt:
+		//	query.ExecuteStmt.Name
+		case *pgquery.Node_VariableSetStmt:
+			if q.VariableSetStmt.IsLocal {
+				qp.state = ParseStateSetLocalStmt{}
 				return qp.state, comment, nil
-			//case *pgquery.Node_ExecuteStmt:
-			//	query.ExecuteStmt.Name
-			case *pgquery.Node_VariableSetStmt:
-				if q.VariableSetStmt.IsLocal {
-					qp.state = ParseStateSetLocalStmt{}
-					return qp.state, comment, nil
-				}
+			}
 
-				switch q.VariableSetStmt.Kind {
-				case pgquery.VariableSetKind_VAR_RESET:
-					switch q.VariableSetStmt.Name {
-					case "session_authorization", "role":
-						qp.state = ParseStateResetMetadataStmt{
-							Setting: q.VariableSetStmt.Name,
-						}
-					case "all":
-						qp.state = ParseStateResetAllStmt{}
-					default:
-						varStmt := ParseStateResetStmt{}
-						varStmt.Name = q.VariableSetStmt.Name
-						qp.state = varStmt
+			switch q.VariableSetStmt.Kind {
+			case pgquery.VariableSetKind_VAR_RESET:
+				switch q.VariableSetStmt.Name {
+				case "session_authorization", "role":
+					qp.state = ParseStateResetMetadataStmt{
+						Setting: q.VariableSetStmt.Name,
 					}
-
-				case pgquery.VariableSetKind_VAR_SET_MULTI:
-					qp.state = ParseStateSetLocalStmt{}
-					return qp.state, comment, nil
-				case pgquery.VariableSetKind_VAR_SET_VALUE:
-					varStmt := ParseStateSetStmt{}
+				case "all":
+					qp.state = ParseStateResetAllStmt{}
+				default:
+					varStmt := ParseStateResetStmt{}
 					varStmt.Name = q.VariableSetStmt.Name
-
-					for _, node := range q.VariableSetStmt.Args {
-						switch nq := node.Node.(type) {
-						case *pgquery.Node_AConst:
-							switch act := nq.AConst.Val.(type) {
-							case *pgquery.A_Const_Sval:
-								varStmt.Value = act.Sval.Sval
-							case *pgquery.A_Const_Ival:
-								varStmt.Value = fmt.Sprintf("%d", act.Ival.Ival)
-							}
-						}
-					}
-
 					qp.state = varStmt
 				}
+
+			case pgquery.VariableSetKind_VAR_SET_MULTI:
+				qp.state = ParseStateSetLocalStmt{}
 				return qp.state, comment, nil
-			case *pgquery.Node_TransactionStmt:
-				switch q.TransactionStmt.Kind {
-				case pgquery.TransactionStmtKind_TRANS_STMT_BEGIN:
-					qp.state = ParseStateTXBegin{}
-					return qp.state, comment, nil
-				case pgquery.TransactionStmtKind_TRANS_STMT_COMMIT:
-					qp.state = ParseStateTXCommit{}
-					return qp.state, comment, nil
-				case pgquery.TransactionStmtKind_TRANS_STMT_ROLLBACK:
-					qp.state = ParseStateTXRollback{}
-					return qp.state, comment, nil
+			case pgquery.VariableSetKind_VAR_SET_VALUE:
+				varStmt := ParseStateSetStmt{}
+				varStmt.Name = q.VariableSetStmt.Name
+
+				for _, node := range q.VariableSetStmt.Args {
+					switch nq := node.Node.(type) {
+					case *pgquery.Node_AConst:
+						switch act := nq.AConst.Val.(type) {
+						case *pgquery.A_Const_Sval:
+							varStmt.Value = act.Sval.Sval
+						case *pgquery.A_Const_Ival:
+							varStmt.Value = fmt.Sprintf("%d", act.Ival.Ival)
+						}
+					}
 				}
-			default:
+
+				qp.state = varStmt
 			}
+			return qp.state, comment, nil
+		case *pgquery.Node_TransactionStmt:
+			switch q.TransactionStmt.Kind {
+			case pgquery.TransactionStmtKind_TRANS_STMT_BEGIN:
+				qp.state = ParseStateTXBegin{}
+				return qp.state, comment, nil
+			case pgquery.TransactionStmtKind_TRANS_STMT_COMMIT:
+				qp.state = ParseStateTXCommit{}
+				return qp.state, comment, nil
+			case pgquery.TransactionStmtKind_TRANS_STMT_ROLLBACK:
+				qp.state = ParseStateTXRollback{}
+				return qp.state, comment, nil
+			}
+		default:
 		}
 	}
 
