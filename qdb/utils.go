@@ -9,12 +9,12 @@ import (
 
 func unlockMutex(mu *concurrency.Mutex, ctx context.Context) {
 	if err := mu.Unlock(ctx); err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }
 
 func closeSession(sess *concurrency.Session) {
 	if err := sess.Close(); err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

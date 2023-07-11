@@ -93,7 +93,9 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.Da
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "adding world datashard %s", ds.ID)
+	spqrlog.Zero.Info().
+		Str("shard", ds.ID).
+		Msg("adding world datashard")
 	lc.WorldShardCfgs[ds.ID] = ds.Cfg
 
 	return nil
@@ -103,7 +105,9 @@ func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "dropping key range %s", id)
+	spqrlog.Zero.Info().
+		Str("kr", id).
+		Msg("dropping key range")
 	return lc.qdb.DropKeyRange(ctx, id)
 }
 
@@ -111,7 +115,7 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "dropping all key range")
+	spqrlog.Zero.Info().Msg("dropping all key ranges")
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
@@ -192,7 +196,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
 		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
@@ -204,7 +208,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
 		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDRight)
@@ -229,7 +233,7 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 	defer func(qdb qdb.QDB, ctx context.Context, krid string) {
 		err := qdb.UnlockKeyRange(ctx, krid)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(qr.qdb, ctx, req.SourceID)
 
@@ -264,7 +268,10 @@ func (qr *LocalCoordinator) Unlock(ctx context.Context, krid string) error {
 }
 
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
-	spqrlog.Logger.Printf(spqrlog.LOG, "adding node %s", ds.ID)
+	spqrlog.Zero.Info().
+		Str("node", ds.ID).
+		Msg("adding nodee")
+
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 
 	return lc.qdb.AddShard(ctx, &qdb.Shard{

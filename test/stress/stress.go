@@ -31,7 +31,7 @@ func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error)
 	for i := 0; i < retryCnt; i++ {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
 		if err != nil {
-			spqrlog.Logger.PrintError(fmt.Errorf("error while connecting to postgresql: %w", err))
+			spqrlog.Zero.Error().Err(err).Msg("error while connecting to postgresql")
 			continue
 		}
 		return db, nil
@@ -50,18 +50,18 @@ func simple() {
 
 			conn, err := getConn(ctx, dbname, 2)
 			if err != nil {
-				spqrlog.Logger.PrintError(fmt.Errorf("stress test FAILED %w", err))
+				spqrlog.Zero.Error().Err(err).Msg("stress test FAILED")
 				panic(err)
 			}
 			defer func(conn *sqlx.DB) {
 				err := conn.Close()
 				if err != nil {
-					spqrlog.Logger.PrintError(err)
+					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}(conn)
 
 			if _, err := conn.Query(fmt.Sprintf("SELECT * FROM %s WHERE i = %d", relation, 1+r.Intn(10))); err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 				panic(err)
 			}
 

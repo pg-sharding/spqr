@@ -150,6 +150,8 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	}
 
 	pgi.conn = tls.Client(pgi.conn, tlsconfig)
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "initaited backend connection with TLS (%p)", pgi)
+	spqrlog.Zero.Debug().
+		Uint("instance", spqrlog.GetPointer(pgi)).
+		Msg("initaited backend connection with TLS")
 	return nil
 }

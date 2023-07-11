@@ -51,7 +51,10 @@ func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 		ret.queue <- struct{}{}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "initialized %p pool queue with %d tokens", ret, connLimit)
+	spqrlog.Zero.Debug().
+		Uint("pool", spqrlog.GetPointer(ret)).
+		Int("tokens", connLimit).
+		Msg("initialized pool queue with tokens")
 
 	return ret
 }
@@ -93,7 +96,10 @@ func (h *shardPool) Connection(
 		for rep := 0; rep < 10; rep++ {
 			select {
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
-				spqrlog.Logger.ClientPrintf(spqrlog.LOG, "still waiting for backend connection to host %s", clid, host)
+				spqrlog.Zero.Info().
+					Str("client", clid).
+					Str("host", host).
+					Msg("still waiting for backend connection to host")
 			case <-h.queue:
 				return nil
 			}
@@ -115,7 +121,11 @@ func (h *shardPool) Connection(
 			sh, h.pool = h.pool[0], h.pool[1:]
 			h.active[sh.ID()] = sh
 			h.mu.Unlock()
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "connection pool for client %s: reuse cached shard connection %p to %s", clid, sh, sh.Instance().Hostname())
+			spqrlog.Zero.Debug().
+				Str("client", clid).
+				Str("shard", sh.Name()).
+				Str("host", sh.Instance().Hostname()).
+				Msg("connection pool for client: reuse cached shard connection to instance")
 			return sh, nil
 		}
 
@@ -138,7 +148,10 @@ func (h *shardPool) Connection(
 }
 
 func (h *shardPool) Discard(sh shard.Shard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "discard connection %p to %v from pool\n", &sh, sh.Instance().Hostname())
+	spqrlog.Zero.Debug().
+		Str("shard", sh.Name()).
+		Str("host", sh.Instance().Hostname()).
+		Msg("discard connection to hostname from pool")
 
 	/* do not hold mutex while cleanup server connection */
 	err := sh.Close()
@@ -155,7 +168,10 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 }
 
 func (h *shardPool) Put(sh shard.Shard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "put connection %p to %v back to pool\n", &sh, sh.Instance().Hostname())
+	spqrlog.Zero.Debug().
+		Str("shard", sh.Name()).
+		Str("host", sh.Instance().Hostname()).
+		Msg("put connection back to pool")
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
