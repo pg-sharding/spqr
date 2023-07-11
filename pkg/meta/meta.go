@@ -42,7 +42,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 				return cli.DropKeyRange(ctx, []string{})
 			}
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s", stmt.KeyRangeID)
+			spqrlog.Zero.Debug().Str("kr", stmt.KeyRangeID).Msg("parsed drop")
 			err := mngr.DropKeyRange(ctx, stmt.KeyRangeID)
 			if err != nil {
 				return cli.ReportError(err)
@@ -65,7 +65,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 				}())
 			}
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed drop %s", stmt.ID)
+			spqrlog.Zero.Debug().Str("rule", stmt.ID).Msg("parsed drop")
 			err := mngr.DropShardingRule(ctx, stmt.ID)
 			if err != nil {
 				return cli.ReportError(err)
@@ -165,7 +165,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 }
 
 func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, pool client.Pool, cli *clientinteractor.PSQLInteractor) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "kill %s stmt", stmt.Cmd)
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
 		ok, err := pool.Pop(stmt.Target)
@@ -182,7 +182,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 }
 
 func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG4, "show %s stmt", stmt.Cmd)
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("show shatement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 

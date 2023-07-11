@@ -94,6 +94,8 @@ func (app *App) ServeAdminConsole(ctx context.Context, bconfig *config.Balancer)
 	}
 	defer listener.Close()
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR balancer Admin Console is ready on %s", address)
+	spqrlog.Zero.Log().
+		Str("address", address).
+		Msg("SPQR balancer Admin Console is ready")
 	return app.balancer.RunAdm(ctx, listener, clientTLS)
 }

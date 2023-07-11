@@ -136,9 +136,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 	qp.stmt = pstmt
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
-
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "%v", pstmt.GetStmts())
+	spqrlog.Zero.Debug().Type("stmt-type", pstmt).Interface("statements", pstmt.GetStmts()).Msg("parsed query statements")
 
 	if len(pstmt.GetStmts()) == 0 {
 		qp.state = ParseStateEmptyQuery{}
@@ -161,13 +159,18 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			return varStmt, comment, nil
 		case *pgquery.Node_PrepareStmt:
 			varStmt := ParseStatePrepareStmt{}
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+			spqrlog.Zero.Debug().
+				Interface("statement", q).
+				Msg("prep stmt query")
 			varStmt.Name = q.PrepareStmt.Name
 			// prepare *name* as *query*
 			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
 			varStmt.Query = ss
 			qp.query = ss
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
+			spqrlog.Zero.Debug().
+				Str("name",  varStmt.Name).
+				Str("query",  varStmt.Query).
+				Msg("parsed prep stmt")
 			qp.state = varStmt
 
 			return qp.state, comment, nil

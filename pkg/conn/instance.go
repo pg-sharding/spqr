@@ -105,7 +105,10 @@ func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstan
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "instance acquire new connection to %v with tls %v", host, tlsconfig != nil)
+	spqrlog.Zero.Info().
+		Str("host", host).
+		Bool("ssl", tlsconfig != nil).
+		Msg("instance acquire new connection")
 
 	instance.frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(instance.conn), instance.conn)
 	return instance, nil
@@ -147,6 +150,8 @@ func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	}
 
 	pgi.conn = tls.Client(pgi.conn, tlsconfig)
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "initaited backend connection with TLS (%p)", pgi)
+	spqrlog.Zero.Debug().
+		Uint("instance", spqrlog.GetPointer(pgi)).
+		Msg("initaited backend connection with TLS")
 	return nil
 }

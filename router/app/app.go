@@ -37,14 +37,16 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			defer lwg.Done()
 			listener, err := reuse.Listen("tcp", address)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to listen psql %v", err)
+				spqrlog.Zero.Info().Err(err).Msg("failed to listen psql")
 				return
 			}
 			defer func(listener net.Listener) {
 				_ = listener.Close()
 			}(listener)
 
-			spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Router is ready on %s by postgresql proto", address)
+			spqrlog.Zero.Info().
+				Str("address", address).
+				Msg("SPQR Router is ready by postgresql proto")
 			_ = app.spqr.Run(ctx, listener)
 		}(addr)
 	}
@@ -63,7 +65,9 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 		_ = listener.Close()
 	}(listener)
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR Administative Console is ready on %s", address)
+	spqrlog.Zero.Info().
+		Str("address", address).
+		Msg("SPQR Administative Console is ready on")
 	return app.spqr.RunAdm(ctx, listener)
 }
 
@@ -76,7 +80,9 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 
 	server := grpc.NewServer()
 	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr)
-	spqrlog.Logger.Printf(spqrlog.INFO, "SPQR GRPC API is ready on %s", address)
+	spqrlog.Zero.Info().
+		Str("address", address).
+		Msg("SPQR GRPC API is ready on")
 	go func() {
 		_ = server.Serve(listener)
 	}()

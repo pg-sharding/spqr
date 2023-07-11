@@ -1,4 +1,4 @@
-log_level: INFO
+log_level: info
 
 installation_db_name: 'db1'
 installation_table_name: 'x'
