@@ -117,10 +117,11 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		switch serverMsgRaw := serverMsgRaw.(type) {
 		case *pgproto3.AuthenticationSASLContinue:
 			serverMsg = string(serverMsgRaw.Data)
+		case *pgproto3.ErrorResponse:
+			return fmt.Errorf("error: %s", serverMsgRaw.Message)
 		default:
 			return fmt.Errorf("unexpected server message type: %T", serverMsgRaw)
 		}
-		//serverMsg = string(serverMsgRaw.Encode([]byte{}))
 
 		secondMsg, err := conv.Step(serverMsg)
 		if err != nil {
@@ -136,6 +137,8 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		switch serverMsgRaw := serverMsgRaw.(type) {
 		case *pgproto3.AuthenticationSASLFinal:
 			serverMsg = string(serverMsgRaw.Data)
+		case *pgproto3.ErrorResponse:
+			return fmt.Errorf("error: %s", serverMsgRaw.Message)
 		default:
 			return fmt.Errorf("unexpected server message type: %T", serverMsgRaw)
 		}
