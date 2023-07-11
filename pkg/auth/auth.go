@@ -41,11 +41,11 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		 * form to hide original passwd string
 		 */
 		/*35=len("md5") + 2  * 16*/
-		if len(berule.AuthRules[shard.ShardName()].Password) == 35 && berule.AuthRules[shard.ShardName()].Password[0:3] == "md5" {
-			res = []byte(berule.AuthRules[shard.ShardName()].Password[3:])
+		if len(rule.Password) == 35 && rule.Password[0:3] == "md5" {
+			res = []byte(rule.Password[3:])
 		} else {
 			hash := md5.New()
-			hash.Write([]byte(berule.AuthRules[shard.ShardName()].Password + berule.Usr))
+			hash.Write([]byte(rule.Password + berule.Usr))
 			res = hash.Sum(nil)
 			res = []byte(hex.EncodeToString(res))
 		}
@@ -57,16 +57,23 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		psswd := hex.EncodeToString(resSalted)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, berule.AuthRules[shard.ShardName()].Password)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, rule.Password)
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
+		var rule *config.AuthCfg
 		if berule.AuthRules == nil {
-			return fmt.Errorf("no auth rule specified for server connection")
+			rule = berule.DefaultAuthRule
+		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
+			rule = berule.AuthRules[shard.ShardName()]
+		} else {
+			rule = berule.DefaultAuthRule
 		}
-		if _, exists := berule.AuthRules[shard.ShardName()]; !exists {
+
+		if rule == nil {
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
-		return shard.Send(&pgproto3.PasswordMessage{Password: berule.AuthRules[shard.ShardName()].Password})
+
+		return shard.Send(&pgproto3.PasswordMessage{Password: rule.Password})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}
