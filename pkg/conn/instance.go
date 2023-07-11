@@ -52,6 +52,14 @@ func (pgi *PostgreSQLInstance) SetStatus(status InstanceStatus) {
 	pgi.status = status
 }
 
+func (pgi *PostgreSQLInstance) SetShardName(name string) {
+	pgi.shardname = name
+}
+
+func (pgi *PostgreSQLInstance) SetFrontend(f *pgproto3.Frontend) {
+	pgi.frontend = f
+}
+
 func (pgi *PostgreSQLInstance) Status() InstanceStatus {
 	return pgi.status
 }
