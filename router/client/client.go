@@ -108,6 +108,10 @@ func (cl *PsqlClient) GetCancelKey() uint32 {
 	return cl.cancel_key
 }
 
+func (cl *PsqlClient) SetAuthType(t uint32) error {
+	return cl.be.SetAuthType(t)
+}
+
 func copymap(params map[string]string) map[string]string {
 	ret := make(map[string]string)
 
