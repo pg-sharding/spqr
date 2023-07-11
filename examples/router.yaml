@@ -34,7 +34,7 @@ backend_rules:
         password: strong
     auth_rule:
       auth_method: md5
-        password: strong
+      password: strong
 
 shards:
   sh1:
