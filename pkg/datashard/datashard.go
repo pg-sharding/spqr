@@ -64,7 +64,7 @@ func (sh *Conn) TxServed() int64 {
 }
 
 func (sh *Conn) Cancel() error {
-	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), "temp", nil /* no tls for cancel */)
+	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), sh.dedicated.ShardName(), nil /* no tls for cancel */)
 	if err != nil {
 		return err
 	}
