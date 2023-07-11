@@ -55,6 +55,9 @@ backend_rules:
       sh1:
          auth_method: clear_text
          password: 123
+    auth_rule:
+      auth_method: md5
+      password: 321
   - usr: user1
     db: db1
     auth_rules:

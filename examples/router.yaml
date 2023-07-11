@@ -29,11 +29,11 @@ backend_rules:
       sh1:
         auth_method: md5
         password: strong
-      sh2:
-        auth_method: md5
-        password: strong
       w1:
         auth_method: md5
+        password: strong
+    auth_rule:
+      auth_method: md5
         password: strong
 
 shards:
