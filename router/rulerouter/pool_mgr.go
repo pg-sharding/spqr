@@ -43,7 +43,10 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	var anyerr error
 	anyerr = nil
 	for _, shkey := range sh {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p unrouting from datashard %v", cl, shkey.Name)
+		spqrlog.Zero.Debug().
+			Uint("client", spqrlog.GetPointer(&cl)).
+			Str("key", shkey.Name).
+			Msg("client unrouting from datashard")
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			_ = cl.Unroute()
 			anyerr = err
@@ -81,7 +84,9 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	}
 
 	for _, shkey := range sh {
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "adding shard with tsa %s", client.GetTsa())
+		spqrlog.Zero.Debug().
+			Str("client tsa", client.GetTsa()).
+			Msg("adding shard with tsa")
 		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
 			return err
 		}
@@ -104,7 +109,9 @@ func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
 
 func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
 	ash := rst.ActiveShards()
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "client %p end of transaction, unrouting from active shards %v", rst.Client(), ash)
+	spqrlog.Zero.Debug().
+		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 
 	return t.UnRouteCB(rst.Client(), ash)

@@ -59,7 +59,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *pgquery.RawStmt, cli 
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
-			spqrlog.Logger.Errorf("parse error %v", err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return cli.ReportError(err)
 		}
 	}
@@ -69,7 +69,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *pgquery.RawStmt, cli 
 
 func ReportStmtDeparsedAttrs(ctx context.Context, pi *clientinteractor.PSQLInteractor, meta *RoutingMetadataContext) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 

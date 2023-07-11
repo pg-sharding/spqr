@@ -578,7 +578,7 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 
 	for _, sh := range shs {
 
-		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), txstatus.StatusToString(sh.TxStatus())); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Logger.PrintError(err)
 			return err
 		}

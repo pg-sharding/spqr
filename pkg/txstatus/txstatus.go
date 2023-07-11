@@ -14,8 +14,7 @@ type TxStatusMgr interface {
 	TxStatus() TXStatus
 }
 
-
-func StatusToString(s TXStatus) string {
+func (s TXStatus) String() string {
 	switch s {
 	case TXIDLE:
 		return "IDLE"

@@ -98,7 +98,9 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 }
 
 func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "dropping sharding rules %v", request.Id)
+	spqrlog.Zero.Debug().
+		Strs("rules", request.Id).
+		Msg("dropping sharding rules")
 	for _, id := range request.Id {
 		if err := l.mgr.DropShardingRule(ctx, id); err != nil {
 			return nil, err
@@ -120,7 +122,7 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "listing key ranges")
+	spqrlog.Zero.Debug().Msg("listing key ranges")
 
 	krsqdb, err := l.mgr.ListKeyRanges(ctx)
 	if err != nil {

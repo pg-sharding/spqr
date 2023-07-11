@@ -129,7 +129,10 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "single-shard %p sending msg to server %T", srv, query)
+	spqrlog.Zero.Debug().
+		Uint("single-shard", spqrlog.GetPointer(srv)).
+		Type("query-type", query).
+		Msg("single-shard sending msg to server")
 	if srv.shard == nil {
 		return ErrShardUnavailable
 	}
@@ -140,7 +143,11 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
 	msg, err := srv.shard.Receive()
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "single-shard %p recv msg from server %T, tx status: %d", srv, msg, srv.TxStatus())
+	spqrlog.Zero.Debug().
+		Uint("single-shard", spqrlog.GetPointer(srv)).
+		Type("message-type", msg).
+		Str("txstatus", srv.TxStatus().String()).
+		Msg("single-shard sending msg to server")
 	return msg, err
 }
 

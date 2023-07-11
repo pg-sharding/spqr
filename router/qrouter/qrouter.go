@@ -18,7 +18,10 @@ type ShardRoute interface {
 }
 
 func combine(sh1, sh2 ShardRoute) ShardRoute {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "combine route %+v with %+v", sh1, sh2)
+	spqrlog.Zero.Debug().
+		Interface("route1", sh1).
+		Interface("route2", sh2).
+		Msg("combine two routes")
 	switch shq1 := sh1.(type) {
 	case *MultiMatchRoute:
 		return sh2

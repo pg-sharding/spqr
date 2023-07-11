@@ -59,11 +59,14 @@ type TopoCntl interface {
 func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "RouterConfig '%s', parsed %T", q, tstmt)
+	spqrlog.Zero.Debug().
+		Str("query", q).
+		Type("type", tstmt).
+		Msg("processQueryInternal: parsed query with type")
 
 	return meta.Proc(ctx, tstmt, l.Coord, l.RRouter, cli)
 }
@@ -94,12 +97,12 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "console.ProcClient start")
+	spqrlog.Zero.Info().Msg("console.ProcClient start")
 
 	for {
 		msg, err := cl.Receive()
@@ -117,7 +120,9 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		case *pgproto3.Terminate:
 			return nil
 		default:
-			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
+			spqrlog.Zero.Info().
+				Type("message type", v).
+				Msg("got unexpected postgresql proto message with type")
 		}
 	}
 }

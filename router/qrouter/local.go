@@ -23,7 +23,7 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 	if len(shardMapping) != 1 {
 		errmsg := "local router support only single-datashard routing"
 		err := errors.New(errmsg)
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return nil, err
 	}
 
@@ -54,7 +54,7 @@ func (l *LocalQrouter) Initialized() bool {
 }
 
 func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "adding node %s", ds.ID)
+	spqrlog.Zero.Debug().Str("shard", ds.ID).Msg("adding data shard")
 	l.ds = ds
 	return nil
 }
