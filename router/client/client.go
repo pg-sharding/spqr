@@ -822,7 +822,6 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 		Str("server", cl.server.Name()).
 		Type("query-type", query).
 		Msg("client process query")
-	_ = cl.ReplyDebugNoticef("executing your query %v", query)
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	if cl.server == nil {

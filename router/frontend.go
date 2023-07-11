@@ -239,8 +239,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 			Str("name", q.Name).
 			Str("query", q.Query).
 			Uint64("hash", hash)
-		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
-			return err
+		if rst.ExtendedDebug() {
+			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
+				return err
+			}
 		}
 		rst.Client().StorePreparedStatement(q.Name, q.Query)
 		// simply reply witch ok parse complete
@@ -332,7 +334,9 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
-	_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	if rcfg.ExtendedDebug {
+		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	}
 	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
 
 	defer rst.Close()
