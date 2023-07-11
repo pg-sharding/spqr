@@ -18,6 +18,8 @@ type InstancePoolImpl struct {
 	Pool
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
+
+	checker tsa.TSAChecker
 }
 
 var _ DBPool = &InstancePoolImpl{}
@@ -59,7 +61,7 @@ func (s *InstancePoolImpl) Connection(
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
-			if ch, reason, err := tsa.CheckTSA(shard); err != nil {
+			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = s.pool.Discard(shard)
 				continue
@@ -81,7 +83,7 @@ func (s *InstancePoolImpl) Connection(
 				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
 				continue
 			}
-			if ch, reason, err := tsa.CheckTSA(shard); err != nil {
+			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 				_ = s.pool.Discard(shard)
 				continue
@@ -159,5 +161,6 @@ func NewDBPool(mapping map[string]*config.Shard) DBPool {
 	return &InstancePoolImpl{
 		pool:         NewPool(allocator),
 		shardMapping: mapping,
+		checker:      tsa.NewTSAChecker(),
 	}
 }
