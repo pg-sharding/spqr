@@ -205,14 +205,15 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return err
 		}
 		saltedPassword := pbkdf2.Key([]byte(rule.AuthRule.Password), salt, SCRAMIterCount, SCRAMKeyLen, sha256.New)
+		// Generate ServerKey = HMAC(saltedPassword, "Server Key")
 		h := hmac.New(sha256.New, saltedPassword)
 		h.Write([]byte("Server Key"))
 		serverKey := h.Sum(nil)
+		// Generate StoredKey = SHA256(HMAC(saltedPassword, "Client Key"))
 		h.Reset()
 		h.Write([]byte("Client Key"))
-		clientKey := h.Sum(nil)
 		clientKeyHash := sha256.New()
-		clientKeyHash.Write(clientKey)
+		clientKeyHash.Write(h.Sum(nil))
 		storedKey := clientKeyHash.Sum(nil)
 		serverSHA256, err := scram.SHA256.NewServer(
 			func(username string) (scram.StoredCredentials, error) {
