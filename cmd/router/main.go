@@ -24,7 +24,7 @@ var (
 	saveProfie  bool
 	profileFile string
 	daemonize   bool
-	logLevel	string
+	logLevel    string
 )
 
 var rootCmd = &cobra.Command{
@@ -101,7 +101,8 @@ var runCmd = &cobra.Command{
 		var pprofFile *os.File
 
 		if saveProfie {
-			spqrlog.Zero.Fatal().Msg("starting cpu profile")
+
+			spqrlog.Zero.Log().Msg("starting cpu profile")
 			pprofFile, err = os.Create(profileFile)
 			if err != nil {
 				spqrlog.Zero.Fatal().
@@ -109,7 +110,8 @@ var runCmd = &cobra.Command{
 					Msg("got an error while starting cpu profile")
 				return err
 			}
-			spqrlog.Zero.Fatal().Str("file", profileFile).Msg("starting cpu profile")
+
+			spqrlog.Zero.Log().Str("file", profileFile).Msg("starting cpu profile")
 			if err := pprof.StartCPUProfile(pprofFile); err != nil {
 				spqrlog.Zero.Fatal().
 					Err(err).
@@ -119,7 +121,7 @@ var runCmd = &cobra.Command{
 		}
 
 		sigs := make(chan os.Signal, 1)
-                signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		router, err := router.NewRouter(ctx, &rcfg)
 		if err != nil {
