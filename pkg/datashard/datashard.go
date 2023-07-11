@@ -42,7 +42,7 @@ type Conn struct {
 
 	tx_served int64
 
-	id       string
+	id string
 
 	status txstatus.TXStatus
 }
@@ -64,7 +64,7 @@ func (sh *Conn) TxServed() int64 {
 }
 
 func (sh *Conn) Cancel() error {
-	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), nil /* no tls for cancel */)
+	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), sh.dedicated.ShardName(), nil /* no tls for cancel */)
 	if err != nil {
 		return err
 	}

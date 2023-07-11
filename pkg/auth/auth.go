@@ -21,8 +21,11 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 	case *pgproto3.AuthenticationOk:
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
-		if berule.AuthRule == nil {
+		if berule.AuthRules == nil {
 			return fmt.Errorf("auth rule not set for %s-%s", berule.DB, berule.Usr)
+		}
+		if _, exists := berule.AuthRules[shard.ShardName()]; !exists {
+			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
 		var res []byte
 
@@ -30,11 +33,11 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		 * form to hide original passwd string
 		 */
 		/*35=len("md5") + 2  * 16*/
-		if len(berule.AuthRule.Password) == 35 && berule.AuthRule.Password[0:3] == "md5" {
-			res = []byte(berule.AuthRule.Password[3:])
+		if len(berule.AuthRules[shard.ShardName()].Password) == 35 && berule.AuthRules[shard.ShardName()].Password[0:3] == "md5" {
+			res = []byte(berule.AuthRules[shard.ShardName()].Password[3:])
 		} else {
 			hash := md5.New()
-			hash.Write([]byte(berule.AuthRule.Password + berule.Usr))
+			hash.Write([]byte(berule.AuthRules[shard.ShardName()].Password + berule.Usr))
 			res = hash.Sum(nil)
 			res = []byte(hex.EncodeToString(res))
 		}
@@ -46,13 +49,16 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		psswd := hex.EncodeToString(resSalted)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, berule.AuthRule.Password)
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, berule.AuthRules[shard.ShardName()].Password)
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		if berule.AuthRule == nil {
+		if berule.AuthRules == nil {
 			return fmt.Errorf("no auth rule specified for server connection")
 		}
-		return shard.Send(&pgproto3.PasswordMessage{Password: berule.AuthRule.Password})
+		if _, exists := berule.AuthRules[shard.ShardName()]; !exists {
+			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
+		}
+		return shard.Send(&pgproto3.PasswordMessage{Password: berule.AuthRules[shard.ShardName()].Password})
 	default:
 		return fmt.Errorf("authBackend type %T not supported", msg)
 	}

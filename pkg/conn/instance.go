@@ -26,6 +26,7 @@ type DBInstance interface {
 	ReqBackendSsl(*tls.Config) error
 
 	Hostname() string
+	ShardName() string
 
 	Close() error
 	Status() InstanceStatus
@@ -40,14 +41,23 @@ type PostgreSQLInstance struct {
 	conn     net.Conn
 	frontend *pgproto3.Frontend
 
-	hostname string
-	status   InstanceStatus
+	hostname  string
+	shardname string
+	status    InstanceStatus
 
 	tlsconfig *tls.Config
 }
 
 func (pgi *PostgreSQLInstance) SetStatus(status InstanceStatus) {
 	pgi.status = status
+}
+
+func (pgi *PostgreSQLInstance) SetShardName(name string) {
+	pgi.shardname = name
+}
+
+func (pgi *PostgreSQLInstance) SetFrontend(f *pgproto3.Frontend) {
+	pgi.frontend = f
 }
 
 func (pgi *PostgreSQLInstance) Status() InstanceStatus {
@@ -62,6 +72,10 @@ func (pgi *PostgreSQLInstance) Hostname() string {
 	return pgi.hostname
 }
 
+func (pgi *PostgreSQLInstance) ShardName() string {
+	return pgi.shardname
+}
+
 func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 	return pgi.frontend.Send(query)
 }
@@ -70,7 +84,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 	return pgi.frontend.Receive()
 }
 
-func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
+func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstance, error) {
 	netconn, err := net.Dial("tcp", host)
 	if err != nil {
 		return nil, err
@@ -78,6 +92,7 @@ func NewInstanceConn(host string, tlsconfig *tls.Config) (DBInstance, error) {
 
 	instance := &PostgreSQLInstance{
 		hostname:  host,
+		shardname: shard,
 		conn:      netconn,
 		status:    NotInitialized,
 		tlsconfig: tlsconfig,

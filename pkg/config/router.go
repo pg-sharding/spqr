@@ -63,11 +63,11 @@ type QRouter struct {
 }
 
 type BackendRule struct {
-	DB              string   `json:"db" yaml:"db" toml:"db"`
-	Usr             string   `json:"usr" yaml:"usr" toml:"usr"`
-	AuthRule        *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
-	PoolDefault     bool     `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
-	ConnectionLimit int      `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	DB              string              `json:"db" yaml:"db" toml:"db"`
+	Usr             string              `json:"usr" yaml:"usr" toml:"usr"`
+	AuthRules       map[string]*AuthCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
+	PoolDefault     bool                `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
+	ConnectionLimit int                 `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
 }
 
 type FrontendRule struct {
