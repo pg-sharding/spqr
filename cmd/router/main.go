@@ -56,7 +56,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		spqrlog.RebornLogger(rcfg.LogFileName)
+		spqrlog.ReloadLogger(rcfg.LogFileName)
 
 		// Logger
 		rlogLevel := rcfg.LogLevel
@@ -64,9 +64,6 @@ var runCmd = &cobra.Command{
 			rlogLevel = logLevel
 		}
 
-		// if err := spqrlog.UpdateDefaultLogLevel(rlogLevel); err != nil {
-		// 	return err
-		// }
 		if err := spqrlog.UpdateZeroLogLevel(rlogLevel); err != nil {
 			return err
 		}
@@ -139,7 +136,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.RebornLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGUSR2:
 					if saveProfie {
 						// write profile
@@ -157,7 +154,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.RebornLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if saveProfie {
 						// write profile

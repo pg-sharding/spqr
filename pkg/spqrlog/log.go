@@ -2,7 +2,6 @@ package spqrlog
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 )
@@ -59,12 +58,13 @@ func NewErrorLogger(filepath string) *errorLogger {
 	}
 }
 
-func RebornLogger(filepath string) {
+func ReloadLogger(filepath string) {
 	if filepath == "" { //
 		return // this means os.Stdout, so no need to open new file
 	}
 	oldFile := Logger.file
 	Logger = NewErrorLogger(filepath)
+	Zero = NewZeroLogger(filepath)
 	if oldFile != nil {
 		oldFile.Close()
 	}
@@ -119,15 +119,4 @@ func (el *errorLogger) PrintError(err error) {
 
 func (el *errorLogger) FatalOnError(err error) {
 	el.logMp[FATAL].Fatalf("%v", err)
-}
-
-func newWriter(filepath string) (*os.File, io.Writer, error) {
-	if filepath == "" {
-		return nil, os.Stdout, nil
-	}
-	f, err := os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return f, f, nil
 }

@@ -1,18 +1,18 @@
 package spqrlog
 
 import (
-	"os"
-	"time"
-
+	"fmt"
 	"github.com/rs/zerolog"
 )
 
-// TODO rewrite log init
 var Zero = NewZeroLogger("")
 
 func NewZeroLogger(filepath string) *zerolog.Logger {
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-	logger := zerolog.New(output).With().Logger()
+	_, writer, err := newWriter(filepath)
+	if err != nil {
+		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
+	}
+	logger := zerolog.New(writer).With().Timestamp().Logger()
 
 	return &logger
 }
@@ -26,6 +26,8 @@ func UpdateZeroLogLevel(logLevel string) error {
 
 func parseLevel(level string) zerolog.Level {
 	switch level {
+	case "disabled":
+		return zerolog.Disabled
 	case "debug":
 		return zerolog.DebugLevel
 	case "info":

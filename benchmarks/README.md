@@ -18,7 +18,7 @@ I used `config.py` script to generate the router config and `init.py` to generat
 The router config was like this:
 
 ```
-log_level: ERROR
+log_level: error
 host: localhost
 router_port: '6432'
 admin_console_port: '7432'

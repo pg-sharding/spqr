@@ -1,4 +1,4 @@
-log_level = "DEBUG5"
+log_level = "debug"
 host = "[spqr_router_1_1]"
 router_port = "6432"
 admin_console_port = "7432"

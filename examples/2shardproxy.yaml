@@ -1,4 +1,4 @@
-log_level: LOG
+log_level: log
 
 host: '::1'
 router_port: '6432'
