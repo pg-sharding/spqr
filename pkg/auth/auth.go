@@ -21,12 +21,20 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 	case *pgproto3.AuthenticationOk:
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
+
+		var rule *config.AuthCfg
 		if berule.AuthRules == nil {
-			return fmt.Errorf("auth rule not set for %s-%s", berule.DB, berule.Usr)
+			rule = berule.DefaultAuthRule
+		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
+			rule = berule.AuthRules[shard.ShardName()]
+		} else {
+			rule = berule.DefaultAuthRule
 		}
-		if _, exists := berule.AuthRules[shard.ShardName()]; !exists {
+
+		if rule == nil {
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
+
 		var res []byte
 
 		/* password may be configured in partially-calculated
