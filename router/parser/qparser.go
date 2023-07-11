@@ -124,6 +124,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 		comment = query[i+2 : j]
 	}
+	qp.stmt = nil
 
 	pstmt, err := pgquery.Parse(query)
 
