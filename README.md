@@ -38,7 +38,7 @@ spqr-router run -c path-to-router-config.yaml
 
 ## Tests
 
-SPQR has regression tests. These tests require Docker, and can be run using `make run`. Also, there are stress tests, but it a work in progress. For more information on testing, please see `test` and `stress` section in [Makefile](./Makefile).
+SPQR has regression tests. These tests require Docker, and can be run using `make run`. Also, there are stress tests, but it's a work in progress. For more information on testing, please see `test` and `stress` sections in [Makefile](./Makefile).
 
 ## License
 
