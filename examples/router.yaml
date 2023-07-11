@@ -25,8 +25,16 @@ backend_rules:
     db: db1
     pool_discard: true
     pool_rollback: true
-    auth_rule:
-      password: strong
+    auth_rules:
+      sh1:
+        auth_method: md5
+        password: strong
+      sh2:
+        auth_method: md5
+        password: strong
+      w1:
+        auth_method: md5
+        password: strong
 
 shards:
   sh1:
