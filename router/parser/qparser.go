@@ -124,19 +124,19 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 		comment = query[i+2 : j]
 	}
+	qp.stmt = nil
 
 	pstmt, err := pgquery.Parse(query)
 
+	qp.state = ParseStateQuery{}
+
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "got error while parsing stmt %s: %s", query, err)
-		return ParseStateQuery{}, comment, err
+		return ParseStateQuery{}, comment, nil
 	}
 
 	qp.stmt = pstmt
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "parsed query stmt is %T", pstmt)
-
-	qp.state = ParseStateQuery{}
 
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "%v", pstmt.GetStmts())
 
