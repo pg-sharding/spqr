@@ -1,11 +1,14 @@
 package auth
 
 import (
+	"crypto/hmac"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"github.com/xdg-go/scram"
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -194,7 +197,88 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		return nil
 	case config.AuthSCRAM:
-		fallthrough
+		const SCRAMSaltLen = 16
+		const SCRAMIterCount = 4096
+		const SCRAMKeyLen = 32
+		salt := make([]byte, SCRAMSaltLen)
+		if _, err := rand.Read(salt); err != nil {
+			return err
+		}
+		saltedPassword := pbkdf2.Key([]byte(rule.AuthRule.Password), salt, SCRAMIterCount, SCRAMKeyLen, sha256.New)
+		h := hmac.New(sha256.New, saltedPassword)
+		h.Write([]byte("Server Key"))
+		serverKey := h.Sum(nil)
+		h.Reset()
+		h.Write([]byte("Client Key"))
+		clientKey := h.Sum(nil)
+		clientKeyHash := sha256.New()
+		clientKeyHash.Write(clientKey)
+		storedKey := clientKeyHash.Sum(nil)
+		serverSHA256, err := scram.SHA256.NewServer(
+			func(username string) (scram.StoredCredentials, error) {
+				return scram.StoredCredentials{
+					KeyFactors: scram.KeyFactors{
+						Salt:  string(salt),
+						Iters: SCRAMIterCount,
+					},
+					ServerKey: serverKey,
+					StoredKey: storedKey,
+				}, nil
+			})
+		if err != nil {
+			return err
+		}
+		conv := serverSHA256.NewConversation()
+		var clientMsg string
+		msg := &pgproto3.AuthenticationSASL{
+			AuthMechanisms: []string{"SCRAM-SHA-256"},
+		}
+		if err = cl.Send(msg); err != nil {
+			return err
+		}
+		if err = cl.SetAuthType(pgproto3.AuthTypeSASL); err != nil {
+			return err
+		}
+		clientMsgRaw, err := cl.Receive()
+		if err != nil {
+			return err
+		}
+		switch clientMsgRaw := clientMsgRaw.(type) {
+		case *pgproto3.SASLInitialResponse:
+			if clientMsgRaw.AuthMechanism != "SCRAM-SHA-256" {
+				return fmt.Errorf("incorrect auth mechanism")
+			}
+			clientMsg = string(clientMsgRaw.Data)
+		default:
+			return fmt.Errorf("unexpected message type %T", clientMsgRaw)
+		}
+		secondMsg, err := conv.Step(clientMsg)
+		if err != nil {
+			return err
+		}
+		if err = cl.Send(&pgproto3.AuthenticationSASLContinue{
+			Data: []byte(secondMsg),
+		}); err != nil {
+			return err
+		}
+		if err = cl.SetAuthType(pgproto3.AuthTypeSASLContinue); err != nil {
+			return err
+		}
+		if clientMsgRaw, err = cl.Receive(); err != nil {
+			return err
+		}
+		switch clientMsgRaw := clientMsgRaw.(type) {
+		case *pgproto3.SASLResponse:
+			clientMsg = string(clientMsgRaw.Data)
+		default:
+			return fmt.Errorf("unexpected message type %T", clientMsgRaw)
+		}
+		finalMsg, err := conv.Step(clientMsg)
+		if err != nil {
+			return err
+		}
+		err = cl.Send(&pgproto3.AuthenticationSASLFinal{Data: []byte(finalMsg)})
+		return err
 	default:
 		return fmt.Errorf("invalid auth method %v", rule.AuthRule.Method)
 	}
