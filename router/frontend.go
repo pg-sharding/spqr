@@ -28,7 +28,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	spqrlog.Logger.Printf(spqrlog.DEBUG1, "received query '%v' from %p", query, rst.Client())
 	state, comment, err := rst.Parse(query)
 	if err != nil {
-		rst.Client().ReplyErrMsg(err.Error())
+		_ = rst.Client().ReplyErrMsg(err.Error())
 		return err
 	}
 
