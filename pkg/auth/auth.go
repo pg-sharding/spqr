@@ -62,7 +62,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		spqrlog.Zero.Debug().
 			Str("password1", psswd).
-			Str("password2", berule.AuthRules[shard.ShardName()].Password).
+			Str("password2", rule.Password).
 			Msg("sending plain password auth package")
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
