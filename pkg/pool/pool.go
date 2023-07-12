@@ -21,6 +21,8 @@ type Pool interface {
 	QueueResidualSize() int
 
 	List() []shard.Shard
+
+	Rule() *config.BackendRule
 }
 
 type MultiShardPool interface {
