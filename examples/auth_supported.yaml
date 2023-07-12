@@ -51,19 +51,25 @@ frontend_rules:
 backend_rules:
   - usr: us1
     db: db1
-    auth_rule:
+    auth_rules:
+      sh1:
          auth_method: clear_text
          password: 123
+    auth_rule:
+      auth_method: md5
+      password: 321
   - usr: user1
     db: db1
-    auth_rule:
+    auth_rules:
+      sh1:
          auth_method: clear_text
          password: 123
   - pool_mode: SESSION
     pool_default: true
     pool_prepared_statement: false
-    auth_rule:
-      auth_method: ok
+    auth_rules:
+      sh1:
+        auth_method: ok
 
 shards:
   sh1:
