@@ -43,15 +43,15 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 
 ### frontend_rules
 
-| **Name**                  | **Description**                                                                                 |
-| ------------------------- | ----------------------------------------------------------------------------------------------- |
-| `db`                      | the database to connect to                                                                      |
-| `usr`                     | the username with to connect                                                                    |
-| `auth_rule`               | [PostgreSQL Authentication Methods](https://www.postgresql.org/docs/9.1/auth-methods.html), WIP |
-|                           |                                                                                                 |
-| `pool_mode`               | the pooling mode to use. Can be `SESSION` or `TRANSACTION`                                      |
-| `pool_prepared_statement` | use prepared statements or not. Can be false or true                                            |
-| `pool_default`            | use this rule by default. Can be true or false                                                  |
+| **Name**                  | **Description**                                                     |
+| ------------------------- |---------------------------------------------------------------------|
+| `db`                      | the database to connect to                                          |
+| `usr`                     | the username with to connect                                        |
+| `auth_rule`               | authentication method, see [Authentication.md](./Authentication.md) |
+|                           |                                                                     |
+| `pool_mode`               | the pooling mode to use. Can be `SESSION` or `TRANSACTION`          |
+| `pool_prepared_statement` | use prepared statements or not. Can be false or true                |
+| `pool_default`            | use this rule by default. Can be true or false                      |
 
 ### backend_rules
 
