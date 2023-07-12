@@ -3,9 +3,7 @@ package rulerouter
 import (
 	"crypto/tls"
 	"fmt"
-	"log"
 	"net"
-	"os"
 	"sync"
 
 	"github.com/jackc/pgproto3/v2"
@@ -49,7 +47,6 @@ type RuleRouterImpl struct {
 	rmgr      rule.RulesMgr
 
 	tlsconfig *tls.Config
-	lg        *log.Logger
 
 	mu   sync.Mutex
 	rcfg *config.Router
@@ -59,7 +56,9 @@ type RuleRouterImpl struct {
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	spqrlog.Logger.Printf(spqrlog.INFO, "added world datashard to rrouter %v", key.Name)
+	spqrlog.Zero.Info().
+		Str("shard name", key.Name).
+		Msg("added world datashard to rrouter")
 	return nil
 }
 
@@ -87,7 +86,10 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 			defaultFrontendRule = frontendRule
 			continue
 		}
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "adding frontend rule %+v", frontendRule)
+		spqrlog.Zero.Debug().
+			Str("db", frontendRule.DB).
+			Str("user", frontendRule.Usr).
+			Msg("adding frontend rule")
 		key := *route.NewRouteKey(frontendRule.Usr, frontendRule.DB)
 		frontendRules[key] = frontendRule
 	}
@@ -125,7 +127,10 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
+	// if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
+	// 	return err
+	// }
+	if err := spqrlog.UpdateZeroLogLevel(rcfg.LogLevel); err != nil {
 		return err
 	}
 
@@ -141,7 +146,6 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
 		rcfg:      rcfg,
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
-		lg:        log.New(os.Stdout, "router", 0),
 		tlsconfig: tlsconfig,
 		clmp:      map[uint32]rclient.RouterClient{},
 	}
@@ -204,10 +208,12 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "client %p: auth succeeded", cl)
+	spqrlog.Zero.
+		Debug().
+		Uint("client", spqrlog.GetPointer(cl)).
+		Msg("client auth succeeded")
 
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
 		return nil, err
 	}
 	if err := cl.AssignRoute(rt); err != nil {
@@ -296,7 +302,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 			return fmt.Errorf("cancel secret does not match")
 		}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "cancelling client pid %d", csm.ProcessID)
+		spqrlog.Zero.Debug().Uint32("pid", csm.ProcessID).Msg("cancelling client")
 		return cl.Cancel()
 	}
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)

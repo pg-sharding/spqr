@@ -85,7 +85,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 
 	serv, err := r.servPool.Connection("internal", anyK, "")
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
 	}
 

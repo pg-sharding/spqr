@@ -15,7 +15,10 @@ import (
 )
 
 func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "backend shard %p: auth type proc %T\n", shard, msg)
+	spqrlog.Zero.Debug().
+		Uint("shard ", spqrlog.GetPointer(shard)).
+		Type("authtype", msg).
+		Msg("auth backend")
 
 	switch v := msg.(type) {
 	case *pgproto3.AuthenticationOk:
@@ -57,7 +60,11 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		psswd := hex.EncodeToString(resSalted)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "sending auth package %s plain passwd %s", psswd, rule.Password)
+		spqrlog.Zero.Debug().
+			Str("password1", psswd).
+			Str("password2", berule.AuthRules[shard.ShardName()].Password).
+			Msg("sending plain password auth package")
+
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
 		var rule *config.AuthCfg
@@ -109,11 +116,8 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		} else {
 			innerhash := md5.New()
 			innerhash.Write([]byte(rule.AuthRule.Password + rule.Usr))
-
 			innerres := innerhash.Sum(nil)
-
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "inner hash: %v", innerres)
-
+			spqrlog.Zero.Debug().Bytes("inner-hash", innerres).Msg("")
 			hash.Write([]byte(hex.EncodeToString(innerres)))
 		}
 		hash.Write([]byte{salt[0], salt[1], salt[2], salt[3]})

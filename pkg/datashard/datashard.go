@@ -75,14 +75,21 @@ func (sh *Conn) Cancel() error {
 		SecretKey: sh.backend_key_secret,
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "sendind cancel msg %v over %p", msg, &pgiTmp)
+	spqrlog.Zero.Debug().
+		Str("host", pgiTmp.Hostname()).
+		Interface("msg", msg).
+		Msg("sendind cancel msg")
 
 	return pgiTmp.Cancel(msg)
 }
 
 func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "failed to init ssl on host %v of datashard %v: %v", sh.dedicated.Hostname(), sh.Name(), err)
+		spqrlog.Zero.Debug().
+			Err(err).
+			Str("host", sh.dedicated.Hostname()).
+			Str("shard", sh.Name()).
+			Msg("failed to init ssl on host of datashard")
 		return err
 	}
 	return nil
@@ -92,7 +99,11 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
 	sh.sync_in++
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p connection send message %+v, sync in %d", sh, query, sh.sync_in)
+	spqrlog.Zero.Debug().
+		Str("shard", sh.Name()).
+		Interface("query", query).
+		Int64("sync-in", sh.sync_in).
+		Msg("shard connection send message")
 	return sh.dedicated.Send(query)
 }
 
@@ -110,7 +121,11 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p connection recieved message %+v, sync out %d", sh, msg, sh.sync_out)
+	spqrlog.Zero.Debug().
+		Str("shard", sh.Name()).
+		Interface("msg", msg).
+		Int64("sync-out", sh.sync_out).
+		Msg("shard connection received message") 
 	return msg, nil
 }
 
@@ -180,9 +195,11 @@ func NewShard(
 }
 
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
-	err := sh.dedicated.Send(sm)
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "shard conn %p startup msg: %+v", sh, sm)
-	if err != nil {
+	spqrlog.Zero.Debug().
+		Str("shard", sh.Name()).
+		Interface("msg", sm).
+		Msg("shard connection startup message")
+	if err := sh.dedicated.Send(sm); err != nil {
 		return err
 	}
 
@@ -197,7 +214,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 		case pgproto3.AuthenticationResponseMessage:
 			err := auth.AuthBackend(sh.dedicated, sh.beRule, v)
 			if err != nil {
-				spqrlog.Logger.Errorf("failed to perform backend auth %v", err)
+				spqrlog.Zero.Error().Err(err).Msg("ailed to perform backend auth")
 				return err
 			}
 		case *pgproto3.ErrorResponse:
@@ -207,16 +224,27 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 				Name:  v.Name,
 				Value: v.Value,
 			}) {
-				spqrlog.Logger.Printf(spqrlog.DEBUG1, "ignored parameter status %v %v", v.Name, v.Value)
+				spqrlog.Zero.Debug().
+					Str("name", v.Name).
+					Str("value", v.Value).
+					Msg("ignored parameter status")
 			} else {
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "parameter status %v %v", v.Name, v.Value)
+				spqrlog.Zero.Debug().
+					Str("name", v.Name).
+					Str("value", v.Value).
+					Msg("parameter status")
 			}
 		case *pgproto3.BackendKeyData:
 			sh.backend_key_pid = v.ProcessID
 			sh.backend_key_secret = v.SecretKey
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "backend key data %v %v", v.ProcessID, v.SecretKey)
+			spqrlog.Zero.Debug().
+				Uint32("process-id", v.ProcessID).
+				Uint32("secret-key", v.SecretKey).
+				Msg("backend key data")
 		default:
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "unexpected msg type received %T", v)
+			spqrlog.Zero.Debug().
+				Type("type", v).
+				Msg("unexpected msg type received")
 		}
 	}
 }
@@ -225,7 +253,9 @@ func (sh *Conn) fire(q string) error {
 	if err := sh.Send(&pgproto3.Query{
 		String: q,
 	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.DEBUG2, "error firing request to conn")
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("error firing request to conn")
 		return err
 	}
 
@@ -233,7 +263,10 @@ func (sh *Conn) fire(q string) error {
 		if msg, err := sh.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG2, "shard %p rollback resp %T", sh, msg)
+			spqrlog.Zero.Debug().
+				Str("shard", sh.id).
+				Type("type", msg).
+				Msg("shard rollback response")
 
 			switch v := msg.(type) {
 			case *pgproto3.ReadyForQuery:

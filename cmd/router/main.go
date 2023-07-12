@@ -56,7 +56,7 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		spqrlog.RebornLogger(rcfg.LogFileName)
+		spqrlog.ReloadLogger(rcfg.LogFileName)
 
 		// Logger
 		rlogLevel := rcfg.LogLevel
@@ -64,7 +64,7 @@ var runCmd = &cobra.Command{
 			rlogLevel = logLevel
 		}
 
-		if err := spqrlog.UpdateDefaultLogLevel(rlogLevel); err != nil {
+		if err := spqrlog.UpdateZeroLogLevel(rlogLevel); err != nil {
 			return err
 		}
 
@@ -87,11 +87,12 @@ var runCmd = &cobra.Command{
 
 			defer func() {
 				if err := cntxt.Release(); err != nil {
-					spqrlog.Logger.PrintError(err)
+					spqrlog.Zero.Error().Msg("")
+					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()
 
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "daemon started")
+			spqrlog.Zero.Debug().Msg("daemon started")
 		}
 
 		ctx, cancelCtx := context.WithCancel(context.Background())
@@ -99,17 +100,20 @@ var runCmd = &cobra.Command{
 
 		var pprofFile *os.File
 
-		spqrlog.Logger.Printf(spqrlog.FATAL, "cpu prof save prof %t", saveProfie)
-
 		if saveProfie {
+			spqrlog.Zero.Fatal().Msg("starting cpu profile")
 			pprofFile, err = os.Create(profileFile)
 			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof error %v", err)
+				spqrlog.Zero.Fatal().
+					Err(err).
+					Msg("got an error while starting cpu profile")
 				return err
 			}
-			spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof with %s", profileFile)
+			spqrlog.Zero.Fatal().Str("file", profileFile).Msg("starting cpu profile")
 			if err := pprof.StartCPUProfile(pprofFile); err != nil {
-				spqrlog.Logger.Printf(spqrlog.FATAL, "starting cpu prof error %v", err)
+				spqrlog.Zero.Fatal().
+					Err(err).
+					Msg("got an error while starting cpu profile")
 				return err
 			}
 		}
@@ -128,19 +132,19 @@ var runCmd = &cobra.Command{
 			defer cancelCtx()
 			for {
 				s := <-sigs
-				spqrlog.Logger.Printf(spqrlog.LOG, "received signal %v", s)
+				spqrlog.Zero.Info().Str("signal", s.String()).Msg("received signal")
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.RebornLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGUSR2:
 					if saveProfie {
 						// write profile
 						pprof.StopCPUProfile()
-						spqrlog.Logger.Printf(spqrlog.FATAL, "writing cpu prof")
+						spqrlog.Zero.Fatal().Msg("writing cpu prof")
 
 						if err := pprofFile.Close(); err != nil {
-							spqrlog.Logger.PrintError(err)
+							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
 					return
@@ -148,17 +152,17 @@ var runCmd = &cobra.Command{
 					// reread config file
 					err := router.RuleRouter.Reload(rcfgPath)
 					if err != nil {
-						spqrlog.Logger.PrintError(err)
+						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.RebornLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if saveProfie {
 						// write profile
 						pprof.StopCPUProfile()
 
-						spqrlog.Logger.Printf(spqrlog.FATAL, "writing cpu prof")
+						spqrlog.Zero.Fatal().Msg("writing cpu prof")
 						if err := pprofFile.Close(); err != nil {
-							spqrlog.Logger.PrintError(err)
+							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
 					return
@@ -174,7 +178,7 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeRouter(ctx)
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 			wg.Done()
 		}(wg)
@@ -183,7 +187,7 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeGrpcApi(ctx)
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 			wg.Done()
 		}(wg)
@@ -192,7 +196,7 @@ var runCmd = &cobra.Command{
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeAdminConsole(ctx)
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 			wg.Done()
 		}(wg)
@@ -205,6 +209,6 @@ var runCmd = &cobra.Command{
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Zero.Fatal().Err(err).Msg("")
 	}
 }

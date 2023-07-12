@@ -53,7 +53,7 @@ func (c *PoolImpl) Shutdown() error {
 	for _, cl := range c.pool {
 		go func(cl Client) {
 			if err := cl.Shutdown(); err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 		}(cl)
 	}
@@ -67,7 +67,7 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 
 	for _, cl := range c.pool {
 		if err := cb(cl); err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}
 

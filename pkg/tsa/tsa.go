@@ -60,7 +60,10 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",
 	}); err != nil {
-		spqrlog.Logger.Errorf("shard %s encounter error while sending read-write check %v", sh.Name(), err)
+		spqrlog.Zero.Debug().
+			Str("shard", sh.Name()).
+			Err(err).
+			Msg("encounter error while sending read-write check")
 		return false, "", err
 	}
 
@@ -70,13 +73,22 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 	for {
 		msg, err := sh.Receive()
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p recieved error %v during check rw", sh, err)
+			spqrlog.Zero.Debug().
+				Str("shard", sh.Name()).
+				Err(err).
+				Msg("shard recieved error during check rw")
 			return false, reason, err
 		}
-		spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p recieved %+v during check rw", sh, msg)
+		spqrlog.Zero.Debug().
+			Str("shard", sh.Name()).
+			Interface("message", msg).
+			Msg("shard recieved error during check rw")
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p checking read-write: result datarow %+v", sh, qt)
+			spqrlog.Zero.Debug().
+				Str("shard", sh.Name()).
+				Interface("datarow", qt).
+				Msg("shard checking read-write")
 			if len(qt.Values) == 1 && len(qt.Values[0]) == 3 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'f' && qt.Values[0][2] == 'f' {
 				res = true
 			} else {
@@ -85,11 +97,16 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 
 		case *pgproto3.ReadyForQuery:
 			if txstatus.TXStatus(qt.TxStatus) != txstatus.TXIDLE {
-				spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p got unsync connection while calculating rw %v", sh, qt.TxStatus)
+				spqrlog.Zero.Debug().
+					Str("shard", sh.Name()).
+					Msg("shard got unsync connection while calculating RW")
 				return false, reason, fmt.Errorf("connection unsync while acquirind it")
 			}
 
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "shard %p calculated rw res %+v", sh, res)
+			spqrlog.Zero.Debug().
+				Str("shard", sh.Name()).
+				Bool("result", res).
+				Msg("shard calculated RW result")
 			return res, reason, nil
 		}
 	}

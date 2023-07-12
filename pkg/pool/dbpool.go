@@ -27,16 +27,19 @@ var _ DBPool = &InstancePoolImpl{}
 func (s *InstancePoolImpl) Connection(
 	clid string,
 	key kr.ShardKey,
-	TargetSessionAttrs string) (shard.Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "acquiring new instance connection for client '%s' to shard '%s' with tsa: '%s'", clid, key.Name, TargetSessionAttrs)
-
+	targetSessionAttrs string) (shard.Shard, error) {
+	spqrlog.Zero.Error().
+		Str("client", clid).
+		Str("shard", key.Name).
+		Str("tsa", targetSessionAttrs).
+		Msg("acquiring new instance connection for client to shard with target session attrs")
 	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
 	copy(hosts, s.shardMapping[key.Name].Hosts)
 	rand.Shuffle(len(hosts), func(i, j int) {
 		hosts[j], hosts[i] = hosts[i], hosts[j]
 	})
 
-	switch TargetSessionAttrs {
+	switch targetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
@@ -45,7 +48,12 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v", host, clid, err)
+
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("host", host).
+					Str("client", clid).
+					Msg("failed to get connection to host for client")
 				continue
 			}
 			return shard, nil
@@ -58,7 +66,11 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("host", host).
+					Str("client", clid).
+					Msg("failed to get connection to host for client")
 				continue
 			}
 			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
@@ -80,7 +92,11 @@ func (s *InstancePoolImpl) Connection(
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Logger.Errorf("failed to get connection to %s for %s: %v ", host, clid, err)
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("host", host).
+					Str("client", clid).
+					Msg("failed to get connection to host for client")
 				continue
 			}
 			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
@@ -120,7 +136,10 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
 
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "discarding unsync connection %p, sync %d", sh, sh.Sync())
+		spqrlog.Zero.Error().
+			Uint("shard", spqrlog.GetPointer(sh)).
+			Int64("sync", sh.Sync()).
+			Msg("discarding unsync connection")
 		return s.pool.Discard(sh)
 	}
 	return s.pool.Put(sh)

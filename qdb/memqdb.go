@@ -40,7 +40,7 @@ func NewMemQDB() (*MemQDB, error) {
 // ==============================================================================
 
 func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "add sharding rule %v", rule.Entries[0].Column)
+	spqrlog.Zero.Debug().Interface("rule", rule).Msg("memqdb: add sharding rule")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -49,7 +49,7 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 }
 
 func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: drop sharding rule %v", id)
+	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: drop sharding rule")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -59,7 +59,7 @@ func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: drop sharding rule all")
+	spqrlog.Zero.Debug().Msg("memqdb: drop sharding rule all")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -78,7 +78,7 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 }
 
 func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: get sharding rule %v", id)
+	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
 	rule, ok := q.shrules[id]
 	if ok {
 		return rule, nil
@@ -87,7 +87,7 @@ func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule,
 }
 
 func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: list sharding rules")
+	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
@@ -107,7 +107,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 // ==============================================================================
 
 func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: add key range %+v", keyRange)
+	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -119,7 +119,7 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 }
 
 func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: get key range %v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -132,7 +132,7 @@ func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) 
 }
 
 func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: update key range %+v", keyRange)
+	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -142,7 +142,7 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 }
 
 func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: drop key range %+v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -154,7 +154,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: drop all key ranges")
+	spqrlog.Zero.Debug().Msg("memqdb: drop all key ranges")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -164,7 +164,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 		locks = append(locks, l)
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "acquired all locks")
+	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 
 	q.krs = map[string]*KeyRange{}
 	q.locks = map[string]*sync.RWMutex{}
@@ -177,7 +177,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: list all key ranges")
+	spqrlog.Zero.Debug().Msg("memqdb: list all key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -195,7 +195,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 }
 
 func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: lock key range %+v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -211,7 +211,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 }
 
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: lock key range %+v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -227,7 +227,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 }
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: check locked key range %+v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -244,7 +244,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 }
 
 func (q *MemQDB) ShareKeyRange(id string) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: sharing key with key %v", id)
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: sharing key with key")
 
 	q.locks[id].RLock()
 	defer q.locks[id].RUnlock()
@@ -257,7 +257,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: add router %+v", r)
+	spqrlog.Zero.Debug().Interface("router", r).Msg("memqdb: add router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -266,7 +266,7 @@ func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
 }
 
 func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: delete router %+v", id)
+	spqrlog.Zero.Debug().Str("router", id).Msg("memqdb: delete router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -275,7 +275,7 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: list routers")
+	spqrlog.Zero.Debug().Msg("memqdb: list routers")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -301,7 +301,7 @@ func (q *MemQDB) LockRouter(ctx context.Context, id string) error {
 // ==============================================================================
 
 func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: add shard %+v", shard)
+	spqrlog.Zero.Debug().Interface("shard", shard).Msg("memqdb: add shard")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -310,7 +310,7 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 }
 
 func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: list shards")
+	spqrlog.Zero.Debug().Msg("memqdb: list shards")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -328,7 +328,7 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 }
 
 func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: get shard %v", id)
+	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: get shard")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -344,7 +344,7 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: add dataspace %+v", dataspace)
+	spqrlog.Zero.Debug().Interface("dataspace", dataspace).Msg("memqdb: add dataspace")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.dataspaces[dataspace.ID] = dataspace
@@ -353,7 +353,7 @@ func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
 }
 
 func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "memqdb: list dataspaces")
+	spqrlog.Zero.Debug().Msg("memqdb: list dataspaces")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*Dataspace

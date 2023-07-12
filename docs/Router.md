@@ -23,7 +23,7 @@ All SPQR configurations can be written in json, yaml or toml format. See example
 
 | **Name**               | **Description**                                                                                                                                                                               |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `log_level`            | can be `FATAL`, `ERROR`, `INFO`, `WARNING` and `DEBUG`.                                                                                                                                       |
+| `log_level`            | can be `fatal`, `error`, `warning`, `info`, `debug` and `disabled``                                                                                                                           |
 |                        |                                                                                                                                                                                               |
 | `host`                 | the router and its apps will be run on this host                                                                                                                                              |
 | `router_port`          | the router port                                                                                                                                                                               |

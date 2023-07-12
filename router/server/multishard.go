@@ -101,10 +101,12 @@ func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activeShards {
-		spqrlog.Logger.Printf(spqrlog.DEBUG4, "sending %+v to sh %v", msg, shard.Name())
-		err := shard.Send(msg)
-		if err != nil {
-			spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Debug().
+			Str("shard", shard.Name()).
+			Interface("message", msg).
+			Msg("sending message to shard")
+		if err := shard.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
@@ -119,7 +121,9 @@ var (
 func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	rollback := func() {
 		for i := range m.activeShards {
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "rollback shard %p in multishard after error", m.activeShards[i])
+			spqrlog.Zero.Debug().
+				Str("shard", m.activeShards[i].Name()).
+				Msg("rollback shard in multishard after error")
 			if m.activeShards[i].Sync() == 0 {
 				continue
 			}
@@ -130,7 +134,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				for {
 					msg, err := m.activeShards[i].Receive()
 					if err != nil {
-						spqrlog.Logger.PrintError(err)
+						spqrlog.Zero.Error().Err(err).Msg("")
 						return
 					}
 
@@ -138,7 +142,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					case *pgproto3.ReadyForQuery:
 						return
 					default:
-						spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: recived %T message from %s shard while rollback after error", msg, m.activeShards[i].Name())
+						spqrlog.Zero.Info().
+							Str("shard", m.activeShards[i].Name()).
+							Type("message-type", msg).
+							Msg("multishard server: recived message from shard while rollback after error")
 					}
 				}
 			}(i)
@@ -162,13 +169,19 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				// all shards should be in rfq state
 				msg, err := m.activeShards[i].Receive()
 				if err != nil {
-					spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: encountered error while reading from %s shard", m.activeShards[i].Name())
+					spqrlog.Zero.Info().
+						Str("shard", m.activeShards[i].Name()).
+						Err(err).
+						Msg("multishard server: encountered error while reading from shard")
 					m.states[i] = ErrorState
 					rollback()
 					return nil, err
 				}
-
-				spqrlog.Logger.Printf(spqrlog.DEBUG2, "multishard server init: recieved %v msg from %s shard", msg, m.activeShards[i].Name())
+				
+				spqrlog.Zero.Debug().
+					Interface("message", msg).
+					Str("shard", m.activeShards[i].Name()).
+					Msg("multishard server init: recieved message from shard")
 
 				switch retMsg := msg.(type) {
 				case *pgproto3.CopyOutResponse:
@@ -202,7 +215,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					if m.multistate != InitialState {
 						return nil, MultiShardSyncBroken
 					}
-					spqrlog.Logger.Errorf("multishard server %p received err is %v", m, retMsg.Message)
+					spqrlog.Zero.Error().
+						Uint("client", spqrlog.GetPointer(m)).
+						Str("message", retMsg.Message).
+						Msg("multishard server received error")
 					m.states[i] = ErrorState
 					m.multistate = ServerErrorState
 					rollback()
@@ -231,7 +247,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			var currMsg *pgproto3.CopyOutResponse
 			m.copyBuf, currMsg = m.copyBuf[n-2:], m.copyBuf[n-1]
 
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "miltishard server: flush copy buff, new len %d", len(m.copyBuf))
+			spqrlog.Zero.Debug().
+				Int("new-buff-len", len(m.copyBuf)).
+				Msg("miltishard server: flush copy buff")
 			return currMsg, nil
 		}
 
@@ -239,7 +257,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		return saveRd, nil
 	case CopyState:
 		if len(m.copyBuf) > 0 {
-			spqrlog.Logger.Printf(spqrlog.DEBUG5, "miltishard server: flush copy buff")
+			spqrlog.Zero.Debug().Msg("miltishard server: flush copy buff")
 			n := len(m.copyBuf)
 			var currMsg *pgproto3.CopyOutResponse
 			m.copyBuf, currMsg = m.copyBuf[n-2:], m.copyBuf[n-1]
@@ -258,13 +276,18 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 			msg, err := m.activeShards[i].Receive()
 			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: encountered error while reading from %s shard", m.activeShards[i].Name())
+				spqrlog.Zero.Info().
+					Str("shard", m.activeShards[i].Name()).
+					Err(err).
+					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
 				return nil, err
 			}
-
-			spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: got %T from %s shard", msg, m.activeShards[i].Name())
+			spqrlog.Zero.Info().
+				Str("shard", m.activeShards[i].Name()).
+				Type("message-type", msg).
+				Msg("multishard server: recived message from shard")
 
 			switch msg.(type) {
 			case *pgproto3.CommandComplete:
@@ -295,7 +318,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 			msg, err := m.activeShards[i].Receive()
 			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: encountered error while reading from %s shard", m.activeShards[i].Name())
+				spqrlog.Zero.Info().
+					Str("shard", m.activeShards[i].Name()).
+					Err(err).
+					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
 				return nil, err
@@ -320,7 +346,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			CommandTag: []byte{}, // XXX : fix this
 		}, nil
 	case CommandCompleteState:
-		spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: enter rfq await mode")
+		spqrlog.Zero.Info().Msg("multishard server: enter rfq await mode")
 
 		/* Step tree: fetch all datarow msgs */
 		for i := range m.activeShards {
@@ -347,7 +373,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					}
 				}
 			}(); err != nil {
-				spqrlog.Logger.Printf(spqrlog.LOG, "multishard server: encountered error %v while reading from %s shard", err, m.activeShards[i].Name())
+				spqrlog.Zero.Info().
+					Str("shard", m.activeShards[i].Name()).
+					Err(err).
+					Msg("multishard server: encountered error while reading from shard")
 				m.states[i] = ErrorState
 				rollback()
 				return nil, err
