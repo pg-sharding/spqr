@@ -59,6 +59,10 @@ func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 	return ret
 }
 
+func (h *shardPool) Rule() *config.BackendRule {
+	return h.beRule
+}
+
 func (h *shardPool) Cut(host string) []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
