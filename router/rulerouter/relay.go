@@ -34,7 +34,7 @@ type RelayStateMgr interface {
 	ActiveShardsReset()
 	TxActive() bool
 
-	ExtendedDebug() bool
+	PgprotoDebug() bool
 
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, error)
 
@@ -65,7 +65,7 @@ type RelayStateImpl struct {
 	WorldShardFallback bool
 	routerMode         config.RouterMode
 
-	extendedDebug bool
+	pgprotoDebug bool
 
 	routingState qrouter.RoutingState
 
@@ -86,8 +86,8 @@ func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	rst.txStatus = status
 }
 
-func (rst *RelayStateImpl) ExtendedDebug() bool {
-	return rst.extendedDebug
+func (rst *RelayStateImpl) PgprotoDebug() bool {
+	return rst.pgprotoDebug
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
@@ -136,7 +136,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager P
 		WorldShardFallback: rcfg.WorldShardFallback,
 		routerMode:         config.RouterMode(rcfg.RouterMode),
 		maintain_params:    rcfg.MaintainParams,
-		extendedDebug:      rcfg.ExtendedDebug,
+		pgprotoDebug:       rcfg.PgprotoDebug,
 	}
 }
 
@@ -195,8 +195,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	for _, shr := range routes {
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
-	if rst.ExtendedDebug() {
-		// TDB: hide under setting
+	if rst.PgprotoDebug() {
 		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
 			return err
 		}

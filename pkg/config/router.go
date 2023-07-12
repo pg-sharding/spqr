@@ -33,7 +33,7 @@ type Router struct {
 
 	MaintainParams bool `json:"maintain_params" toml:"maintain_params" yaml:"maintain_params"`
 	WithJaeger     bool `json:"with_jaeger" toml:"with_jaeger" yaml:"with_jaeger"`
-	ExtendedDebug  bool `json:"extended_debug" toml:"extended_debug" yaml:"extended_debug"`
+	PgprotoDebug   bool `json:"pgproto_debug" toml:"pgproto_debug" yaml:"pgproto_debug"`
 
 	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
 	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
