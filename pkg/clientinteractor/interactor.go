@@ -126,8 +126,8 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
-			fmt.Sprintf("%s", p.Rule().DB),
-			fmt.Sprintf("%s", p.Rule().Usr),
+			p.Rule().DB,
+			p.Rule().Usr,
 			fmt.Sprintf("%d", p.UsedConnectionCount()),
 			fmt.Sprintf("%d", p.IdleConnectionCount()),
 			fmt.Sprintf("%d", p.QueueResidualSize())); err != nil {
