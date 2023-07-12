@@ -13,22 +13,22 @@ deps:
 	go mod download
 
 build_balancer:
-	go build -o spqr-balancer ./cmd/balancer
+	go build -pgo=auto -o spqr-balancer ./cmd/balancer
 
 build_coorctl:
-	go build -o coorctl ./cmd/coordctl
+	go build -pgo=auto -o coorctl ./cmd/coordctl
 
 build_coordinator: 
-	go build -o spqr-coordinator ./cmd/coordinator
+	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
 
 build_router: 
-	go build -o spqr-router ./cmd/router
+	go build -pgo=auto -o spqr-router ./cmd/router
 
 build_mover:
-	go build -o spqr-mover  ./cmd/mover
+	go build -pgo=auto -o spqr-mover  ./cmd/mover
 
 build_worldmock:
-	go build -o spqr-worldmock ./cmd/worldmock
+	go build -pgo=auto -o spqr-worldmock ./cmd/worldmock
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
