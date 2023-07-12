@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pg-sharding/spqr/router/statistics"
 
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -303,16 +304,106 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) error {
+func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.WhereClauseNode) (bool, error) {
+	if condition == nil {
+		return true, nil
+	}
+	switch where := condition.(type) {
+	case spqrparser.WhereClauseEmpty:
+		return true, nil
+	case spqrparser.WhereClauseOp:
+		switch where.Op {
+		case "and":
+			left, err := MatchRow(row, nameToIndex, where.Left)
+			if err != nil {
+				return true, err
+			}
+			if !left {
+				return false, nil
+			}
+			right, err := MatchRow(row, nameToIndex, where.Right)
+			if err != nil {
+				return true, err
+			}
+			return right, nil
+		case "or":
+			left, err := MatchRow(row, nameToIndex, where.Left)
+			if err != nil {
+				return true, err
+			}
+			if left {
+				return true, nil
+			}
+			right, err := MatchRow(row, nameToIndex, where.Right)
+			if err != nil {
+				return true, err
+			}
+			return right, nil
+		default:
+			return true, fmt.Errorf("not supported logic operation: %s", where.Op)
+		}
+	case spqrparser.WhereClauseLeaf:
+		switch where.Op {
+		case "=":
+			i, ok := nameToIndex[where.ColRef.ColName]
+			if !ok {
+				return true, fmt.Errorf("column %s not exists", where.ColRef.ColName)
+			}
+			return row[i] == where.Value, nil
+		default:
+			return true, fmt.Errorf("not supported operation %s", where.Op)
+		}
+	default:
+		return false, nil
+	}
+}
 
-	quantiles := statistics.GetQuantiles()
-	headers := []string{"client id", "user", "dbname", "server_id"}
-	serverIdColumn := 3
+type TableDesc interface {
+	GetHeader() []string
+}
+
+type ClientDesc struct {
+}
+
+func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
+	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname}
+	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
+	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
+	for _, el := range *quantiles {
+		rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+	}
+	return rowData
+}
+
+func (_ ClientDesc) GetHeader(quantiles *[]float64) []string {
+	headers := []string{
+		"client_id", "user", "dbname", "server_id", ""
+	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
 		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
 	}
-	if err := pi.WriteHeader(headers...); err != nil {
+	return headers
+}
+
+func GetColumnsMap(desc TableDesc) map[string]int {
+	header := desc.GetHeader()
+	columns := make(map[string]int, len(header))
+	i := 0
+	for _, key := range header {
+		columns[key] = i
+		i++
+	}
+	return columns
+}
+
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, condition spqrparser.WhereClauseNode) error {
+	desc := ClientDesc{}
+	header := desc.GetHeader()
+	rowDesc := GetColumnsMap(desc)
+
+	if err := pi.WriteHeader(header...); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -331,19 +422,38 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 				if sh == nil {
 					continue
 				}
-				rowData[serverIdColumn] = sh.Instance().Hostname()
-				if err := pi.WriteDataRow(rowData...); err != nil {
+				row := desc.GetRow(cl, sh.Instance().Hostname())
+
+				match, err := MatchRow(row, rowDesc, condition)
+				if err != nil {
+					return err
+				}
+				if !match {
+					continue
+				}
+
+				if err := pi.WriteDataRow(row...); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 					return err
 				}
 			}
 		} else {
-			rowData[serverIdColumn] = "no backend connection"
-			if err := pi.WriteDataRow(rowData...); err != nil {
+			row := desc.GetRow(cl, "no backend connection")
+
+			match, err := MatchRow(row, rowDesc, condition)
+			if err != nil {
+				return err
+			}
+			if !match {
+				continue
+			}
+
+			if err := pi.WriteDataRow(row...); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}
 		}
+
 	}
 
 	return pi.CompleteMsg(len(clients))

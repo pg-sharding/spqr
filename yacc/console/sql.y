@@ -57,6 +57,9 @@ func randomHex(n int) (string, error) {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
+
+    colref                 ColumnRef
+    where                  WhereClauseNode
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -68,6 +71,23 @@ func randomHex(n int) (string, error) {
 
 // DDL
 %token <str> SHOW KILL
+
+// SQL
+%token <str> WHERE OR AND
+
+%type< where> where_clause where_clause_seq
+
+// '='
+%token<str> TEQ
+
+// '(' & ')'
+%token<str> TOPENBR TCLOSEBR
+
+%type<str> operator where_operator
+
+%type<colref> ColRef
+
+%type<str> any_val
 
 // CMDS
 %type <statement> command
@@ -213,6 +233,73 @@ POOLS
 | SHARDING_RULES
 | CLIENT
 | BACKEND_CONNECTIONS
+| TOPENBR
+| WHERE
+
+any_val:
+    reserved_keyword {
+        $$ = $1
+    }
+    | STRING
+	{
+		$$ = string($1)
+	}
+
+operator:
+    STRING {
+        $$ = $1
+    } | AND {
+        $$ = "AND"
+    } | OR {
+        $$ = "OR"
+    }
+
+where_operator:
+    STRING {
+        $$ = $1
+    } | TEQ {
+        $$ = "="
+    }
+
+
+ColRef:
+    any_val {
+        $$ = ColumnRef{
+            ColName: $1,
+        }
+    }
+
+
+where_clause_seq:
+    TOPENBR where_clause_seq TCLOSEBR {
+        $$ = $2
+    } | ColRef where_operator any_val
+    {
+        $$ = WhereClauseLeaf {
+            ColRef:     $1,
+			Op:         $2,
+            Value:      $3,
+        }
+    }
+    | where_clause_seq operator where_clause_seq
+    {
+        $$ = WhereClauseOp{
+            Op: $2,
+            Left: $1,
+            Right: $3,
+        }
+    }
+
+where_clause:
+    /* empty */
+    {
+        $$ = WhereClauseEmpty{}
+    }
+    | WHERE where_clause_seq
+    {
+        $$ = $2
+    }
+
 
 show_statement_type:
 	reserved_keyword
@@ -294,9 +381,9 @@ create_stmt:
 
 
 show_stmt:
-	SHOW show_statement_type
+	SHOW show_statement_type where_clause
 	{
-		$$ = &Show{Cmd: $2}
+		$$ = &Show{Cmd: $2, Where: $3}
 	}
 
 ref_name:
