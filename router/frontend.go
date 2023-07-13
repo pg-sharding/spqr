@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -13,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -25,6 +27,10 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 }
 
 func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
+	// start of time in router---------------------------------------------------------------------------------------------------------
+	statistics.RecordStartTime(statistics.StartRouter, time.Now(), rst.Client().Usr()) //TODO find user
+	fmt.Println(query)
+
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))
 	state, comment, err := rst.Parse(query)
 	if err != nil {
@@ -59,7 +65,6 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		}
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
-
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {
@@ -125,7 +130,6 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			if st.Setting == "session_authorization" {
 				rst.Client().ResetParam("role")
 			}
-
 			return nil
 		}
 

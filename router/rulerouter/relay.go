@@ -3,6 +3,7 @@ package rulerouter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgproto3/v2"
 	"github.com/opentracing/opentracing-go"
@@ -14,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/statistics"
 	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
@@ -296,7 +298,6 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 		return err
 	}
 
-
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
@@ -439,7 +440,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	if rst.CopyActive {
 		return nil
 	}
-
+	statistics.RecordFinishedTransaction(time.Now(), rst.Client().Usr()) // TODO where user
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -474,6 +475,9 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		if err := rst.manager.TXEndCB(rst); err != nil {
 			return err
 		}
+		// end time measurement------------------------------------------------------------------------------------
+		//statistics.RecordFinishedTransaction(time.Now(), rst.Client().Usr()) // TODO where user
+		//fmt.Println(rst.plainQ)
 
 		return nil
 	case txstatus.TXERR:
@@ -561,6 +565,8 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
+	//time start shard-----------------------------------------------------------------------------------
+	statistics.RecordStartTime(statistics.StartShard, time.Now(), rst.Client().Usr()) //TODO find user
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
