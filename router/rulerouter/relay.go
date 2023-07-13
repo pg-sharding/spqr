@@ -566,7 +566,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 		return false, err
 	}
 	//time start shard-----------------------------------------------------------------------------------
-	statistics.RecordStartTime(statistics.StartShard, time.Now(), rst.Client().Usr()) //TODO find user
+	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().Usr()) //TODO find user
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err

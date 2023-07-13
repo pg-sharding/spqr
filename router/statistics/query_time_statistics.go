@@ -6,11 +6,11 @@ import (
 	"github.com/caio/go-tdigest"
 )
 
-type StartTimeType string
+type StatisticsType string
 
 const (
-	StartRouter = StartTimeType("router")
-	StartShard  = StartTimeType("shard")
+	Router = StatisticsType("router")
+	Shard  = StatisticsType("shard")
 )
 
 type startTimes struct {
@@ -30,14 +30,14 @@ var queryStatistics = statistics{
 	TimeData:   make(map[string]*startTimes),
 }
 
-func RecordStartTime(tip StartTimeType, t time.Time, user string) {
+func RecordStartTime(tip StatisticsType, t time.Time, user string) {
 	if queryStatistics.TimeData[user] == nil {
 		queryStatistics.TimeData[user] = &startTimes{}
 	}
 	switch tip {
-	case StartRouter:
+	case Router:
 		queryStatistics.TimeData[user].RouterStart = t
-	case StartShard:
+	case Shard:
 		queryStatistics.TimeData[user].ShardStart = t
 	}
 }
@@ -51,4 +51,15 @@ func RecordFinishedTransaction(t time.Time, user string) {
 	}
 	queryStatistics.RouterTime[user].Add(float64(t.Sub(queryStatistics.TimeData[user].RouterStart).Nanoseconds()))
 	queryStatistics.ShardTime[user].Add(float64(t.Sub(queryStatistics.TimeData[user].ShardStart).Nanoseconds()))
+}
+
+func GetUserTimeStatistics(tip StatisticsType, user string) *tdigest.TDigest {
+	switch tip {
+	case Router:
+		return queryStatistics.RouterTime[user]
+	case Shard:
+		return queryStatistics.ShardTime[user]
+	default:
+		return nil
+	}
 }
