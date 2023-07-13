@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"

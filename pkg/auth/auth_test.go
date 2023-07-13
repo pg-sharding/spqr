@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/pgproto3/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/config"

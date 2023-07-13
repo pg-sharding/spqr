@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -129,6 +130,9 @@ var runCmd = &cobra.Command{
 			}
 		}
 
+		go func() {
+			_ = http.ListenAndServe("localhost:6060", nil)
+		}()
 		if memProfile {
 			spqrlog.Zero.Info().Msg("starting mem profile")
 			pprofMemFile, err = os.Create(path.Join(path.Dir(profileFile), "mem"+path.Base(profileFile)))

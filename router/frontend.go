@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jackc/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"

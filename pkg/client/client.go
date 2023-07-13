@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/pgproto3/v2"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 

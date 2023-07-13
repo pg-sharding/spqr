@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/pg-sharding/spqr/pkg/pgproto3/v2"
 )
 
 func getC() (net.Conn, error) {
