@@ -30,36 +30,40 @@ var queryStatistics = statistics{
 	TimeData:   make(map[string]*startTimes),
 }
 
-func RecordStartTime(tip StatisticsType, t time.Time, user string) {
-	if queryStatistics.TimeData[user] == nil {
-		queryStatistics.TimeData[user] = &startTimes{}
+func RecordStartTime(tip StatisticsType, t time.Time, client string) {
+	if queryStatistics.TimeData[client] == nil {
+		queryStatistics.TimeData[client] = &startTimes{}
 	}
 	switch tip {
 	case Router:
-		queryStatistics.TimeData[user].RouterStart = t
+		queryStatistics.TimeData[client].RouterStart = t
 	case Shard:
-		queryStatistics.TimeData[user].ShardStart = t
+		queryStatistics.TimeData[client].ShardStart = t
 	}
 }
 
-func RecordFinishedTransaction(t time.Time, user string) {
-	if queryStatistics.RouterTime[user] == nil {
-		queryStatistics.RouterTime[user], _ = tdigest.New()
+func RecordFinishedTransaction(t time.Time, client string) {
+	if queryStatistics.RouterTime[client] == nil {
+		queryStatistics.RouterTime[client], _ = tdigest.New()
 	}
-	if queryStatistics.ShardTime[user] == nil {
-		queryStatistics.ShardTime[user], _ = tdigest.New()
+	if queryStatistics.ShardTime[client] == nil {
+		queryStatistics.ShardTime[client], _ = tdigest.New()
 	}
-	queryStatistics.RouterTime[user].Add(float64(t.Sub(queryStatistics.TimeData[user].RouterStart).Nanoseconds()))
-	queryStatistics.ShardTime[user].Add(float64(t.Sub(queryStatistics.TimeData[user].ShardStart).Nanoseconds()))
+	queryStatistics.RouterTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].RouterStart).Microseconds()))
+	queryStatistics.ShardTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].ShardStart).Microseconds()))
 }
 
-func GetUserTimeStatistics(tip StatisticsType, user string) *tdigest.TDigest {
+func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest {
+	var stat *tdigest.TDigest
 	switch tip {
 	case Router:
-		return queryStatistics.RouterTime[user]
+		stat = queryStatistics.RouterTime[client]
 	case Shard:
-		return queryStatistics.ShardTime[user]
-	default:
-		return nil
+		stat = queryStatistics.ShardTime[client]
 	}
+
+	if stat == nil {
+		stat, _ = tdigest.New()
+	}
+	return stat
 }

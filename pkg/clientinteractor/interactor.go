@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/statistics"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -301,24 +302,26 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 }
 
 func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) error {
-	if err := pi.WriteHeader("client id", "user", "dbname", "server_id"); err != nil {
+	if err := pi.WriteHeader("client id", "user", "dbname", "server_id", "router_time_0.5"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, cl := range clients {
+		routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
+
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
 				if sh == nil {
 					continue
 				}
-				if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname()); err != nil {
+				if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname(), fmt.Sprintf("%g", routerStat.Quantile(0.5))); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 					return err
 				}
 			}
 		} else {
-			if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), "no backend connection"); err != nil {
+			if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), "no backend connection", fmt.Sprintf("%g", routerStat.Quantile(0.5))); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}

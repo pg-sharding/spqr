@@ -440,7 +440,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	if rst.CopyActive {
 		return nil
 	}
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client().Usr()) // TODO where user
+	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID()) // end time measurement --------------------
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -475,9 +475,6 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		if err := rst.manager.TXEndCB(rst); err != nil {
 			return err
 		}
-		// end time measurement------------------------------------------------------------------------------------
-		//statistics.RecordFinishedTransaction(time.Now(), rst.Client().Usr()) // TODO where user
-		//fmt.Println(rst.plainQ)
 
 		return nil
 	case txstatus.TXERR:
@@ -566,7 +563,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 		return false, err
 	}
 	//time start shard-----------------------------------------------------------------------------------
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().Usr()) //TODO find user
+	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
