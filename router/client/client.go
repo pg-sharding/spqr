@@ -391,13 +391,13 @@ func (cl *PsqlClient) ReplyDebugNotice(msg string) error {
 }
 
 func (cl *PsqlClient) ReplyDebugNoticef(fmtString string, args ...interface{}) error {
-	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...)) // TODO perfomance issue
+	return cl.ReplyDebugNotice(fmt.Sprintf(fmtString, args...))
 }
 
 func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg), // TODO perfomance issue
+			Message:  fmt.Sprintf("client %p: error %v", cl, errmsg),
 			Severity: "WARNING",
 		},
 	} {
@@ -410,7 +410,7 @@ func (cl *PsqlClient) ReplyWarningMsg(errmsg string) error {
 }
 
 func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error {
-	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...)) // TODO perfomance issue
+	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
 }
 
 // Deprecated: use spqrlog.GetPointer instead
@@ -826,7 +826,6 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 		Str("server", cl.server.Name()).
 		Type("query-type", query).
 		Msg("client process query")
-	_ = cl.ReplyDebugNoticef("executing your query %v", query)
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	if cl.server == nil {

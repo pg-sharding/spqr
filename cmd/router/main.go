@@ -104,20 +104,22 @@ var runCmd = &cobra.Command{
 		defer cancelCtx()
 
 		var pprofCpuFile *os.File
-
 		var pprofMemFile *os.File
 
 		if cpuProfile {
 			spqrlog.Zero.Fatal().Msg("starting cpu profile")
 			pprofCpuFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
+
 			if err != nil {
 				spqrlog.Zero.Info().
 					Err(err).
 					Msg("got an error while starting cpu profile")
 				return err
 			}
-			if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
+
+      if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
 				spqrlog.Zero.Info().
+
 					Err(err).
 					Msg("got an error while starting cpu profile")
 				return err

@@ -34,6 +34,8 @@ type RelayStateMgr interface {
 	ActiveShardsReset()
 	TxActive() bool
 
+	PgprotoDebug() bool
+
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, error)
 
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
@@ -63,6 +65,8 @@ type RelayStateImpl struct {
 	WorldShardFallback bool
 	routerMode         config.RouterMode
 
+	pgprotoDebug bool
+
 	routingState qrouter.RoutingState
 
 	Qr      qrouter.QueryRouter
@@ -80,6 +84,10 @@ type RelayStateImpl struct {
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	rst.txStatus = status
+}
+
+func (rst *RelayStateImpl) PgprotoDebug() bool {
+	return rst.pgprotoDebug
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
@@ -128,6 +136,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager P
 		WorldShardFallback: rcfg.WorldShardFallback,
 		routerMode:         config.RouterMode(rcfg.RouterMode),
 		maintain_params:    rcfg.MaintainParams,
+		pgprotoDebug:       rcfg.PgprotoDebug,
 	}
 }
 
@@ -186,9 +195,10 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	for _, shr := range routes {
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
-	// TDB: hide under setting
-	if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
-		return err
+	if rst.PgprotoDebug() {
+		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
+			return err
+		}
 	}
 
 	if err := rst.Connect(routes); err != nil {
@@ -295,7 +305,6 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error 
 	if err := rst.Cl.AssignServerConn(serv); err != nil {
 		return err
 	}
-
 
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
@@ -439,7 +448,6 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	if rst.CopyActive {
 		return nil
 	}
-
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).

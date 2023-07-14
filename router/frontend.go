@@ -54,7 +54,9 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateTXBegin:
 		if rst.TxStatus() != txstatus.TXIDLE {
 			// ignore this
-			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
+			if rst.PgprotoDebug() {
+				_ = rst.Client().ReplyWarningf("there is already transaction in progress")
+			}
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 		}
 		rst.AddSilentQuery(msg)
@@ -63,7 +65,9 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			if rst.PgprotoDebug() {
+				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			}
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
 		}
 		if !cmngr.ConnectionActive(rst) {
@@ -77,7 +81,9 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		return err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
-			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			if rst.PgprotoDebug() {
+				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
+			}
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "ROLLBACK")
 		}
 
@@ -239,8 +245,10 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 			Str("name", q.Name).
 			Str("query", q.Query).
 			Uint64("hash", hash)
-		if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
-			return err
+		if rst.PgprotoDebug() {
+			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
+				return err
+			}
 		}
 		rst.Client().StorePreparedStatement(q.Name, q.Query)
 		// simply reply witch ok parse complete
@@ -332,7 +340,9 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
-	_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	if rcfg.PgprotoDebug {
+		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
+	}
 	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
 
 	defer rst.Close()
