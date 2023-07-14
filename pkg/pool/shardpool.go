@@ -26,12 +26,14 @@ type shardPool struct {
 
 	beRule *config.BackendRule
 
+	host string
+
 	ConnectionLimit int
 }
 
 var _ Pool = &shardPool{}
 
-func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
+func NewshardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
 	if beRule.ConnectionLimit != 0 {
 		connLimit = beRule.ConnectionLimit
@@ -43,6 +45,7 @@ func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 		active:          make(map[string]shard.Shard),
 		alloc:           allocFn,
 		beRule:          beRule,
+		host:            host,
 		ConnectionLimit: connLimit,
 	}
 
@@ -57,6 +60,10 @@ func NewshardPool(allocFn ConnectionAllocFn, beRule *config.BackendRule) Pool {
 		Msg("initialized pool queue with tokens")
 
 	return ret
+}
+
+func (h *shardPool) Hostname() string {
+	return h.host
 }
 
 func (h *shardPool) Rule() *config.BackendRule {
@@ -93,8 +100,7 @@ func (s *shardPool) QueueResidualSize() int {
 
 func (h *shardPool) Connection(
 	clid string,
-	shardKey kr.ShardKey,
-	host string) (shard.Shard, error) {
+	shardKey kr.ShardKey) (shard.Shard, error) {
 
 	if err := func() error {
 		for rep := 0; rep < 10; rep++ {
@@ -102,14 +108,14 @@ func (h *shardPool) Connection(
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
 				spqrlog.Zero.Info().
 					Str("client", clid).
-					Str("host", host).
+					Str("host", h.host).
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
 				return nil
 			}
 		}
 
-		return fmt.Errorf("failed to get connection to host %s due to too much concurrent connections", host)
+		return fmt.Errorf("failed to get connection to host %s due to too much concurrent connections", h.host)
 	}(); err != nil {
 		return nil, err
 	}
@@ -138,7 +144,7 @@ func (h *shardPool) Connection(
 
 	// do not hold lock on poolRW while allocate new connection
 	var err error
-	sh, err = h.alloc(shardKey, host, h.beRule)
+	sh, err = h.alloc(shardKey, h.host, h.beRule)
 	if err != nil {
 		return nil, err
 	}
@@ -264,12 +270,12 @@ func (c *cPool) List() []shard.Shard {
 func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
-		pool = NewshardPool(c.alloc, c.beRule)
+		pool = NewshardPool(c.alloc, host, c.beRule)
 		c.pools.Store(host, pool)
 	} else {
 		pool = val.(Pool)
 	}
-	return pool.Connection(clid, shardKey, host)
+	return pool.Connection(clid, shardKey)
 }
 
 func (c *cPool) Cut(host string) []shard.Shard {

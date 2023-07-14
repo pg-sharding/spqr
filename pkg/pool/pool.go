@@ -8,11 +8,7 @@ import (
 
 const defaultInstanceConnectionLimit = 50
 
-type Pool interface {
-	shard.ShardIterator
-
-	Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error)
-
+type ConnectionKepper interface {
 	Put(host shard.Shard) error
 	Discard(sh shard.Shard) error
 
@@ -20,15 +16,27 @@ type Pool interface {
 	IdleConnectionCount() int
 	QueueResidualSize() int
 
+	Hostname() string
+
 	List() []shard.Shard
 
 	Rule() *config.BackendRule
 }
 
+/* dedicated host connection pool */
+type Pool interface {
+	ConnectionKepper
+	shard.ShardIterator
+
+	Connection(clid string, shardKey kr.ShardKey) (shard.Shard, error)
+}
+
 type MultiShardPool interface {
+	ConnectionKepper
 	shard.ShardIterator
 	PoolIterator
-	Pool
+
+	Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error)
 
 	InitRule(rule *config.BackendRule) error
 	Cut(host string) []shard.Shard
