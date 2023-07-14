@@ -107,7 +107,7 @@ var runCmd = &cobra.Command{
 		var pprofMemFile *os.File
 
 		if cpuProfile {
-			spqrlog.Zero.Fatal().Msg("starting cpu profile")
+			spqrlog.Zero.Info().Msg("starting cpu profile")
 			pprofCpuFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
 
 			if err != nil {
@@ -126,7 +126,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if memProfile {
-			spqrlog.Zero.Fatal().Msg("starting mem profile")
+			spqrlog.Zero.Info().Msg("starting mem profile")
 			pprofMemFile, err = os.Create(path.Join(path.Dir(profileFile), "mem"+path.Base(profileFile)))
 			if err != nil {
 				spqrlog.Zero.Info().
@@ -189,7 +189,7 @@ var runCmd = &cobra.Command{
 						// write profile
 						pprof.StopCPUProfile()
 
-						spqrlog.Zero.Fatal().Msg("writing cpu prof")
+						spqrlog.Zero.Info().Msg("writing cpu prof")
 						if err := pprofCpuFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
@@ -197,7 +197,7 @@ var runCmd = &cobra.Command{
 
 					if memProfile {
 						// write profile
-						spqrlog.Zero.Fatal().Msg("writing mem prof")
+						spqrlog.Zero.Info().Msg("writing mem prof")
 
 						if err := pprof.WriteHeapProfile(pprofMemFile); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")

@@ -71,6 +71,31 @@ func NewRoutingMetadataContext(krs []*kr.KeyRange, rls []*shrule.ShardingRule) *
 	}
 }
 
+func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation, colname string, expr *lyx.AExprConst) {
+	meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
+	if _, ok := meta.exprs[resolvedRelation]; !ok {
+		meta.exprs[resolvedRelation] = map[string]string{}
+	}
+	meta.exprs[resolvedRelation][colname] = expr.Value
+}
+
+func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (string, error) {
+	if resolvedRelation, ok := meta.tableAliases[alias]; ok {
+		// TBD: postpone routing from here to root of parsing tree
+		return resolvedRelation, nil
+	} else {
+		// TBD: postpone routing from here to root of parsing tree
+		if len(meta.rels) != 1 {
+			// ambiguity in column aliasing
+			return "", ComplexQuery
+		}
+		for tbl := range meta.rels {
+			resolvedRelation = tbl
+		}
+		return resolvedRelation, nil
+	}
+}
+
 var ComplexQuery = fmt.Errorf("too complex query to parse")
 var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
@@ -153,35 +178,34 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 						continue
 					}
 
-					if resolvedRelation, ok := meta.tableAliases[alias]; ok {
+					resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+					if err == nil {
 						// TBD: postpone routing from here to root of parsing tree
-
-						meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
-						if _, ok := meta.exprs[resolvedRelation]; !ok {
-							meta.exprs[resolvedRelation] = map[string]string{}
-						}
-						meta.exprs[resolvedRelation][colname] = rght.Value
-					} else {
-						// TBD: postpone routing from here to root of parsing tree
-						if len(meta.rels) > 1 {
-							// ambiguity in column aliasing
-							return ComplexQuery
-						}
-						for tbl := range meta.rels {
-							resolvedRelation = tbl
-						}
-
-						meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
-						if _, ok := meta.exprs[resolvedRelation]; !ok {
-							meta.exprs[resolvedRelation] = map[string]string{}
-						}
-
-						spqrlog.Zero.Debug().
-							Str("relation", resolvedRelation).
-							Str("column", colname).
-							Msg("adding expr to relation column")
-						meta.exprs[resolvedRelation][colname] = rght.Value
+						meta.RecordConstExpr(resolvedRelation, colname, rght)
 					}
+
+				case *lyx.AExprList:
+					if len(rght.List) != 0 {
+						expr := rght.List[0]
+						switch bexpr := expr.(type) {
+						case *lyx.AExprConst:
+							alias, colname := lft.TableAlias, lft.ColName
+
+							if !meta.CheckColumnRls(colname) {
+								spqrlog.Zero.Debug().
+									Str("colname", colname).
+									Msg("skip column due no rule mathing")
+								continue
+							}
+
+							resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+							if err == nil {
+								// TBD: postpone routing from here to root of parsing tree
+								meta.RecordConstExpr(resolvedRelation, colname, bexpr)
+							}
+						}
+					}
+
 				default:
 					queue = append(queue, texpr.Left, texpr.Right)
 				}
@@ -332,6 +356,8 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		if clause == nil {
 			return nil
 		}
+
+		_ = qr.deparseFromNode(stmt.TableRef, meta)
 		return qr.routeByClause(ctx, clause, meta)
 	case *lyx.Delete:
 		clause := stmt.Where
@@ -339,11 +365,15 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			return nil
 		}
 
+		_ = qr.deparseFromNode(stmt.TableRef, meta)
+
 		return qr.routeByClause(ctx, clause, meta)
 	case *lyx.Copy:
-		if stmt.IsFrom {
+		if !stmt.IsFrom {
 			return fmt.Errorf("copy from stdin is not implemented")
 		}
+
+		_ = qr.deparseFromNode(stmt.TableRef, meta)
 
 		clause := stmt.Where
 
@@ -371,7 +401,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		entries = append(entries, elt.ColName)
 	}
 
-	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.TableName, entries, meta.rls); err == ops.ErrRuleIntersect {
+	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.TableName, entries, qr.mgr.QDB()); err == ops.ErrRuleIntersect {
 		return nil
 	}
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
@@ -488,7 +518,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, meta.rls); err != nil {
+			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, qr.mgr.QDB()); err != nil {
 				for _, col := range cols {
 					currroute, err := qr.deparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
@@ -518,24 +548,25 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 	spqrlog.Zero.Debug().Interface("insertStmtCols", meta.InsertStmtCols)
 
 	if len(meta.InsertStmtCols) != 0 {
-		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols, meta.rls); err != nil {
+		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols, qr.mgr.QDB()); err != nil {
 			// compute matched sharding rule offsets
 			offsets := make([]int, 0)
 			j := 0
 			// TODO: check mapping by rules with multiple columns
 			for i, s := range meta.InsertStmtCols {
-				if j == len(rule.Entries()) {
+				if j == len(rule.Entries) {
 					break
 				}
-				if s == rule.Entries()[j].Column {
+				if s == rule.Entries[j].Column {
 					offsets = append(offsets, i)
+					j++
 				}
 			}
 
 			meta.offsets = offsets
-
 			routed := false
 			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
+
 				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta)
 				if err != nil {
 					/* failed, ignore */

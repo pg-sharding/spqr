@@ -19,6 +19,8 @@ type MemQDB struct {
 	shrules    map[string]*ShardingRule
 	dataspaces map[string]*Dataspace
 	routers    map[string]*Router
+
+	/* caches */
 }
 
 var _ QDB = &MemQDB{}
@@ -100,6 +102,13 @@ func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 	})
 
 	return ret, nil
+}
+
+func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
+	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	return m(q.shrules)
 }
 
 // ==============================================================================

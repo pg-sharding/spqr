@@ -60,7 +60,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
-func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName string, shardingEntries []string, rules []*shrule.ShardingRule) (*shrule.ShardingRule, error) {
+func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
 	/*
 	* Create set to search column names in `shardingEntries`
 	 */
@@ -70,32 +70,41 @@ func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName str
 		checkSet[k] = struct{}{}
 	}
 
-	for _, rule := range rules {
-		// Simple optimisation
-		if len(rule.Entries()) > len(shardingEntries) {
-			continue
-		}
+	var mrule *qdb.ShardingRule
 
-		if rule.TableName != "" && rule.TableName != relationName {
-			continue
-		}
+	mrule = nil
 
-		allColumnsMatched := true
+	err := db.MatchShardingRules(ctx, func(rules map[string]*qdb.ShardingRule) error {
+		for _, rule := range rules {
+			// Simple optimisation
+			if len(rule.Entries) > len(shardingEntries) {
+				continue
+			}
 
-		for _, v := range rule.Entries() {
-			if _, ok := checkSet[v.Column]; !ok {
-				allColumnsMatched = false
-				break
+			if rule.TableName != "" && rule.TableName != relationName {
+				continue
+			}
+
+			allColumnsMatched := true
+
+			for _, v := range rule.Entries {
+				if _, ok := checkSet[v.Column]; !ok {
+					allColumnsMatched = false
+					break
+				}
+			}
+
+			/* In this rule, we successfully matched all columns */
+			if allColumnsMatched {
+				mrule = rule
+				return ErrRuleIntersect
 			}
 		}
 
-		/* In this rule, we successfully matched all columns */
-		if allColumnsMatched {
-			return rule, ErrRuleIntersect
-		}
-	}
+		return nil
+	})
 
-	return nil, nil
+	return mrule, err
 }
 
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {

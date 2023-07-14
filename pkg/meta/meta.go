@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -28,6 +29,8 @@ type EntityMgr interface {
 	dataspaces.DataspaceMgr
 
 	ShareKeyRange(id string) error
+
+	QDB() qdb.QDB
 }
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")

@@ -374,6 +374,10 @@ func (lc *LocalCoordinator) ShareKeyRange(id string) error {
 	return lc.qdb.ShareKeyRange(id)
 }
 
+func (lc *LocalCoordinator) QDB() qdb.QDB {
+	return lc.qdb
+}
+
 func NewLocalCoordinator(db qdb.QDB) meta.EntityMgr {
 	return &LocalCoordinator{
 		DataShardCfgs:  map[string]*config.Shard{},

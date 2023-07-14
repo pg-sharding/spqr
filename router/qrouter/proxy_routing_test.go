@@ -360,6 +360,27 @@ func TestSingleShard(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
+			exp: qrouter.ShardMatchState{
+				Routes: []*qrouter.DataShardRoute{
+					{
+						Shkey: kr.ShardKey{
+							Name: "sh2",
+						},
+						Matchedkr: &kr.KeyRange{
+							ShardID:    "sh2",
+							ID:         "id2",
+							LowerBound: []byte("11"),
+							UpperBound: []byte("24"),
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
@@ -551,6 +572,116 @@ func TestJoins(t *testing.T) {
 	}
 }
 
+func TestUnnest(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   qrouter.RoutingState
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB()
+
+	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+		ID:        "id1",
+		TableName: "",
+		Entries: []qdb.ShardingRuleEntry{
+			{
+				Column: "i",
+			},
+		},
+	})
+
+	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:    "sh1",
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("10"),
+	})
+
+	assert.NoError(err)
+
+	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:    "sh2",
+		KeyRangeID: "id2",
+		LowerBound: []byte("11"),
+		UpperBound: []byte("20"),
+	})
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {
+			Hosts: nil,
+		},
+		"sh2": {
+			Hosts: nil,
+		},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	})
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+
+		{
+			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
+			exp: qrouter.ShardMatchState{
+				Routes: []*qrouter.DataShardRoute{
+					{
+						Shkey: kr.ShardKey{
+							Name: "sh2",
+						},
+						Matchedkr: &kr.KeyRange{
+							ShardID:    "sh2",
+							ID:         "id2",
+							LowerBound: []byte("11"),
+							UpperBound: []byte("20"),
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
+			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
+			exp: qrouter.ShardMatchState{
+				Routes: []*qrouter.DataShardRoute{
+					{
+						Shkey: kr.ShardKey{
+							Name: "sh2",
+						},
+						Matchedkr: &kr.KeyRange{
+							ShardID:    "sh2",
+							ID:         "id2",
+							LowerBound: []byte("11"),
+							UpperBound: []byte("20"),
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		tmp, err := pr.Route(context.TODO(), parserRes)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp)
+	}
+}
+
 func TestCopySingleShard(t *testing.T) {
 	assert := assert.New(t)
 
@@ -607,7 +738,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "COPY xx TO STDOUT WHERE i = 1;",
+			query: "COPY xx FROM STDIN WHERE i = 1;",
 			exp: qrouter.ShardMatchState{
 				Routes: []*qrouter.DataShardRoute{
 					{
