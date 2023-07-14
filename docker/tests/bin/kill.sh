@@ -8,9 +8,14 @@ function clearID() {
     sed -E 's/0x[0-9a-f]+/************/g'
 }
 
-out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' | clearID)
-test "$out" = " client id | user | dbname | server_id 
------------+------+--------+-----------
+function clearStatistics() {
+    sed -E 's/[0-9]+[.][0-9]+ms/*****/g' | 
+    sed -E 's/_[0-9]+[.][0-9]/***/g'
+}
+
+out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' | clearID | clearStatistics)
+test "$out" = " client id | user | dbname | server_id | router_time*** | shard_time*** 
+-----------+------+--------+-----------+-----------------+----------------
 (0 rows)"
 
 psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" <<EOH &
@@ -28,9 +33,9 @@ test "$out" = "            kill client
  the client ************ was killed
 (1 row)"
 
-out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' | clearID)
-test "$out" = " client id | user | dbname | server_id 
------------+------+--------+-----------
+out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' | clearID | clearStatistics)
+test "$out" = " client id | user | dbname | server_id | router_time*** | shard_time*** 
+-----------+------+--------+-----------+-----------------+----------------
 (0 rows)"
 
 
