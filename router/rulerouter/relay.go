@@ -440,7 +440,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	if rst.CopyActive {
 		return nil
 	}
-	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID()) // end time measurement --------------------
+	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -562,7 +562,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
-	//time start shard-----------------------------------------------------------------------------------
+
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {

@@ -10,7 +10,6 @@ import (
 )
 
 func TestStatisticsForOneUser(t *testing.T) {
-	//init test data
 	assert := assert.New(t)
 
 	tim := time.Now()

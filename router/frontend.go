@@ -27,7 +27,6 @@ func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
 }
 
 func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
-	// start of time in router---------------------------------------------------------------------------------------------------------
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))

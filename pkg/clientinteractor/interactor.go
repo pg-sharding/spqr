@@ -305,6 +305,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 
 	quantiles := statistics.GetQuantiles()
 	headers := []string{"client id", "user", "dbname", "server_id"}
+	serverIdColumn := 3
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
 		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
@@ -317,10 +318,10 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 	for _, cl := range clients {
 		routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
 		shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
-		data := []string{cl.ID(), cl.Usr(), cl.DB(), ""}
+		rowData := []string{cl.ID(), cl.Usr(), cl.DB(), ""}
 		for _, el := range *quantiles {
-			data = append(data, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-			data = append(data, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+			rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
+			rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
 		}
 
 		if len(cl.Shards()) > 0 {
@@ -328,15 +329,15 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) 
 				if sh == nil {
 					continue
 				}
-				data[3] = sh.Instance().Hostname()
-				if err := pi.WriteDataRow(data...); err != nil {
+				rowData[serverIdColumn] = sh.Instance().Hostname()
+				if err := pi.WriteDataRow(rowData...); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 					return err
 				}
 			}
 		} else {
-			data[3] = "no backend connection"
-			if err := pi.WriteDataRow(data...); err != nil {
+			rowData[serverIdColumn] = "no backend connection"
+			if err := pi.WriteDataRow(rowData...); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}
