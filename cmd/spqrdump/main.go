@@ -81,11 +81,11 @@ func getconn() (*pgproto3.Frontend, error) {
 		return nil, err
 	}
 
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(cc), cc)
-
-	if err := frontend.Send(&pgproto3.StartupMessage{
+	frontend := pgproto3.NewFrontend(cc, cc)
+	frontend.Send(&pgproto3.StartupMessage{
 		ProtocolVersion: conn.SSLREQ,
-	}); err != nil {
+	})
+	if err := frontend.Flush(); err != nil {
 		return nil, err
 	}
 
@@ -99,16 +99,16 @@ func getconn() (*pgproto3.Frontend, error) {
 		InsecureSkipVerify: true,
 	})
 
-	frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(cc), cc)
-
-	if err := frontend.Send(&pgproto3.StartupMessage{
+	frontend = pgproto3.NewFrontend(cc, cc)
+	frontend.Send(&pgproto3.StartupMessage{
 		ProtocolVersion: 196608,
 		Parameters: map[string]string{
 			"user":     "user1",
 			"database": "spqr-console",
 			"password": passwd,
 		},
-	}); err != nil {
+	})
+	if err := frontend.Flush(); err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		return nil, err
 	}
@@ -127,10 +127,10 @@ func DumpRulesPSQL() error {
 	if err != nil {
 		return err
 	}
-
-	if err := frontend.Send(&pgproto3.Query{
+	frontend.Send(&pgproto3.Query{
 		String: "SHOW key_ranges;",
-	}); err != nil {
+	})
+	if err := frontend.Flush(); err != nil {
 		return err
 	}
 
@@ -166,10 +166,10 @@ func DumpKeyRangesPSQL() error {
 	if err != nil {
 		return err
 	}
-
-	if err := frontend.Send(&pgproto3.Query{
+	frontend.Send(&pgproto3.Query{
 		String: "SHOW sharding_rules;",
-	}); err != nil {
+	})
+	if err := frontend.Flush(); err != nil {
 		return err
 	}
 
