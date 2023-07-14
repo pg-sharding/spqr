@@ -45,11 +45,12 @@ backend_rules:
     db: db1
     pool_discard: false
     pool_rollback: true
-    auth_rule:
-      auth_method: 'md5'
-#      password: '1'
-#     md5("1md5test")
-      password: 'md530a094812a8deb360615bef1f3db0695'
+    auth_rules:
+      sh1:
+        auth_method: 'md5'
+  #      password: '1'
+  #     md5("1md5test")
+        password: 'md530a094812a8deb360615bef1f3db0695'
   - usr: user1
     db: db1
     pool_discard: false

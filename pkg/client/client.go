@@ -61,6 +61,8 @@ type Client interface {
 	Cancel() error
 
 	Reply(msg string) error
+
+	SetAuthType(uint32) error
 }
 
 type InteractRunner interface {

@@ -114,6 +114,9 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
+		"pool db",
+		"pool usr",
+		"pool host",
 		"used connection count",
 		"idle connections",
 		"queue residual size"); err != nil {
@@ -124,6 +127,9 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
+			p.Rule().DB,
+			p.Rule().Usr,
+			p.Hostname(),
 			fmt.Sprintf("%d", p.UsedConnectionCount()),
 			fmt.Sprintf("%d", p.IdleConnectionCount()),
 			fmt.Sprintf("%d", p.QueueResidualSize())); err != nil {
