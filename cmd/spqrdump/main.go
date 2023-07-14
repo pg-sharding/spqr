@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
