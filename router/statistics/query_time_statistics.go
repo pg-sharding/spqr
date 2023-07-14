@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/caio/go-tdigest"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 type StatisticsType string
@@ -58,8 +59,14 @@ func RecordFinishedTransaction(t time.Time, client string) {
 	if queryStatistics.ShardTime[client] == nil {
 		queryStatistics.ShardTime[client], _ = tdigest.New()
 	}
-	queryStatistics.RouterTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].RouterStart).Microseconds()) / 1000)
-	queryStatistics.ShardTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].ShardStart).Microseconds()) / 1000)
+	err := queryStatistics.RouterTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].RouterStart).Microseconds()) / 1000)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg(err.Error())
+	}
+	err = queryStatistics.ShardTime[client].Add(float64(t.Sub(queryStatistics.TimeData[client].ShardStart).Microseconds()) / 1000)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg(err.Error())
+	}
 }
 
 func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest {
