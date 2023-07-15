@@ -56,6 +56,11 @@ func TestMultiShardRouting(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: " DROP TABLE copy_test;",
+			exp:   qrouter.MultiMatchState{},
+			err:   nil,
+		},
+		{
 			query: "select 42;",
 			exp:   qrouter.MultiMatchState{},
 			err:   nil,

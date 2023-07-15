@@ -479,7 +479,6 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
 		return MultiMatchState{}, nil
-
 		/*
 			case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 				// forbid under separate setting

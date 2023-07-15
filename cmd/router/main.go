@@ -28,6 +28,8 @@ var (
 	daemonize   bool
 	console     bool
 	logLevel    string
+
+	pgprotoDebug bool
 )
 
 var rootCmd = &cobra.Command{
@@ -49,6 +51,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
+
+	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -139,6 +143,9 @@ var runCmd = &cobra.Command{
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
+		/* will change on reload */
+		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
+		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
 		router, err := router.NewRouter(ctx, &rcfg)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")

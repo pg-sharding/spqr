@@ -61,7 +61,7 @@ run: build_images
 	docker-compose run --entrypoint /bin/bash client
 
 proxy_2sh_run:
-	./spqr-router run -c ./examples/2shardproxy.yaml -d
+	./spqr-router run -c ./examples/2shardproxy.yaml -d --proto-debug
 
 proxy_run:
 	./spqr-router run -c ./examples/router.yaml
