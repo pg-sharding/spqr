@@ -27,10 +27,10 @@ EOH
 sleep 10
 
 out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' | clearID | clearStatistics)
-test "$out" = "  client id   | user  | dbname |   server_id    | router_time*** | shard_time*** 
---------------+-------+--------+----------------+-----------------+----------------
- ************ | user1 | db1    | spqr_shard_1:6432 | *****          | *****
- ************ | user1 | db1    | spqr_shard_2:6432 | *****          | *****
+test "$out" = "  client id   | user  | dbname |     server_id     | router_time*** | shard_time*** 
+--------------+-------+--------+-------------------+-----------------+----------------
+ ************ | user1 | db1    | spqr_shard_1:6432 | *****         | *****
+ ************ | user1 | db1    | spqr_shard_2:6432 | *****         | *****
 (2 rows)"
 
 sleep 20
