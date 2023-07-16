@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/server"
-	pgquery "github.com/pganalyze/pg_query_go/v4"
 )
 
 type RelayStateMgr interface {
@@ -71,7 +70,6 @@ type RelayStateImpl struct {
 
 	Qr      qrouter.QueryRouter
 	qp      parser.QParser
-	stmts   *pgquery.ParseResult
 	plainQ  string
 	Cl      client.RouterClient
 	manager PoolMgr
@@ -195,6 +193,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	for _, shr := range routes {
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
+
 	if rst.PgprotoDebug() {
 		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
 			return err
@@ -224,10 +223,10 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
-		Interface("statement", rst.stmts).
+		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting client")
 
-	routingState, err := rst.Qr.Route(context.TODO(), rst.stmts)
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt())
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
@@ -525,7 +524,6 @@ func (rst *RelayStateImpl) AddSilentQuery(q pgproto3.FrontendMessage) {
 
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
 	state, comm, err := rst.qp.Parse(query)
-	rst.stmts, _ = rst.qp.Stmt()
 	rst.plainQ = query
 	return state, comm, err
 }

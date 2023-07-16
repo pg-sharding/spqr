@@ -104,7 +104,6 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 		if err == nil {
 			break
 		}
-		//spqrlog.Logger.PrintError(err)
 		fmt.Println("Error: trying to init state by coordinator, but got an error ", err)
 		time.Sleep(b.retryTime)
 	}
@@ -184,7 +183,6 @@ func (b *Balancer) tryToUpdateShardStats(shard Shard, wg *sync.WaitGroup) {
 	_stats, err := b.installation.GetShardStats(shard, keyRanges)
 
 	if err != nil {
-		//spqrlog.Logger.PrintError(err)
 		fmt.Println("Error: ", err)
 		return
 	}

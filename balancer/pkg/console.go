@@ -42,7 +42,7 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 		&pgproto3.ReadyForQuery{},
 	} {
 		if err := cl.Send(msg); err != nil {
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Zero.Fatal().Err(err)
 		}
 	}
 

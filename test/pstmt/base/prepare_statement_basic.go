@@ -25,10 +25,8 @@ var okerr = errors.New("something")
 // nolint
 func readCnt(fr *pgproto3.Frontend, count int) error {
 	for i := 0; i < count; i++ {
-		if msg, err := fr.Receive(); err != nil {
+		if _, err := fr.Receive(); err != nil {
 			return err
-		} else {
-			spqrlog.Logger.Printf(spqrlog.INFO, "received %T msg", msg)
 		}
 	}
 
@@ -40,7 +38,6 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 		if msg, err := fr.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.INFO, "received %+v msg", msg)
 			switch msg.(type) {
 			case *pgproto3.ErrorResponse:
 				return okerr
@@ -78,7 +75,6 @@ func prepLong(fr *pgproto3.Frontend, waitforres bool) error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "reading prep parse")
 	if err := waitRFQ(fr); err != nil {
 		return err
 	}
@@ -98,11 +94,9 @@ func prepLong(fr *pgproto3.Frontend, waitforres bool) error {
 	}
 
 	if !waitforres {
-		spqrlog.Logger.Printf(spqrlog.INFO, "not reading prep resp")
 		return nil
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "reading prep resp")
 	return waitRFQ(fr)
 }
 
@@ -111,7 +105,6 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 
 	conn, err := getC()
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "failed to get conn %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -129,7 +122,6 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 			"password": "12345678",
 		},
 	}); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}

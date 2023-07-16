@@ -34,6 +34,8 @@ type QDB interface {
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 
+	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
+
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 }

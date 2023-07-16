@@ -832,7 +832,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
 	}
 	if err := cl.server.Send(query); err != nil {
-		return 0, false, err
+		return txstatus.TXERR, false, err
 	}
 
 	if !waitForResp {
@@ -844,7 +844,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 	for {
 		msg, err := cl.server.Receive()
 		if err != nil {
-			return 0, false, err
+			return txstatus.TXERR, false, err
 		}
 
 		switch v := msg.(type) {
@@ -852,7 +852,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			// handle replyCl somehow
 			err = cl.Send(msg)
 			if err != nil {
-				return 0, false, err
+				return txstatus.TXERR, false, err
 			}
 
 			if err := func() error {
@@ -909,6 +909,7 @@ func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bo
 		Interface("query", query).
 		Msg("client process command")
 	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
+
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	if err := cl.server.Send(query); err != nil {
