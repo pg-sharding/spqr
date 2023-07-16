@@ -1,29 +1,26 @@
 package parser
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	pgquery "github.com/pganalyze/pg_query_go/v4"
+	"github.com/pg-sharding/spqr/router/qrouter"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type QParser struct {
-	stmt  *pgquery.ParseResult
 	query string
 	state ParseState
-}
-
-func (qp *QParser) Reset() {
-	qp.stmt = nil
-}
-
-func (qp *QParser) Stmt() (*pgquery.ParseResult, error) {
-	return qp.stmt, nil
+	stmt  lyx.Node
 }
 
 func (qp *QParser) State() ParseState {
 	return qp.state
+}
+
+func (qp *QParser) Stmt() lyx.Node {
+	return qp.stmt
 }
 
 func (qp *QParser) Query() string {
@@ -98,7 +95,7 @@ type ParseStateExecute struct {
 
 type ParseStateExplain struct {
 	ParseState
-	Query *pgquery.Node
+	Query lyx.Node
 }
 
 func (qp *QParser) Parse(query string) (ParseState, string, error) {
@@ -124,115 +121,97 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 		comment = query[i+2 : j]
 	}
+
 	qp.stmt = nil
 
-	pstmt, err := pgquery.Parse(query)
+	routerStmts, err := lyx.Parse(query)
+	if err != nil {
+		return qp.stmt, "", qrouter.ComplexQuery
+	}
+	if routerStmts == nil {
+		qp.state = ParseStateEmptyQuery{}
+		return qp.state, comment, nil
+	}
 
+	qp.stmt = routerStmts
 	qp.state = ParseStateQuery{}
 
 	if err != nil {
 		return ParseStateQuery{}, comment, nil
 	}
 
-	qp.stmt = pstmt
+	spqrlog.Zero.Debug().Type("stmt-type", routerStmts).Msg("parsed query statements")
+	qp.state = ParseStateQuery{}
 
-	spqrlog.Zero.Debug().Type("stmt-type", pstmt).Interface("statements", pstmt.GetStmts()).Msg("parsed query statements")
+	switch q := routerStmts.(type) {
+	case *lyx.Explain:
+		varStmt := ParseStateExplain{}
+		/* TODO: get query herte*/
+		// varStmt.Query = q.Stmt
+		return varStmt, comment, nil
+	case *lyx.Execute:
+		varStmt := ParseStateExecute{}
+		varStmt.Name = q.Id
+		ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
 
-	if len(pstmt.GetStmts()) == 0 {
-		qp.state = ParseStateEmptyQuery{}
+		varStmt.ParamsQuerySuf = ss
+		qp.state = varStmt
+
+		return varStmt, comment, nil
+	case *lyx.Prepare:
+		varStmt := ParseStatePrepareStmt{}
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+		varStmt.Name = q.Id
+		// prepare *name* as *query*
+		ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
+		varStmt.Query = ss
+		qp.query = ss
+		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
+		qp.state = varStmt
+
 		return qp.state, comment, nil
-	}
-
-	for _, node := range pstmt.GetStmts() {
-		switch q := node.Stmt.Node.(type) {
-		case *pgquery.Node_ExplainStmt:
-			varStmt := ParseStateExplain{}
-			varStmt.Query = q.ExplainStmt.Query
-			return varStmt, comment, nil
-		case *pgquery.Node_ExecuteStmt:
-			varStmt := ParseStateExecute{}
-			varStmt.Name = q.ExecuteStmt.Name
-			ss := strings.Split(strings.Split(strings.ToLower(query), "execute")[1], strings.ToLower(varStmt.Name))[1]
-
-			varStmt.ParamsQuerySuf = ss
-			qp.state = varStmt
-			return varStmt, comment, nil
-		case *pgquery.Node_PrepareStmt:
-			varStmt := ParseStatePrepareStmt{}
-			spqrlog.Zero.Debug().
-				Interface("statement", q).
-				Msg("prep stmt query")
-			varStmt.Name = q.PrepareStmt.Name
-			// prepare *name* as *query*
-			ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
-			varStmt.Query = ss
-			qp.query = ss
-			spqrlog.Zero.Debug().
-				Str("name",  varStmt.Name).
-				Str("query",  varStmt.Query).
-				Msg("parsed prep stmt")
-			qp.state = varStmt
-
+	case *lyx.VarSet:
+		if q.IsLocal {
+			qp.state = ParseStateSetLocalStmt{}
 			return qp.state, comment, nil
-		//case *pgquery.Node_ExecuteStmt:
-		//	query.ExecuteStmt.Name
-		case *pgquery.Node_VariableSetStmt:
-			if q.VariableSetStmt.IsLocal {
-				qp.state = ParseStateSetLocalStmt{}
-				return qp.state, comment, nil
-			}
-
-			switch q.VariableSetStmt.Kind {
-			case pgquery.VariableSetKind_VAR_RESET:
-				switch q.VariableSetStmt.Name {
-				case "session_authorization", "role":
-					qp.state = ParseStateResetMetadataStmt{
-						Setting: q.VariableSetStmt.Name,
-					}
-				case "all":
-					qp.state = ParseStateResetAllStmt{}
-				default:
-					varStmt := ParseStateResetStmt{}
-					varStmt.Name = q.VariableSetStmt.Name
-					qp.state = varStmt
+		}
+		switch q.Type {
+		case lyx.VarTypeReset:
+			switch q.Name {
+			case "session_authorization", "role":
+				qp.state = ParseStateResetMetadataStmt{
+					Setting: q.Name,
 				}
-
-			case pgquery.VariableSetKind_VAR_SET_MULTI:
-				qp.state = ParseStateSetLocalStmt{}
-				return qp.state, comment, nil
-			case pgquery.VariableSetKind_VAR_SET_VALUE:
-				varStmt := ParseStateSetStmt{}
-				varStmt.Name = q.VariableSetStmt.Name
-
-				for _, node := range q.VariableSetStmt.Args {
-					switch nq := node.Node.(type) {
-					case *pgquery.Node_AConst:
-						switch act := nq.AConst.Val.(type) {
-						case *pgquery.A_Const_Sval:
-							varStmt.Value = act.Sval.Sval
-						case *pgquery.A_Const_Ival:
-							varStmt.Value = fmt.Sprintf("%d", act.Ival.Ival)
-						}
-					}
-				}
-
+			case "all":
+				qp.state = ParseStateResetAllStmt{}
+			default:
+				varStmt := ParseStateResetStmt{}
+				varStmt.Name = q.Name
 				qp.state = varStmt
 			}
-			return qp.state, comment, nil
-		case *pgquery.Node_TransactionStmt:
-			switch q.TransactionStmt.Kind {
-			case pgquery.TransactionStmtKind_TRANS_STMT_BEGIN:
-				qp.state = ParseStateTXBegin{}
-				return qp.state, comment, nil
-			case pgquery.TransactionStmtKind_TRANS_STMT_COMMIT:
-				qp.state = ParseStateTXCommit{}
-				return qp.state, comment, nil
-			case pgquery.TransactionStmtKind_TRANS_STMT_ROLLBACK:
-				qp.state = ParseStateTXRollback{}
-				return qp.state, comment, nil
-			}
-		default:
+		/* TBD: support multi-set */
+		// case pgquery.VariableSetKind_VAR_SET_MULTI:
+		// 	qp.state = ParseStateSetLocalStmt{}
+		// 	return qp.state, comment, nil
+		case lyx.VarTypeSet:
+			varStmt := ParseStateSetStmt{}
+			varStmt.Name = q.Name
+
+			varStmt.Value = q.Value
+
+			qp.state = varStmt
 		}
+		return qp.state, comment, nil
+	case *lyx.Begin:
+		qp.state = ParseStateTXBegin{}
+		return qp.state, comment, nil
+	case *lyx.Commit:
+		qp.state = ParseStateTXCommit{}
+		return qp.state, comment, nil
+	case *lyx.Rollback:
+		qp.state = ParseStateTXRollback{}
+		return qp.state, comment, nil
+	default:
 	}
 
 	return ParseStateQuery{}, comment, nil

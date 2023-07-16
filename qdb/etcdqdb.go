@@ -245,6 +245,11 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 	return err
 }
 
+func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
+	/* TODO: support */
+	return nil
+}
+
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Logger.Printf(spqrlog.DEBUG2, "etcdqdb: list all key ranges")
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())

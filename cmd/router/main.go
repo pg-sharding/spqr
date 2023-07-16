@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path"
 	"runtime/pprof"
 	"sync"
 	"syscall"
@@ -21,10 +22,14 @@ import (
 
 var (
 	rcfgPath    string
-	saveProfie  bool
+	cpuProfile  bool
+	memProfile  bool
 	profileFile string
 	daemonize   bool
-	logLevel	string
+	console     bool
+	logLevel    string
+
+	pgprotoDebug bool
 )
 
 var rootCmd = &cobra.Command{
@@ -42,8 +47,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
-	rootCmd.PersistentFlags().BoolVar(&saveProfie, "profile", false, "path to config file")
+	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "console (not daemonize) router binary or not")
+	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
+	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
+
+	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -98,29 +107,45 @@ var runCmd = &cobra.Command{
 		ctx, cancelCtx := context.WithCancel(context.Background())
 		defer cancelCtx()
 
-		var pprofFile *os.File
+		var pprofCpuFile *os.File
+		var pprofMemFile *os.File
 
-		if saveProfie {
-			spqrlog.Zero.Fatal().Msg("starting cpu profile")
-			pprofFile, err = os.Create(profileFile)
+		if cpuProfile {
+			spqrlog.Zero.Info().Msg("starting cpu profile")
+			pprofCpuFile, err = os.Create(path.Join(path.Dir(profileFile), "cpu"+path.Base(profileFile)))
+
 			if err != nil {
-				spqrlog.Zero.Fatal().
+				spqrlog.Zero.Info().
 					Err(err).
 					Msg("got an error while starting cpu profile")
 				return err
 			}
-			spqrlog.Zero.Fatal().Str("file", profileFile).Msg("starting cpu profile")
-			if err := pprof.StartCPUProfile(pprofFile); err != nil {
-				spqrlog.Zero.Fatal().
+
+			if err := pprof.StartCPUProfile(pprofCpuFile); err != nil {
+				spqrlog.Zero.Info().
 					Err(err).
 					Msg("got an error while starting cpu profile")
 				return err
 			}
 		}
 
-		sigs := make(chan os.Signal, 1)
-                signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+		if memProfile {
+			spqrlog.Zero.Info().Msg("starting mem profile")
+			pprofMemFile, err = os.Create(path.Join(path.Dir(profileFile), "mem"+path.Base(profileFile)))
+			if err != nil {
+				spqrlog.Zero.Info().
+					Err(err).
+					Msg("got an error while starting mem profile")
+				return err
+			}
+		}
 
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+
+		/* will change on reload */
+		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
+		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
 		router, err := router.NewRouter(ctx, &rcfg)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
@@ -138,12 +163,23 @@ var runCmd = &cobra.Command{
 				case syscall.SIGUSR1:
 					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGUSR2:
-					if saveProfie {
+					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
 						spqrlog.Zero.Fatal().Msg("writing cpu prof")
 
-						if err := pprofFile.Close(); err != nil {
+						if err := pprofCpuFile.Close(); err != nil {
+							spqrlog.Zero.Error().Err(err).Msg("")
+						}
+					}
+					if memProfile {
+						// write profile
+						spqrlog.Zero.Fatal().Msg("writing mem prof")
+
+						if err := pprof.WriteHeapProfile(pprofMemFile); err != nil {
+							spqrlog.Zero.Error().Err(err).Msg("")
+						}
+						if err := pprofMemFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
@@ -156,12 +192,24 @@ var runCmd = &cobra.Command{
 					}
 					spqrlog.ReloadLogger(rcfg.LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
-					if saveProfie {
+					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
 
-						spqrlog.Zero.Fatal().Msg("writing cpu prof")
-						if err := pprofFile.Close(); err != nil {
+						spqrlog.Zero.Info().Msg("writing cpu prof")
+						if err := pprofCpuFile.Close(); err != nil {
+							spqrlog.Zero.Error().Err(err).Msg("")
+						}
+					}
+
+					if memProfile {
+						// write profile
+						spqrlog.Zero.Info().Msg("writing mem prof")
+
+						if err := pprof.WriteHeapProfile(pprofMemFile); err != nil {
+							spqrlog.Zero.Error().Err(err).Msg("")
+						}
+						if err := pprofMemFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
 						}
 					}
