@@ -536,9 +536,7 @@ func TestJoins(t *testing.T) {
 		"sh2": {
 			Hosts: nil,
 		},
-	}, lc, &config.QRouter{
-		DefaultRouteBehaviour: "BLOCK",
-	})
+	}, lc, &config.QRouter{})
 
 	assert.NoError(err)
 
@@ -565,6 +563,13 @@ func TestJoins(t *testing.T) {
 		},
 
 		{
+			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;'",
+			exp:   qrouter.MultiMatchState{},
+			err:   nil,
+		},
+
+		// sharding columns, but unparsed
+		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;'",
 			exp: qrouter.ShardMatchState{
 				Routes: []*qrouter.DataShardRoute{
@@ -582,7 +587,7 @@ func TestJoins(t *testing.T) {
 				},
 				TargetSessionAttrs: "any",
 			},
-			err: nil,
+			err: qrouter.ComplexQuery,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -591,9 +596,13 @@ func TestJoins(t *testing.T) {
 
 		tmp, err := pr.Route(context.TODO(), parserRes)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err != nil {
+			assert.Equal(tt.err, err, "query %s", tt.query)
+		} else {
+			assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+			assert.Equal(tt.exp, tmp)
+		}
 	}
 }
 

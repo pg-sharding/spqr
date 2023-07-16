@@ -26,6 +26,8 @@ type RoutingMetadataContext struct {
 	rels  map[string][]string
 	exprs map[string]map[string]string
 
+	unparsed_columns map[string]struct{}
+
 	offsets []int
 
 	// needed to parse
@@ -63,11 +65,12 @@ func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
 
 func NewRoutingMetadataContext(krs []*kr.KeyRange, rls []*shrule.ShardingRule) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
-		rels:         map[string][]string{},
-		tableAliases: map[string]string{},
-		exprs:        map[string]map[string]string{},
-		krs:          krs,
-		rls:          rls,
+		rels:             map[string][]string{},
+		tableAliases:     map[string]string{},
+		exprs:            map[string]map[string]string{},
+		unparsed_columns: map[string]struct{}{},
+		krs:              krs,
+		rls:              rls,
 	}
 }
 
@@ -76,6 +79,7 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation, colname st
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
 	}
+	delete(meta.unparsed_columns, colname)
 	meta.exprs[resolvedRelation][colname] = expr.Value
 }
 
@@ -97,6 +101,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (string
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
+var FailedToMatch = fmt.Errorf("failed to match query to any sharding rule")
 var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
@@ -182,6 +187,8 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 					if err == nil {
 						// TBD: postpone routing from here to root of parsing tree
 						meta.RecordConstExpr(resolvedRelation, colname, rght)
+					} else {
+						meta.unparsed_columns[colname] = struct{}{}
 					}
 
 				case *lyx.AExprList:
@@ -202,6 +209,8 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 							if err == nil {
 								// TBD: postpone routing from here to root of parsing tree
 								meta.RecordConstExpr(resolvedRelation, colname, bexpr)
+							} else {
+								meta.unparsed_columns[colname] = struct{}{}
 							}
 						}
 					}
@@ -507,6 +516,14 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		}
 	}
 
+	/* Step 1.5: check is query contains any unparsed columns that are sharding rule column.
+	Reject query if so */
+	for colname := range meta.unparsed_columns {
+		if _, err := ops.MatchShardingRule(ctx, qr.mgr, "", []string{colname}, qr.mgr.QDB()); err == ops.ErrRuleIntersect {
+			return nil, ComplexQuery
+		}
+	}
+
 	/*
 	* Step 2: match all deparsed rules to sharding rules.
 	 */
@@ -605,7 +622,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 	if route == nil {
 		switch qr.cfg.DefaultRouteBehaviour {
 		case "BLOCK":
-			return SkipRoutingState{}, fmt.Errorf("failed to match query to any sharding rule")
+			return SkipRoutingState{}, FailedToMatch
 		default:
 			return MultiMatchState{}, nil
 		}
