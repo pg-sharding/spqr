@@ -25,10 +25,6 @@ EOH
 
 sleep 10
 
-out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;')
-
-echo $out
-
 clientID=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' --csv | head -2 | tail -1 | awk -F ',' '{print $1 }')
 
 out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c "kill client $clientID;" | clearID)
