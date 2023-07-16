@@ -20,10 +20,11 @@ type startTimes struct {
 }
 
 type statistics struct {
-	RouterTime map[string]*tdigest.TDigest
-	ShardTime  map[string]*tdigest.TDigest
-	TimeData   map[string]*startTimes
-	Quantiles  []float64
+	RouterTime        map[string]*tdigest.TDigest
+	ShardTime         map[string]*tdigest.TDigest
+	TimeData          map[string]*startTimes
+	Quantiles         []float64
+	NeedToCollectData bool
 }
 
 var queryStatistics = statistics{
@@ -32,8 +33,13 @@ var queryStatistics = statistics{
 	TimeData:   make(map[string]*startTimes),
 }
 
-func SetQuantiles(q []float64) {
+func InitStatistics(q []float64) {
 	queryStatistics.Quantiles = q
+	if queryStatistics.Quantiles != nil && len(queryStatistics.Quantiles) > 0 {
+		queryStatistics.NeedToCollectData = false
+	} else {
+		queryStatistics.NeedToCollectData = true
+	}
 }
 
 func GetQuantiles() *[]float64 {
@@ -41,6 +47,10 @@ func GetQuantiles() *[]float64 {
 }
 
 func RecordStartTime(tip StatisticsType, t time.Time, client string) {
+	if queryStatistics.NeedToCollectData {
+		return
+	}
+
 	if queryStatistics.TimeData[client] == nil {
 		queryStatistics.TimeData[client] = &startTimes{}
 	}
@@ -53,6 +63,10 @@ func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 }
 
 func RecordFinishedTransaction(t time.Time, client string) {
+	if queryStatistics.NeedToCollectData {
+		return
+	}
+
 	if queryStatistics.RouterTime[client] == nil {
 		queryStatistics.RouterTime[client], _ = tdigest.New()
 	}

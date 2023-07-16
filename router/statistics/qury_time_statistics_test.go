@@ -12,6 +12,7 @@ import (
 func TestStatisticsForOneUser(t *testing.T) {
 	assert := assert.New(t)
 
+	statistics.InitStatistics([]float64{0.5})
 	tim := time.Now()
 
 	statistics.RecordStartTime(statistics.Router, tim, "test")
@@ -33,13 +34,14 @@ func TestStatisticsForOneUser(t *testing.T) {
 	stat1 := statistics.GetClientTimeStatistics(statistics.Router, "test")
 	stat2 := statistics.GetClientTimeStatistics(statistics.Shard, "test")
 
-	assert.Equal(4e+03, stat1.Quantile(0.5))
-	assert.Equal(3e+03, stat2.Quantile(0.5))
+	assert.Equal(4.0, stat1.Quantile(0.5))
+	assert.Equal(3.0, stat2.Quantile(0.5))
 }
 
 func TestStatisticsForDifferentUsers(t *testing.T) {
 	assert := assert.New(t)
 
+	statistics.InitStatistics([]float64{0.5})
 	tim := time.Now()
 
 	statistics.RecordStartTime(statistics.Router, tim, "first")
@@ -64,17 +66,34 @@ func TestStatisticsForDifferentUsers(t *testing.T) {
 	stat3 := statistics.GetClientTimeStatistics(statistics.Router, "second")
 	stat4 := statistics.GetClientTimeStatistics(statistics.Shard, "second")
 
-	assert.Equal(2.5e+03, stat1.Quantile(0.5))
-	assert.Equal(1e+03, stat2.Quantile(0.5))
+	assert.Equal(2.5, stat1.Quantile(0.5))
+	assert.Equal(1.0, stat2.Quantile(0.5))
 
-	assert.Equal(7e+03, stat3.Quantile(0.5))
-	assert.Equal(1.5e+03, stat4.Quantile(0.5))
+	assert.Equal(7.0, stat3.Quantile(0.5))
+	assert.Equal(1.5, stat4.Quantile(0.5))
 }
 
 func TestNoStatisticsForMisingUser(t *testing.T) {
 	assert := assert.New(t)
 
+	statistics.InitStatistics([]float64{0.5})
+
 	stat := statistics.GetClientTimeStatistics(statistics.Router, "missing")
+
+	assert.True(math.IsNaN(stat.Quantile(0.5)))
+}
+
+func TestNoStatisticsWhenNotNeeded(t *testing.T) {
+	assert := assert.New(t)
+
+	statistics.InitStatistics([]float64{})
+	tim := time.Now()
+
+	statistics.RecordStartTime(statistics.Router, tim, "useless")
+	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), "useless")
+	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), "useless")
+
+	stat := statistics.GetClientTimeStatistics(statistics.Router, "useless")
 
 	assert.True(math.IsNaN(stat.Quantile(0.5)))
 }

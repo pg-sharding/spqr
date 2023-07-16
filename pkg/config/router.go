@@ -114,7 +114,7 @@ func LoadRouterCfg(cfgPath string) (Router, error) {
 		return rcfg, err
 	}
 
-	statistics.SetQuantiles(rcfg.TimeQuantiles)
+	statistics.InitStatistics(rcfg.TimeQuantiles)
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {
