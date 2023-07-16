@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/qrouter"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -124,6 +125,9 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.stmt = nil
 
 	routerStmts, err := lyx.Parse(query)
+	if err != nil {
+		return qp.stmt, "", qrouter.ComplexQuery
+	}
 	if routerStmts == nil {
 		qp.state = ParseStateEmptyQuery{}
 		return qp.state, comment, nil

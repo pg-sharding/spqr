@@ -156,7 +156,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	case ServerErrorState:
 		m.multistate = InitialState
 		return &pgproto3.ReadyForQuery{
-			TxStatus: 0, // XXX : fix this
+			TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
 		}, nil
 	case InitialState:
 		m.copyBuf = nil
@@ -177,7 +177,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					rollback()
 					return nil, err
 				}
-				
+
 				spqrlog.Zero.Debug().
 					Interface("message", msg).
 					Str("shard", m.activeShards[i].Name()).

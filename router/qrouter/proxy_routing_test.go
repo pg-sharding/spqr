@@ -543,9 +543,29 @@ func TestJoins(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
-
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
+			exp: qrouter.ShardMatchState{
+				Routes: []*qrouter.DataShardRoute{
+					{
+						Shkey: kr.ShardKey{
+							Name: "sh2",
+						},
+						Matchedkr: &kr.KeyRange{
+							ShardID:    "sh2",
+							ID:         "id2",
+							LowerBound: []byte("11"),
+							UpperBound: []byte("20"),
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
+			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;'",
 			exp: qrouter.ShardMatchState{
 				Routes: []*qrouter.DataShardRoute{
 					{
