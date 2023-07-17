@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	//"github.com/pg-sharding/spqr/pkg/config"
 	//"github.com/pg-sharding/spqr/router/pkg/client"
@@ -71,8 +71,8 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		return err
 	}
 
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
-	cl := pgproto3.NewBackend(pgproto3.NewChunkReader(netconn), netconn)
+	frontend := pgproto3.NewFrontend(conn, conn)
+	cl := pgproto3.NewBackend(netconn, netconn)
 
 	//	err = cl.Init(nil, config.SSLMODEDISABLE)
 
@@ -125,7 +125,8 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		if err != nil {
 			return fmt.Errorf(failedToReceiveMessage, err)
 		}
-		if err := frontend.Send(msg); err != nil {
+		frontend.Send(msg)
+		if err := frontend.Flush(); err != nil {
 			return fmt.Errorf(failedToReceiveMessage, err)
 		}
 		for {
@@ -134,8 +135,8 @@ func (p *Proxy) serv(netconn net.Conn) error {
 				return fmt.Errorf(failedToReceiveMessage, err)
 			}
 
-			err = cl.Send(retmsg)
-			if err != nil {
+			cl.Send(retmsg)
+			if err := cl.Flush(); err != nil {
 				return fmt.Errorf(failedToReceiveMessage, err)
 			}
 

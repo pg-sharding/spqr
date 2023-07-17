@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -77,7 +77,8 @@ func (pgi *PostgreSQLInstance) ShardName() string {
 }
 
 func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
-	return pgi.frontend.Send(query)
+	pgi.frontend.Send(query)
+	return pgi.frontend.Flush()
 }
 
 func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
@@ -110,12 +111,13 @@ func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstan
 		Bool("ssl", tlsconfig != nil).
 		Msg("instance acquire new connection")
 
-	instance.frontend = pgproto3.NewFrontend(pgproto3.NewChunkReader(instance.conn), instance.conn)
+	instance.frontend = pgproto3.NewFrontend(instance.conn, instance.conn)
 	return instance, nil
 }
 
 func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
-	return pgi.frontend.Send(csm)
+	pgi.frontend.Send(csm)
+	return  pgi.frontend.Flush()
 }
 
 func (pgi *PostgreSQLInstance) Tls() *tls.Config {

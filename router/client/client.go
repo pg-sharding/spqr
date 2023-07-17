@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -546,7 +546,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 			cl.conn = tls.Server(cl.conn, tlsconfig)
 
-			backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 
 			frsm, err := backend.ReceiveStartupMessage()
 
@@ -569,7 +569,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}
-			backend = pgproto3.NewBackend(pgproto3.NewChunkReader(bufio.NewReader(cl.conn)), cl.conn)
+			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
@@ -727,16 +727,17 @@ func (cl *PsqlClient) PasswordCT() string {
 		return db
 	}
 
-	_ = cl.be.Send(&pgproto3.AuthenticationCleartextPassword{})
+	cl.be.Send(&pgproto3.AuthenticationCleartextPassword{})
+	_ = cl.be.Flush()
 
 	return cl.receivepasswd()
 }
 
 func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
-	_ = cl.be.Send(&pgproto3.AuthenticationMD5Password{
+	cl.be.Send(&pgproto3.AuthenticationMD5Password{
 		Salt: salt,
 	})
-
+	_ = cl.be.Flush()
 	return cl.receivepasswd()
 }
 
@@ -754,7 +755,8 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 		Uint("client", spqrlog.GetPointer(cl)).
 		Type("msg-type", msg).
 		Msg("")
-	return cl.be.Send(msg)
+	cl.be.Send(msg)
+	return cl.be.Flush()
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
@@ -764,7 +766,8 @@ func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) 
 		Msg("")
 	ch := make(chan error)
 	go func() {
-		ch <- cl.be.Send(msg)
+		cl.be.Send(msg)
+		ch <- cl.be.Flush()
 	}()
 	select {
 	case <-ctx.Done():

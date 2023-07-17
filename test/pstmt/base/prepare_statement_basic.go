@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -50,46 +50,34 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 
 func prepLong(fr *pgproto3.Frontend, waitforres bool) error {
 	if *doErr {
-		if err := fr.Send(&pgproto3.Parse{
+		fr.Send(&pgproto3.Parse{
 			Name:  "s1",
 			Query: "SELECT 1/0",
-		}); err != nil {
-			return err
-		}
+		})
 	} else {
-		if err := fr.Send(&pgproto3.Parse{
+		fr.Send(&pgproto3.Parse{
 			Name:  "s1",
 			Query: "SELECT 1",
-		}); err != nil {
-			return err
-		}
+		})
 	}
-	if err := fr.Send(&pgproto3.Describe{
+	fr.Send(&pgproto3.Describe{
 		Name:       "s1",
 		ObjectType: byte('S'),
-	}); err != nil {
-		return err
-	}
-
-	if err := fr.Send(&pgproto3.Sync{}); err != nil {
+	})
+	fr.Send(&pgproto3.Sync{})
+	if err := fr.Flush(); err != nil {
 		return err
 	}
 
 	if err := waitRFQ(fr); err != nil {
 		return err
 	}
-
-	if err := fr.Send(&pgproto3.Bind{
+	fr.Send(&pgproto3.Bind{
 		PreparedStatement: "s1",
-	}); err != nil {
-		return err
-	}
-
-	if err := fr.Send(&pgproto3.Execute{}); err != nil {
-		return err
-	}
-
-	if err := fr.Send(&pgproto3.Sync{}); err != nil {
+	})
+	fr.Send(&pgproto3.Execute{})
+	fr.Send(&pgproto3.Sync{})
+	if err := fr.Flush(); err != nil {
 		return err
 	}
 
@@ -112,16 +100,17 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 	}
 	defer conn.Close()
 
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
-
-	if err := frontend.Send(&pgproto3.StartupMessage{
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
 		ProtocolVersion: 196608,
 		Parameters: map[string]string{
 			"user":     "user1",
 			"database": "db1",
 			"password": "12345678",
 		},
-	}); err != nil {
+	})
+	if err := frontend.Flush(); err != nil {
+		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
