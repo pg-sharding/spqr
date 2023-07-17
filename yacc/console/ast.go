@@ -5,8 +5,37 @@ import (
 	"strings"
 )
 
+type ColumnRef struct {
+	TableAlias string
+	ColName    string
+}
+
+type WhereClauseNode interface {
+}
+
+type WhereClauseEmpty struct {
+	WhereClauseNode
+}
+
+type WhereClauseLeaf struct {
+	WhereClauseNode
+
+	Op     string
+	ColRef ColumnRef
+	Value  string
+}
+
+type WhereClauseOp struct {
+	WhereClauseNode
+
+	Op    string
+	Left  WhereClauseNode
+	Right WhereClauseNode
+}
+
 type Show struct {
-	Cmd string
+	Cmd   string
+	Where WhereClauseNode
 }
 
 type Create struct {
@@ -164,6 +193,9 @@ func (*ShardingRuleDefinition) iStatement() {}
 func (*KeyRangeDefinition) iStatement()     {}
 func (*ShardDefinition) iStatement()        {}
 func (*Kill) iStatement()                   {}
+func (*WhereClauseLeaf) iStatement()        {}
+func (*WhereClauseEmpty) iStatement()       {}
+func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
@@ -214,6 +246,7 @@ var reservedWords = map[string]int{
 	"hash":                HASH,
 	"function":            FUNCTION,
 	"backend_connections": BACKEND_CONNECTIONS,
+	"where":               WHERE,
 }
 
 // Tokenizer is the struct used to generate SQL
