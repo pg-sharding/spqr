@@ -16,7 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/coordinator"

@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 )
 
 func getC() (net.Conn, error) {
@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	frontend := pgproto3.NewFrontend(pgproto3.NewChunkReader(conn), conn)
+	frontend := pgproto3.NewFrontend(conn, conn)
 	sm := pgproto3.StartupMessage{
 		ProtocolVersion: 196608,
 		Parameters: map[string]string{
@@ -32,8 +32,8 @@ func main() {
 			"user":     "user1",
 		},
 	}
-
-	if err := frontend.Send(&sm); err != nil {
+	frontend.Send(&sm)
+	if err := frontend.Flush(); err != nil {
 		fmt.Printf("failed %v", err)
 		return
 	}
@@ -58,8 +58,8 @@ func main() {
 			Name:  name,
 			Query: query,
 		}
-
-		if err := frontend.Send(msg); err != nil {
+		frontend.Send(msg)
+		if err := frontend.Flush(); err != nil {
 			fmt.Printf("failed %v", err)
 			return
 		}
@@ -77,7 +77,8 @@ func main() {
 			ObjectType: 'S',
 			Name:       name,
 		}
-		if err := frontend.Send(msg2); err != nil {
+		frontend.Send(msg2)
+		if err := frontend.Flush(); err != nil {
 			fmt.Printf("failed %v", err)
 			return
 		}

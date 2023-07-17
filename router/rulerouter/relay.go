@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgproto3/v2"
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
