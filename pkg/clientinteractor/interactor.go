@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/statistics"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -303,24 +304,42 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 }
 
 func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client) error {
-	if err := pi.WriteHeader("client id", "user", "dbname", "server_id"); err != nil {
+
+	quantiles := statistics.GetQuantiles()
+	headers := []string{"client id", "user", "dbname", "server_id"}
+	serverIdColumn := 3
+	for _, el := range *quantiles {
+		headers = append(headers, fmt.Sprintf("router_time_%g", el))
+		headers = append(headers, fmt.Sprintf("shard_time_%g", el))
+	}
+	if err := pi.WriteHeader(headers...); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, cl := range clients {
+		routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
+		shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
+		rowData := []string{cl.ID(), cl.Usr(), cl.DB(), ""}
+		for _, el := range *quantiles {
+			rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
+			rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+		}
+
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
 				if sh == nil {
 					continue
 				}
-				if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), sh.Instance().Hostname()); err != nil {
+				rowData[serverIdColumn] = sh.Instance().Hostname()
+				if err := pi.WriteDataRow(rowData...); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 					return err
 				}
 			}
 		} else {
-			if err := pi.WriteDataRow(cl.ID(), cl.Usr(), cl.DB(), "no backend connection"); err != nil {
+			rowData[serverIdColumn] = "no backend connection"
+			if err := pi.WriteDataRow(rowData...); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}

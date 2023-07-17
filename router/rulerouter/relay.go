@@ -3,6 +3,7 @@ package rulerouter
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -14,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/statistics"
 )
 
 type RelayStateMgr interface {
@@ -447,6 +449,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	if rst.CopyActive {
 		return nil
 	}
+	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -567,6 +570,8 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr Po
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
+
+	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err

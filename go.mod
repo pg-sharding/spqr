@@ -31,6 +31,7 @@ require (
 )
 
 require (
+	github.com/caio/go-tdigest v3.1.0+incompatible // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect

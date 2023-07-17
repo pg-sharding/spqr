@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pg-sharding/spqr/router/statistics"
 	"gopkg.in/yaml.v2"
 )
 
@@ -28,6 +29,8 @@ const (
 
 type Router struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"`
+
+	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
 
 	Daemonize bool `json:"daemonize" toml:"daemonize" yaml:"daemonize"`
 
@@ -111,6 +114,8 @@ func LoadRouterCfg(cfgPath string) (Router, error) {
 	if err := initRouterConfig(file, &rcfg); err != nil {
 		return rcfg, err
 	}
+
+	statistics.InitStatistics(rcfg.TimeQuantiles)
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {
