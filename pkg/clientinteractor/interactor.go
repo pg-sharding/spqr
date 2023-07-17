@@ -366,6 +366,7 @@ type ClientDesc struct {
 }
 
 func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
+	quantiles := statistics.GetQuantiles()
 	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname}
 	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
 	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
@@ -376,9 +377,10 @@ func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
 	return rowData
 }
 
-func (_ ClientDesc) GetHeader(quantiles *[]float64) []string {
+func (_ ClientDesc) GetHeader() []string {
+	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id", ""
+		"client_id", "user", "dbname", "server_id",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -399,6 +401,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 }
 
 func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, condition spqrparser.WhereClauseNode) error {
+	quantiles := statistics.GetQuantiles()
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
