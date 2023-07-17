@@ -2,7 +2,7 @@
 
 set -ex
 
-sleep 25
+sleep 35
 
 kill.sh
 show.sh

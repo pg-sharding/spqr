@@ -51,7 +51,7 @@ test "$out" = "  client_id   | user  | dbname |     server_id     | router_time*
     exit 1
 }
 
-out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients where server_id = spqr_shard_1:6432 and dbname = db2;' | clearID)
+out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients where server_id = spqr_shard_1:6432 and dbname = db2;' | clearID | clearStatistics)
 test "$out" = " client_id | user | dbname | server_id | router_time*** | shard_time*** 
 -----------+------+--------+-----------+-----------------+----------------
 (0 rows)" || {
