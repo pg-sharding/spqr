@@ -1,10 +1,5 @@
 package spqrparser
 
-import (
-	"errors"
-	"strings"
-)
-
 type ColumnRef struct {
 	TableAlias string
 	ColName    string
@@ -166,6 +161,7 @@ const (
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
 	BackendConnectionsStr = "backend_connections"
+	StatusStr             = "status"
 	UnsupportedStr        = "unsupported"
 )
 
@@ -199,116 +195,3 @@ func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
-
-var reservedWords = map[string]int{
-	"pools":               POOLS,
-	"servers":             SERVERS,
-	"clients":             CLIENTS,
-	"client":              CLIENT,
-	"databases":           DATABASES,
-	"show":                SHOW,
-	"stats":               STATS,
-	"kill":                KILL,
-	"column":              COLUMN,
-	"columns":             COLUMNS,
-	"shard":               SHARD,
-	"rule":                RULE,
-	"sharding":            SHARDING,
-	"create":              CREATE,
-	"add":                 ADD,
-	"key":                 KEY,
-	"range":               RANGE,
-	"shards":              SHARDS,
-	"key_ranges":          KEY_RANGES,
-	"sharding_rules":      SHARDING_RULES,
-	"lock":                LOCK,
-	"unlock":              UNLOCK,
-	"drop":                DROP,
-	"all":                 ALL,
-	"shutdown":            SHUTDOWN,
-	"split":               SPLIT,
-	"from":                FROM,
-	"by":                  BY,
-	"to":                  TO,
-	"with":                WITH,
-	"unite":               UNITE,
-	"listen":              LISTEN,
-	"register":            REGISTER,
-	"unregister":          UNREGISTER,
-	"router":              ROUTER,
-	"move":                MOVE,
-	"routers":             ROUTERS,
-	"address":             ADDRESS,
-	"host":                HOST,
-	"route":               ROUTE,
-	"dataspace":           DATASPACE,
-	"table":               TABLE,
-	"hash":                HASH,
-	"function":            FUNCTION,
-	"backend_connections": BACKEND_CONNECTIONS,
-	"where":               WHERE,
-}
-
-// Tokenizer is the struct used to generate SQL
-// tokens for the parser.
-type Tokenizer struct {
-	s   string
-	pos int
-
-	ParseTree Statement
-	LastError string
-}
-
-func (t *Tokenizer) Lex(lval *yySymType) int {
-	var c rune = ' '
-
-	// skip through all the spaces, both at the ends and in between
-	for c == ' ' {
-		if t.pos == len(t.s) {
-			return 0
-		}
-		c = rune(t.s[t.pos])
-		t.pos += 1
-	}
-
-	tok := ""
-
-	// skip through all the spaces, both at the ends and in between
-	for c != ' ' {
-		if t.pos == len(t.s) {
-			break
-		}
-		tok = tok + string(c)
-		c = rune(t.s[t.pos])
-		t.pos += 1
-	}
-	lval.str = tok
-
-	if tp, ok := reservedWords[strings.ToLower(tok)]; ok {
-		return tp
-	}
-
-	return STRING
-}
-
-func (t *Tokenizer) Error(s string) {
-	t.LastError = s
-}
-
-func NewStringTokenizer(sql string) *Tokenizer {
-	return &Tokenizer{s: sql}
-}
-
-func setParseTree(yylex interface{}, stmt Statement) {
-	yylex.(*Tokenizer).ParseTree = stmt
-}
-
-func Parse(sql string) (Statement, error) {
-
-	tokenizer := NewStringTokenizer(sql)
-	if yyParse(tokenizer) != 0 {
-		return nil, errors.New(tokenizer.LastError)
-	}
-	ast := tokenizer.ParseTree
-	return ast, nil
-}
