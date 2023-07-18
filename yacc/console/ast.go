@@ -161,6 +161,7 @@ const (
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
 	BackendConnectionsStr = "backend_connections"
+	StatusStr             = "status"
 	UnsupportedStr        = "unsupported"
 )
 

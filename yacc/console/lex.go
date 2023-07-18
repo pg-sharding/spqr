@@ -49,9 +49,9 @@ loop:
 		// case ',':
 		// 	t.pos += 1
 		// 	return TCOMMA
-		// case ';':
-		// 	t.pos += 1
-		// 	return TSEMICOLON
+		case ';':
+			t.pos += 1
+			return TSEMICOLON
 		// case '.':
 		// 	t.pos += 1
 		// 	return TDOT
@@ -87,8 +87,8 @@ token_loop:
 		// 	fallthrough
 		// case ',':
 		// 	fallthrough
-		// case ';':
-		// 	fallthrough
+		case ';':
+			fallthrough
 		// case '.':
 		// 	fallthrough
 		case ' ', '\t', '\n':

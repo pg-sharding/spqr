@@ -80,6 +80,9 @@ func randomHex(n int) (string, error) {
 // '='
 %token<str> TEQ
 
+// ';'
+%token<str> TSEMICOLON
+
 // '(' & ')'
 %token<str> TOPENBR TCLOSEBR
 
@@ -160,7 +163,7 @@ any_command:
 
 semicolon_opt:
 /*empty*/ {}
-| ';' {}
+| TSEMICOLON {}
 
 
 command:
@@ -305,7 +308,7 @@ show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
