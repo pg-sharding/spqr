@@ -20,6 +20,10 @@ type MoveTableRes struct {
 	TableName   string `db:"table_name"`
 }
 
+//--from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=1 --upper-bound=3 --sharding-key="id"
+
+//go run cmd/mover/main.go --from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=2 --upper-bound=4 --sharding-key="r1"
+
 var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
 var lb = flag.String("lower-bound", "", "")
@@ -38,7 +42,6 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 	spqrlog.Zero.Debug().
 		Bytes("bytes", bt).
 		Msg("got bytes")
-
 	return p.w.Write(bt)
 }
 
@@ -69,11 +72,10 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key
 SELECT table_schema, table_name
 FROM information_schema.columns
 WHERE column_name=$1;
-`, key.Entries()[0])
+`, key.Entries()[0].Column)
 	if err != nil {
 		return err
 	}
-
 	var ress []MoveTableRes
 
 	for rows.Next() {
@@ -103,21 +105,8 @@ WHERE column_name=$1;
 			w: w,
 		}
 
-		ch := make(chan struct{})
-
-		go func() {
-			spqrlog.Zero.Debug().Msg("sending rows to dest shard")
-			_, err := txTo.Conn().PgConn().CopyFrom(ctx,
-				r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("copy in failed")
-			}
-
-			ch <- struct{}{}
-		}()
-
 		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
-			key.Entries()[0], keyRange.LowerBound, key.Entries()[0], keyRange.UpperBound)
+			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
 		spqrlog.Zero.Debug().
 			Str("query", qry).
@@ -132,9 +121,14 @@ WHERE column_name=$1;
 			spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
 		}
 
-		spqrlog.Zero.Debug().Msg("copy cmd executed")
+		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
+			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
+		if err != nil {
+			spqrlog.Zero.Debug().Msg("copy in failed")
+			return err
+		}
 
-		<-ch
+		spqrlog.Zero.Debug().Msg("copy cmd executed")
 	}
 
 	_ = txTo.Commit(ctx)
@@ -164,6 +158,10 @@ func main() {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
+
+	entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
+	my_rule := shrule.NewShardingRule("r1", "fast", entrys)
+	db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
 
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
