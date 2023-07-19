@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/cucumber/godog"
-	"github.com/go-zookeeper/zk"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
@@ -44,9 +43,7 @@ type testContext struct {
 	templateErr       error
 	composer          testutil.Composer
 	composerEnv       []string
-	zk                *zk.Conn
 	dbs               map[string]*sqlx.DB
-	zkQueryResult     string
 	sqlQueryResult    []map[string]interface{}
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
@@ -164,10 +161,6 @@ func (tctx *testContext) templateString(data string) (string, error) {
 }
 
 func (tctx *testContext) cleanup() {
-	if tctx.zk != nil {
-		tctx.zk.Close()
-		tctx.zk = nil
-	}
 	for _, db := range tctx.dbs {
 		if err := db.Close(); err != nil {
 			log.Printf("failed to close db connection: %s", err)
@@ -180,7 +173,6 @@ func (tctx *testContext) cleanup() {
 
 	tctx.variables = make(map[string]interface{})
 	tctx.composerEnv = make([]string, 0)
-	tctx.zkQueryResult = ""
 	tctx.sqlQueryResult = make([]map[string]interface{}, 0)
 	tctx.sqlUserQueryError = sync.Map{}
 	tctx.commandRetcode = 0
