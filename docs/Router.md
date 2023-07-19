@@ -36,6 +36,8 @@ All SPQR configurations can be written in json, yaml or toml format. See example
 | `jaeger_url`           | a path to the Jaeger instance - open source software for tracing transactions between distributed services                                                                                    |
 | `world_shard_fallback` | can be true or false. If false, then router will raise an error when query will be impossible to send to particular shard. If true, then router will route unrouted query to the world shard. |
 | `show_notice_messages` | can be true or false. May help to debug the router and see to where it is actualy sending queries |
+| `time_quantiles` | list of time quantiles to show querry time statistics. When empty, no statistics is collected |
+
 
 ### frontend_tls
 
@@ -63,6 +65,8 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 | `pool_discard`  | execute `DISCARD ALL` and reset client parameters before using the server from the pool. |
 | `pool_rollback` | execute `ROLLBACK` if server left in active transaction. Close connection otherwise.     |
 | `pool_default`  | use this rule by default. Can be true or false                                           |
+| `auth_rule`     | default authentication method for all shards                                             |
+| `auth_rules`    | map of different authentication methods for different shards                             |
 
 ### shards
 
