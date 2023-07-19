@@ -62,8 +62,17 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "select 42;",
-			exp:   qrouter.MultiMatchState{},
-			err:   nil,
+			exp: qrouter.ShardMatchState{
+				Routes: []*qrouter.DataShardRoute{
+					{
+						Shkey: kr.ShardKey{
+							Name: "sh1",
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
 		},
 		{
 			query: "alter table xx  add column i int;",
