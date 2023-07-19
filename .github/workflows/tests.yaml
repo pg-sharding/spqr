@@ -39,3 +39,14 @@ jobs:
 
       - name: regress tests
         run: make regress
+
+  feature:
+    name: feature
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: feature tests
+        run: make feature_test
