@@ -1,0 +1,4 @@
+addr: '[regress_coordinator]:7002'
+http_addr: 'regress_coordinator:7003'
+qdb_addr: '[regress_qdb_0_1]:2379'
+log_level: INFO
