@@ -6,8 +6,8 @@ Feature: Basic test
     """
     SELECT 1
     """
-    Then command return code should be 0
-    And command output should match
+    Then command return code should be "0"
+    And SQL result should match regexp
     """
     1
     """
@@ -15,8 +15,8 @@ Feature: Basic test
     """
     SELECT 1
     """
-    Then command return code should be 0
-    And command output should match
+    Then command return code should be "0"
+    And SQL result should match regexp
     """
     1
     1
