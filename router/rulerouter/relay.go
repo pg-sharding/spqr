@@ -382,8 +382,8 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 				}
 			}
 
-			var v *pgproto3.Query
-			v, buff = buff[0].(*pgproto3.Query), buff[1:]
+			var v pgproto3.FrontendMessage
+			v, buff = buff[0], buff[1:]
 			spqrlog.Zero.Debug().
 				Bool("waitForResp", waitForResp).
 				Bool("replyCl", replyCl).
