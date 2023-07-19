@@ -1,0 +1,191 @@
+version: '2.3'
+
+services:
+  zoo1:
+    build:
+      context: ./zookeeper_jepsen
+    hostname: mysync_zookeeper1_1
+    domainname: mysync_mysql_net
+    container_name: mysync_zoo1_1
+    ports:
+        - 2181
+        - 2281
+        - 2888
+        - 3888
+    privileged: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+      ZK_SERVERS: server.1=mysync_zookeeper1_1.mysync_mysql_net:2888:3888, server.2=mysync_zookeeper2_1.mysync_mysql_net:2888:3888, server.3=mysync_zookeeper3_1.mysync_mysql_net:2888:3888
+      ZK_MYID: 1
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.10
+
+  zoo2:
+    build:
+      context: ./zookeeper_jepsen
+    hostname: mysync_zookeeper2_1
+    domainname: mysync_mysql_net
+    container_name: mysync_zoo2_1
+    ports:
+        - 2181
+        - 2281
+        - 2888
+        - 3888
+    privileged: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+      ZK_SERVERS: server.1=mysync_zookeeper1_1.mysync_mysql_net:2888:3888, server.2=mysync_zookeeper2_1.mysync_mysql_net:2888:3888, server.3=mysync_zookeeper3_1.mysync_mysql_net:2888:3888
+      ZK_MYID: 2
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.11
+
+  zoo3:
+    build:
+      context: ./zookeeper_jepsen
+    hostname: mysync_zookeeper3_1
+    domainname: mysync_mysql_net
+    container_name: mysync_zoo3_1
+    ports:
+        - 2181
+        - 2281
+        - 2888
+        - 3888
+    privileged: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+      ZK_SERVERS: server.1=mysync_zookeeper1_1.mysync_mysql_net:2888:3888, server.2=mysync_zookeeper2_1.mysync_mysql_net:2888:3888, server.3=mysync_zookeeper3_1.mysync_mysql_net:2888:3888
+      ZK_MYID: 3
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.12
+
+  mysql1:
+    build: ./mysql_jepsen
+    privileged: true
+    hostname: mysync_mysql1_1
+    domainname: mysync_mysql_net
+    container_name: mysync_mysql1_1
+    init: true
+    extra_hosts:
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+     MYSQL_SERVER_ID: 1
+     MYSQL_ADMIN_USER: admin
+     MYSQL_ADMIN_PASSWORD: admin_pwd
+     MYSQL_MASTER: ''
+     MYSYNC_FAILOVER: 'true'
+     MYSYNC_FAILOVER_DELAY:
+     MYSYNC_FAILOVER_COOLDOWN:
+     ZK_SERVERS: mysync_zookeeper1_1.mysync_mysql_net:2281, mysync_zookeeper2_1.mysync_mysql_net:2281, mysync_zookeeper3_1.mysync_mysql_net:2281
+     MYSQL_PORT: 3306
+     MYSYNC_DISABLE_REPLICATION_ON_MAINT: "true"
+     MYSYNC_WAIT_FOR_SLAVE_COUNT:
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.13
+
+  mysql2:
+    build: ./mysql_jepsen
+    privileged: true
+    hostname: mysync_mysql2_1
+    domainname: mysync_mysql_net
+    container_name: mysync_mysql2_1
+    init: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+        MYSQL_SERVER_ID: 2
+        MYSQL_ADMIN_USER: admin
+        MYSQL_ADMIN_PASSWORD: admin_pwd
+        MYSQL_MASTER: mysync_mysql1_1.mysync_mysql_net
+        MYSYNC_FAILOVER: 'true'
+        MYSYNC_FAILOVER_DELAY:
+        MYSYNC_FAILOVER_COOLDOWN:
+        ZK_SERVERS: mysync_zookeeper1_1.mysync_mysql_net:2281, mysync_zookeeper2_1.mysync_mysql_net:2281, mysync_zookeeper3_1.mysync_mysql_net:2281
+        MYSQL_PORT: 3306
+        MYSYNC_DISABLE_REPLICATION_ON_MAINT: "true"
+        MYSYNC_WAIT_FOR_SLAVE_COUNT:
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.14
+  mysql3:
+    build: ./mysql_jepsen
+    privileged: true
+    hostname: mysync_mysql3_1
+    domainname: mysync_mysql_net
+    container_name: mysync_mysql3_1
+    init: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    environment:
+        MYSQL_SERVER_ID: 3
+        MYSQL_ADMIN_USER: admin
+        MYSQL_ADMIN_PASSWORD: admin_pwd
+        MYSQL_MASTER: mysync_mysql1_1.mysync_mysql_net
+        MYSYNC_FAILOVER: 'true'
+        MYSYNC_FAILOVER_DELAY:
+        MYSYNC_FAILOVER_COOLDOWN:
+        ZK_SERVERS: mysync_zookeeper1_1.mysync_mysql_net:2281, mysync_zookeeper2_1.mysync_mysql_net:2281, mysync_zookeeper3_1.mysync_mysql_net:2281
+        MYSQL_PORT: 3306
+        MYSYNC_DISABLE_REPLICATION_ON_MAINT: "true"
+        MYSYNC_WAIT_FOR_SLAVE_COUNT:
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.15
+  jepsen:
+    build: ./jepsen_main
+    hostname: mysync_jepsen_1
+    domainname: mysync_mysql_net
+    container_name: mysync_jepsen_1
+    init: true
+    extra_hosts:
+     - "mysync_mysql1_1.mysync_mysql_net:192.168.233.13"
+     - "mysync_mysql2_1.mysync_mysql_net:192.168.233.14"
+     - "mysync_mysql3_1.mysync_mysql_net:192.168.233.15"
+     - "mysync_zookeeper1_1.mysync_mysql_net:192.168.233.10"
+     - "mysync_zookeeper2_1.mysync_mysql_net:192.168.233.11"
+     - "mysync_zookeeper3_1.mysync_mysql_net:192.168.233.12"
+    networks:
+      mysync_net:
+        ipv4_address: 192.168.233.16
+
+networks:
+  mysync_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+       - subnet: 192.168.233.0/24
+         gateway: 192.168.233.1

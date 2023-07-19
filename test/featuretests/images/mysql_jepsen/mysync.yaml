@@ -1,0 +1,35 @@
+log: /dev/stderr
+loglevel: Debug
+db_timeout: 5s
+db_lost_check_timeout: 1s
+tick_interval: 2s
+healthcheck_interval: 5s
+dcs_wait_timeout: 10s
+failover: ${MYSYNC_FAILOVER:-false}
+failover_cooldown: ${MYSYNC_FAILOVER_COOLDOWN:-60m}
+failover_delay: ${MYSYNC_FAILOVER_DELAY:-0s}
+semi_sync: ${MYSYNC_SEMISYNC:-true}
+resetupfile: /tmp/mysync.resetup
+zookeeper:
+  session_timeout: 3s
+  namespace: /test
+  hosts: [ $ZK_SERVERS ]
+  auth: true
+  username: testuser
+  password: testpassword123
+  use_ssl: true
+  keyfile: /etc/zk-ssl/server.key
+  certfile: /etc/zk-ssl/server.crt
+  ca_cert: /etc/zk-ssl/ca.cert.pem
+  verify_certs: true
+mysql:
+  user: $MYSQL_ADMIN_USER
+  password: $MYSQL_ADMIN_PASSWORD
+  replication_user: repl
+  replication_password: repl_pwd
+  port: $MYSQL_PORT
+  pid_file: /tmp/mysqld.pid
+disable_semi_sync_replication_on_maintenance: ${MYSYNC_DISABLE_REPLICATION_ON_MAINT:-false}
+replication_channel: ''
+test_filesystem_readonly_file: /tmp/readonly
+test_disk_usage_file: /tmp/usedspace

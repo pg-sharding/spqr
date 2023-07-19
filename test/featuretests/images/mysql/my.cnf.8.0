@@ -1,0 +1,84 @@
+[client]
+port = 3306
+socket = /tmp/mysqld.sock
+
+[mysqld_safe]
+nice = 0
+socket = /tmp/mysqld.sock
+log_error = /var/log/mysql/error.log
+timezone = Europe/Moscow
+log_timestamps = SYSTEM
+open_files_limit = 65535
+
+[mysqldump]
+quick
+quote-names
+max_allowed_packet = 16M
+
+[mysqld]
+plugin_load_add = 'rpl_semi_sync_master=semisync_master.so;rpl_semi_sync_slave=semisync_slave.so'
+default_authentication_plugin=mysql_native_password # no ssl in docker
+user = mysql
+port = 3306
+pid_file = /tmp/mysqld.pid
+socket = /tmp/mysqld.sock
+log_error = /var/log/mysql/error.log
+log_error_verbosity = 3
+general_log = ON
+general_log_file = /var/log/mysql/query.log
+basedir	= /usr
+datadir	= /var/lib/mysql
+tmpdir = /tmp
+lc_messages_dir	= /usr/share/mysql
+max_connect_errors = 1000000
+local_infile = OFF
+slave_net_timeout = 30
+
+event_scheduler = ON
+skip_external_locking = ON
+default_storage_engine = InnoDB
+disabled_storage_engines = "MyISAM,MRG_MyISAM,BLACKHOLE,FEDERATED,ARCHIVE,CSV"
+explicit_defaults_for_timestamp = ON
+log_timestamps = SYSTEM
+max_allowed_packet = 16M
+thread_stack = 192K
+
+max_connections =  200
+thread_handling = one-thread-per-connection
+thread_cache_size = 5
+
+# Slow log
+max_slowlog_size = 1G
+
+# InnoDB settings
+innodb_buffer_pool_size = 32M
+innodb_file_per_table = ON
+innodb_log_file_size = 8M
+innodb_autoinc_lock_mode = 2
+innodb_use_native_aio = OFF
+#innodb_flush_method = O_DIRECT
+innodb_flush_log_at_trx_commit = 1
+
+
+# Replication
+# server_id = 2  # should set from env
+binlog_format = ROW
+gtid_mode = ON
+enforce_gtid_consistency = ON
+log_slave_updates = ON
+max_binlog_size = 100M
+expire_logs_days = 3
+master_info_repository = TABLE
+relay_log_info_repository = TABLE
+relay_log_recovery = ON
+log_bin = mysql-bin-log
+relay_log = mysql-relay-log
+sync_binlog = 1
+
+# we should start in
+# * read-only mode to avoid split brain after restart
+# * offline_mode to avoid stale reads after restart
+# mysync will bring us in writable mode
+read_only = ON
+super_read_only = ON
+offline_mode = ON

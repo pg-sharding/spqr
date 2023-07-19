@@ -88,5 +88,11 @@ package:
 	sed -i 's/SPQR_VERSION/${VERSION}/g' debian/changelog
 	dpkg-buildpackage -us -uc
 
+feature_test: build_images
+	go build ./test/featuretests/...
+	rm -rf ./test/featuretests/logs
+	mkdir ./test/featuretests/logs
+	(cd test/featuretests; go test -timeout 150m)
+
 
 .PHONY: build gen
