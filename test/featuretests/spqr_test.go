@@ -26,33 +26,17 @@ import (
 )
 
 const (
-	yes                        = "Yes"
-	zkName                     = "zoo"
-	zkPort                     = 2181
-	zkConnectTimeout           = 5 * time.Second
-	commandExecutionTimeout    = 10 * time.Second
-	spqrShardName              = "shard"
-	spqrRouterName             = "router"
-	spqrCoordinatorName        = "coordinator"
-	mysqlName                  = "mysql"
-	mysqlPort                  = 3306
-	spqrPort                   = 6432
-	coordinatorPort            = 7002
-	shardUser                  = "regress"
-	shardPassword              = ""
-	dbName                     = "regress"
-	mysqlAdminUser             = "admin"
-	mysqlAdminPassword         = "admin_pwd"
-	mysqlOrdinaryUser          = "user"
-	mysqlOrdinaryPassword      = "user_pwd"
-	mysqlConnectTimeout        = 30 * time.Second
-	spqrInitialConnectTimeout  = 2 * time.Minute
-	mysqlQueryTimeout          = 2 * time.Second
-	mysqlWaitOnlineTimeout     = 60
-	replicationChannel         = ""
-	ExternalReplicationChannel = "external"
-	testUser                   = "testuser"
-	testPassword               = "testpassword123"
+	spqrShardName                   = "shard"
+	spqrRouterName                  = "router"
+	spqrCoordinatorName             = "coordinator"
+	spqrPort                        = 6432
+	coordinatorPort                 = 7002
+	shardUser                       = "regress"
+	shardPassword                   = ""
+	dbName                          = "regress"
+	postgresqlConnectTimeout        = 30 * time.Second
+	postgresqlInitialConnectTimeout = 2 * time.Minute
+	postgresqlQueryTimeout          = 2 * time.Second
 )
 
 type testContext struct {
@@ -242,7 +226,7 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
-	db, err = tctx.connectPostgresql(addr, mysqlConnectTimeout)
+	db, err = tctx.connectPostgresql(addr, postgresqlConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgresql %s: %s", host, err)
 	}
@@ -271,7 +255,7 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 			continue
 		}
 
-		result, err = tctx.doPostgresqlQuery(db, q, args, mysqlQueryTimeout)
+		result, err = tctx.doPostgresqlQuery(db, q, args, postgresqlQueryTimeout)
 		tctx.sqlQueryResult = result
 	}
 
@@ -328,7 +312,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to get shard addr %s: %s", service, err)
 			}
-			db, err := tctx.connectPostgresql(addr, spqrInitialConnectTimeout)
+			db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 			}
@@ -343,7 +327,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
-			db, err := tctx.connectPostgresql(addr, spqrInitialConnectTimeout)
+			db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
