@@ -507,8 +507,38 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 			}
 			return nil, err
 		}
+	case *lyx.Select:
+
+		if len(node.FromClause) == 0 {
+
+			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
+			data-independent expr */
+			any_routable := true
+			for _, expr := range node.TargetList {
+				switch expr.(type) {
+				case *lyx.AExprConst:
+					// ok
+				default:
+					any_routable = false
+				}
+			}
+			if any_routable {
+				rs := qr.DataShardsRoutes()
+				return ShardMatchState{
+					Routes:             []*DataShardRoute{rs[0]},
+					TargetSessionAttrs: tsa,
+				}, nil
+			}
+		}
+
+		// SELECT stmts, which
+		// would be routed with their WHERE clause
+		err := qr.deparseShardingMapping(ctx, stmt, meta)
+		if err != nil {
+			return nil, err
+		}
 	default:
-		// SELECT, UPDATE and/or DELETE stmts, which
+		// UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
