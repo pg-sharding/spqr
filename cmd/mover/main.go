@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -153,6 +154,7 @@ func main() {
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	db, err := qdb.NewEtcdQDB(*etcdAddr)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -165,11 +167,19 @@ func main() {
 	// 	return
 	// }
 >>>>>>> efcce1f (MoveKeyrange now moves data between shards)
+=======
+	db, err := qdb.NewEtcdQDB(*etcdAddr)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return
+	}
+>>>>>>> 8456e2f (fixed linters)
 
-	entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
-	my_rule := shrule.NewShardingRule("r1", "fast", entrys)
+	//entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
+	//my_rule := shrule.NewShardingRule("r1", "fast", entrys)
 	//db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
@@ -187,10 +197,17 @@ func main() {
 	// 	spqrlog.Logger.PrintError(err)
 	// 	return
 	// }
+=======
+	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+	if err != nil {
+		spqrlog.Logger.PrintError(err)
+		return
+	}
+>>>>>>> 8456e2f (fixed linters)
 
 	if err := moveData(ctx,
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
-		/* shrule.ShardingRuleFromDB(shRule)*/ my_rule); err != nil {
+		shrule.ShardingRuleFromDB(shRule)); err != nil {
 		spqrlog.Logger.PrintError(err)
 >>>>>>> efcce1f (MoveKeyrange now moves data between shards)
 	}
