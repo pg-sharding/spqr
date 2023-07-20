@@ -26,7 +26,6 @@ run_tests () {
 }
 
 
-sleep 10
 run_tests "console" "regress_router" "7432"
 run_tests "router" "regress_router" "6432"
 run_tests "coordinator" "regress_coordinator" "7002"
