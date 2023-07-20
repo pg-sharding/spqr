@@ -20,10 +20,6 @@ type MoveTableRes struct {
 	TableName   string `db:"table_name"`
 }
 
-//--from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres password=" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=1 --upper-bound=3 --sharding-key="id"
-
-//go run cmd/mover/main.go --from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=2 --upper-bound=4 --sharding-key="r1"
-
 var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
 var lb = flag.String("lower-bound", "", "")
