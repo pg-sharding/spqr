@@ -10,6 +10,11 @@ services:
             - "7432:6432"
         hostname: spqr_shard_1
         container_name: spqr_shard_1
+        healthcheck:
+            test: psql -h spqr_shard_1 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
     shard2:
         image:
             spqr-shard-image
@@ -20,6 +25,11 @@ services:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
+        healthcheck:
+            test: psql -h spqr_shard_2 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
     router:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -31,8 +41,10 @@ services:
         hostname: regress_router
         container_name: regress_router
         depends_on:
-           - "shard1"
-           - "shard2"
+            shard1:
+                condition: service_healthy
+            shard2:
+                condition: service_healthy
 
     coordinator:
         build:
