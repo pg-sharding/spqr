@@ -20,8 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/pg-sharding/spqr/test/featuretests/testutil"
-	"github.com/pg-sharding/spqr/test/featuretests/testutil/matchers"
+	"github.com/pg-sharding/spqr/test/feature/testutil"
+	"github.com/pg-sharding/spqr/test/feature/testutil/matchers"
 )
 
 const (
