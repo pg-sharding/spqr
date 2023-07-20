@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -593,6 +594,25 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
+	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
+	shardingRules, _ := qc.ListShardingRules(ctx)
+	err := datatransfers.BeginTransactions(ctx, keyRange.ShardID, req.ShardId)
+	if err != nil {
+		return err
+	}
+
+	for _, rule := range shardingRules {
+		err = datatransfers.MoveKeys(ctx, *keyRange, rule)
+		if err != nil {
+			return err
+		}
+	}
+	err = datatransfers.CommitTransactions(ctx)
+	if err != nil {
+		return err
+	}
+	defer datatransfers.RollbackTransactions(ctx)
+
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
@@ -663,7 +683,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 				Interface("response", unlockResp).
 				Msg("unlock key range response")
 		}()
-
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
 			KeyRange: kr.KeyRangeFromDB(krmv).ToProto(),
 		})
@@ -674,7 +693,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}); err != nil {
 		return err
 	}
-	// do phyc keys move
 	return nil
 }
 

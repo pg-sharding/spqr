@@ -12,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -20,7 +19,7 @@ type MoveTableRes struct {
 	TableName   string `db:"table_name"`
 }
 
-//--from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=1 --upper-bound=3 --sharding-key="id"
+//--from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres password=" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=1 --upper-bound=3 --sharding-key="id"
 
 //go run cmd/mover/main.go --from-shard-connstring="user=etien host=localhost port=5432 dbname=postgres" --to-shard-connstring="user=etien host=localhost port=5432 dbname=etien" --lower-bound=2 --upper-bound=4 --sharding-key="r1"
 
@@ -153,16 +152,25 @@ func main() {
 		return
 	}
 
+<<<<<<< HEAD
 	db, err := qdb.NewEtcdQDB(*etcdAddr)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
+=======
+	// db, err := qdb.NewEtcdQDB(*etcdAddr)
+	// if err != nil {
+	// 	spqrlog.Logger.PrintError(err)
+	// 	return
+	// }
+>>>>>>> efcce1f (MoveKeyrange now moves data between shards)
 
 	entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
 	my_rule := shrule.NewShardingRule("r1", "fast", entrys)
-	db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
+	//db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
 
+<<<<<<< HEAD
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -173,5 +181,17 @@ func main() {
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
 		shrule.ShardingRuleFromDB(shRule)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
+=======
+	// shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+	// if err != nil {
+	// 	spqrlog.Logger.PrintError(err)
+	// 	return
+	// }
+
+	if err := moveData(ctx,
+		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
+		/* shrule.ShardingRuleFromDB(shRule)*/ my_rule); err != nil {
+		spqrlog.Logger.PrintError(err)
+>>>>>>> efcce1f (MoveKeyrange now moves data between shards)
 	}
 }

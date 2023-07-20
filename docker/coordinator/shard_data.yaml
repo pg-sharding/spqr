@@ -1,0 +1,13 @@
+shards:
+  sh1:
+    db: db1
+    user: user1
+    Password: 12345678
+    host: 'spqr_shard_1'
+    port: '6432'
+  sh2:
+    db: db1
+    user: user1
+    Password: 12345678
+    host: 'spqr_shard_2'
+    port: '6432'
