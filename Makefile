@@ -89,10 +89,10 @@ package:
 	dpkg-buildpackage -us -uc
 
 feature_test: build_images
-	go build ./test/featuretests/...
-	rm -rf ./test/featuretests/logs
-	mkdir ./test/featuretests/logs
-	(cd test/featuretests; go test -timeout 150m)
+	go build ./test/feature/...
+	rm -rf ./test/feature/logs
+	mkdir ./test/feature/logs
+	(cd test/feature; go test -timeout 150m)
 
 
 .PHONY: build gen

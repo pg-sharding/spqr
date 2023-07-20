@@ -20,8 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 
-	"github.com/pg-sharding/spqr/test/featuretests/testutil"
-	"github.com/pg-sharding/spqr/test/featuretests/testutil/matchers"
+	"github.com/pg-sharding/spqr/test/feature/testutil"
+	"github.com/pg-sharding/spqr/test/feature/testutil/matchers"
 )
 
 const (
@@ -187,7 +187,11 @@ func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (
 func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	connTimeout := 2 * time.Second
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	db, err := sqlx.Open("pgx", dsn)
+	connCfg, _ := pgx.ParseConfig(dsn)
+	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	connCfg.RuntimeParams["client_encoding"] = "UTF8"
+	connStr := stdlib.RegisterConnConfig(connCfg)
+	db, err := sqlx.Open("pgx", connStr)
 	if err != nil {
 		return nil, err
 	}

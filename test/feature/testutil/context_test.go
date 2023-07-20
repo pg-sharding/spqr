@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/pg-sharding/spqr/test/featuretests/testutil"
+	"github.com/pg-sharding/spqr/test/feature/testutil"
 )
 
 type someKey string

@@ -38,7 +38,7 @@ services:
     ports:
       - "6432:6432"
     environment:
-      - SPQR_CONFIG=/spqr/test/featuretests/conf/router.yaml
+      - SPQR_CONFIG=/spqr/test/feature/conf/router.yaml
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -55,7 +55,7 @@ services:
       - "7002:7002"
       - "7003:7003"
     environment:
-      - SPQR_CONFIG=/spqr/test/featuretests/conf/coordinator.yaml
+      - SPQR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
     hostname: regress_coordinator
     container_name: regress_coordinator
     depends_on:
