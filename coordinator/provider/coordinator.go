@@ -596,27 +596,12 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
-	err := datatransfers.BeginTransactions(ctx, keyRange.ShardID, req.ShardId)
-	if err != nil {
-		return err
-	}
 
-	for _, rule := range shardingRules {
-		err = datatransfers.MoveKeys(ctx, *keyRange, rule)
-		if err != nil {
-			return err
-		}
-	}
-	err = datatransfers.CommitTransactions(ctx)
+	err := datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules)
 	if err != nil {
+		spqrlog.Zero.Error().Msg("failed to move rows")
 		return err
 	}
-	defer func(ctx context.Context) {
-		err := datatransfers.RollbackTransactions(ctx)
-		if err != nil {
-			spqrlog.Zero.Warn().Msg("failed to close transactions")
-		}
-	}(ctx)
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)

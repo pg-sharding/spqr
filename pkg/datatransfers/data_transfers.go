@@ -27,6 +27,11 @@ type ProxyW struct {
 	w io.WriteCloser
 }
 
+func (p *ProxyW) Write(bt []byte) (int, error) {
+	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got bytes %v", bt)
+	return p.w.Write(bt)
+}
+
 var shards *config.DatatransferConnections
 var txFrom pgx.Tx
 var txTo pgx.Tx
@@ -51,7 +56,34 @@ func LoadConfig() error {
 	return nil
 }
 
-func BeginTransactions(ctx context.Context, f, t string) error {
+func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule) error {
+	err := beginTransactions(ctx, fromId, toId)
+	if err != nil {
+		return err
+	}
+	defer func(ctx context.Context) {
+		err := rollbackTransactions(ctx)
+		if err != nil {
+			spqrlog.Logger.Printf(spqrlog.WARNING, "failed to close transactions %v", err)
+		}
+	}(ctx)
+
+	for _, r := range shr {
+		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = commitTransactions(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func beginTransactions(ctx context.Context, f, t string) error {
 	if shards == nil {
 		err := LoadConfig()
 		if err != nil {
@@ -83,7 +115,7 @@ func BeginTransactions(ctx context.Context, f, t string) error {
 	return nil
 }
 
-func CommitTransactions(ctx context.Context) error {
+func commitTransactions(ctx context.Context) error {
 	err := txTo.Commit(ctx)
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "error closing transaction: %v", err)
@@ -97,7 +129,7 @@ func CommitTransactions(ctx context.Context) error {
 	return nil
 }
 
-func RollbackTransactions(ctx context.Context) error {
+func rollbackTransactions(ctx context.Context) error {
 	err := txTo.Rollback(ctx)
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.WARNING, "error closing transaction: %v", err)
@@ -109,15 +141,6 @@ func RollbackTransactions(ctx context.Context) error {
 		return err
 	}
 	return nil
-}
-
-func MoveKeys(ctx context.Context, keyr qdb.KeyRange, shr *shrule.ShardingRule) error {
-	return moveData(ctx, *kr.KeyRangeFromDB(&keyr), shr)
-}
-
-func (p *ProxyW) Write(bt []byte) (int, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got bytes %v", bt)
-	return p.w.Write(bt)
 }
 
 func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
