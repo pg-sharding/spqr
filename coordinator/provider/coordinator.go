@@ -483,7 +483,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}); err != nil {
 		return err
 	}
-
+	//dddd
 	defer func() {
 		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 			cl := routerproto.NewKeyRangeServiceClient(cc)
