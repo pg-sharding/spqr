@@ -64,7 +64,7 @@ pooler_run:
 ####################### TESTS #######################
 
 unittest:
-	go test ./...
+	go test ./cmd/... ./pkg/... ./router/... ./qdb/...
 
 regress_local: proxy_2sh_run
 	./script/regress_local.sh
