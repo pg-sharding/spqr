@@ -1,6 +1,7 @@
 .PHONY : run
 .DEFAULT_GOAL := deps
 
+#################### DEPENDENCIES ####################
 proto-deps:
 	go get -u google.golang.org/grpc
 	go get -u github.com/golang/protobuf/protoc-gen-go
@@ -11,6 +12,9 @@ yacc-deps:
 
 deps:
 	go mod download
+	go mod vendor
+
+####################### BUILD #######################
 
 build_balancer:
 	go build -pgo=auto -o spqr-balancer ./cmd/balancer
@@ -32,27 +36,13 @@ build_worldmock:
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
-gogen:
-	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
-	protos/* 
-
-yaccgen:
-	goyacc -o yacc/console/sql.go -p yy yacc/console/sql.y
-
-gen: gogen yaccgen
-
-init:
-	 go mod download
-	 go mod vendor
-
 build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
-e2e: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
+clean:
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 
-stress: build_images
-	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
+######################## RUN ########################
 
 run: build_images
 	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
@@ -71,9 +61,10 @@ coordinator_run:
 pooler_run:
 	./spqr-router run -c ./examples/localrouter.yaml
 
-clean:
-	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
+####################### TESTS #######################
 
+unittest:
+	go test ./...
 
 regress_local: proxy_2sh_run
 	./script/regress_local.sh
@@ -81,12 +72,11 @@ regress_local: proxy_2sh_run
 regress: build_images
 	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
 
-lint:
-	golangci-lint run --timeout=10m --out-format=colored-line-number
+e2e: build_images
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
-package:
-	sed -i 's/SPQR_VERSION/${VERSION}/g' debian/changelog
-	dpkg-buildpackage -us -uc
+stress: build_images
+	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
 feature_test: build_images
 	go build ./test/feature/...
@@ -94,5 +84,22 @@ feature_test: build_images
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
 
+lint:
+	golangci-lint run --timeout=10m --out-format=colored-line-number
+
+####################### GENERATE #######################
+
+gogen:
+	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
+	protos/* 
+
+yaccgen:
+	goyacc -o yacc/console/sql.go -p yy yacc/console/sql.y
+
+gen: gogen yaccgen
+
+package:
+	sed -i 's/SPQR_VERSION/${VERSION}/g' debian/changelog
+	dpkg-buildpackage -us -uc
 
 .PHONY: build gen
