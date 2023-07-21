@@ -30,21 +30,32 @@ type ProxyW struct {
 var shards *config.DatatransferConnections
 var txFrom pgx.Tx
 var txTo pgx.Tx
+var remoteConfigDir = "/spqr/docker/coordinator/shard_data.yaml"
+var localConfigDir = "/pkg/datatransfers/shard_data.yaml"
 
 func createConnString(shardID string) string {
 	sd := shards.ShardsData[shardID]
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
 }
 
+func LoadConfig() error {
+	var err error
+	shards, err = config.LoadShardDataCfg(remoteConfigDir)
+	if err != nil {
+		p, _ := os.Getwd()
+		shards, err = config.LoadShardDataCfg(p + localConfigDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func BeginTransactions(ctx context.Context, f, t string) error {
 	if shards == nil {
-		var err error
-		shards, err = config.LoadShardDataCfg("/spqr/docker/coordinator/shard_data.yaml")
+		err := LoadConfig()
 		if err != nil {
-			shards, err = config.LoadShardDataCfg("/Users/etien/Documents/spqr/pkg/datatransfers/shard_data.yaml")
-			if err != nil {
-				return err
-			}
+			return err
 		}
 	}
 
