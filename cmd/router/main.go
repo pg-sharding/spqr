@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"runtime/pprof"
 	"sync"
 	"syscall"
@@ -28,6 +29,7 @@ var (
 	daemonize   bool
 	console     bool
 	logLevel    string
+	gomaxprocs  int
 
 	pgprotoDebug bool
 )
@@ -51,6 +53,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
+	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -138,6 +141,10 @@ var runCmd = &cobra.Command{
 					Msg("got an error while starting mem profile")
 				return err
 			}
+		}
+
+		if gomaxprocs > 0 {
+			runtime.GOMAXPROCS(gomaxprocs)
 		}
 
 		sigs := make(chan os.Signal, 1)
