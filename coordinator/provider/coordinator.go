@@ -594,6 +594,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
+	//move between shards
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
 
@@ -603,6 +604,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		return err
 	}
 
+	//move i qdb
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
