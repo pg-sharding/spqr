@@ -8,6 +8,17 @@ on:
 
 jobs:
 
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Check out code
+      uses: actions/checkout@v2
+    
+    - name: e2e tests
+      run: make unittest
+
   e2e:
     name: e2e
     runs-on: ubuntu-latest
