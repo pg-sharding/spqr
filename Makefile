@@ -26,7 +26,7 @@ build_coordinator:
 	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
 
 build_router: 
-	go build -pgo=auto -o spqr-router -ldflags "-X main.gitRevision=`git rev-parse --short HEAD` -X main.spqrVersion=`git describe --tags --abbrev=0 `" ./cmd/router
+	go build -pgo=auto -o spqr-router -ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=`git rev-parse --short HEAD` -X github.com/pg-sharding/spqr/pkg.SpqrVersion=`git describe --tags --abbrev=0 `" ./cmd/router
 
 build_mover:
 	go build -pgo=auto -o spqr-mover  ./cmd/mover

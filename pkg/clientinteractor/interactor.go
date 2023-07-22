@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pg-sharding/spqr/router/statistics"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -141,6 +142,21 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	}
 
 	return pi.CompleteMsg(len(ps))
+}
+
+func (pi *PSQLInteractor) Version(_ context.Context) error {
+	if err := pi.WriteHeader("SPQR version"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	msg := &pgproto3.DataRow{Values: [][]byte{[]byte(pkg.SpqrVersionRevision)}}
+	if err := pi.cl.Send(msg); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
 }
 
 func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	_ "net/http/pprof"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	router "github.com/pg-sharding/spqr/router"
@@ -33,10 +33,6 @@ var (
 	gomaxprocs   int
 	pgprotoDebug bool
 
-	// These variables are here only to show current version. They are set in makefile during build process
-	spqrVersion = "devel"
-	gitRevision = "devel"
-	
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
 		Short: "sqpr-router",
@@ -44,7 +40,7 @@ var (
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
-		Version: fmt.Sprintf("%s-%s", spqrVersion, gitRevision),
+		Version:       pkg.SpqrVersionRevision,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
