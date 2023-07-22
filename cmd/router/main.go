@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	_ "net/http/pprof"
 	"os"
@@ -22,28 +23,32 @@ import (
 )
 
 var (
-	rcfgPath    string
-	cpuProfile  bool
-	memProfile  bool
-	profileFile string
-	daemonize   bool
-	console     bool
-	logLevel    string
-	gomaxprocs  int
-
+	rcfgPath     string
+	cpuProfile   bool
+	memProfile   bool
+	profileFile  string
+	daemonize    bool
+	console      bool
+	logLevel     string
+	gomaxprocs   int
 	pgprotoDebug bool
-)
 
-var rootCmd = &cobra.Command{
-	Use:   "spqr-router run --config `path-to-config-folder`",
-	Short: "sqpr-router",
-	Long:  "spqr-router",
-	CompletionOptions: cobra.CompletionOptions{
-		DisableDefaultCmd: true,
-	},
-	SilenceUsage:  true,
-	SilenceErrors: true,
-}
+	// These variables are here only to show current version. They are set in makefile during build process
+	spqrVersion = "devel"
+	gitRevision = "devel"
+	
+	rootCmd = &cobra.Command{
+		Use:   "spqr-router run --config `path-to-config-folder`",
+		Short: "sqpr-router",
+		Long:  "spqr-router",
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+		Version: fmt.Sprintf("%s-%s", spqrVersion, gitRevision),
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+)
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")
