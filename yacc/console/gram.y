@@ -67,7 +67,7 @@ func randomHex(n int) (string, error) {
 //%type <val> expr number
 
 // same for terminals
-%token <str> STRING COMMAND
+%token <str> IDENT COMMAND
 
 // DDL
 %token <str> SHOW KILL
@@ -79,6 +79,9 @@ func randomHex(n int) (string, error) {
 
 // '='
 %token<str> TEQ
+
+/* any const */
+%token<str> SCONST
 
 // ';'
 %token<str> TSEMICOLON
@@ -105,6 +108,10 @@ func randomHex(n int) (string, error) {
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
+
+
+/* any operator */
+%token<str> OP
 
 
 %type<sharding_rule_selector> sharding_rule_stmt
@@ -141,8 +148,6 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
-
-%type <str> reserved_keyword
 
 %type<str> address
 %type<bytes> key_range_spec_bound
@@ -224,33 +229,13 @@ command:
 		setParseTree(yylex, $1)
 	}
 
-reserved_keyword:
-POOLS
-| DATABASES
-| CLIENTS
-| SERVERS
-| SHARDS
-| STATS
-| KEY_RANGES
-| ROUTERS
-| SHARDING_RULES
-| CLIENT
-| BACKEND_CONNECTIONS
-| TOPENBR
-| WHERE
-| VERSION
-
-any_val:
-    reserved_keyword {
-        $$ = $1
-    }
-    | STRING
+any_val: IDENT
 	{
 		$$ = string($1)
 	}
 
 operator:
-    STRING {
+    IDENT {
         $$ = $1
     } | AND {
         $$ = "AND"
@@ -259,7 +244,7 @@ operator:
     }
 
 where_operator:
-    STRING {
+    IDENT {
         $$ = $1
     } | TEQ {
         $$ = "="
@@ -306,7 +291,7 @@ where_clause:
 
 
 show_statement_type:
-	reserved_keyword
+	IDENT
 	{
 		switch v := string($1); v {
 		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, VersionStr:
@@ -317,7 +302,7 @@ show_statement_type:
 	}
 
 kill_statement_type:
-	reserved_keyword
+	IDENT
 	{
 		switch v := string($1); v {
 		case ClientStr:
@@ -391,32 +376,32 @@ show_stmt:
 	}
 
 ref_name:
-	STRING
+	IDENT
 	{
 		$$ = string($1)
 	}
 
 
 key_range_spec_bound:
-    STRING
+    IDENT
     {
       $$ = []byte($1)
     }
 
 internal_id:
-	STRING
+	IDENT
 	{
 		$$ = string($1)
 	}
 
 target:
-	STRING
+	IDENT
 	{
 		$$ = string($1)
 	}
 
 address:
-	STRING
+	IDENT
 	{
 		$$ = string($1)
 	}
@@ -591,7 +576,7 @@ shutdown_stmt:
 // coordinator
 
 router_addr:
-	STRING
+	IDENT
 	{
 		$$ = string($1)
 	}

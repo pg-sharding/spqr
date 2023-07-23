@@ -1,8 +1,6 @@
 package spqrparser
 
 var reservedWords = map[string]int{
-	"pools":               POOLS,
-	"servers":             SERVERS,
 	"clients":             CLIENTS,
 	"client":              CLIENT,
 	"databases":           DATABASES,
@@ -19,15 +17,12 @@ var reservedWords = map[string]int{
 	"key":                 KEY,
 	"range":               RANGE,
 	"shards":              SHARDS,
-	"key_ranges":          KEY_RANGES,
-	"sharding_rules":      SHARDING_RULES,
 	"lock":                LOCK,
 	"unlock":              UNLOCK,
 	"drop":                DROP,
 	"all":                 ALL,
 	"shutdown":            SHUTDOWN,
 	"split":               SPLIT,
-	"version":             VERSION,
 	"from":                FROM,
 	"by":                  BY,
 	"to":                  TO,
@@ -38,7 +33,6 @@ var reservedWords = map[string]int{
 	"unregister":          UNREGISTER,
 	"router":              ROUTER,
 	"move":                MOVE,
-	"routers":             ROUTERS,
 	"address":             ADDRESS,
 	"host":                HOST,
 	"route":               ROUTE,
