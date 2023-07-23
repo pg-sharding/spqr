@@ -95,8 +95,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
 		}
 		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries)
-		err := mngr.AddShardingRule(ctx, shardingRule)
-		if err != nil {
+		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
 			return err
 		}
 		return cli.AddShardingRule(ctx, shardingRule)

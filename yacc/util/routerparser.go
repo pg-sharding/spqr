@@ -24,7 +24,9 @@ func main() {
 			return
 		}
 
-		spqrlog.Logger.Printf(spqrlog.LOG, "got query %s", line)
+		spqrlog.Zero.Info().
+			Str("line", line).
+			Msg("got query")
 		tmp, err := lyx.Parse(line)
 		if err != nil {
 			spqrlog.Zero.Err(err)

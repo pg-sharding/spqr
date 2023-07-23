@@ -127,9 +127,6 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
-	// 	return err
-	// }
 	if err := spqrlog.UpdateZeroLogLevel(rcfg.LogLevel); err != nil {
 		return err
 	}

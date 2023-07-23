@@ -3,12 +3,12 @@ package main
 import (
 	"errors"
 	"flag"
+	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
 var readResp = flag.Bool("v", false, "Logs every packet in great detail")
@@ -110,7 +110,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 		},
 	})
 	if err := frontend.Flush(); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		log.Fatalf("startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -119,7 +119,7 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 	time.Sleep(200 * time.Millisecond)
 
 	if err := waitRFQ(frontend); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		log.Fatalf("startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
@@ -127,14 +127,14 @@ func gaogao(wg *sync.WaitGroup, waitforres bool) {
 	}
 
 	if err := prepLong(frontend, waitforres); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "prep failed %v", err)
+		log.Fatalf("startup failed %v", err)
 		if err != okerr {
 			panic(err)
 		}
 		return
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "ok")
+	log.Println("ok")
 }
 
 func main() {

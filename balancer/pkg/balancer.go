@@ -111,7 +111,7 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	for shard, keyRanges := range shardToKeyRanges {
 		shardDistances, err := b.installation.GetKeyDistanceByRanges(shard, keyRanges)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 			continue
 		}
 		for rng, dist := range shardDistances {
@@ -578,7 +578,9 @@ func (b *Balancer) runTask(task *Action) error {
 	var err error
 
 	for task.actionStage != actionStageDone {
-		spqrlog.Logger.Printf(spqrlog.INFO, "Action stage: %v", task.actionStage)
+		spqrlog.Zero.Info().
+			Int("action-stage", int(task.actionStage)).
+			Msg("")
 
 		switch task.actionStage {
 		case actionStagePlan:
@@ -704,11 +706,13 @@ func (b *Balancer) planTasks() {
 
 	shardStats, err := b.installation.GetShardStats(shard, keyRanges)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "Plan tasks. ShardStats: %#v", shardStats)
+	spqrlog.Zero.Info().
+		Interface("shard-stats", shardStats).
+		Msg("plan tasks")
 
 	b.bestTask = Task{}
 	for i := 0; i < b.plannerCount; i++ {
@@ -802,7 +806,7 @@ func (b *Balancer) BrutForceStrategy() {
 		reload := b.reloadRequired
 		b.muReload.Unlock()
 		if !reload {
-			spqrlog.Logger.Printf(spqrlog.INFO, "Check coordinator for reloading requirements")
+			spqrlog.Zero.Info().Msg("check coordinator for reloading requirements")
 			reload, err = b.coordinator.isReloadRequired()
 			if err != nil {
 				fmt.Println("Error while spqr.isReloadRequired call: ", err)
@@ -857,7 +861,7 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 
 		go func() {
 			if err := b.servAdm(ctx, conn, tlsCfg); err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 		}()
 	}
@@ -874,8 +878,7 @@ func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsconfig *tls.Co
 
 	localConsole, err := NewConsole(tlsconfig, b.coordinator, b.console, stchan)
 	if err != nil {
-		spqrlog.Logger.PrintError(fmt.Errorf("failed to initialize router: %w", err))
-		return err
+		return fmt.Errorf("failed to initialize router: %w", err)
 	}
 
 	return localConsole.Serve(ctx, cl)

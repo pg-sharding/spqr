@@ -133,7 +133,9 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 		if err != nil {
 			return nil, err
 		}
-		spqrlog.Logger.Printf(spqrlog.INFO, "Connection string: %v", connString)
+		spqrlog.Zero.Info().
+			Str("connection-string", connString).
+			Msg("")
 
 		db, err := sql.Open("pgx", connString)
 		if err != nil {
@@ -144,8 +146,7 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 		nodes = append(nodes, hasql.NewNode(addr, db))
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "Nodes: %v", nodes)
-
+	spqrlog.Zero.Info().Interface("nodes", nodes).Msg("")
 	return hasql.NewCluster(nodes, checkers.PostgreSQL)
 }
 

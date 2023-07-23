@@ -50,14 +50,15 @@ var addRouterCmd = &cobra.Command{
 	Use:   "AddRouter",
 	Short: "add routers in topology",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing coordinator on %s", coordinatorEndpoint)
+		spqrlog.Zero.Debug().
+			Str("endpoint", coordinatorEndpoint).
+			Msg("dialing coordinator on")
+		
 		internalR := &topology.Router{
 			Address: coordinatorEndpoint,
 		}
-
 		cc, err := DialCoordinator(internalR)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
 			return err
 		}
 
@@ -65,7 +66,6 @@ var addRouterCmd = &cobra.Command{
 			routerID, err = randomHex(6)
 
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
 				return err
 			}
 		}
@@ -81,7 +81,7 @@ var addRouterCmd = &cobra.Command{
 			fmt.Printf("create router with id: %s\n", resp.Id)
 			fmt.Printf("-------------------------------------\n")
 		} else {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 		return nil
 	},
@@ -93,7 +93,10 @@ var listRouterCmd = &cobra.Command{
 	Use:   "ListRouters",
 	Short: "list running routers in current topology",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing coordinator on %s", coordinatorEndpoint)
+		spqrlog.Zero.Debug().
+			Str("endpoint", coordinatorEndpoint).
+			Msg("dialing coordinator on")
+
 		internalR := &topology.Router{
 			Address: coordinatorEndpoint,
 		}
@@ -114,7 +117,7 @@ var listRouterCmd = &cobra.Command{
 
 			fmt.Printf("-------------------------------------\n")
 		} else {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 		return nil
 	},
@@ -126,14 +129,15 @@ var addShardCmd = &cobra.Command{
 	Use:   "AddShard",
 	Short: "list running routers in current topology",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing coordinator on %s", coordinatorEndpoint)
+		spqrlog.Zero.Debug().
+			Str("endpoint", coordinatorEndpoint).
+			Msg("dialing coordinator on")
 		internalR := &topology.Router{
 			Address: coordinatorEndpoint,
 		}
 
 		cc, err := DialCoordinator(internalR)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
 			return err
 		}
 
@@ -141,7 +145,6 @@ var addShardCmd = &cobra.Command{
 			shardID, err = randomHex(6)
 
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
 				return err
 			}
 		}
@@ -157,7 +160,7 @@ var addShardCmd = &cobra.Command{
 			fmt.Printf("create shard with id: %s and hosts: %+v\n", shardID, shardHosts)
 			fmt.Printf("-------------------------------------\n")
 		} else {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 		return nil
 	},
@@ -169,12 +172,13 @@ var listShardCmd = &cobra.Command{
 	Use:   "ListShards",
 	Short: "list running routers in current topology",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "dialing coordinator on %s", coordinatorEndpoint)
-		internalR := &topology.Router{
-			Address: coordinatorEndpoint,
-		}
+		spqrlog.Zero.Debug().
+			Str("endpoint", coordinatorEndpoint).
+			Msg("dialing coordinator on")
 
-		cc, err := DialCoordinator(internalR)
+		cc, err := DialCoordinator(&topology.Router{
+			Address: coordinatorEndpoint,
+		})
 		if err != nil {
 			return err
 		}
@@ -190,7 +194,7 @@ var listShardCmd = &cobra.Command{
 
 			fmt.Printf("-------------------------------------\n")
 		} else {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 		return nil
 	},
@@ -219,6 +223,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Zero.Err(err).Msg("")
 	}
 }

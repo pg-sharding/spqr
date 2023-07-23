@@ -33,7 +33,9 @@ func (r RouterService) ListRouters(ctx context.Context, request *protos.ListRout
 }
 
 func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "registering router %s in coordinator", request.Router.Id)
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Router.Id).
+		Msg("register router in coordinator")
 	err := r.impl.RegisterRouter(ctx, topology.RouterFromProto(request.Router))
 	if err != nil {
 		return nil, err

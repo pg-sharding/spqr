@@ -24,6 +24,13 @@ func UpdateZeroLogLevel(logLevel string) error {
 	return nil
 }
 
+func ReloadLogger(filepath string) {
+	if filepath == "" { //
+		return // this means os.Stdout, so no need to open new file
+	}
+	Zero = NewZeroLogger(filepath)
+}
+
 func parseLevel(level string) zerolog.Level {
 	switch level {
 	case "disabled":

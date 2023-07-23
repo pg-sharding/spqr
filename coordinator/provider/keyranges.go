@@ -143,10 +143,15 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unite keyrange %#v", uniteKeyRange)
+	spqrlog.Zero.Debug().
+		Str("left", uniteKeyRange.KeyRangeIDLeft).
+		Str("right", uniteKeyRange.KeyRangeIDRight).
+		Msg("unite keyrange")
 
 	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
+		spqrlog.Zero.Debug().
+			Bytes("bound", bound).
+			Msg("key ranges to merge by border not found")
 		return &protos.ModifyReply{}, nil
 	}
 
