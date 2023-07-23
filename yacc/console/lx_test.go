@@ -23,6 +23,11 @@ func TestSimpleLex(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: "kill client 0xc00030f520;",
+			exp:   []int{spqrparser.KILL, spqrparser.IDENT, spqrparser.IDENT},
+			err:   nil,
+		},
+		{
 			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
 			exp: []int{
 				spqrparser.SHOW, spqrparser.IDENT,

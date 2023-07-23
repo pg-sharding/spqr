@@ -1,7 +1,6 @@
 package spqrparser
 
 var reservedWords = map[string]int{
-	"client":     CLIENT,
 	"show":       SHOW,
 	"kill":       KILL,
 	"column":     COLUMN,

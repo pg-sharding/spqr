@@ -2,7 +2,6 @@ package spqrparser
 
 import (
 	"errors"
-	"fmt"
 )
 
 // Tokenizer is the struct used to generate SQL
@@ -38,7 +37,7 @@ func setParseTree(yylex interface{}, stmt Statement) {
 func Parse(sql string) (Statement, error) {
 	tokenizer := NewStringTokenizer(sql)
 	if yyParse(tokenizer) != 0 {
-		return nil, errors.New(tokenizer.LastError + fmt.Sprintf(" on pos %d", tokenizer.pos))
+		return nil, errors.New(tokenizer.LastError)
 	}
 	ast := tokenizer.ParseTree
 	return ast, nil
