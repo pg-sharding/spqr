@@ -146,16 +146,6 @@ func randomHex(n int) (string, error) {
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
-
-%type<str> address
-%type<bytes> key_range_spec_bound
-
-%type<str> internal_id
-%type<str> target
-
-%type<str> router_addr
-%type<str> ref_name
-
 %start any_command
 
 %%
@@ -228,6 +218,10 @@ command:
 	}
 
 any_val: SCONST
+	{
+		$$ = string($1)
+	} | 
+	IDENT
 	{
 		$$ = string($1)
 	}
@@ -379,37 +373,6 @@ show_stmt:
 		$$ = &Show{Cmd: $2, Where: $3}
 	}
 
-ref_name:
-	IDENT
-	{
-		$$ = string($1)
-	}
-
-
-key_range_spec_bound:
-    IDENT
-    {
-      $$ = []byte($1)
-    }
-
-internal_id:
-	IDENT
-	{
-		$$ = string($1)
-	}
-
-target:
-	IDENT
-	{
-		$$ = string($1)
-	}
-
-address:
-	IDENT
-	{
-		$$ = string($1)
-	}
-
 lock_stmt:
 	LOCK key_range_stmt
 	{
@@ -419,19 +382,13 @@ lock_stmt:
 
 
 dataspace_define_stmt:
-	DATASPACE internal_id
+	DATASPACE any_id
 	{
 		$$ = &DataspaceDefinition{ID: $2}
 	}
 
-//alter_dataspace_stmt:
-//	ALTER DATASPACE dataspace_id ADD SHARDING RULE shrule_id
-//	{
-//		$$ = &Alter{Element: &AlterDataspace{ID: $3}}
-//	}
-
 sharding_rule_define_stmt:
-	SHARDING RULE internal_id sharding_rule_table_clause sharding_rule_argument_list
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list
 	{
 		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5}
 	}
@@ -466,25 +423,25 @@ sharding_rule_entry:
 	}
 
 sharding_rule_table_clause:
-	TABLE ref_name
+	TABLE any_id
 	{
        $$ = $2
     }
 	| /*EMPTY*/	{ $$ = ""; }
 
 sharding_rule_column_clause:
-	COLUMN ref_name
+	COLUMN any_id
 	{
 		$$ = $2
 	}
 	|
-	COLUMNS ref_name
+	COLUMNS any_id
 	{
 		$$ = $2
 	}/* to be backward-compatable*/
 
 sharding_rule_hash_function_clause:
-	HASH FUNCTION ref_name
+	HASH FUNCTION any_id
 	{
 		$$ = $3
 	}
@@ -492,28 +449,28 @@ sharding_rule_hash_function_clause:
 
 
 key_range_define_stmt:
-	KEY RANGE internal_id FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
+	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id
 	{
-		$$ = &KeyRangeDefinition{LowerBound: $5, UpperBound: $7, ShardID: $10, KeyRangeID: $3}
+		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3}
 	}
 	|
-	KEY RANGE FROM key_range_spec_bound TO key_range_spec_bound ROUTE TO internal_id
+	KEY RANGE FROM any_val TO any_val ROUTE TO any_id
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: $4, UpperBound: $6, ShardID: $9, KeyRangeID: "kr"+str}
+		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str}
 	}
 
 
 shard_define_stmt:
-	SHARD internal_id WITH HOST address
+	SHARD any_id WITH HOST any_val
 	{
 		$$ = &ShardDefinition{Id: $2, Hosts: []string{$5}}
 	}
 	|
-	SHARD WITH HOST address
+	SHARD WITH HOST any_val
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -530,43 +487,43 @@ unlock_stmt:
 	}
 
 sharding_rule_stmt:
-	SHARDING RULE internal_id
+	SHARDING RULE any_id
 	{
 		$$ =&ShardingRuleSelector{ID: $3}
 	}
 
 key_range_stmt:
-	KEY RANGE internal_id
+	KEY RANGE any_id
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
 split_key_range_stmt:
-	SPLIT key_range_stmt FROM internal_id BY key_range_spec_bound
+	SPLIT key_range_stmt FROM any_id BY any_val
 	{
-		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
+		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: []byte($6)}
 	}
 
 kill_stmt:
-	KILL kill_statement_type target
+	KILL kill_statement_type any_val
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
 	}
 
 move_key_range_stmt:
-	MOVE key_range_stmt TO internal_id
+	MOVE key_range_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
 	}
 
 unite_key_range_stmt:
-	UNITE key_range_stmt WITH internal_id
+	UNITE key_range_stmt WITH any_id
 	{
 		$$ = &UniteKeyRange{KeyRangeIDL: $2.KeyRangeID, KeyRangeIDR: $4}
 	}
 
 listen_stmt:
-	LISTEN address
+	LISTEN any_val
 	{
 		$$ = &Listen{addr: $2}
 	}
@@ -579,21 +536,14 @@ shutdown_stmt:
 
 // coordinator
 
-router_addr:
-	IDENT
-	{
-		$$ = string($1)
-	}
-
-
 register_router_stmt:
-	REGISTER ROUTER internal_id ADDRESS router_addr
+	REGISTER ROUTER any_id ADDRESS any_val
 	{
 		$$ = &RegisterRouter{ID: $3, Addr: $5}
 	}
 
 unregister_router_stmt:
-	UNREGISTER ROUTER internal_id
+	UNREGISTER ROUTER any_id
 	{
 		$$ = &UnregisterRouter{ID: $3}
 	} 
