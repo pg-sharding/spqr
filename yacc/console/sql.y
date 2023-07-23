@@ -102,7 +102,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
 
@@ -238,6 +238,7 @@ POOLS
 | BACKEND_CONNECTIONS
 | TOPENBR
 | WHERE
+| VERSION
 
 any_val:
     reserved_keyword {
@@ -308,7 +309,7 @@ show_statement_type:
 	reserved_keyword
 	{
 		switch v := string($1); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, VersionStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr

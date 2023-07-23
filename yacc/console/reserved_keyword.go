@@ -27,6 +27,7 @@ var reservedWords = map[string]int{
 	"all":                 ALL,
 	"shutdown":            SHUTDOWN,
 	"split":               SPLIT,
+	"version":             VERSION,
 	"from":                FROM,
 	"by":                  BY,
 	"to":                  TO,

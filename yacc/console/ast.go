@@ -162,6 +162,7 @@ const (
 	PoolsStr              = "pools"
 	BackendConnectionsStr = "backend_connections"
 	StatusStr             = "status"
+	VersionStr            = "version"
 	UnsupportedStr        = "unsupported"
 )
 
