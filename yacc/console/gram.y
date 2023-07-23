@@ -93,12 +93,10 @@ func randomHex(n int) (string, error) {
 
 %type<colref> ColRef
 
-%type<str> any_val
+%type<str> any_val any_id
 
 // CMDS
 %type <statement> command
-
-%token <str> POOLS STATS LISTS SERVERS CLIENTS DATABASES BACKEND_CONNECTIONS
 
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
@@ -229,10 +227,16 @@ command:
 		setParseTree(yylex, $1)
 	}
 
-any_val: IDENT
+any_val: SCONST
 	{
 		$$ = string($1)
 	}
+
+any_id: IDENT
+	{
+		$$ = string($1)
+	}
+
 
 operator:
     IDENT {
@@ -252,7 +256,7 @@ where_operator:
 
 
 ColRef:
-    any_val {
+    any_id {
         $$ = ColumnRef{
             ColName: $1,
         }

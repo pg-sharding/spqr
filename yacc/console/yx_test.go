@@ -8,23 +8,78 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-func TestSimpleWhere(t *testing.T) {
+func TestSimpleShow(t *testing.T) {
 	assert := assert.New(t)
 
-	stmt, err := spqrparser.Parse("SHOW clients where user = usr1;")
-	assert.NoError(err)
-	show, ok := stmt.(*spqrparser.Show)
-	assert.True(ok)
-	whereClause, ok := show.Where.(spqrparser.WhereClauseLeaf)
-	assert.True(ok)
-	assert.Equal(spqrparser.WhereClauseLeaf{
-		Op:     "=",
-		ColRef: spqrparser.ColumnRef{ColName: "user"},
-		Value:  "usr1",
-	}, whereClause)
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/* POOLS STATS LISTS SERVERS CLIENTS DATABASES BACKEND_CONNECTIONS */
+	for _, tt := range []tcase{
+		{
+			query: "SHOW version",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.VersionStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+		/* case insensetive */
+		{
+			query: "ShOw versIon",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.VersionStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+
+		{
+			query: "ShOw pools",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.PoolsStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+		{
+			query: "ShOw clients",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.ClientsStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+		{
+			query: "ShOw DATABASES",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.DatabasesStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+		{
+			query: "ShOw BACKEND_CONNECTIONS",
+			exp: &spqrparser.Show{
+				Cmd:   spqrparser.BackendConnectionsStr,
+				Where: spqrparser.WhereClauseEmpty{},
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
 }
 
-func TestSimpleShow(t *testing.T) {
+func TestSimpleWhere(t *testing.T) {
+
 	assert := assert.New(t)
 
 	type tcase struct {
@@ -35,62 +90,64 @@ func TestSimpleShow(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "SHOW version",
+			query: "SHOW clients where user = 'usr1';",
 			exp: &spqrparser.Show{
-				Cmd: spqrparser.VersionStr,
+				Cmd: spqrparser.ClientsStr,
+				Where: spqrparser.WhereClauseLeaf{
+					Op:     "=",
+					ColRef: spqrparser.ColumnRef{ColName: "user"},
+					Value:  "usr1",
+				},
 			},
 			err: nil,
 		},
 	} {
+
 		tmp, err := spqrparser.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
 
-func TestNestedeWhere(t *testing.T) {
+func TestNestedWhere(t *testing.T) {
+
 	assert := assert.New(t)
 
-	stmt, err := spqrparser.Parse("SHOW clients where user = usr1 or dbname = db1 and 1 = 1;")
-	assert.NoError(err)
-	show, ok := stmt.(*spqrparser.Show)
-	assert.True(ok)
-	whereClause, ok := show.Where.(spqrparser.WhereClauseOp)
-	assert.True(ok)
-
-	expected := spqrparser.WhereClauseOp{
-		Op: "or",
-		Left: spqrparser.WhereClauseLeaf{
-			Op:     "=",
-			ColRef: spqrparser.ColumnRef{ColName: "user"},
-			Value:  "usr1",
-		},
-		Right: spqrparser.WhereClauseOp{
-			Op: "and",
-			Left: spqrparser.WhereClauseLeaf{
-				Op:     "=",
-				ColRef: spqrparser.ColumnRef{ColName: "dbname"},
-				Value:  "db1",
-			},
-			Right: spqrparser.WhereClauseLeaf{
-				Op:     "=",
-				ColRef: spqrparser.ColumnRef{ColName: "1"},
-				Value:  "1",
-			},
-		},
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
 	}
-	assert.Equal(expected, whereClause)
-}
 
-func TestNoWhere(t *testing.T) {
-	assert := assert.New(t)
+	for _, tt := range []tcase{
+		{
+			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
+			exp: &spqrparser.Show{
+				Cmd: spqrparser.ClientsStr,
+				Where: spqrparser.WhereClauseOp{
+					Op: "OR",
+					Left: spqrparser.WhereClauseLeaf{
+						Op:     "=",
+						ColRef: spqrparser.ColumnRef{ColName: "user"},
+						Value:  "usr1",
+					},
+					Right: spqrparser.WhereClauseLeaf{
+						Op:     "=",
+						ColRef: spqrparser.ColumnRef{ColName: "dbname"},
+						Value:  "db1",
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
 
-	stmt, err := spqrparser.Parse("SHOW clients;")
-	assert.NoError(err)
-	show, ok := stmt.(*spqrparser.Show)
-	assert.True(ok)
-	_, ok = show.Where.(spqrparser.WhereClauseEmpty)
-	assert.True(ok)
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
 }

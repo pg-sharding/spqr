@@ -22,6 +22,20 @@ func TestSimpleLex(t *testing.T) {
 			exp:   []int{spqrparser.SHOW, spqrparser.IDENT},
 			err:   nil,
 		},
+		{
+			query: "SHOW clients where user = 'usr1' or dbname = 'db1';",
+			exp: []int{
+				spqrparser.SHOW, spqrparser.IDENT,
+				spqrparser.WHERE,
+				spqrparser.IDENT,
+				spqrparser.TEQ,
+				spqrparser.SCONST,
+				spqrparser.OR,
+				spqrparser.IDENT,
+				spqrparser.TEQ,
+				spqrparser.SCONST},
+			err: nil,
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
