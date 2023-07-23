@@ -328,7 +328,7 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 	case spqrparser.WhereClauseEmpty:
 		return true, nil
 	case spqrparser.WhereClauseOp:
-		switch where.Op {
+		switch strings.ToLower(where.Op) {
 		case "and":
 			left, err := MatchRow(row, nameToIndex, where.Left)
 			if err != nil {
