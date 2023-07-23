@@ -12,6 +12,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	router "github.com/pg-sharding/spqr/router"
@@ -22,28 +23,28 @@ import (
 )
 
 var (
-	rcfgPath    string
-	cpuProfile  bool
-	memProfile  bool
-	profileFile string
-	daemonize   bool
-	console     bool
-	logLevel    string
-	gomaxprocs  int
-
+	rcfgPath     string
+	cpuProfile   bool
+	memProfile   bool
+	profileFile  string
+	daemonize    bool
+	console      bool
+	logLevel     string
+	gomaxprocs   int
 	pgprotoDebug bool
-)
 
-var rootCmd = &cobra.Command{
-	Use:   "spqr-router run --config `path-to-config-folder`",
-	Short: "sqpr-router",
-	Long:  "spqr-router",
-	CompletionOptions: cobra.CompletionOptions{
-		DisableDefaultCmd: true,
-	},
-	SilenceUsage:  true,
-	SilenceErrors: true,
-}
+	rootCmd = &cobra.Command{
+		Use:   "spqr-router run --config `path-to-config-folder`",
+		Short: "sqpr-router",
+		Long:  "spqr-router",
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
+		Version:       pkg.SpqrVersionRevision,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+)
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")

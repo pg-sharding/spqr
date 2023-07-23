@@ -249,6 +249,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
+	case spqrparser.VersionStr:
+		return cli.Version(ctx)
 	default:
 		return unknownCoordinatorCommand
 	}

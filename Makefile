@@ -1,3 +1,7 @@
+GIT_REVISION=`git rev-parse --short HEAD`
+SPQR_VERSION=`git describe --tags --abbrev=0`
+LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION}"
+
 .PHONY : run
 .DEFAULT_GOAL := deps
 
@@ -26,7 +30,7 @@ build_coordinator:
 	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
 
 build_router: 
-	go build -pgo=auto -o spqr-router ./cmd/router
+	go build -pgo=auto -o spqr-router $(LDFLAGS) ./cmd/router
 
 build_mover:
 	go build -pgo=auto -o spqr-mover  ./cmd/mover
@@ -99,7 +103,7 @@ yaccgen:
 gen: gogen yaccgen
 
 package:
-	sed -i 's/SPQR_VERSION/${VERSION}/g' debian/changelog
+	sed -i 's/SPQR_VERSION/${SPQR_VERSION}/g' debian/changelog
 	dpkg-buildpackage -us -uc
 
 .PHONY: build gen
