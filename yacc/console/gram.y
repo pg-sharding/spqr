@@ -5,6 +5,7 @@ package spqrparser
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 )
 
 
@@ -291,7 +292,7 @@ where_clause:
 show_statement_type:
 	IDENT
 	{
-		switch v := string($1); v {
+		switch v := strings.ToLower(string($1)); v {
 		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, VersionStr:
 			$$ = v
 		default:

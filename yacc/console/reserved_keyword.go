@@ -13,7 +13,6 @@ var reservedWords = map[string]int{
 	"add":        ADD,
 	"key":        KEY,
 	"range":      RANGE,
-	"shards":     SHARDS,
 	"lock":       LOCK,
 	"unlock":     UNLOCK,
 	"drop":       DROP,

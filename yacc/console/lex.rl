@@ -46,12 +46,13 @@ func (lex *Lexer) Lex(lval *yySymType) int {
     var tok int
 
     %%{
-        ident_start	=	[A-Za-z\200-\377_];
-        ident_cont	=	[A-Za-z\200-\377_0-9$];
 
-        identifier	=	ident_start ident_cont*;
+        op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '*' | '\\' | '%' | '<' | '>' | '=' ) ;
 
-        qidentifier	=	'"' ident_start ident_cont* '"' ;
+        sconst = '\'' (any-'\'')* '\'';
+        identifier	=	(print - space - op_chars-'\'' - ';')*;
+
+        qidentifier	=	'"' identifier '"';
 
         horiz_space	= [ \t\f];
         newline		=	[\n\r];
@@ -62,15 +63,12 @@ func (lex *Lexer) Lex(lval *yySymType) int {
         comment		= sql_comment | c_style_comment;
 
 
-        whitespace	=	space+;
+        whitespace = space+;
 
-
-        op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '-' | '*' | '\\' | '%' | '<' | '>' | '=' ) ;
         operator	=	op_chars+;
 
         integer = digit+;
 
-        sconst = '\'' (any-'\'')* '\'';
         
         main := |*
             whitespace => { /* do nothing */ };
@@ -81,8 +79,8 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             qidentifier      => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; fbreak;};
             identifier      => { 
                 
-                lval.str = strings.ToLower(string(lex.data[lex.ts:lex.te]));
-                if ttype, ok := reservedWords[lval.str]; ok {
+                lval.str = string(lex.data[lex.ts:lex.te]);
+                if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 

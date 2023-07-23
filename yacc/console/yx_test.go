@@ -175,6 +175,19 @@ func TestKeyRange(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:    "sh2",
+					KeyRangeID: "krid2",
+					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
+					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

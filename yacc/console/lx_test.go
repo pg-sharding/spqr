@@ -36,6 +36,24 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.SCONST},
 			err: nil,
 		},
+
+		{
+			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			exp: []int{
+				spqrparser.ADD,
+				spqrparser.KEY,
+				spqrparser.RANGE,
+				spqrparser.IDENT,
+				spqrparser.FROM,
+				spqrparser.IDENT,
+				spqrparser.TO,
+				spqrparser.IDENT,
+				spqrparser.ROUTE,
+				spqrparser.TO,
+				spqrparser.IDENT,
+			},
+			err: nil,
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
