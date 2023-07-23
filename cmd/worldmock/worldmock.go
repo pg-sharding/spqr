@@ -58,7 +58,7 @@ func (w *WorldMock) Run() error {
 
 			go func() {
 				if err := w.serv(c); err != nil {
-					spqrlog.Logger.PrintError(err)
+					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()
 
@@ -75,7 +75,10 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
+	spqrlog.Zero.Info().
+		Str("user", cl.Usr()).
+		Str("db", cl.DB()).
+		Msg("initialized client connection")
 
 	if err := cl.AssignRule(&config.FrontendRule{
 		AuthRule: &config.AuthCfg{
@@ -90,22 +93,28 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 	if err := cl.Auth(r); err != nil {
 		return err
 	}
-	spqrlog.Logger.Printf(spqrlog.INFO, "client auth OK")
-
+	spqrlog.Zero.Info().Msg("client auth OK")
+	
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
 			return err
 		}
 
-		spqrlog.Logger.Printf(spqrlog.INFO, "received msg %v", msg)
+		spqrlog.Zero.Debug().
+			Interface("message", msg).
+			Msg("received message")
 
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
-			spqrlog.Logger.Printf(spqrlog.INFO, "received prep stmt %v %v", v.Name, v.Query)
+			spqrlog.Zero.Info().
+				Str("name", v.Name).
+				Str("query", v.Query).
+				Msg("received prep stmt")
 		case *pgproto3.Query:
-
-			spqrlog.Logger.Printf(spqrlog.INFO, "received message %v", v.String)
+			spqrlog.Zero.Info().
+				Str("message", v.String).
+				Msg("received message")
 
 			_ = cl.ReplyDebugNotice("you are receiving the message from the mock world shard")
 
@@ -137,7 +146,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 			}()
 
 			if err != nil {
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 
 		default:

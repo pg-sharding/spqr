@@ -35,7 +35,10 @@ type ProxyW struct {
 }
 
 func (p *ProxyW) Write(bt []byte) (int, error) {
-	spqrlog.Logger.Printf(spqrlog.ERROR, "got bytes %v", bt)
+	spqrlog.Zero.Debug().
+		Bytes("bytes", bt).
+		Msg("got bytes")
+
 	return p.w.Write(bt)
 }
 
@@ -51,14 +54,14 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key
 	defer func(txTo pgx.Tx) {
 		err := txTo.Rollback(ctx)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(txTo)
 
 	defer func(txFrom pgx.Tx) {
 		err := txFrom.Rollback(ctx)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(txFrom)
 
@@ -86,7 +89,10 @@ WHERE column_name=$1;
 	rows.Close()
 
 	for _, v := range ress {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "moving table %s:%s", v.TableSchema, v.TableName)
+		spqrlog.Zero.Debug().
+			Str("schema", v.TableSchema).
+			Str("table", v.TableName).
+			Msg("moving table")
 
 		r, w, err := os.Pipe()
 		if err != nil {
@@ -100,11 +106,11 @@ WHERE column_name=$1;
 		ch := make(chan struct{})
 
 		go func() {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "sending rows to dest shard")
+			spqrlog.Zero.Debug().Msg("sending rows to dest shard")
 			_, err := txTo.Conn().PgConn().CopyFrom(ctx,
 				r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
 			if err != nil {
-				spqrlog.Logger.Printf(spqrlog.ERROR, "copy in failed %v", err)
+				spqrlog.Zero.Error().Err(err).Msg("copy in failed")
 			}
 
 			ch <- struct{}{}
@@ -113,18 +119,20 @@ WHERE column_name=$1;
 		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
 			key.Entries()[0], keyRange.LowerBound, key.Entries()[0], keyRange.UpperBound)
 
-		spqrlog.Logger.Printf(spqrlog.ERROR, "executing %v", qry)
+		spqrlog.Zero.Debug().
+			Str("query", qry).
+			Msg("executing query")
 
 		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 
 		if err := pw.w.Close(); err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "error closing pipe %v", err)
+			spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
 		}
 
-		spqrlog.Logger.Printf(spqrlog.ERROR, "copy cmd executed")
+		spqrlog.Zero.Debug().Msg("copy cmd executed")
 
 		<-ch
 	}
@@ -141,31 +149,31 @@ func main() {
 
 	connFrom, err := pgx.Connect(ctx, *fromShardConnst)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	connTo, err := pgx.Connect(ctx, *toShardConnst)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	db, err := qdb.NewEtcdQDB(*etcdAddr)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	if err := moveData(ctx,
 		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
 		shrule.ShardingRuleFromDB(shRule)); err != nil {
-		spqrlog.Logger.PrintError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

@@ -27,23 +27,26 @@ func NewApp(c coordinator.Coordinator) *App {
 }
 
 func (app *App) Run() error {
-
-	spqrlog.Logger.Printf(spqrlog.LOG, "running coordinator app\n")
+	spqrlog.Zero.Info().Msg("running coordinator app")
 
 	wg := &sync.WaitGroup{}
 
 	wg.Add(2)
 
 	go func(wg *sync.WaitGroup) {
-		spqrlog.Logger.PrintError(app.ServeGrpc(wg))
+		if err := app.ServeGrpc(wg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
 	}(wg)
 	go func(wg *sync.WaitGroup) {
-		spqrlog.Logger.PrintError(app.ServePsql(wg))
+		if err := app.ServePsql(wg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
 	}(wg)
 
 	wg.Wait()
 
-	spqrlog.Logger.Printf(spqrlog.LOG, "exit")
+	spqrlog.Zero.Debug().Msg("exit coordinator app")
 	return nil
 }
 
@@ -62,18 +65,18 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	for addr := range listen {
 		go func(addr string) {
 			defer lwg.Done()
-			spqrlog.Logger.Printf(spqrlog.LOG, "serve psql on %v", addr)
+			spqrlog.Zero.Info().Str("address", addr).Msg("serve psql")
 
 			listener, err := net.Listen("tcp", addr)
 
 			if err != nil {
-				spqrlog.Logger.Errorf("error trying to bind psql on %v: %v", addr, err)
+				spqrlog.Zero.Error().Err(err).Msg("error trying to bind psql")
 				return
 			}
 
 			for {
 				conn, err := listener.Accept()
-				spqrlog.Logger.PrintError(err)
+				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = app.coordinator.ProcClient(context.TODO(), conn)
 			}
 		}(addr)
@@ -83,13 +86,10 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 }
 
 func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
-
 	defer wg.Done()
 
 	serv := grpc.NewServer()
 	reflection.Register(serv)
-
-	spqrlog.Logger.Printf(spqrlog.LOG, "Coordinator Service %v", app.coordinator)
 
 	krserv := provider.NewKeyRangeService(app.coordinator)
 	rrserv := provider.NewRouterService(app.coordinator)
@@ -104,8 +104,10 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	protos.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
-
-	spqrlog.Logger.Printf(spqrlog.LOG, "serve grpc on %v", httpAddr)
+	
+	spqrlog.Zero.Info().
+		Str("address", httpAddr).
+		Msg("serve grpc coordinator service")
 
 	listener, err := net.Listen("tcp", httpAddr)
 	if err != nil {

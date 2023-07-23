@@ -39,13 +39,14 @@ var passwd string
 func DumpRules() error {
 	cc, err := Dial(endpoint)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	rCl := protos.NewShardingRulesServiceClient(cc)
 	if rules, err := rCl.ListShardingRules(context.Background(), &protos.ListShardingRuleRequest{}); err != nil {
-		spqrlog.Logger.Errorf("failed to dump endpoint rules: %v", err)
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("failed to dump endpoint rules")
 	} else {
 		for _, rule := range rules.Rules {
 			fmt.Printf("%s;\n", decode.DecodeRule(rule))
@@ -60,7 +61,9 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 		if msg, err := fr.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %+v msg", msg)
+			spqrlog.Zero.Debug().
+				Interface("message", msg).
+				Msg("received message")
 			switch v := msg.(type) {
 			case *pgproto3.ErrorResponse:
 				if v.Severity == "ERROR" {
@@ -77,7 +80,6 @@ func getconn() (*pgproto3.Frontend, error) {
 
 	cc, err := net.Dial("tcp", endpoint)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
 		return nil, err
 	}
 
@@ -94,7 +96,9 @@ func getconn() (*pgproto3.Frontend, error) {
 		return nil, err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG1, "startup got %v", resp)
+	spqrlog.Zero.Debug().
+		Bytes("response", resp).
+		Msg("startup got bytes")
 	cc = tls.Client(cc, &tls.Config{
 		InsecureSkipVerify: true,
 	})
@@ -109,12 +113,16 @@ func getconn() (*pgproto3.Frontend, error) {
 		},
 	})
 	if err := frontend.Flush(); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		spqrlog.Zero.Debug().
+			Err(err).
+			Msg("startup failed")
 		return nil, err
 	}
 
 	if err := waitRFQ(frontend); err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "startup failed %v", err)
+		spqrlog.Zero.Debug().
+			Err(err).
+			Msg("startup failed")
 		return nil, err
 	}
 
@@ -138,7 +146,10 @@ func DumpRulesPSQL() error {
 		if msg, err := frontend.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %+v msg", msg)
+			spqrlog.Zero.Debug().
+				Interface("message", msg).
+				Msg("received message")
+
 			switch v := msg.(type) {
 			case *pgproto3.DataRow:
 				l := string(v.Values[2])
@@ -177,7 +188,9 @@ func DumpKeyRangesPSQL() error {
 		if msg, err := frontend.Receive(); err != nil {
 			return err
 		} else {
-			spqrlog.Logger.Printf(spqrlog.DEBUG1, "received %+v msg", msg)
+			spqrlog.Zero.Debug().
+				Interface("message", msg).
+				Msg("received message")
 			switch v := msg.(type) {
 			case *pgproto3.DataRow:
 				col := string(v.Values[2])
@@ -208,13 +221,14 @@ func DumpKeyRangesPSQL() error {
 func DumpKeyRanges() error {
 	cc, err := Dial(endpoint)
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
 		return err
 	}
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
 	if keys, err := rCl.ListKeyRange(context.Background(), &protos.ListKeyRangeRequest{}); err != nil {
-		spqrlog.Logger.Errorf("failed to dump endpoint rules: %v", err)
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("failed to dump endpoint rules")
 	} else {
 		for _, krg := range keys.KeyRangesInfo {
 			fmt.Printf("%s;\n", decode.DecodeKeyRange(krg))
@@ -228,7 +242,9 @@ var dump = &cobra.Command{
 	Use:   "dump",
 	Short: "list running routers in current topology",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Logger.Printf(spqrlog.INFO, "dialing coordinator on %s", endpoint)
+		spqrlog.Zero.Debug().
+			Str("endpoint", endpoint).
+			Msg("dialing spqrdump on")
 
 		switch proto {
 		case "grpc":
@@ -267,7 +283,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }
 

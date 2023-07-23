@@ -247,7 +247,8 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 		spqrlog.Zero.Debug().
 			Str("name", q.Name).
 			Str("query", q.Query).
-			Uint64("hash", hash)
+			Uint64("hash", hash).
+			Msg("")
 
 		if rst.PgprotoDebug() {
 			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {

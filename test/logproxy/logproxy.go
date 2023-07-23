@@ -3,13 +3,11 @@ package logproxy
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	//"github.com/pg-sharding/spqr/pkg/config"
-	//"github.com/pg-sharding/spqr/router/pkg/client"
 )
 
 const failedToReceiveMessage = "failed to received msg %w"
@@ -28,7 +26,7 @@ func (p *Proxy) Run() error {
 
 	listener, err := net.Listen("tcp6", "[::1]:5433")
 	if err != nil {
-		spqrlog.Logger.PrintError(err)
+		log.Fatal(err)
 		return err
 	}
 	defer listener.Close()
@@ -57,7 +55,7 @@ func (p *Proxy) Run() error {
 
 			go func() {
 				if err := p.serv(c); err != nil {
-					spqrlog.Logger.PrintError(err)
+					log.Fatal(err)
 				}
 			}()
 		}
@@ -80,8 +78,6 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	//		return err
 	//	}
 
-	//	spqrlog.Logger.Printf(spqrlog.INFO, "initialized client connection %s-%s\n", cl.Usr(), cl.DB())
-
 	//	if err := cl.AssignRule(&config.FRRule{
 	//		AuthRule: config.AuthRule{
 	//			Method: config.AuthOK,
@@ -93,21 +89,20 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	//	if err := cl.Auth(); err != nil {
 	//		return err
 	//	}
-	//	spqrlog.Logger.Printf(spqrlog.INFO, "client auth OK")
 
 	cb := func(msg pgproto3.FrontendMessage) {
-		spqrlog.Logger.Printf(spqrlog.INFO, "received msg %v", msg)
+		log.Printf("received msg %v", msg)
 
 		switch v := msg.(type) {
 		case *pgproto3.Parse:
-			spqrlog.Logger.Printf(spqrlog.INFO, "received prep stmt %v %v", v.Name, v.Query)
+			log.Printf("received prep stmt %v %v", v.Name, v.Query)
 		case *pgproto3.Query:
-			spqrlog.Logger.Printf(spqrlog.INFO, "received message %v", v.String)
+			log.Printf("received message %v", v.String)
 		default:
 		}
 	}
 	shouldStop := func(msg pgproto3.BackendMessage) bool {
-		spqrlog.Logger.Printf(spqrlog.INFO, "received msg %v", msg)
+		log.Printf("received msg %v", msg)
 
 		switch msg.(type) {
 		case *pgproto3.ReadyForQuery:
