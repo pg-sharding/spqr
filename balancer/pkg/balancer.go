@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"math/rand"
 	"net"
 	"sort"
 	"sync"
@@ -150,7 +149,8 @@ func (b *Balancer) Init(installation InstallationInterface, coordinator Coordina
 	b.reloadRequired = false
 	b.muReload.Unlock()
 	// Init random seed
-	rand.Seed(time.Now().UTC().UnixNano())
+	// TODO fix lint
+	// rand.Seed(time.Now().UTC().UnixNano())
 }
 
 func findRange(s *string, left, right int, leftBorders *[]string) int {
