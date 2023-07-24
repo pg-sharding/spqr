@@ -381,9 +381,9 @@ type TableDesc interface {
 type ClientDesc struct {
 }
 
-func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
+func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
-	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname}
+	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname, rAddr}
 	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
 	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
 	for _, el := range *quantiles {
@@ -396,7 +396,7 @@ func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
 func (_ ClientDesc) GetHeader() []string {
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id",
+		"client_id", "user", "dbname", "server_id", "router_address",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -416,8 +416,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 	return columns
 }
 
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, condition spqrparser.WhereClauseNode) error {
-	quantiles := statistics.GetQuantiles()
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.RouterClient, condition spqrparser.WhereClauseNode) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
@@ -428,20 +427,12 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 	}
 
 	for _, cl := range clients {
-		routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
-		shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
-		rowData := []string{cl.ID(), cl.Usr(), cl.DB(), ""}
-		for _, el := range *quantiles {
-			rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-			rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
-		}
-
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
 				if sh == nil {
 					continue
 				}
-				row := desc.GetRow(cl, sh.Instance().Hostname())
+				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
 
 				match, err := MatchRow(row, rowDesc, condition)
 				if err != nil {
@@ -457,7 +448,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 				}
 			}
 		} else {
-			row := desc.GetRow(cl, "no backend connection")
+			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
 
 			match, err := MatchRow(row, rowDesc, condition)
 			if err != nil {

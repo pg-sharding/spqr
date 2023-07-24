@@ -3,12 +3,14 @@ package grpc
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rulerouter"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -17,8 +19,10 @@ type LocalQrouterServer struct {
 	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
+	protos.UnimplementedClientInfoServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
+	rr  rulerouter.RuleRouter
 }
 
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
@@ -168,11 +172,39 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr) {
+func ClientToProto(cl client.RouterClient) *protos.ClientInfo {
+	clientInfo := &protos.ClientInfo{
+		ClientId: cl.ID(),
+		User:     cl.Usr(),
+		Dbname:   cl.DB(),
+		Shards:   make([]*protos.UsedShardInfo, 0, len(cl.Shards())),
+	}
+	for _, shard := range cl.Shards() {
+		clientInfo.Shards = append(clientInfo.Shards, &protos.UsedShardInfo{
+			Instance: &protos.DBInstaceInfo{
+				Hostname: shard.Instance().Hostname(),
+			},
+		})
+	}
+	return clientInfo
+}
+
+func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
+	reply := &protos.ListClientsReply{}
+
+	err := l.rr.ClientPoolForeach(func(client client.RouterClient) error {
+		reply.Clients = append(reply.Clients, ClientToProto(client))
+		return nil
+	})
+	return reply, err
+}
+
+func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
 		qr:  qrouter,
 		mgr: mgr,
+		rr:  rr,
 	}
 
 	reflection.Register(server)
@@ -181,8 +213,10 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
+	protos.RegisterClientInfoServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
 var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
+var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}

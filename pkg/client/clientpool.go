@@ -6,8 +6,23 @@ import (
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
+type RouterClient interface {
+	Client
+
+	RAddr() string
+}
+
+type RouterClientImpl struct {
+	Client
+	rAddr string
+}
+
+func (rci RouterClientImpl) RAddr() string {
+	return rci.rAddr
+}
+
 type Pool interface {
-	ClientPoolForeach(cb func(client Client) error) error
+	ClientPoolForeach(cb func(client RouterClient) error) error
 
 	Put(client Client) error
 	Pop(id string) (bool, error)
@@ -60,13 +75,13 @@ func (c *PoolImpl) Shutdown() error {
 
 	return nil
 }
-func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
+func (c *PoolImpl) ClientPoolForeach(cb func(client RouterClient) error) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	for _, cl := range c.pool {
-		if err := cb(cl); err != nil {
+		if err := cb(RouterClientImpl{Client: cl, rAddr: "local"}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}

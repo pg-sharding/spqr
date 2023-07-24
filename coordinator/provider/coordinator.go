@@ -21,9 +21,12 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	router "github.com/pg-sharding/spqr/router"
@@ -31,6 +34,139 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
+
+type FakeClient struct {
+	client.Client
+	id     string
+	user   string
+	dbname string
+	shards []shard.Shard
+	rAddr  string
+}
+
+func (c FakeClient) ID() string {
+	return c.id
+}
+
+func (c FakeClient) Usr() string {
+	return c.user
+}
+
+func (c FakeClient) DB() string {
+	return c.dbname
+}
+
+func (c FakeClient) RAddr() string {
+	return c.rAddr
+}
+
+func (c FakeClient) Shards() []shard.Shard {
+	return c.shards
+}
+
+type FakeShard struct {
+	shard.Shard
+
+	instance FakeDBInstance
+}
+
+func (s FakeShard) Instance() conn.DBInstance {
+	return s.instance
+}
+
+type FakeDBInstance struct {
+	conn.DBInstance
+
+	hostname string
+}
+
+func (dbi FakeDBInstance) Hostname() string {
+	return dbi.hostname
+}
+
+var _ client.RouterClient = &FakeClient{}
+var _ shard.Shard = &FakeShard{}
+var _ conn.DBInstance = &FakeDBInstance{}
+
+func newFakeClient(clientInfo *routerproto.ClientInfo, rAddr string) FakeClient {
+	client := FakeClient{
+		id:     clientInfo.ClientId,
+		user:   clientInfo.User,
+		dbname: clientInfo.Dbname,
+		rAddr:  rAddr,
+		shards: make([]shard.Shard, len(clientInfo.Shards)),
+	}
+	for _, shardInfo := range clientInfo.Shards {
+		client.shards = append(client.shards, FakeShard{instance: FakeDBInstance{hostname: shardInfo.Instance.Hostname}})
+	}
+	return client
+}
+
+type grpcConnectionIterator struct {
+	*qdbCoordinator
+}
+
+func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.RouterClient) error) error {
+	ctx := context.TODO()
+	rtrs, err := ci.qdbCoordinator.db.ListRouters(ctx)
+
+	spqrlog.Zero.Log().Int("router counts", len(rtrs))
+
+	if err != nil {
+		return err
+	}
+
+	for _, r := range rtrs {
+		internalR := &topology.Router{
+			ID:      r.ID,
+			Address: r.Address,
+		}
+
+		cc, err := DialRouter(internalR)
+		if err != nil {
+			return err
+		}
+
+		rrClient := routerproto.NewClientInfoServiceClient(cc)
+
+		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
+		resp, err := rrClient.ListClients(ctx, &routerproto.ListClientsRequest{})
+		if err != nil {
+			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
+			return err
+		}
+
+		for _, client := range resp.Clients {
+			err = cb(newFakeClient(client, r.Address))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (ci grpcConnectionIterator) Put(client client.Client) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (ci grpcConnectionIterator) Pop(id string) (bool, error) {
+	return true, fmt.Errorf("not implemented")
+}
+
+func (ci grpcConnectionIterator) Shutdown() error {
+	return fmt.Errorf("not implemented")
+}
+
+func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shard) error) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
+	return fmt.Errorf("not implemented")
+}
+
+var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}
 
 type routerConn struct {
 	routerproto.KeyRangeServiceClient
@@ -677,7 +813,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Msg("initialized client connection")
-	
+
 	if err := cl.AssignRule(&config.FrontendRule{
 		AuthRule: &config.AuthCfg{
 			Method: config.AuthOK,
@@ -703,6 +839,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 		return err
 	}
 
+	ci := grpcConnectionIterator{qdbCoordinator: qc}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
 		// TODO: check leader status
@@ -713,7 +850,6 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				Msg("failed to receive message")
 			return err
 		}
-
 		spqrlog.Zero.Debug().
 			Interface("message", msg).
 			Msg("received message")
@@ -731,7 +867,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, nil, cli); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, ci, cli); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {
