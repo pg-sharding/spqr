@@ -4,6 +4,8 @@ import (
     "strings"
 )
 
+//nolint:all
+
 %%{ 
     machine lexer;
     write data;
