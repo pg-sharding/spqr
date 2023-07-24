@@ -28,7 +28,6 @@ type ProxyW struct {
 }
 
 func (p *ProxyW) Write(bt []byte) (int, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "got bytes %v", bt)
 	return p.w.Write(bt)
 }
 
@@ -70,7 +69,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 	defer func(ctx context.Context) {
 		err := rollbackTransactions(ctx)
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.WARNING, "failed to close transactions %v", err)
+			spqrlog.Zero.Warn().Msg("error closing transaction")
 		}
 	}(ctx)
 
@@ -92,23 +91,23 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 func beginTransactions(ctx context.Context, f, t string) error {
 	from, err := pgx.Connect(ctx, createConnString(f))
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error connecting to shard: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
 	to, err := pgx.Connect(ctx, createConnString(t))
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error connecting to shard: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
 
 	txFrom, err = from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error begining transaction: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
 		return err
 	}
 	txTo, err = to.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error begining transaction: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
 		return err
 	}
 	return nil
@@ -117,12 +116,12 @@ func beginTransactions(ctx context.Context, f, t string) error {
 func commitTransactions(ctx context.Context) error {
 	err := txTo.Commit(ctx)
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error closing transaction: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
 	err = txFrom.Commit(ctx)
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.ERROR, "error closing transaction: %v", err)
+		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
 	return nil
@@ -131,12 +130,12 @@ func commitTransactions(ctx context.Context) error {
 func rollbackTransactions(ctx context.Context) error {
 	err := txTo.Rollback(ctx)
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.WARNING, "error closing transaction: %v", err)
+		spqrlog.Zero.Warn().Msg("error closing transaction")
 		return err
 	}
 	err = txFrom.Rollback(ctx)
 	if err != nil {
-		spqrlog.Logger.Printf(spqrlog.WARNING, "error closing transaction: %v", err)
+		spqrlog.Zero.Warn().Msg("error closing transaction")
 		return err
 	}
 	return nil
@@ -165,7 +164,6 @@ WHERE column_name=$1;
 	rows.Close()
 
 	for _, v := range ress {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "moving table %s:%s", v.TableSchema, v.TableName)
 
 		r, w, err := os.Pipe()
 		if err != nil {
@@ -178,22 +176,19 @@ WHERE column_name=$1;
 		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "executing %v", qry)
-
 		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 
 		if err := pw.w.Close(); err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "error closing pipe %v", err)
+			spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
 		}
 
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "sending rows to dest shard")
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
 			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
 		if err != nil {
-			spqrlog.Logger.Printf(spqrlog.ERROR, "copy in failed %v", err)
+			spqrlog.Zero.Error().Err(err).Msg("copy in failed")
 			return err
 		}
 	}
