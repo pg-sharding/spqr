@@ -35,7 +35,6 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 var shards *config.DatatransferConnections
 var txFrom pgx.Tx
 var txTo pgx.Tx
-var remoteConfigDir = "/spqr/docker/coordinator/shard_data.yaml"
 var localConfigDir = "/pkg/datatransfers/shard_data.yaml"
 
 func createConnString(shardID string) string {
@@ -43,9 +42,9 @@ func createConnString(shardID string) string {
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
 }
 
-func LoadConfig() error {
+func LoadConfig(path string) error {
 	var err error
-	shards, err = config.LoadShardDataCfg(remoteConfigDir)
+	shards, err = config.LoadShardDataCfg(path)
 	if err != nil {
 		p, _ := os.Getwd()
 		shards, err = config.LoadShardDataCfg(p + localConfigDir)
@@ -58,7 +57,7 @@ func LoadConfig() error {
 
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule) error {
 	if shards == nil {
-		err := LoadConfig()
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
 			return err
 		}

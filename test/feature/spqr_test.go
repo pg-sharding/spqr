@@ -181,12 +181,9 @@ func (tctx *testContext) cleanup() {
 
 // nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
-	log.Default().Printf("connecting host: %s\n", addr)
 	if strings.Contains(addr, strconv.Itoa(coordinatorPort)) {
-		log.Default().Printf("connecting coordinator: %s\n", addr)
 		return tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, timeout)
 	}
-	log.Default().Printf("connecting no coordinator: %s\n", addr)
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
 }
 
