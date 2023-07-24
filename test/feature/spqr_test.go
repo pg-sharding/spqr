@@ -259,9 +259,6 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 }
 
 func (tctx *testContext) queryPostgresql(host string, query string, args interface{}) ([]map[string]interface{}, error) {
-	if args == nil {
-		args = struct{}{}
-	}
 	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return nil, err
@@ -286,9 +283,6 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 }
 
 func (tctx *testContext) executePostgresql(host string, query string, args interface{}) error {
-	if args == nil {
-		args = struct{}{}
-	}
 	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return err
