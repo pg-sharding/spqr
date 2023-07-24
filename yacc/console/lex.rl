@@ -1,10 +1,10 @@
+//nolint:all
 package spqrparser
 
 import (
     "strings"
 )
 
-//nolint:all
 
 %%{ 
     machine lexer;

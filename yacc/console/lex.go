@@ -1,12 +1,12 @@
 
 //line lex.rl:1
+//nolint:all
 package spqrparser
 
 import (
     "strings"
 )
 
-//nolint:all
 
 
 //line lex.go:13
