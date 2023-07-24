@@ -57,6 +57,13 @@ func LoadConfig() error {
 }
 
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule) error {
+	if shards == nil {
+		err := LoadConfig()
+		if err != nil {
+			return err
+		}
+	}
+
 	err := beginTransactions(ctx, fromId, toId)
 	if err != nil {
 		return err
@@ -84,13 +91,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 }
 
 func beginTransactions(ctx context.Context, f, t string) error {
-	if shards == nil {
-		err := LoadConfig()
-		if err != nil {
-			return err
-		}
-	}
-
 	from, err := pgx.Connect(ctx, createConnString(f))
 	if err != nil {
 		spqrlog.Logger.Printf(spqrlog.ERROR, "error connecting to shard: %v", err)
