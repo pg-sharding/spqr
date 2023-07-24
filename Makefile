@@ -89,7 +89,7 @@ feature_test: build_images
 	(cd test/feature; go test -timeout 150m)
 
 lint:
-	golangci-lint run --timeout=10m --out-format=colored-line-number
+	golangci-lint run --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
 
 ####################### GENERATE #######################
 
