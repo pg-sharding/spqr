@@ -195,7 +195,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	return nil
 }
 
-func (h *shardPool) ForEach(cb func(sh shard.Shard) error) error {
+func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -240,7 +240,7 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	}
 }
 
-func (c *cPool) ForEach(cb func(sh shard.Shard) error) error {
+func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
 		return true

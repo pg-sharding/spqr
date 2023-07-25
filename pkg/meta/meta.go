@@ -188,9 +188,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
-		var resp []shard.Shard
-		if err := ci.ForEach(func(cl shard.Shard) error {
-			resp = append(resp, cl)
+		var resp []shard.Shardinfo
+		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+			resp = append(resp, sh)
 			return nil
 		}); err != nil {
 			return err
