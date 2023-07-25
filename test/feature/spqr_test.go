@@ -409,6 +409,23 @@ func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) e
 	return err
 }
 
+func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	res, err := json.Marshal(tctx.sqlQueryResult)
+	if err != nil {
+		panic(err)
+	}
+	err = m(string(res), strings.TrimSpace(body.Content))
+
+	if err != nil {
+		return nil
+	}
+	return fmt.Errorf("Should not match")
+}
+
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -474,6 +491,7 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
+	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 }
 
 func TestMysync(t *testing.T) {
