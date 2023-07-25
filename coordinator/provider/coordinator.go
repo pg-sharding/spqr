@@ -21,7 +21,6 @@ import (
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -35,78 +34,11 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-type FakeClient struct {
-	client.Client
-	id     string
-	user   string
-	dbname string
-	shards []shard.Shard
-	rAddr  string
-}
-
-func (c FakeClient) ID() string {
-	return c.id
-}
-
-func (c FakeClient) Usr() string {
-	return c.user
-}
-
-func (c FakeClient) DB() string {
-	return c.dbname
-}
-
-func (c FakeClient) RAddr() string {
-	return c.rAddr
-}
-
-func (c FakeClient) Shards() []shard.Shard {
-	return c.shards
-}
-
-type FakeShard struct {
-	shard.Shard
-
-	instance FakeDBInstance
-}
-
-func (s FakeShard) Instance() conn.DBInstance {
-	return s.instance
-}
-
-type FakeDBInstance struct {
-	conn.DBInstance
-
-	hostname string
-}
-
-func (dbi FakeDBInstance) Hostname() string {
-	return dbi.hostname
-}
-
-var _ client.RouterClient = &FakeClient{}
-var _ shard.Shard = &FakeShard{}
-var _ conn.DBInstance = &FakeDBInstance{}
-
-func newFakeClient(clientInfo *routerproto.ClientInfo, rAddr string) FakeClient {
-	client := FakeClient{
-		id:     clientInfo.ClientId,
-		user:   clientInfo.User,
-		dbname: clientInfo.Dbname,
-		rAddr:  rAddr,
-		shards: make([]shard.Shard, len(clientInfo.Shards)),
-	}
-	for _, shardInfo := range clientInfo.Shards {
-		client.shards = append(client.shards, FakeShard{instance: FakeDBInstance{hostname: shardInfo.Instance.Hostname}})
-	}
-	return client
-}
-
 type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
 
-func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.RouterClient) error) error {
+func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	ctx := context.TODO()
 	rtrs, err := ci.qdbCoordinator.db.ListRouters(ctx)
 
@@ -137,7 +69,7 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.RouterC
 		}
 
 		for _, client := range resp.Clients {
-			err = cb(newFakeClient(client, r.Address))
+			err = cb(psqlclient.NewMockClient(client, r.Address))
 			if err != nil {
 				return err
 			}

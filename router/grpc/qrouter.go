@@ -172,7 +172,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func ClientToProto(cl client.RouterClient) *protos.ClientInfo {
+func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{
 		ClientId: cl.ID(),
 		User:     cl.Usr(),
@@ -192,7 +192,7 @@ func ClientToProto(cl client.RouterClient) *protos.ClientInfo {
 func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
-	err := l.rr.ClientPoolForeach(func(client client.RouterClient) error {
+	err := l.rr.ClientPoolForeach(func(client client.ClientInfo) error {
 		reply.Clients = append(reply.Clients, ClientToProto(client))
 		return nil
 	})

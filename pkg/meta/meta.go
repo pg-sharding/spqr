@@ -230,8 +230,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.ShardingRules(ctx, resp)
 	case spqrparser.ClientsStr:
-		var resp []client.RouterClient
-		if err := ci.ClientPoolForeach(func(client client.RouterClient) error {
+		var resp []client.ClientInfo
+		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
 			resp = append(resp, client)
 			return nil
 		}); err != nil {

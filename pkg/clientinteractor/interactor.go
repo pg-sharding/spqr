@@ -416,7 +416,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 	return columns
 }
 
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.RouterClient, condition spqrparser.WhereClauseNode) error {
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, condition spqrparser.WhereClauseNode) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
