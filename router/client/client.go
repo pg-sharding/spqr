@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
+	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -1096,3 +1097,70 @@ func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 }
 
 var _ RouterClient = &FakeClient{}
+
+func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient {
+	client := MockClient{
+		id:     clientInfo.ClientId,
+		user:   clientInfo.User,
+		dbname: clientInfo.Dbname,
+		rAddr:  rAddr,
+		shards: make([]shard.Shard, len(clientInfo.Shards)),
+	}
+	for _, shardInfo := range clientInfo.Shards {
+		client.shards = append(client.shards, MockShard{instance: MockDBInstance{hostname: shardInfo.Instance.Hostname}})
+	}
+	return client
+}
+
+type MockClient struct {
+	client.Client
+	id     string
+	user   string
+	dbname string
+	shards []shard.Shard
+	rAddr  string
+}
+
+func (c MockClient) ID() string {
+	return c.id
+}
+
+func (c MockClient) Usr() string {
+	return c.user
+}
+
+func (c MockClient) DB() string {
+	return c.dbname
+}
+
+func (c MockClient) RAddr() string {
+	return c.rAddr
+}
+
+func (c MockClient) Shards() []shard.Shard {
+	return c.shards
+}
+
+type MockShard struct {
+	shard.Shard
+
+	instance MockDBInstance
+}
+
+func (s MockShard) Instance() conn.DBInstance {
+	return s.instance
+}
+
+type MockDBInstance struct {
+	conn.DBInstance
+
+	hostname string
+}
+
+func (dbi MockDBInstance) Hostname() string {
+	return dbi.hostname
+}
+
+var _ client.ClientInfo = &MockClient{}
+var _ shard.Shard = &MockShard{}
+var _ conn.DBInstance = &MockDBInstance{}

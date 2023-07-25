@@ -262,7 +262,7 @@ func (r *RuleRouterImpl) ListShards() []string {
 func (r *RuleRouterImpl) ObsoleteRoute(key route.Key) error {
 	rt := r.routePool.Obsolete(key)
 
-	if err := rt.NofityClients(func(cl client.Client) error {
+	if err := rt.NofityClients(func(cl client.ClientInfo) error {
 		return nil
 	}); err != nil {
 		return err
@@ -305,7 +305,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }
 
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.Client) error) error {
+func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
 		return route.NofityClients(cb)
 	})

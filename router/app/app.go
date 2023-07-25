@@ -79,7 +79,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 	}
 
 	server := grpc.NewServer()
-	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr)
+	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr, app.spqr.RuleRouter)
 	spqrlog.Zero.Info().
 		Str("address", address).
 		Msg("SPQR GRPC API is ready on")
