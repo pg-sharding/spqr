@@ -125,7 +125,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		Str("shard", sh.Name()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.sync_out).
-		Msg("shard connection received message") 
+		Msg("shard connection received message")
 	return msg, nil
 }
 
@@ -139,6 +139,14 @@ func (sh *Conn) Name() string {
 
 func (sh *Conn) Cfg() *config.Shard {
 	return sh.cfg
+}
+
+func (sh *Conn) InstanceHostname() string {
+	return sh.Instance().Hostname()
+}
+
+func (sh *Conn) ShardKeyName() string {
+	return sh.SHKey().Name
 }
 
 var _ shard.Shard = &Conn{}

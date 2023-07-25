@@ -40,7 +40,7 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 	}
 }
 
-func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
+func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return r.NotifyRoutes(func(route *route.Route) error {
 		return route.ServPool().ForEach(cb)
 	})

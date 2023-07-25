@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -20,6 +21,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
+	protos.UnimplementedBackendConnectionsServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -189,11 +191,35 @@ func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	return clientInfo
 }
 
+func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
+	shardInfo := &protos.BackendConnectionsInfo{
+		BackendConnectionId: sh.ID(),
+		ShardKeyName:        sh.ShardKeyName(),
+		User:                sh.Usr(),
+		Dbname:              sh.DB(),
+		Hostname:            sh.InstanceHostname(),
+		Sync:                sh.Sync(),
+		TxServed:            sh.TxServed(),
+		TxStatus:            int64(sh.TxStatus()),
+	}
+	return shardInfo
+}
+
 func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
 	err := l.rr.ClientPoolForeach(func(client client.ClientInfo) error {
 		reply.Clients = append(reply.Clients, ClientToProto(client))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.ListBackendConnectionsRequest) (*protos.ListBackendConntionsReply, error) {
+	reply := &protos.ListBackendConntionsReply{}
+
+	err := l.rr.ForEach(func(sh shard.Shardinfo) error {
+		reply.Conns = append(reply.Conns, ShardToProto(sh))
 		return nil
 	})
 	return reply, err
@@ -214,9 +240,11 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
+	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
 var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
+var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}

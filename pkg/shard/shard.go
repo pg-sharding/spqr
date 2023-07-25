@@ -25,22 +25,27 @@ func (ps ParameterSet) Save(status ParameterStatus) bool {
 	return true
 }
 
+type Shardinfo interface {
+	ID() string
+	ShardKeyName() string
+	InstanceHostname() string
+	Usr() string
+	DB() string
+	Sync() int64
+	TxServed() int64
+	TxStatus() txstatus.TXStatus
+}
+
 type Shard interface {
 	txstatus.TxStatusMgr
+	Shardinfo
 
 	Cfg() *config.Shard
 
 	Name() string
 	SHKey() kr.ShardKey
-	ID() string
-	Usr() string
-	DB() string
-
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
-
-	Sync() int64
-	TxServed() int64
 
 	AddTLSConf(cfg *tls.Config) error
 	Cleanup(rule *config.FrontendRule) error
@@ -55,5 +60,5 @@ type Shard interface {
 }
 
 type ShardIterator interface {
-	ForEach(cb func(sh Shard) error) error
+	ForEach(cb func(sh Shardinfo) error) error
 }

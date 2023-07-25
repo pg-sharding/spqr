@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	routerproto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -73,4 +76,46 @@ func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.Sha
 			Id:    shardInfo.ID,
 		},
 	}, nil
+}
+
+type CoordShardInfo struct {
+	underlying *routerproto.BackendConnectionsInfo
+}
+
+func NewCoordShardInfo(conn *routerproto.BackendConnectionsInfo) shard.Shardinfo {
+	return &CoordShardInfo{
+		underlying: conn,
+	}
+}
+
+func (c *CoordShardInfo) DB() string {
+	return c.underlying.Dbname
+}
+
+func (c *CoordShardInfo) Usr() string {
+	return c.underlying.Dbname
+}
+
+func (c *CoordShardInfo) InstanceHostname() string {
+	return c.underlying.Hostname
+}
+
+func (c *CoordShardInfo) ID() string {
+	return c.underlying.BackendConnectionId
+}
+
+func (c *CoordShardInfo) ShardKeyName() string {
+	return c.underlying.ShardKeyName
+}
+
+func (c *CoordShardInfo) Sync() int64 {
+	return c.underlying.Sync
+}
+
+func (c *CoordShardInfo) TxServed() int64 {
+	return c.underlying.TxServed
+}
+
+func (c *CoordShardInfo) TxStatus() txstatus.TXStatus {
+	return txstatus.TXStatus(c.underlying.TxStatus)
 }

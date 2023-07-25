@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+service BackendConnectionsService {
+  rpc ListBackendConnections (ListBackendConnectionsRequest) returns (ListBackendConntionsReply) {}
+}
+
+message ListBackendConnectionsRequest {
+    
+}
+
+message ListBackendConntionsReply {
+  repeated BackendConnectionsInfo conns = 1;
+}
+
+message BackendConnectionsInfo {
+  string backend_connection_id = 1;
+  string shard_key_name = 2;
+  string hostname = 3;
+  string user = 4;
+  string dbname = 5;
+  int64 sync = 6;
+  int64 tx_served = 7;
+  int64 tx_status = 8;
+}

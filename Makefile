@@ -98,7 +98,7 @@ gogen:
 	protos/* 
 
 yaccgen:
-	goyacc -o yacc/console/sql.go -p yy yacc/console/sql.y
+	make -C ./yacc/console gen
 
 gen: gogen yaccgen
 

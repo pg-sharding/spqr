@@ -715,15 +715,15 @@ func (pi *PSQLInteractor) KillClient(clientID string) error {
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shard) error {
-	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
+	if err := pi.WriteHeader("backend connection id", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, sh := range shs {
 
-		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

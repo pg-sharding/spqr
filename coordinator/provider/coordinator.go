@@ -38,7 +38,7 @@ type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
 
-func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
 	rtrs, err := ci.qdbCoordinator.db.ListRouters(ctx)
 
@@ -58,7 +58,16 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 		if err != nil {
 			return err
 		}
+		if err := cb(cc, r.Address); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+		ctx := context.TODO()
 		rrClient := routerproto.NewClientInfoServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
@@ -69,13 +78,13 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 		}
 
 		for _, client := range resp.Clients {
-			err = cb(psqlclient.NewMockClient(client, r.Address))
+			err = cb(psqlclient.NewMockClient(client, addr))
 			if err != nil {
 				return err
 			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (ci grpcConnectionIterator) Put(client client.Client) error {
@@ -90,8 +99,26 @@ func (ci grpcConnectionIterator) Shutdown() error {
 	return fmt.Errorf("not implemented")
 }
 
-func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shard) error) error {
-	return fmt.Errorf("not implemented")
+func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) error {
+	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+		ctx := context.TODO()
+		rrBackConn := routerproto.NewBackendConnectionsServiceClient(cc)
+
+		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
+		resp, err := rrBackConn.ListBackendConnections(ctx, &routerproto.ListBackendConnectionsRequest{})
+		if err != nil {
+			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
+			return err
+		}
+
+		for _, conn := range resp.Conns {
+			err = cb(NewCoordShardInfo(conn))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
