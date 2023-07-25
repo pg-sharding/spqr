@@ -27,15 +27,18 @@ jobs:
               dep ensure
           fi
           sudo apt update && sudo apt install -y debhelper
+      
+      - name: Set env
+        run: echo "TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
 
       - name: build package
         run: |
-          export TAG=${GITHUB_REF##*/}
-          VERSION=${TAG} make package
+          export SPQR_VERSION="${TAG}"
+          make package
           echo $(echo ../* | grep -v '^../spqr$' | tr '\n' ' ')
           echo $(echo ../* | grep -v '^\.\./spqr$' | tr '\n' ' ')
           echo $(echo ../* | grep -v '^..\/spqr$' | tr '\n' ' ')
           echo $(echo ../* | grep -v '^\.\.\/spqr$' | tr '\n' ' ')
           gh release create ${TAG} --title "Release ${TAG}" $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
