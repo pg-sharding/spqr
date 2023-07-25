@@ -102,8 +102,9 @@ yaccgen:
 
 gen: gogen yaccgen
 
+version = $(shell git describe --tags --abbrev=0)
 package:
-	sed -i 's/SPQR_VERSION/${SPQR_VERSION}/g' debian/changelog
+	sed -i 's/SPQR_VERSION/$(version)/g' debian/changelog
 	dpkg-buildpackage -us -uc
 
 .PHONY: build gen

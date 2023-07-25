@@ -33,7 +33,6 @@ jobs:
 
       - name: build package
         run: |
-          export SPQR_VERSION="${TAG}"
           make package
           echo $(echo ../* | grep -v '^../spqr$' | tr '\n' ' ')
           echo $(echo ../* | grep -v '^\.\./spqr$' | tr '\n' ' ')
