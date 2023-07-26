@@ -54,7 +54,7 @@ func LoadConfig(path string) error {
 	return nil
 }
 
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule) error {
+func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db *qdb.QDB) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -67,7 +67,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		return err
 	}
 	defer func(ctx context.Context) {
-		err := rollbackTransactions(ctx)
+		err := rollbackTransactions(ctx, fromId, toId)
 		if err != nil {
 			spqrlog.Zero.Warn().Msg("error closing transaction")
 		}
@@ -80,12 +80,36 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		}
 	}
 
-	err = commitTransactions(ctx)
+	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, db)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+
+	db, err := pgx.Connect(ctx, createConnString(sh))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+	}
+
+	if commit {
+		_, err = db.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", tx))
+	} else {
+		_, err = db.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", tx))
+	}
+
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
+	}
 }
 
 func beginTransactions(ctx context.Context, f, t string) error {
@@ -113,32 +137,55 @@ func beginTransactions(ctx context.Context, f, t string) error {
 	return nil
 }
 
-func commitTransactions(ctx context.Context) error {
-	err := txTo.Commit(ctx)
+func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.QDB) error {
+	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", t))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
+		return err
+	}
+	txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", f))
+
+	d := qdb.DataTransferTransaction{
+		ToShardId:   t,
+		ToTxName:    t,
+		FromTxName:  f,
+		FromShardId: f,
+		ToStatus:    "process",
+		FromStatus:  "process",
+	}
+
+	(*db).RememberTransaction(ctx, krid, &d)
+
+	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", t))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
+		txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", f))
+		return err
+	}
+
+	d.ToStatus = "commit"
+	(*db).RememberTransaction(ctx, krid, &d)
+
+	_, err = txFrom.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", f))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
-	err = txFrom.Commit(ctx)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		return err
-	}
+	(*db).RemoveTransaction(ctx, krid)
 	return nil
 }
 
-func rollbackTransactions(ctx context.Context) error {
+func rollbackTransactions(ctx context.Context, f, t string) error {
 	err := txTo.Rollback(ctx)
 	if err != nil {
 		spqrlog.Zero.Warn().Msg("error closing transaction")
-		return err
 	}
-	err = txFrom.Rollback(ctx)
-	if err != nil {
+	err1 := txFrom.Rollback(ctx)
+	if err1 != nil {
 		spqrlog.Zero.Warn().Msg("error closing transaction")
-		return err
+		return err1
 	}
-	return nil
+	return err
 }
 
 func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
@@ -164,7 +211,6 @@ WHERE column_name=$1;
 	rows.Close()
 
 	for _, v := range ress {
-
 		r, w, err := os.Pipe()
 		if err != nil {
 			return err

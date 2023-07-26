@@ -98,7 +98,7 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error
 	if err != nil {
 		return err
 	}
-	
+
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: put sharding rule to qdb")
@@ -142,7 +142,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: get sharding rule")
-		
+
 	resp, err := q.cli.Get(ctx, shardingRuleNodePath(id), clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 		Msg("etcdqdb: get key range")
 
 	ret, err := q.fetchKeyRange(ctx, keyRangeNodePath(id))
-	
+
 	spqrlog.Zero.Debug().
 		Interface("ret", ret).
 		Msg("etcdqdb: get key range")
@@ -297,13 +297,13 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: drop key range")
-	
+
 	resp, err := q.cli.Delete(ctx, keyRangeNodePath(id))
-	
+
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: drop key range")
-	
+
 	return err
 }
 
@@ -347,7 +347,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: lock key range")
-	
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -472,6 +472,46 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 	return fmt.Errorf("implement ShareKeyRange")
 }
 
+func (q *EtcdQDB) RememberTransaction(ctx context.Context, key string, info *DataTransferTransaction) error {
+	bts, err := json.Marshal(info)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to marshal transaction")
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, key, string(bts))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to write transaction")
+		return err
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) GetTransaction(ctx context.Context, key string) (*DataTransferTransaction, error) {
+	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
+		return nil, err
+	}
+
+	var st DataTransferTransaction
+	if err := json.Unmarshal(resp.Kvs[0].Value, &st); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
+		return nil, err
+	}
+	return &st, nil
+}
+
+func (q *EtcdQDB) RemoveTransaction(ctx context.Context, key string) error {
+	_, err := q.cli.Delete(ctx, key)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
+		return err
+	}
+	return nil
+}
+
 // ==============================================================================
 //                                  ROUTERS
 // ==============================================================================
@@ -482,7 +522,6 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 		Str("address", r.Address).
 		Str("state", string(r.State)).
 		Msg("etcdqdb: add router")
-
 
 	bts, err := json.Marshal(r)
 	if err != nil {
@@ -541,7 +580,6 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 		return ret[i].ID < ret[j].ID
 	})
 
-
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list routers")
@@ -565,7 +603,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 		Str("id", shard.ID).
 		Strs("hosts", shard.Hosts).
 		Msg("etcdqdb: add shard")
-	
+
 	bytes, err := json.Marshal(shard)
 	if err != nil {
 		return err
@@ -578,13 +616,13 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: add shard")
-	
+
 	return nil
 }
 
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
-	
+
 	namespacePrefix := shardsNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
@@ -611,7 +649,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: get shard")
-	
+
 	nodePath := shardNodePath(id)
 	resp, err := q.cli.Get(ctx, nodePath)
 	if err != nil {
@@ -638,7 +676,7 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 	spqrlog.Zero.Debug().
 		Str("id", dataspace.ID).
 		Msg("etcdqdb: add dataspace")
-	
+
 	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), dataspace.ID)
 	if err != nil {
 		return err
@@ -647,7 +685,7 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: add dataspace")
-	
+
 	return nil
 }
 

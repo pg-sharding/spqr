@@ -15,6 +15,7 @@ EOF
 cat >> /var/lib/postgresql/13/main/postgresql.conf <<-EOF
 listen_addresses = '*'
 port = 6432
+max_prepared_transactions = 5
 EOF
 
 sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ start

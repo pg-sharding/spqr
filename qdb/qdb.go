@@ -38,6 +38,10 @@ type QDB interface {
 
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
+
+	RememberTransaction(ctx context.Context, key string, info *DataTransferTransaction) error
+	GetTransaction(ctx context.Context, key string) (*DataTransferTransaction, error)
+	RemoveTransaction(ctx context.Context, key string) error
 }
 
 func NewQDB(qdbType string) (QDB, error) {
@@ -49,4 +53,13 @@ func NewQDB(qdbType string) (QDB, error) {
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}
+}
+
+type DataTransferTransaction struct {
+	ToShardId   string `json:"to_shard"`
+	FromShardId string `json:"from_shard"`
+	FromTxName  string `json:"from_transaction"`
+	ToTxName    string `json:"to_transaction"`
+	FromStatus  string `json:"from_tx_status"`
+	ToStatus    string `json:"to_tx_status"`
 }
