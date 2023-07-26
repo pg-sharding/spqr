@@ -204,6 +204,7 @@ func rollbackTransactions(ctx context.Context, f, t string) error {
 	return err
 }
 
+// TODO enhance for multi-column sharding rules
 func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
 	rows, err := txFrom.Query(ctx, `
 SELECT table_schema, table_name
