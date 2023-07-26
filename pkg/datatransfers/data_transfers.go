@@ -143,7 +143,11 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
 		return err
 	}
-	txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", f))
+	_, err = txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", f))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
+		return err
+	}
 
 	d := qdb.DataTransferTransaction{
 		ToShardId:   t,
@@ -154,24 +158,36 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		FromStatus:  "process",
 	}
 
-	(*db).RememberTransaction(ctx, krid, &d)
+	err = (*db).RememberTransaction(ctx, krid, &d)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
+	}
 
 	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", t))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", f))
+		_, err1 := txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", f))
+		if err1 != nil {
+			spqrlog.Zero.Error().Err(err1).Msg("error closing transaction")
+		}
 		return err
 	}
 
 	d.ToStatus = "commit"
-	(*db).RememberTransaction(ctx, krid, &d)
+	err = (*db).RememberTransaction(ctx, krid, &d)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
+	}
 
 	_, err = txFrom.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", f))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
-	(*db).RemoveTransaction(ctx, krid)
+	err = (*db).RemoveTransaction(ctx, krid)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
+	}
 	return nil
 }
 

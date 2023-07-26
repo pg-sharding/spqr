@@ -246,12 +246,18 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 				ShardId: tx.ToShardId,
 				Krid:    r.KeyRangeID,
 			}
-			cc.Move(context.TODO(), &tem)
+			err = cc.Move(context.TODO(), &tem)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
+			}
 		} else {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
-		db.RemoveTransaction(context.TODO(), r.KeyRangeID)
+		err = db.RemoveTransaction(context.TODO(), r.KeyRangeID)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
+		}
 	}
 
 	go cc.watchRouters(context.TODO())
