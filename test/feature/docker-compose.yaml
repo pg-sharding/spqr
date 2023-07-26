@@ -8,7 +8,7 @@ services:
       - POSTGRES_USER=regress
       - POSTGRES_DB=regress
     ports:
-      - "7432:6432"
+      - "5500:6432"
     hostname: spqr_shard_1
     container_name: spqr_shard_1
     healthcheck:
@@ -23,7 +23,7 @@ services:
       - POSTGRES_USER=regress
       - POSTGRES_DB=regress
     ports:
-      - "7433:6432"
+      - "5501:6432"
     hostname: spqr_shard_2
     container_name: spqr_shard_2
     healthcheck:
@@ -37,6 +37,7 @@ services:
       context: ../../
     ports:
       - "6432:6432"
+      - "7432:7432"
     environment:
       - SPQR_CONFIG=/spqr/test/feature/conf/router.yaml
     hostname: regress_router

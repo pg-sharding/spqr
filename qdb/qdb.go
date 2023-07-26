@@ -49,7 +49,7 @@ func NewQDB(qdbType string) (QDB, error) {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 	case "mem":
-		return NewMemQDB()
+		return NewMemQDB("")
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}

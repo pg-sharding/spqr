@@ -2,7 +2,9 @@ package qdb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
 
@@ -10,33 +12,89 @@ import (
 )
 
 type MemQDB struct {
-	mu sync.RWMutex
+	mu    sync.RWMutex
+	locks map[string]*sync.RWMutex
 
-	freq         map[string]bool
-	krs          map[string]*KeyRange
-	locks        map[string]*sync.RWMutex
-	shards       map[string]*Shard
-	shrules      map[string]*ShardingRule
-	dataspaces   map[string]*Dataspace
-	routers      map[string]*Router
-	transactions map[string]*DataTransferTransaction
+	Freq         map[string]bool                     `json:"freq"`
+	Krs          map[string]*KeyRange                `json:"krs"`
+	Shards       map[string]*Shard                   `json:"shards"`
+	Shrules      map[string]*ShardingRule            `json:"shrules"`
+	Dataspaces   map[string]*Dataspace               `json:"dataspaces"`
+	Routers      map[string]*Router                  `json:"routers"`
+	Transactions map[string]*DataTransferTransaction `json:"transactions"`
 
+	backupPath string
 	/* caches */
 }
 
 var _ QDB = &MemQDB{}
 
-func NewMemQDB() (*MemQDB, error) {
+func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		freq:         map[string]bool{},
-		krs:          map[string]*KeyRange{},
-		locks:        map[string]*sync.RWMutex{},
-		shards:       map[string]*Shard{},
-		shrules:      map[string]*ShardingRule{},
-		dataspaces:   map[string]*Dataspace{},
-		routers:      map[string]*Router{},
-		transactions: map[string]*DataTransferTransaction{},
+		Freq:       map[string]bool{},
+		Krs:        map[string]*KeyRange{},
+		locks:      map[string]*sync.RWMutex{},
+		Shards:     map[string]*Shard{},
+		Shrules:    map[string]*ShardingRule{},
+		Dataspaces: map[string]*Dataspace{},
+		Routers:    map[string]*Router{},
+
+		backupPath: backupPath,
 	}, nil
+}
+
+func RestoreQDB(backupPath string) (*MemQDB, error) {
+	qdb, err := NewMemQDB(backupPath)
+	if err != nil {
+		return nil, err
+	}
+	if backupPath == "" {
+		return qdb, nil
+	}
+	data, err := os.ReadFile(backupPath)
+	if err != nil {
+		spqrlog.Zero.Info().Err(err).Msg("cannot read memqdb backup file. Let's create new one.")
+		os.Create(backupPath)
+		return qdb, nil
+	}
+	err = json.Unmarshal(data, qdb)
+	if err != nil {
+		return nil, err
+	}
+	return qdb, nil
+}
+
+func (q *MemQDB) DumpState() error {
+	if q.backupPath == "" {
+		return nil
+	}
+	tmpPath := q.backupPath + ".tmp"
+
+	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0644)
+	defer f.Close()
+
+	if err != nil {
+		return err
+	}
+
+	state, err := json.Marshal(q)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(state)
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	err = os.Rename(tmpPath, q.backupPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ==============================================================================
@@ -48,8 +106,7 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.shrules[rule.ID] = rule
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shrules, rule.ID, rule))
 }
 
 func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
@@ -57,9 +114,7 @@ func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.shrules, id)
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Shrules, id))
 }
 
 func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
@@ -68,7 +123,7 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 	defer q.mu.Unlock()
 
 	var ret []*ShardingRule
-	for _, v := range q.shrules {
+	for _, v := range q.Shrules {
 		ret = append(ret, v)
 	}
 
@@ -76,14 +131,16 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 		return ret[i].ID < ret[j].ID
 	})
 
-	q.shrules = make(map[string]*ShardingRule)
-
+	err := ExecuteCommands(q.DumpState, NewDropCommand(q.Shrules))
+	if err != nil {
+		return nil, err
+	}
 	return ret, nil
 }
 
 func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
 	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
-	rule, ok := q.shrules[id]
+	rule, ok := q.Shrules[id]
 	if ok {
 		return rule, nil
 	}
@@ -95,7 +152,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
-	for _, v := range q.shrules {
+	for _, v := range q.Shrules {
 		ret = append(ret, v)
 	}
 
@@ -110,7 +167,7 @@ func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[stri
 	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	return m(q.shrules)
+	return m(q.Shrules)
 }
 
 // ==============================================================================
@@ -122,11 +179,9 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.krs[keyRange.KeyRangeID] = keyRange
-	q.locks[keyRange.KeyRangeID] = &sync.RWMutex{}
-	q.freq[keyRange.KeyRangeID] = false
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
+		NewUpdateCommand(q.locks, keyRange.KeyRangeID, &sync.RWMutex{}),
+		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
 }
 
 func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
@@ -134,7 +189,7 @@ func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	krs, ok := q.krs[id]
+	krs, ok := q.Krs[id]
 	if !ok {
 		return nil, fmt.Errorf("there is no key range %s", id)
 	}
@@ -147,9 +202,7 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.krs[keyRange.KeyRangeID] = keyRange
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange))
 }
 
 func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
@@ -157,11 +210,8 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.krs, id)
-	delete(q.freq, id)
-	delete(q.locks, id)
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, id),
+		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.locks, id))
 }
 
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
@@ -170,21 +220,25 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 	defer q.mu.Unlock()
 
 	var locks []*sync.RWMutex
-	for _, l := range q.locks {
-		l.Lock()
-		locks = append(locks, l)
-	}
 
-	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
-
-	q.krs = map[string]*KeyRange{}
-	q.locks = map[string]*sync.RWMutex{}
-
-	for _, l := range locks {
-		l.Unlock()
-	}
-
-	return nil
+	return ExecuteCommands(q.DumpState, CustomCommand{
+		do: func() {
+			for _, l := range q.locks {
+				l.Lock()
+				locks = append(locks, l)
+			}
+			spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
+		},
+		undo: func() {},
+	}, DropCommand[*KeyRange]{m: q.Krs}, DropCommand[*sync.RWMutex]{m: q.locks},
+		CustomCommand{
+			do: func() {
+				for _, l := range locks {
+					l.Unlock()
+				}
+			},
+			undo: func() {},
+		})
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
@@ -194,7 +248,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 
 	var ret []*KeyRange
 
-	for _, el := range q.krs {
+	for _, el := range q.Krs {
 		ret = append(ret, el)
 	}
 
@@ -210,13 +264,16 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	krs, ok := q.krs[id]
+	krs, ok := q.Krs[id]
 	if !ok {
 		return nil, fmt.Errorf("key range '%s' does not exist", id)
 	}
 
-	q.freq[id] = true
-	q.locks[id].Lock()
+	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
+		NewCustomCommand(q.locks[id].Lock, q.locks[id].Unlock))
+	if err != nil {
+		return nil, err
+	}
 
 	return krs, nil
 }
@@ -226,15 +283,12 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if !q.freq[id] {
+	if !q.Freq[id] {
 		return fmt.Errorf("key range %v not locked", id)
 	}
 
-	q.freq[id] = false
-
-	q.locks[id].Unlock()
-
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
+		NewCustomCommand(q.locks[id].Unlock, q.locks[id].Lock))
 }
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
@@ -242,12 +296,12 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	krs, ok := q.krs[id]
+	krs, ok := q.Krs[id]
 	if !ok {
 		return nil, fmt.Errorf("no sush krid")
 	}
 
-	if !q.freq[id] {
+	if !q.Freq[id] {
 		return nil, fmt.Errorf("key range %v not locked", id)
 	}
 
@@ -268,17 +322,15 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
-	q.transactions[key] = info
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	return q.transactions[key], nil
+	return q.Transactions[key], nil
 }
 
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
-	delete(q.transactions, key)
-	return nil
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
 }
 
 // ==============================================================================
@@ -290,8 +342,7 @@ func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.routers[r.ID] = r
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, r.ID, r))
 }
 
 func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
@@ -299,8 +350,7 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	delete(q.routers, id)
-	return nil
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Routers, id))
 }
 
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
@@ -309,7 +359,7 @@ func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	defer q.mu.Unlock()
 
 	var ret []*Router
-	for _, v := range q.routers {
+	for _, v := range q.Routers {
 		// TODO replace with new
 		ret = append(ret, v)
 	}
@@ -334,8 +384,7 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.shards[shard.ID] = shard
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
 }
 
 func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
@@ -344,7 +393,7 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	defer q.mu.Unlock()
 
 	var ret []*Shard
-	for _, v := range q.shards {
+	for _, v := range q.Shards {
 		// TODO replace with new
 		ret = append(ret, v)
 	}
@@ -361,7 +410,7 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.shards[id]; ok {
+	if _, ok := q.Shards[id]; ok {
 		return &Shard{ID: id}, nil
 	}
 
@@ -376,9 +425,8 @@ func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
 	spqrlog.Zero.Debug().Interface("dataspace", dataspace).Msg("memqdb: add dataspace")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	q.dataspaces[dataspace.ID] = dataspace
 
-	return nil
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Dataspaces, dataspace.ID, dataspace))
 }
 
 func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
@@ -386,7 +434,7 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*Dataspace
-	for _, v := range q.dataspaces {
+	for _, v := range q.Dataspaces {
 		ret = append(ret, v)
 	}
 

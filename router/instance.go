@@ -50,7 +50,10 @@ var _ Router = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
-	qdb, _ := qdb.NewMemQDB()
+	qdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
+	if err != nil {
+		return nil, err
+	}
 
 	lc := local.NewLocalCoordinator(qdb)
 
@@ -100,7 +103,6 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 				spqrlog.Zero.Info().Str("query", query).Msg("")
 				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
-					return nil, err
 				}
 			}
 
