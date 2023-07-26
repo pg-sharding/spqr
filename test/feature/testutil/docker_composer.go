@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"io"
 	"net"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
@@ -138,7 +138,7 @@ func (dc *DockerComposer) Up(env []string) error {
 
 // Down trears all containers/VMs dowwn
 func (dc *DockerComposer) Down() error {
-	return dc.runCompose([]string{"down", "-v", "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))}, nil)
+	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, nil)
 }
 
 // Services returns names/ids of running containers

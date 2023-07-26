@@ -12,13 +12,14 @@ import (
 type MemQDB struct {
 	mu sync.RWMutex
 
-	freq       map[string]bool
-	krs        map[string]*KeyRange
-	locks      map[string]*sync.RWMutex
-	shards     map[string]*Shard
-	shrules    map[string]*ShardingRule
-	dataspaces map[string]*Dataspace
-	routers    map[string]*Router
+	freq         map[string]bool
+	krs          map[string]*KeyRange
+	locks        map[string]*sync.RWMutex
+	shards       map[string]*Shard
+	shrules      map[string]*ShardingRule
+	dataspaces   map[string]*Dataspace
+	routers      map[string]*Router
+	transactions map[string]*DataTransferTransaction
 
 	/* caches */
 }
@@ -27,13 +28,14 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB() (*MemQDB, error) {
 	return &MemQDB{
-		freq:       map[string]bool{},
-		krs:        map[string]*KeyRange{},
-		locks:      map[string]*sync.RWMutex{},
-		shards:     map[string]*Shard{},
-		shrules:    map[string]*ShardingRule{},
-		dataspaces: map[string]*Dataspace{},
-		routers:    map[string]*Router{},
+		freq:         map[string]bool{},
+		krs:          map[string]*KeyRange{},
+		locks:        map[string]*sync.RWMutex{},
+		shards:       map[string]*Shard{},
+		shrules:      map[string]*ShardingRule{},
+		dataspaces:   map[string]*Dataspace{},
+		routers:      map[string]*Router{},
+		transactions: map[string]*DataTransferTransaction{},
 	}, nil
 }
 
@@ -258,6 +260,24 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	q.locks[id].RLock()
 	defer q.locks[id].RUnlock()
 
+	return nil
+}
+
+// ==============================================================================
+//                           Transfer transactions
+// ==============================================================================
+
+func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+	q.transactions[key] = info
+	return nil
+}
+
+func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
+	return q.transactions[key], nil
+}
+
+func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
+	delete(q.transactions, key)
 	return nil
 }
 

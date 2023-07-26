@@ -1,0 +1,13 @@
+shards:
+  sh1:
+    db: db1
+    user: user1
+    Password: 12345678
+    host: 'localhost'
+    port: '7432'
+  sh2:
+    db: db1
+    user: user1
+    Password: 12345678
+    host: 'localhost'
+    port: '7433'

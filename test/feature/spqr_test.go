@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -170,7 +171,6 @@ func (tctx *testContext) cleanup() {
 	if err := tctx.composer.Down(); err != nil {
 		log.Printf("failed to tear down compose: %s", err)
 	}
-
 	tctx.variables = make(map[string]interface{})
 	tctx.composerEnv = make([]string, 0)
 	tctx.sqlQueryResult = make([]map[string]interface{}, 0)
@@ -181,6 +181,9 @@ func (tctx *testContext) cleanup() {
 
 // nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
+	if strings.Contains(addr, strconv.Itoa(coordinatorPort)) {
+		return tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, timeout)
+	}
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
 }
 
@@ -209,6 +212,28 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 	return db, nil
 }
 
+func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
+	connCfg, _ := pgx.ParseConfig(dsn)
+	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	connCfg.RuntimeParams["client_encoding"] = "UTF8"
+	connStr := stdlib.RegisterConnConfig(connCfg)
+	db, err := sqlx.Open("pgx", connStr)
+	if err != nil {
+		return nil, err
+	}
+	// sql is lazy in go, so we need ping db
+	testutil.Retry(func() bool {
+		_, err = db.Exec("SHOW routers")
+		return err == nil
+	}, timeout, 2*time.Second)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
 	if !ok {
@@ -220,7 +245,10 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	}
 	addr, err := tctx.composer.GetAddr(host, spqrPort)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
+		addr, err = tctx.composer.GetAddr(host, coordinatorPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
+		}
 	}
 	db, err = tctx.connectPostgresql(addr, postgresqlConnectTimeout)
 	if err != nil {
@@ -231,9 +259,6 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 }
 
 func (tctx *testContext) queryPostgresql(host string, query string, args interface{}) ([]map[string]interface{}, error) {
-	if args == nil {
-		args = struct{}{}
-	}
 	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return nil, err
@@ -250,12 +275,34 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 		if q == "" {
 			continue
 		}
-
 		result, err = tctx.doPostgresqlQuery(db, q, args, postgresqlQueryTimeout)
 		tctx.sqlQueryResult = result
 	}
 
 	return result, err
+}
+
+func (tctx *testContext) executePostgresql(host string, query string, args interface{}) error {
+	db, err := tctx.getPostgresqlConnection(host)
+	if err != nil {
+		return err
+	}
+
+	// sqlx can't execute requests with semicolon
+	// we will execute them in single connection
+	queries := strings.Split(query, ";")
+
+	for _, q := range queries {
+		q = strings.TrimSpace(q)
+		if q == "" {
+			continue
+		}
+		_, err := db.Exec(q)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
@@ -331,6 +378,22 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		}
 	}
 
+	// check coordinator
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrCoordinatorName) {
+			addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+			if err != nil {
+				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
+			}
+
+			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+			}
+			tctx.dbs[service] = db
+		}
+	}
+
 	return nil
 }
 
@@ -346,6 +409,23 @@ func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) e
 	return err
 }
 
+func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	res, err := json.Marshal(tctx.sqlQueryResult)
+	if err != nil {
+		panic(err)
+	}
+	err = m(string(res), strings.TrimSpace(body.Content))
+
+	if err != nil {
+		return nil
+	}
+	return fmt.Errorf("Should not match")
+}
+
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -358,6 +438,13 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 	return m(string(res), strings.TrimSpace(body.Content))
 }
 
+func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+
+	err := tctx.executePostgresql(host, query, struct{}{})
+	return err
+}
+
 // nolint: unused
 func InitializeScenario(s *godog.ScenarioContext) {
 	tctx, err := newTestContext()
@@ -367,7 +454,7 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	}
 
 	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
-		tctx.cleanup()
+		//tctx.cleanup()
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {
@@ -402,7 +489,9 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	// command and SQL execution
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
+	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
+	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 }
 
 func TestMysync(t *testing.T) {

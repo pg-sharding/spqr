@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -225,6 +226,38 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 	cc := &qdbCoordinator{
 		db: db,
+	}
+
+	ranges, err := db.ListKeyRanges(context.TODO())
+	if err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("faild to list key ranges")
+	}
+
+	for _, r := range ranges {
+		tx, err := db.GetTransferTx(context.TODO(), r.KeyRangeID)
+		if tx == nil || err != nil {
+			continue
+		}
+		if tx.ToStatus == "commit" {
+			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
+			tem := kr.MoveKeyRange{
+				ShardId: tx.ToShardId,
+				Krid:    r.KeyRangeID,
+			}
+			err = cc.Move(context.TODO(), &tem)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
+			}
+		} else {
+			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
+			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
+		}
+		err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
+		}
 	}
 
 	go cc.watchRouters(context.TODO())
@@ -593,6 +626,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
+	//move i qdb
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
@@ -634,6 +668,15 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		}
 	}()
 
+	//move between shards
+	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
+	shardingRules, _ := qc.ListShardingRules(ctx)
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, &qc.db)
+	if err != nil {
+		spqrlog.Zero.Error().Msg("failed to move rows")
+		return err
+	}
+
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krmv)); err != nil {
 		// TODO: check if unlock here is ok
@@ -663,7 +706,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 				Interface("response", unlockResp).
 				Msg("unlock key range response")
 		}()
-
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
 			KeyRange: kr.KeyRangeFromDB(krmv).ToProto(),
 		})
@@ -674,7 +716,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}); err != nil {
 		return err
 	}
-	// do phyc keys move
 	return nil
 }
 
