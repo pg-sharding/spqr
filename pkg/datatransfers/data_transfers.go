@@ -158,7 +158,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		FromStatus:  "process",
 	}
 
-	err = (*db).RememberTransaction(ctx, krid, &d)
+	err = (*db).RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -174,7 +174,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 	}
 
 	d.ToStatus = "commit"
-	err = (*db).RememberTransaction(ctx, krid, &d)
+	err = (*db).RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -184,7 +184,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
-	err = (*db).RemoveTransaction(ctx, krid)
+	err = (*db).RemoveTransferTx(ctx, krid)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 	}
@@ -235,7 +235,7 @@ WHERE column_name=$1;
 		pw := ProxyW{
 			w: w,
 		}
-		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
+		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s <= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
 		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)

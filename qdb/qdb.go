@@ -39,9 +39,9 @@ type QDB interface {
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 
-	RememberTransaction(ctx context.Context, key string, info *DataTransferTransaction) error
-	GetTransaction(ctx context.Context, key string) (*DataTransferTransaction, error)
-	RemoveTransaction(ctx context.Context, key string) error
+	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
+	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
+	RemoveTransferTx(ctx context.Context, key string) error
 }
 
 func NewQDB(qdbType string) (QDB, error) {

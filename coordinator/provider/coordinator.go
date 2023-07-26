@@ -236,7 +236,7 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 	}
 
 	for _, r := range ranges {
-		tx, err := db.GetTransaction(context.TODO(), r.KeyRangeID)
+		tx, err := db.GetTransferTx(context.TODO(), r.KeyRangeID)
 		if tx == nil || err != nil {
 			continue
 		}
@@ -254,7 +254,7 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
-		err = db.RemoveTransaction(context.TODO(), r.KeyRangeID)
+		err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 		}

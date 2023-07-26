@@ -263,16 +263,20 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	return nil
 }
 
-func (q *MemQDB) RememberTransaction(ctx context.Context, key string, info *DataTransferTransaction) error {
+// ==============================================================================
+//                           Transfer transactions
+// ==============================================================================
+
+func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	q.transactions[key] = info
 	return nil
 }
 
-func (q *MemQDB) GetTransaction(ctx context.Context, key string) (*DataTransferTransaction, error) {
+func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
 	return q.transactions[key], nil
 }
 
-func (q *MemQDB) RemoveTransaction(ctx context.Context, key string) error {
+func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	delete(q.transactions, key)
 	return nil
 }

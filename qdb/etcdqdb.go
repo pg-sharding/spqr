@@ -472,7 +472,11 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 	return fmt.Errorf("implement ShareKeyRange")
 }
 
-func (q *EtcdQDB) RememberTransaction(ctx context.Context, key string, info *DataTransferTransaction) error {
+// ==============================================================================
+//                           Transfer transactions
+// ==============================================================================
+
+func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	bts, err := json.Marshal(info)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to marshal transaction")
@@ -488,7 +492,7 @@ func (q *EtcdQDB) RememberTransaction(ctx context.Context, key string, info *Dat
 	return nil
 }
 
-func (q *EtcdQDB) GetTransaction(ctx context.Context, key string) (*DataTransferTransaction, error) {
+func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
 	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
@@ -503,7 +507,7 @@ func (q *EtcdQDB) GetTransaction(ctx context.Context, key string) (*DataTransfer
 	return &st, nil
 }
 
-func (q *EtcdQDB) RemoveTransaction(ctx context.Context, key string) error {
+func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	_, err := q.cli.Delete(ctx, key)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
