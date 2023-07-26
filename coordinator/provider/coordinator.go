@@ -235,18 +235,23 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 			Msg("faild to list key ranges")
 	}
 
-	for _, kr := range ranges {
-		tx, err := db.GetTransaction(context.TODO(), kr.KeyRangeID)
+	for _, r := range ranges {
+		tx, err := db.GetTransaction(context.TODO(), r.KeyRangeID)
 		if tx == nil || err != nil {
 			continue
 		}
 		if tx.ToStatus == "commit" {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
+			tem := kr.MoveKeyRange{
+				ShardId: tx.ToShardId,
+				Krid:    r.KeyRangeID,
+			}
+			cc.Move(context.TODO(), &tem)
 		} else {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
-		db.RemoveTransaction(context.TODO(), kr.KeyRangeID)
+		db.RemoveTransaction(context.TODO(), r.KeyRangeID)
 	}
 
 	go cc.watchRouters(context.TODO())
