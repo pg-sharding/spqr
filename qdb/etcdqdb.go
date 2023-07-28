@@ -500,9 +500,12 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 	}
 
 	var st DataTransferTransaction
-	if err := json.Unmarshal(resp.Kvs[0].Value, &st); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
-		return nil, err
+
+	for _, e := range resp.Kvs {
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
+			return nil, err
+		}
 	}
 	return &st, nil
 }

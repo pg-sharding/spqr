@@ -21,6 +21,8 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/test/feature/testutil"
 	"github.com/pg-sharding/spqr/test/feature/testutil/matchers"
 )
@@ -29,8 +31,10 @@ const (
 	spqrShardName                   = "shard"
 	spqrRouterName                  = "router"
 	spqrCoordinatorName             = "coordinator"
+	spqrQDBName                     = "qdb"
 	spqrPort                        = 6432
 	coordinatorPort                 = 7002
+	qdbPort                         = 2379
 	shardUser                       = "regress"
 	shardPassword                   = ""
 	dbName                          = "regress"
@@ -49,6 +53,7 @@ type testContext struct {
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
 	commandOutput     string
+	qdb               qdb.QDB
 }
 
 func newTestContext() (*testContext, error) {
@@ -394,6 +399,23 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		}
 	}
 
+	// check qdb
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrQDBName) {
+			addr, err := tctx.composer.GetAddr(service, qdbPort)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
+			}
+			spqrlog.Zero.Error().Msg(addr)
+
+			db, err := qdb.NewEtcdQDB(addr)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
+			}
+			tctx.qdb = db
+		}
+	}
+
 	return nil
 }
 
@@ -445,6 +467,25 @@ func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) err
 	return err
 }
 
+func (tctx *testContext) stepHostIsStopped(host string) error {
+	return tctx.composer.Stop(host)
+}
+
+func (tctx *testContext) stepHostIsStarted(host string) error {
+	return tctx.composer.Start(host)
+}
+
+func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var st qdb.DataTransferTransaction
+	if err := json.Unmarshal([]byte(query), &st); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
+}
+
 // nolint: unused
 func InitializeScenario(s *godog.ScenarioContext) {
 	tctx, err := newTestContext()
@@ -485,6 +526,8 @@ func InitializeScenario(s *godog.ScenarioContext) {
 
 	// host manipulation
 	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
+	s.Step(`^host "([^"]*)" is stopped$`, tctx.stepHostIsStopped)
+	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
 
 	// command and SQL execution
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
@@ -492,6 +535,8 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
+	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
+
 }
 
 func TestMysync(t *testing.T) {
