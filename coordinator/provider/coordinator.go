@@ -241,6 +241,13 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 			continue
 		}
 		if tx.ToStatus == "commit" {
+			if tx.FromStatus == "commit" {
+				err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
+				}
+				continue
+			}
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
 			tem := kr.MoveKeyRange{
 				ShardId: tx.ToShardId,

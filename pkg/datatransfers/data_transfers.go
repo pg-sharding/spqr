@@ -184,7 +184,9 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
 	}
-	err = (*db).RemoveTransferTx(ctx, krid)
+
+	d.FromStatus = "commit"
+	err = (*db).RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 	}
