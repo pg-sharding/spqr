@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -403,7 +402,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 	// check qdb
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrQDBName) {
-			spqrlog.Zero.Error().Msg("was qdb")
 			addr, err := tctx.composer.GetAddr(service, qdbPort)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
@@ -431,39 +429,6 @@ func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) e
 	query := strings.TrimSpace(body.Content)
 	_, err := tctx.queryPostgresql(host, query, struct{}{})
 	return err
-}
-func (tctx *testContext) stepIRunSQLTransactionOnHost(host string, body *godog.DocString) error {
-	spqrlog.Zero.Error().Msg("transaction start")
-	query := strings.TrimSpace(body.Content)
-	db, err := tctx.getPostgresqlConnection(host)
-	if err != nil {
-		return err
-	}
-	spqrlog.Zero.Error().Msg("conn ok")
-	tx1, err := db.BeginTx(context.Background(), &sql.TxOptions{})
-	if err != nil {
-		return err
-	}
-	spqrlog.Zero.Error().Msg("tx  ok")
-	for _, q := range strings.Split(query, ";") {
-		tctx.sqlQueryResult = nil
-		q = strings.TrimSpace(q)
-		spqrlog.Zero.Error().Msg(q)
-		if q == "" {
-			continue
-		}
-		_, err = tx1.Query(q)
-		if err != nil {
-			return err
-		}
-	}
-	spqrlog.Zero.Error().Msg("executed")
-	err = tx1.Commit()
-	if err != nil {
-		spqrlog.Zero.Warn().Msg("error closing transaction")
-	}
-	spqrlog.Zero.Error().Msg("finale")
-	return nil
 }
 
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
@@ -511,21 +476,14 @@ func (tctx *testContext) stepHostIsStarted(host string) error {
 }
 
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
-	spqrlog.Zero.Error().Msg("recording")
 	query := strings.TrimSpace(body.Content)
-	spqrlog.Zero.Error().Msg(query)
 	var st qdb.DataTransferTransaction
 	if err := json.Unmarshal([]byte(query), &st); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
 		return err
 	}
 
-	spqrlog.Zero.Error().Msg(st.FromShardId)
-	spqrlog.Zero.Error().Msg(st.ToShardId)
-	spqrlog.Zero.Error().Msg(st.FromTxName)
-	err := tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
-	spqrlog.Zero.Error().Msg("recorded")
-	return err
+	return tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
 }
 
 // nolint: unused
@@ -574,7 +532,6 @@ func InitializeScenario(s *godog.ScenarioContext) {
 	// command and SQL execution
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
-	s.Step(`^I run SQL transaction on host "([^"]*)"$`, tctx.stepIRunSQLTransactionOnHost)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
