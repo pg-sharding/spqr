@@ -237,7 +237,7 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 
 	for _, r := range ranges {
 		tx, err := db.GetTransferTx(context.TODO(), r.KeyRangeID)
-		if tx == nil || err != nil {
+		if tx == nil || err != nil || tx.ToStatus == "" {
 			continue
 		}
 		if tx.ToStatus == "commit" {
