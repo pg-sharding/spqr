@@ -2,6 +2,8 @@ package spqrlog
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog"
 )
 
@@ -32,7 +34,7 @@ func ReloadLogger(filepath string) {
 }
 
 func parseLevel(level string) zerolog.Level {
-	switch level {
+	switch strings.ToLower(level) {
 	case "disabled":
 		return zerolog.Disabled
 	case "debug":
