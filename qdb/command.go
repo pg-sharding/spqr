@@ -5,8 +5,8 @@ type Command interface {
 	Undo()
 }
 
-func NewDeleteCommand[T any](m map[string]T, key string) DeleteCommand[T] {
-	return DeleteCommand[T]{m: m, key: key}
+func NewDeleteCommand[T any](m map[string]T, key string) *DeleteCommand[T] {
+	return &DeleteCommand[T]{m: m, key: key}
 }
 
 type DeleteCommand[T any] struct {
@@ -15,17 +15,17 @@ type DeleteCommand[T any] struct {
 	value T
 }
 
-func (c DeleteCommand[T]) Do() {
+func (c *DeleteCommand[T]) Do() {
 	c.value = c.m[c.key]
 	delete(c.m, c.key)
 }
 
-func (c DeleteCommand[T]) Undo() {
+func (c *DeleteCommand[T]) Undo() {
 	c.m[c.key] = c.value
 }
 
-func NewUpdateCommand[T any](m map[string]T, key string, value T) UpdateCommand[T] {
-	return UpdateCommand[T]{m: m, key: key, value: value}
+func NewUpdateCommand[T any](m map[string]T, key string, value T) *UpdateCommand[T] {
+	return &UpdateCommand[T]{m: m, key: key, value: value}
 }
 
 type UpdateCommand[T any] struct {
@@ -36,12 +36,12 @@ type UpdateCommand[T any] struct {
 	present   bool
 }
 
-func (c UpdateCommand[T]) Do() {
+func (c *UpdateCommand[T]) Do() {
 	c.prevValue, c.present = c.m[c.key]
 	c.m[c.key] = c.value
 }
 
-func (c UpdateCommand[T]) Undo() {
+func (c *UpdateCommand[T]) Undo() {
 	if !c.present {
 		delete(c.m, c.key)
 	} else {
@@ -49,8 +49,8 @@ func (c UpdateCommand[T]) Undo() {
 	}
 }
 
-func NewDropCommand[T any](m map[string]T) DropCommand[T] {
-	return DropCommand[T]{m: m}
+func NewDropCommand[T any](m map[string]T) *DropCommand[T] {
+	return &DropCommand[T]{m: m}
 }
 
 type DropCommand[T any] struct {
@@ -58,7 +58,7 @@ type DropCommand[T any] struct {
 	copy map[string]T
 }
 
-func (c DropCommand[T]) Do() {
+func (c *DropCommand[T]) Do() {
 	c.copy = make(map[string]T)
 	for k, v := range c.m {
 		c.copy[k] = v
@@ -68,14 +68,14 @@ func (c DropCommand[T]) Do() {
 	}
 }
 
-func (c DropCommand[T]) Undo() {
+func (c *DropCommand[T]) Undo() {
 	for k, v := range c.copy {
 		c.m[k] = v
 	}
 }
 
-func NewCustomCommand(do func(), undo func()) CustomCommand {
-	return CustomCommand{do: do, undo: undo}
+func NewCustomCommand(do func(), undo func()) *CustomCommand {
+	return &CustomCommand{do: do, undo: undo}
 }
 
 type CustomCommand struct {
@@ -83,11 +83,11 @@ type CustomCommand struct {
 	undo func()
 }
 
-func (c CustomCommand) Do() {
+func (c *CustomCommand) Do() {
 	c.do()
 }
 
-func (c CustomCommand) Undo() {
+func (c *CustomCommand) Undo() {
 	c.undo()
 }
 

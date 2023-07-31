@@ -221,24 +221,22 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 
 	var locks []*sync.RWMutex
 
-	return ExecuteCommands(q.DumpState, CustomCommand{
-		do: func() {
+	return ExecuteCommands(q.DumpState,
+		NewCustomCommand(func() {
 			for _, l := range q.locks {
 				l.Lock()
 				locks = append(locks, l)
 			}
 			spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
+		}, func() {}),
+		NewDropCommand(q.Krs), NewDropCommand(q.locks),
+		NewCustomCommand(func() {
+			for _, l := range locks {
+				l.Unlock()
+			}
 		},
-		undo: func() {},
-	}, DropCommand[*KeyRange]{m: q.Krs}, DropCommand[*sync.RWMutex]{m: q.locks},
-		CustomCommand{
-			do: func() {
-				for _, l := range locks {
-					l.Unlock()
-				}
-			},
-			undo: func() {},
-		})
+			func() {}),
+	)
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {

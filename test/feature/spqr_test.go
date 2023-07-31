@@ -181,9 +181,9 @@ func (tctx *testContext) cleanup() {
 		}
 	}
 	tctx.dbs = make(map[Addr]*sqlx.DB)
-	// if err := tctx.composer.Down(); err != nil {
-	// 	log.Printf("failed to tear down compose: %s", err)
-	// }
+	if err := tctx.composer.Down(); err != nil {
+		log.Printf("failed to tear down compose: %s", err)
+	}
 	tctx.variables = make(map[string]interface{})
 	tctx.composerEnv = make([]string, 0)
 	tctx.sqlQueryResult = make([]map[string]interface{}, 0)

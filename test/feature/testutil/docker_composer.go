@@ -100,7 +100,7 @@ func (dc *DockerComposer) runCompose(args []string, env []string) error {
 	cmd.Env = append(os.Environ(), env...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to run 'docker compose %s': %s\n%s", strings.Join(args2, " "), err, out)
+		return fmt.Errorf("failed to run 'docker-compose %s': %s\n%s", strings.Join(args2, " "), err, out)
 	}
 	return nil
 }
