@@ -54,7 +54,11 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	data, err := os.ReadFile(backupPath)
 	if err != nil {
 		spqrlog.Zero.Info().Err(err).Msg("cannot read memqdb backup file. Let's create new one.")
-		os.Create(backupPath)
+		f, err := os.Create(backupPath)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
 		return qdb, nil
 	}
 	err = json.Unmarshal(data, qdb)
@@ -71,11 +75,10 @@ func (q *MemQDB) DumpState() error {
 	tmpPath := q.backupPath + ".tmp"
 
 	f, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE, 0644)
-	defer f.Close()
-
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
 	state, err := json.Marshal(q)
 
