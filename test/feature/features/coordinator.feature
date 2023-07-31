@@ -10,14 +10,56 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE SHARDING RULE r1 COLUMN id;
-    CREATE KEY RANGE krid1 from 0 to 10 route to sh1;
-    CREATE KEY RANGE krid2 from 11 to 30 route to sh2;
+    CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
+    CREATE KEY RANGE krid2 FROM 11 TO 30 ROUTE TO sh2;
     """
     Then command return code should be "0"
 
     When I run SQL on host "router"
     """
     CREATE TABLE test(id int, name text)
+    """
+    Then command return code should be "0"
+
+  Scenario: Add/Remove router
+    When I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r1
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match regexp
+    """
+    \[\]
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r2 ADDRESS regress_router::7000;
+    SHOW routers
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    router r2-regress_router:7000
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r3 ADDRESS invalid_router::7000
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    Error while dialing
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r2
     """
     Then command return code should be "0"
 
@@ -44,63 +86,138 @@ Feature: Coordinator test
     INSERT INTO test(id, name) VALUES(5, 'random_word');
     SELECT name FROM test WHERE id=5
     """
-    Then SQL result should match regexp
+    Then command return code should be "0"
+    And SQL result should match regexp
     """
     random_word
     """
 
   Scenario: Split/Unite key range works
-    Given I run SQL on host "coordinator"
+    When I run SQL on host "coordinator"
     """
     SPLIT KEY RANGE krid3 FROM krid1 BY 5;
-    LOCK KEY RANGE krid3;
+    SHOW key_ranges
     """
-    And I run SQL on host "router"
+    Then command return code should be "0"
+    And SQL result should match regexp
     """
-    SELECT name FROM test WHERE id=7
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
     """
-    Then SQL error on host "router" should match regexp
+    And SQL result should match regexp
     """
-    context deadline exceeded
-    """
-
-    When I run SQL on host "router"
-    """
-    INSERT INTO test(id, name) VALUES(5, 'random_word');
-    SELECT name FROM test WHERE id=5
-    """
-    Then SQL result should match regexp
-    """
-    random_word
+    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"10"
     """
 
-    Given I run SQL on host "coordinator"
+    When I run SQL on host "router-admin"
     """
-    UNLOCK KEY RANGE krid3
+    SHOW key_ranges
     """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    """
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"10"
+    """
+
     When I run SQL on host "coordinator"
     """
     UNITE KEY RANGE krid1 WITH krid3;
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"10"
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"10"
+    """
+
+  Scenario: Split/Unite locked key range
+    When I run SQL on host "coordinator"
+    """
     LOCK KEY RANGE krid1;
+    SPLIT KEY RANGE krid3 FROM krid1 BY 5;
     """
-    And I run SQL on host "router"
-    """
-    SELECT name FROM test WHERE id=5
-    """
-    Then SQL error on host "router" should match regexp
+    Then SQL error on host "coordinator" should match regexp
     """
     context deadline exceeded
     """
 
+    When I run SQL on host "coordinator"
+    """
+    UNITE KEY RANGE krid1 WITH krid2
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    context deadline exceeded
+    """
+
+  Scenario: Router is down
+    Given host "router" is stopped
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    router r1-regress_router:7000
+    """
+
+    Given I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
+    """
     When I run SQL on host "router"
     """
-    SELECT name FROM test WHERE id=6
+    SHOW key_ranges
     """
-    Then SQL error on host "router" should match regexp
+    Then command return code should be "1"
+
+  Scenario: QDB is down
+    Given host "qdb01" is stopped
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE to sh1;
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
     """
     context deadline exceeded
     """
 
-  #Scenario: Move key range works
+  Scenario: Coordinator can restart
+    #
+    # Coordinator is Up
+    #
+    When I run SQL on host "coordinator"
+    """
+    CREATE SHARDING RULE r2 COLUMN test;
+    """
+    Then command return code should be "0"
 
-  #Scneario: Coordinator can restart
+    #
+    # Coordinator has been restarted
+    #
+    Given host "coordinator" is stopped
+    And host "coordinator" is started
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    "Key range ID":"r2-regress_router:7000"
+    """

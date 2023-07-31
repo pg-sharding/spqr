@@ -189,7 +189,12 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 				resp, err := rrClient.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 				if err != nil {
-					return err
+					spqrlog.Zero.Debug().Str("router id", r.ID).Msg("router is unavailable")
+					if err := qc.db.LockRouter(ctx, r.ID); err != nil {
+						spqrlog.Zero.Debug().Str("router id", r.ID).Msg("unable to lock router")
+					}
+					continue
+					//return err
 				}
 
 				switch resp.Status {
@@ -275,6 +280,10 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	}
 
 	for _, rtr := range rtrs {
+		if rtr.State != qdb.OPENED {
+			continue
+		}
+
 		// TODO: run cb`s async
 		cc, err := DialRouter(&topology.Router{
 			ID:      rtr.ID,
@@ -432,7 +441,12 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		})
 
 		if err != nil {
-			return err
+			spqrlog.Zero.Debug().
+				Str("router", r.ID).
+				Err(err).
+				Msg("etcdqdb: notify router add key range")
+			continue
+			//return err
 		}
 
 		spqrlog.Zero.Debug().
@@ -858,8 +872,8 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	spqrlog.Zero.Debug().
 		Str("address", r.Address).
 		Str("router", r.ID).
-		Msg("unregister router")
-	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.CLOSED))
+		Msg("register router")
+	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {

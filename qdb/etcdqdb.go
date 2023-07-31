@@ -494,7 +494,7 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 
 func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
 	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
-	if err != nil {
+	if err != nil || len(resp.Kvs) == 0 {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
 		return nil, err
 	}
@@ -598,7 +598,20 @@ func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: lock router")
-	return nil
+	routers, err := q.ListRouters(ctx)
+	if err != nil {
+		return err
+	}
+	var r *Router
+	for _, router := range routers {
+		if router.ID == id {
+			r = router
+			break
+		}
+	}
+	r.State = CLOSED
+
+	return q.AddRouter(ctx, r)
 }
 
 // ==============================================================================

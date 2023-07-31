@@ -253,8 +253,11 @@ func (tctx *testContext) getPostgresqlConnection(dbAddr Addr) (*sqlx.DB, error) 
 	if !ok {
 		return nil, fmt.Errorf("postgresql %s is not in cluster", dbAddr.host)
 	}
+	if strings.HasSuffix(host, "admin") || host == "coordinator" {
+		return db, nil
+	}
 	err := db.Ping()
-	if err == nil || strings.HasSuffix(host, "admin") || host == "coordinator" {
+	if err == nil {
 		return db, nil
 	}
 	addr, err := tctx.composer.GetAddr(dbAddr.host, dbAddr.port)
@@ -287,7 +290,9 @@ func (tctx *testContext) queryPostgresql(dbAddr Addr, query string, args interfa
 		}
 		tctx.sqlQueryResult = nil
 		result, err = tctx.doPostgresqlQuery(db, q, args, postgresqlQueryTimeout)
+		tctx.commandRetcode = 0
 		if err != nil {
+			tctx.commandRetcode = 1
 			tctx.sqlUserQueryError.Store(host, err.Error())
 		}
 		tctx.sqlQueryResult = result
@@ -449,6 +454,46 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 	return nil
 }
 
+func (tctx *testContext) stepHostIsStopped(service string) error {
+	if db, ok := tctx.dbs[service]; ok {
+		if err := db.Close(); err != nil {
+			return err
+		}
+		delete(tctx.dbs, service)
+	}
+
+	err := tctx.composer.Stop(service)
+	if err != nil {
+		return fmt.Errorf("failed to stop service %s: %s", service, err)
+	}
+
+	return nil
+}
+
+func (tctx *testContext) stepHostIsStarted(service string) error {
+	err := tctx.composer.Start(service)
+	if err != nil {
+		return fmt.Errorf("failed to start service %s: %s", service, err)
+	}
+
+	for _, s := range tctx.composer.Services() {
+		if strings.HasPrefix(s, service) {
+			addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+			if err != nil {
+				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
+			}
+
+			conn, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("error while connecting to service %s: %s", service, err)
+			}
+			tctx.dbs[service] = conn
+			return nil
+		}
+	}
+	return fmt.Errorf("service %s was not found in docker composer", service)
+}
+
 func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	if tctx.commandRetcode != code {
 		return fmt.Errorf("command return code is %d, while expected %d\n%s", tctx.commandRetcode, code, tctx.commandOutput)
@@ -545,14 +590,6 @@ func (tctx *testContext) stepRestartRouter() error {
 	}
 
 	return err
-}
-
-func (tctx *testContext) stepHostIsStopped(host string) error {
-	return tctx.composer.Stop(host)
-}
-
-func (tctx *testContext) stepHostIsStarted(host string) error {
-	return tctx.composer.Start(host)
 }
 
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {

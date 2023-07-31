@@ -84,6 +84,12 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 func (l *Local) Serve(ctx context.Context, cl client.Client) error {
+	for k, v := range cl.Params() {
+		if err := cl.Send(&pgproto3.ParameterStatus{Name: k, Value: v}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
