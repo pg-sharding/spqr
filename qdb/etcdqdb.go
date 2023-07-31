@@ -506,6 +506,12 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 			spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
 			return nil, err
 		}
+		if st.ToStatus == "" {
+			continue
+		}
+	}
+	if st.ToStatus == "" {
+		return nil, fmt.Errorf("no transaction in qdb with key %s", key)
 	}
 	return &st, nil
 }

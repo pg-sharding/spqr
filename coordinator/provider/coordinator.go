@@ -237,17 +237,10 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 
 	for _, r := range ranges {
 		tx, err := db.GetTransferTx(context.TODO(), r.KeyRangeID)
-		if tx == nil || err != nil || tx.ToStatus == "" {
+		if err != nil {
 			continue
 		}
-		if tx.ToStatus == "commit" {
-			if tx.FromStatus == "commit" {
-				err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
-				if err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
-				}
-				continue
-			}
+		if tx.ToStatus == "commit" && tx.FromStatus != "commit" {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
 			tem := kr.MoveKeyRange{
 				ShardId: tx.ToShardId,
@@ -257,10 +250,11 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
 			}
-		} else {
+		} else if tx.FromStatus != "commit" {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
+
 		err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
