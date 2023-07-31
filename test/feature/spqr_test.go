@@ -444,9 +444,9 @@ func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 func (tctx *testContext) getAddr(host string) Addr {
 	switch host {
 	case "spqr-console":
-		return Addr{host: "router", port: spqrConsolePort}
-	case "coordinator":
-		return Addr{host: spqrCoordinatorName, port: spqrConsolePort}
+		return Addr{host: spqrRouterName, port: spqrConsolePort}
+	case spqrCoordinatorName:
+		return Addr{host: spqrCoordinatorName, port: coordinatorPort}
 	default:
 		return Addr{host: host, port: spqrPort}
 	}
@@ -496,12 +496,12 @@ func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) err
 }
 
 func (tctx *testContext) stepRestartRouter() error {
-	err := tctx.composer.Stop("router")
+	err := tctx.composer.Stop(spqrRouterName)
 	if err != nil {
 		return err
 	}
 
-	err = tctx.composer.Start("router")
+	err = tctx.composer.Start(spqrRouterName)
 
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrRouterName) {
