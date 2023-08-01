@@ -84,36 +84,33 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
-	if !rcfg.UnderCoordinator {
-		for _, fname := range []string{
-			rcfg.InitSQL,
-			rcfg.AutoConf,
-		} {
-			if len(fname) == 0 {
-				continue
-			}
-			queries, err := localConsole.Qlog().Recover(ctx, fname)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
-				return nil, err
-			}
-
-			spqrlog.Zero.Info().Msg("executing init sql")
-			for _, query := range queries {
-				spqrlog.Zero.Info().Str("query", query).Msg("")
-				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-				}
-			}
-
-			spqrlog.Zero.Info().
-				Int("count", len(queries)).
-				Str("filename", fname).
-				Msg("successfully init queries from file")
+	for _, fname := range []string{
+		rcfg.InitSQL,
+	} {
+		if len(fname) == 0 {
+			continue
+		}
+		queries, err := localConsole.Qlog().Recover(ctx, fname)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
+			return nil, err
 		}
 
-		qr.Initialize()
+		spqrlog.Zero.Info().Msg("executing init sql")
+		for _, query := range queries {
+			spqrlog.Zero.Info().Str("query", query).Msg("")
+			if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}
+
+		spqrlog.Zero.Info().
+			Int("count", len(queries)).
+			Str("filename", fname).
+			Msg("successfully init queries from file")
 	}
+
+	qr.Initialize()
 
 	return &InstanceImpl{
 		RuleRouter: rr,
