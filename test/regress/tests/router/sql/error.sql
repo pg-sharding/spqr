@@ -3,8 +3,8 @@ DROP KEY RANGE ALL;
 DROP SHARDING RULE ALL;
 CREATE SHARDING RULE r1 COLUMN id;
 
-CREATE KEY RANGE kridi1 from 1 to 10 route to sh1;
-CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
+CREATE KEY RANGE kridi1 from 1 to 11 route to sh1;
+CREATE KEY RANGE kridi2 from 11 to 31 route to sh2;
 
 \c regress
 

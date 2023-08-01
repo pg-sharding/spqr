@@ -2,8 +2,8 @@
 
 -- check that numeric type works
 ADD SHARDING RULE t1 COLUMNS id;
-ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-ADD KEY RANGE krid2 FROM 11 TO 100 ROUTE TO sh2;
+ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
+ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 
 \c regress
 

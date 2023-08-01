@@ -173,8 +173,8 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
-		if err := func() error {
-			for _, r := range rtrs {
+		for _, r := range rtrs {
+			if err := func() error {
 				internalR := &topology.Router{
 					ID:      r.ID,
 					Address: r.Address,
@@ -189,12 +189,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 				resp, err := rrClient.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 				if err != nil {
-					spqrlog.Zero.Debug().Str("router id", r.ID).Msg("router is unavailable")
-					if err := qc.db.LockRouter(ctx, r.ID); err != nil {
-						spqrlog.Zero.Debug().Str("router id", r.ID).Msg("unable to lock router")
-					}
-					continue
-					//return err
+					return err
 				}
 
 				switch resp.Status {
@@ -213,13 +208,13 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 					// TODO: consistency checks
 				}
+				return nil
+			}(); err != nil {
+				spqrlog.Zero.Error().
+					Str("router id", r.ID).
+					Err(err).
+					Msg("router watchdog coroutine failed")
 			}
-
-			return nil
-		}(); err != nil {
-			spqrlog.Zero.Error().
-				Err(err).
-				Msg("router watchdog coroutine failed")
 		}
 
 		time.Sleep(time.Second)

@@ -164,6 +164,9 @@ Feature: Coordinator test
     """
 
   Scenario: Router is down
+    #
+    # Coordinator doesn't unregister router
+    #
     Given host "router" is stopped
     When I run SQL on host "coordinator"
     """
@@ -175,11 +178,15 @@ Feature: Coordinator test
     router r1-regress_router:7000
     """
 
+    #
+    # Coordinator doesn't crash on action
+    #
     Given I run SQL on host "coordinator"
     """
     ADD KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
     """
-    And host "router" is started
+
+    Given host "router" is started
     When I run SQL on host "router-admin"
     """
     SHOW key_ranges

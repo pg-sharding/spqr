@@ -13,16 +13,16 @@ ADD SHARDING RULE t1 COLUMNS id;
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 10
+ created key range from 1 to 11
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 100 ROUTE TO sh2;
+ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
           add key range           
 ----------------------------------
- created key range from 11 to 100
+ created key range from 11 to 101
 (1 row)
 
 \c regress
@@ -156,10 +156,10 @@ ADD SHARDING RULE t1 COLUMNS id;
  created sharding rule t1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-ADD KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 TO 88888888-8888-8888-8888-888888888888 ROUTE TO sh1;
+ADD KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 TO 88888888-8888-8888-8888-888888888889 ROUTE TO sh1;
                                             add key range                                            
 -----------------------------------------------------------------------------------------------------
- created key range from 00000000-0000-0000-0000-000000000000 to 88888888-8888-8888-8888-888888888888
+ created key range from 00000000-0000-0000-0000-000000000000 to 88888888-8888-8888-8888-888888888889
 (1 row)
 
 ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;
@@ -177,7 +177,7 @@ INSERT INTO xxmixeduuid (id) VALUES('FA98123B-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixeduuid (id) VALUES('1234AAAA-98AB-0000-0000-BCAD0192EFEF');
 NOTICE: send query to shard(s) : sh1
-INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF');
+INSERT INTO xxmixeduuid (id) VALUES('FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFE');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0000-0000-000000000000');
 NOTICE: send query to shard(s) : sh1
@@ -204,12 +204,12 @@ NOTICE: send query to shard(s) : sh1
 ----
 (0 rows)
 
-SELECT * FROM xxmixeduuid WHERE id <= 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF' ORDER BY id;
+SELECT * FROM xxmixeduuid WHERE id <= 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFE' ORDER BY id;
 NOTICE: send query to shard(s) : sh2
                   id                  
 --------------------------------------
  fa98123b-0000-0ea0-0fab-ab031389ff09
- ffffffff-ffff-ffff-ffff-ffffffffffff
+ ffffffff-ffff-ffff-ffff-fffffffffffe
 (2 rows)
 
 DROP TABLE xxmixeduuid;

@@ -130,7 +130,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 		Msg("checking key with key ranges")
 
 	for _, krkey := range meta.krs {
-		if kr.CmpRangesLess(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
+		if kr.CmpRangesLessEqual(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
 			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
 				return nil, err
 			}

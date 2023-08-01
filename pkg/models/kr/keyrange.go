@@ -22,10 +22,18 @@ type KeyRange struct {
 
 func CmpRangesLess(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
+		return string(kr) < string(other)
+	}
+
+	return len(kr) < len(other)
+}
+
+func CmpRangesLessEqual(kr []byte, other []byte) bool {
+	if len(kr) == len(other) {
 		return string(kr) <= string(other)
 	}
 
-	return len(kr) <= len(other)
+	return len(kr) < len(other)
 }
 
 func CmpRangesEqual(kr []byte, other []byte) bool {
