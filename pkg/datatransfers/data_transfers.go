@@ -138,12 +138,12 @@ func beginTransactions(ctx context.Context, f, t string) error {
 }
 
 func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.QDB) error {
-	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", t))
+	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
 		return err
 	}
-	_, err = txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s'", f))
+	_, err = txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", f, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
 		return err
@@ -151,8 +151,8 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 
 	d := qdb.DataTransferTransaction{
 		ToShardId:   t,
-		ToTxName:    t,
-		FromTxName:  f,
+		ToTxName:    fmt.Sprintf("%s-%s", t, krid),
+		FromTxName:  fmt.Sprintf("%s-%s", f, krid),
 		FromShardId: f,
 		ToStatus:    "process",
 		FromStatus:  "process",
@@ -163,10 +163,10 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
 
-	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", t))
+	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		_, err1 := txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", f))
+		_, err1 := txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s-%s'", f, krid))
 		if err1 != nil {
 			spqrlog.Zero.Error().Err(err1).Msg("error closing transaction")
 		}
@@ -179,7 +179,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
 
-	_, err = txFrom.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", f))
+	_, err = txFrom.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s-%s'", f, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
 		return err
