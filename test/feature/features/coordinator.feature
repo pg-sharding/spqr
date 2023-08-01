@@ -179,11 +179,16 @@ Feature: Coordinator test
     """
     ADD KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
     """
-    When I run SQL on host "router"
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges
     """
-    Then command return code should be "1"
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    \[\]
+    """
 
   Scenario: QDB is down
     Given host "qdb01" is stopped
@@ -203,7 +208,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    CREATE SHARDING RULE r2 COLUMN test;
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
     """
     Then command return code should be "0"
 
@@ -219,5 +224,5 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"r2-regress_router:7000"
+    "Key range ID":"krid3"
     """

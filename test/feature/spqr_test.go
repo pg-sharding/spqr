@@ -476,21 +476,57 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		return fmt.Errorf("failed to start service %s: %s", service, err)
 	}
 
-	for _, s := range tctx.composer.Services() {
-		if strings.HasPrefix(s, service) {
-			addr, err := tctx.composer.GetAddr(service, coordinatorPort)
-			if err != nil {
-				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
-			}
+	if service == "coordinator" {
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+				if err != nil {
+					return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
+				}
 
-			conn, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlConnectTimeout)
-			if err != nil {
-				return fmt.Errorf("error while connecting to service %s: %s", service, err)
+				conn, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("error while connecting to service %s: %s", service, err)
+				}
+				tctx.dbs[service] = conn
+				return nil
 			}
-			tctx.dbs[service] = conn
-			return nil
 		}
 	}
+
+	if strings.HasPrefix(service, "router") {
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, spqrPort)
+				if err != nil {
+					return fmt.Errorf("failed to get router addr %s: %s", service, err)
+				}
+				db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+				}
+				tctx.dbs[service] = db
+				return nil
+			}
+		}
+
+		// check router admin console
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, spqrPort)
+				if err != nil {
+					return fmt.Errorf("failed to get router addr %s: %s", service, err)
+				}
+				db, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+				}
+				service = fmt.Sprintf("%s-admin", service)
+				tctx.dbs[service] = db
+			}
+		}
+	}
+
 	return fmt.Errorf("service %s was not found in docker composer", service)
 }
 

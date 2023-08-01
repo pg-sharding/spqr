@@ -84,10 +84,13 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 func (l *Local) Serve(ctx context.Context, cl client.Client) error {
-	for k, v := range cl.Params() {
-		if err := cl.Send(&pgproto3.ParameterStatus{Name: k, Value: v}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
+	params := []string{"client_encoding", "standard_conforming_strings"}
+	for _, p := range params {
+		if v, ok := cl.Params()[p]; ok {
+			if err := cl.Send(&pgproto3.ParameterStatus{Name: p, Value: v}); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
 		}
 	}
 
