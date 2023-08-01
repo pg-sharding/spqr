@@ -275,21 +275,27 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	}
 
 	for _, rtr := range rtrs {
-		if rtr.State != qdb.OPENED {
-			continue
-		}
+		if err := func() error {
+			if rtr.State != qdb.OPENED {
+				return fmt.Errorf("router is closed")
+			}
 
-		// TODO: run cb`s async
-		cc, err := DialRouter(&topology.Router{
-			ID:      rtr.ID,
-			Address: rtr.Addr(),
-		})
-		if err != nil {
-			return err
-		}
+			// TODO: run cb`s async
+			cc, err := DialRouter(&topology.Router{
+				ID:      rtr.ID,
+				Address: rtr.Addr(),
+			})
+			if err != nil {
+				return err
+			}
 
-		if err := cb(cc); err != nil {
-			return err
+			if err := cb(cc); err != nil {
+				return err
+			}
+
+			return nil
+		}(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 		}
 	}
 
