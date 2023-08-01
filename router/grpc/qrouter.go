@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -23,6 +24,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
 	protos.UnimplementedBackendConnectionsServiceServer
+	protos.UnimplementedPoolServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -252,6 +254,19 @@ func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	return shardInfo
 }
 
+func PoolToProto(p pool.Pool) *protos.PoolInfo {
+	poolInfo := &protos.PoolInfo{
+		Id:            fmt.Sprintf("%p", p),
+		DB:            p.Rule().DB,
+		Usr:           p.Rule().Usr,
+		Host:          p.Hostname(),
+		ConnCount:     int64(p.UsedConnectionCount()),
+		IdleConnCount: int64(p.IdleConnectionCount()),
+		QueueSize:     int64(p.QueueResidualSize()),
+	}
+	return poolInfo
+}
+
 func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
@@ -267,6 +282,16 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.Lis
 
 	err := l.rr.ForEach(func(sh shard.Shardinfo) error {
 		reply.Conns = append(reply.Conns, ShardToProto(sh))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest) (*protos.ListPoolsResponse, error) {
+	reply := &protos.ListPoolsResponse{}
+
+	err := l.rr.ForEachPool(func(p pool.Pool) error {
+		reply.Pools = append(reply.Pools, PoolToProto(p))
 		return nil
 	})
 	return reply, err
@@ -288,6 +313,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
+	protos.RegisterPoolServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -295,3 +321,4 @@ var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
+var _ protos.PoolServiceServer = &LocalQrouterServer{}

@@ -123,7 +123,25 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 }
 
 func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
-	return fmt.Errorf("not implemented")
+	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+		ctx := context.TODO()
+		rrBackConn := routerproto.NewPoolServiceClient(cc)
+
+		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
+		resp, err := rrBackConn.ListPools(ctx, &routerproto.ListPoolsRequest{})
+		if err != nil {
+			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
+			return err
+		}
+
+		for _, p := range resp.Pools {
+			err = cb(NewMockPool(p))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}

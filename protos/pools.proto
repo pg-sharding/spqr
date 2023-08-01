@@ -1,0 +1,25 @@
+syntax = "proto3";
+package spqr;
+
+option go_package = "spqr/proto";
+
+service PoolService {
+  rpc ListPools(ListPoolsRequest) returns (ListPoolsResponse) {}
+}
+
+message ListPoolsRequest {
+}
+
+message ListPoolsResponse {
+repeated PoolInfo pools = 1;
+}
+
+message PoolInfo {
+  string Id = 1;
+  string DB = 2;
+  string Usr = 3;
+  string Host = 4;
+  int64 ConnCount = 5;
+  int64 IdleConnCount = 6;
+  int64 QueueSize = 7;
+}
