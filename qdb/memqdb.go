@@ -90,7 +90,7 @@ func (q *MemQDB) DumpState() error {
 	}
 	defer f.Close()
 
-	state, err := json.Marshal(q)
+	state, err := json.MarshalIndent(q, "", "	")
 
 	if err != nil {
 		return err
