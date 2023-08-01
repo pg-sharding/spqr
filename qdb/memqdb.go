@@ -12,9 +12,9 @@ import (
 )
 
 type MemQDB struct {
-	mu    sync.RWMutex
-	locks map[string]*sync.RWMutex
+	mu sync.RWMutex
 
+	Locks        map[string]*sync.RWMutex            `json:"locks"`
 	Freq         map[string]bool                     `json:"freq"`
 	Krs          map[string]*KeyRange                `json:"krs"`
 	Shards       map[string]*Shard                   `json:"shards"`
@@ -33,7 +33,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
 		Freq:       map[string]bool{},
 		Krs:        map[string]*KeyRange{},
-		locks:      map[string]*sync.RWMutex{},
+		Locks:      map[string]*sync.RWMutex{},
 		Shards:     map[string]*Shard{},
 		Shrules:    map[string]*ShardingRule{},
 		Dataspaces: map[string]*Dataspace{},
@@ -65,6 +65,13 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 		return nil, err
 	}
 	err = json.Unmarshal(data, qdb)
+
+	for kr, locked := range qdb.Freq {
+		if locked {
+			qdb.Locks[kr].Lock()
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +193,7 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	defer q.mu.Unlock()
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
-		NewUpdateCommand(q.locks, keyRange.KeyRangeID, &sync.RWMutex{}),
+		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
 		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
 }
 
@@ -217,7 +224,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, id),
-		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.locks, id))
+		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.Locks, id))
 }
 
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
@@ -229,13 +236,13 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 
 	return ExecuteCommands(q.DumpState,
 		NewCustomCommand(func() {
-			for _, l := range q.locks {
+			for _, l := range q.Locks {
 				l.Lock()
 				locks = append(locks, l)
 			}
 			spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 		}, func() {}),
-		NewDropCommand(q.Krs), NewDropCommand(q.locks),
+		NewDropCommand(q.Krs), NewDropCommand(q.Locks),
 		NewCustomCommand(func() {
 			for _, l := range locks {
 				l.Unlock()
@@ -274,7 +281,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	}
 
 	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
-		NewCustomCommand(q.locks[id].Lock, q.locks[id].Unlock))
+		NewCustomCommand(q.Locks[id].Lock, q.Locks[id].Unlock))
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +299,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
-		NewCustomCommand(q.locks[id].Unlock, q.locks[id].Lock))
+		NewCustomCommand(q.Locks[id].Unlock, q.Locks[id].Lock))
 }
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
@@ -315,8 +322,8 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 func (q *MemQDB) ShareKeyRange(id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: sharing key with key")
 
-	q.locks[id].RLock()
-	defer q.locks[id].RUnlock()
+	q.Locks[id].RLock()
+	defer q.Locks[id].RUnlock()
 
 	return nil
 }

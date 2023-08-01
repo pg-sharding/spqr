@@ -10,18 +10,23 @@ func NewDeleteCommand[T any](m map[string]T, key string) *DeleteCommand[T] {
 }
 
 type DeleteCommand[T any] struct {
-	m     map[string]T
-	key   string
-	value T
+	m       map[string]T
+	key     string
+	value   T
+	present bool
 }
 
 func (c *DeleteCommand[T]) Do() {
-	c.value = c.m[c.key]
+	c.value, c.present = c.m[c.key]
 	delete(c.m, c.key)
 }
 
 func (c *DeleteCommand[T]) Undo() {
-	c.m[c.key] = c.value
+	if !c.present {
+		delete(c.m, c.key)
+	} else {
+		c.m[c.key] = c.value
+	}
 }
 
 func NewUpdateCommand[T any](m map[string]T, key string, value T) *UpdateCommand[T] {
