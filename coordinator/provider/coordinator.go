@@ -469,11 +469,40 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 
 	keyRange := kr.KeyRangeFromDB(keyRangeDB)
 
-	return keyRange, nil
+	return keyRange, qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
+			Id: []string{keyRangeID},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock key range response")
+		return nil
+	})
 }
 
 func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
-	return qc.db.UnlockKeyRange(ctx, keyRangeID)
+	if err := qc.db.UnlockKeyRange(ctx, keyRangeID); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
+			Id: []string{keyRangeID},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock key range response")
+		return nil
+	})
 }
 
 // Split TODO: check bounds and keyRangeID (sourceID)
@@ -506,6 +535,12 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		},
 	)
 
+	// splitting by X makes X the point of intersection
+	// increase lower bound of new key range by 1
+	//krNew.LowerBound = make([]byte, len(req.Bound))
+	//copy(krNew.LowerBound, req.Bound)
+	//krNew.LowerBound[len(krNew.LowerBound)-1]++
+
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
 		Bytes("upper-bound", krNew.UpperBound).
@@ -513,13 +548,31 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Str("id", krNew.ID).
 		Msg("new key range")
 
+	krOld.UpperBound = req.Bound
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
+		return err
+	}
+
 	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
 		return fmt.Errorf("failed to add a new key range: %w", err)
 	}
 
-	krOld.UpperBound = req.Bound
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
+			Bound:        req.Bound,
+			SourceId:     req.SourceID,
+			KeyRangeInfo: krNew.ToProto(),
+		})
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop key range response")
+		return err
+	}); err != nil {
+		return err
+	}
 
-	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld))
+	return nil
 }
 
 func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
@@ -614,6 +667,20 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
 		return fmt.Errorf("failed to update a new key range: %w", err)
+	}
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
+			Bound: krRight.LowerBound,
+		})
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock sharding rules response")
+		return err
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -823,7 +890,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 	}
 
 	r := route.NewRoute(nil, nil, nil)
-	r.SetParams(shard.ParameterSet{})
+	r.SetParams(cl.Params())
 	if err := cl.Auth(r); err != nil {
 		return nil, err
 	}

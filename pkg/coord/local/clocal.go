@@ -186,8 +186,8 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 }
 
 func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-
 	var krleft *qdb.KeyRange
+	var krright *qdb.KeyRange
 	var err error
 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil { //nolint:all TODO
@@ -202,7 +202,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
 	// TODO: krRight seems to be empty.
-	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
+	if krright, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
@@ -213,43 +213,71 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 		}
 	}(qr.qdb, ctx, req.KeyRangeIDRight)
 
-	if err = qr.qdb.DropKeyRange(ctx, krleft.KeyRangeID); err != nil {
+	if err = qr.qdb.DropKeyRange(ctx, krright.KeyRangeID); err != nil {
 		return err
 	}
 
-	var krRight *kr.KeyRange
-	krRight.LowerBound = krleft.LowerBound
+	united := &kr.KeyRange{
+		LowerBound: krleft.LowerBound,
+		UpperBound: krright.UpperBound,
+		ShardID:    krleft.ShardID,
+		ID:         krleft.KeyRangeID,
+	}
 
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krRight)
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)
 }
 
 func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	var krOld *qdb.KeyRange
 	var err error
 
+	spqrlog.Zero.Debug().
+		Str("krid", req.Krid).
+		Interface("bound", req.Bound).
+		Str("source-id", req.SourceID).
+		Msg("split request is")
+
 	if krOld, err = qr.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QDB, ctx context.Context, krid string) {
-		err := qdb.UnlockKeyRange(ctx, krid)
-		if err != nil {
+
+	defer func() {
+		if err := qr.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
-	}(qr.qdb, ctx, req.SourceID)
+	}()
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			LowerBound: req.Bound,
 			UpperBound: krOld.UpperBound,
-			KeyRangeID: req.SourceID,
+			KeyRangeID: req.Krid,
+			ShardID:    krOld.ShardID,
 		},
 	)
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
+	// splitting by X makes X the point of intersection
+	// increase lower bound of new key range by 1
+	//krNew.LowerBound = make([]byte, len(req.Bound))
+	//copy(krNew.LowerBound, req.Bound)
+	//krNew.LowerBound[len(krNew.LowerBound)-1]++
+	krNew.LowerBound = req.Bound
+
+	spqrlog.Zero.Debug().
+		Bytes("lower-bound", krNew.LowerBound).
+		Bytes("upper-bound", krNew.UpperBound).
+		Str("shard-id", krNew.ShardID).
+		Str("id", krNew.ID).
+		Msg("new key range")
+
+	krOld.UpperBound = req.Bound
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}
-	krOld.UpperBound = req.Bound
-	_ = qr.qdb.UpdateKeyRange(ctx, krOld)
+
+	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
+		return fmt.Errorf("failed to add a new key range: %w", err)
+	}
 
 	return nil
 }

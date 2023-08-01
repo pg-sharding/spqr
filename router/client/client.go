@@ -571,17 +571,14 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return err
 			}
 			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
 		case conn.CANCELREQ:
 			cl.csm = &pgproto3.CancelRequest{}
 			if err = cl.csm.Decode(msg); err != nil {
 				return err
 			}
 
-			return nil
+			//return nil
+			return fmt.Errorf("cancel req")
 		case conn.GSSREQ:
 			/* TODO: Support */
 		default:

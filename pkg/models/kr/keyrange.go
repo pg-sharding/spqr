@@ -28,6 +28,14 @@ func CmpRangesLess(kr []byte, other []byte) bool {
 	return len(kr) <= len(other)
 }
 
+func CmpRangesEqual(kr []byte, other []byte) bool {
+	if len(kr) == len(other) {
+		return string(kr) == string(other)
+	}
+
+	return false
+}
+
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: kr.LowerBound,

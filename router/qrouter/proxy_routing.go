@@ -546,7 +546,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		}
 	}
 
-	/* Step 1.5: check is query contains any unparsed columns that are sharding rule column.
+	/* Step 1.5: check if query contains any unparsed columns that are sharding rule column.
 	Reject query if so */
 	for colname := range meta.unparsed_columns {
 		if _, err := ops.MatchShardingRule(ctx, qr.mgr, "", []string{colname}, qr.mgr.QDB()); err == ops.ErrRuleIntersect {
@@ -565,6 +565,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		var route_err error
 		for tname, cols := range meta.rels {
 			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, qr.mgr.QDB()); err != nil {
+
 				for _, col := range cols {
 					currroute, err := qr.deparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
