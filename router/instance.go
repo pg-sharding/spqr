@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
@@ -50,6 +51,11 @@ var _ Router = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
+	skipInitSQL := false
+	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
+		skipInitSQL = true
+	}
+
 	qdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
 	if err != nil {
 		return nil, err
@@ -84,30 +90,32 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
-	for _, fname := range []string{
-		rcfg.InitSQL,
-	} {
-		if len(fname) == 0 {
-			continue
-		}
-		queries, err := localConsole.Qlog().Recover(ctx, fname)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
-			return nil, err
-		}
-
-		spqrlog.Zero.Info().Msg("executing init sql")
-		for _, query := range queries {
-			spqrlog.Zero.Info().Str("query", query).Msg("")
-			if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+	if skipInitSQL {
+		for _, fname := range []string{
+			rcfg.InitSQL,
+		} {
+			if len(fname) == 0 {
+				continue
 			}
-		}
+			queries, err := localConsole.Qlog().Recover(ctx, fname)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
+				return nil, err
+			}
 
-		spqrlog.Zero.Info().
-			Int("count", len(queries)).
-			Str("filename", fname).
-			Msg("successfully init queries from file")
+			spqrlog.Zero.Info().Msg("executing init sql")
+			for _, query := range queries {
+				spqrlog.Zero.Info().Str("query", query).Msg("")
+				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+				}
+			}
+
+			spqrlog.Zero.Info().
+				Int("count", len(queries)).
+				Str("filename", fname).
+				Msg("successfully init queries from file")
+		}
 	}
 
 	qr.Initialize()
