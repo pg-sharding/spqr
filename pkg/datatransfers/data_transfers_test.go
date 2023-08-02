@@ -2,7 +2,6 @@ package datatransfers
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -14,13 +13,8 @@ import (
 func TestQdbSavesTransactions(t *testing.T) {
 	assert := assert.New(t)
 
-	p, err := os.Getwd()
-	assert.NoError(err)
-	err = LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
-	assert.NoError(err)
-
 	mConn := &mockConn{}
-	err = beginTransactions(context.TODO(), mConn, mConn)
+	err := beginTransactions(context.TODO(), mConn, mConn)
 	assert.NoError(err)
 
 	db, err := qdb.NewQDB("mem")
@@ -39,13 +33,8 @@ func TestQdbSavesTransactions(t *testing.T) {
 func TestQdbDeletesTransactions(t *testing.T) {
 	assert := assert.New(t)
 
-	p, err := os.Getwd()
-	assert.NoError(err)
-	err = LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
-	assert.NoError(err)
-
 	mConn := &mockConn{}
-	err = beginTransactions(context.TODO(), mConn, mConn)
+	err := beginTransactions(context.TODO(), mConn, mConn)
 	assert.NoError(err)
 
 	db, err := qdb.NewQDB("mem")
