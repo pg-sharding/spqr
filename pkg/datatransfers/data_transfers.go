@@ -27,6 +27,12 @@ type ProxyW struct {
 	w io.WriteCloser
 }
 
+type pgxIface interface {
+	Begin(context.Context) (pgx.Tx, error)
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
+	Close(context.Context) error
+}
+
 func (p *ProxyW) Write(bt []byte) (int, error) {
 	return p.w.Write(bt)
 }
@@ -62,7 +68,18 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		}
 	}
 
-	err := beginTransactions(ctx, fromId, toId)
+	from, err := pgx.Connect(ctx, createConnString(fromId))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+	to, err := pgx.Connect(ctx, createConnString(toId))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
+		return err
+	}
+
+	err = beginTransactions(ctx, from, to)
 	if err != nil {
 		return err
 	}
@@ -112,18 +129,8 @@ func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool)
 	}
 }
 
-func beginTransactions(ctx context.Context, f, t string) error {
-	from, err := pgx.Connect(ctx, createConnString(f))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
-		return err
-	}
-	to, err := pgx.Connect(ctx, createConnString(t))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
-		return err
-	}
-
+func beginTransactions(ctx context.Context, from, to pgxIface) error {
+	var err error
 	txFrom, err = from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")

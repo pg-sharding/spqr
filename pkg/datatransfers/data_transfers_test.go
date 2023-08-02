@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,6 +30,8 @@ func TestSmth(t *testing.T) {
 	LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
 	m := &mock{}
 	beginTransactions(context.TODO(), m, m)
+	db, _ := qdb.NewQDB("mem")
+	commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
 	//func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db *qdb.QDB) error
 
 	//assert.Equal(4.0, stat1.Quantile(0.5))
