@@ -28,6 +28,7 @@ type RuleRouter interface {
 	Reload(configPath string) error
 	PreRoute(conn net.Conn) (rclient.RouterClient, error)
 	PreRouteAdm(conn net.Conn) (rclient.RouterClient, error)
+	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
 	AddDataShard(key qdb.ShardKey) error
@@ -160,7 +161,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	}
 
 	if cl.DB() == "spqr-console" {
-		return cl, nil
+		return r.PreRouteInitializedClientAdm(cl)
 	}
 
 	// match client to frontend rule
@@ -222,19 +223,15 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	return cl, nil
 }
 
-func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn)
-
-	if err := cl.Init(r.tlsconfig); err != nil {
-		return nil, err
-	}
-
+func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
 		_ = cl.ReplyErrMsg("failed to make route failure response")
 		return nil, err
 	}
+
+	spqrlog.Zero.Debug().Interface("frontend rule", frRule).Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
 		_ = cl.ReplyErrMsg("failed to assign rule")
@@ -247,6 +244,16 @@ func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error
 	}
 
 	return cl, nil
+}
+
+func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
+	cl := rclient.NewPsqlClient(conn)
+
+	if err := cl.Init(r.tlsconfig); err != nil {
+		return nil, err
+	}
+
+	return r.PreRouteInitializedClientAdm(cl)
 }
 
 func (r *RuleRouterImpl) ListShards() []string {

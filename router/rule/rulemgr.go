@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/route"
 )
 
@@ -38,6 +39,7 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 			if dfr == nil {
 				return nil
 			}
+			spqrlog.Zero.Debug().Interface("auth rule", dfr.AuthRule).Msg("generating new dynamic rule")
 			return &config.FrontendRule{
 				Usr:                   key.Usr(),
 				DB:                    key.DB(),
