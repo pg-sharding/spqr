@@ -530,6 +530,24 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 		Str("state", string(r.State)).
 		Msg("etcdqdb: add router")
 
+	getResp, err := q.cli.Get(ctx, routerNodePath(r.ID))
+	if err != nil {
+		return err
+	}
+	if len(getResp.Kvs) != 0 {
+		return fmt.Errorf("router with id %s already exists", r.ID)
+	}
+
+	routers, err := q.ListRouters(ctx)
+	if err != nil {
+		return err
+	}
+	for _, router := range routers {
+		if router.Address == r.Address {
+			return fmt.Errorf("router with address %s already exists", r.Address)
+		}
+	}
+
 	bts, err := json.Marshal(r)
 	if err != nil {
 		return err

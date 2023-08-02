@@ -21,7 +21,7 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
-  Scenario: Add/Remove router
+  Scenario: Add/Remove router works
     When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r1
@@ -48,6 +48,45 @@ Feature: Coordinator test
     router r2-regress_router:7000
     """
 
+  Scenario: Register 2 routers with same address
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r2 ADDRESS regress_router::7000
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    router with address regress_router:7000 already exists
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match regexp
+    """
+    router r1-regress_router:7000
+    """
+
+  Scenario: Register 2 routers with same id
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    router with id r1 already exists
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match regexp
+    """
+    router r1-regress_router:7000
+    """
+
+  Scenario: Register router with invalid address
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r3 ADDRESS invalid_router::7000
@@ -57,6 +96,7 @@ Feature: Coordinator test
     Error while dialing
     """
 
+  Scenario: Unregister router with invalid id
     When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r2
