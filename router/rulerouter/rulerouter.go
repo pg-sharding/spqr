@@ -227,7 +227,7 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
-		_ = cl.ReplyErrMsg("failed to make route failure response")
+		_ = cl.ReplyErrMsg(err.Error())
 		return nil, err
 	}
 
