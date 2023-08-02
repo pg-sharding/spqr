@@ -268,15 +268,28 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	q.transactions[key] = info
 	return nil
 }
 
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	return q.transactions[key], nil
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ans, ok := q.transactions[key]
+	if !ok {
+		return nil, fmt.Errorf("no tx with key %s", key)
+	}
+	return ans, nil
 }
 
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	delete(q.transactions, key)
 	return nil
 }
