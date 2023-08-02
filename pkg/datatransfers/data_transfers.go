@@ -154,8 +154,8 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		ToTxName:    fmt.Sprintf("%s-%s", t, krid),
 		FromTxName:  fmt.Sprintf("%s-%s", f, krid),
 		FromShardId: f,
-		ToStatus:    "process",
-		FromStatus:  "process",
+		ToStatus:    qdb.Processing,
+		FromStatus:  qdb.Processing,
 	}
 
 	err = (*db).RecordTransferTx(ctx, krid, &d)
@@ -173,7 +173,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		return err
 	}
 
-	d.ToStatus = "commit"
+	d.ToStatus = qdb.Commited
 	err = (*db).RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
@@ -185,7 +185,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 		return err
 	}
 
-	d.FromStatus = "commit"
+	d.FromStatus = qdb.Commited
 	err = (*db).RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")

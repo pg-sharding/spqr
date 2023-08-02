@@ -55,11 +55,18 @@ func NewQDB(qdbType string) (QDB, error) {
 	}
 }
 
+type TxStatus string
+
+const (
+	Commited   = TxStatus("commit")
+	Processing = TxStatus("process")
+)
+
 type DataTransferTransaction struct {
-	ToShardId   string `json:"to_shard"`
-	FromShardId string `json:"from_shard"`
-	FromTxName  string `json:"from_transaction"`
-	ToTxName    string `json:"to_transaction"`
-	FromStatus  string `json:"from_tx_status"`
-	ToStatus    string `json:"to_tx_status"`
+	ToShardId   string   `json:"to_shard"`
+	FromShardId string   `json:"from_shard"`
+	FromTxName  string   `json:"from_transaction"`
+	ToTxName    string   `json:"to_transaction"`
+	FromStatus  TxStatus `json:"from_tx_status"`
+	ToStatus    TxStatus `json:"to_tx_status"`
 }

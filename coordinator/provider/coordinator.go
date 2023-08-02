@@ -240,7 +240,7 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 		if err != nil {
 			continue
 		}
-		if tx.ToStatus == "commit" && tx.FromStatus != "commit" {
+		if tx.ToStatus == qdb.Commited && tx.FromStatus != qdb.Commited {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
 			tem := kr.MoveKeyRange{
 				ShardId: tx.ToShardId,
@@ -250,7 +250,7 @@ func NewCoordinator(db qdb.QDB) *qdbCoordinator {
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
 			}
-		} else if tx.FromStatus != "commit" {
+		} else if tx.FromStatus != qdb.Commited {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}

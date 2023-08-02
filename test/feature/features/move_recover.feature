@@ -145,7 +145,7 @@ Feature: Move recover test
     002
     """
 
-  Scenario: coordinator saves transaction to QDB
+  Scenario: coordinator saves transaction to QDB and processes it on restart
     Given cluster is up and running
     When I execute SQL on host "coordinator"
     """
