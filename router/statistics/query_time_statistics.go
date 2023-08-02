@@ -55,6 +55,7 @@ func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 	}
 
 	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
 
 	if queryStatistics.TimeData[client] == nil {
 		queryStatistics.TimeData[client] = &startTimes{}
@@ -65,8 +66,6 @@ func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 	case Shard:
 		queryStatistics.TimeData[client].ShardStart = t
 	}
-
-	queryStatistics.lock.Unlock()
 }
 
 func RecordFinishedTransaction(t time.Time, client string) {
@@ -75,6 +74,7 @@ func RecordFinishedTransaction(t time.Time, client string) {
 	}
 
 	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
 
 	if queryStatistics.RouterTime[client] == nil {
 		queryStatistics.RouterTime[client], _ = tdigest.New()
@@ -90,13 +90,13 @@ func RecordFinishedTransaction(t time.Time, client string) {
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg(err.Error())
 	}
-	queryStatistics.lock.Unlock()
 }
 
 func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest {
 	var stat *tdigest.TDigest
 
 	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
 
 	switch tip {
 	case Router:
@@ -104,7 +104,6 @@ func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest
 	case Shard:
 		stat = queryStatistics.ShardTime[client]
 	}
-	queryStatistics.lock.Unlock()
 
 	if stat == nil {
 		stat, _ = tdigest.New()
