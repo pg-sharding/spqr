@@ -10,8 +10,8 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE SHARDING RULE r1 COLUMN id;
-    CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
-    CREATE KEY RANGE krid2 FROM 11 TO 30 ROUTE TO sh2;
+    CREATE KEY RANGE krid1 FROM 0 TO 11 ROUTE TO sh1;
+    CREATE KEY RANGE krid2 FROM 11 TO 31 ROUTE TO sh2;
     """
     Then command return code should be "0"
 
@@ -145,7 +145,7 @@ Feature: Coordinator test
     """
     And SQL result should match regexp
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"10"
+    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
     """
 
     When I run SQL on host "router-admin"
@@ -159,7 +159,7 @@ Feature: Coordinator test
     """
     And SQL result should match regexp
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"10"
+    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
     """
 
     When I run SQL on host "coordinator"
@@ -170,7 +170,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"10"
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
     """
 
     When I run SQL on host "router-admin"
@@ -180,7 +180,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"10"
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
     """
 
   Scenario: Split/Unite locked key range fails
@@ -234,7 +234,11 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    \[\]
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    """
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid2".*"Lower bound":"11".*"Upper bound":"31"
     """
 
   Scenario: QDB is down

@@ -13,7 +13,9 @@ frontend_tls:
 frontend_rules:
   - usr: user1
     db: db1
+    pool_default: true
     pool_mode: TRANSACTION
+    pool_prepared_statement: false
     auth_rule:
       auth_method: ok
 world_shard_fallback: true

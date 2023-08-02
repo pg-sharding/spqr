@@ -2,15 +2,16 @@ Feature: MemQDB save state into a file
 
   Scenario: Sharding rules restored
     Given cluster is up and running
-    When I execute SQL on host "spqr-console"
+    When I execute SQL on host "router-admin"
     """
     ADD SHARDING RULE rule1 COLUMNS id;
     ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
     ADD SHARDING RULE rule3 COLUMNS idy;
     """
     Then command return code should be "0"
-    When I restart router
-    When I run SQL on host "spqr-console"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     SHOW sharding_rules;
     """
@@ -41,7 +42,7 @@ Feature: MemQDB save state into a file
   
   Scenario: Sharding rules not restored
     Given cluster is up and running
-    When I execute SQL on host "spqr-console"
+    When I execute SQL on host "router-admin"
     """
     ADD SHARDING RULE rule1 COLUMNS id;
     ADD SHARDING RULE rule2 COLUMNS idx;
@@ -49,8 +50,9 @@ Feature: MemQDB save state into a file
     DROP SHARDING RULE ALL;
     """
     Then command return code should be "0"
-    When I restart router
-    When I run SQL on host "spqr-console"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     SHOW sharding_rules;
     """
@@ -62,14 +64,15 @@ Feature: MemQDB save state into a file
 
   Scenario: Key ranges restored
     Given cluster is up and running
-    When I execute SQL on host "spqr-console"
+    When I execute SQL on host "router-admin"
     """
     ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
     ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
     """
     Then command return code should be "0"
-    When I restart router
-    When I run SQL on host "spqr-console"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     SHOW key_ranges;
     """
@@ -94,7 +97,7 @@ Feature: MemQDB save state into a file
 
   Scenario: Sharding rules restored after droping specific one
     Given cluster is up and running
-    When I execute SQL on host "spqr-console"
+    When I execute SQL on host "router-admin"
     """
     ADD SHARDING RULE rule1 COLUMNS id;
     ADD SHARDING RULE rule2 COLUMNS idx;
@@ -102,8 +105,9 @@ Feature: MemQDB save state into a file
     DROP SHARDING RULE rule1;
     """
     Then command return code should be "0"
-    When I restart router
-    When I run SQL on host "spqr-console"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     SHOW sharding_rules;
     """
@@ -128,7 +132,7 @@ Feature: MemQDB save state into a file
 
   Scenario: Unlock after restart
     Given cluster is up and running
-    When I run SQL on host "spqr-console"
+    When I run SQL on host "router-admin"
     """
     ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
     ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
@@ -139,8 +143,9 @@ Feature: MemQDB save state into a file
     """
     lock key range with id krid1
     """
-    When I restart router
-    When I run SQL on host "spqr-console"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
     """
     UNLOCK KEY RANGE krid1;
     """
