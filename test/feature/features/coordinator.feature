@@ -48,7 +48,7 @@ Feature: Coordinator test
     router r2-regress_router:7000
     """
 
-  Scenario: Register 2 routers with same address
+  Scenario: Register 2 routers with same address fails
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r2 ADDRESS regress_router::7000
@@ -67,7 +67,7 @@ Feature: Coordinator test
     router r1-regress_router:7000
     """
 
-  Scenario: Register 2 routers with same id
+  Scenario: Register 2 routers with same id fails
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router::7000
@@ -86,7 +86,7 @@ Feature: Coordinator test
     router r1-regress_router:7000
     """
 
-  Scenario: Register router with invalid address
+  Scenario: Register router with invalid address fails
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r3 ADDRESS invalid_router::7000
@@ -96,7 +96,7 @@ Feature: Coordinator test
     Error while dialing
     """
 
-  Scenario: Unregister router with invalid id
+  Scenario: Unregister router with invalid id fails
     When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r2
@@ -183,7 +183,7 @@ Feature: Coordinator test
     "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"10"
     """
 
-  Scenario: Split/Unite locked key range
+  Scenario: Split/Unite locked key range fails
     When I run SQL on host "coordinator"
     """
     LOCK KEY RANGE krid1;
