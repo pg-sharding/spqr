@@ -231,7 +231,10 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 		return nil, err
 	}
 
-	spqrlog.Zero.Debug().Interface("frontend rule", frRule).Msg("console client routed")
+	spqrlog.Zero.Debug().
+		Str("db", frRule.DB).
+		Str("user", frRule.Usr).
+		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
 		_ = cl.ReplyErrMsg("failed to assign rule")

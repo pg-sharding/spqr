@@ -39,7 +39,10 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 			if dfr == nil {
 				return nil
 			}
-			spqrlog.Zero.Debug().Interface("auth rule", dfr.AuthRule).Msg("generating new dynamic rule")
+			spqrlog.Zero.Debug().
+				Str("db", dfr.DB).
+				Str("user", dfr.Usr).
+				Msg("generating new dynamic rule")
 			return &config.FrontendRule{
 				Usr:                   key.Usr(),
 				DB:                    key.DB(),
