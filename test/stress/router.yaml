@@ -6,6 +6,11 @@ grpc_api_port: '7000'
 router_mode: PROXY
 log_level: fatal
 show_notice_messages: false
+time_quantiles:
+ - 0.5
+ - 0.75
+ - 0.9
+ - 0.99
 frontend_rules:
   - db: stress
     usr: stress

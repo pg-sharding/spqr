@@ -1,6 +1,7 @@
 package statistics
 
 import (
+	"sync"
 	"time"
 
 	"github.com/caio/go-tdigest"
@@ -25,12 +26,14 @@ type statistics struct {
 	TimeData          map[string]*startTimes
 	Quantiles         []float64
 	NeedToCollectData bool
+	lock              sync.RWMutex
 }
 
 var queryStatistics = statistics{
 	RouterTime: make(map[string]*tdigest.TDigest),
 	ShardTime:  make(map[string]*tdigest.TDigest),
 	TimeData:   make(map[string]*startTimes),
+	lock:       sync.RWMutex{},
 }
 
 func InitStatistics(q []float64) {
@@ -51,6 +54,9 @@ func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 		return
 	}
 
+	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
+
 	if queryStatistics.TimeData[client] == nil {
 		queryStatistics.TimeData[client] = &startTimes{}
 	}
@@ -66,6 +72,9 @@ func RecordFinishedTransaction(t time.Time, client string) {
 	if queryStatistics.NeedToCollectData {
 		return
 	}
+
+	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
 
 	if queryStatistics.RouterTime[client] == nil {
 		queryStatistics.RouterTime[client], _ = tdigest.New()
@@ -85,6 +94,10 @@ func RecordFinishedTransaction(t time.Time, client string) {
 
 func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest {
 	var stat *tdigest.TDigest
+
+	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
+
 	switch tip {
 	case Router:
 		stat = queryStatistics.RouterTime[client]
