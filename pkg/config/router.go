@@ -49,9 +49,8 @@ type Router struct {
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
-	AutoConf         string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
 	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
-	UnderCoordinator bool              `json:"under_coordinator" toml:"under_coordinator" yaml:"under_coordinator"`
+	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
 	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
 	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`

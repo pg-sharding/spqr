@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
@@ -50,7 +51,15 @@ var _ Router = &InstanceImpl{}
 
 func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
-	qdb, _ := qdb.NewMemQDB()
+	skipInitSQL := false
+	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
+		skipInitSQL = true
+	}
+
+	qdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
+	if err != nil {
+		return nil, err
+	}
 
 	lc := local.NewLocalCoordinator(qdb)
 
@@ -81,10 +90,9 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
-	if !rcfg.UnderCoordinator {
+	if skipInitSQL {
 		for _, fname := range []string{
 			rcfg.InitSQL,
-			rcfg.AutoConf,
 		} {
 			if len(fname) == 0 {
 				continue
@@ -100,7 +108,6 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 				spqrlog.Zero.Info().Str("query", query).Msg("")
 				if err := localConsole.ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
-					return nil, err
 				}
 			}
 
@@ -109,9 +116,9 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 				Str("filename", fname).
 				Msg("successfully init queries from file")
 		}
-
-		qr.Initialize()
 	}
+
+	qr.Initialize()
 
 	return &InstanceImpl{
 		RuleRouter: rr,

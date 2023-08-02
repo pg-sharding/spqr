@@ -30,13 +30,13 @@ All SPQR configurations can be written in json, yaml or toml format. See example
 | `admin_console_port`   | the admin console port                                                                                                                                                                        |
 | `grpc_api_port`        | the API port                                                                                                                                                                                  |
 |                        |                                                                                                                                                                                               |
-| `auto_conf`            | a configuration file with the same format as spqr config file, but which is managed by SPQR itself                                                                                            |
 | `init_sql`             | a path to a sql commands, that will be run on the startup of the router.                                                                                                                      |
 | `router_mode`          | mode in which router will be run. Can be LOCAL and PROXY. In local mode spqr works like an usual connection pooler with one shard, in proxy mode works with many shards.                      |
 | `jaeger_url`           | a path to the Jaeger instance - open source software for tracing transactions between distributed services                                                                                    |
 | `world_shard_fallback` | can be true or false. If false, then router will raise an error when query will be impossible to send to particular shard. If true, then router will route unrouted query to the world shard. |
 | `show_notice_messages` | can be true or false. May help to debug the router and see to where it is actualy sending queries |
 | `time_quantiles` | list of time quantiles to show querry time statistics. When empty, no statistics is collected |
+| `memqdb_backup_path` | if specified, memqdb will backup state into file, and router will try to restore from this backup on starup |
 
 
 ### frontend_tls
