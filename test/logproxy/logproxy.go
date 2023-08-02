@@ -72,24 +72,6 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	frontend := pgproto3.NewFrontend(conn, conn)
 	cl := pgproto3.NewBackend(netconn, netconn)
 
-	//	err = cl.Init(nil, config.SSLMODEDISABLE)
-
-	//	if err != nil {
-	//		return err
-	//	}
-
-	//	if err := cl.AssignRule(&config.FRRule{
-	//		AuthRule: config.AuthRule{
-	//			Method: config.AuthOK,
-	//		},
-	//	}); err != nil {
-	//		return err
-	//	}
-
-	//	if err := cl.Auth(); err != nil {
-	//		return err
-	//	}
-
 	cb := func(msg pgproto3.FrontendMessage) {
 		log.Printf("received msg %v", msg)
 
