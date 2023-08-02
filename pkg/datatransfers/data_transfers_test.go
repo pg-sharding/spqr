@@ -16,14 +16,17 @@ func TestQdbSavesTransactions(t *testing.T) {
 
 	p, err := os.Getwd()
 	assert.NoError(err)
-	LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
+	err = LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
+	assert.NoError(err)
 
 	mConn := &mockConn{}
-	beginTransactions(context.TODO(), mConn, mConn)
+	err = beginTransactions(context.TODO(), mConn, mConn)
+	assert.NoError(err)
 
 	db, err := qdb.NewQDB("mem")
 	assert.NoError(err)
-	commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
+	assert.NoError(err)
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
@@ -38,14 +41,17 @@ func TestQdbDeletesTransactions(t *testing.T) {
 
 	p, err := os.Getwd()
 	assert.NoError(err)
-	LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
+	err = LoadConfig(p + "/pkg/datatransfers/shard_data.yaml")
+	assert.NoError(err)
 
 	mConn := &mockConn{}
-	beginTransactions(context.TODO(), mConn, mConn)
+	err = beginTransactions(context.TODO(), mConn, mConn)
+	assert.NoError(err)
 
 	db, err := qdb.NewQDB("mem")
 	assert.NoError(err)
-	commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
+	assert.NoError(err)
 
 	_, err = db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
