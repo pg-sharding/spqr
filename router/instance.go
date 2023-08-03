@@ -131,8 +131,8 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}, nil
 }
 
-func (r *InstanceImpl) serv(netconn net.Conn) error {
-	routerClient, err := r.RuleRouter.PreRoute(netconn, false)
+func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
+	routerClient, err := r.RuleRouter.PreRoute(netconn, admin_console)
 	if err != nil {
 		_ = netconn.Close()
 		return err
@@ -140,7 +140,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 
 	defer netconn.Close()
 
-	if routerClient.DB() == "spqr-console" {
+	if admin_console || routerClient.DB() == "spqr-console" {
 		return r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
@@ -198,7 +198,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 				_ = conn.Close()
 			} else {
 				go func() {
-					if err := r.serv(conn); err != nil {
+					if err := r.serv(conn, false); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("error serving client")
 					}
 				}()
@@ -240,7 +240,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			return nil
 		case conn := <-cChan:
 			go func() {
-				if err := r.serv(conn); err != nil {
+				if err := r.serv(conn, true); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()
