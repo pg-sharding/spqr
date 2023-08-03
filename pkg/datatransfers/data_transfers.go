@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -38,10 +39,14 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 var shards *config.DatatransferConnections
+var lock sync.RWMutex
 
 var localConfigDir = "/shard_data.yaml"
 
 func createConnString(shardID string) string {
+	lock.Lock()
+	defer lock.Unlock()
+
 	sd, ok := shards.ShardsData[shardID]
 	if !ok {
 		return ""
@@ -51,6 +56,9 @@ func createConnString(shardID string) string {
 
 func LoadConfig(path string) error {
 	var err error
+	lock.Lock()
+	defer lock.Unlock()
+
 	shards, err = config.LoadShardDataCfg(path)
 	if err != nil {
 		p, _ := os.Getwd()
