@@ -12,6 +12,7 @@ import (
 )
 
 type MemQDB struct {
+	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
 	Locks        map[string]*sync.RWMutex            `json:"locks"`
@@ -31,6 +32,14 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
+		Freq:         map[string]bool{},
+		Krs:          map[string]*KeyRange{},
+		Locks:        map[string]*sync.RWMutex{},
+		Shards:       map[string]*Shard{},
+		Shrules:      map[string]*ShardingRule{},
+		Dataspaces:   map[string]*Dataspace{},
+		Routers:      map[string]*Router{},
+		Transactions: map[string]*DataTransferTransaction{},
 		Freq:         map[string]bool{},
 		Krs:          map[string]*KeyRange{},
 		Locks:        map[string]*sync.RWMutex{},
@@ -154,6 +163,8 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 
 func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
 	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	rule, ok := q.Shrules[id]
 	if ok {
 		return rule, nil
@@ -200,8 +211,8 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 
 func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -305,8 +316,8 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -323,8 +334,16 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 func (q *MemQDB) ShareKeyRange(id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: sharing key with key")
 
-	q.Locks[id].RLock()
-	defer q.Locks[id].RUnlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	lock, ok := q.Locks[id]
+	if !ok {
+		return fmt.Errorf("no such key")
+	}
+
+	lock.RLock()
+	defer lock.RUnlock()
 
 	return nil
 }
@@ -336,13 +355,12 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	ans, ok := q.Transactions[key]
 	if !ok {
@@ -354,7 +372,6 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
 }
 
@@ -380,8 +397,8 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list routers")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	var ret []*Router
 	for _, v := range q.Routers {
@@ -414,8 +431,8 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 
 func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list shards")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	var ret []*Shard
 	for _, v := range q.Shards {
@@ -432,8 +449,8 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 
 func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: get shard")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	if _, ok := q.Shards[id]; ok {
 		return &Shard{ID: id}, nil
