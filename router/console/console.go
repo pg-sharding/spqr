@@ -98,8 +98,6 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 	msgs = append(msgs, []pgproto3.BackendMessage{
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.ParameterStatus{Name: "standard_conforming_strings", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.NoticeResponse{
 			Message: greeting,
 		},

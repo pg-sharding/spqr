@@ -256,11 +256,6 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		},
 	)
 
-	// splitting by X makes X the point of intersection
-	// increase lower bound of new key range by 1
-	//krNew.LowerBound = make([]byte, len(req.Bound))
-	//copy(krNew.LowerBound, req.Bound)
-	//krNew.LowerBound[len(krNew.LowerBound)-1]++
 	krNew.LowerBound = req.Bound
 
 	spqrlog.Zero.Debug().

@@ -414,7 +414,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
 		Str("key-range-id", keyRange.ID).
-		Msg("etcdqdb: add key range")
+		Msg("add key range")
 
 	err := ops.AddKeyRangeWithChecks(ctx, qc.db, keyRange)
 	if err != nil {
@@ -447,7 +447,6 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 				Err(err).
 				Msg("etcdqdb: notify router add key range")
 			continue
-			//return err
 		}
 
 		spqrlog.Zero.Debug().
@@ -549,12 +548,6 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 			ShardID:    krOld.ShardID,
 		},
 	)
-
-	// splitting by X makes X the point of intersection
-	// increase lower bound of new key range by 1
-	//krNew.LowerBound = make([]byte, len(req.Bound))
-	//copy(krNew.LowerBound, req.Bound)
-	//krNew.LowerBound[len(krNew.LowerBound)-1]++
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).

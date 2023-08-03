@@ -577,8 +577,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return err
 			}
 
-			//return nil
-			return fmt.Errorf("cancel req")
+			return nil
 		case conn.GSSREQ:
 			/* TODO: Support */
 		default:
