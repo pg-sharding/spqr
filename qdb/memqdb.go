@@ -343,7 +343,7 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	ans, ok := q.transactions[key]
+	ans, ok := q.Transactions[key]
 	if !ok {
 		return nil, fmt.Errorf("no tx with key %s", key)
 	}
