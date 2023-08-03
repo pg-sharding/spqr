@@ -286,6 +286,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: lock key range")
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -293,7 +294,15 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	}
 
 	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
-		NewCustomCommand(q.Locks[id].Lock, q.Locks[id].Unlock))
+		NewCustomCommand(func() {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Lock()
+			}
+		}, func() {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Unlock()
+			}
+		}))
 	if err != nil {
 		return nil, err
 	}
@@ -302,16 +311,25 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 }
 
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: unlock key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
 	if !q.Freq[id] {
 		return fmt.Errorf("key range %v not locked", id)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
-		NewCustomCommand(q.Locks[id].Unlock, q.Locks[id].Lock))
+		NewCustomCommand(func() {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Unlock()
+			}
+		}, func() {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Lock()
+			}
+		}))
 }
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
