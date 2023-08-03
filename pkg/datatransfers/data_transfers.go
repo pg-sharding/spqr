@@ -41,7 +41,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 var shards *config.DatatransferConnections
 var lock sync.RWMutex
 
-var localConfigDir = "/shard_data.yaml"
+var localConfigDir = "/../../cmd/mover/shard_data.yaml"
 
 func createConnString(shardID string) string {
 	lock.Lock()
@@ -70,6 +70,15 @@ func LoadConfig(path string) error {
 	return nil
 }
 
+/*
+Performs physical key-range move from one datashard to another.
+It is assumed that passed key range is already locked on every online sqpr-router.
+
+Steps:
+  - traverse pg_class to resolve all relations that matches given sharding rules
+  - create sql copy and delete queries to move data tuples.
+  - prepare and commit distributed move transation
+*/
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db *qdb.QDB) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)

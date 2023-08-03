@@ -46,7 +46,6 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 		return &cfg, err
 	}
 
-	//log.Println("Running config:", string(configBytes))
 	return &cfg, nil
 }
 
