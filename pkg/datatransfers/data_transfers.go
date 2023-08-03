@@ -86,20 +86,20 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		return err
 	}
 	defer func(ctx context.Context) {
-		err := rollbackTransactions(ctx, txFrom, txTo)
+		err := rollbackTransactions(ctx, txTo, txFrom)
 		if err != nil {
 			spqrlog.Zero.Warn().Msg("error closing transaction")
 		}
 	}(ctx)
 
 	for _, r := range shr {
-		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r, txFrom, txTo)
+		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r, txTo, txFrom)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txFrom, txTo, db)
+	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txTo, txFrom, db)
 	if err != nil {
 		return err
 	}
