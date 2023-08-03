@@ -11,6 +11,7 @@ world_shard_fallback: true
 router_mode: PROXY
 
 init_sql: "examples/init.sql"
+memqdb_backup_path: "memqdb.json"
 
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key

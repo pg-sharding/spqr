@@ -2,6 +2,7 @@ package statistics_test
 
 import (
 	"math"
+	"sync"
 	"testing"
 	"time"
 
@@ -96,4 +97,33 @@ func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 	stat := statistics.GetClientTimeStatistics(statistics.Router, "useless")
 
 	assert.True(math.IsNaN(stat.Quantile(0.5)))
+}
+
+func TestCheckMultithreading(t *testing.T) {
+	assert := assert.New(t)
+
+	statistics.InitStatistics([]float64{0.5})
+
+	var wg sync.WaitGroup
+	for k := 0; k < 100; k++ {
+		wg.Add(1)
+		go func() {
+			tim := time.Now()
+			for i := 0; i < 1000; i++ {
+				statistics.RecordStartTime(statistics.Router, tim, "thread")
+				statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), "thread")
+				statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), "thread")
+
+				stat := statistics.GetClientTimeStatistics(statistics.Router, "thread")
+				stat.Quantile(0.99)
+				stat.Quantile(0.9)
+				stat.Quantile(0.8)
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+
+	assert.True(true)
 }

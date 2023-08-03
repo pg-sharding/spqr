@@ -28,7 +28,7 @@ func (s *InstancePoolImpl) Connection(
 	clid string,
 	key kr.ShardKey,
 	targetSessionAttrs string) (shard.Shard, error) {
-	spqrlog.Zero.Error().
+	spqrlog.Zero.Debug().
 		Str("client", clid).
 		Str("shard", key.Name).
 		Str("tsa", targetSessionAttrs).

@@ -14,6 +14,11 @@ frontend_rules:
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
+  - pool_mode: TRANSACTION
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
 shards:
   sh1:
     db: regress

@@ -15,6 +15,8 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 )
 
+const MemQDBPath = "memqdb.json"
+
 func TestMultiShardRouting(t *testing.T) {
 	assert := assert.New(t)
 
@@ -24,7 +26,7 @@ func TestMultiShardRouting(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -116,7 +118,7 @@ func TestComment(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -204,7 +206,7 @@ func TestSingleShard(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -417,7 +419,7 @@ func TestInsertOffsets(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -506,7 +508,7 @@ func TestJoins(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -624,7 +626,7 @@ func TestUnnest(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
@@ -734,7 +736,7 @@ func TestCopySingleShard(t *testing.T) {
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
-	db, _ := qdb.NewMemQDB()
+	db, _ := qdb.NewMemQDB(MemQDBPath)
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:        "id1",
