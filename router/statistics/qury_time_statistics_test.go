@@ -1,7 +1,6 @@
 package statistics_test
 
 import (
-	"math"
 	"sync"
 	"testing"
 	"time"
@@ -32,11 +31,8 @@ func TestStatisticsForOneUser(t *testing.T) {
 	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), "test")
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), "test")
 
-	stat1 := statistics.GetClientTimeStatistics(statistics.Router, "test")
-	stat2 := statistics.GetClientTimeStatistics(statistics.Shard, "test")
-
-	assert.Equal(4.0, stat1.Quantile(0.5))
-	assert.Equal(3.0, stat2.Quantile(0.5))
+	assert.Equal(4.0, statistics.GetTimeQuantile(statistics.Router, 0.5, "test"))
+	assert.Equal(3.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, "test"))
 }
 
 func TestStatisticsForDifferentUsers(t *testing.T) {
@@ -61,17 +57,11 @@ func TestStatisticsForDifferentUsers(t *testing.T) {
 	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond*6), "second")
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*7), "second")
 
-	stat1 := statistics.GetClientTimeStatistics(statistics.Router, "first")
-	stat2 := statistics.GetClientTimeStatistics(statistics.Shard, "first")
+	assert.Equal(2.5, statistics.GetTimeQuantile(statistics.Router, 0.5, "first"))
+	assert.Equal(1.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, "first"))
 
-	stat3 := statistics.GetClientTimeStatistics(statistics.Router, "second")
-	stat4 := statistics.GetClientTimeStatistics(statistics.Shard, "second")
-
-	assert.Equal(2.5, stat1.Quantile(0.5))
-	assert.Equal(1.0, stat2.Quantile(0.5))
-
-	assert.Equal(7.0, stat3.Quantile(0.5))
-	assert.Equal(1.5, stat4.Quantile(0.5))
+	assert.Equal(7.0, statistics.GetTimeQuantile(statistics.Router, 0.5, "second"))
+	assert.Equal(1.5, statistics.GetTimeQuantile(statistics.Shard, 0.5, "second"))
 }
 
 func TestNoStatisticsForMisingUser(t *testing.T) {
@@ -79,9 +69,7 @@ func TestNoStatisticsForMisingUser(t *testing.T) {
 
 	statistics.InitStatistics([]float64{0.5})
 
-	stat := statistics.GetClientTimeStatistics(statistics.Router, "missing")
-
-	assert.True(math.IsNaN(stat.Quantile(0.5)))
+	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.Router, 0.5, "missing"))
 }
 
 func TestNoStatisticsWhenNotNeeded(t *testing.T) {
@@ -94,9 +82,7 @@ func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 	statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), "useless")
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), "useless")
 
-	stat := statistics.GetClientTimeStatistics(statistics.Router, "useless")
-
-	assert.True(math.IsNaN(stat.Quantile(0.5)))
+	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.Router, 0.5, "useless"))
 }
 
 func TestCheckMultithreading(t *testing.T) {
@@ -114,10 +100,8 @@ func TestCheckMultithreading(t *testing.T) {
 				statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), "thread")
 				statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), "thread")
 
-				stat := statistics.GetClientTimeStatistics(statistics.Router, "thread")
-				stat.Quantile(0.99)
-				stat.Quantile(0.9)
-				stat.Quantile(0.8)
+				statistics.GetTimeQuantile(statistics.Router, 0.5, "useless")
+				statistics.GetTimeQuantile(statistics.Router, 0.99, "useless")
 			}
 			wg.Done()
 		}()
