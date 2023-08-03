@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	_ "net/http/pprof"
 	"os"
@@ -81,7 +82,11 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if rcfg.Daemonize || daemonize {
+		if console && daemonize {
+			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
+		}
+
+		if !console && (rcfg.Daemonize || daemonize) {
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
