@@ -176,7 +176,8 @@ func TestConnectCreds(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			for i := 0; i < 100; i++ {
-				LoadConfig("")
+				err := LoadConfig("")
+				assert.NoError(err)
 				createConnString("sh1")
 			}
 			wg.Done()
