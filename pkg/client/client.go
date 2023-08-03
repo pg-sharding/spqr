@@ -40,7 +40,7 @@ type Client interface {
 
 	Init(cfg *tls.Config) error
 
-	/* password lcear text */
+	/* password clear text */
 	PasswordCT() (string, error)
 	PasswordMD5(salt [4]byte) (string, error)
 
