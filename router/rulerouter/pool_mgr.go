@@ -42,21 +42,23 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
+
+	cl.ServerAcquireUse()
+
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
 			Uint("client", spqrlog.GetPointer(&cl)).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
-			_ = cl.Unroute()
 			anyerr = err
 		}
 	}
-	if anyerr != nil {
-		return anyerr
-	}
 
-	return cl.Unroute()
+	cl.ServerReleaseUse()
+	_ = cl.Unroute()
+
+	return anyerr
 }
 
 func NewTxConnManager(rcfg *config.Router) *TxConnManager {
@@ -82,6 +84,9 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 			return err
 		}
 	}
+
+	client.ServerAcquireUse()
+	defer client.ServerReleaseUse()
 
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
@@ -129,6 +134,9 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 	var anyerr error
 	anyerr = nil
 
+	cl.ServerAcquireUse()
+	defer cl.ServerReleaseUse()
+
 	for _, shkey := range sh {
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			//
@@ -153,6 +161,9 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 			return err
 		}
 	}
+
+	client.ServerAcquireUse()
+	defer client.ServerReleaseUse()
 
 	for _, shkey := range sh {
 		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
