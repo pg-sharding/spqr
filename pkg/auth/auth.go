@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/xdg-go/scram"
 	"golang.org/x/crypto/pbkdf2"
 
@@ -161,7 +162,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 	case config.AuthNotOK:
 		return fmt.Errorf("user %v %v blocked", cl.Usr(), cl.DB())
 	case config.AuthClearText:
-		if cl.PasswordCT() != rule.AuthRule.Password {
+		if passwd, err := cl.PasswordCT(); err != nil || passwd != rule.AuthRule.Password {
 			return fmt.Errorf("user %v %v auth failed", cl.Usr(), cl.DB())
 		}
 		return nil
@@ -173,7 +174,10 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 
 		salt := [4]byte{randBytes[0], randBytes[1], randBytes[2], randBytes[3]}
 
-		resp := cl.PasswordMD5(salt)
+		resp, err := cl.PasswordMD5(salt)
+		if err != nil {
+			return err
+		}
 
 		hash := md5.New()
 
