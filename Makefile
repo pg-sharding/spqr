@@ -67,6 +67,9 @@ pooler_run:
 
 ####################### TESTS #######################
 
+unittest_with_race:
+	go test -race ./cmd/... ./pkg/... ./router/... ./qdb/...
+
 unittest:
 	go test ./cmd/... ./pkg/... ./router/... ./qdb/...
 

@@ -17,7 +17,7 @@ jobs:
        uses: actions/checkout@v2
 
      - name: unit tests
-       run: make unittest
+       run: make unittest_with_race
 
   e2e:
     name: e2e

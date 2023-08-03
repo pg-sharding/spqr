@@ -53,42 +53,72 @@ func TestMemqdbRacing(t *testing.T) {
 	assert.NoError(err)
 
 	var wg sync.WaitGroup
-
 	ctx := context.TODO()
 
-	methods := []func(){
-		func() { memqdb.AddDataspace(ctx, mockDataspace) },
-		func() { memqdb.AddKeyRange(ctx, mockKeyRange) },
-		func() { memqdb.AddRouter(ctx, mockRouter) },
-		func() { memqdb.AddShard(ctx, mockShard) },
-		func() { memqdb.AddShardingRule(ctx, mockShardingRule) },
-		func() {
-			memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
+	methods := []func() error{
+		func() error { return memqdb.AddDataspace(ctx, mockDataspace) },
+		func() error { return memqdb.AddKeyRange(ctx, mockKeyRange) },
+		func() error { return memqdb.AddRouter(ctx, mockRouter) },
+		func() error { return memqdb.AddShard(ctx, mockShard) },
+		func() error { return memqdb.AddShardingRule(ctx, mockShardingRule) },
+		func() error {
+			return memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
 		},
-		func() { memqdb.ListDataspaces(ctx) },
-		func() { memqdb.ListKeyRanges(ctx) },
-		func() { memqdb.ListRouters(ctx) },
-		func() { memqdb.ListShardingRules(ctx) },
-		func() { memqdb.ListShards(ctx) },
-		func() { memqdb.GetKeyRange(ctx, mockKeyRange.KeyRangeID) },
-		func() { memqdb.GetShard(ctx, mockShard.ID) },
-		func() { memqdb.GetShardingRule(ctx, mockShardingRule.ID) },
-		func() { memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
-		func() { memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
-		func() { memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID) },
-		func() { memqdb.DropKeyRangeAll(ctx) },
-		func() { memqdb.DropShardingRule(ctx, mockShardingRule.ID) },
-		func() { memqdb.DropShardingRuleAll(ctx) },
-		func() { memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
+		func() error {
+			_, err_local := memqdb.ListDataspaces(ctx)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.ListKeyRanges(ctx)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.ListRouters(ctx)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.ListShardingRules(ctx)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.ListShards(ctx)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.GetKeyRange(ctx, mockKeyRange.KeyRangeID)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.GetShard(ctx, mockShard.ID)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.GetShardingRule(ctx, mockShardingRule.ID)
+			return err_local
+		},
+		func() error {
+			_, err_local := memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId)
+			return err_local
+		},
+		func() error { return memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
+		func() error { return memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID) },
+		func() error { return memqdb.DropKeyRangeAll(ctx) },
+		func() error { return memqdb.DropShardingRule(ctx, mockShardingRule.ID) },
+		func() error {
+			_, err_local := memqdb.DropShardingRuleAll(ctx)
+			return err_local
+		},
+		func() error { return memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 	}
 
-	for _, m := range methods {
-		wg.Add(1)
-		go func(m func()) {
-			m()
-			wg.Done()
-		}(m)
+	for i := 0; i < 10; i++ {
+		for _, m := range methods {
+			wg.Add(1)
+			go func(m func() error) {
+				_ = m()
+				wg.Done()
+			}(m)
+		}
 	}
-
 	wg.Wait()
 }
