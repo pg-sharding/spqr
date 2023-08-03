@@ -41,13 +41,12 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 		return &cfg, err
 	}
 
-	configBytes, err := json.MarshalIndent(cfg, "", "  ")
+	_, err = json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return &cfg, err
 	}
 
-	fmt.Println("Running config:", string(configBytes))
-
+	//log.Println("Running config:", string(configBytes))
 	return &cfg, nil
 }
 

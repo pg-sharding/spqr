@@ -2,112 +2,186 @@ package datatransfers
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/pg-sharding/spqr/pkg/mock"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestQdbSavesTransactions(t *testing.T) {
+// commitTransactions tests
+func TestCommitPositive(t *testing.T) {
 	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
 
-	mConn := &mockConn{}
-	err := beginTransactions(context.TODO(), mConn, mConn)
-	assert.NoError(err)
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+	m1.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
+	m2.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 
 	db, err := qdb.NewQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
 	assert.NoError(err)
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
-	assert.Equal(tx.FromShardId, "sh1")
-	assert.Equal(tx.ToShardId, "sh2")
+	assert.Equal(tx.FromStatus, qdb.Commited)
+	assert.Equal(tx.ToStatus, qdb.Commited)
 	assert.Equal(tx.ToTxName, "sh2-krid")
 	assert.Equal(tx.FromTxName, "sh1-krid")
 }
 
-func TestQdbDeletesTransactions(t *testing.T) {
+func TestFailToCommitFirstTx(t *testing.T) {
 	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
 
-	mConn := &mockConn{}
-	err := beginTransactions(context.TODO(), mConn, mConn)
-	assert.NoError(err)
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+	m1.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh2-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 
 	db, err := qdb.NewQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", &db)
-	assert.NoError(err)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	assert.Error(err)
 
-	_, err = db.GetTransferTx(context.TODO(), "krid")
+	tx, err := db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
+	assert.Equal(tx.FromStatus, qdb.Processing)
+	assert.Equal(tx.ToStatus, qdb.Processing)
+}
 
-	err = db.RemoveTransferTx(context.TODO(), "krid")
+func TestFailToCommitSecondTx(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+	m1.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
+	m2.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh1-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
+
+	db, err := qdb.NewQDB("mem")
 	assert.NoError(err)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	assert.Error(err)
+
+	tx, err := db.GetTransferTx(context.TODO(), "krid")
+	assert.NoError(err)
+	assert.Equal(tx.FromStatus, qdb.Processing)
+	assert.Equal(tx.ToStatus, qdb.Commited)
+}
+
+func TestFailToPrepareFirstTx(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh2-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
+
+	m2 := mock.NewMockTx(ctrl)
+
+	db, err := qdb.NewQDB("mem")
+	assert.NoError(err)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	assert.Error(err)
 
 	_, err = db.GetTransferTx(context.TODO(), "krid")
 	assert.Error(err)
 }
 
-type mockConn struct {
+func TestFailToPrepareSecondTx(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+	m1.EXPECT().Exec(context.TODO(), "ROLLBACK PREPARED 'sh2-krid'").Return(pgconn.CommandTag{}, nil)
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
+
+	db, err := qdb.NewQDB("mem")
+	assert.NoError(err)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	assert.Error(err)
+
+	_, err = db.GetTransferTx(context.TODO(), "krid")
+	assert.Error(err)
 }
 
-func (m *mockConn) Begin(context.Context) (pgx.Tx, error) {
-	return &dbTx{}, nil
-}
-func (m *mockConn) BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error) {
-	return &dbTx{}, nil
-}
-func (m *mockConn) Close(context.Context) error {
-	return nil
+// rollbackTransactions tests
+func TestRollbackPositive(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Rollback(context.TODO()).Return(nil)
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Rollback(context.TODO()).Return(nil)
+
+	err := rollbackTransactions(context.TODO(), m1, m2)
+	assert.NoError(err)
 }
 
-type dbTx struct {
+func TestRollbackFirstFailAndSecondRollbacks(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockTx(ctrl)
+	m1.EXPECT().Rollback(context.TODO()).Return(fmt.Errorf(""))
+
+	m2 := mock.NewMockTx(ctrl)
+	m2.EXPECT().Rollback(context.TODO()).Return(nil)
+
+	err := rollbackTransactions(context.TODO(), m1, m2)
+	assert.Error(err)
 }
 
-func (tx *dbTx) Begin(ctx context.Context) (pgx.Tx, error) {
-	return nil, nil
+//beginTransactions tests
+
+func TestBeginTxPositive(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	m1 := mock.NewMockpgxConnIface(ctrl)
+	m1.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(nil, nil)
+
+	m2 := mock.NewMockpgxConnIface(ctrl)
+	m2.EXPECT().BeginTx(context.TODO(), pgx.TxOptions{}).Return(nil, nil)
+
+	_, _, err := beginTransactions(context.TODO(), m1, m2)
+	assert.NoError(err)
 }
 
-func (tx *dbTx) Commit(ctx context.Context) error {
-	return nil
-}
-
-func (tx *dbTx) Rollback(ctx context.Context) error {
-	return nil
-}
-
-func (tx *dbTx) Exec(ctx context.Context, sql string, arguments ...any) (commandTag pgconn.CommandTag, err error) {
-	return pgconn.CommandTag{}, nil
-}
-
-func (tx *dbTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
-	return nil, nil
-}
-
-func (tx *dbTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return nil, nil
-}
-
-func (tx *dbTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	return nil
-}
-
-func (tx *dbTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	return 0, nil
-}
-
-func (tx *dbTx) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults {
-	return nil
-}
-
-func (tx *dbTx) LargeObjects() pgx.LargeObjects {
-	return pgx.LargeObjects{}
-}
-
-func (tx *dbTx) Conn() *pgx.Conn {
-	return nil
+// createConnString and LoadConfig tests
+func TestConnectCreds(t *testing.T) {
+	assert := assert.New(t)
+	var wg sync.WaitGroup
+	for k := 0; k < 100; k++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 100; i++ {
+				LoadConfig("")
+				createConnString("sh1")
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	assert.True(true)
 }

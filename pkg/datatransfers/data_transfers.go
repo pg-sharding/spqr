@@ -27,7 +27,7 @@ type ProxyW struct {
 	w io.WriteCloser
 }
 
-type pgxIface interface {
+type pgxConnIface interface {
 	Begin(context.Context) (pgx.Tx, error)
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 	Close(context.Context) error
@@ -38,12 +38,14 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 var shards *config.DatatransferConnections
-var txFrom pgx.Tx
-var txTo pgx.Tx
-var localConfigDir = "/pkg/datatransfers/shard_data.yaml"
+
+var localConfigDir = "/shard_data.yaml"
 
 func createConnString(shardID string) string {
-	sd := shards.ShardsData[shardID]
+	sd, ok := shards.ShardsData[shardID]
+	if !ok {
+		return ""
+	}
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
 }
 
@@ -79,25 +81,25 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		return err
 	}
 
-	err = beginTransactions(ctx, from, to)
+	txFrom, txTo, err := beginTransactions(ctx, from, to)
 	if err != nil {
 		return err
 	}
 	defer func(ctx context.Context) {
-		err := rollbackTransactions(ctx, fromId, toId)
+		err := rollbackTransactions(ctx, txFrom, txTo)
 		if err != nil {
 			spqrlog.Zero.Warn().Msg("error closing transaction")
 		}
 	}(ctx)
 
 	for _, r := range shr {
-		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r)
+		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r, txFrom, txTo)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, db)
+	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txFrom, txTo, db)
 	if err != nil {
 		return err
 	}
@@ -129,22 +131,21 @@ func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool)
 	}
 }
 
-func beginTransactions(ctx context.Context, from, to pgxIface) error {
-	var err error
-	txFrom, err = from.BeginTx(ctx, pgx.TxOptions{})
+func beginTransactions(ctx context.Context, from, to pgxConnIface) (pgx.Tx, pgx.Tx, error) {
+	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
-		return err
+		return nil, nil, err
 	}
-	txTo, err = to.BeginTx(ctx, pgx.TxOptions{})
+	txTo, err := to.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
-		return err
+		return nil, nil, err
 	}
-	return nil
+	return txFrom, txTo, nil
 }
 
-func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.QDB) error {
+func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db *qdb.QDB) error {
 	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
@@ -153,6 +154,10 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 	_, err = txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", f, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
+		_, err1 := txTo.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s-%s'", t, krid))
+		if err1 != nil {
+			spqrlog.Zero.Error().Err(err1).Msg("error closing transaction")
+		}
 		return err
 	}
 
@@ -173,10 +178,6 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		_, err1 := txFrom.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s-%s'", f, krid))
-		if err1 != nil {
-			spqrlog.Zero.Error().Err(err1).Msg("error closing transaction")
-		}
 		return err
 	}
 
@@ -200,7 +201,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, db *qdb.Q
 	return nil
 }
 
-func rollbackTransactions(ctx context.Context, f, t string) error {
+func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 	err := txTo.Rollback(ctx)
 	if err != nil {
 		spqrlog.Zero.Warn().Msg("error closing transaction")
@@ -214,7 +215,7 @@ func rollbackTransactions(ctx context.Context, f, t string) error {
 }
 
 // TODO enhance for multi-column sharding rules
-func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
+func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
 	rows, err := txFrom.Query(ctx, `
 SELECT table_schema, table_name
 FROM information_schema.columns
