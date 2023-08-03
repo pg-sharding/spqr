@@ -351,6 +351,19 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args inter
 	return result, nil
 }
 
+func (tctx *testContext) stepClusterEnvironmentIs(body *godog.DocString) error {
+	byLine := func(r rune) bool {
+		return r == '\n' || r == '\r'
+	}
+	for _, e := range strings.FieldsFunc(body.Content, byLine) {
+		if e = strings.TrimSpace(e); e != "" {
+			tctx.composerEnv = append(tctx.composerEnv, e)
+		}
+	}
+
+	return nil
+}
+
 func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 	err := tctx.composer.Up(tctx.composerEnv)
 	if err != nil {
@@ -613,6 +626,10 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
 		//tctx.cleanup()
+		tctx.composerEnv = []string{
+			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
+			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
+		}
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {
@@ -642,6 +659,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	})
 
 	// host manipulation
+	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
 	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
 	s.Step(`^host "([^"]*)" is stopped$`, tctx.stepHostIsStopped)
 	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
