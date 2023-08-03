@@ -132,7 +132,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn) error {
-	routerClient, err := r.RuleRouter.PreRoute(netconn)
+	routerClient, err := r.RuleRouter.PreRoute(netconn, false)
 	if err != nil {
 		_ = netconn.Close()
 		return err
@@ -215,15 +215,6 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	}
 }
 
-func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl, err := r.RuleRouter.PreRouteAdm(conn)
-	if err != nil {
-		return err
-	}
-
-	return r.AdmConsole.Serve(ctx, cl)
-}
-
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
 	cChan := make(chan net.Conn)
 
@@ -249,7 +240,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			return nil
 		case conn := <-cChan:
 			go func() {
-				if err := r.servAdm(ctx, conn); err != nil {
+				if err := r.serv(conn); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()
