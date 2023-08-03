@@ -47,6 +47,21 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
+  router2:
+    build:
+      dockerfile: ./docker/router/Dockerfile
+      context: ../../
+    ports:
+      - "6433:6432"
+    environment:
+      - SPQR_CONFIG=/spqr/test/feature/conf/router2.yaml
+    hostname: regress_router_2
+    container_name: regress_router_2
+    depends_on:
+      shard1:
+        condition: service_healthy
+      shard2:
+        condition: service_healthy
 
   coordinator:
     build:
@@ -61,6 +76,7 @@ services:
     container_name: regress_coordinator
     depends_on:
       - "router"
+      - "router2"
       - "qdb01"
 
   qdb01:
