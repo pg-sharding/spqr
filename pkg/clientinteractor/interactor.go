@@ -384,11 +384,10 @@ type ClientDesc struct {
 func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
 	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname, rAddr}
-	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
-	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
+
 	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Shard, el, cl.ID())))
 	}
 	return rowData
 }
