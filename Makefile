@@ -98,8 +98,8 @@ gogen:
 	protos/* 
 
 mockgen:
-	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/mock_pgxconn_iface.go -package=mock
-	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/mock_pgx_tx.go -package=mock
+	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/pgx/mock_pgxconn_iface.go -package=mock
+	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/pgx/mock_pgx_tx.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen

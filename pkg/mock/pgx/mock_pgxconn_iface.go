@@ -8,8 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
 	pgx "github.com/jackc/pgx/v5"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockpgxConnIface is a mock of pgxConnIface interface.
