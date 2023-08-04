@@ -195,6 +195,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 		select {
 		case conn := <-cChan:
 			if !r.Initialized() {
+				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {
 				go func() {

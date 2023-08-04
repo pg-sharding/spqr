@@ -616,13 +616,13 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 }
 
 func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
-	if err := pi.WriteHeader("show routers"); err != nil {
+	if err := pi.WriteHeader("show routers", "status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address), msg.Status); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
