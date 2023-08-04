@@ -53,6 +53,7 @@ services:
       context: ../../
     ports:
       - "6433:6432"
+      - "7433:7432"
     environment:
       - SPQR_CONFIG=/spqr/test/feature/conf/router2.yaml
     hostname: regress_router_2
