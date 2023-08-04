@@ -31,13 +31,14 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:       map[string]bool{},
-		Krs:        map[string]*KeyRange{},
-		Locks:      map[string]*sync.RWMutex{},
-		Shards:     map[string]*Shard{},
-		Shrules:    map[string]*ShardingRule{},
-		Dataspaces: map[string]*Dataspace{},
-		Routers:    map[string]*Router{},
+		Freq:         map[string]bool{},
+		Krs:          map[string]*KeyRange{},
+		Locks:        map[string]*sync.RWMutex{},
+		Shards:       map[string]*Shard{},
+		Shrules:      map[string]*ShardingRule{},
+		Dataspaces:   map[string]*Dataspace{},
+		Routers:      map[string]*Router{},
+		Transactions: map[string]*DataTransferTransaction{},
 
 		backupPath: backupPath,
 	}, nil
@@ -333,14 +334,27 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	return q.Transactions[key], nil
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ans, ok := q.Transactions[key]
+	if !ok {
+		return nil, fmt.Errorf("no tx with key %s", key)
+	}
+	return ans, nil
 }
 
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
 }
 

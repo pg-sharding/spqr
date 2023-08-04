@@ -144,3 +144,40 @@ Feature: Move recover test
     """
     002
     """
+
+  Scenario: coordinator saves transaction to QDB and processes it on restart
+    Given cluster is up and running
+    When I execute SQL on host "coordinator"
+    """
+    ADD SHARDING RULE r1 COLUMNS w_id;
+    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(11, '002');
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid1 to sh2
+    """
+    Then command return code should be "0"
+    And qdb should contain transaction "krid1"
+    Given host "coordinator" is stopped
+    Given host "coordinator" is started
+    When I execute SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then command return code should be "0"
+    And qdb should not contain transaction "krid1"
+    

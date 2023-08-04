@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,7 +47,7 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 		return &cfg, err
 	}
 
-	fmt.Println("Running config:", string(configBytes))
+	spqrlog.Zero.Debug().Str("running config: %s", string(configBytes))
 
 	return &cfg, nil
 }

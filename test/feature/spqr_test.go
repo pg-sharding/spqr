@@ -586,6 +586,26 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 	return tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
 }
 
+func (tctx *testContext) stepQDBShouldContainTx(key string) error {
+	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
+	if err != nil {
+		return err
+	}
+
+	if tx == nil || tx.FromStatus == "" || tx.ToStatus == "" {
+		return fmt.Errorf("No valid transaction with key %s", key)
+	}
+	return nil
+}
+
+func (tctx *testContext) stepQDBShouldNotContainTx(key string) error {
+	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
+	if tx == nil || err != nil || tx.FromStatus == "" || tx.ToStatus == "" {
+		return nil
+	}
+	return fmt.Errorf("Valid transaction present with key %s", key)
+}
+
 func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body *godog.DocString) error {
 	m, err := matchers.GetMatcher(matcher)
 	if err != nil {
@@ -654,6 +674,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
+	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
+	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 }
 

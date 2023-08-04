@@ -97,10 +97,14 @@ gogen:
 	protoc --go_out=./pkg --go_opt=paths=source_relative --go-grpc_out=./pkg --go-grpc_opt=paths=source_relative \
 	protos/* 
 
+mockgen:
+	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/mock_pgxconn_iface.go -package=mock
+	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/mock_pgx_tx.go -package=mock
+
 yaccgen:
 	make -C ./yacc/console gen
 
-gen: gogen yaccgen
+gen: gogen yaccgen mockgen
 
 package:
 	sed -i 's/SPQR_VERSION/${SPQR_VERSION}/g' debian/changelog
