@@ -588,6 +588,38 @@ func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) err
 	return err
 }
 
+func (tctx *testContext) stepFileOnHostShouldMatch(path string, node string, matcher string, body *godog.DocString) (err error) {
+	remoteFile, err := tctx.composer.GetFile(node, path)
+	if err != nil {
+		return err
+	}
+	defer remoteFile.Close()
+
+	var res strings.Builder
+	for {
+		buf := make([]byte, 4096)
+		n, err := remoteFile.Read(buf)
+		res.WriteString(string(buf[:n]))
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return err
+	}
+	actualContent := res.String()
+	expectedContent := strings.TrimSpace(body.Content)
+
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	return m(string(actualContent), expectedContent)
+}
+
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var st qdb.DataTransferTransaction
@@ -661,6 +693,13 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
 	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
+	s.Step(`^cluster is failed up and running$`, func() error {
+		err := tctx.stepClusterIsUpAndRunning(true)
+		if err != nil {
+			return nil
+		}
+		return fmt.Errorf("cluster is up")
+	})
 	s.Step(`^host "([^"]*)" is stopped$`, tctx.stepHostIsStopped)
 	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
 
@@ -673,6 +712,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
+	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
+
 }
 
 func TestSpqr(t *testing.T) {
