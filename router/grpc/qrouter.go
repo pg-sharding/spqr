@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -165,8 +166,54 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		Krid:     request.KeyRangeInfo.Krid,
-		SourceID: request.KeyRangeInfo.ShardId,
+		SourceID: request.SourceId,
 		Bound:    request.Bound,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
+func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
+	krs, err := l.mgr.ListKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var krright *kr.KeyRange
+	var krleft *kr.KeyRange
+
+	for _, keyrange := range krs {
+		if kr.CmpRangesEqual(keyrange.LowerBound, request.Bound) {
+			krright = keyrange
+			if krleft != nil {
+				break
+			}
+			continue
+		}
+
+		if kr.CmpRangesEqual(keyrange.UpperBound, request.Bound) {
+			krleft = keyrange
+			if krright != nil {
+				break
+			}
+			continue
+		}
+	}
+
+	if krright == nil || krleft == nil {
+		return nil, fmt.Errorf("key range on the left or on the right was not found")
+	}
+
+	spqrlog.Zero.Debug().
+		Str("left krid", krleft.ID).
+		Str("right krid", krright.ID).
+		Msg("listing key ranges")
+
+	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
+		KeyRangeIDLeft:  krleft.ID,
+		KeyRangeIDRight: krright.ID,
 	}); err != nil {
 		return nil, err
 	}

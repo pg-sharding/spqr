@@ -147,7 +147,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 				Msg("failed to merge key ranges")
 		}
 
-		return cli.MergeKeyRanges(ctx, unite, cl)
+		return cli.MergeKeyRanges(ctx, unite)
 
 	case *spqrparser.MoveKeyRange:
 		// Get key range border by stmt.KeyRangeID

@@ -173,8 +173,8 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
-		if err := func() error {
-			for _, r := range rtrs {
+		for _, r := range rtrs {
+			if err := func() error {
 				internalR := &topology.Router{
 					ID:      r.ID,
 					Address: r.Address,
@@ -208,13 +208,13 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					spqrlog.Zero.Debug().Msg("router is opened")
 					// TODO: consistency checks
 				}
+				return nil
+			}(); err != nil {
+				spqrlog.Zero.Error().
+					Str("router id", r.ID).
+					Err(err).
+					Msg("router watchdog coroutine failed")
 			}
-
-			return nil
-		}(); err != nil {
-			spqrlog.Zero.Error().
-				Err(err).
-				Msg("router watchdog coroutine failed")
 		}
 
 		time.Sleep(time.Second)
@@ -275,17 +275,27 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	}
 
 	for _, rtr := range rtrs {
-		// TODO: run cb`s async
-		cc, err := DialRouter(&topology.Router{
-			ID:      rtr.ID,
-			Address: rtr.Addr(),
-		})
-		if err != nil {
-			return err
-		}
+		if err := func() error {
+			if rtr.State != qdb.OPENED {
+				return fmt.Errorf("router is closed")
+			}
 
-		if err := cb(cc); err != nil {
-			return err
+			// TODO: run cb`s async
+			cc, err := DialRouter(&topology.Router{
+				ID:      rtr.ID,
+				Address: rtr.Addr(),
+			})
+			if err != nil {
+				return err
+			}
+
+			if err := cb(cc); err != nil {
+				return err
+			}
+
+			return nil
+		}(); err != nil {
+			spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 		}
 	}
 
@@ -404,7 +414,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
 		Str("key-range-id", keyRange.ID).
-		Msg("etcdqdb: add key range")
+		Msg("add key range")
 
 	err := ops.AddKeyRangeWithChecks(ctx, qc.db, keyRange)
 	if err != nil {
@@ -432,7 +442,11 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		})
 
 		if err != nil {
-			return err
+			spqrlog.Zero.Debug().
+				Str("router", r.ID).
+				Err(err).
+				Msg("etcdqdb: notify router add key range")
+			continue
 		}
 
 		spqrlog.Zero.Debug().
@@ -469,11 +483,40 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 
 	keyRange := kr.KeyRangeFromDB(keyRangeDB)
 
-	return keyRange, nil
+	return keyRange, qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
+			Id: []string{keyRangeID},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock key range response")
+		return nil
+	})
 }
 
 func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
-	return qc.db.UnlockKeyRange(ctx, keyRangeID)
+	if err := qc.db.UnlockKeyRange(ctx, keyRangeID); err != nil {
+		return err
+	}
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
+			Id: []string{keyRangeID},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock key range response")
+		return nil
+	})
 }
 
 // Split TODO: check bounds and keyRangeID (sourceID)
@@ -513,13 +556,31 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Str("id", krNew.ID).
 		Msg("new key range")
 
+	krOld.UpperBound = req.Bound
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
+		return err
+	}
+
 	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
 		return fmt.Errorf("failed to add a new key range: %w", err)
 	}
 
-	krOld.UpperBound = req.Bound
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
+			Bound:        req.Bound,
+			SourceId:     req.SourceID,
+			KeyRangeInfo: krNew.ToProto(),
+		})
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop key range response")
+		return err
+	}); err != nil {
+		return err
+	}
 
-	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld))
+	return nil
 }
 
 func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
@@ -614,6 +675,20 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
 		return fmt.Errorf("failed to update a new key range: %w", err)
+	}
+
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
+			Bound: krRight.LowerBound,
+		})
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("lock sharding rules response")
+		return err
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -791,8 +866,8 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	spqrlog.Zero.Debug().
 		Str("address", r.Address).
 		Str("router", r.ID).
-		Msg("unregister router")
-	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.CLOSED))
+		Msg("register router")
+	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
@@ -823,7 +898,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
 	}
 
 	r := route.NewRoute(nil, nil, nil)
-	r.SetParams(shard.ParameterSet{})
+	r.SetParams(cl.Params())
 	if err := cl.Auth(r); err != nil {
 		return nil, err
 	}

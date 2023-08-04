@@ -56,7 +56,7 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	var lwg sync.WaitGroup
 
 	listen := map[string]struct{}{
-		"localhost":                     {},
+		"localhost:7002":                {},
 		config.CoordinatorConfig().Addr: {},
 	}
 

@@ -39,22 +39,18 @@ const (
 	shardUser                       = "regress"
 	shardPassword                   = ""
 	dbName                          = "regress"
+	consoleName                     = "spqr-console"
 	postgresqlConnectTimeout        = 30 * time.Second
 	postgresqlInitialConnectTimeout = 2 * time.Minute
-	postgresqlQueryTimeout          = 2 * time.Second
+	postgresqlQueryTimeout          = 5 * time.Second
 )
-
-type Addr struct {
-	host string
-	port int
-}
 
 type testContext struct {
 	variables         map[string]interface{}
 	templateErr       error
 	composer          testutil.Composer
 	composerEnv       []string
-	dbs               map[Addr]*sqlx.DB
+	dbs               map[string]*sqlx.DB
 	sqlQueryResult    []map[string]interface{}
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
@@ -71,7 +67,7 @@ func newTestContext(t *testing.T) (*testContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	tctx.dbs = make(map[Addr]*sqlx.DB)
+	tctx.dbs = make(map[string]*sqlx.DB)
 	return tctx, nil
 }
 
@@ -180,7 +176,7 @@ func (tctx *testContext) cleanup() {
 			log.Printf("failed to close db connection: %s", err)
 		}
 	}
-	tctx.dbs = make(map[Addr]*sqlx.DB)
+	tctx.dbs = make(map[string]*sqlx.DB)
 	if err := tctx.composer.Down(); err != nil {
 		log.Printf("failed to tear down compose: %s", err)
 	}
@@ -201,35 +197,36 @@ func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (
 }
 
 func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	connTimeout := 2 * time.Second
-	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
-	connCfg, _ := pgx.ParseConfig(dsn)
-	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
-	connCfg.RuntimeParams["client_encoding"] = "UTF8"
-	connStr := stdlib.RegisterConnConfig(connCfg)
-	db, err := sqlx.Open("pgx", connStr)
-	if err != nil {
-		return nil, err
-	}
-	// sql is lazy in go, so we need ping db
-	testutil.Retry(func() bool {
+	ping := func(db *sqlx.DB) bool {
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		defer cancel()
-		err = db.PingContext(ctx)
+		err := db.PingContext(ctx)
 		return err == nil
-	}, timeout, connTimeout)
-	if err != nil {
-		_ = db.Close()
-		return nil, err
 	}
-	return db, nil
+	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
+}
+
+func (tctx *testContext) connectRouterConsoleWithCredentials(username, password, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	ping := func(db *sqlx.DB) bool {
+		return true
+	}
+	return tctx.connectorWithCredentials(username, password, addr, consoleName, timeout, ping)
 }
 
 func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	ping := func(db *sqlx.DB) bool {
+		_, err := db.Exec("SHOW routers")
+		return err == nil
+	}
+	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
+}
+
+func (tctx *testContext) connectorWithCredentials(username string, password string, addr string, dbName string, timeout time.Duration, ping func(db *sqlx.DB) bool) (*sqlx.DB, error) {
 	dsn := fmt.Sprintf("postgres://%s:%s@%s/%s", username, password, addr, dbName)
 	connCfg, _ := pgx.ParseConfig(dsn)
 	connCfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	connCfg.RuntimeParams["client_encoding"] = "UTF8"
+	connCfg.RuntimeParams["standard_conforming_strings"] = "on"
 	connStr := stdlib.RegisterConnConfig(connCfg)
 	db, err := sqlx.Open("pgx", connStr)
 	if err != nil {
@@ -237,8 +234,7 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 	}
 	// sql is lazy in go, so we need ping db
 	testutil.Retry(func() bool {
-		_, err = db.Exec("SHOW routers")
-		return err == nil
+		return ping(db)
 	}, timeout, 2*time.Second)
 	if err != nil {
 		_ = db.Close()
@@ -247,29 +243,32 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 	return db, nil
 }
 
-func (tctx *testContext) getPostgresqlConnection(dbAddr Addr) (*sqlx.DB, error) {
-	db, ok := tctx.dbs[dbAddr]
+func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
+	db, ok := tctx.dbs[host]
 	if !ok {
-		return nil, fmt.Errorf("postgresql %s is not in cluster", dbAddr.host)
+		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+	}
+	if strings.HasSuffix(host, "admin") || host == "coordinator" {
+		return db, nil
 	}
 	err := db.Ping()
 	if err == nil {
 		return db, nil
 	}
-	addr, err := tctx.composer.GetAddr(dbAddr.host, dbAddr.port)
+	addr, err := tctx.composer.GetAddr(host, spqrPort)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get postgresql addr (%s:%d): %s", dbAddr.host, dbAddr.port, err)
+		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
 	db, err = tctx.connectPostgresql(addr, postgresqlConnectTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to postgresql (%s:%d): %s", dbAddr.host, dbAddr.port, err)
+		return nil, fmt.Errorf("failed to connect to postgresql %s: %s", host, err)
 	}
-	tctx.dbs[dbAddr] = db
+	tctx.dbs[host] = db
 	return db, nil
 }
 
-func (tctx *testContext) queryPostgresql(dbAddr Addr, query string, args interface{}) ([]map[string]interface{}, error) {
-	db, err := tctx.getPostgresqlConnection(dbAddr)
+func (tctx *testContext) queryPostgresql(host string, query string, args interface{}) ([]map[string]interface{}, error) {
+	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return nil, err
 	}
@@ -286,14 +285,19 @@ func (tctx *testContext) queryPostgresql(dbAddr Addr, query string, args interfa
 		}
 		tctx.sqlQueryResult = nil
 		result, err = tctx.doPostgresqlQuery(db, q, args, postgresqlQueryTimeout)
+		tctx.commandRetcode = 0
+		if err != nil {
+			tctx.commandRetcode = 1
+			tctx.sqlUserQueryError.Store(host, err.Error())
+		}
 		tctx.sqlQueryResult = result
 	}
 
-	return result, err
+	return result, nil
 }
 
-func (tctx *testContext) executePostgresql(dbAddr Addr, query string, args interface{}) error {
-	db, err := tctx.getPostgresqlConnection(dbAddr)
+func (tctx *testContext) executePostgresql(host string, query string, args interface{}) error {
+	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return err
 	}
@@ -353,11 +357,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
 	}
 
-	connCfg := pgx.ConnConfig{
-		DefaultQueryExecMode: pgx.QueryExecModeSimpleProtocol,
-	}
-	stdlib.RegisterConnConfig(&connCfg)
-
 	// check databases
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrShardName) {
@@ -369,7 +368,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 			}
-			tctx.dbs[Addr{host: service, port: spqrPort}] = db
+			tctx.dbs[service] = db
 		}
 	}
 
@@ -384,7 +383,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
-			tctx.dbs[Addr{host: service, port: spqrPort}] = db
+			tctx.dbs[service] = db
 
 			addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
 			if err != nil {
@@ -394,7 +393,23 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
-			tctx.dbs[Addr{host: service, port: spqrConsolePort}] = db
+			tctx.dbs[service] = db
+		}
+	}
+
+	// check router admin console
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrRouterName) {
+			addr, err := tctx.composer.GetAddr(service, spqrPort)
+			if err != nil {
+				return fmt.Errorf("failed to get router addr %s: %s", service, err)
+			}
+			db, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+			}
+			service = fmt.Sprintf("%s-admin", service)
+			tctx.dbs[service] = db
 		}
 	}
 
@@ -410,7 +425,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
 			}
-			tctx.dbs[Addr{host: service, port: coordinatorPort}] = db
+			tctx.dbs[service] = db
 		}
 	}
 
@@ -434,6 +449,82 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 	return nil
 }
 
+func (tctx *testContext) stepHostIsStopped(service string) error {
+	if db, ok := tctx.dbs[service]; ok {
+		if err := db.Close(); err != nil {
+			return err
+		}
+		delete(tctx.dbs, service)
+	}
+
+	err := tctx.composer.Stop(service)
+	if err != nil {
+		return fmt.Errorf("failed to stop service %s: %s", service, err)
+	}
+
+	return nil
+}
+
+func (tctx *testContext) stepHostIsStarted(service string) error {
+	err := tctx.composer.Start(service)
+	if err != nil {
+		return fmt.Errorf("failed to start service %s: %s", service, err)
+	}
+
+	if service == "coordinator" {
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+				if err != nil {
+					return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
+				}
+
+				conn, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("error while connecting to service %s: %s", service, err)
+				}
+				tctx.dbs[service] = conn
+				return nil
+			}
+		}
+	}
+
+	if strings.HasPrefix(service, "router") {
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, spqrPort)
+				if err != nil {
+					return fmt.Errorf("failed to get router addr %s: %s", service, err)
+				}
+				db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+				}
+				tctx.dbs[service] = db
+			}
+		}
+
+		// check router admin console
+		for _, s := range tctx.composer.Services() {
+			if strings.HasPrefix(s, service) {
+				addr, err := tctx.composer.GetAddr(service, spqrPort)
+				if err != nil {
+					return fmt.Errorf("failed to get router addr %s: %s", service, err)
+				}
+				db, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+				if err != nil {
+					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+				}
+				service = fmt.Sprintf("%s-admin", service)
+				tctx.dbs[service] = db
+			}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("service %s was not found in docker composer", service)
+}
+
 func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	if tctx.commandRetcode != code {
 		return fmt.Errorf("command return code is %d, while expected %d\n%s", tctx.commandRetcode, code, tctx.commandOutput)
@@ -441,21 +532,10 @@ func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	return nil
 }
 
-func (tctx *testContext) getAddr(host string) Addr {
-	switch host {
-	case "spqr-console":
-		return Addr{host: spqrRouterName, port: spqrConsolePort}
-	case spqrCoordinatorName:
-		return Addr{host: spqrCoordinatorName, port: coordinatorPort}
-	default:
-		return Addr{host: host, port: spqrPort}
-	}
-}
-
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(tctx.getAddr(host), query, struct{}{})
+	_, err := tctx.queryPostgresql(host, query, struct{}{})
 	return err
 }
 
@@ -491,53 +571,8 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	err := tctx.executePostgresql(tctx.getAddr(host), query, struct{}{})
+	err := tctx.executePostgresql(host, query, struct{}{})
 	return err
-}
-
-func (tctx *testContext) stepRestartRouter() error {
-	err := tctx.composer.Stop(spqrRouterName)
-	if err != nil {
-		return err
-	}
-
-	err = tctx.composer.Start(spqrRouterName)
-
-	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrRouterName) {
-			addr, err := tctx.composer.GetAddr(service, spqrPort)
-			if err != nil {
-				return fmt.Errorf("failed to get router addr %s: %s", service, err)
-			}
-			db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
-			if err != nil {
-				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
-			}
-			tctx.dbs[Addr{host: service, port: spqrPort}].Close()
-			tctx.dbs[Addr{host: service, port: spqrPort}] = db
-
-			addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
-			if err != nil {
-				return fmt.Errorf("failed to get router addr %s: %s", service, err)
-			}
-			db, err = tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-			if err != nil {
-				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
-			}
-			tctx.dbs[Addr{host: service, port: spqrConsolePort}].Close()
-			tctx.dbs[Addr{host: service, port: spqrConsolePort}] = db
-		}
-	}
-
-	return err
-}
-
-func (tctx *testContext) stepHostIsStopped(host string) error {
-	return tctx.composer.Stop(host)
-}
-
-func (tctx *testContext) stepHostIsStarted(host string) error {
-	return tctx.composer.Start(host)
 }
 
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
@@ -549,6 +584,23 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 	}
 
 	return tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
+}
+
+func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	sqlErr, ok := tctx.sqlUserQueryError.Load(host)
+	if !ok {
+		return fmt.Errorf("host %s didn't get any error", host)
+	}
+	tctx.sqlUserQueryError.Delete(host)
+	res, err := json.Marshal(sqlErr)
+	if err != nil {
+		panic(err)
+	}
+	return m(string(res), strings.TrimSpace(body.Content))
 }
 
 // nolint: unused
@@ -596,13 +648,13 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	// command and SQL execution
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
-	s.Step(`^I restart router$`, tctx.stepRestartRouter)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
+
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
-
+	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 }
 
 func TestSpqr(t *testing.T) {

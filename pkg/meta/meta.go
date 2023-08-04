@@ -161,6 +161,25 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return ProcessShow(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci, cli)
+	case *spqrparser.SplitKeyRange:
+		splitKeyRange := &kr.SplitKeyRange{
+			Bound:    stmt.Border,
+			SourceID: stmt.KeyRangeFromID,
+			Krid:     stmt.KeyRangeID,
+		}
+		if err := mgr.Split(ctx, splitKeyRange); err != nil {
+			return err
+		}
+		return cli.SplitKeyRange(ctx, splitKeyRange)
+	case *spqrparser.UniteKeyRange:
+		uniteKeyRange := &kr.UniteKeyRange{
+			KeyRangeIDLeft:  stmt.KeyRangeIDL,
+			KeyRangeIDRight: stmt.KeyRangeIDR,
+		}
+		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
+			return err
+		}
+		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	default:
 		return unknownCoordinatorCommand
 	}

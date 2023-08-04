@@ -309,7 +309,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 
 	krs, ok := q.Krs[id]
 	if !ok {
-		return nil, fmt.Errorf("no sush krid")
+		return nil, fmt.Errorf("no such krid")
 	}
 
 	if !q.Freq[id] {
