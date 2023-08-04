@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/rand"
-	"net"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -87,7 +86,7 @@ type PsqlClient struct {
 	ReplyClientId bool
 
 	rule *config.FrontendRule
-	conn net.Conn
+	conn conn.RawConn
 
 	r *route.Route
 
@@ -106,6 +105,19 @@ type PsqlClient struct {
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+func NewPsqlClient(pgconn conn.RawConn) *PsqlClient {
+	cl := &PsqlClient{
+		activeParamSet: make(map[string]string),
+		conn:           pgconn,
+		startupMsg:     &pgproto3.StartupMessage{},
+		prepStmts:      map[string]string{},
+		tsa:            config.TargetSessionAttrsRW,
+	}
+	cl.id = fmt.Sprintf("%p", cl)
+
+	return cl
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
@@ -433,19 +445,6 @@ func (cl *PsqlClient) Shards() []shard.Shard {
 		return cl.server.Datashards()
 	}
 	return nil
-}
-
-func NewPsqlClient(pgconn net.Conn) *PsqlClient {
-	cl := &PsqlClient{
-		activeParamSet: make(map[string]string),
-		conn:           pgconn,
-		startupMsg:     &pgproto3.StartupMessage{},
-		prepStmts:      map[string]string{},
-		tsa:            config.TargetSessionAttrsRW,
-	}
-	cl.id = fmt.Sprintf("%p", cl)
-
-	return cl
 }
 
 func (cl *PsqlClient) Rule() *config.FrontendRule {
@@ -1080,11 +1079,11 @@ func (cl *PsqlClient) SetTsa(s string) {
 	cl.tsa = s
 }
 
-var _ RouterClient = &PsqlClient{}
-
 func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
+
+var _ RouterClient = &PsqlClient{}
 
 type FakeClient struct {
 	RouterClient

@@ -117,7 +117,7 @@ func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstan
 
 func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	pgi.frontend.Send(csm)
-	return  pgi.frontend.Flush()
+	return pgi.frontend.Flush()
 }
 
 func (pgi *PostgreSQLInstance) Tls() *tls.Config {
