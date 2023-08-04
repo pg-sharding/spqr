@@ -103,6 +103,34 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
+  Scenario: Router synchronization after registration works
+    Given I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r1;
+    REGISTER ROUTER r1
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sharding_rules
+    """
+    Then SQL result should match regexp
+    """
+    "Sharding Rule ID":"r1"
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges
+    """
+    Then SQL result should match regexp
+    """
+    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    """
+    And SQL result should match regexp
+    """
+    "Key range ID":"krid2".*"Lower bound":"11".*"Upper bound":"31"
+    """
+
   Scenario: Lock/Unlock key range works
     Given I run SQL on host "coordinator"
     """
