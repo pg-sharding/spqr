@@ -40,14 +40,6 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		Dataspaces:   map[string]*Dataspace{},
 		Routers:      map[string]*Router{},
 		Transactions: map[string]*DataTransferTransaction{},
-		Freq:         map[string]bool{},
-		Krs:          map[string]*KeyRange{},
-		Locks:        map[string]*sync.RWMutex{},
-		Shards:       map[string]*Shard{},
-		Shrules:      map[string]*ShardingRule{},
-		Dataspaces:   map[string]*Dataspace{},
-		Routers:      map[string]*Router{},
-		Transactions: map[string]*DataTransferTransaction{},
 
 		backupPath: backupPath,
 	}, nil
