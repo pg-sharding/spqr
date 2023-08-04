@@ -206,8 +206,10 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					}
 
 					/* Mark router as opened in qdb */
-					qc.db.OpenRouter(ctx, internalR.ID)
-
+					err := qc.db.OpenRouter(ctx, internalR.ID)
+					if err != nil {
+						return err
+					}
 				case routerproto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
 
