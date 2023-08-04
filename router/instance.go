@@ -140,12 +140,13 @@ func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
 
 	defer netconn.Close()
 
-	if admin_console || routerClient.DB() == "spqr-console" {
-		return r.AdmConsole.Serve(context.Background(), routerClient)
-	}
-
+	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
 		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
+	}
+
+	if admin_console || routerClient.DB() == "spqr-console" {
+		return r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
 	spqrlog.Zero.Debug().
