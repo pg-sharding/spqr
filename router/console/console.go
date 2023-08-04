@@ -84,20 +84,29 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 func (l *Local) Serve(ctx context.Context, cl client.Client) error {
-
-	for _, msg := range []pgproto3.BackendMessage{
+	msgs := []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
+	}
+
+	params := []string{"client_encoding", "standard_conforming_strings"}
+	for _, p := range params {
+		if v, ok := cl.Params()[p]; ok {
+			msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
+		}
+	}
+
+	msgs = append(msgs, []pgproto3.BackendMessage{
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.ParameterStatus{Name: "standard_conforming_strings", Value: "on"},
-		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
 		&pgproto3.NoticeResponse{
 			Message: greeting,
 		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},
-	} {
+	}...)
+
+	for _, msg := range msgs {
 		if err := cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err

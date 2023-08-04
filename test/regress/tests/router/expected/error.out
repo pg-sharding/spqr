@@ -23,16 +23,16 @@ CREATE SHARDING RULE r1 COLUMN id;
  created sharding rule r1 for table (*) with columns [id, hash: x->x]
 (1 row)
 
-CREATE KEY RANGE kridi1 from 1 to 10 route to sh1;
+CREATE KEY RANGE kridi1 from 1 to 11 route to sh1;
          add key range          
 --------------------------------
- created key range from 1 to 10
+ created key range from 1 to 11
 (1 row)
 
-CREATE KEY RANGE kridi2 from 11 to 30 route to sh2;
+CREATE KEY RANGE kridi2 from 11 to 31 route to sh2;
           add key range          
 ---------------------------------
- created key range from 11 to 30
+ created key range from 11 to 31
 (1 row)
 
 \c regress

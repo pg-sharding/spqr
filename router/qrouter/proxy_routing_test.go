@@ -134,7 +134,7 @@ func TestComment(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -143,7 +143,7 @@ func TestComment(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("24"),
+		UpperBound: []byte("25"),
 	})
 
 	assert.NoError(err)
@@ -176,7 +176,7 @@ func TestComment(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},
@@ -222,7 +222,7 @@ func TestSingleShard(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -231,7 +231,7 @@ func TestSingleShard(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("24"),
+		UpperBound: []byte("25"),
 	})
 
 	assert.NoError(err)
@@ -264,7 +264,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},
@@ -285,7 +285,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("24"),
+							UpperBound: []byte("25"),
 						},
 					},
 				},
@@ -306,7 +306,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("24"),
+							UpperBound: []byte("25"),
 						},
 					},
 				},
@@ -326,7 +326,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("24"),
+							UpperBound: []byte("25"),
 						},
 					},
 				},
@@ -347,7 +347,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},
@@ -368,7 +368,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},
@@ -389,7 +389,7 @@ func TestSingleShard(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("24"),
+							UpperBound: []byte("25"),
 						},
 					},
 				},
@@ -435,7 +435,7 @@ func TestInsertOffsets(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -444,7 +444,7 @@ func TestInsertOffsets(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("20"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -478,7 +478,7 @@ func TestInsertOffsets(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},
@@ -524,7 +524,7 @@ func TestJoins(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -533,7 +533,7 @@ func TestJoins(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("20"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -564,7 +564,7 @@ func TestJoins(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("20"),
+							UpperBound: []byte("21"),
 						},
 					},
 				},
@@ -592,7 +592,7 @@ func TestJoins(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("20"),
+							UpperBound: []byte("21"),
 						},
 					},
 				},
@@ -642,7 +642,7 @@ func TestUnnest(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -651,7 +651,7 @@ func TestUnnest(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("20"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -685,7 +685,7 @@ func TestUnnest(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("20"),
+							UpperBound: []byte("21"),
 						},
 					},
 				},
@@ -706,7 +706,7 @@ func TestUnnest(t *testing.T) {
 							ShardID:    "sh2",
 							ID:         "id2",
 							LowerBound: []byte("11"),
-							UpperBound: []byte("20"),
+							UpperBound: []byte("21"),
 						},
 					},
 				},
@@ -752,7 +752,7 @@ func TestCopySingleShard(t *testing.T) {
 		ShardID:    "sh1",
 		KeyRangeID: "id1",
 		LowerBound: []byte("1"),
-		UpperBound: []byte("10"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -761,7 +761,7 @@ func TestCopySingleShard(t *testing.T) {
 		ShardID:    "sh2",
 		KeyRangeID: "id2",
 		LowerBound: []byte("11"),
-		UpperBound: []byte("20"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -794,7 +794,7 @@ func TestCopySingleShard(t *testing.T) {
 							ShardID:    "sh1",
 							ID:         "id1",
 							LowerBound: []byte("1"),
-							UpperBound: []byte("10"),
+							UpperBound: []byte("11"),
 						},
 					},
 				},

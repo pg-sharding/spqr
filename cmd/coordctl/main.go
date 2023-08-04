@@ -53,7 +53,7 @@ var addRouterCmd = &cobra.Command{
 		spqrlog.Zero.Debug().
 			Str("endpoint", coordinatorEndpoint).
 			Msg("dialing coordinator on")
-		
+
 		internalR := &topology.Router{
 			Address: coordinatorEndpoint,
 		}
@@ -75,6 +75,7 @@ var addRouterCmd = &cobra.Command{
 			Router: &protos.Router{
 				Id:      routerID,
 				Address: routerEndpoint,
+				Status:  protos.RouterStatus_OPENED,
 			},
 		}); err == nil {
 			fmt.Printf("-------------------------------------\n")

@@ -49,6 +49,30 @@ func GetQuantiles() *[]float64 {
 	return &queryStatistics.Quantiles
 }
 
+func GetTimeQuantile(tip StatisticsType, q float64, client string) float64 {
+	queryStatistics.lock.Lock()
+	defer queryStatistics.lock.Unlock()
+
+	var stat *tdigest.TDigest
+
+	switch tip {
+	case Router:
+		stat = queryStatistics.RouterTime[client]
+		if stat == nil {
+			return 0
+		}
+		return stat.Quantile(q)
+	case Shard:
+		stat = queryStatistics.ShardTime[client]
+		if stat == nil {
+			return 0
+		}
+		return stat.Quantile(q)
+	default:
+		return 0
+	}
+}
+
 func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 	if queryStatistics.NeedToCollectData {
 		return
@@ -90,23 +114,4 @@ func RecordFinishedTransaction(t time.Time, client string) {
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg(err.Error())
 	}
-}
-
-func GetClientTimeStatistics(tip StatisticsType, client string) *tdigest.TDigest {
-	var stat *tdigest.TDigest
-
-	queryStatistics.lock.Lock()
-	defer queryStatistics.lock.Unlock()
-
-	switch tip {
-	case Router:
-		stat = queryStatistics.RouterTime[client]
-	case Shard:
-		stat = queryStatistics.ShardTime[client]
-	}
-
-	if stat == nil {
-		stat, _ = tdigest.New()
-	}
-	return stat
 }

@@ -13,6 +13,7 @@ show_notice_messages: true
 frontend_rules:
   - db: regress
     usr: regress
+    pool_default: true
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok

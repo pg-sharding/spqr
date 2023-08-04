@@ -34,7 +34,12 @@ type RouterClient interface {
 	client.Client
 	PreparedStatementMapper
 
+	/* only call this function while holding lock */
 	Server() server.Server
+	/* functions for operation with cleint's server */
+	ServerAcquireUse()
+	ServerReleaseUse()
+
 	Unroute() error
 
 	Auth(rt *route.Route) error
@@ -92,7 +97,9 @@ type PsqlClient struct {
 	/* target-session-attrs */
 	tsa string
 
-	be *pgproto3.Backend
+	/* protects client.Send() (backend) */
+	muBe sync.Mutex
+	be   *pgproto3.Backend
 
 	startupMsg *pgproto3.StartupMessage
 
@@ -474,7 +481,17 @@ func (cl *PsqlClient) Cancel() error {
 		/* TBD: raise error here sometimes? */
 		return nil
 	}
-	return cl.Server().Cancel()
+	/* server is locked,  */
+	return cl.server.Cancel()
+}
+
+/* This method can be called concurrently with Unroute() */
+func (cl *PsqlClient) ServerAcquireUse() {
+	cl.mu.RLock()
+}
+
+func (cl *PsqlClient) ServerReleaseUse() {
+	cl.mu.RUnlock()
 }
 
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
@@ -571,10 +588,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 				return err
 			}
 			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
 		case conn.CANCELREQ:
 			cl.csm = &pgproto3.CancelRequest{}
 			if err = cl.csm.Decode(msg); err != nil {
@@ -709,36 +722,38 @@ func (cl *PsqlClient) DB() string {
 	return DefaultDB
 }
 
-func (cl *PsqlClient) receivepasswd() string {
+func (cl *PsqlClient) receivepasswd() (string, error) {
 	msg, err := cl.be.Receive()
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	switch v := msg.(type) {
 	case *pgproto3.PasswordMessage:
-		return v.Password
+		return v.Password, nil
 	default:
-		return ""
+		return "", fmt.Errorf("failed to receive password from backend msg")
 	}
 }
 
-func (cl *PsqlClient) PasswordCT() string {
+func (cl *PsqlClient) PasswordCT() (string, error) {
 	if db, ok := cl.startupMsg.Parameters["password"]; ok {
-		return db
+		return db, nil
 	}
 
-	cl.be.Send(&pgproto3.AuthenticationCleartextPassword{})
-	_ = cl.be.Flush()
+	if err := cl.Send(&pgproto3.AuthenticationCleartextPassword{}); err != nil {
+		return "", err
+	}
 
 	return cl.receivepasswd()
 }
 
-func (cl *PsqlClient) PasswordMD5(salt [4]byte) string {
-	cl.be.Send(&pgproto3.AuthenticationMD5Password{
+func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
+	if err := cl.Send(&pgproto3.AuthenticationMD5Password{
 		Salt: salt,
-	})
-	_ = cl.be.Flush()
+	}); err != nil {
+		return "", err
+	}
 	return cl.receivepasswd()
 }
 
@@ -756,6 +771,8 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 		Uint("client", spqrlog.GetPointer(cl)).
 		Type("msg-type", msg).
 		Msg("")
+	cl.muBe.Lock()
+	defer cl.muBe.Unlock()
 	cl.be.Send(msg)
 	return cl.be.Flush()
 }
@@ -767,8 +784,7 @@ func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) 
 		Msg("")
 	ch := make(chan error)
 	go func() {
-		cl.be.Send(msg)
-		ch <- cl.be.Flush()
+		ch <- cl.Send(msg)
 	}()
 	select {
 	case <-ctx.Done():
@@ -826,15 +842,18 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 }
 
 func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
+	cl.mu.RLock()
+	defer cl.mu.RUnlock()
+
 	spqrlog.Zero.Debug().
 		Str("server", cl.server.Name()).
 		Type("query-type", query).
 		Msg("client process query")
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
+
 	if cl.server == nil {
 		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
 	}
+
 	if err := cl.server.Send(query); err != nil {
 		return txstatus.TXERR, false, err
 	}
@@ -1050,8 +1069,7 @@ func (cl *PsqlClient) Shutdown() error {
 
 	_ = cl.Unroute()
 
-	_ = cl.conn.Close()
-	return nil
+	return cl.conn.Close()
 }
 
 func (cl *PsqlClient) GetTsa() string {

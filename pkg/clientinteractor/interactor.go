@@ -384,11 +384,10 @@ type ClientDesc struct {
 func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
 	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname, rAddr}
-	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
-	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
+
 	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Shard, el, cl.ID())))
 	}
 	return rowData
 }
@@ -564,7 +563,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange, cl client.Client) error {
+func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -582,7 +581,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
-		if err := cl.Send(msg); err != nil {
+		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}

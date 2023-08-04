@@ -99,6 +99,9 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 }
 
 func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) error {
+	rst.Cl.ServerAcquireUse()
+	defer rst.Cl.ServerReleaseUse()
+
 	if rst.Cl.Server().HasPrepareStatement(hash) {
 		return nil
 	}
