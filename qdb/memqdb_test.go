@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const MemQDBPath = "memqdb.json"
+const MemQDBPath = ""
 
 var mockDataspace *qdb.Dataspace = &qdb.Dataspace{"123"}
 var mockShard *qdb.Shard = &qdb.Shard{
