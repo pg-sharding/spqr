@@ -1,4 +1,4 @@
-Feature: Coordinator show clints, pools and backend_connections
+Feature: Coordinator show clients, pools and backend_connections
     Background:
         Given cluster is up and running
         When I execute SQL on host "coordinator"
@@ -18,11 +18,11 @@ Feature: Coordinator show clints, pools and backend_connections
         """
         Given I execute SQL on host "router"
         """
-        SELECT pg_sleep(5)
+        SELECT pg_sleep(1)
         """
         And I execute SQL on host "router2"
         """
-        SELECT pg_sleep(5)
+        SELECT pg_sleep(1)
         """
 
     Scenario: empty answer when no routers
@@ -42,27 +42,27 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW clients
         """
         Then command return code should be "0"
-        And SQL result should not match regexp
+        And SQL result should match json_exactly
         """
-        regress_router:7000|regress_router_2:7000
+        []
         """
         When I run SQL on host "coordinator"
         """
         SHOW pools
         """
         Then command return code should be "0"
-        And SQL result should not match regexp
+        And SQL result should match json_exactly
         """
-        regress_router:7000|regress_router_2:7000
+        []
         """
         When I run SQL on host "coordinator"
         """
         SHOW backend_connections
         """
         Then command return code should be "0"
-        And SQL result should not match regexp
+        And SQL result should match json_exactly
         """
-        regress_router:7000|regress_router_2:7000
+        []
         """
 
     Scenario: show clients works
@@ -71,13 +71,30 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW clients
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (regress_router:7000(.|\n)*){2}
-        """
-        And SQL result should match regexp
-        """
-        (regress_router_2:7000(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "router_address":"regress_router:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            }
+        ]
         """
 
     Scenario: show clients collects data from 2 routers
@@ -86,13 +103,30 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW clients
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (regress_router:7000(.|\n)*){2}
-        """
-        And SQL result should match regexp
-        """
-        (regress_router_2:7000(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "router_address":"regress_router:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            }
+        ]
         """
         When I execute SQL on host "coordinator"
         """
@@ -106,11 +140,22 @@ Feature: Coordinator show clints, pools and backend_connections
         Then command return code should be "0"
         And SQL result should not match regexp
         """
-        regress_router:7000(.|\n)*
+        regress_router:7000
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (regress_router_2:7000(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "router_address":"regress_router_2:7000",
+                "user":"regress"
+            }
+        ]
         """
 
     Scenario: show backend_connections works
@@ -119,13 +164,39 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW backend_connections
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_1:6432(.|\n)*sh1(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_2:6432",
+                "shard key name":"sh2",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_2:6432",
+                "shard key name":"sh2",
+                "user":"regress"
+            }
+        ]
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_2:6432(.|\n)*sh2(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_1:6432",
+                "shard key name":"sh1",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_1:6432",
+                "shard key name":"sh1",
+                "user":"regress"
+            }
+        ]
         """
 
     Scenario: show backend_connections collects data from 2 routers
@@ -134,13 +205,39 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW backend_connections
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_1:6432(.|\n)*sh1(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_2:6432",
+                "shard key name":"sh2",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_2:6432",
+                "shard key name":"sh2",
+                "user":"regress"
+            }
+        ]
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_2:6432(.|\n)*sh2(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_1:6432",
+                "shard key name":"sh1",
+                "user":"regress"
+            },
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_1:6432",
+                "shard key name":"sh1",
+                "user":"regress"
+            }
+        ]
         """
         When I execute SQL on host "coordinator"
         """
@@ -149,16 +246,34 @@ Feature: Coordinator show clints, pools and backend_connections
         Then command return code should be "0"
         When I run SQL on host "coordinator"
         """
-        SHOW clients
+        SHOW backend_connections
         """
         Then command return code should be "0"
         And SQL result should not match regexp
         """
-        regress_router:7000(.|\n)*
+        ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (regress_router_2:7000(.|\n)*){2}
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_1:6432",
+                "shard key name":"sh1",
+                "user":"regress"
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
+            {
+                "dbname":"regress",
+                "hostname":"spqr_shard_2:6432",
+                "shard key name":"sh2",
+                "user":"regress"
+            }
+        ]
         """
 
     Scenario: show pools works
@@ -167,13 +282,47 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW pools
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_1:6432(.|\n)*){2}
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_2:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            },
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_2:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_2:6432(.|\n)*){2}
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_1:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            },
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_1:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
         """
 
     Scenario: show pools collects data from 2 routers
@@ -182,13 +331,47 @@ Feature: Coordinator show clints, pools and backend_connections
         SHOW pools
         """
         Then command return code should be "0"
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_1:6432(.|\n)*){2}
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_2:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            },
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_2:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (spqr_shard_2:6432(.|\n)*){2}
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_1:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            },
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_1:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
         """
         When I execute SQL on host "coordinator"
         """
@@ -197,14 +380,36 @@ Feature: Coordinator show clints, pools and backend_connections
         Then command return code should be "0"
         When I run SQL on host "coordinator"
         """
-        SHOW clients
+        SHOW pools
         """
         Then command return code should be "0"
         And SQL result should not match regexp
         """
-        regress_router:7000(.|\n)*
+        ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
         """
-        And SQL result should match regexp
+        And SQL result should match json
         """
-        (regress_router_2:7000(.|\n)*){2}
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_1:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
+            {
+                "idle connections":"1",
+                "pool db":"regress",
+                "pool host":"spqr_shard_2:6432",
+                "pool usr":"regress",
+                "queue residual size":"50",
+                "used connection count":"0"
+            }
+        ]
         """
