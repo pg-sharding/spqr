@@ -10,14 +10,14 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
-type CoordPoolImpl struct {
-	CoordConnectionKepperImpl
+type CoordPool struct {
+	CoordConnectionKepper
 	CoordPoolIterator
 }
 
-func NewCoordPool(info *protos.PoolInfo) *CoordPoolImpl {
-	return &CoordPoolImpl{
-		CoordConnectionKepperImpl: CoordConnectionKepperImpl{
+func NewCoordPool(info *protos.PoolInfo) *CoordPool {
+	return &CoordPool{
+		CoordConnectionKepper: CoordConnectionKepper{
 			Id:            info.Id,
 			DB:            info.DB,
 			Usr:           info.Usr,
@@ -31,11 +31,11 @@ func NewCoordPool(info *protos.PoolInfo) *CoordPoolImpl {
 	}
 }
 
-func (r *CoordPoolImpl) Connection(clid string, shardKey kr.ShardKey) (shard.Shard, error) {
+func (r *CoordPool) Connection(clid string, shardKey kr.ShardKey) (shard.Shard, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 
-type CoordConnectionKepperImpl struct {
+type CoordConnectionKepper struct {
 	Id            string
 	DB            string
 	Usr           string
@@ -47,47 +47,47 @@ type CoordConnectionKepperImpl struct {
 	m sync.RWMutex
 }
 
-func (r *CoordConnectionKepperImpl) Put(host shard.Shard) error {
+func (r *CoordConnectionKepper) Put(host shard.Shard) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (r *CoordConnectionKepperImpl) Discard(sh shard.Shard) error {
+func (r *CoordConnectionKepper) Discard(sh shard.Shard) error {
 	return fmt.Errorf("unimplemented")
 }
 
-func (r *CoordConnectionKepperImpl) UsedConnectionCount() int {
+func (r *CoordConnectionKepper) UsedConnectionCount() int {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	return int(r.ConnCount)
 }
 
-func (r *CoordConnectionKepperImpl) IdleConnectionCount() int {
+func (r *CoordConnectionKepper) IdleConnectionCount() int {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	return int(r.IdleConnCount)
 }
 
-func (r *CoordConnectionKepperImpl) QueueResidualSize() int {
+func (r *CoordConnectionKepper) QueueResidualSize() int {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	return int(r.QueueSize)
 }
 
-func (r *CoordConnectionKepperImpl) Hostname() string {
+func (r *CoordConnectionKepper) Hostname() string {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	return r.Host
 }
 
-func (r *CoordConnectionKepperImpl) List() []shard.Shard {
+func (r *CoordConnectionKepper) List() []shard.Shard {
 	return nil
 }
 
-func (r *CoordConnectionKepperImpl) Rule() *config.BackendRule {
+func (r *CoordConnectionKepper) Rule() *config.BackendRule {
 	r.m.Lock()
 	defer r.m.Unlock()
 
