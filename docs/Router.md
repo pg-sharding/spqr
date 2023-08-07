@@ -17,7 +17,7 @@ The path of the query depends on:
 
 ## Configuration
 
-All SPQR configurations can be written in json, yaml or toml format. See examples in [config-example](../example/) or [pkg/config/router.go](../pkg/config/router.go)
+All SPQR configurations can be written in json, yaml or toml format. See examples in [examples](../examples/) or [pkg/config/router.go](../pkg/config/router.go)
 
 ### general settings
 
