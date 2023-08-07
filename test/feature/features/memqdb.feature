@@ -55,7 +55,7 @@ Feature: MemQDB save state into a file
     ]
     """
   
-  Scenario: DROP works with backup
+  Scenario: backup is empty after DROP SHARDING RULE ALL
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
