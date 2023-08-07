@@ -54,6 +54,16 @@ jobs:
   feature:
     name: feature
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        command:
+          - 'GODOG_FEATURE=base.feature make feature_test'
+          - 'GODOG_FEATURE=coordinator.feature make feature_test'
+          - 'GODOG_FEATURE=memqdb.feature make feature_test'
+          - 'GODOG_FEATURE=move_recover.feature make feature_test'
+          - 'GODOG_FEATURE=move.feature make feature_test'
+      # do not cancel all tests if one failed
+      fail-fast: false
     steps:
       - name: Install Latest Docker
         run: |
@@ -69,4 +79,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: feature tests
-        run: make feature_test
+        run: ${{ matrix.command }}
