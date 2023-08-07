@@ -986,3 +986,7 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	panic("implement or delete me")
 }
+
+func (qc *qdbCoordinator) QDB() qdb.QDB {
+	return qc.db
+}

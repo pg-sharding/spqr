@@ -148,6 +148,9 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.UnregisterRouter(stmt.ID)
 	case *spqrparser.Lock:
+		if _, err := mgr.QDB().CheckLockedKeyRange(ctx, stmt.KeyRangeID); err == nil {
+			return fmt.Errorf("key range with id %s already locked", stmt.KeyRangeID)
+		}
 		if _, err := mgr.LockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}

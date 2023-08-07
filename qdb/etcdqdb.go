@@ -462,7 +462,34 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: check locked key range")
-	return nil, fmt.Errorf("implement CheckLockedKeyRange")
+	sess, err := concurrency.NewSession(q.cli)
+	if err != nil {
+		return nil, err
+	}
+	defer closeSession(sess)
+
+	fetcher := func(ctx context.Context, sess *concurrency.Session, keyRangeID string) (*KeyRange, error) {
+		mu := concurrency.NewMutex(sess, keyspace)
+		if err = mu.Lock(ctx); err != nil {
+			return nil, err
+		}
+		defer unlockMutex(mu, ctx)
+
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
+		if err != nil {
+			return nil, err
+		}
+		switch len(resp.Kvs) {
+		case 0:
+			return nil, fmt.Errorf("key range with id %v not locked", keyRangeID)
+		case 1:
+			return q.GetKeyRange(ctx, keyRangeID)
+		default:
+			return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+		}
+	}
+
+	return fetcher(ctx, sess, id)
 }
 
 func (q *EtcdQDB) ShareKeyRange(id string) error {

@@ -34,6 +34,9 @@ func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Ad
 
 func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
+		if _, err := c.impl.QDB().CheckLockedKeyRange(ctx, id); err == nil {
+			return nil, fmt.Errorf("key range with id %s already locked", id)
+		}
 		_, err := c.impl.LockKeyRange(ctx, id)
 		if err != nil {
 			return nil, err
