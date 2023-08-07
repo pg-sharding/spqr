@@ -110,16 +110,24 @@ func (dc *DockerComposer) fillContainers() error {
 	if err != nil {
 		return err
 	}
+	errorFlag := false
+	var name, state string
 	for _, c := range containers { // nolint: gocritic
 		prj := c.Labels["com.docker.compose.project"]
 		srv := c.Labels["com.docker.compose.service"]
 		if prj != dc.projectName || srv == "" {
 			continue
 		}
-		if c.State != "running" && !dc.stopped[srv] {
-			return fmt.Errorf("container %s is %s, not running", srv, c.State)
-		}
 		dc.containers[srv] = c
+
+		if c.State != "running" && !dc.stopped[srv] {
+			errorFlag = true
+			name = srv
+			state = c.State
+		}
+	}
+	if errorFlag {
+		return fmt.Errorf("container %s is %s, not running", name, state)
 	}
 	return nil
 }

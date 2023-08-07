@@ -6,16 +6,20 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
+	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
 type Router interface {
@@ -28,11 +32,14 @@ type InstanceImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
+	Writer     workloadlog.WorkloadLog
 
 	stchan     chan struct{}
 	addr       string
 	frTLS      *tls.Config
 	WithJaeger bool
+
+	notifier *sdnotifier.Notifier
 }
 
 func (r *InstanceImpl) ID() string {
@@ -49,7 +56,7 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
 	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
@@ -62,6 +69,17 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	lc := local.NewLocalCoordinator(qdb)
+
+	var notifier *sdnotifier.Notifier
+	if rcfg.UseSystemdNotifier {
+		// systemd notifier
+		notifier, err = sdnotifier.NewNotifier(ns, rcfg.SystemdNotifierDebug)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		notifier = nil
+	}
 
 	// qrouter init
 	qtype := config.RouterMode(rcfg.RouterMode)
@@ -80,17 +98,28 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}
 
+	//workload writer
+	batchSize := rcfg.WorkloadBatchSize
+	if batchSize == 0 {
+		batchSize = 1000000
+	}
+	logFile := rcfg.LogFileName
+	if logFile == "" {
+		logFile = "mylogs.txt"
+	}
+	writ := workloadlog.NewLogger(batchSize, logFile)
+
 	// request router
-	rr := rulerouter.NewRouter(frTLS, rcfg)
+	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
 
 	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan)
+	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan, writ)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
 		return nil, err
 	}
 
-	if skipInitSQL {
+	if !skipInitSQL {
 		for _, fname := range []string{
 			rcfg.InitSQL,
 		} {
@@ -128,11 +157,13 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		stchan:     stchan,
 		frTLS:      frTLS,
 		WithJaeger: rcfg.WithJaeger,
+		Writer:     writ,
+		notifier:   notifier,
 	}, nil
 }
 
-func (r *InstanceImpl) serv(netconn net.Conn) error {
-	routerClient, err := r.RuleRouter.PreRoute(netconn)
+func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
+	routerClient, err := r.RuleRouter.PreRoute(netconn, admin_console)
 	if err != nil {
 		_ = netconn.Close()
 		return err
@@ -140,19 +171,20 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 
 	defer netconn.Close()
 
-	if routerClient.DB() == "spqr-console" {
-		return r.AdmConsole.Serve(context.Background(), routerClient)
-	}
-
+	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
 		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
+	}
+
+	if admin_console || routerClient.DB() == "spqr-console" {
+		return r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(routerClient)).
 		Msg("prerouting phase succeeded")
 
-	cmngr, err := rulerouter.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
+	cmngr, err := poolmgr.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
 		return err
 	}
@@ -163,7 +195,7 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config())
+	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer)
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
@@ -173,6 +205,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 			return fmt.Errorf("could not initialize jaeger tracer: %s", err)
 		}
 		defer func() { _ = closer.Close() }()
+	}
+
+	if r.notifier != nil {
+		if err := r.notifier.Ready(); err != nil {
+			return fmt.Errorf("could not send ready msg: %s", err)
+		}
 	}
 
 	cChan := make(chan net.Conn)
@@ -191,14 +229,26 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 
 	go accept(listener, cChan)
 
+	if (r.notifier != nil) {
+		go func() {
+			for {
+				if err := r.notifier.Notify(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+				}
+				time.Sleep(sdnotifier.Timeout)
+			}
+		}()
+	}
+
 	for {
 		select {
 		case conn := <-cChan:
 			if !r.Initialized() {
+				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {
 				go func() {
-					if err := r.serv(conn); err != nil {
+					if err := r.serv(conn, false); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("error serving client")
 					}
 				}()
@@ -213,15 +263,6 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 			return nil
 		}
 	}
-}
-
-func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl, err := r.RuleRouter.PreRouteAdm(conn)
-	if err != nil {
-		return err
-	}
-
-	return r.AdmConsole.Serve(ctx, cl)
 }
 
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
@@ -249,7 +290,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			return nil
 		case conn := <-cChan:
 			go func() {
-				if err := r.servAdm(ctx, conn); err != nil {
+				if err := r.serv(conn, true); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()

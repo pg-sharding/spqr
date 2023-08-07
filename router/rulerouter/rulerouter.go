@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
+	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/rule"
 	"github.com/pkg/errors"
@@ -26,8 +27,7 @@ type RuleRouter interface {
 
 	Shutdown() error
 	Reload(configPath string) error
-	PreRoute(conn net.Conn) (rclient.RouterClient, error)
-	PreRouteAdm(conn net.Conn) (rclient.RouterClient, error)
+	PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error)
 	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
@@ -54,6 +54,8 @@ type RuleRouterImpl struct {
 
 	clmu sync.Mutex
 	clmp map[uint32]rclient.RouterClient
+
+	notifier *notifier.Notifier
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
@@ -110,7 +112,6 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 }
 
 func (r *RuleRouterImpl) Reload(configPath string) error {
-
 	/*
 			* Reload config changes:
 			* While reloading router config we need
@@ -119,11 +120,17 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 			* 2) Add all new routes to router
 		 	* 3) Mark all active routes as expired
 	*/
+	if r.notifier != nil {
+		if err := r.notifier.Reloading(); err != nil {
+			return err
+		}
+	}
 
-	rcfg, err := config.LoadRouterCfg(configPath)
+	err := config.LoadRouterCfg(configPath)
 	if err != nil {
 		return err
 	}
+	rcfg := config.RouterConfig()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -132,13 +139,19 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		return err
 	}
 
-	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(&rcfg)
+	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
+
+	if r.notifier != nil {
+		if err = r.notifier.Ready(); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
+func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	return &RuleRouterImpl{
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
@@ -146,10 +159,11 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		tlsconfig: tlsconfig,
 		clmp:      map[uint32]rclient.RouterClient{},
+		notifier:  notifier,
 	}
 }
 
-func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
+func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
@@ -160,7 +174,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, nil
 	}
 
-	if cl.DB() == "spqr-console" {
+	if admin_client || cl.DB() == "spqr-console" {
 		return r.PreRouteInitializedClientAdm(cl)
 	}
 
@@ -247,16 +261,6 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	}
 
 	return cl, nil
-}
-
-func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn)
-
-	if err := cl.Init(r.tlsconfig); err != nil {
-		return nil, err
-	}
-
-	return r.PreRouteInitializedClientAdm(cl)
 }
 
 func (r *RuleRouterImpl) ListShards() []string {

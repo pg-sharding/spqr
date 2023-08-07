@@ -19,6 +19,8 @@ message Router {
 service RouterService {
   rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
   rpc AddRouter (AddRouterRequest) returns (AddRouterReply) {}
+  rpc RemoveRouter (RemoveRouterRequest) returns (RemoveRouterReply) {}
+  rpc SyncMetadata (SyncMetadataRequest) returns (SyncMetadataReply) {}
 }
 
 
@@ -29,10 +31,21 @@ message ListRoutersReply {
 }
 
 message AddRouterRequest {
-   Router router = 1;
+  Router router = 1;
 }
 
 message AddRouterReply {
   string id = 1;
 }
 
+message RemoveRouterRequest {
+  string id = 1;
+}
+
+message RemoveRouterReply {}
+
+message SyncMetadataRequest {
+  Router router = 1;
+}
+
+message SyncMetadataReply {}

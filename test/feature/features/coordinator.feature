@@ -1,6 +1,12 @@
 Feature: Coordinator test
   Background:
+    #
+    # Make host "coordinator" take control
+    #
     Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+
     When I run SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router::7000
@@ -32,9 +38,9 @@ Feature: Coordinator test
     """
     SHOW routers
     """
-    Then SQL result should match regexp
+    Then SQL result should match json
     """
-    \[\]
+    []
     """
 
     When I run SQL on host "coordinator"
@@ -93,7 +99,19 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    Error while dialing
+    failed to ping router
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "show routers":"router r1-regress_router:7000",
+      "status":"OPENED"
+    }]
     """
 
   Scenario: Unregister router with invalid id fails
@@ -102,6 +120,66 @@ Feature: Coordinator test
     UNREGISTER ROUTER r2
     """
     Then command return code should be "0"
+
+  Scenario: Router synchronization after registration works
+    Given I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r1;
+    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sharding_rules
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "Columns":"id",
+      "Hash Function":"x->x",
+      "Sharding Rule ID":"r1",
+      "Table Name":"*"
+    }]
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    },
+    {
+      "Key range ID":"krid2",
+      "Lower bound":"11",
+      "Shard ID":"sh2",
+      "Upper bound":"31"
+    }]
+    """
+
+  Scenario: Add key range with the same id fails
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid1 already present in qdb
+    """
+
+  Scenario: Add sharding rule with the same id fails
+    When I run SQL on host "coordinator"
+    """
+    ADD SHARDING RULE r1 COLUMN idx
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    sharding rule r1 already present in qdb
+    """
 
   Scenario: Lock/Unlock key range works
     Given I run SQL on host "coordinator"
@@ -139,13 +217,23 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"5"
+    }]
     """
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"5",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "router-admin"
@@ -153,13 +241,23 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"5"
+    }]
     """
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"5",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "coordinator"
@@ -168,9 +266,14 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "router-admin"
@@ -178,9 +281,14 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
   Scenario: Split/Unite locked key range fails
@@ -201,6 +309,96 @@ Feature: Coordinator test
     Then SQL error on host "coordinator" should match regexp
     """
     context deadline exceeded
+    """
+
+  Scenario: Unite non-adjacent key ranges fails
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 100 TO 1001 ROUTE TO sh1;
+    UNITE KEY RANGE krid1 WITH krid3
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to unite non-adjacent key ranges
+    """
+
+  Scenario: Unite in reverse order works
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh2;
+    UNITE KEY RANGE krid3 WITH krid2
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then SQL result should match json
+    """
+    [{
+      "Key range ID":"krid2",
+      "Lower bound":"11",
+      "Shard ID":"sh2",
+      "Upper bound":"40"
+    }]
+    """
+
+  Scenario: Unite key ranges routing different shards fails
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1;
+    UNITE KEY RANGE krid2 WITH krid3
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to unite key ranges routing different shards
+    """
+
+  Scenario: Split key range by bound out of range fails
+    #
+    # Check we cannot split by bound greater than upper bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 40
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by bound less than lower bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 10
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by lower or upper bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 31
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to split because bound equals lower or upper bound of the key range
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 11
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to split because bound equals lower or upper bound of the key range
     """
 
   Scenario: Router is down
@@ -232,13 +430,9 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
-    """
-    And SQL result should match regexp
-    """
-    "Key range ID":"krid2".*"Lower bound":"11".*"Upper bound":"31"
+    []
     """
 
   Scenario: QDB is down
@@ -257,6 +451,7 @@ Feature: Coordinator test
     #
     # Coordinator is Up
     #
+    Given host "coordinator2" is stopped
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
@@ -273,7 +468,94 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"31",
+      "Shard ID":"sh1",
+      "Upper bound":"40"
+    }]
+    """
+
+  Scenario: Add intersecting key range fails
+    #
+    # Create test key range
+    #
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
     """

@@ -23,12 +23,16 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	}
 
 	for _, v := range existsRules {
-		v_gen := shrule.ShardingRuleFromDB(v)
-		if rule.Includes(v_gen) {
-			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, v_gen.Id)
+		if rule.Dataspace != v.DataspaceId {
+			continue
 		}
-		if v_gen.Includes(rule) {
-			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, v_gen.Id)
+
+		vGen := shrule.ShardingRuleFromDB(v)
+		if rule.Includes(vGen) {
+			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id)
+		}
+		if vGen.Includes(rule) {
+			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, vGen.Id)
 		}
 	}
 
@@ -36,31 +40,32 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 }
 
 func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
-	// TODO: do real validate
-	//if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
-	//	return err
-	//}
+	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
+		return err
+	}
 
 	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
 		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
 
-	existsKrids, err := qdb.ListKeyRanges(ctx)
+	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range existsKrids {
-		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
-			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
+		if keyRange.Dataspace != v.DataspaceId {
+			continue
+		}
+		if doIntersect(keyRange, v) {
+			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
-func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
+func MatchShardingRule(ctx context.Context, _ meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
 	/*
 	* Create set to search column names in `shardingEntries`
 	 */
@@ -108,13 +113,16 @@ func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName str
 }
 
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
-	// TODO: check lock are properly hold while updating
+	_, err := qdb.CheckLockedKeyRange(ctx, keyRange.ID)
+	if err != nil {
+		return err
+	}
 
 	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
 	}
 
-	krids, err := qdb.ListKeyRanges(ctx)
+	krids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
 	if err != nil {
 		return err
 	}
@@ -124,11 +132,25 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			// update req
 			continue
 		}
-		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
-			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
+		if doIntersect(keyRange, v) {
+			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
 	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
+}
+
+// This method checks if two key ranges intersect
+func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
+	// l0     r0      l1      r1
+	// |------|-------|--------
+	//
+	// r0     l0      r1      l1
+	// -------|-------|-------|
+	//
+	// l0     r0      l1      r1
+	// -------|-------|-------|
+	return kr.CmpRangesLessEqual(l.LowerBound, r.LowerBound) && kr.CmpRangesLess(r.LowerBound, l.UpperBound) ||
+		kr.CmpRangesLess(l.LowerBound, r.UpperBound) && kr.CmpRangesLessEqual(r.UpperBound, l.UpperBound) ||
+		kr.CmpRangesLess(r.LowerBound, l.UpperBound) && kr.CmpRangesLessEqual(l.UpperBound, r.UpperBound)
 }

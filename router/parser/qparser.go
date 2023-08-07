@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -29,8 +29,14 @@ func (qp *QParser) Query() string {
 
 type ParseState interface{}
 
+type ParseSet struct {
+	ParseState
+	Element spqrparser.Statement
+}
+
 type ParseStateTXBegin struct {
 	ParseState
+	Options []lyx.TransactionModeItem
 }
 
 type ParseStateTXRollback struct {
@@ -123,10 +129,15 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	}
 
 	qp.stmt = nil
+	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
 	routerStmts, err := lyx.Parse(query)
 	if err != nil {
-		return qp.stmt, "", qrouter.ComplexQuery
+		state := CustomSQLQueryParse(query)
+		if state == nil {
+			return nil, comment, err
+		}
+		return state, comment, nil
 	}
 	if routerStmts == nil {
 		qp.state = ParseStateEmptyQuery{}
@@ -207,17 +218,40 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			qp.state = varStmt
 		}
 		return qp.state, comment, nil
-	case *lyx.Begin:
-		qp.state = ParseStateTXBegin{}
-		return qp.state, comment, nil
-	case *lyx.Commit:
-		qp.state = ParseStateTXCommit{}
-		return qp.state, comment, nil
-	case *lyx.Rollback:
-		qp.state = ParseStateTXRollback{}
-		return qp.state, comment, nil
+	case *lyx.TransactionStmt:
+		switch q.Kind {
+		case lyx.TRANS_STMT_BEGIN:
+			qp.state = ParseStateTXBegin{
+				Options: q.Options,
+			}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_COMMIT:
+			qp.state = ParseStateTXCommit{}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_ROLLBACK:
+			qp.state = ParseStateTXRollback{}
+			return qp.state, comment, nil
+		default:
+		}
 	default:
 	}
 
 	return ParseStateQuery{}, comment, nil
+}
+
+func CustomSQLQueryParse(query string) ParseState {
+	spqrlog.Zero.Debug().Str("Query", query).Msg("Custom psql query parse")
+	stmt, err := spqrparser.Parse(query)
+	if err != nil {
+		return nil
+	}
+
+	switch statement := stmt.(type) {
+	case *spqrparser.Set:
+		state := &ParseSet{
+			Element: statement.Element,
+		}
+		return state
+	}
+	return nil
 }

@@ -18,9 +18,9 @@ DROP SHARDING RULE ALL;
 (1 row)
 
 CREATE SHARDING RULE r1 COLUMN id;
-                          add sharding rule                           
-----------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [id, hash: x->x]
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [id, hash: x->x] for dataspace default
 (1 row)
 
 CREATE KEY RANGE kridi1 from 1 to 11 route to sh1;
@@ -50,7 +50,7 @@ ERROR:  column "ixxxd" does not exist
 LINE 1: SELECT * FROM x WHERE ixxxd = 1;
                               ^
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
-ERROR:  error processing query 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': too complex query to parse
+ERROR:  client proccessing error: error processing query 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE
 SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 

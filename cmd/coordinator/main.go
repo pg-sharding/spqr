@@ -24,14 +24,14 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := qdb.NewQDB(qdbImpl)
+		db, err := qdb.NewXQDB(qdbImpl)
 		if err != nil {
 			return err
 		}
 
 		coordinator := provider.NewCoordinator(db)
 		app := app.NewApp(coordinator)
-		return app.Run()
+		return app.Run(true)
 	},
 }
 

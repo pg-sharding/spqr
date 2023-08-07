@@ -39,17 +39,7 @@ psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=6432" -c "
 	exit 1
 }
 
-psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c "LOCK KEY RANGE krid2;" || {
-	echo "ERROR: tests failed"
-	exit 1
-}
-
 psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c "MOVE KEY RANGE krid2 to sh1;" || {
-	echo "ERROR: tests failed"
-	exit 1
-}
-
-psql "host=spqr_coordinator sslmode=disable user=user1 dbname=db1 port=7002" -c "UNLOCK KEY RANGE krid2;" || {
 	echo "ERROR: tests failed"
 	exit 1
 }

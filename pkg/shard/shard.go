@@ -36,6 +36,11 @@ type Shardinfo interface {
 	TxStatus() txstatus.TXStatus
 }
 
+type CoordShardinfo interface {
+	Shardinfo
+	Router() string
+}
+
 type Shard interface {
 	txstatus.TxStatusMgr
 	Shardinfo

@@ -26,23 +26,27 @@ func NewApp(c coordinator.Coordinator) *App {
 	}
 }
 
-func (app *App) Run() error {
+func (app *App) Run(withPsql bool) error {
 	spqrlog.Zero.Info().Msg("running coordinator app")
+
+	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
 
 	wg := &sync.WaitGroup{}
 
-	wg.Add(2)
-
+	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
 		if err := app.ServeGrpc(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
-	go func(wg *sync.WaitGroup) {
-		if err := app.ServePsql(wg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}(wg)
+	if withPsql {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup) {
+			if err := app.ServePsql(wg); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}(wg)
+	}
 
 	wg.Wait()
 
@@ -104,7 +108,7 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	protos.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
-	
+
 	spqrlog.Zero.Info().
 		Str("address", httpAddr).
 		Msg("serve grpc coordinator service")

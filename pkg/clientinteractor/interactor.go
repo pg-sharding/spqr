@@ -56,6 +56,14 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
+func (pi *PSQLInteractor) GetDataspace() string {
+	return pi.cl.DS()
+}
+
+func (pi *PSQLInteractor) SetDataspace(dataspace string) {
+	pi.cl.SetParam("dataspace", dataspace)
+}
+
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
 
@@ -117,6 +125,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
+		"pool router",
 		"pool db",
 		"pool usr",
 		"pool host",
@@ -126,10 +135,10 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
+			p.RouterName(),
 			p.Rule().DB,
 			p.Rule().Usr,
 			p.Hostname(),
@@ -184,6 +193,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Key range ID"),
 			TextOidFD("Shard ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
 			TextOidFD("Upper bound"),
 		},
@@ -200,6 +210,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
+				[]byte(keyRange.Dataspace),
 				keyRange.LowerBound,
 				keyRange.UpperBound,
 			},
@@ -472,6 +483,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Sharding Rule ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Table Name"),
 			TextOidFD("Columns"),
 			TextOidFD("Hash Function"),
@@ -503,6 +515,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(rule.Id),
+				[]byte(rule.Dataspace),
 				[]byte(tableName),
 				[]byte(entries.String()),
 				[]byte(hashFunctions.String()),
@@ -513,6 +526,30 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		}
 	}
 
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			TextOidFD("Dataspace ID"),
+		}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	for _, dataspace := range dataspaces {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(dataspace.Id),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 	return pi.CompleteMsg(0)
 }
 
@@ -616,13 +653,13 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 }
 
 func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
-	if err := pi.WriteHeader("show routers"); err != nil {
+	if err := pi.WriteHeader("show routers", "status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address), string(msg.State)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -652,6 +689,34 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr st
 	}
 
 	if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s registered", id, addr)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("start trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("START TRASCE MESSAGES"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("stop trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("STOP TRASCE MESSAGES"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -715,14 +780,19 @@ func (pi *PSQLInteractor) KillClient(clientID string) error {
 }
 
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
-	if err := pi.WriteHeader("backend connection id", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, sh := range shs {
+		router := "no data"
+		s, ok := sh.(shard.CoordShardinfo)
+		if ok {
+			router = s.Router()
+		}
 
-		if err := pi.WriteDataRow(sh.ID(), sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

@@ -7,16 +7,20 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"google.golang.org/grpc"
 )
 
 type Console interface {
@@ -30,6 +34,7 @@ type Local struct {
 	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
+	writer  workloadlog.WorkloadLog
 
 	stchan chan struct{}
 }
@@ -40,13 +45,14 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}) (*Local, error) {
+func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (*Local, error) { // add writer class
 	return &Local{
 		Coord:   coord,
 		RRouter: rrouter,
 		qlogger: qlogprovider.NewLocalQlog(),
 		cfg:     cfg,
 		stchan:  stchan,
+		writer:  writer,
 	}, nil
 }
 
@@ -68,7 +74,46 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 		Type("type", tstmt).
 		Msg("processQueryInternal: parsed query with type")
 
-	return meta.Proc(ctx, tstmt, l.Coord, l.RRouter, cli)
+	return l.proxyProc(ctx, tstmt, cli)
+}
+
+func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
+	var mgr meta.EntityMgr = l.Coord
+
+	if !config.RouterConfig().WithCoordinator {
+		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
+	}
+
+	switch tstmt := tstmt.(type) {
+	case *spqrparser.Show:
+		switch tstmt.Cmd {
+		case spqrparser.RoutersStr:
+			coordAddr, err := l.Coord.GetCoordinator(ctx)
+			if err != nil {
+				return err
+			}
+			conn, err := grpc.Dial(coordAddr, grpc.WithInsecure()) //nolint:all
+			if err != nil {
+				return err
+			}
+			defer conn.Close()
+			mgr = coord.NewAdapter(conn)
+		}
+	default:
+		coordAddr, err := l.Coord.GetCoordinator(ctx)
+		if err != nil {
+			return err
+		}
+		conn, err := grpc.Dial(coordAddr, grpc.WithInsecure()) //nolint:all
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		mgr = coord.NewAdapter(conn)
+	}
+
+	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
+	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
@@ -97,6 +142,8 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 
 	msgs = append(msgs, []pgproto3.BackendMessage{
 		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
+		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
 		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
 		&pgproto3.NoticeResponse{
 			Message: greeting,

@@ -1,7 +1,12 @@
 Feature: Move test
-
-  Scenario: MOVE KEY RANGE works
+  Background:
+    #
+    # Make host "coordinator" take control
+    #
     Given cluster is up and running
+    And host "coordinator2" is stopped
+    And host "coordinator2" is started
+    
     When I execute SQL on host "coordinator"
     """
     ADD SHARDING RULE r1 COLUMNS w_id;
@@ -9,6 +14,8 @@ Feature: Move test
     ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
     """
     Then command return code should be "0"
+
+  Scenario: MOVE KEY RANGE works
     When I run SQL on host "shard1"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -63,14 +70,7 @@ Feature: Move test
     001
     """
 
-    Scenario: MOVE KEY RANGE works with many rows
-    Given cluster is up and running
-    When I execute SQL on host "coordinator"
-    """
-    ADD SHARDING RULE r1 COLUMNS w_id;
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    """
-    Then command return code should be "0"
+  Scenario: MOVE KEY RANGE works with many rows
     When I run SQL on host "shard1"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -110,14 +110,7 @@ Feature: Move test
     .*001(.|\n)*002(.|\n)*003(.|\n)*004(.|\n)*005
     """
 
-    Scenario: MOVE KEY RANGE works with many tables
-    Given cluster is up and running
-    When I execute SQL on host "coordinator"
-    """
-    ADD SHARDING RULE r1 COLUMNS w_id;
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    """
-    Then command return code should be "0"
+  Scenario: MOVE KEY RANGE works with many tables
     When I run SQL on host "shard1"
     """
     CREATE TABLE xMove(w_id INT, s TEXT);
@@ -172,4 +165,26 @@ Feature: Move test
     And SQL result should not match regexp
     """
     002
+    """
+
+  Scenario: Move to non-existent shard fails
+    When I run SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid1 TO non-existent
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    failed to connect
+    """
+
+  Scenario: Move non-existent key range fails
+    When I run SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid3 TO sh2
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    failed to fetch key range with id /keyranges/krid3
     """

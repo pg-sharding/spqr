@@ -48,6 +48,7 @@ type Client interface {
 
 	Usr() string
 	DB() string
+	DS() string
 
 	Send(msg pgproto3.BackendMessage) error
 	SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error

@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -23,6 +24,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedTopologyServiceServer
 	protos.UnimplementedClientInfoServiceServer
 	protos.UnimplementedBackendConnectionsServiceServer
+	protos.UnimplementedPoolServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -88,7 +90,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 }
 
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := l.mgr.ListShardingRules(ctx)
+	rules, err := l.mgr.ListShardingRules(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -126,12 +128,12 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
-func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
-	krsqdb, err := l.mgr.ListKeyRanges(ctx)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +158,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := l.mgr.Unlock(ctx, id); err != nil {
+		if err := l.mgr.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -176,7 +178,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 }
 
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krs, err := l.mgr.ListKeyRanges(ctx)
+	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -252,6 +254,20 @@ func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	return shardInfo
 }
 
+func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
+	poolInfo := &protos.PoolInfo{
+		Id:            fmt.Sprintf("%p", p),
+		DB:            p.Rule().DB,
+		Usr:           p.Rule().Usr,
+		Host:          p.Hostname(),
+		RouterName:    router,
+		ConnCount:     int64(p.UsedConnectionCount()),
+		IdleConnCount: int64(p.IdleConnectionCount()),
+		QueueSize:     int64(p.QueueResidualSize()),
+	}
+	return poolInfo
+}
+
 func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
@@ -272,6 +288,22 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.Lis
 	return reply, err
 }
 
+func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest) (*protos.ListPoolsResponse, error) {
+	reply := &protos.ListPoolsResponse{}
+
+	err := l.rr.ForEachPool(func(p pool.Pool) error {
+		reply.Pools = append(reply.Pools, PoolToProto(p, l.rr.Config().Host))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
+	reply := &protos.UpdateCoordinatorResponse{}
+	err := l.mgr.UpdateCoordinator(ctx, req.Address)
+	return reply, err
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -288,6 +320,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterTopologyServiceServer(server, lqr)
 	protos.RegisterClientInfoServiceServer(server, lqr)
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
+	protos.RegisterPoolServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -295,3 +328,4 @@ var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
+var _ protos.PoolServiceServer = &LocalQrouterServer{}

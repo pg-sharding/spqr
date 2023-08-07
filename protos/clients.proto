@@ -20,7 +20,8 @@ message ClientInfo {
   string client_id = 1;
   string user = 2;
   string dbname = 3;
-  repeated UsedShardInfo shards = 4;
+  string dsname = 4;
+  repeated UsedShardInfo shards = 5;
 }
 
 message UsedShardInfo {

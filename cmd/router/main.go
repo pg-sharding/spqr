@@ -13,9 +13,13 @@ import (
 	"sync"
 	"syscall"
 
+	coordApp "github.com/pg-sharding/spqr/coordinator/app"
+	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	router "github.com/pg-sharding/spqr/router"
 	"github.com/pg-sharding/spqr/router/app"
 	"github.com/pkg/errors"
@@ -34,6 +38,9 @@ var (
 	gomaxprocs   int
 	pgprotoDebug bool
 
+	ccfgPath string
+	qdbImpl  string
+
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
 		Short: "sqpr-router",
@@ -48,7 +55,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to config file")
+	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "console (not daemonize) router binary or not")
@@ -56,6 +63,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
+
+	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
+	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -65,10 +75,11 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		rcfg, err := config.LoadRouterCfg(rcfgPath)
+		err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
+		rcfg := config.RouterConfig()
 
 		spqrlog.ReloadLogger(rcfg.LogFileName)
 
@@ -159,13 +170,38 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, &rcfg)
+		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
 
 		app := app.NewApp(router)
 
+		if rcfgPath != "" {
+			if err := datatransfers.LoadConfig(rcfgPath); err != nil {
+				return err
+			}
+		}
+		if config.RouterConfig().WithCoordinator {
+			go func() {
+				if err := func() error {
+					if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+						return err
+					}
+
+					db, err := qdb.NewXQDB(qdbImpl)
+					if err != nil {
+						return err
+					}
+
+					coordinator := provider.NewCoordinator(db)
+					app := coordApp.NewApp(coordinator)
+					return app.Run(false)
+				}(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+				}
+			}()
+		}
 		go func() {
 			defer cancelCtx()
 			for {

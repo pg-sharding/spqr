@@ -33,6 +33,9 @@ type RouterClient interface {
 	client.Client
 	PreparedStatementMapper
 
+	RLock()
+	RUnlock()
+
 	/* only call this function while holding lock */
 	Server() server.Server
 	/* functions for operation with cleint's server */
@@ -54,15 +57,10 @@ type RouterClient interface {
 	GetTsa() string
 	SetTsa(string)
 
-	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error)
-	ProcCopy(query pgproto3.FrontendMessage) error
-	ProcCopyComplete(query *pgproto3.FrontendMessage) error
+	CancelMsg() *pgproto3.CancelRequest
+
 	ReplyParseComplete() error
 	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
-
-	CancelMsg() *pgproto3.CancelRequest
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -118,6 +116,14 @@ func NewPsqlClient(pgconn conn.RawConn) *PsqlClient {
 	cl.id = fmt.Sprintf("%p", cl)
 
 	return cl
+}
+
+func (cl *PsqlClient) RLock() {
+	cl.mu.RLock()
+}
+
+func (cl *PsqlClient) RUnlock() {
+	cl.mu.RUnlock()
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
@@ -210,40 +216,6 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 
 func (cl *PsqlClient) ResetAll() {
 	cl.activeParamSet = cl.startupMsg.Parameters
-}
-
-func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	spqrlog.Zero.Debug().Interface("query", query).Msg("process query")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
-
-	if err := cl.server.Send(query); err != nil {
-		return err
-	}
-
-	if !waitForResp {
-		return nil
-	}
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return err
-		}
-
-		switch msg.(type) {
-		case *pgproto3.ParseComplete:
-			return nil
-		default:
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
@@ -535,16 +507,8 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			Uint32("proto-version", protoVer).
 			Msg("received protocol version")
 
-		if protoVer == conn.SSLREQ && tlsconfig == nil {
-			_, err := cl.conn.Write([]byte{'N'})
-			if err != nil {
-				return err
-			}
-			// proceed next iter, for protocol version number or GSSAPI interaction
-			continue
-		}
-
-		if protoVer == conn.GSSREQ {
+		switch protoVer {
+		case conn.GSSREQ:
 			spqrlog.Zero.Debug().Msg("negotiate gss enc request")
 			_, err := cl.conn.Write([]byte{'N'})
 			if err != nil {
@@ -552,10 +516,17 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			}
 			// proceed next iter, for protocol version number or GSSAPI interaction
 			continue
-		}
 
-		switch protoVer {
 		case conn.SSLREQ:
+			if tlsconfig == nil {
+				_, err := cl.conn.Write([]byte{'N'})
+				if err != nil {
+					return err
+				}
+				// proceed next iter, for protocol version number or GSSAPI interaction
+				continue
+			}
+
 			_, err := cl.conn.Write([]byte{'S'})
 			if err != nil {
 				return err
@@ -594,8 +565,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			}
 
 			return nil
-		case conn.GSSREQ:
-			/* TODO: Support */
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
@@ -662,6 +631,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Str("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
+		Str("ds", cl.DS()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -705,6 +675,7 @@ func (cl *PsqlClient) StartupMessage() *pgproto3.StartupMessage {
 
 const DefaultUsr = "default"
 const DefaultDB = "default"
+const DefaultDS = "default"
 
 func (cl *PsqlClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
@@ -719,6 +690,13 @@ func (cl *PsqlClient) DB() string {
 	}
 
 	return DefaultDB
+}
+
+func (cl *PsqlClient) DS() string {
+	if ds, ok := cl.activeParamSet["dataspace"]; ok {
+		return ds
+	}
+	return DefaultDS
 }
 
 func (cl *PsqlClient) receivepasswd() (string, error) {
@@ -769,7 +747,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(cl)).
 		Type("msg-type", msg).
-		Msg("")
+		Msg("sending msg to client")
 	cl.muBe.Lock()
 	defer cl.muBe.Unlock()
 	cl.be.Send(msg)
@@ -800,172 +778,6 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 
 	cl.r = r
 	return nil
-}
-
-func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Type("query-type", query).
-		Msg("client process copy")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	return cl.server.Send(query)
-}
-
-func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Type("query-type", query).
-		Msg("client process copy end")
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	if err := cl.server.Send(*query); err != nil {
-		return err
-	}
-
-	for {
-		if msg, err := cl.server.Receive(); err != nil {
-			return err
-		} else {
-			switch msg.(type) {
-			case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
-				return cl.Send(msg)
-			default:
-				if err := cl.Send(msg); err != nil {
-					return err
-				}
-			}
-		}
-	}
-}
-
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-
-	spqrlog.Zero.Debug().
-		Str("server", cl.server.Name()).
-		Type("query-type", query).
-		Msg("client process query")
-
-	if cl.server == nil {
-		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
-	}
-
-	if err := cl.server.Send(query); err != nil {
-		return txstatus.TXERR, false, err
-	}
-
-	if !waitForResp {
-		return txstatus.TXCONT, true, nil
-	}
-
-	ok := true
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return txstatus.TXERR, false, err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = cl.Send(msg)
-			if err != nil {
-				return txstatus.TXERR, false, err
-			}
-
-			if err := func() error {
-				for {
-					cpMsg, err := cl.Receive()
-					if err != nil {
-						return err
-					}
-
-					switch cpMsg.(type) {
-					case *pgproto3.CopyData:
-						if err := cl.ProcCopy(cpMsg); err != nil {
-							return err
-						}
-					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if err := cl.ProcCopyComplete(&cpMsg); err != nil {
-							return err
-						}
-						return nil
-					default:
-					}
-				}
-			}(); err != nil {
-				return txstatus.TXERR, false, err
-			}
-		case *pgproto3.ReadyForQuery:
-			return txstatus.TXStatus(v.TxStatus), ok, nil
-		case *pgproto3.ErrorResponse:
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return txstatus.TXERR, false, err
-				}
-			}
-			ok = false
-		default:
-			spqrlog.Zero.Debug().
-				Str("server", cl.server.Name()).
-				Type("msg-type", v).
-				Msg("received message from server")
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return txstatus.TXERR, false, err
-				}
-			}
-		}
-	}
-}
-
-func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Interface("query", query).
-		Msg("client process command")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
-
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	if err := cl.server.Send(query); err != nil {
-		return err
-	}
-
-	if !waitForResp {
-		return nil
-	}
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.CommandComplete:
-			return nil
-		case *pgproto3.ErrorResponse:
-			return fmt.Errorf(v.Message)
-		default:
-			spqrlog.Zero.Debug().
-				Uint("client", spqrlog.GetPointer(cl)).
-				Type("message-type", v).
-				Msg("got message from server")
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 }
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
@@ -1097,6 +909,12 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
+func (f FakeClient) DS() string {
+	return DefaultDS
+}
+
+func (c FakeClient) SetDS(_ string) {}
+
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
@@ -1115,11 +933,12 @@ func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 
 var _ RouterClient = &FakeClient{}
 
-func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient {
-	client := MockClient{
+func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient {
+	client := NoopClient{
 		id:     clientInfo.ClientId,
 		user:   clientInfo.User,
 		dbname: clientInfo.Dbname,
+		dsname: clientInfo.Dsname,
 		rAddr:  rAddr,
 		shards: make([]shard.Shard, len(clientInfo.Shards)),
 	}
@@ -1129,32 +948,39 @@ func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient 
 	return client
 }
 
-type MockClient struct {
+type NoopClient struct {
 	client.Client
 	id     string
 	user   string
 	dbname string
+	dsname string
 	shards []shard.Shard
 	rAddr  string
 }
 
-func (c MockClient) ID() string {
+func (c NoopClient) ID() string {
 	return c.id
 }
 
-func (c MockClient) Usr() string {
+func (c NoopClient) Usr() string {
 	return c.user
 }
 
-func (c MockClient) DB() string {
+func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c MockClient) RAddr() string {
+func (c NoopClient) DS() string {
+	return c.dsname
+}
+
+func (c NoopClient) SetDS(_ string) {}
+
+func (c NoopClient) RAddr() string {
 	return c.rAddr
 }
 
-func (c MockClient) Shards() []shard.Shard {
+func (c NoopClient) Shards() []shard.Shard {
 	return c.shards
 }
 
@@ -1178,6 +1004,6 @@ func (dbi MockDBInstance) Hostname() string {
 	return dbi.hostname
 }
 
-var _ client.ClientInfo = &MockClient{}
+var _ client.ClientInfo = &NoopClient{}
 var _ shard.Shard = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}

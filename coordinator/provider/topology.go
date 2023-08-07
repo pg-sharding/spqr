@@ -22,6 +22,10 @@ func (r *TopologyService) CloseRouter(ctx context.Context, request *protos.Close
 	return nil, fmt.Errorf("unimplemented")
 }
 
+func (r *TopologyService) UpdateCoordinator(ctx context.Context, in *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
+	return nil, fmt.Errorf("unimplemented")
+}
+
 func NewTopologyService(impl coordinator.Coordinator) *TopologyService {
 	return &TopologyService{
 		impl: impl,

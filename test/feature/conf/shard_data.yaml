@@ -1,13 +1,13 @@
 shards:
   sh1:
     db: regress
-    user: regress
-    Password: 12345678
-    host: 'spqr_shard_1'
-    port: '6432'
+    usr: regress
+    pwd: 12345678
+    hosts: 
+    - 'spqr_shard_1:6432'
   sh2:
     db: regress
-    user: regress
-    Password: 12345678
-    host: 'spqr_shard_2'
-    port: '6432'
+    usr: regress
+    pwd: 12345678
+    hosts: 
+    - 'spqr_shard_2:6432'

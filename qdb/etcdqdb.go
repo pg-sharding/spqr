@@ -10,9 +10,11 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -48,9 +50,13 @@ const (
 	keyspace               = "key_space"
 	keyRangesNamespace     = "/keyranges"
 	dataspaceNamespace     = "/dataspaces"
+	keyRangeMovesNamespace = "/krmoves"
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
+	CoordKeepAliveTtl      = 3
+	coordLockKey           = "coordinator_exists"
+	coordLockVal           = "exists"
 )
 
 func keyLockPath(key string) string {
@@ -75,6 +81,10 @@ func shardNodePath(key string) string {
 
 func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
+}
+
+func keyRangeMovesNodePath(key string) string {
+	return path.Join(keyRangeMovesNamespace, key)
 }
 
 // ==============================================================================
@@ -147,16 +157,24 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 	if err != nil {
 		return nil, err
 	}
-	var rule ShardingRule
-	if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
-		return nil, err
+
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, fmt.Errorf("sharding rule %v already present in qdb", id)
+	case 1:
+		var rule ShardingRule
+		if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
+			return nil, err
+		}
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: get sharding rule")
+
+		return &rule, nil
+	default:
+		return nil, fmt.Errorf("too much sharding rules matched: %d", len(resp.Kvs))
 	}
 
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: get sharding rule")
-
-	return &rule, nil
 }
 
 func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
@@ -171,7 +189,8 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 	rules := make([]*ShardingRule, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		// A sharding rule supports no more than one column for a while.
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
 		var rule *ShardingRule
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
@@ -312,7 +331,7 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 	return nil
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, _ string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -364,7 +383,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 		}
 		defer unlockMutex(mu, ctx)
 
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +447,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		}
 		defer unlockMutex(mu, ctx)
 
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return err
 		}
@@ -462,7 +481,20 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: check locked key range")
-	return nil, fmt.Errorf("implement CheckLockedKeyRange")
+
+	resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)))
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, fmt.Errorf("key range %v not locked", id)
+	case 1:
+		return q.GetKeyRange(ctx, id)
+	default:
+		return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+	}
 }
 
 func (q *EtcdQDB) ShareKeyRange(id string) error {
@@ -526,6 +558,65 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 }
 
 // ==============================================================================
+//	                           COORDINATOR LOCK
+// ==============================================================================
+
+func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Str("address", config.CoordinatorConfig().HttpAddr).
+		Msg("etcdqdb: try coordinator lock")
+
+	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")
+		return err
+	}
+
+	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().HttpAddr, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
+	stat, err := tx.Commit()
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to commit coordinator lock")
+		return err
+	}
+
+	if !stat.Succeeded {
+		return fmt.Errorf("qdb is already in use")
+	}
+
+	_, err = q.cli.Lease.KeepAlive(ctx, resp.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to renew lock")
+		return err
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
+	return fmt.Errorf("UpdateCoordinator not implemented")
+}
+
+func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get coordinator addr")
+
+	resp, err := q.cli.Get(ctx, coordLockKey)
+	if err != nil {
+		return "", err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return "", fmt.Errorf("coordinator address was not found")
+	case 1:
+		return string(resp.Kvs[0].Value), nil
+	default:
+		return "", fmt.Errorf("multiple addresses were found")
+	}
+}
+
+// ==============================================================================
 //                                  ROUTERS
 // ==============================================================================
 
@@ -575,7 +666,10 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop router")
 
-	resp, err := q.cli.Delete(ctx, routerNodePath(id))
+	if id == "*" {
+		id = ""
+	}
+	resp, err := q.cli.Delete(ctx, routerNodePath(id), clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
@@ -583,6 +677,108 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: drop router")
+
+	return nil
+}
+
+func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: open router")
+	getResp, err := q.cli.Get(ctx, routerNodePath(id))
+	if err != nil {
+		return err
+	}
+	if len(getResp.Kvs) == 0 {
+		return fmt.Errorf("router with id %s does not exists", id)
+	}
+
+	var routers []*Router
+	for _, e := range getResp.Kvs {
+		var st Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return err
+		}
+		// TODO: create routers in qdb properly
+		routers = append(routers, &st)
+	}
+
+	/*  */
+
+	if len(routers) != 1 {
+		return fmt.Errorf("sync failed: more than one router with id %s", id)
+	}
+
+	if routers[0].State == OPENED {
+		spqrlog.Zero.Debug().
+			Msg("etcdqdb: router already opened, nothing to do here")
+		return nil
+	}
+
+	routers[0].State = OPENED
+
+	bts, err := json.Marshal(routers[0])
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(routers[0].ID), string(bts))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: put router to qdb")
+
+	return nil
+}
+
+func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: close router")
+	getResp, err := q.cli.Get(ctx, routerNodePath(id))
+	if err != nil {
+		return err
+	}
+	if len(getResp.Kvs) == 0 {
+		return fmt.Errorf("router with id %s does not exists", id)
+	}
+
+	var routers []*Router
+	for _, e := range getResp.Kvs {
+		var st Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return err
+		}
+		// TODO: create routers in qdb properly
+		routers = append(routers, &st)
+	}
+
+	if len(routers) != 1 {
+		return fmt.Errorf("sync failed: more than one router with id %s", id)
+	}
+
+	if routers[0].State == CLOSED {
+		spqrlog.Zero.Debug().
+			Msg("etcdqdb: router already closed, nothing to do here")
+		return nil
+	}
+
+	routers[0].State = CLOSED
+
+	bts, err := json.Marshal(routers[0])
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(routers[0].ID), string(bts))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: put router to qdb")
 
 	return nil
 }
@@ -616,14 +812,6 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 		Msg("etcdqdb: list routers")
 
 	return ret, nil
-}
-
-func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().
-		Str("id", id).
-		Msg("etcdqdb: lock router")
-
-	return nil
 }
 
 // ==============================================================================
@@ -733,7 +921,6 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	rules := make([]*Dataspace, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		// A sharding rule supports no more than one column for a while.
 		var rule *Dataspace
 		err := json.Unmarshal(kv.Value, &rule)
 		if err != nil {
@@ -751,4 +938,93 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list dataspaces")
 	return rules, nil
+}
+
+// ==============================================================================
+//                              KEY RANGE MOVES
+// ==============================================================================
+
+func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list move key range operations")
+
+	namespacePrefix := keyRangeMovesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	moves := make([]*MoveKeyRange, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
+		var rule *MoveKeyRange
+		err := json.Unmarshal(kv.Value, &rule)
+		if err != nil {
+			return nil, err
+		}
+
+		moves = append(moves, rule)
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list move key range oeprations")
+	return moves, nil
+}
+
+func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+	spqrlog.Zero.Debug().
+		Str("id", m.MoveId).
+		Msg("etcdqdb: add move key range operation")
+
+	rawMoveKeyRange, err := json.Marshal(m)
+
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, keyRangeMovesNodePath(m.MoveId), string(rawMoveKeyRange))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: add move key range operation")
+
+	return nil
+}
+
+func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+	spqrlog.Zero.Debug().
+		Str("id", moveId).
+		Msg("etcdqdb: get sharding rule")
+
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+	if len(resp.Kvs) != 1 {
+		return fmt.Errorf("failed to update move key range operation by id %s", moveId)
+	}
+	var moveKr MoveKeyRange
+	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
+		return err
+	}
+	moveKr.Status = s
+	rawMoveKeyRange, err := json.Marshal(moveKr)
+
+	if err != nil {
+		return err
+	}
+	respModify, err := q.cli.Put(ctx, keyRangeMovesNodePath(moveKr.MoveId), string(rawMoveKeyRange))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", respModify).
+		Msg("etcdqdb: update status of move key range operation")
+
+	return nil
 }

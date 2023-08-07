@@ -8,6 +8,47 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+func TestSimpleTrace(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/*  */
+	for _, tt := range []tcase{
+		{
+			query: "START TRACE ALL MESSAGES",
+			exp: &spqrparser.TraceStmt{
+				All: true,
+			},
+			err: nil,
+		},
+
+		{
+			query: "START TRACE CLIENT i129191",
+			exp: &spqrparser.TraceStmt{
+				Client: "i129191",
+			},
+			err: nil,
+		},
+
+		{
+			query: "STOP TRACE MESSAGES",
+			exp:   &spqrparser.StopTraceStmt{},
+			err:   nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestSimpleShow(t *testing.T) {
 	assert := assert.New(t)
 
@@ -177,6 +218,7 @@ func TestKeyRange(t *testing.T) {
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh1",
 					KeyRangeID: "krid1",
+					Dataspace:  "default",
 					LowerBound: []byte("1"),
 					UpperBound: []byte("10"),
 				},
@@ -190,6 +232,7 @@ func TestKeyRange(t *testing.T) {
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh2",
 					KeyRangeID: "krid2",
+					Dataspace:  "default",
 					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
 					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
 				},
@@ -223,6 +266,7 @@ func TestShardingRule(t *testing.T) {
 				Element: &spqrparser.ShardingRuleDefinition{
 					ID:        "rule1",
 					TableName: "",
+					Dataspace: "default",
 					Entries: []spqrparser.ShardingRuleEntry{
 						{
 							Column: "id",

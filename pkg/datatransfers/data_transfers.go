@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -51,7 +52,12 @@ func createConnString(shardID string) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
+	if len(sd.Hosts) == 0 {
+		return ""
+	}
+	host := strings.Split(sd.Hosts[0], ":")[0]
+	port := strings.Split(sd.Hosts[0], ":")[1]
+	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
 }
 
 func LoadConfig(path string) error {
@@ -79,11 +85,11 @@ Steps:
   - create sql copy and delete queries to move data tuples.
   - prepare and commit distributed move transation
 */
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db *qdb.QDB) error {
+func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
-			return err
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
 		}
 	}
 
@@ -162,7 +168,7 @@ func beginTransactions(ctx context.Context, from, to pgxConnIface) (pgx.Tx, pgx.
 	return txFrom, txTo, nil
 }
 
-func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db *qdb.QDB) error {
+func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db qdb.XQDB) error {
 	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
@@ -187,7 +193,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 		FromStatus:  qdb.Processing,
 	}
 
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -199,7 +205,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 	}
 
 	d.ToStatus = qdb.Commited
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -211,7 +217,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 	}
 
 	d.FromStatus = qdb.Commited
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 	}
@@ -266,15 +272,16 @@ WHERE column_name=$1;
 		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s <= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
-		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
+		go func() {
+			_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
 
-		if err := pw.w.Close(); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
-		}
-
+			if err := pw.w.Close(); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
+			}
+		}()
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
 			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
 		if err != nil {

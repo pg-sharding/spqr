@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -84,7 +85,19 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.DataspaceDefinition:
 		dataspace := dataspaces.NewDataspace(stmt.ID)
-		err := mngr.AddDataspace(ctx, dataspace)
+
+		dataspaces, err := mngr.ListDataspace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ds := range dataspaces {
+			if ds.Id == dataspace.Id {
+				spqrlog.Zero.Debug().Msg("Attempt to create existing dataspace")
+				return cli.AddDataspace(ctx, dataspace)
+			}
+		}
+
+		err = mngr.AddDataspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
@@ -94,7 +107,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		for _, el := range stmt.Entries {
 			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
 		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries)
+		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Dataspace)
 		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
 			return err
 		}
@@ -110,8 +123,24 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLog) error {
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 	switch stmt := tstmt.(type) {
+	case *spqrparser.TraceStmt:
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
+		}
+		writer.StartLogging(stmt.All, stmt.Client)
+		return cli.StartTraceMessages(ctx)
+	case *spqrparser.StopTraceStmt:
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
+		}
+		err := writer.StopLogging()
+		if err != nil {
+			return err
+		}
+		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.Create:
@@ -153,7 +182,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Unlock:
-		if err := mgr.Unlock(ctx, stmt.KeyRangeID); err != nil {
+		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
@@ -229,7 +258,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 		return cli.Shards(ctx, resp)
 	case spqrparser.KeyRangesStr:
-		ranges, err := mngr.ListKeyRanges(ctx)
+		ranges, err := mngr.ListKeyRanges(ctx, cli.GetDataspace())
 		if err != nil {
 			return err
 		}
@@ -242,7 +271,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListShardingRules(ctx)
+		resp, err := mngr.ListShardingRules(ctx, cli.GetDataspace())
 		if err != nil {
 			return err
 		}
@@ -270,6 +299,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
+	case spqrparser.DataspacesStr:
+		dataspaces, err := mngr.ListDataspace(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Dataspaces(ctx, dataspaces)
 	default:
 		return unknownCoordinatorCommand
 	}

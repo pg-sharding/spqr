@@ -1,6 +1,20 @@
 # Coordinator
 
-The coordinator manages the routers and saves the installation state in QDB([etcd](https://etcd.io/)). It blocks key ranges on a shard for modification, and moves key ranges consistency from one shard to another.
+Cordinator provides syncronisation between routers in multi-router installation.
+- It blocks key ranges on a shard for modification
+- And moves key ranges consistency from one shard to another
+- Supports PostgreSQL simple(wire) procol and own SQL-like interface.
+- Up and running on [localhost]:7002. You can connect to coordinator via psql:
+
+```
+psql "host=localhost port=7002 dbname=spqr-console"
+```
+
+Then, run `SHOW routers;`. Coordinator will reply with list of knows router in current spqr installation
+
+It is possible to run coordinator as a separate entity or with router using `with_coordinator` flag
+
+## Data Balancing
 
 We considered different options for moving data. The most popular way is to make a copy via logical replication, then delete half of the data on one node and delete another half of the data on the other node. We decided that logical replication does not work well enough yet. Instead, the coordinator makes ε-split - cut off a small part of the data. Since it is small, it all works very quickly.
 
@@ -15,32 +29,4 @@ The load from the moving key ranges measured with [pg_comment_stats](https://git
 comment_keys | {"a": "1"}
 query_count  | 1
 user_time    | 6.000000000000363e-06
-```
-
-## Configuration
-
-WIP
-
-## KeyRangeService
-
-```
-➜ grpcurl -plaintext 'localhost:7002' describe yandex.spqr.KeyRangeService
-yandex.spqr.KeyRangeService is a service:
-service KeyRangeService {
-  rpc ListKeyRange ( .yandex.spqr.ListKeyRangeRequest ) returns ( .yandex.spqr.KeyRangeReply );
-  rpc LockKeyRange ( .yandex.spqr.LockKeyRangeRequest ) returns ( .yandex.spqr.KeyRangeReply );
-  rpc SplitKeyRange ( .yandex.spqr.SplitKeyRangeRequest ) returns ( .yandex.spqr.KeyRangeReply );
-  rpc UnlockKeyRange ( .yandex.spqr.UnlockKeyRangeRequest ) returns ( .yandex.spqr.KeyRangeReply );
-}
-
-~
-➜ grpcurl -plaintext 'localhost:7002' yandex.spqr.KeyRangeService/ListKeyRange
-{
-  "keyRanges": [
-    {
-      "krid": "1",
-      "shardId": "2"
-    }
-  ]
-}
 ```

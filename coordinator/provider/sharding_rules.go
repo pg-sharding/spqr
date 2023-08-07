@@ -25,7 +25,7 @@ func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *pr
 }
 
 func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := s.impl.ListShardingRules(ctx)
+	rules, err := s.impl.ListShardingRules(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
