@@ -288,6 +288,7 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 		tctx.commandRetcode = 0
 		if err != nil {
 			tctx.commandRetcode = 1
+			tctx.commandOutput = err.Error()
 			tctx.sqlUserQueryError.Store(host, err.Error())
 		}
 		tctx.sqlQueryResult = result

@@ -276,8 +276,8 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 
 func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: lock key range")
 
 	krs, ok := q.Krs[id]
@@ -304,8 +304,8 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: unlock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
 	if !q.Freq[id] {

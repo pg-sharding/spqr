@@ -1,5 +1,7 @@
 package qdb
 
+import "github.com/pg-sharding/spqr/pkg/spqrlog"
+
 type Command interface {
 	Do()
 	Undo()
@@ -102,6 +104,7 @@ func ExecuteCommands(saver func() error, commands ...Command) error {
 	}
 	err := saver()
 	if err != nil {
+		spqrlog.Zero.Info().Msg("memqdb: undo commands")
 		for _, c := range commands {
 			c.Undo()
 		}
