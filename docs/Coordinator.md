@@ -4,7 +4,7 @@ Cordinator provides syncronisation between routers in multi-router installation.
 - It blocks key ranges on a shard for modification
 - And moves key ranges consistency from one shard to another
 - Supports PostgreSQL simple(wire) procol and own SQL-like interface.
-- Up and running on [localhost]:7432. You can connect to coordinator via psql:
+- Up and running on [localhost]:7002. You can connect to coordinator via psql:
 
 ```
 psql "host=localhost port=7002 dbname=spqr-console"
