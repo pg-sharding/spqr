@@ -449,7 +449,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 			}
-			spqrlog.Zero.Error().Msg(addr)
 
 			db, err := qdb.NewEtcdQDB(addr)
 			if err != nil {

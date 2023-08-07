@@ -127,15 +127,15 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 		ctx := context.TODO()
 		rrBackConn := routerproto.NewPoolServiceClient(cc)
 
-		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
+		spqrlog.Zero.Debug().Msg("fetch pools with grpc")
 		resp, err := rrBackConn.ListPools(ctx, &routerproto.ListPoolsRequest{})
 		if err != nil {
-			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
+			spqrlog.Zero.Error().Msg("error fetching pools with grpc")
 			return err
 		}
 
 		for _, p := range resp.Pools {
-			err = cb(NewMockPool(p))
+			err = cb(NewCoordPool(p))
 			if err != nil {
 				return err
 			}
