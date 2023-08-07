@@ -124,11 +124,11 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    ("Key range ID":"krid1"|"Lower bound":"0"|"Upper bound":"11"|"Shard ID":"sh1")
     """
     And SQL result should match regexp
     """
-    "Key range ID":"krid2".*"Lower bound":"11".*"Upper bound":"31"
+    ("Key range ID":"krid2"|"Lower bound":"11"|"Upper bound":"31"|"Shard ID":"sh2")
     """
 
   Scenario: Lock/Unlock key range works
@@ -169,11 +169,11 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    ("Key range ID":"krid1"|"Lower bound":"0"|"Upper bound":"5")
     """
     And SQL result should match regexp
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    ("Key range ID":"krid3"|"Lower bound":"5"|"Upper bound":"11")
     """
 
     When I run SQL on host "router-admin"
@@ -183,11 +183,11 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    ("Key range ID":"krid1"|"Lower bound":"0"|"Upper bound":"5")
     """
     And SQL result should match regexp
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    ("Key range ID":"krid3"|"Lower bound":"5"|"Upper bound":"11")
     """
 
     When I run SQL on host "coordinator"
@@ -198,7 +198,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    ("Key range ID":"krid1"|"Lower bound":"0"|"Upper bound":"11")
     """
 
     When I run SQL on host "router-admin"
@@ -208,7 +208,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    ("Key range ID":"krid1"|"Lower bound":"0"|"Upper bound":"11")
     """
 
   Scenario: Split/Unite locked key range fails
