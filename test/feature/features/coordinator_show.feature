@@ -13,7 +13,7 @@ Feature: Coordinator show clients, pools and backend_connections
         """
         Then command return code should be "0"
         And SQL result should match regexp
-        """
+        """ 
         r1-regress_router:7000(.|\n)*r2-regress_router_2:7000
         """
         Given I execute SQL on host "router"
@@ -251,6 +251,7 @@ Feature: Coordinator show clients, pools and backend_connections
         Then command return code should be "0"
         And SQL result should not match regexp
         """
+        # regexp (.|\n)* is here because {2} searches strings straight
         ((spqr_shard_1:6432(.|\n)*){2})|((spqr_shard_2:6432(.|\n)*){2})
         """
         And SQL result should match json
