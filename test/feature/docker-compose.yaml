@@ -38,8 +38,9 @@ services:
     ports:
       - "6432:6432"
       - "7432:7432"
-    environment:
+    environment: 
       - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - 'ROUTER_HOST=host: ''regress_router'''
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -55,7 +56,8 @@ services:
       - "6433:6432"
       - "7433:7432"
     environment:
-      - SPQR_CONFIG=/spqr/test/feature/conf/router2.yaml
+      - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - 'ROUTER_HOST=host: ''regress_router_2'''
     hostname: regress_router_2
     container_name: regress_router_2
     depends_on:
