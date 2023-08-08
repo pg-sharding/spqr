@@ -351,6 +351,19 @@ func (tctx *testContext) doPostgresqlQuery(db *sqlx.DB, query string, args inter
 	return result, nil
 }
 
+func (tctx *testContext) stepClusterEnvironmentIs(body *godog.DocString) error {
+	byLine := func(r rune) bool {
+		return r == '\n' || r == '\r'
+	}
+	for _, e := range strings.FieldsFunc(body.Content, byLine) {
+		if e = strings.TrimSpace(e); e != "" {
+			tctx.composerEnv = append(tctx.composerEnv, e)
+		}
+	}
+
+	return nil
+}
+
 func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 	err := tctx.composer.Up(tctx.composerEnv)
 	if err != nil {
@@ -575,6 +588,38 @@ func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) err
 	return err
 }
 
+func (tctx *testContext) stepFileOnHostShouldMatch(path string, node string, matcher string, body *godog.DocString) (err error) {
+	remoteFile, err := tctx.composer.GetFile(node, path)
+	if err != nil {
+		return err
+	}
+	defer remoteFile.Close()
+
+	var res strings.Builder
+	for {
+		buf := make([]byte, 4096)
+		n, err := remoteFile.Read(buf)
+		res.WriteString(string(buf[:n]))
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return err
+	}
+	actualContent := res.String()
+	expectedContent := strings.TrimSpace(body.Content)
+
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	return m(string(actualContent), expectedContent)
+}
+
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 	var st qdb.DataTransferTransaction
@@ -633,6 +678,10 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
 		//tctx.cleanup()
+		tctx.composerEnv = []string{
+			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
+			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
+		}
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {
@@ -662,7 +711,15 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	})
 
 	// host manipulation
+	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
 	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
+	s.Step(`^cluster is failed up and running$`, func() error {
+		err := tctx.stepClusterIsUpAndRunning(true)
+		if err != nil {
+			return nil
+		}
+		return fmt.Errorf("cluster is up")
+	})
 	s.Step(`^host "([^"]*)" is stopped$`, tctx.stepHostIsStopped)
 	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
 
@@ -677,6 +734,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
+	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
+
 }
 
 func TestSpqr(t *testing.T) {

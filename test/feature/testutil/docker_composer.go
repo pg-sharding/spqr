@@ -116,10 +116,10 @@ func (dc *DockerComposer) fillContainers() error {
 		if prj != dc.projectName || srv == "" {
 			continue
 		}
+		dc.containers[srv] = c
 		if c.State != "running" && !dc.stopped[srv] {
 			return fmt.Errorf("container %s is %s, not running", srv, c.State)
 		}
-		dc.containers[srv] = c
 	}
 	return nil
 }

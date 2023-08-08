@@ -4,6 +4,7 @@ admin_console_port: '7432'
 grpc_api_port: '7000'
 router_mode: PROXY
 log_level: fatal
+memqdb_backup_path: memqdb.backup
 log_filename: router.log
 time_quantiles:
   - 0.75

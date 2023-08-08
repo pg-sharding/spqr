@@ -90,7 +90,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
-	if skipInitSQL {
+	if !skipInitSQL {
 		for _, fname := range []string{
 			rcfg.InitSQL,
 		} {
