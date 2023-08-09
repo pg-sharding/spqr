@@ -289,14 +289,21 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
                 "used connection count":"0"
-            },
+            }
+        ]
+        """
+         And SQL result should match json
+        """
+        [
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router",
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
@@ -310,14 +317,21 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
                 "used connection count":"0"
-            },
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router",
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
@@ -338,14 +352,21 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
                 "used connection count":"0"
-            },
+            }
+        ]
+        """
+         And SQL result should match json
+        """
+        [
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router",
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
@@ -359,14 +380,21 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
                 "used connection count":"0"
-            },
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router",
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
@@ -394,6 +422,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
@@ -407,6 +436,7 @@ Feature: Coordinator show clients, pools and backend_connections
             {
                 "idle connections":"1",
                 "pool db":"regress",
+                "pool router":"regress_router_2",
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",

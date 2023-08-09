@@ -14,6 +14,7 @@ type ConnectionKepperData struct {
 	DB            string
 	Usr           string
 	Host          string
+	Router        string
 	ConnCount     int64
 	IdleConnCount int64
 	QueueSize     int64
@@ -26,6 +27,7 @@ func NewConnectionKepperData(info *protos.PoolInfo) *ConnectionKepperData {
 		Id:            info.Id,
 		DB:            info.DB,
 		Usr:           info.Usr,
+		Router:        info.RouterName,
 		Host:          info.Host,
 		ConnCount:     info.ConnCount,
 		IdleConnCount: info.IdleConnCount,
@@ -68,6 +70,12 @@ func (r *ConnectionKepperData) Hostname() string {
 	defer r.m.Unlock()
 
 	return r.Host
+}
+
+func (r *ConnectionKepperData) RouterName() string {
+	r.m.Lock()
+	defer r.m.Unlock()
+	return r.Router
 }
 
 func (r *ConnectionKepperData) List() []shard.Shard {

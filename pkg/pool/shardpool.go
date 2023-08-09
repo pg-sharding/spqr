@@ -66,6 +66,10 @@ func (h *shardPool) Hostname() string {
 	return h.host
 }
 
+func (h *shardPool) RouterName() string {
+	return "unimplemented"
+}
+
 func (h *shardPool) Rule() *config.BackendRule {
 	return h.beRule
 }

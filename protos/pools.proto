@@ -22,4 +22,5 @@ message PoolInfo {
   int64 ConnCount = 5;
   int64 IdleConnCount = 6;
   int64 QueueSize = 7;
+  string RouterName = 8;
 }

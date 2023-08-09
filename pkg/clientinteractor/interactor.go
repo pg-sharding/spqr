@@ -117,6 +117,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
+		"pool router",
 		"pool db",
 		"pool usr",
 		"pool host",
@@ -126,10 +127,10 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
+			p.RouterName(),
 			p.Rule().DB,
 			p.Rule().Usr,
 			p.Hostname(),

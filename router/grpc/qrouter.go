@@ -254,12 +254,13 @@ func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	return shardInfo
 }
 
-func PoolToProto(p pool.Pool) *protos.PoolInfo {
+func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 	poolInfo := &protos.PoolInfo{
 		Id:            fmt.Sprintf("%p", p),
 		DB:            p.Rule().DB,
 		Usr:           p.Rule().Usr,
 		Host:          p.Hostname(),
+		RouterName:    router,
 		ConnCount:     int64(p.UsedConnectionCount()),
 		IdleConnCount: int64(p.IdleConnectionCount()),
 		QueueSize:     int64(p.QueueResidualSize()),
@@ -291,7 +292,7 @@ func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest
 	reply := &protos.ListPoolsResponse{}
 
 	err := l.rr.ForEachPool(func(p pool.Pool) error {
-		reply.Pools = append(reply.Pools, PoolToProto(p))
+		reply.Pools = append(reply.Pools, PoolToProto(p, l.rr.Config().Host))
 		return nil
 	})
 	return reply, err
