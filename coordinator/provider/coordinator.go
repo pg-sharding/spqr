@@ -222,8 +222,20 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					if _, err := rrClient.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
 						return err
 					}
+
+					/* Mark router as opened in qdb */
+					err := qc.db.OpenRouter(ctx, internalR.ID)
+					if err != nil {
+						return err
+					}
 				case routerproto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
+
+					/* Mark router as opened in qdb */
+					err := qc.db.OpenRouter(ctx, internalR.ID)
+					if err != nil {
+						return err
+					}
 					// TODO: consistency checks
 				}
 				return nil
@@ -332,6 +344,7 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 		retRouters = append(retRouters, &topology.Router{
 			ID:      v.ID,
 			Address: v.Address,
+			State:   v.State,
 		})
 	}
 

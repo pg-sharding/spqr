@@ -26,6 +26,7 @@ type QDB interface {
 	ShareKeyRange(id string) error
 
 	AddRouter(ctx context.Context, r *Router) error
+	OpenRouter(ctx context.Context, rID string) error
 	DeleteRouter(ctx context.Context, rID string) error
 	ListRouters(ctx context.Context) ([]*Router, error)
 	LockRouter(ctx context.Context, id string) error

@@ -587,6 +587,58 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	return nil
 }
 
+func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: open router")
+	getResp, err := q.cli.Get(ctx, routerNodePath(id))
+	if err != nil {
+		return err
+	}
+	if len(getResp.Kvs) == 0 {
+		return fmt.Errorf("router with id %s does not exists", id)
+	}
+
+	var routers []*Router
+	for _, e := range getResp.Kvs {
+		var st Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return err
+		}
+		// TODO: create routers in qdb properly
+		routers = append(routers, &st)
+	}
+
+	/*  */
+
+	if len(routers) != 1 {
+		return fmt.Errorf("sync  failed: more taht one router with id %s", id)
+	}
+
+	if routers[0].State == OPENED {
+		spqrlog.Zero.Debug().
+			Msg("etcdqdb: router already opened, nothing to do here")
+		return nil
+	}
+
+	routers[0].State = OPENED
+
+	bts, err := json.Marshal(routers[0])
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(routers[0].ID), string(bts))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: put router to qdb")
+
+	return nil
+}
+
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list routers")
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())

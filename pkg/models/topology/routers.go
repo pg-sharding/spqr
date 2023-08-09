@@ -10,6 +10,7 @@ import (
 type Router struct {
 	ID      string
 	Address string
+	State   qdb.RouterState
 }
 
 type RouterMgr interface {
