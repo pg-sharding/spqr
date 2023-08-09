@@ -113,7 +113,7 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 		}
 
 		for _, conn := range resp.Conns {
-			err = cb(NewCoordShardInfo(conn))
+			err = cb(NewCoordShardInfo(conn, addr))
 			if err != nil {
 				return err
 			}
