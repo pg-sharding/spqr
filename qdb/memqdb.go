@@ -379,7 +379,9 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 }
 
 func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("router", id).Msg("memqdb: open router")
+	spqrlog.Zero.Debug().
+		Str("router", id).
+		Msg("memqdb: open router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

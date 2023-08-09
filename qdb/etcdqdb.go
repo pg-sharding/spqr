@@ -617,8 +617,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 
 	if routers[0].State == OPENED {
 		spqrlog.Zero.Debug().
-			Msg("etcdqdb: router already opened in qdb")
-		/* notinh to do */
+			Msg("etcdqdb: router already opened, nothing to do here")
 		return nil
 	}
 

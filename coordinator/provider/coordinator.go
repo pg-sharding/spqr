@@ -326,7 +326,7 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 		retRouters = append(retRouters, &topology.Router{
 			ID:      v.ID,
 			Address: v.Address,
-			Status:  string(v.State),
+			State:   v.State,
 		})
 	}
 
