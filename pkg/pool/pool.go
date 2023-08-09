@@ -17,6 +17,7 @@ type ConnectionKepper interface {
 	QueueResidualSize() int
 
 	Hostname() string
+	RouterName() string
 
 	List() []shard.Shard
 

@@ -80,16 +80,22 @@ func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.Sha
 
 type CoordShardInfo struct {
 	underlying *routerproto.BackendConnectionsInfo
+	router     string
 }
 
-func NewCoordShardInfo(conn *routerproto.BackendConnectionsInfo) shard.Shardinfo {
+func NewCoordShardInfo(conn *routerproto.BackendConnectionsInfo, router string) shard.Shardinfo {
 	return &CoordShardInfo{
 		underlying: conn,
+		router:     router,
 	}
 }
 
 func (c *CoordShardInfo) DB() string {
 	return c.underlying.Dbname
+}
+
+func (c *CoordShardInfo) Router() string {
+	return c.router
 }
 
 func (c *CoordShardInfo) Usr() string {

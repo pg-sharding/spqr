@@ -117,6 +117,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
+		"pool router",
 		"pool db",
 		"pool usr",
 		"pool host",
@@ -126,10 +127,10 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
+			p.RouterName(),
 			p.Rule().DB,
 			p.Rule().Usr,
 			p.Hostname(),
@@ -715,14 +716,19 @@ func (pi *PSQLInteractor) KillClient(clientID string) error {
 }
 
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
-	if err := pi.WriteHeader("backend connection id", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, sh := range shs {
+		router := "no data"
+		s, ok := sh.(shard.CoordShardinfo)
+		if ok {
+			router = s.Router()
+		}
 
-		if err := pi.WriteDataRow(sh.ID(), sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
