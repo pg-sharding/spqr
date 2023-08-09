@@ -170,6 +170,12 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	return grpc.Dial(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
+type CoordinatorClient interface {
+	client.Client
+
+	CancelMsg() *pgproto3.CancelRequest
+}
+
 type qdbCoordinator struct {
 	coordinator.Coordinator
 	db qdb.QDB
@@ -909,11 +915,15 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (client.Client, error) {
+func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn)
 
 	if err := cl.Init(nil); err != nil {
 		return nil, err
+	}
+
+	if cl.CancelMsg() != nil {
+		return cl, nil
 	}
 
 	spqrlog.Zero.Info().
@@ -944,6 +954,11 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
+	}
+
+	if cl.CancelMsg() != nil {
+		// TODO: cancel client here
+		return nil
 	}
 
 	ci := grpcConnectionIterator{qdbCoordinator: qc}
