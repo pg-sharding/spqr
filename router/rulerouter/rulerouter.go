@@ -26,8 +26,7 @@ type RuleRouter interface {
 
 	Shutdown() error
 	Reload(configPath string) error
-	PreRoute(conn net.Conn) (rclient.RouterClient, error)
-	PreRouteAdm(conn net.Conn) (rclient.RouterClient, error)
+	PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error)
 	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
@@ -149,7 +148,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 	}
 }
 
-func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
+func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
@@ -160,7 +159,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, nil
 	}
 
-	if cl.DB() == "spqr-console" {
+	if admin_client || cl.DB() == "spqr-console" {
 		return r.PreRouteInitializedClientAdm(cl)
 	}
 
@@ -247,16 +246,6 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	}
 
 	return cl, nil
-}
-
-func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn)
-
-	if err := cl.Init(r.tlsconfig); err != nil {
-		return nil, err
-	}
-
-	return r.PreRouteInitializedClientAdm(cl)
 }
 
 func (r *RuleRouterImpl) ListShards() []string {

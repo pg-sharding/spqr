@@ -113,7 +113,7 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 		}
 
 		for _, conn := range resp.Conns {
-			err = cb(NewCoordShardInfo(conn))
+			err = cb(NewCoordShardInfo(conn, addr))
 			if err != nil {
 				return err
 			}
@@ -123,7 +123,25 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 }
 
 func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
-	return fmt.Errorf("not implemented")
+	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
+		ctx := context.TODO()
+		rrBackConn := routerproto.NewPoolServiceClient(cc)
+
+		spqrlog.Zero.Debug().Msg("fetch pools with grpc")
+		resp, err := rrBackConn.ListPools(ctx, &routerproto.ListPoolsRequest{})
+		if err != nil {
+			spqrlog.Zero.Error().Msg("error fetching pools with grpc")
+			return err
+		}
+
+		for _, p := range resp.Pools {
+			err = cb(NewCoordPool(p))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}
@@ -204,8 +222,20 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 					if _, err := rrClient.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
 						return err
 					}
+
+					/* Mark router as opened in qdb */
+					err := qc.db.OpenRouter(ctx, internalR.ID)
+					if err != nil {
+						return err
+					}
 				case routerproto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
+
+					/* Mark router as opened in qdb */
+					err := qc.db.OpenRouter(ctx, internalR.ID)
+					if err != nil {
+						return err
+					}
 					// TODO: consistency checks
 				}
 				return nil
@@ -314,6 +344,7 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 		retRouters = append(retRouters, &topology.Router{
 			ID:      v.ID,
 			Address: v.Address,
+			State:   v.State,
 		})
 	}
 

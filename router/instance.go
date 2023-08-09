@@ -90,7 +90,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, err
 	}
 
-	if skipInitSQL {
+	if !skipInitSQL {
 		for _, fname := range []string{
 			rcfg.InitSQL,
 		} {
@@ -131,8 +131,8 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}, nil
 }
 
-func (r *InstanceImpl) serv(netconn net.Conn) error {
-	routerClient, err := r.RuleRouter.PreRoute(netconn)
+func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
+	routerClient, err := r.RuleRouter.PreRoute(netconn, admin_console)
 	if err != nil {
 		_ = netconn.Close()
 		return err
@@ -140,12 +140,13 @@ func (r *InstanceImpl) serv(netconn net.Conn) error {
 
 	defer netconn.Close()
 
-	if routerClient.DB() == "spqr-console" {
-		return r.AdmConsole.Serve(context.Background(), routerClient)
-	}
-
+	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
 		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
+	}
+
+	if admin_console || routerClient.DB() == "spqr-console" {
+		return r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
 	spqrlog.Zero.Debug().
@@ -195,10 +196,11 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 		select {
 		case conn := <-cChan:
 			if !r.Initialized() {
+				/* do not accept client connections on un-initialized router */
 				_ = conn.Close()
 			} else {
 				go func() {
-					if err := r.serv(conn); err != nil {
+					if err := r.serv(conn, false); err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("error serving client")
 					}
 				}()
@@ -213,15 +215,6 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 			return nil
 		}
 	}
-}
-
-func (r *InstanceImpl) servAdm(ctx context.Context, conn net.Conn) error {
-	cl, err := r.RuleRouter.PreRouteAdm(conn)
-	if err != nil {
-		return err
-	}
-
-	return r.AdmConsole.Serve(ctx, cl)
 }
 
 func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error {
@@ -249,7 +242,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			return nil
 		case conn := <-cChan:
 			go func() {
-				if err := r.servAdm(ctx, conn); err != nil {
+				if err := r.serv(conn, true); err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
 			}()

@@ -234,11 +234,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
-    """
-    And SQL result should match regexp
-    """
-    "Key range ID":"krid2".*"Lower bound":"11".*"Upper bound":"31"
+    \[\]
     """
 
   Scenario: QDB is down

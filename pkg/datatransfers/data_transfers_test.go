@@ -6,12 +6,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/pg-sharding/spqr/pkg/mock"
+	mock "github.com/pg-sharding/spqr/pkg/mock/pgx"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 // commitTransactions tests

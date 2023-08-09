@@ -68,7 +68,7 @@ pooler_run:
 ####################### TESTS #######################
 
 unittest:
-	go test -race ./cmd/... ./pkg/... ./router/... ./qdb/...
+	go test -race ./cmd/... ./pkg/... ./router/... ./qdb/... ./coordinator/...
 
 regress_local: proxy_2sh_run
 	./script/regress_local.sh
@@ -98,16 +98,17 @@ gogen:
 	protos/* 
 
 mockgen:
-	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/mock_pgxconn_iface.go -package=mock
-	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/mock_pgx_tx.go -package=mock
+	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/pgx/mock_pgxconn_iface.go -package=mock
+	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/pgx/mock_pgx_tx.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen
 
 gen: gogen yaccgen mockgen
 
+version = $(shell git describe --tags --abbrev=0)
 package:
-	sed -i 's/SPQR_VERSION/${SPQR_VERSION}/g' debian/changelog
+	sed -i 's/SPQR_VERSION/$(version)/g' debian/changelog
 	dpkg-buildpackage -us -uc
 
 .PHONY: build gen
