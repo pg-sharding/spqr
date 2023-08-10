@@ -364,7 +364,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 		}
 		defer unlockMutex(mu, ctx)
 
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +428,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		}
 		defer unlockMutex(mu, ctx)
 
-		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeID))
+		resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 		if err != nil {
 			return err
 		}
