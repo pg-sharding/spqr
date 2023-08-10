@@ -1,6 +1,10 @@
 package qdb
 
-import "github.com/pg-sharding/spqr/pkg/spqrlog"
+import (
+	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+)
 
 type Command interface {
 	Do() error
@@ -104,22 +108,36 @@ func (c *CustomCommand) Undo() error {
 	return c.undo()
 }
 
-func ExecuteCommands(saver func() error, commands ...Command) error {
-	firstError := len(commands)
-	var err error
+func doCommands(commands ...Command) (int, error) {
 	for i, c := range commands {
-		err = c.Do()
+		err := c.Do()
 		if err != nil {
-			firstError = i
+			return i, err
 		}
 	}
+	return len(commands), nil
+}
+
+func undoCommands(commands ...Command) error {
+	spqrlog.Zero.Info().Msg("memqdb: undo commands")
+	for _, c := range commands {
+		err := c.Undo()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ExecuteCommands(saver func() error, commands ...Command) error {
+	completed, err := doCommands(commands...)
 	if err == nil {
 		err = saver()
 	}
 	if err != nil {
-		spqrlog.Zero.Info().Msg("memqdb: undo commands")
-		for _, c := range commands[:firstError] {
-			err = c.Undo()
+		undoErr := undoCommands(commands[:completed]...)
+		if undoErr != nil {
+			return fmt.Errorf("Failed to undo command %s while: %s", undoErr.Error(), err.Error())
 		}
 		return err
 	}
