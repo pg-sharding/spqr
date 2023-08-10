@@ -286,7 +286,7 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
-func (qr *LocalCoordinator) Unlock(ctx context.Context, krid string) error {
+func (qr *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
 	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 

@@ -158,7 +158,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := l.mgr.Unlock(ctx, id); err != nil {
+		if err := l.mgr.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}

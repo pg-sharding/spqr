@@ -531,7 +531,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 	})
 }
 
-func (qc *qdbCoordinator) Unlock(ctx context.Context, keyRangeID string) error {
+func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	if err := qc.db.UnlockKeyRange(ctx, keyRangeID); err != nil {
 		return err
 	}
@@ -733,44 +733,12 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
-	//move i qdb
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
-			Id: []string{req.Krid},
-		})
-
-		spqrlog.Zero.Debug().
-			Interface("response", lockResp).
-			Msg("lock sharding rules response")
-		return err
-	}); err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-			cl := routerproto.NewKeyRangeServiceClient(cc)
-			unlockResp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
-				Id: []string{req.Krid},
-			})
-
-			spqrlog.Zero.Debug().
-				Interface("response", unlockResp).
-				Msg("unlock sharding rules response")
-			return err
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return
-		}
-	}()
-
-	krmv, err := qc.db.LockKeyRange(ctx, req.Krid)
+	krmv, err := qc.LockKeyRange(ctx, req.Krid)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, req.Krid); err != nil {
+		if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
@@ -785,36 +753,15 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}
 
 	krmv.ShardID = req.ShardId
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krmv)); err != nil {
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
 		// TODO: check if unlock here is ok
 		return err
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
-		lockResp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
-			Id: []string{req.Krid},
-		})
-		if err != nil {
-			return err
-		}
-		spqrlog.Zero.Debug().
-			Interface("response", lockResp).
-			Msg("lock key range response")
-
-		defer func() {
-			unlockResp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
-				Id: []string{req.Krid},
-			})
-			if err != nil {
-				return
-			}
-			spqrlog.Zero.Debug().
-				Interface("response", unlockResp).
-				Msg("unlock key range response")
-		}()
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
-			KeyRange: kr.KeyRangeFromDB(krmv).ToProto(),
+			KeyRange: krmv.ToProto(),
 		})
 		spqrlog.Zero.Debug().
 			Interface("response", moveResp).
