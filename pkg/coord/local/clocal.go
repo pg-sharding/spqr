@@ -202,16 +202,9 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
 	// TODO: krRight seems to be empty.
-	if krright, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
+	if krright, err = qr.qdb.GetKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
-		err := qdb.UnlockKeyRange(ctx, keyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return
-		}
-	}(qr.qdb, ctx, req.KeyRangeIDRight)
 
 	if err = qr.qdb.DropKeyRange(ctx, krright.KeyRangeID); err != nil {
 		return err

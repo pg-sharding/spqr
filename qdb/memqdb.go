@@ -12,8 +12,11 @@ import (
 )
 
 type MemQDB struct {
-	mu sync.RWMutex
+	// TODO create more mutex per map if needed
+	mu           sync.RWMutex
+	muDeletedKrs sync.RWMutex
 
+	deletedKrs   map[string]bool
 	Locks        map[string]*sync.RWMutex            `json:"locks"`
 	Freq         map[string]bool                     `json:"freq"`
 	Krs          map[string]*KeyRange                `json:"krs"`
@@ -39,6 +42,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		Dataspaces:   map[string]*Dataspace{},
 		Routers:      map[string]*Router{},
 		Transactions: map[string]*DataTransferTransaction{},
+		deletedKrs:   map[string]bool{},
 
 		backupPath: backupPath,
 	}, nil
@@ -154,6 +158,8 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 
 func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
 	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	rule, ok := q.Shrules[id]
 	if ok {
 		return rule, nil
@@ -200,8 +206,8 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 
 func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -221,6 +227,31 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 
 func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
+
+	// Do not allow new locks on key range we want to delete
+	q.muDeletedKrs.Lock()
+	if q.deletedKrs[id] {
+		q.muDeletedKrs.Unlock()
+		return fmt.Errorf("key range '%s' already deleted", id)
+	}
+	q.deletedKrs[id] = true
+	q.muDeletedKrs.Unlock()
+
+	defer func() {
+		q.muDeletedKrs.Lock()
+		defer q.muDeletedKrs.Unlock()
+		delete(q.deletedKrs, id)
+	}()
+
+	q.mu.RLock()
+
+	// Wait until key range will be unlocked
+	if lock, ok := q.Locks[id]; ok {
+		lock.Lock()
+		defer lock.Unlock()
+	}
+	q.mu.RUnlock()
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -230,27 +261,50 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: drop all key ranges")
+	q.mu.RLock()
+
+	// Do not allow new locks on key range we want to delete
+	q.muDeletedKrs.Lock()
+	ids := make([]string, 0)
+	for id := range q.Locks {
+		if q.deletedKrs[id] {
+			q.muDeletedKrs.Unlock()
+			q.mu.RUnlock()
+			return fmt.Errorf("key range '%s' already deleted", id)
+		}
+		ids = append(ids, id)
+		q.deletedKrs[id] = true
+	}
+	q.muDeletedKrs.Unlock()
+	defer func() {
+		q.muDeletedKrs.Lock()
+		defer q.muDeletedKrs.Unlock()
+		spqrlog.Zero.Debug().Msg("delete previous marks")
+
+		for _, id := range ids {
+			delete(q.deletedKrs, id)
+		}
+	}()
+
+	// Wait until key range will be unlocked
+	var locks []*sync.RWMutex
+	for _, l := range q.Locks {
+		l.Lock()
+		locks = append(locks, l)
+	}
+	defer func() {
+		for _, l := range locks {
+			l.Unlock()
+		}
+	}()
+	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
+
+	q.mu.RUnlock()
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	var locks []*sync.RWMutex
-
-	return ExecuteCommands(q.DumpState,
-		NewCustomCommand(func() {
-			for _, l := range q.Locks {
-				l.Lock()
-				locks = append(locks, l)
-			}
-			spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
-		}, func() {}),
-		NewDropCommand(q.Krs), NewDropCommand(q.Locks),
-		NewCustomCommand(func() {
-			for _, l := range locks {
-				l.Unlock()
-			}
-		},
-			func() {}),
-	)
+	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks))
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
@@ -271,10 +325,32 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
+func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error {
+	q.muDeletedKrs.RLock()
+
+	if _, ok := q.deletedKrs[id]; ok {
+		q.muDeletedKrs.RUnlock()
+		return fmt.Errorf("key range '%s' deleted", id)
+	}
+	q.muDeletedKrs.RUnlock()
+
+	if read {
+		lock.RLock()
+	} else {
+		lock.Lock()
+	}
+
+	if _, ok := q.Krs[id]; !ok {
+		return fmt.Errorf("key range '%s' deleted after lock acuired", id)
+	}
+	return nil
+}
+
 func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: lock key range")
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -282,7 +358,17 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	}
 
 	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
-		NewCustomCommand(q.Locks[id].Lock, q.Locks[id].Unlock))
+		NewCustomCommand(func() error {
+			if lock, ok := q.Locks[id]; ok {
+				return q.TryLockKeyRange(lock, id, false)
+			}
+			return nil
+		}, func() error {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Unlock()
+			}
+			return nil
+		}))
 	if err != nil {
 		return nil, err
 	}
@@ -291,22 +377,33 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 }
 
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: unlock key range")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
 	if !q.Freq[id] {
 		return fmt.Errorf("key range %v not locked", id)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
-		NewCustomCommand(q.Locks[id].Unlock, q.Locks[id].Lock))
+		NewCustomCommand(func() error {
+			if lock, ok := q.Locks[id]; ok {
+				lock.Unlock()
+			}
+			return nil
+		}, func() error {
+			if lock, ok := q.Locks[id]; ok {
+				return q.TryLockKeyRange(lock, id, false)
+			}
+			return nil
+		}))
 }
 
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	krs, ok := q.Krs[id]
 	if !ok {
@@ -323,8 +420,19 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 func (q *MemQDB) ShareKeyRange(id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: sharing key with key")
 
-	q.Locks[id].RLock()
-	defer q.Locks[id].RUnlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	lock, ok := q.Locks[id]
+	if !ok {
+		return fmt.Errorf("no such key")
+	}
+
+	err := q.TryLockKeyRange(lock, id, true)
+	if err != nil {
+		return err
+	}
+	defer lock.RUnlock()
 
 	return nil
 }
@@ -336,13 +444,12 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	ans, ok := q.Transactions[key]
 	if !ok {
@@ -354,7 +461,6 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
 }
 
@@ -392,8 +498,8 @@ func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
 
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list routers")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	var ret []*Router
 	for _, v := range q.Routers {
@@ -426,8 +532,8 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 
 func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list shards")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	var ret []*Shard
 	for _, v := range q.Shards {
@@ -444,8 +550,8 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 
 func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: get shard")
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
 	if _, ok := q.Shards[id]; ok {
 		return &Shard{ID: id}, nil
