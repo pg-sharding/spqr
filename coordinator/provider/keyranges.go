@@ -44,7 +44,7 @@ func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.L
 
 func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := c.impl.Unlock(ctx, id); err != nil {
+		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}

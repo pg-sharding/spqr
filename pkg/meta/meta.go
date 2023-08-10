@@ -153,7 +153,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
 	case *spqrparser.Unlock:
-		if err := mgr.Unlock(ctx, stmt.KeyRangeID); err != nil {
+		if err := mgr.UnlockKeyRange(ctx, stmt.KeyRangeID); err != nil {
 			return err
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
