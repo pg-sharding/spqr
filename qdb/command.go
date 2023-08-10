@@ -137,7 +137,7 @@ func ExecuteCommands(saver func() error, commands ...Command) error {
 	if err != nil {
 		undoErr := undoCommands(commands[:completed]...)
 		if undoErr != nil {
-			return fmt.Errorf("Failed to undo command %s while: %s", undoErr.Error(), err.Error())
+			return fmt.Errorf("failed to undo command %s while: %s", undoErr.Error(), err.Error())
 		}
 		return err
 	}
