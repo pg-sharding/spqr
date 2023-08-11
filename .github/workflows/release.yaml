@@ -1,8 +1,8 @@
 name: release
 
 on:
-  push:
-    tags: ['[0-9]+\.[0-9]+\.[0-9]+']
+  release:
+    type: [created]
 
 jobs:
   release:
@@ -34,10 +34,6 @@ jobs:
       - name: build package
         run: |
           make package
-          echo $(echo ../* | grep -v '^../spqr$' | tr '\n' ' ')
-          echo $(echo ../* | grep -v '^\.\./spqr$' | tr '\n' ' ')
-          echo $(echo ../* | grep -v '^..\/spqr$' | tr '\n' ' ')
-          echo $(echo ../* | grep -v '^\.\.\/spqr$' | tr '\n' ' ')
-          gh release create ${TAG} --title "Release ${TAG}" $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
+          gh release upload ${TAG} $(echo ../* | tr ' ' '\n' | grep -v '^../spqr$' | tr '\n' ' ')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
