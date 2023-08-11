@@ -13,7 +13,7 @@ type ShardingSchemaKeeper interface {
 	/* list all key-range moves in progress */
 	ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error)
 	/* mark key range move as completed */
-	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string) error
+	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
 }
 
 type TopolodyKeeper interface {
