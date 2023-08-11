@@ -9,7 +9,6 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         with:
