@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		db, err := qdb.NewQDB(qdbImpl)
+		db, err := qdb.NewXQDB(qdbImpl)
 		if err != nil {
 			return err
 		}

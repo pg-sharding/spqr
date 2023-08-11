@@ -79,7 +79,7 @@ Steps:
   - create sql copy and delete queries to move data tuples.
   - prepare and commit distributed move transation
 */
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db *qdb.QDB) error {
+func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -162,7 +162,7 @@ func beginTransactions(ctx context.Context, from, to pgxConnIface) (pgx.Tx, pgx.
 	return txFrom, txTo, nil
 }
 
-func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db *qdb.QDB) error {
+func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db qdb.XQDB) error {
 	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", t, krid))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
@@ -187,7 +187,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 		FromStatus:  qdb.Processing,
 	}
 
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -199,7 +199,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 	}
 
 	d.ToStatus = qdb.Commited
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
 	}
@@ -211,7 +211,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 	}
 
 	d.FromStatus = qdb.Commited
-	err = (*db).RecordTransferTx(ctx, krid, &d)
+	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 	}

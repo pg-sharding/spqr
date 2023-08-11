@@ -178,7 +178,7 @@ type CoordinatorClient interface {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-	db qdb.QDB
+	db qdb.XQDB
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -259,7 +259,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 // NewCoordinator side efferc: runs async goroutine that checks
 // spqr router`s availability
-func NewCoordinator(db qdb.QDB) *qdbCoordinator {
+func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	cc := &qdbCoordinator{
 		db: db,
 	}
@@ -733,7 +733,17 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 }
 
 // Move key range from one logical shard to another
+// This function perform data resharding, wirh portion
+// of data being reshared keep locked (unavalable for both
+// read and write access) during process
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+
+	/* first of all,
+	* make record in qdb
+	* about data move. We should rerun this function
+	* in case of coordinator crash while moving data.
+	 */
+
 	spqrlog.Zero.Debug().
 		Str("key-range", req.Krid).
 		Str("shard-id", req.ShardId).
@@ -752,18 +762,21 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	//move between shards
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, &qc.db)
+	/* physical changes on shards */
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, qc.db)
 	if err != nil {
 		spqrlog.Zero.Error().Msg("failed to move rows")
 		return err
 	}
 
+	/* modify distributed key-range metadata state */
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
 		// TODO: check if unlock here is ok
 		return err
 	}
 
+	/* notify all routers about chanding scheme changes */
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{

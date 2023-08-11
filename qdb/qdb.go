@@ -7,6 +7,35 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
+type ShardingSchemaKeeper interface {
+	/* persist start of key range move in distributed storage */
+	RecordKeyRangeMove() error
+	/* list all key-range moves in progress */
+	ListKeyRangeMoves() error
+	/* mark key range move as completed */
+	CompleteKeyRangeMove() error
+}
+
+type TopolodyKeeper interface {
+	AddRouter(ctx context.Context, r *Router) error
+	OpenRouter(ctx context.Context, rID string) error
+	DeleteRouter(ctx context.Context, rID string) error
+	ListRouters(ctx context.Context) ([]*Router, error)
+	LockRouter(ctx context.Context, id string) error
+}
+
+/* keep status of two-phase data move transaction */
+type DistributedXactKepper interface {
+	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
+	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
+	RemoveTransferTx(ctx context.Context, key string) error
+}
+
+/* this is generic interface for both coordinator and router to use
+* Router should use memory-based version of this interface, to cache
+* state of routing schema, while coordinator should use etcd-based
+* impelementation to keep distributed state in sync.
+ */
 type QDB interface {
 	AddShardingRule(ctx context.Context, rule *ShardingRule) error
 	DropShardingRule(ctx context.Context, id string) error
@@ -25,12 +54,6 @@ type QDB interface {
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ShareKeyRange(id string) error
 
-	AddRouter(ctx context.Context, r *Router) error
-	OpenRouter(ctx context.Context, rID string) error
-	DeleteRouter(ctx context.Context, rID string) error
-	ListRouters(ctx context.Context) ([]*Router, error)
-	LockRouter(ctx context.Context, id string) error
-
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
@@ -39,13 +62,20 @@ type QDB interface {
 
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
-
-	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
-	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
-	RemoveTransferTx(ctx context.Context, key string) error
 }
 
-func NewQDB(qdbType string) (QDB, error) {
+// Extended QDB
+type XQDB interface {
+	// routing schema
+	QDB
+	// router topology
+	TopolodyKeeper
+	// data move state
+	//ShardingSchemaKeeper TODO: impl
+	DistributedXactKepper
+}
+
+func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
