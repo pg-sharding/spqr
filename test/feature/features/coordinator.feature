@@ -32,9 +32,9 @@ Feature: Coordinator test
     """
     SHOW routers
     """
-    Then SQL result should match regexp
+    Then SQL result should match json
     """
-    \[\]
+    []
     """
 
     When I run SQL on host "coordinator"
@@ -103,6 +103,46 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
+  Scenario: Router synchronization after registration works
+    Given I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r1;
+    REGISTER ROUTER r1
+    """
+    When I run SQL on host "router-admin"
+    """
+    SHOW sharding_rules
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "Columns":"id",
+      "Hash Function":"x->x",
+      "Sharding Rule ID":"r1",
+      "Table Name":"*"
+    }]
+    """
+
+    When I run SQL on host "router-admin"
+    """
+    SHOW key_ranges
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    },
+    {
+      "Key range ID":"krid2",
+      "Lower bound":"11",
+      "Shard ID":"sh2",
+      "Upper bound":"31"
+    }]
+    """
+
   Scenario: Lock/Unlock key range works
     Given I run SQL on host "coordinator"
     """
@@ -139,13 +179,23 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"5"
+    }]
     """
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"5",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "router-admin"
@@ -153,13 +203,23 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"5"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"5"
+    }]
     """
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3".*"Lower bound":"5".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"5",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "coordinator"
@@ -168,9 +228,14 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
     When I run SQL on host "router-admin"
@@ -178,9 +243,14 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid1".*"Lower bound":"0".*"Upper bound":"11"
+    [{
+      "Key range ID":"krid1",
+      "Lower bound":"0",
+      "Shard ID":"sh1",
+      "Upper bound":"11"
+    }]
     """
 
   Scenario: Split/Unite locked key range fails
@@ -232,9 +302,9 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    \[\]
+    []
     """
 
   Scenario: QDB is down
@@ -269,7 +339,12 @@ Feature: Coordinator test
     SHOW key_ranges
     """
     Then command return code should be "0"
-    And SQL result should match regexp
+    And SQL result should match json
     """
-    "Key range ID":"krid3"
+    [{
+      "Key range ID":"krid3",
+      "Lower bound":"31",
+      "Shard ID":"sh1",
+      "Upper bound":"40"
+    }]
     """
