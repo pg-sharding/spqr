@@ -578,6 +578,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
+	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
+		return fmt.Errorf("bound is out of key range")
+	}
+
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			LowerBound: req.Bound,

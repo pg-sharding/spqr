@@ -306,6 +306,43 @@ Feature: Coordinator test
     failed to unite key ranges routing different shards
     """
 
+  Scenario: Split key range by bound out of range fails
+    #
+    # Check we cannot split by bound greater than upper bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 40
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by bound less than lower bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 10
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by right end of open interval
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 31
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
   Scenario: Router is down
     #
     # Coordinator doesn't unregister router
