@@ -869,9 +869,12 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 		Str("id", moveId).
 		Msg("etcdqdb: get sharding rule")
 
-	resp, err := q.cli.Get(ctx, shardingRuleNodePath(moveId), clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
 	if err != nil {
 		return err
+	}
+	if len(resp.Kvs[0].Value) != 1 {
+		return fmt.Errorf("failed to update move key range operation by id %s", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
