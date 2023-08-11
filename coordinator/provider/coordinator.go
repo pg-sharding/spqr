@@ -6,6 +6,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -732,6 +734,27 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
+func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
+	ls, err := qc.db.ListKeyRangeMoves(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, krm := range ls {
+		// key range move already exist for this key range
+		// complete it first
+		if krm.KeyRangeID == m.KeyRangeID && krm.Status != qdb.MoveKeyRangeComplete {
+			return krm.KeyRangeID, nil
+		}
+	}
+
+	/* record new planned key range move */
+	if err := qc.db.RecordKeyRangeMove(ctx, m); err != nil {
+		return "", err
+	}
+
+	return m.MoveId, nil
+}
+
 // Move key range from one logical shard to another
 // This function perform data resharding, wirh portion
 // of data being reshared keep locked (unavalable for both
@@ -749,12 +772,33 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
+	var moveId string
+	var err error
+
+	/* NOOP if key range move was already recorded */
+	if moveId, err = qc.RecordKeyRangeMove(ctx,
+		&qdb.MoveKeyRange{
+			MoveId:     uuid.New().String(),
+			ShardId:    req.ShardId,
+			KeyRangeID: req.Krid,
+			Status:     qdb.MoveKeyRangePlanned,
+		}); err != nil {
+		return err
+	}
+
 	krmv, err := qc.LockKeyRange(ctx, req.Krid)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}()
+
+	defer func() {
+		// set compelted status in the end of key range move operation
+		if err := qc.db.UpdateKeyRangeMoveStatus(ctx, moveId, qdb.MoveKeyRangeComplete); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()

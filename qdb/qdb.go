@@ -9,11 +9,11 @@ import (
 
 type ShardingSchemaKeeper interface {
 	/* persist start of key range move in distributed storage */
-	RecordKeyRangeMove() error
+	RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 	/* list all key-range moves in progress */
-	ListKeyRangeMoves() error
+	ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error)
 	/* mark key range move as completed */
-	CompleteKeyRangeMove() error
+	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string) error
 }
 
 type TopolodyKeeper interface {
@@ -71,7 +71,7 @@ type XQDB interface {
 	// router topology
 	TopolodyKeeper
 	// data move state
-	//ShardingSchemaKeeper TODO: impl
+	ShardingSchemaKeeper
 	DistributedXactKepper
 }
 

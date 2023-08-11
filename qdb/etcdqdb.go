@@ -48,6 +48,7 @@ const (
 	keyspace               = "key_space"
 	keyRangesNamespace     = "/keyranges"
 	dataspaceNamespace     = "/dataspaces"
+	keyRangeMovesNamespace = "/krmoves"
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
@@ -75,6 +76,10 @@ func shardNodePath(key string) string {
 
 func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
+}
+
+func keyRangeMovesNodePath(key string) string {
+	return path.Join(keyRangeMovesNamespace, key)
 }
 
 // ==============================================================================
@@ -803,4 +808,89 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list dataspaces")
 	return rules, nil
+}
+
+// ==============================================================================
+//                              KEY RANGE MOVES
+// ==============================================================================
+
+func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list move key range operations")
+
+	namespacePrefix := keyRangeMovesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	moves := make([]*MoveKeyRange, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// A sharding rule supports no more than one column for a while.
+		var rule *MoveKeyRange
+		err := json.Unmarshal(kv.Value, &rule)
+		if err != nil {
+			return nil, err
+		}
+
+		moves = append(moves, rule)
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list move key range oeprations")
+	return moves, nil
+}
+
+func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+	spqrlog.Zero.Debug().
+		Str("id", m.MoveId).
+		Msg("etcdqdb: add move key range operation")
+
+	rawMoveKeyRange, err := json.Marshal(m)
+
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, keyRangeMovesNodePath(m.MoveId), string(rawMoveKeyRange))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: add move key range operation")
+
+	return nil
+}
+
+func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+	spqrlog.Zero.Debug().
+		Str("id", moveId).
+		Msg("etcdqdb: get sharding rule")
+
+	resp, err := q.cli.Get(ctx, shardingRuleNodePath(moveId), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+	var moveKr MoveKeyRange
+	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
+		return err
+	}
+	moveKr.Status = s
+	rawMoveKeyRange, err := json.Marshal(moveKr)
+
+	if err != nil {
+		return err
+	}
+	respModify, err := q.cli.Put(ctx, keyRangeMovesNodePath(moveKr.MoveId), string(rawMoveKeyRange))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", respModify).
+		Msg("etcdqdb: update status of move key range operation")
+
+	return nil
 }

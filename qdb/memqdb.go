@@ -12,6 +12,7 @@ import (
 )
 
 type MemQDB struct {
+	ShardingSchemaKeeper
 	// TODO create more mutex per map if needed
 	mu           sync.RWMutex
 	muDeletedKrs sync.RWMutex
