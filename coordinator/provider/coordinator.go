@@ -705,6 +705,16 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		}
 	}()
 
+	if krLeft.ShardID != krRight.ShardID {
+		return fmt.Errorf("failed to unite key ranges routing different shards")
+	}
+	if !kr.CmpRangesEqual(krLeft.UpperBound, krRight.LowerBound) {
+		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
+			return fmt.Errorf("failed to unite not adjacent key ranges")
+		}
+		return fmt.Errorf("failed to unite key ranges in wrong order")
+	}
+
 	krLeft.UpperBound = krRight.UpperBound
 
 	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
