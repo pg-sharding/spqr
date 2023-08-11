@@ -579,7 +579,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}()
 
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
-		return fmt.Errorf("bound is out of key range")
+		return fmt.Errorf("failed to split because bound is out of key range")
 	}
 
 	krNew := kr.KeyRangeFromDB(
@@ -716,7 +716,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
 			return fmt.Errorf("failed to unite not adjacent key ranges")
 		}
-		return fmt.Errorf("failed to unite key ranges in wrong order")
+		krLeft, krRight = krRight, krLeft
 	}
 
 	krLeft.UpperBound = krRight.UpperBound

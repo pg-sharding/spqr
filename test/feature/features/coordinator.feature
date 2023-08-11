@@ -273,7 +273,7 @@ Feature: Coordinator test
     context deadline exceeded
     """
 
-  Scenario: Unite not adjacent key ranges fails
+  Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 100 TO 1001 ROUTE TO sh1;
@@ -284,15 +284,26 @@ Feature: Coordinator test
     failed to unite not adjacent key ranges
     """
 
-  Scenario: Unite in wrong order fails
+  Scenario: Unite in reverse order works
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh2;
     UNITE KEY RANGE krid3 WITH krid2
     """
-    Then SQL error on host "coordinator" should match regexp
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
     """
-    failed to unite key ranges in wrong order
+    SHOW key_ranges
+    """
+    Then SQL result should match json
+    """
+    [{
+      "Key range ID":"krid2",
+      "Lower bound":"11",
+      "Shard ID":"sh2",
+      "Upper bound":"40"
+    }]
     """
 
   Scenario: Unite key ranges routing different shards fails
