@@ -429,3 +429,49 @@ Feature: Coordinator test
       "Upper bound":"40"
     }]
     """
+
+  Scenario: Add intersecting key range fails
+    #
+    # Create test key range
+    #
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with krid3 present in qdb
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with krid3 present in qdb
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with krid3 present in qdb
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with krid3 present in qdb
+    """
