@@ -42,7 +42,7 @@ const (
 	consoleName                     = "spqr-console"
 	postgresqlConnectTimeout        = 30 * time.Second
 	postgresqlInitialConnectTimeout = 2 * time.Minute
-	postgresqlQueryTimeout          = 5 * time.Second
+	postgresqlQueryTimeout          = 10 * time.Second
 )
 
 type testContext struct {

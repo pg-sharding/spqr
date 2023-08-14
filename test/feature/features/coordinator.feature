@@ -273,6 +273,87 @@ Feature: Coordinator test
     context deadline exceeded
     """
 
+  Scenario: Unite non-adjacent key ranges fails
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 100 TO 1001 ROUTE TO sh1;
+    UNITE KEY RANGE krid1 WITH krid3
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to unite not adjacent key ranges
+    """
+
+  Scenario: Unite in reverse order works
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh2;
+    UNITE KEY RANGE krid3 WITH krid2
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then SQL result should match json
+    """
+    [{
+      "Key range ID":"krid2",
+      "Lower bound":"11",
+      "Shard ID":"sh2",
+      "Upper bound":"40"
+    }]
+    """
+
+  Scenario: Unite key ranges routing different shards fails
+    When I run SQL on host "coordinator"
+    """
+    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1;
+    UNITE KEY RANGE krid2 WITH krid3
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to unite key ranges routing different shards
+    """
+
+  Scenario: Split key range by bound out of range fails
+    #
+    # Check we cannot split by bound greater than upper bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 40
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by bound less than lower bound
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 10
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
+    #
+    # Check we cannot split by right end of open interval
+    #
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 31
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    bound is out of key range
+    """
+
   Scenario: Router is down
     #
     # Coordinator doesn't unregister router

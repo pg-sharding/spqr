@@ -578,6 +578,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
+	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
+		return fmt.Errorf("failed to split because bound is out of key range")
+	}
+
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			LowerBound: req.Bound,
@@ -704,6 +708,16 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
+
+	if krLeft.ShardID != krRight.ShardID {
+		return fmt.Errorf("failed to unite key ranges routing different shards")
+	}
+	if !kr.CmpRangesEqual(krLeft.UpperBound, krRight.LowerBound) {
+		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
+			return fmt.Errorf("failed to unite not adjacent key ranges")
+		}
+		krLeft, krRight = krRight, krLeft
+	}
 
 	krLeft.UpperBound = krRight.UpperBound
 
