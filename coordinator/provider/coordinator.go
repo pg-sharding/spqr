@@ -580,6 +580,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
 		return fmt.Errorf("failed to split because bound is out of key range")
 	}
+	if _, err := qc.db.GetKeyRange(ctx, req.Krid); err == nil {
+		return fmt.Errorf("key range %v already present in qdb", req.Krid)
+	}
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
