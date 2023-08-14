@@ -6,6 +6,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -178,7 +180,7 @@ type CoordinatorClient interface {
 
 type qdbCoordinator struct {
 	coordinator.Coordinator
-	db qdb.QDB
+	db qdb.XQDB
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -219,9 +221,6 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				switch resp.Status {
 				case routerproto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.db.LockRouter(ctx, r.ID); err != nil {
-						return err
-					}
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
 						return err
 					}
@@ -259,7 +258,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 // NewCoordinator side efferc: runs async goroutine that checks
 // spqr router`s availability
-func NewCoordinator(db qdb.QDB) *qdbCoordinator {
+func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	cc := &qdbCoordinator{
 		db: db,
 	}
@@ -746,12 +745,52 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
+func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
+	ls, err := qc.db.ListKeyRangeMoves(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, krm := range ls {
+		// after the coordinator restarts, it will continue the move that was previously initiated.
+		// key range move already exist for this key range
+		// complete it first
+		if krm.KeyRangeID == m.KeyRangeID && krm.Status != qdb.MoveKeyRangeComplete {
+			return krm.KeyRangeID, nil
+		}
+	}
+
+	/* record new planned key range move */
+	if err := qc.db.RecordKeyRangeMove(ctx, m); err != nil {
+		return "", err
+	}
+
+	return m.MoveId, nil
+}
+
 // Move key range from one logical shard to another
+// This function reshards data by locking a portion of it,
+// making it unavailable for read and write access during the process.
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
+	// First, we create a record in the qdb to track the data movement.
+	// If the coordinator crashes during the process, we need to rerun this function.
+
 	spqrlog.Zero.Debug().
 		Str("key-range", req.Krid).
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
+
+	moveId, err := qc.RecordKeyRangeMove(ctx,
+		&qdb.MoveKeyRange{
+			MoveId:     uuid.New().String(),
+			ShardId:    req.ShardId,
+			KeyRangeID: req.Krid,
+			Status:     qdb.MoveKeyRangePlanned,
+		})
+
+	/* NOOP if key range move was already recorded */
+	if err != nil {
+		return err
+	}
 
 	krmv, err := qc.LockKeyRange(ctx, req.Krid)
 	if err != nil {
@@ -763,21 +802,31 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		}
 	}()
 
+	defer func() {
+		// set compelted status in the end of key range move operation
+		if err := qc.db.UpdateKeyRangeMoveStatus(ctx, moveId, qdb.MoveKeyRangeComplete); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}()
+
 	//move between shards
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, &qc.db)
+	/* physical changes on shards */
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, qc.db)
 	if err != nil {
-		spqrlog.Zero.Error().Msg("failed to move rows")
+		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 		return err
 	}
 
+	// Update the state of the distributed key-range metadata
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
 		// TODO: check if unlock here is ok
 		return err
 	}
 
+	// Notify all routers about scheme changes.
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{

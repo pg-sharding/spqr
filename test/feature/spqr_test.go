@@ -55,7 +55,7 @@ type testContext struct {
 	sqlUserQueryError sync.Map // host -> error
 	commandRetcode    int
 	commandOutput     string
-	qdb               qdb.QDB
+	qdb               qdb.XQDB
 	t                 *testing.T
 }
 

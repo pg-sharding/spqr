@@ -27,9 +27,9 @@ func TestCommitPositive(t *testing.T) {
 	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 	m2.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 
-	db, err := qdb.NewQDB("mem")
+	db, err := qdb.NewXQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, db)
 	assert.NoError(err)
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
@@ -51,9 +51,9 @@ func TestFailToCommitFirstTx(t *testing.T) {
 	m2 := mock.NewMockTx(ctrl)
 	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 
-	db, err := qdb.NewQDB("mem")
+	db, err := qdb.NewXQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, db)
 	assert.Error(err)
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
@@ -74,9 +74,9 @@ func TestFailToCommitSecondTx(t *testing.T) {
 	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, nil)
 	m2.EXPECT().Exec(context.TODO(), "COMMIT PREPARED 'sh1-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
 
-	db, err := qdb.NewQDB("mem")
+	db, err := qdb.NewXQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, db)
 	assert.Error(err)
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
@@ -94,9 +94,9 @@ func TestFailToPrepareFirstTx(t *testing.T) {
 
 	m2 := mock.NewMockTx(ctrl)
 
-	db, err := qdb.NewQDB("mem")
+	db, err := qdb.NewXQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, db)
 	assert.Error(err)
 
 	_, err = db.GetTransferTx(context.TODO(), "krid")
@@ -114,9 +114,9 @@ func TestFailToPrepareSecondTx(t *testing.T) {
 	m2 := mock.NewMockTx(ctrl)
 	m2.EXPECT().Exec(context.TODO(), "PREPARE TRANSACTION 'sh1-krid'").Return(pgconn.CommandTag{}, fmt.Errorf(""))
 
-	db, err := qdb.NewQDB("mem")
+	db, err := qdb.NewXQDB("mem")
 	assert.NoError(err)
-	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, &db)
+	err = commitTransactions(context.TODO(), "sh1", "sh2", "krid", m1, m2, db)
 	assert.Error(err)
 
 	_, err = db.GetTransferTx(context.TODO(), "krid")

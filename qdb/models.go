@@ -11,6 +11,20 @@ type KeyRange struct {
 	ShardID    string `json:"shard_id"`
 	KeyRangeID string `json:"key_range_id"`
 }
+type MoveKeyRangeStatus string
+
+const (
+	MoveKeyRangePlanned  = MoveKeyRangeStatus("PLANNED")
+	MoveKeyRangeStarted  = MoveKeyRangeStatus("STARTED")
+	MoveKeyRangeComplete = MoveKeyRangeStatus("COMPLETE")
+)
+
+type MoveKeyRange struct {
+	MoveId     string             `json:"move_id"`
+	ShardId    string             `json:"shard_id"`
+	KeyRangeID string             `json:"key_range_id"`
+	Status     MoveKeyRangeStatus `json:"status"`
+}
 
 type KeyRangeStatus string
 

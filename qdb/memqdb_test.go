@@ -79,7 +79,6 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _ = memqdb.DropShardingRule(ctx, mockShardingRule.ID) },
 		func() { _, _ = memqdb.DropShardingRuleAll(ctx) },
 		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
-		func() { _ = memqdb.LockRouter(ctx, mockRouter.ID) },
 		func() {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)
 			_ = memqdb.UnlockKeyRange(ctx, mockKeyRange.KeyRangeID)
