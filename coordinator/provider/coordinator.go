@@ -221,9 +221,6 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				switch resp.Status {
 				case routerproto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.db.LockRouter(ctx, r.ID); err != nil {
-						return err
-					}
 					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
 						return err
 					}

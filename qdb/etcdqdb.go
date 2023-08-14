@@ -618,7 +618,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	/*  */
 
 	if len(routers) != 1 {
-		return fmt.Errorf("sync  failed: more taht one router with id %s", id)
+		return fmt.Errorf("sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == OPENED {
@@ -628,6 +628,56 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	}
 
 	routers[0].State = OPENED
+
+	bts, err := json.Marshal(routers[0])
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, routerNodePath(routers[0].ID), string(bts))
+	if err != nil {
+		return err
+	}
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: put router to qdb")
+
+	return nil
+}
+
+func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: close router")
+	getResp, err := q.cli.Get(ctx, routerNodePath(id))
+	if err != nil {
+		return err
+	}
+	if len(getResp.Kvs) == 0 {
+		return fmt.Errorf("router with id %s does not exists", id)
+	}
+
+	var routers []*Router
+	for _, e := range getResp.Kvs {
+		var st Router
+		if err := json.Unmarshal(e.Value, &st); err != nil {
+			return err
+		}
+		// TODO: create routers in qdb properly
+		routers = append(routers, &st)
+	}
+
+	if len(routers) != 1 {
+		return fmt.Errorf("sync failed: more than one router with id %s", id)
+	}
+
+	if routers[0].State == CLOSED {
+		spqrlog.Zero.Debug().
+			Msg("etcdqdb: router already closed, nothing to do here")
+		return nil
+	}
+
+	routers[0].State = CLOSED
 
 	bts, err := json.Marshal(routers[0])
 	if err != nil {
@@ -674,14 +724,6 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 		Msg("etcdqdb: list routers")
 
 	return ret, nil
-}
-
-func (q *EtcdQDB) LockRouter(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().
-		Str("id", id).
-		Msg("etcdqdb: lock router")
-
-	return nil
 }
 
 // ==============================================================================

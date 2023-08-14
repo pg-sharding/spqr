@@ -497,6 +497,18 @@ func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
 }
 
+func (q *MemQDB) CloseRouter(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("router", id).
+		Msg("memqdb: open router")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.Routers[id].State = CLOSED
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
+}
+
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list routers")
 	q.mu.RLock()
@@ -513,10 +525,6 @@ func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	})
 
 	return ret, nil
-}
-
-func (q *MemQDB) LockRouter(ctx context.Context, id string) error {
-	return nil
 }
 
 // ==============================================================================

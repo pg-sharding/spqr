@@ -18,10 +18,18 @@ type ShardingSchemaKeeper interface {
 
 type TopolodyKeeper interface {
 	AddRouter(ctx context.Context, r *Router) error
-	OpenRouter(ctx context.Context, rID string) error
 	DeleteRouter(ctx context.Context, rID string) error
 	ListRouters(ctx context.Context) ([]*Router, error)
-	LockRouter(ctx context.Context, id string) error
+
+	// OpenRouter: change state of router to online
+	// Making it usable to use for query executiong.
+	// "Online" mode.
+	OpenRouter(ctx context.Context, rID string) error
+
+	// CloseRouter: change state of router to offline
+	// Making it unusable to use for query executiong.
+	// "Offline" mode.
+	CloseRouter(ctx context.Context, rID string) error
 }
 
 // Keep track of the status of the two-phase data move transaction.
