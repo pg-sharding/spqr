@@ -740,6 +740,7 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 		return "", err
 	}
 	for _, krm := range ls {
+		// after the coordinator restarts, it will continue the move that was previously initiated.
 		// key range move already exist for this key range
 		// complete it first
 		if krm.KeyRangeID == m.KeyRangeID && krm.Status != qdb.MoveKeyRangeComplete {
@@ -756,33 +757,27 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 }
 
 // Move key range from one logical shard to another
-// This function perform data resharding, wirh portion
-// of data being reshared keep locked (unavalable for both
-// read and write access) during process
+// This function reshards data by locking a portion of it,
+// making it unavailable for read and write access during the process.
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
-
-	/* first of all,
-	* make record in qdb
-	* about data move. We should rerun this function
-	* in case of coordinator crash while moving data.
-	 */
+	// First, we create a record in the qdb to track the data movement.
+	// If the coordinator crashes during the process, we need to rerun this function.
 
 	spqrlog.Zero.Debug().
 		Str("key-range", req.Krid).
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
-	var moveId string
-	var err error
-
-	/* NOOP if key range move was already recorded */
-	if moveId, err = qc.RecordKeyRangeMove(ctx,
+	moveId, err := qc.RecordKeyRangeMove(ctx,
 		&qdb.MoveKeyRange{
 			MoveId:     uuid.New().String(),
 			ShardId:    req.ShardId,
 			KeyRangeID: req.Krid,
 			Status:     qdb.MoveKeyRangePlanned,
-		}); err != nil {
+		})
+
+	/* NOOP if key range move was already recorded */
+	if err != nil {
 		return err
 	}
 
@@ -813,14 +808,14 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		return err
 	}
 
-	/* modify distributed key-range metadata state */
+	// Update the state of the distributed key-range metadata
 	krmv.ShardID = req.ShardId
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
 		// TODO: check if unlock here is ok
 		return err
 	}
 
-	/* notify all routers about chanding scheme changes */
+	// Notify all routers about scheme changes.
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{

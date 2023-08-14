@@ -31,7 +31,7 @@ type LocalCoordinator struct {
 	DataShardCfgs  map[string]*config.Shard
 	WorldShardCfgs map[string]*config.Shard
 
-	/* not extended qdb, as router dont need to track installation topology */
+	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
 }
 

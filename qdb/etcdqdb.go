@@ -176,7 +176,8 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 	rules := make([]*ShardingRule, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		// A sharding rule supports no more than one column for a while.
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
 		var rule *ShardingRule
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
@@ -790,7 +791,6 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	rules := make([]*Dataspace, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		// A sharding rule supports no more than one column for a while.
 		var rule *Dataspace
 		err := json.Unmarshal(kv.Value, &rule)
 		if err != nil {
@@ -826,7 +826,8 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 	moves := make([]*MoveKeyRange, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		// A sharding rule supports no more than one column for a while.
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
 		var rule *MoveKeyRange
 		err := json.Unmarshal(kv.Value, &rule)
 		if err != nil {

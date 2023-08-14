@@ -24,17 +24,17 @@ type TopolodyKeeper interface {
 	LockRouter(ctx context.Context, id string) error
 }
 
-/* keep status of two-phase data move transaction */
+// Keep track of the status of the two-phase data move transaction.
 type DistributedXactKepper interface {
 	RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error
 	GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error)
 	RemoveTransferTx(ctx context.Context, key string) error
 }
 
-/* this is generic interface for both coordinator and router to use
-* Router should use memory-based version of this interface, to cache
-* state of routing schema, while coordinator should use etcd-based
-* impelementation to keep distributed state in sync.
+/* This is a generic interface to be used by both the coordinator and the router.
+* The router should use a memory-based version of this interface to cache
+* the state of the routing schema, while the coordinator should use an etcd-based
+* implementation to keep the distributed state in sync.
  */
 type QDB interface {
 	AddShardingRule(ctx context.Context, rule *ShardingRule) error
@@ -65,6 +65,7 @@ type QDB interface {
 }
 
 // Extended QDB
+// The coordinator should use an etcd-based implementation to keep the distributed state in sync.
 type XQDB interface {
 	// routing schema
 	QDB
