@@ -446,7 +446,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid4 intersects with krid3 present in qdb
+    key range krid4 intersects with key range krid3 in QDB
     """
 
     When I run SQL on host "coordinator"
@@ -455,7 +455,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid4 intersects with krid3 present in qdb
+    key range krid4 intersects with key range krid3 in QDB
     """
 
     When I run SQL on host "coordinator"
@@ -464,7 +464,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid4 intersects with krid3 present in qdb
+    key range krid4 intersects with key range krid3 in QDB
     """
 
     When I run SQL on host "coordinator"
@@ -473,5 +473,5 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range krid4 intersects with krid3 present in qdb
+    key range krid4 intersects with key range krid3 in QDB
     """
