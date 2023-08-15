@@ -19,6 +19,8 @@ import (
 type EtcdQDB struct {
 	cli *clientv3.Client
 	mu  sync.Mutex
+
+	coordLockId clientv3.LeaseID
 }
 
 var _ QDB = &EtcdQDB{}
@@ -52,6 +54,9 @@ const (
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
+	CoordKeepAliveTls      = 10
+	coordLockKey           = "coordinator_exists"
+	coordLockVal           = "exists"
 )
 
 func keyLockPath(key string) string {
@@ -528,6 +533,51 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
 		return err
 	}
+	return nil
+}
+
+// ==============================================================================
+//                              COORDINATOR LOCK
+// ==============================================================================
+
+func (q *EtcdQDB) RecordCoordinatorLock(ctx context.Context) error {
+	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTls)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")
+		return err
+	}
+
+	q.coordLockId = resp.ID
+
+	_, err = q.cli.Put(context.TODO(), coordLockKey, coordLockVal, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to record lock")
+		return err
+	}
+
+	_, err = q.cli.Lease.KeepAlive(ctx, q.coordLockId)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to renew lock")
+		return err
+	}
+
+	return nil
+}
+
+func (q *EtcdQDB) CheckCoordinatorLock(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("checking conn in qdb----------------------")
+	resp, err := q.cli.Get(ctx, coordLockKey, clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
+	spqrlog.Zero.Debug().Msg("checking conn in qdb2----------------------")
+	for _, e := range resp.Kvs {
+		spqrlog.Zero.Debug().Msg(string(e.Value))
+		if string(e.Value) == coordLockVal {
+			return fmt.Errorf("coordinator already in qdb")
+		}
+	}
+
 	return nil
 }
 

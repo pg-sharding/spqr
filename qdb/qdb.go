@@ -82,6 +82,9 @@ type XQDB interface {
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKepper
+
+	RecordCoordinatorLock(ctx context.Context) error
+	CheckCoordinatorLock(ctx context.Context) error
 }
 
 func NewXQDB(qdbType string) (XQDB, error) {
@@ -89,7 +92,7 @@ func NewXQDB(qdbType string) (XQDB, error) {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 	case "mem":
-		return NewMemQDB("")
+		return nil, fmt.Errorf("qdb implementation %s is unsuitable", qdbType)
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}

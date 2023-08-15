@@ -263,6 +263,16 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 		db: db,
 	}
 
+	err := db.CheckCoordinatorLock(context.TODO())
+	for err != nil {
+		spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
+		time.Sleep(time.Second * 15)
+		err = db.CheckCoordinatorLock(context.TODO())
+	}
+
+	spqrlog.Zero.Debug().Msg("connecting to qdb")
+	db.RecordCoordinatorLock(context.TODO())
+
 	ranges, err := db.ListKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -297,6 +307,7 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	}
 
 	go cc.watchRouters(context.TODO())
+	//go cc.keepAliveQDB(context.TODO())
 	return cc
 }
 
