@@ -96,6 +96,18 @@ Feature: Coordinator test
     Error while dialing
     """
 
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "show routers":"router r1-regress_router:7000",
+      "status":"OPENED"
+    }]
+    """
+
   Scenario: Unregister router with invalid id fails
     When I run SQL on host "coordinator"
     """
