@@ -579,6 +579,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
+	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) || kr.CmpRangesEqual(req.Bound, krOld.UpperBound) {
+		return fmt.Errorf("failed to split because bound equals lower or upper bound of the key range")
+	}
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
 		return fmt.Errorf("failed to split because bound is out of key range")
 	}
