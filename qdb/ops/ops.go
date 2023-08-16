@@ -138,9 +138,9 @@ func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
 	// r0     l0      r1      l1
 	// -------|-------|-------|
 	//
-	// r0     l0      r1      l1
-	// |------|-------|--------
+	// l0     r0      l1      r1
+	// -------|-------|-------|
 	return kr.CmpRangesLessEqual(l.LowerBound, r.LowerBound) && kr.CmpRangesLess(r.LowerBound, l.UpperBound) ||
-		kr.CmpRangesLess(l.LowerBound, r.UpperBound) && kr.CmpRangesLess(r.UpperBound, l.UpperBound) ||
-		kr.CmpRangesLess(r.LowerBound, l.UpperBound) && kr.CmpRangesLess(l.UpperBound, r.UpperBound)
+		kr.CmpRangesLess(l.LowerBound, r.UpperBound) && kr.CmpRangesLessEqual(r.UpperBound, l.UpperBound) ||
+		kr.CmpRangesLess(r.LowerBound, l.UpperBound) && kr.CmpRangesLessEqual(l.UpperBound, r.UpperBound)
 }

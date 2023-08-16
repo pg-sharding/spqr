@@ -475,3 +475,39 @@ Feature: Coordinator test
     """
     key range krid4 intersects with key range krid3 in QDB
     """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
