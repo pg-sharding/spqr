@@ -83,8 +83,7 @@ type XQDB interface {
 	ShardingSchemaKeeper
 	DistributedXactKepper
 
-	RecordCoordinatorLock(ctx context.Context) error
-	CheckCoordinatorLock(ctx context.Context) error
+	TryCoordinatorLock(ctx context.Context) error
 }
 
 func NewXQDB(qdbType string) (XQDB, error) {

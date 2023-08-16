@@ -10,6 +10,7 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
@@ -54,7 +55,7 @@ const (
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
-	CoordKeepAliveTls      = 10
+	CoordKeepAliveTtl      = 10
 	coordLockKey           = "coordinator_exists"
 	coordLockVal           = "exists"
 )
@@ -537,45 +538,34 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 }
 
 // ==============================================================================
-//                              COORDINATOR LOCK
+//
+//	COORDINATOR LOCK
+//
 // ==============================================================================
 
-func (q *EtcdQDB) RecordCoordinatorLock(ctx context.Context) error {
-	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTls)
+func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
+	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")
 		return err
 	}
 
-	q.coordLockId = resp.ID
-
-	_, err = q.cli.Put(context.TODO(), coordLockKey, coordLockVal, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	op := clientv3.OpPut(coordLockKey, coordLockVal, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
+	stat, err := tx.Commit()
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to record lock")
+		spqrlog.Zero.Error().Err(err).Msg("Failed to commit coordinator lock")
 		return err
 	}
 
-	_, err = q.cli.Lease.KeepAlive(ctx, q.coordLockId)
+	if !stat.Succeeded {
+		return fmt.Errorf("qdb is already in use")
+	}
+
+	_, err = q.cli.Lease.KeepAlive(ctx, resp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to renew lock")
 		return err
-	}
-
-	return nil
-}
-
-func (q *EtcdQDB) CheckCoordinatorLock(ctx context.Context) error {
-	spqrlog.Zero.Debug().Msg("checking conn in qdb----------------------")
-	resp, err := q.cli.Get(ctx, coordLockKey, clientv3.WithPrefix())
-	if err != nil {
-		return err
-	}
-	spqrlog.Zero.Debug().Msg("checking conn in qdb2----------------------")
-	for _, e := range resp.Kvs {
-		spqrlog.Zero.Debug().Msg(string(e.Value))
-		if string(e.Value) == coordLockVal {
-			return fmt.Errorf("coordinator already in qdb")
-		}
 	}
 
 	return nil
