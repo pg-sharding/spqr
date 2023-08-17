@@ -42,8 +42,7 @@ Feature: Move recover test
     002
     """ 
     Given host "coordinator" is stopped
-    Given host "coordinator" is started
-    When I execute SQL on host "coordinator"
+    When I execute SQL on host "coordinator2"
     """
     SHOW routers
     """
@@ -116,8 +115,7 @@ Feature: Move recover test
     002
     """ 
     Given host "coordinator" is stopped
-    Given host "coordinator" is started
-    When I execute SQL on host "coordinator"
+    When I execute SQL on host "coordinator2"
     """
     SHOW routers
     """
@@ -173,8 +171,7 @@ Feature: Move recover test
     Then command return code should be "0"
     And qdb should contain transaction "krid1"
     Given host "coordinator" is stopped
-    Given host "coordinator" is started
-    When I execute SQL on host "coordinator"
+    When I execute SQL on host "coordinator2"
     """
     SHOW routers
     """

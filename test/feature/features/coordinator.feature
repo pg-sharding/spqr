@@ -404,6 +404,7 @@ Feature: Coordinator test
     #
     # Coordinator is Up
     #
+    Given host "coordinator2" is stopped
     When I run SQL on host "coordinator"
     """
     CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
