@@ -20,8 +20,6 @@ import (
 type EtcdQDB struct {
 	cli *clientv3.Client
 	mu  sync.Mutex
-
-	coordLockId clientv3.LeaseID
 }
 
 var _ QDB = &EtcdQDB{}

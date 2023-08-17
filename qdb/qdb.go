@@ -91,7 +91,7 @@ func NewXQDB(qdbType string) (XQDB, error) {
 	case "etcd":
 		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 	case "mem":
-		return nil, fmt.Errorf("qdb implementation %s is unsuitable", qdbType)
+		return NewMemQDB("")
 	default:
 		return nil, fmt.Errorf("qdb implementation %s is invalid", qdbType)
 	}

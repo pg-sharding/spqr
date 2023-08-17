@@ -381,8 +381,16 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
 	}
 
-	tctx.stepHostIsStopped("coordinator2")
-	defer tctx.stepHostIsStarted("coordinator2")
+	err = tctx.stepHostIsStopped("coordinator2")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err := tctx.stepHostIsStarted("coordinator2")
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("failed to start second coordinator")
+		}
+	}()
 
 	// check databases
 	for _, service := range tctx.composer.Services() {
