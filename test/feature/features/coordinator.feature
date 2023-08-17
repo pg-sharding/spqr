@@ -93,7 +93,19 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    Error while dialing
+    failed to ping router
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW routers
+    """
+    Then SQL result should match json_exactly
+    """
+    [{
+      "show routers":"router r1-regress_router:7000",
+      "status":"OPENED"
+    }]
     """
 
   Scenario: Unregister router with invalid id fails
