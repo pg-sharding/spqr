@@ -363,7 +363,7 @@ Feature: Coordinator test
     """
 
     #
-    # Check we cannot split by right end of open interval
+    # Check we cannot split by lower or upper bound
     #
     When I run SQL on host "coordinator"
     """
@@ -371,7 +371,16 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    bound is out of key range
+    failed to split because bound equals lower or upper bound of the key range
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    SPLIT KEY RANGE krid3 FROM krid2 BY 11
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    failed to split because bound equals lower or upper bound of the key range
     """
 
   Scenario: Router is down
@@ -448,4 +457,86 @@ Feature: Coordinator test
       "Shard ID":"sh1",
       "Upper bound":"40"
     }]
+    """
+
+  Scenario: Add intersecting key range fails
+    #
+    # Create test key range
+    #
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid4 FROM 100 TO 105 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid4 intersects with key range krid3 in QDB
     """

@@ -36,10 +36,9 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 }
 
 func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
-	// TODO: do real validate
-	//if err := validateShard(ctx, qdb, keyRange.ShardID); err != nil {
-	//	return err
-	//}
+	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
+		return err
+	}
 
 	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
 		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
@@ -51,9 +50,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	for _, v := range existsKrids {
-		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
-			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
+		if doIntersect(keyRange, v) {
+			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
@@ -127,11 +125,25 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			// update req
 			continue
 		}
-		if kr.CmpRangesLess(keyRange.LowerBound, v.LowerBound) && kr.CmpRangesLess(v.LowerBound, keyRange.UpperBound) ||
-			kr.CmpRangesLess(keyRange.LowerBound, v.UpperBound) && kr.CmpRangesLess(v.UpperBound, keyRange.UpperBound) {
-			return fmt.Errorf("key range %v intersects with %v present in qdb", keyRange.ID, v.KeyRangeID)
+		if doIntersect(keyRange, v) {
+			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
 	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
+}
+
+// This method checks if two key ranges intersect
+func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
+	// l0     r0      l1      r1
+	// |------|-------|--------
+	//
+	// r0     l0      r1      l1
+	// -------|-------|-------|
+	//
+	// l0     r0      l1      r1
+	// -------|-------|-------|
+	return kr.CmpRangesLessEqual(l.LowerBound, r.LowerBound) && kr.CmpRangesLess(r.LowerBound, l.UpperBound) ||
+		kr.CmpRangesLess(l.LowerBound, r.UpperBound) && kr.CmpRangesLessEqual(r.UpperBound, l.UpperBound) ||
+		kr.CmpRangesLess(r.LowerBound, l.UpperBound) && kr.CmpRangesLessEqual(l.UpperBound, r.UpperBound)
 }

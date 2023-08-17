@@ -558,16 +558,18 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 
 // Split TODO: check bounds and keyRangeID (sourceID)
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
-	var krOld *qdb.KeyRange
-	var err error
-
 	spqrlog.Zero.Debug().
 		Str("krid", req.Krid).
 		Interface("bound", req.Bound).
 		Str("source-id", req.SourceID).
 		Msg("split request is")
 
-	if krOld, err = qc.db.LockKeyRange(ctx, req.SourceID); err != nil {
+	if _, err := qc.db.GetKeyRange(ctx, req.Krid); err == nil {
+		return fmt.Errorf("key range %v already present in qdb", req.Krid)
+	}
+
+	krOld, err := qc.db.LockKeyRange(ctx, req.SourceID)
+	if err != nil {
 		return err
 	}
 
@@ -577,6 +579,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
+	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) || kr.CmpRangesEqual(req.Bound, krOld.UpperBound) {
+		return fmt.Errorf("failed to split because bound equals lower or upper bound of the key range")
+	}
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
 		return fmt.Errorf("failed to split because bound is out of key range")
 	}
@@ -812,6 +817,12 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	//move between shards
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
+
+	// no need to move data to the same shard
+	if keyRange.ShardID == req.ShardId {
+		return nil
+	}
+
 	/* physical changes on shards */
 	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, qc.db)
 	if err != nil {
