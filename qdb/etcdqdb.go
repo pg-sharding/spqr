@@ -55,9 +55,10 @@ const (
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
-	CoordKeepAliveTtl      = 10
-	coordLockKey           = "coordinator_exists"
-	coordLockVal           = "exists"
+	//must be more or equal to 5
+	CoordKeepAliveTtl = 5
+	coordLockKey      = "coordinator_exists"
+	coordLockVal      = "exists"
 )
 
 func keyLockPath(key string) string {
@@ -538,9 +539,7 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 }
 
 // ==============================================================================
-//
-//	COORDINATOR LOCK
-//
+//	                           COORDINATOR LOCK
 // ==============================================================================
 
 func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
