@@ -29,6 +29,8 @@ func NewApp(c coordinator.Coordinator) *App {
 func (app *App) Run() error {
 	spqrlog.Zero.Info().Msg("running coordinator app")
 
+	app.coordinator.RunCoordinator(context.TODO())
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(2)
@@ -104,7 +106,7 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	protos.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().HttpAddr
-	
+
 	spqrlog.Zero.Info().
 		Str("address", httpAddr).
 		Msg("serve grpc coordinator service")

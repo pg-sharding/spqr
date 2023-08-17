@@ -256,21 +256,29 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
-// NewCoordinator side efferc: runs async goroutine that checks
-// spqr router`s availability
 func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
-	cc := &qdbCoordinator{
+	return &qdbCoordinator{
 		db: db,
 	}
+}
 
-	err := db.TryCoordinatorLock(context.TODO())
-	for err != nil {
-		spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
-		time.Sleep(time.Second)
-		err = db.TryCoordinatorLock(context.TODO())
+// RunCoordinator side efferc: runs async goroutine that checks
+// spqr router`s availability
+func (cc *qdbCoordinator) RunCoordinator(ctx context.Context) {
+LOCK:
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+			if cc.db.TryCoordinatorLock(context.TODO()) == nil {
+				break LOCK
+			}
+			spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
+		}
 	}
 
-	ranges, err := db.ListKeyRanges(context.TODO())
+	ranges, err := cc.db.ListKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
@@ -278,7 +286,7 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	}
 
 	for _, r := range ranges {
-		tx, err := db.GetTransferTx(context.TODO(), r.KeyRangeID)
+		tx, err := cc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			continue
 		}
@@ -297,14 +305,13 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
 
-		err = db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
+		err = cc.db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 		}
 	}
 
 	go cc.watchRouters(context.TODO())
-	return cc
 }
 
 // traverseRouters traverse each route and run callback for each of them
