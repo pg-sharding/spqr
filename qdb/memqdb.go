@@ -406,9 +406,9 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	krs, ok := q.Krs[id]
-	if !ok {
-		return nil, fmt.Errorf("no such krid")
+	krs, err := q.GetKeyRange(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 
 	if !q.Freq[id] {

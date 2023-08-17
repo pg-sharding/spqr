@@ -143,6 +143,26 @@ Feature: Coordinator test
     }]
     """
 
+  Scenario: Add key range with the same id fails
+    When I run SQL on host "coordinator"
+    """
+    ADD KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    key range krid1 already present in qdb
+    """
+
+  Scenario: Add sharding rule with the same id fails
+    When I run SQL on host "coordinator"
+    """
+    ADD SHARDING RULE r1 COLUMN idx
+    """
+    Then SQL error on host "coordinator" should match regexp
+    """
+    sharding rule r1 already present in qdb
+    """
+
   Scenario: Lock/Unlock key range works
     Given I run SQL on host "coordinator"
     """

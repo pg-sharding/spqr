@@ -108,7 +108,10 @@ func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName str
 }
 
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
-	// TODO: check lock are properly hold while updating
+	_, err := qdb.CheckLockedKeyRange(ctx, keyRange.ID)
+	if err != nil {
+		return err
+	}
 
 	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err

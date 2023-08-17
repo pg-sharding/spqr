@@ -376,7 +376,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
-	if err := qc.db.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule)); err != nil {
+	if err := ops.AddShardingRuleWithChecks(ctx, qc.db, rule); err != nil {
 		return err
 	}
 

@@ -152,16 +152,24 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 	if err != nil {
 		return nil, err
 	}
-	var rule ShardingRule
-	if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
-		return nil, err
+
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, fmt.Errorf("sharding rule %v already present in qdb", id)
+	case 1:
+		var rule ShardingRule
+		if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
+			return nil, err
+		}
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: get sharding rule")
+
+		return &rule, nil
+	default:
+		return nil, fmt.Errorf("too much sharding rules matched: %d", len(resp.Kvs))
 	}
 
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: get sharding rule")
-
-	return &rule, nil
 }
 
 func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
@@ -468,7 +476,20 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: check locked key range")
-	return nil, fmt.Errorf("implement CheckLockedKeyRange")
+
+	resp, err := q.cli.Get(ctx, keyLockPath(keyRangeNodePath(id)))
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, fmt.Errorf("key range %v not locked", id)
+	case 1:
+		return q.GetKeyRange(ctx, id)
+	default:
+		return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+	}
 }
 
 func (q *EtcdQDB) ShareKeyRange(id string) error {
