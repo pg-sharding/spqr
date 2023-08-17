@@ -93,7 +93,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    Error while dialing
+    failed to ping router
     """
 
     When I run SQL on host "coordinator"

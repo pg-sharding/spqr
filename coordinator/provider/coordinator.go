@@ -919,12 +919,12 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	// ping router
 	conn, err := DialRouter(r)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to ping router: %s", err)
 	}
 	cl := routerproto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to ping router: %s", err)
 	}
 
 	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
