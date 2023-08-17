@@ -818,8 +818,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	keyRange, _ := qc.db.GetKeyRange(ctx, req.Krid)
 	shardingRules, _ := qc.ListShardingRules(ctx)
 
-	// no need to move data to the same
-	// so pretend work is done
+	// no need to move data to the same shard
 	if keyRange.ShardID == req.ShardId {
 		return nil
 	}
