@@ -841,7 +841,8 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
-			KeyRange: krmv.ToProto(),
+			KeyRange:  krmv.ToProto(),
+			ToShardId: krmv.ShardID,
 		})
 		spqrlog.Zero.Debug().
 			Interface("response", moveResp).

@@ -937,7 +937,7 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 	if err != nil {
 		return err
 	}
-	if len(resp.Kvs[0].Value) != 1 {
+	if len(resp.Kvs) != 1 {
 		return fmt.Errorf("failed to update move key range operation by id %s", moveId)
 	}
 	var moveKr MoveKeyRange
