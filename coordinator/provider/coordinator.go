@@ -262,22 +262,29 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	}
 }
 
-// RunCoordinator side efferc: runs async goroutine that checks
-// spqr router`s availability
-func (cc *qdbCoordinator) RunCoordinator(ctx context.Context) {
+func (cc *qdbCoordinator) lockCoordinator(ctx context.Context) bool {
 	if cc.db.TryCoordinatorLock(context.TODO()) != nil {
-	LOCK:
 		for {
 			select {
 			case <-ctx.Done():
-				return
+				return false
 			case <-time.After(time.Second):
 				if cc.db.TryCoordinatorLock(context.TODO()) == nil {
-					break LOCK
+					return true
 				}
 				spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
 			}
 		}
+	}
+
+	return true
+}
+
+// RunCoordinator side effect: it runs an asynchronous goroutine
+// that checks the availability of the SPQR router
+func (cc *qdbCoordinator) RunCoordinator(ctx context.Context) {
+	if !cc.lockCoordinator(ctx) {
+		return
 	}
 
 	ranges, err := cc.db.ListKeyRanges(context.TODO())

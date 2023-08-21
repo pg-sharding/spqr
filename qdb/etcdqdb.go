@@ -53,10 +53,9 @@ const (
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
-	//must be more or equal to 5
-	CoordKeepAliveTtl = 5
-	coordLockKey      = "coordinator_exists"
-	coordLockVal      = "exists"
+	CoordKeepAliveTtl      = 3
+	coordLockKey           = "coordinator_exists"
+	coordLockVal           = "exists"
 )
 
 func keyLockPath(key string) string {
