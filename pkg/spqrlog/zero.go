@@ -30,7 +30,8 @@ func ReloadLogger(filepath string) {
 	if filepath == "" { //
 		return // this means os.Stdout, so no need to open new file
 	}
-	Zero = NewZeroLogger(filepath)
+	newLogger := NewZeroLogger(filepath).Level(Zero.GetLevel())
+	Zero = &newLogger
 }
 
 func parseLevel(level string) zerolog.Level {
