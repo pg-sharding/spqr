@@ -10,6 +10,7 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/clientv3util"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
@@ -52,6 +53,9 @@ const (
 	routersNamespace       = "/routers"
 	shardingRulesNamespace = "/sharding_rules"
 	shardsNamespace        = "/shards"
+	CoordKeepAliveTtl      = 3
+	coordLockKey           = "coordinator_exists"
+	coordLockVal           = "exists"
 )
 
 func keyLockPath(key string) string {
@@ -549,6 +553,38 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
 		return err
 	}
+	return nil
+}
+
+// ==============================================================================
+//	                           COORDINATOR LOCK
+// ==============================================================================
+
+func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
+	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")
+		return err
+	}
+
+	op := clientv3.OpPut(coordLockKey, coordLockVal, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
+	stat, err := tx.Commit()
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to commit coordinator lock")
+		return err
+	}
+
+	if !stat.Succeeded {
+		return fmt.Errorf("qdb is already in use")
+	}
+
+	_, err = q.cli.Lease.KeepAlive(ctx, resp.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to renew lock")
+		return err
+	}
+
 	return nil
 }
 
