@@ -164,7 +164,7 @@ Feature: Move test
   Scenario: Move to non-existent shard fails
     When I run SQL on host "coordinator"
     """
-    MOVE KEY RANGE krid1 TO sh3
+    MOVE KEY RANGE krid1 TO non-existent
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
