@@ -67,3 +67,7 @@ services:
             context: .
         hostname: spqr_client
         container_name: spqr_client
+    slicer:
+        build:
+            dockerfile: ./docker/slicer/Dockerfile
+            context: .

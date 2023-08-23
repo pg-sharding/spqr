@@ -82,11 +82,20 @@ e2e: build_images
 stress: build_images
 	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
+split_feature_test:
+	docker-compose build slicer
+	(cd test/feature/features; tar -c .) | docker-compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)
+
+clean_feature_test:
+	rm -rf test/feature/generatedFeatures
+
 feature_test: build_images
+	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
-	(cd test/feature; go test -timeout 150m)
+	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
+	make clean_feature_test
 
 lint:
 	golangci-lint run --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console

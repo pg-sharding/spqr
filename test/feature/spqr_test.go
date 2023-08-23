@@ -764,11 +764,16 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 func TestSpqr(t *testing.T) {
 	features := "features"
+	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {
+		if len(feauterDirEnv) != 0 {
+			features = feauterDirEnv
+		}
+	}
 	if featureEnv, ok := os.LookupEnv("GODOG_FEATURE"); ok {
 		if !strings.HasSuffix(featureEnv, ".feature") {
 			featureEnv += ".feature"
 		}
-		features = fmt.Sprintf("features/%s", featureEnv)
+		features = fmt.Sprintf("%s/%s", features, featureEnv)
 	}
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
