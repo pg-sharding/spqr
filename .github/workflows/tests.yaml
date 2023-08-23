@@ -72,7 +72,7 @@ jobs:
       - id: step1
         run: |
           make split_feature_test
-          array=$(for x in $(ls test/feature/generatedFeatures); do echo $x; done | python3 -c "import sys; print(['GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE={} make feature_test'.format(test.strip()) for test in sys.stdin.readlines()])")
+          array=$(for x in $(ls test/feature/generatedFeatures); do echo $x; done | python3 -c "import sys; print(['GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE={} make feature_test_ci'.format(test.strip()) for test in sys.stdin.readlines()])")
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
@@ -101,7 +101,7 @@ jobs:
         run: docker --version
       - name: Check out code
         uses: actions/checkout@v2
-      - name: Download spqr build
+      - name: Download generatedFeatures
         uses: actions/download-artifact@v3
         with:
           name: generated_tests

@@ -89,6 +89,12 @@ split_feature_test:
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
+feature_test_ci: build_images
+	go build ./test/feature/...
+	rm -rf ./test/feature/logs
+	mkdir ./test/feature/logs
+	(cd test/feature; go test -timeout 150m)
+
 feature_test: build_images
 	make split_feature_test
 	go build ./test/feature/...
