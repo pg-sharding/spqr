@@ -4,10 +4,17 @@ import (
 	"io"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	app "github.com/pg-sharding/spqr/router"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
+	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
+	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/route"
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
@@ -37,12 +44,6 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	assert.NoError(err, "")
 }
 
-/*
-
-TODO: make this work
-
-separate client interface and client-related operations
-
 func TestFrontendSimple(t *testing.T) {
 
 	assert := assert.New(t)
@@ -59,6 +60,11 @@ func TestFrontendSimple(t *testing.T) {
 	}
 
 	beRule := &config.BackendRule{}
+
+	srv.EXPECT().Name().AnyTimes().Return("serv1")
+
+	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -78,7 +84,29 @@ func TestFrontendSimple(t *testing.T) {
 	}
 
 	cl.EXPECT().Receive().Times(1).Return(query, nil)
+
+	srv.EXPECT().Send(query).Times(1).Return(nil)
+
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.DataRow{
+		Values: [][]byte{
+			[]byte(
+				"1",
+			),
+		},
+	}, nil)
+
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CommandComplete{
+		CommandTag: []byte("SELECT"),
+	}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
+		TxStatus: byte(txstatus.TXIDLE),
+	}, nil)
+
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
+
+	cl.EXPECT().RLock().AnyTimes()
+	cl.EXPECT().RUnlock().AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).Return(true)
@@ -112,13 +140,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
-	cl.EXPECT().ProcQuery(query, true, true).Do(
-
-	).Return(nil)
-
 	err := app.Frontend(qr, cl, cmngr, &config.Router{})
 
 	assert.NoError(err, "")
 }
-
-*/
