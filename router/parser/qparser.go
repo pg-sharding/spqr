@@ -123,6 +123,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	}
 
 	qp.stmt = nil
+	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
 	routerStmts, err := lyx.Parse(query)
 	if err != nil {

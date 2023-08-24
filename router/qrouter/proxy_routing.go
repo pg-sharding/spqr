@@ -49,6 +49,7 @@ type RoutingMetadataContext struct {
 	rls []*shrule.ShardingRule
 	krs []*kr.KeyRange
 
+	params [][]byte
 	// TODO: include client ops and metadata here
 }
 
@@ -63,7 +64,10 @@ func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
 	return false
 }
 
-func NewRoutingMetadataContext(krs []*kr.KeyRange, rls []*shrule.ShardingRule) *RoutingMetadataContext {
+func NewRoutingMetadataContext(
+	krs []*kr.KeyRange,
+	rls []*shrule.ShardingRule,
+	params [][]byte) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		rels:             map[string][]string{},
 		tableAliases:     map[string]string{},
@@ -71,6 +75,7 @@ func NewRoutingMetadataContext(krs []*kr.KeyRange, rls []*shrule.ShardingRule) *
 		unparsed_columns: map[string]struct{}{},
 		krs:              krs,
 		rls:              rls,
+		params:           params,
 	}
 }
 
@@ -149,6 +154,11 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
 	switch e := expr.(type) {
+	case *lyx.ParamRef:
+		if e.Number >= len(meta.params) {
+			return nil, ComplexQuery
+		}
+		return qr.deparseKeyWithRangesInternal(ctx, string(meta.params[e.Number]), meta)
 	case *lyx.AExprConst:
 		return qr.deparseKeyWithRangesInternal(ctx, e.Value, meta)
 	default:
@@ -416,7 +426,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState, error) {
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byte) (RoutingState, error) {
 	if stmt == nil {
 		return nil, ComplexQuery
 	}
@@ -435,7 +445,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node) (RoutingState,
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls)
+	meta := NewRoutingMetadataContext(krs, rls, params)
 
 	tsa := config.TargetSessionAttrsAny
 

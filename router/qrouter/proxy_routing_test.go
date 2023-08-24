@@ -101,7 +101,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -189,7 +189,7 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -402,7 +402,7 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -491,7 +491,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -605,7 +605,7 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -719,7 +719,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -807,7 +807,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil)
 
 		assert.NoError(err, "query %s", tt.query)
 
