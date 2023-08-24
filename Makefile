@@ -106,6 +106,7 @@ mockgen:
 	mockgen -source=./pkg/shard/shard.go -destination=pkg/mock/shard/mock_shard.go -package=mock
 	mockgen -source=./router/client/client.go -destination=./router/mock/client/mock_client.go -package=mock
 	mockgen -source=./router/rulerouter/pool_mgr.go -destination=./router/mock/rulerouter/mock_pool_mgr.go -package=mock
+	mockgen -source=./router/qrouter/qrouter.go -destination=./router/mock/qrouter/mock_qrouter.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen
