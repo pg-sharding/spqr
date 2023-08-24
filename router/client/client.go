@@ -55,8 +55,10 @@ type RouterClient interface {
 	SetTsa(string)
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error)
+
+	FireMsg(query pgproto3.FrontendMessage) error
+
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
 	ProcCopy(query pgproto3.FrontendMessage) error
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
 	ReplyParseComplete() error
@@ -212,7 +214,7 @@ func (cl *PsqlClient) ResetAll() {
 	cl.activeParamSet = cl.startupMsg.Parameters
 }
 
-func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
+func (cl *PsqlClient) FireMsg(query pgproto3.FrontendMessage) error {
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 	spqrlog.Zero.Debug().Interface("query", query).Msg("process query")
@@ -222,28 +224,7 @@ func (cl *PsqlClient) ProcParse(query pgproto3.FrontendMessage, waitForResp bool
 		return err
 	}
 
-	if !waitForResp {
-		return nil
-	}
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return err
-		}
-
-		switch msg.(type) {
-		case *pgproto3.ParseComplete:
-			return nil
-		default:
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
+	return nil
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
@@ -837,7 +818,7 @@ func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
 	}
 }
 
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
+func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error) {
 	cl.mu.RLock()
 	defer cl.mu.RUnlock()
 
@@ -847,23 +828,25 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 		Msg("client process query")
 
 	if cl.server == nil {
-		return txstatus.TXERR, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
+		return txstatus.TXERR, nil, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
 	}
 
 	if err := cl.server.Send(query); err != nil {
-		return txstatus.TXERR, false, err
+		return txstatus.TXERR, nil, false, err
 	}
 
 	if !waitForResp {
-		return txstatus.TXCONT, true, nil
+		return txstatus.TXCONT, nil, true, nil
 	}
 
 	ok := true
 
+	unreplied := make([]pgproto3.BackendMessage, 0)
+
 	for {
 		msg, err := cl.server.Receive()
 		if err != nil {
-			return txstatus.TXERR, false, err
+			return txstatus.TXERR, nil, false, err
 		}
 
 		switch v := msg.(type) {
@@ -871,7 +854,7 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			// handle replyCl somehow
 			err = cl.Send(msg)
 			if err != nil {
-				return txstatus.TXERR, false, err
+				return txstatus.TXERR, nil, false, err
 			}
 
 			if err := func() error {
@@ -895,15 +878,15 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 					}
 				}
 			}(); err != nil {
-				return txstatus.TXERR, false, err
+				return txstatus.TXERR, nil, false, err
 			}
 		case *pgproto3.ReadyForQuery:
-			return txstatus.TXStatus(v.TxStatus), ok, nil
+			return txstatus.TXStatus(v.TxStatus), unreplied, ok, nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return txstatus.TXERR, false, err
+					return txstatus.TXERR, nil, false, err
 				}
 			}
 			ok = false
@@ -915,8 +898,10 @@ func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool
 			if replyCl {
 				err = cl.Send(msg)
 				if err != nil {
-					return txstatus.TXERR, false, err
+					return txstatus.TXERR, nil, false, err
 				}
+			} else {
+				unreplied = append(unreplied, msg)
 			}
 		}
 	}
@@ -1112,8 +1097,8 @@ func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 
 var _ RouterClient = &FakeClient{}
 
-func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient {
-	client := MockClient{
+func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient {
+	client := NoopClient{
 		id:     clientInfo.ClientId,
 		user:   clientInfo.User,
 		dbname: clientInfo.Dbname,
@@ -1126,7 +1111,7 @@ func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient 
 	return client
 }
 
-type MockClient struct {
+type NoopClient struct {
 	client.Client
 	id     string
 	user   string
@@ -1135,23 +1120,23 @@ type MockClient struct {
 	rAddr  string
 }
 
-func (c MockClient) ID() string {
+func (c NoopClient) ID() string {
 	return c.id
 }
 
-func (c MockClient) Usr() string {
+func (c NoopClient) Usr() string {
 	return c.user
 }
 
-func (c MockClient) DB() string {
+func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c MockClient) RAddr() string {
+func (c NoopClient) RAddr() string {
 	return c.rAddr
 }
 
-func (c MockClient) Shards() []shard.Shard {
+func (c NoopClient) Shards() []shard.Shard {
 	return c.shards
 }
 
@@ -1175,6 +1160,6 @@ func (dbi MockDBInstance) Hostname() string {
 	return dbi.hostname
 }
 
-var _ client.ClientInfo = &MockClient{}
+var _ client.ClientInfo = &NoopClient{}
 var _ shard.Shard = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}

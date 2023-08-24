@@ -76,7 +76,7 @@ type WorldRouteState struct {
 }
 
 type QueryRouter interface {
-	Route(ctx context.Context, stmt lyx.Node) (RoutingState, error)
+	Route(ctx context.Context, stmt lyx.Node, params [][]byte) (RoutingState, error)
 
 	WorldShardsRoutes() []*DataShardRoute
 	DataShardsRoutes() []*DataShardRoute

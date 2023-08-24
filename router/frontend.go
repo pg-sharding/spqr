@@ -13,9 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
-	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
-	"github.com/spaolacci/murmur3"
 )
 
 type Qinteractor interface{}
@@ -189,7 +187,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if rst.Client().Rule().PoolMode != config.PoolModeTransaction || !rst.Client().Rule().PoolPreparedStatement {
+	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
 			return nil
@@ -237,60 +235,21 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
-		return rst.Sync(true, true, cmngr)
+		return rst.ProcessExtendedBuffer(cmngr)
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		hash := murmur3.Sum64([]byte(q.Query))
-		spqrlog.Zero.Debug().
-			Str("name", q.Name).
-			Str("query", q.Query).
-			Uint64("hash", hash).
-			Msg("")
-
-		if rst.PgprotoDebug() {
-			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
-				return err
-			}
-		}
-		rst.Client().StorePreparedStatement(q.Name, q.Query)
-		// simply reply witch ok parse complete
-		return rst.Client().ReplyParseComplete()
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		if q.ObjectType == 'P' {
-			if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
-				return err
-			}
-			return nil
-		}
-		query := rst.Client().PreparedStatementQueryByName(q.Name)
-		hash := murmur3.Sum64([]byte(query))
-
-		if err := rst.PrepareRelayStep(cmngr); err != nil {
-			return err
-		}
-
-		q.Name = fmt.Sprintf("%d", hash)
-		if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-			Name:  q.Name,
-			Query: query,
-		}); err != nil {
-			return err
-		}
-
-		var err error
-		if err = rst.RelayRunCommand(q, false, false); err != nil {
-			if rst.ShouldRetry(err) {
-				return fmt.Errorf("retry logic for prepared statements is not implemented")
-			}
-		}
-		return err
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
@@ -303,31 +262,16 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
-			Msg("client execute prepared statement: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, true, true, cmngr)
+
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		query := rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
-		hash := murmur3.Sum64([]byte(query))
 
-		if err := rst.PrepareRelayStep(cmngr); err != nil {
-			return err
-		}
-
-		if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-			Name:  fmt.Sprintf("%d", hash),
-			Query: query,
-		}); err != nil {
-			return err
-		}
-
-		q.PreparedStatement = fmt.Sprintf("%d", hash)
-
-		return rst.RelayRunCommand(q, false, true)
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Query:
 		// copy interface
 		cpQ := *q
