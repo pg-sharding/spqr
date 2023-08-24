@@ -43,6 +43,13 @@ build: build_balancer build_coordinator build_coorctl build_router build_mover b
 build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
+save_image: build_images
+	mkdir -p ${CACHE_FOLDER}
+	sudo rm -rf ${CACHE_FOLDER}/*
+	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD}
+	docker save ${IMAGE_SPQR} | gzip -c > ${CACHE_FILE_SPQR}
+	ls ${CACHE_FOLDER}
+
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 
@@ -89,7 +96,15 @@ split_feature_test:
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
-feature_test_ci: build_images
+feature_test_ci:
+	@if [ "x" = "${CACHE_FILE_SHARD}x" ] || [ "x" = "${CACHE_FILE_SPQR}x" ]; then\
+		echo "Rebuild";\
+		make build_images;\
+	else\
+		docker load -i ${CACHE_FILE_SHARD};\
+		docker load -i ${CACHE_FILE_SPQR};\
+	fi
+
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
