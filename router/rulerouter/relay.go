@@ -657,7 +657,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr PoolMgr) error {
 			saveBind.Parameters = q.Parameters
 			saveBind.ResultFormatCodes = q.ResultFormatCodes
 
-			rst.Cl.Send(&pgproto3.BindComplete{})
+			if err := rst.Cl.Send(&pgproto3.BindComplete{}); err != nil {
+				return err
+			}
 
 		case *pgproto3.Describe:
 
@@ -744,12 +746,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr PoolMgr) error {
 		}
 	}
 
-	rst.Client().Send(&pgproto3.ReadyForQuery{
+	rst.xBuf = nil
+	return rst.Client().Send(&pgproto3.ReadyForQuery{
 		TxStatus: byte(rst.TxStatus()),
 	})
 
-	rst.xBuf = nil
-	return nil
 }
 
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
