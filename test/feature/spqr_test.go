@@ -763,25 +763,32 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 }
 
 func TestSpqr(t *testing.T) {
-	features := "features"
+	paths := make([]string, 0)
+	featureDir := "features"
 	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {
 		if len(feauterDirEnv) != 0 {
-			features = feauterDirEnv
+			featureDir = feauterDirEnv
 		}
 	}
 	if featureEnv, ok := os.LookupEnv("GODOG_FEATURE"); ok {
-		if !strings.HasSuffix(featureEnv, ".feature") {
-			featureEnv += ".feature"
+		for _, feature := range strings.Split(featureEnv, ";") {
+			if !strings.HasSuffix(feature, ".feature") {
+				feature += ".feature"
+			}
+			paths = append(paths, fmt.Sprintf("%s/%s", featureDir, feature))
 		}
-		features = fmt.Sprintf("%s/%s", features, featureEnv)
 	}
+	if len(paths) == 0 {
+		paths = append(paths, featureDir)
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
 			InitializeScenario(s, t)
 		},
 		Options: &godog.Options{
 			Format:        "pretty",
-			Paths:         []string{features},
+			Paths:         paths,
 			Strict:        true,
 			NoColors:      true,
 			StopOnFailure: true,
