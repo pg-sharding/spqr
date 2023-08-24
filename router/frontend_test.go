@@ -9,7 +9,7 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 
-	mockcmgr "github.com/pg-sharding/spqr/router/mock/rulerouter"
+	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"

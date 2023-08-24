@@ -1,4 +1,4 @@
-package rulerouter
+package poolmgr
 
 import (
 	"fmt"
@@ -14,16 +14,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ConnectionKeeper interface {
+	txstatus.TxStatusMgr
+	ActiveShards() []kr.ShardKey
+	ActiveShardsReset()
+	Client() client.RouterClient
+}
+
 type PoolMgr interface {
-	TXBeginCB(rst RelayStateMgr) error
-	TXEndCB(rst RelayStateMgr) error
+	TXBeginCB(rst ConnectionKeeper) error
+	TXEndCB(rst ConnectionKeeper) error
 
 	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
-	ValidateReRoute(rst RelayStateMgr) bool
-	ConnectionActive(rst RelayStateMgr) bool
+	ValidateReRoute(rst ConnectionKeeper) bool
+	ConnectionActive(rst ConnectionKeeper) bool
 }
 
 func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
@@ -100,19 +107,19 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
-func (t *TxConnManager) ConnectionActive(rst RelayStateMgr) bool {
+func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
 
-func (t *TxConnManager) ValidateReRoute(rst RelayStateMgr) bool {
+func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
 
-func (t *TxConnManager) TXBeginCB(rst RelayStateMgr) error {
+func (t *TxConnManager) TXBeginCB(rst ConnectionKeeper) error {
 	return nil
 }
 
-func (t *TxConnManager) TXEndCB(rst RelayStateMgr) error {
+func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
 	ash := rst.ActiveShards()
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -147,11 +154,11 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 	return anyerr
 }
 
-func (s *SessConnManager) TXBeginCB(rst RelayStateMgr) error {
+func (s *SessConnManager) TXBeginCB(rst ConnectionKeeper) error {
 	return nil
 }
 
-func (s *SessConnManager) TXEndCB(rst RelayStateMgr) error {
+func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
 	return nil
 }
 
@@ -174,11 +181,11 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 	return nil
 }
 
-func (t *SessConnManager) ConnectionActive(rst RelayStateMgr) bool {
+func (t *SessConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
 
-func (s *SessConnManager) ValidateReRoute(rst RelayStateMgr) bool {
+func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil
 }
 

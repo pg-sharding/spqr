@@ -33,6 +33,9 @@ type RouterClient interface {
 	client.Client
 	PreparedStatementMapper
 
+	RLock()
+	RUnlock()
+
 	/* only call this function while holding lock */
 	Server() server.Server
 	/* functions for operation with cleint's server */
@@ -54,17 +57,12 @@ type RouterClient interface {
 	GetTsa() string
 	SetTsa(string)
 
-	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-
 	FireMsg(query pgproto3.FrontendMessage) error
 
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
-	ProcCopy(query pgproto3.FrontendMessage) error
-	ProcCopyComplete(query *pgproto3.FrontendMessage) error
+	CancelMsg() *pgproto3.CancelRequest
+
 	ReplyParseComplete() error
 	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
-
-	CancelMsg() *pgproto3.CancelRequest
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -120,6 +118,14 @@ func NewPsqlClient(pgconn conn.RawConn) *PsqlClient {
 	cl.id = fmt.Sprintf("%p", cl)
 
 	return cl
+}
+
+func (cl *PsqlClient) RLock() {
+	cl.mu.RLock()
+}
+
+func (cl *PsqlClient) RUnlock() {
+	cl.mu.RUnlock()
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
@@ -778,176 +784,6 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 
 	cl.r = r
 	return nil
-}
-
-func (cl *PsqlClient) ProcCopy(query pgproto3.FrontendMessage) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Type("query-type", query).
-		Msg("client process copy")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	return cl.server.Send(query)
-}
-
-func (cl *PsqlClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Type("query-type", query).
-		Msg("client process copy end")
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	if err := cl.server.Send(*query); err != nil {
-		return err
-	}
-
-	for {
-		if msg, err := cl.server.Receive(); err != nil {
-			return err
-		} else {
-			switch msg.(type) {
-			case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
-				return cl.Send(msg)
-			default:
-				if err := cl.Send(msg); err != nil {
-					return err
-				}
-			}
-		}
-	}
-}
-
-func (cl *PsqlClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error) {
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-
-	spqrlog.Zero.Debug().
-		Str("server", cl.server.Name()).
-		Type("query-type", query).
-		Msg("client process query")
-
-	if cl.server == nil {
-		return txstatus.TXERR, nil, false, fmt.Errorf("client %p is out of transaction sync with router", cl)
-	}
-
-	if err := cl.server.Send(query); err != nil {
-		return txstatus.TXERR, nil, false, err
-	}
-
-	if !waitForResp {
-		return txstatus.TXCONT, nil, true, nil
-	}
-
-	ok := true
-
-	unreplied := make([]pgproto3.BackendMessage, 0)
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return txstatus.TXERR, nil, false, err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.CopyInResponse:
-			// handle replyCl somehow
-			err = cl.Send(msg)
-			if err != nil {
-				return txstatus.TXERR, nil, false, err
-			}
-
-			if err := func() error {
-				for {
-					cpMsg, err := cl.Receive()
-					if err != nil {
-						return err
-					}
-
-					switch cpMsg.(type) {
-					case *pgproto3.CopyData:
-						if err := cl.ProcCopy(cpMsg); err != nil {
-							return err
-						}
-					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if err := cl.ProcCopyComplete(&cpMsg); err != nil {
-							return err
-						}
-						return nil
-					default:
-					}
-				}
-			}(); err != nil {
-				return txstatus.TXERR, nil, false, err
-			}
-		case *pgproto3.ReadyForQuery:
-			return txstatus.TXStatus(v.TxStatus), unreplied, ok, nil
-		case *pgproto3.ErrorResponse:
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return txstatus.TXERR, nil, false, err
-				}
-			}
-			ok = false
-		default:
-			spqrlog.Zero.Debug().
-				Str("server", cl.server.Name()).
-				Type("msg-type", v).
-				Msg("received message from server")
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return txstatus.TXERR, nil, false, err
-				}
-			} else {
-				unreplied = append(unreplied, msg)
-			}
-		}
-	}
-}
-
-func (cl *PsqlClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
-		Interface("query", query).
-		Msg("client process command")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
-
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	if err := cl.server.Send(query); err != nil {
-		return err
-	}
-
-	if !waitForResp {
-		return nil
-	}
-
-	for {
-		msg, err := cl.server.Receive()
-		if err != nil {
-			return err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.CommandComplete:
-			return nil
-		case *pgproto3.ErrorResponse:
-			return fmt.Errorf(v.Message)
-		default:
-			spqrlog.Zero.Debug().
-				Uint("client", spqrlog.GetPointer(cl)).
-				Type("message-type", v).
-				Msg("got message from server")
-			if replyCl {
-				err = cl.Send(msg)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 }
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {

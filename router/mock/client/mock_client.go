@@ -384,63 +384,28 @@ func (mr *MockRouterClientMockRecorder) PreparedStatementQueryByName(name interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryByName), name)
 }
 
-// ProcCommand mocks base method.
-func (m *MockRouterClient) ProcCommand(query pgproto3.FrontendMessage, waitForResp, replyCl bool) error {
+// RLock mocks base method.
+func (m *MockRouterClient) RLock() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcCommand", query, waitForResp, replyCl)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "RLock")
 }
 
-// ProcCommand indicates an expected call of ProcCommand.
-func (mr *MockRouterClientMockRecorder) ProcCommand(query, waitForResp, replyCl interface{}) *gomock.Call {
+// RLock indicates an expected call of RLock.
+func (mr *MockRouterClientMockRecorder) RLock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcCommand", reflect.TypeOf((*MockRouterClient)(nil).ProcCommand), query, waitForResp, replyCl)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RLock", reflect.TypeOf((*MockRouterClient)(nil).RLock))
 }
 
-// ProcCopy mocks base method.
-func (m *MockRouterClient) ProcCopy(query pgproto3.FrontendMessage) error {
+// RUnlock mocks base method.
+func (m *MockRouterClient) RUnlock() {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcCopy", query)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "RUnlock")
 }
 
-// ProcCopy indicates an expected call of ProcCopy.
-func (mr *MockRouterClientMockRecorder) ProcCopy(query interface{}) *gomock.Call {
+// RUnlock indicates an expected call of RUnlock.
+func (mr *MockRouterClientMockRecorder) RUnlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcCopy", reflect.TypeOf((*MockRouterClient)(nil).ProcCopy), query)
-}
-
-// ProcCopyComplete mocks base method.
-func (m *MockRouterClient) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcCopyComplete", query)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// ProcCopyComplete indicates an expected call of ProcCopyComplete.
-func (mr *MockRouterClientMockRecorder) ProcCopyComplete(query interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcCopyComplete", reflect.TypeOf((*MockRouterClient)(nil).ProcCopyComplete), query)
-}
-
-// ProcQuery mocks base method.
-func (m *MockRouterClient) ProcQuery(query pgproto3.FrontendMessage, waitForResp, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcQuery", query, waitForResp, replyCl)
-	ret0, _ := ret[0].(txstatus.TXStatus)
-	ret1, _ := ret[1].([]pgproto3.BackendMessage)
-	ret2, _ := ret[2].(bool)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
-}
-
-// ProcQuery indicates an expected call of ProcQuery.
-func (mr *MockRouterClientMockRecorder) ProcQuery(query, waitForResp, replyCl interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcQuery", reflect.TypeOf((*MockRouterClient)(nil).ProcQuery), query, waitForResp, replyCl)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RUnlock", reflect.TypeOf((*MockRouterClient)(nil).RUnlock))
 }
 
 // Receive mocks base method.
