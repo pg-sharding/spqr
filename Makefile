@@ -50,6 +50,7 @@ save_shard_image:
 
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
+	make clean_feature_test
 
 ######################## RUN ########################
 
