@@ -8,11 +8,12 @@ on:
 
 env:
   CACHE_FOLDER: ~/docker-images-${{ github.sha }}
-  CACHE_FILE_SHARD: ~/docker-images-${{ github.sha }}/spqr-shard-image.tgz
   CACHE_FILE_SPQR: ~/docker-images-${{ github.sha }}/spqr-base-image.tgz
   IMAGE_SHARD: spqr-shard-image
   IMAGE_SPQR: spqr-base-image
   IMAGES_CACHE_KEY: docker-images-${{ github.sha }}
+  SHARD_CACHE_KEY: sha256sum-of-docker-shard
+  CACHE_FILE_SHARD: ~/spqr-shard-image-shard-cache-key.tgz
 
 jobs:
 
@@ -73,7 +74,7 @@ jobs:
       - id: step1
         run: |
           make split_feature_test
-          array=$(for x in $(ls test/feature/generatedFeatures); do echo $x; done | python3 -c "import sys; print(['GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE={} make feature_test_ci'.format(test.strip()) for test in sys.stdin.readlines()])")
+          array=$(for x in $(find test/feature/generatedFeatures -type f -exec wc -l {} + | sort -rn | awk 'NR!=1 {printf $2"\n"}' | xargs basename -a); do echo $x; done | python3 -c "import sys; print(['GODOG_FEATURE_DIR=generatedFeatures GODOG_FEATURE={} make feature_test_ci'.format(test.strip()) for test in sys.stdin.readlines()])")
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
       - name: Archive production artifacts
         uses: actions/upload-artifact@v3
@@ -82,6 +83,12 @@ jobs:
           path: |
             ./test/feature/generatedFeatures
 
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-$(find docker/shard/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}')"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       #  use cache to pass docker images to the test jobs
       - name: Docker images caching
@@ -89,11 +96,20 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ${{ env.CACHE_FILE_SHARD }}
             ${{ env.CACHE_FILE_SPQR }}
           key: ${{ env.IMAGES_CACHE_KEY }}
+      - name: Docker shard image caching
+        id: cache-shard-image
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
 
       # build images
+      - name: Build shard image
+        if: steps.cache-shard-image.outputs.cache-hit != 'true'
+        run: make save_shard_image
       - name: Build images
         if: steps.cache-images.outputs.cache-hit != 'true'
         run: make save_image
@@ -107,10 +123,25 @@ jobs:
       # do not cancel all tests if one failed
       fail-fast: false
     steps:
+      - name: Install Latest Docker
+        run: |
+          for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
         uses: actions/checkout@v2
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-$(find docker/shard/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}')"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
       - name: Download generatedFeatures
         uses: actions/download-artifact@v3
         with:
@@ -123,9 +154,15 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ${{ env.CACHE_FILE_SHARD }}
             ${{ env.CACHE_FILE_SPQR }}
           key: ${{ env.IMAGES_CACHE_KEY }}
+      - name: Load shard image
+        id: cache-shard-image
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
 
       - name: feature tests
         run: ${{ matrix.command }}

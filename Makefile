@@ -43,12 +43,18 @@ build: build_balancer build_coordinator build_coorctl build_router build_mover b
 build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
-save_image: build_images
+save_image:
 	mkdir -p ${CACHE_FOLDER}
 	sudo rm -rf ${CACHE_FOLDER}/*
-	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD}
-	docker save ${IMAGE_SPQR} | gzip -c > ${CACHE_FILE_SPQR}
+	
+	docker-compose build ${IMAGE_SPQR};\
+	docker save ${IMAGE_SPQR} | gzip -c > ${CACHE_FILE_SPQR};\
 	ls ${CACHE_FOLDER}
+
+save_shard_image:
+	sudo rm -f spqr-shard-image-*
+	docker-compose build ${IMAGE_SHARD};\
+	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
@@ -106,7 +112,6 @@ feature_test_ci:
 	fi
 
 	go build ./test/feature/...
-	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
 
