@@ -7,11 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  CACHE_FOLDER: ~/docker-images-${{ github.sha }}
-  CACHE_FILE_SPQR: ~/docker-images-${{ github.sha }}/spqr-base-image.tgz
   IMAGE_SHARD: spqr-shard-image
-  IMAGE_SPQR: spqr-base-image
-  IMAGES_CACHE_KEY: docker-images-${{ github.sha }}
   SHARD_CACHE_KEY: sha256sum-of-docker-shard
   CACHE_FILE_SHARD: ~/spqr-shard-image-shard-cache-key.tgz
 
@@ -110,13 +106,6 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       #  use cache to pass docker images to the test jobs
-      - name: Docker images caching
-        id: cache-images
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.CACHE_FILE_SPQR }}
-          key: ${{ env.IMAGES_CACHE_KEY }}
       - name: Docker shard image caching
         id: cache-shard-image
         uses: actions/cache@v3
@@ -129,9 +118,7 @@ jobs:
       - name: Build shard image
         if: steps.cache-shard-image.outputs.cache-hit != 'true'
         run: make save_shard_image
-      - name: Build images
-        if: steps.cache-images.outputs.cache-hit != 'true'
-        run: make save_image
+
 
   feature:
     name: feature
@@ -168,13 +155,6 @@ jobs:
           path: ./test/feature/generatedFeatures
 
       # load docker images
-      - name: Load docker images
-        id: cache-images
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.CACHE_FILE_SPQR }}
-          key: ${{ env.IMAGES_CACHE_KEY }}
       - name: Load shard image
         id: cache-shard-image
         uses: actions/cache@v3

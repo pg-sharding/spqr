@@ -43,14 +43,6 @@ build: build_balancer build_coordinator build_coorctl build_router build_mover b
 build_images:
 	docker-compose build spqr-base-image spqr-shard-image
 
-save_image:
-	mkdir -p ${CACHE_FOLDER}
-	sudo rm -rf ${CACHE_FOLDER}/*
-	
-	docker-compose build ${IMAGE_SPQR};\
-	docker save ${IMAGE_SPQR} | gzip -c > ${CACHE_FILE_SPQR};\
-	ls ${CACHE_FOLDER}
-
 save_shard_image:
 	sudo rm -f spqr-shard-image-*
 	docker-compose build ${IMAGE_SHARD};\
@@ -103,14 +95,13 @@ clean_feature_test:
 	rm -rf test/feature/generatedFeatures
 
 feature_test_ci:
-	@if [ "x" = "${CACHE_FILE_SHARD}x" ] || [ "x" = "${CACHE_FILE_SPQR}x" ]; then\
+	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
 		echo "Rebuild";\
-		make build_images;\
+		docker-compose build spqr-shard-image;\
 	else\
 		docker load -i ${CACHE_FILE_SHARD};\
-		docker load -i ${CACHE_FILE_SPQR};\
 	fi
-
+	docker-compose build spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
