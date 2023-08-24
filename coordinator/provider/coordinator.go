@@ -81,7 +81,7 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 		}
 
 		for _, client := range resp.Clients {
-			err = cb(psqlclient.NewMockClient(client, addr))
+			err = cb(psqlclient.NewNoopClient(client, addr))
 			if err != nil {
 				return err
 			}

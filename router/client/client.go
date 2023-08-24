@@ -1097,8 +1097,8 @@ func (f FakeClient) Send(msg pgproto3.BackendMessage) error {
 
 var _ RouterClient = &FakeClient{}
 
-func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient {
-	client := MockClient{
+func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient {
+	client := NoopClient{
 		id:     clientInfo.ClientId,
 		user:   clientInfo.User,
 		dbname: clientInfo.Dbname,
@@ -1111,7 +1111,7 @@ func NewMockClient(clientInfo *routerproto.ClientInfo, rAddr string) MockClient 
 	return client
 }
 
-type MockClient struct {
+type NoopClient struct {
 	client.Client
 	id     string
 	user   string
@@ -1120,23 +1120,23 @@ type MockClient struct {
 	rAddr  string
 }
 
-func (c MockClient) ID() string {
+func (c NoopClient) ID() string {
 	return c.id
 }
 
-func (c MockClient) Usr() string {
+func (c NoopClient) Usr() string {
 	return c.user
 }
 
-func (c MockClient) DB() string {
+func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c MockClient) RAddr() string {
+func (c NoopClient) RAddr() string {
 	return c.rAddr
 }
 
-func (c MockClient) Shards() []shard.Shard {
+func (c NoopClient) Shards() []shard.Shard {
 	return c.shards
 }
 
@@ -1160,6 +1160,6 @@ func (dbi MockDBInstance) Hostname() string {
 	return dbi.hostname
 }
 
-var _ client.ClientInfo = &MockClient{}
+var _ client.ClientInfo = &NoopClient{}
 var _ shard.Shard = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}
