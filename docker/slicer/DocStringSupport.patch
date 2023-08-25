@@ -1,0 +1,96 @@
+diff --git a/lib/cucumber-slicer.js b/lib/cucumber-slicer.js
+index 791b40d..6a1357d 100644
+--- a/lib/cucumber-slicer.js
++++ b/lib/cucumber-slicer.js
+@@ -5,11 +5,14 @@ const { extractScenarios,
+         getScenariosOfType,
+         getFeatureTop } = require('./features');
+ 
++function escapeString(str) {
++  return str.replace(/[^a-zA-Z0-9 ]/g, '').replaceAll(' ', '_')
++}
+ 
+ function writeSingleScenarioFile(dir, parsed, scenario) {
+   let output = getFeatureTop(parsed);
+   output += extractScenarios(scenario);
+-  return writeFeatureFile(dir, parsed, output);
++  return writeFeatureFile(dir, parsed, output, escapeString(parsed.feature.name) + '__' + escapeString(scenario[0].name));
+ }
+ 
+ function writeWholeFeatureFile(dir, parsedFeature) {
+@@ -17,7 +20,7 @@ function writeWholeFeatureFile(dir, parsedFeature) {
+   let scenarios = getScenariosOfType(parsedFeature, 'Scenario');
+   scenarios = scenarios.concat(getScenariosOfType(parsedFeature, 'ScenarioOutline'));
+   output += extractScenarios(scenarios);
+-  return writeFeatureFile(dir, parsedFeature, output);
++  return writeFeatureFile(dir, parsedFeature, output, escapeString(parsed.feature.name));
+ }
+ 
+ function splitFeatureFile(parsed, dir) {
+diff --git a/lib/feature-files.js b/lib/feature-files.js
+index 63b0f9b..8f0643f 100644
+--- a/lib/feature-files.js
++++ b/lib/feature-files.js
+@@ -1,8 +1,7 @@
+ const fs = require('fs');
+ const path = require('path');
+-const uuid = require('uuid/v4');
+ 
+-function writeFeatureFile(dir, parsed, content) {
++function writeFeatureFile(dir, parsed, content, filename) {
+   if (!fs.existsSync(dir)) {
+     fs.mkdirSync(dir);
+   }
+@@ -11,9 +10,9 @@ function writeFeatureFile(dir, parsed, content) {
+   if (!fs.existsSync(directory)) {
+     fs.mkdirSync(directory);
+   }
+-  let filename = directory + uuid() + '.feature';
+-  fs.writeFileSync(filename, content);
+-  return filename;
++  let path = directory + filename + '.feature';
++  fs.writeFileSync(path, content);
++  return path;
+ }
+ 
+ module.exports = {
+diff --git a/lib/features.js b/lib/features.js
+index 7902167..907d953 100644
+--- a/lib/features.js
++++ b/lib/features.js
+@@ -27,9 +27,25 @@ function extractExample(table) {
+   return result;
+ }
+ 
+-function extractDataTableArgument(argument) {
++function extractArgument(argument) {
+   if (!argument) return '';
++  if (argument.type === 'DocString') {
++    return extractDocStringArgument(argument);
++  } else if (argument.type === 'DataTable') {
++    return extractDataTableArgument(argument);
++  } else {
++    throw new Error(`Not implemented argument type: ${argument.type}`);
++  }
++}
+ 
++function extractDocStringArgument(argument) {
++  result = '"""\n';
++  result += argument.content + '\n';
++  result += '"""\n'
++  return result
++}
++
++function extractDataTableArgument(argument) {
+   let rows = argument.rows.map((row) => {
+     let values = row.cells.map((cell) => {
+       return cell.value;
+@@ -51,7 +67,7 @@ function extractScenarios(scenarios) {
+     const steps = child.steps;
+     for (let step = 0; step < steps.length; step++) {
+       result += '  ' + steps[step].keyword.trim() + ' ' + steps[step].text.trim() + '\n';
+-      result += extractDataTableArgument(steps[step].argument);
++      result += extractArgument(steps[step].argument);
+     }
+     const examples = child.examples ? child.examples : [];
+     for (let eg = 0; eg < examples.length; eg++) {
