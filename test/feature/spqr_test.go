@@ -28,6 +28,7 @@ import (
 )
 
 const (
+	commandExecutionTimeout         = 10 * time.Second
 	spqrShardName                   = "shard"
 	spqrRouterName                  = "router"
 	spqrCoordinatorName             = "coordinator"
@@ -562,6 +563,13 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 	return fmt.Errorf("service %s was not found in docker composer", service)
 }
 
+func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocString) error {
+	cmd := strings.TrimSpace(body.Content)
+	var err error
+	tctx.commandRetcode, tctx.commandOutput, err = tctx.composer.RunCommand(host, cmd, commandExecutionTimeout)
+	return err
+}
+
 func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	if tctx.commandRetcode != code {
 		return fmt.Errorf("command return code is %d, while expected %d\n%s", tctx.commandRetcode, code, tctx.commandOutput)
@@ -748,6 +756,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	s.Step(`^host "([^"]*)" is started$`, tctx.stepHostIsStarted)
 
 	// command and SQL execution
+	s.Step(`^I run command on host "([^"]*)"$`, tctx.stepIRunCommandOnHost)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
