@@ -41,7 +41,13 @@ build_worldmock:
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 build_images:
-	docker-compose build spqr-base-image spqr-shard-image
+	docker-compose build spqr-base-image
+	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
+		echo "building ${POSTGRES_VERSION} version";\
+		docker-compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
+	else\
+		docker-compose build spqr-shard-image;\
+	fi
 
 save_shard_image:
 	sudo rm -f spqr-shard-image-*
