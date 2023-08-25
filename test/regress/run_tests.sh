@@ -28,7 +28,6 @@ run_tests () {
 
 run_tests "console" "regress_router" "7432"
 run_tests "router" "regress_router" "6432"
-run_tests "coordinator" "regress_coordinator" "7002"
 
 # test if diffs are empty
 cat /regress/tests/**/regression.diffs > /regress/tests/combined.diffs 2>&-

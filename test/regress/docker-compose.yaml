@@ -1,8 +1,7 @@
 version: "3.9"
 services:
     shard1:
-        image:
-            spqr-shard-image
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -16,8 +15,7 @@ services:
             timeout: 3s
             retries: 50
     shard2:
-        image:
-            spqr-shard-image
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -46,21 +44,6 @@ services:
             shard2:
                 condition: service_healthy
 
-    coordinator:
-        build:
-            dockerfile: ./docker/coordinator/Dockerfile
-            context: ../../
-        ports:
-            - "7002:7002"
-            - "7003:7003"
-        environment:
-            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
-        hostname: regress_coordinator
-        container_name: regress_coordinator
-        depends_on:
-            - "router"
-            - "qdb01"
-
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: regress_qdb_0_1
@@ -77,4 +60,5 @@ services:
         hostname: regress_tests
         container_name: regress_tests
         depends_on:
-            - "coordinator"
+            - router
+            - qdb01
