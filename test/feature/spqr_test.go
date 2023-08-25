@@ -254,6 +254,7 @@ func (tctx *testContext) establishCoordinatorConnection() error {
 			return nil
 		}
 	}
+	delete(tctx.dbs, "coordinator")
 
 	if !ok || err != nil {
 		// check coordinator
@@ -271,12 +272,14 @@ func (tctx *testContext) establishCoordinatorConnection() error {
 				}
 
 				tctx.dbs["coordinator"] = db
-				return nil
 			}
 		}
 	}
 
-	return fmt.Errorf("failed to connect to coordinator")
+	if _, ok := tctx.dbs["coordinator"]; !ok {
+		return fmt.Errorf("failed to connect to coordinator")
+	}
+	return nil
 }
 
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
