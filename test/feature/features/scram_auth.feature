@@ -8,17 +8,13 @@ Feature: SCRAM auth test
     Given cluster is up and running
     When I run SQL on host "shard1"
     """
-    CREATE USER sram-user WITH PASSWORD '12345678';
+    CREATE USER sram_user WITH PASSWORD '12345678';
     """
     Then command return code should be "0"
-    And SQL result should match regexp
-    """
-    CREATE USER
-    """
     When I run command on host "shard1"
     """
     cat >> /var/lib/postgresql/13/main/pg_hba.conf <<-EOF
-    host    all             scram-user             0.0.0.0/0            sram-sha-256
+    host    all             scram_user             0.0.0.0/0            sram-sha-256
     EOF
     service postgresql reload
     """

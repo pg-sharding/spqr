@@ -11,7 +11,7 @@ world_shard_fallback: true
 show_notice_messages: true
 frontend_rules:
   - db: regress
-    usr: scram-user
+    usr: scram_user
     pool_default: true
     pool_mode: TRANSACTION
     auth_rule:
@@ -19,14 +19,14 @@ frontend_rules:
 shards:
   sh1:
     db: regress
-    usr: scram-user
+    usr: scram_user
     pwd: 12345678
     type: DATA
     hosts:
       - 'spqr_shard_1:6432'
   sh2:
     db: regress
-    usr: scram-user
+    usr: scram_user
     pwd: 12345678
     type: DATA
     hosts:
@@ -34,7 +34,7 @@ shards:
 
 backend_rules:
   - db: regress
-    usr: scram-user
+    usr: scram_user
     pool_discard: true
     pool_rollback: true
     auth_rules:
