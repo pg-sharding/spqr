@@ -6,15 +6,10 @@ Feature: SCRAM auth test
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_scram_backend.yaml
     """
     Given cluster is up and running
-    When I run SQL on host "shard1"
-    """
-    CREATE USER sram_user WITH PASSWORD '12345678';
-    """
-    Then command return code should be "0"
     When I run command on host "shard1"
     """
     cat >> /var/lib/postgresql/13/main/pg_hba.conf <<-EOF
-    host    all             scram_user             0.0.0.0/0            sram-sha-256
+    host    all             regress             0.0.0.0/0            sram-sha-256
     EOF
     service postgresql reload
     """
