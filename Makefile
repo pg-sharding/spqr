@@ -57,6 +57,11 @@ save_shard_image:
 	docker-compose build ${IMAGE_SHARD};\
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
+save_shard_image:
+	sudo rm -f spqr-shard-image-*
+	docker-compose build ${IMAGE_SHARD};\
+	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
+
 clean:
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 	make clean_feature_test

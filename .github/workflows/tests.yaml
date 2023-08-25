@@ -105,6 +105,51 @@ jobs:
         run: make save_shard_image
 
 
+  feature_prepare:
+    name: feature_prepare
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.step1.outputs.features }}
+    steps:
+      - name: Check Docker Version
+        run: docker --version
+
+      - name: Check out code
+        uses: actions/checkout@v2
+      - id: step1
+        run: |
+          make split_feature_test
+          array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk 'NR!=1 {printf $0"\n"}' | python3 .github/scenario_balancer.py)
+          echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated_tests
+          path: |
+            ./test/feature/generatedFeatures
+
+      - name: Update env
+        run: |
+          SHARD_CACHE_KEY="spqr-shard-image-$(find docker/shard/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}')"
+          CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
+          echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
+          echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
+
+      #  use cache to pass docker images to the test jobs
+      - name: Docker shard image caching
+        id: cache-shard-image
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.CACHE_FILE_SHARD }}
+          key: ${{ env.SHARD_CACHE_KEY }}
+
+      # build images
+      - name: Build shard image
+        if: steps.cache-shard-image.outputs.cache-hit != 'true'
+        run: make save_shard_image
+
+
   feature:
     name: feature
     runs-on: ubuntu-latest
