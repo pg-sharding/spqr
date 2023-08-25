@@ -11,8 +11,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
-	"github.com/pg-sharding/spqr/router/rulerouter"
+	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -20,11 +21,11 @@ type Qinteractor interface{}
 
 type QinteractorImpl struct{}
 
-func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
+func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
+func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr poolmgr.PoolMgr) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))
@@ -186,7 +187,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
@@ -282,7 +283,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rcfg *config.Router) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
@@ -292,7 +293,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 	if rcfg.PgprotoDebug {
 		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	}
-	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
+	rst := relay.NewRelayState(qr, cl, cmngr, rcfg)
 
 	defer rst.Close()
 

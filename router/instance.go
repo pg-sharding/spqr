@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/console"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 )
@@ -153,7 +154,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
 		Uint("client", spqrlog.GetPointer(routerClient)).
 		Msg("prerouting phase succeeded")
 
-	cmngr, err := rulerouter.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
+	cmngr, err := poolmgr.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
 		return err
 	}
