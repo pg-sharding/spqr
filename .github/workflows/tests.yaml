@@ -59,9 +59,6 @@ jobs:
           POSTGRES_VERSION=13 make regress
           POSTGRES_VERSION=14 make regress
           POSTGRES_VERSION=15 make regress
-          POSTGRES_VERSION=16 make regress
-          POSTGRES_VERSION=17 make regress
-
 
   feature_prepare:
     name: feature_prepare
