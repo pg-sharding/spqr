@@ -11,3 +11,5 @@ y.output
 *.swp
 *.swo
 memqdb.json
+test/feature/generatedFeatures
+test/feature/logs
