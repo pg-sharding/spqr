@@ -41,7 +41,13 @@ build_worldmock:
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 build_images:
-	docker-compose build spqr-base-image spqr-shard-image
+	docker-compose build spqr-base-image
+	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
+		echo "building ${POSTGRES_VERSION} version";\
+		docker-compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
+	else\
+		docker-compose build spqr-shard-image;\
+	fi
 
 save_shard_image:
 	sudo rm -f spqr-shard-image-*
@@ -80,7 +86,7 @@ regress_local: proxy_2sh_run
 	./script/regress_local.sh
 
 regress: build_images
-	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --exit-code-from regress --build coordinator router shard1 shard2 regress
+	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 e2e: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
