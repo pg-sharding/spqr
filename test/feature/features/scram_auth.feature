@@ -8,7 +8,6 @@ Feature: SCRAM auth test
     Given cluster is up and running
     When I run command on host "router"
     """
-    apt update && apt install -y postgresql-client
     PGPASSWORD=12345678 psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
     """
     Then command return code should be "0"
