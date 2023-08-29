@@ -577,6 +577,14 @@ func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	return nil
 }
 
+func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godog.DocString) error {
+	m, err := matchers.GetMatcher(matcher)
+	if err != nil {
+		return err
+	}
+	return m(tctx.commandOutput, strings.TrimSpace(body.Content))
+}
+
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
@@ -758,6 +766,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	// command and SQL execution
 	s.Step(`^I run command on host "([^"]*)"$`, tctx.stepIRunCommandOnHost)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
+	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
