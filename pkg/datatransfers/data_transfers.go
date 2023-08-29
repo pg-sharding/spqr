@@ -266,15 +266,16 @@ WHERE column_name=$1;
 		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s <= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
-		_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
+		go func() {
+			_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
 
-		if err := pw.w.Close(); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
-		}
-
+			if err := pw.w.Close(); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
+			}
+		}()
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
 			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
 		if err != nil {
