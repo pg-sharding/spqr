@@ -147,7 +147,7 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Uint("single-shard", spqrlog.GetPointer(srv)).
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).
-		Msg("single-shard sending msg to server")
+		Msg("single-shard receiving msg from server")
 	return msg, err
 }
 
