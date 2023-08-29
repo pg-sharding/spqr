@@ -313,7 +313,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    failed to unite not adjacent key ranges
+    failed to unite non-adjacent key ranges
     """
 
   Scenario: Unite in reverse order works
