@@ -12,6 +12,8 @@ psql "host=localhost port=7002 dbname=spqr-console"
 
 Then, run `SHOW routers;`. Coordinator will reply with list of knows router in current spqr installation
 
+Coordinator is run with each router, but only one coordinator is running at the time while others wait. 
+
 ## Data Balancing
 
 We considered different options for moving data. The most popular way is to make a copy via logical replication, then delete half of the data on one node and delete another half of the data on the other node. We decided that logical replication does not work well enough yet. Instead, the coordinator makes ε-split - cut off a small part of the data. Since it is small, it all works very quickly.
