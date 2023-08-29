@@ -15,7 +15,8 @@ frontend_rules:
     pool_default: true
     pool_mode: TRANSACTION
     auth_rule:
-      auth_method: ok
+      auth_method: scram
+      password: 12345678
 shards:
   sh1:
     db: regress
@@ -39,8 +40,8 @@ backend_rules:
     pool_rollback: true
     auth_rules:
       sh1:
-        auth_method: scram
+        auth_method: password
         password: 12345678
       sh2:
-        auth_method: scram
+        auth_method: password
         password: 12345678
