@@ -38,6 +38,9 @@ build_mover:
 build_worldmock:
 	go build -pgo=auto -o spqr-worldmock ./cmd/worldmock
 
+build_logproxy:
+	go build -pgo=auto -o logproxy ./cmd/logproxy 
+
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 build_images:
