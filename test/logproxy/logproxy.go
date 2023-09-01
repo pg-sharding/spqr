@@ -72,77 +72,44 @@ func (p *Proxy) Run() error {
 }
 
 func (p *Proxy) serv(netconn net.Conn) error {
-
-	fmt.Println("1")
 	conn, err := getC()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("2")
 	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
 	cl := pgproto3.NewBackend(bufio.NewReader(netconn), netconn)
 
-	shouldStop := func(msg pgproto3.BackendMessage) bool {
-		log.Printf("received msg %v", msg)
-
-		switch msg.(type) {
-		case *pgproto3.ReadyForQuery:
-			return true
-		default:
-			return false
-		}
-	}
-
-	// startupMessage := &pgproto3.StartupMessage{
-	// 	ProtocolVersion: pgproto3.ProtocolVersionNumber,
-	// 	Parameters: map[string]string{
-	// 		"user":     "etien",
-	// 		"database": "postgres",
-	// 		// Add any other desired parameters
-	// 	},
-	// }
-	// TODO client start
+	//handle startup messages
 	if err = Startup(netconn, frontend, cl); err != nil {
 		return err
 	}
 
-	// TODO END client start
-
 	for {
-		fmt.Println("4")
 		msg, err := cl.Receive()
 		if err != nil {
 			return err
 		}
 
-		//fmt.Println(msg)
-
-		//cb(msg)
-		fmt.Println("5")
-
 		if err != nil {
 			fmt.Println(err.Error())
-			continue
-			//return fmt.Errorf(failedToReceiveMessage, err)
+			return fmt.Errorf(failedToReceiveMessage, err)
 		}
-		fmt.Println("6")
+
+		//send to frontend
 		frontend.Send(msg)
 		if err := frontend.Flush(); err != nil {
 			return fmt.Errorf(failedToReceiveMessage, err)
 		}
-		fmt.Println("7")
-		fmt.Println("send to frontend")
+
 		for {
-			fmt.Println("8")
+			//recieve response
 			retmsg, err := frontend.Receive()
 			if err != nil {
-				fmt.Println("error on frontend")
-				fmt.Println(err)
-				break
-				//return fmt.Errorf(failedToReceiveMessage, err)
+				return fmt.Errorf(failedToReceiveMessage, err)
 			}
 
+			//send responce to client
 			cl.Send(retmsg)
 			if err := cl.Flush(); err != nil {
 				return fmt.Errorf(failedToReceiveMessage, err)
@@ -156,17 +123,6 @@ func (p *Proxy) serv(netconn net.Conn) error {
 }
 
 func Startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend) error {
-	shouldStop := func(msg pgproto3.BackendMessage) bool {
-		log.Printf("received msg %v", msg)
-
-		switch msg.(type) {
-		case *pgproto3.ReadyForQuery:
-			return true
-		default:
-			return false
-		}
-	}
-
 	for {
 		headerRaw := make([]byte, 4)
 
@@ -203,29 +159,26 @@ func Startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 			// proceed next iter, for protocol version number or GSSAPI interaction
 			continue
 
-		//
 		case pgproto3.ProtocolVersionNumber:
-			// reuse
 			sm := &pgproto3.StartupMessage{}
 			err = sm.Decode(msg)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
+				spqrlog.Zero.Error().Err(err)
 				return err
 			}
+
 			frontend.Send(sm)
 			if err := frontend.Flush(); err != nil {
 				return fmt.Errorf(failedToReceiveMessage, err)
 			}
 			for {
-				fmt.Println("8")
+				//recieve response
 				retmsg, err := frontend.Receive()
-				fmt.Printf("rec: %T %+v\n", retmsg, retmsg)
 				if err != nil {
-					fmt.Println("error on frontend")
-					fmt.Println(err)
 					return fmt.Errorf(failedToReceiveMessage, err)
 				}
 
+				//send responce to client
 				cl.Send(retmsg)
 				if err := cl.Flush(); err != nil {
 					return fmt.Errorf(failedToReceiveMessage, err)
@@ -238,5 +191,14 @@ func Startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
 		}
+	}
+}
+
+func shouldStop(msg pgproto3.BackendMessage) bool {
+	switch msg.(type) {
+	case *pgproto3.ReadyForQuery:
+		return true
+	default:
+		return false
 	}
 }
