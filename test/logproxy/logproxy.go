@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	con "github.com/pg-sharding/spqr/pkg/conn"
@@ -14,14 +16,18 @@ import (
 )
 
 type Proxy struct {
-	host string
-	port string
+	host            string
+	port            string
+	interceptedData []byte
+	mut             sync.RWMutex
 }
 
 func NewProxy(host string, port string) Proxy {
 	return Proxy{
-		host: host,
-		port: port,
+		host:            host,
+		port:            port,
+		interceptedData: []byte{},
+		mut:             sync.RWMutex{},
 	}
 }
 
@@ -78,18 +84,30 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	cl := pgproto3.NewBackend(bufio.NewReader(netconn), netconn)
 
 	//handle startup messages
-	if err = Startup(netconn, frontend, cl); err != nil {
+	if err = startup(netconn, frontend, cl); err != nil {
 		return err
 	}
+
+	defer p.Flush()
 
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to receive msg from client %w", err)
 		}
 
+		//writing request data to buffer
+		byt, err := encodeMessage(msg)
 		if err != nil {
-			return fmt.Errorf("failed to receive msg from client %w", err)
+			return fmt.Errorf("failed to convert %w", err)
+		}
+		p.interceptedData = append(p.interceptedData, byt...)
+		if len(p.interceptedData) > 1000000 {
+			spqrlog.Zero.Debug().Msg("its soooo big")
+			err = p.Flush()
+			if err != nil {
+				return fmt.Errorf("failed to write to file %w", err)
+			}
 		}
 
 		//send to frontend
@@ -118,7 +136,23 @@ func (p *Proxy) serv(netconn net.Conn) error {
 	}
 }
 
-func Startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend) error {
+func (p *Proxy) Flush() error {
+	spqrlog.Zero.Debug().Msg("flush")
+	f, err := os.OpenFile("mylog.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(p.interceptedData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend) error {
 	for {
 		headerRaw := make([]byte, 4)
 
@@ -197,4 +231,26 @@ func shouldStop(msg pgproto3.BackendMessage) bool {
 	default:
 		return false
 	}
+}
+
+/*
+Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
+15 byte - timestamp
+1 byte - message header
+4 bytes - message length (except header)
+?? bytes - message bytes
+*/
+func encodeMessage(msg pgproto3.FrontendMessage) ([]byte, error) {
+	var b1 []byte
+	b2 := msg.Encode(b1)
+
+	t := time.Now()
+	tb, err := t.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	compl := append(tb, b2...)
+
+	return compl, nil
 }

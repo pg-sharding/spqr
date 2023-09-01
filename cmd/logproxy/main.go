@@ -14,7 +14,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use: "root",
+	Use: "logproxy",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 }
 
 var addRouterCmd = &cobra.Command{
-	Use:   "first",
+	Use:   "run",
 	Short: "start proxy log writing session",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		prox := logproxy.NewProxy(host, port)
