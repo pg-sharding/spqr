@@ -2,6 +2,7 @@ coorctl
 .idea
 vendor
 tmp
+logproxy
 spqr-router
 spqr-coordinator
 spqr-worldmock
