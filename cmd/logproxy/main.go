@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	coordinatorEndpoint string
-
-	routerEndpoint string
-	routerID       string
+	host   string
+	port   string
+	user   string
+	dbname string
 )
 
 var rootCmd = &cobra.Command{
@@ -24,12 +24,9 @@ var rootCmd = &cobra.Command{
 
 var addRouterCmd = &cobra.Command{
 	Use:   "first",
-	Short: "add routers in topology",
+	Short: "start proxy log writing session",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.Zero.Debug().
-			Msg("first")
-
-		prox := logproxy.Proxy{}
+		prox := logproxy.NewProxy(host, port)
 		prox.Run()
 
 		return nil
@@ -39,10 +36,10 @@ var addRouterCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&coordinatorEndpoint, "endpoint", "e", "localhost:7003", "coordinator endpoint")
-
-	addRouterCmd.PersistentFlags().StringVarP(&routerEndpoint, "router-endpoint", "u", "000", "router endpoint to add")
-	addRouterCmd.PersistentFlags().StringVarP(&routerID, "router-id", "i", "111", "router id to add")
+	addRouterCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", `database server host (default: "localhost")`)
+	addRouterCmd.PersistentFlags().StringVarP(&port, "port", "p", "5432", `database server port (default: 5432)`)
+	addRouterCmd.PersistentFlags().StringVarP(&user, "user", "U", "postgres", `database server user (default: postgres)`)
+	addRouterCmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "postgres", `database name to connect to (default: postgres)`)
 
 	/* --- Router cmds --- */
 	rootCmd.AddCommand(addRouterCmd)

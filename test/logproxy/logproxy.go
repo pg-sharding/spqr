@@ -5,29 +5,24 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
 	"net"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	con "github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/client"
 )
 
-type ProxyClient interface {
-	client.PsqlClient
-}
-
-const failedToReceiveMessage = "failed to received msg %w"
-
-func getC() (net.Conn, error) {
-	const proto = "tcp"
-	const addr = "[::1]:5432"
-	return net.Dial(proto, addr)
-}
-
 type Proxy struct {
+	host string
+	port string
+}
+
+func NewProxy(host string, port string) Proxy {
+	return Proxy{
+		host: host,
+		port: port,
+	}
 }
 
 func (p *Proxy) Run() error {
@@ -35,7 +30,7 @@ func (p *Proxy) Run() error {
 
 	listener, err := net.Listen("tcp6", "[::1]:5433")
 	if err != nil {
-		log.Fatal(err)
+		spqrlog.Zero.Fatal().Err(err)
 		return err
 	}
 	defer listener.Close()
@@ -56,6 +51,8 @@ func (p *Proxy) Run() error {
 
 	go accept(listener, cChan)
 
+	spqrlog.Zero.Debug().Msg("Proxy is up and listening on port 5433")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -64,7 +61,7 @@ func (p *Proxy) Run() error {
 
 			go func() {
 				if err := p.serv(c); err != nil {
-					log.Fatal(err)
+					spqrlog.Zero.Fatal().Err(err)
 				}
 			}()
 		}
@@ -72,7 +69,7 @@ func (p *Proxy) Run() error {
 }
 
 func (p *Proxy) serv(netconn net.Conn) error {
-	conn, err := getC()
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.host, p.port))
 	if err != nil {
 		return err
 	}
@@ -92,27 +89,26 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		}
 
 		if err != nil {
-			fmt.Println(err.Error())
-			return fmt.Errorf(failedToReceiveMessage, err)
+			return fmt.Errorf("failed to receive msg from client %w", err)
 		}
 
 		//send to frontend
 		frontend.Send(msg)
 		if err := frontend.Flush(); err != nil {
-			return fmt.Errorf(failedToReceiveMessage, err)
+			return fmt.Errorf("failed to send msg to bd %w", err)
 		}
 
 		for {
 			//recieve response
 			retmsg, err := frontend.Receive()
 			if err != nil {
-				return fmt.Errorf(failedToReceiveMessage, err)
+				return fmt.Errorf("failed to receive msg from db %w", err)
 			}
 
 			//send responce to client
 			cl.Send(retmsg)
 			if err := cl.Flush(); err != nil {
-				return fmt.Errorf(failedToReceiveMessage, err)
+				return fmt.Errorf("failed to send msg to client %w", err)
 			}
 
 			if shouldStop(retmsg) {
@@ -169,19 +165,19 @@ func Startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 
 			frontend.Send(sm)
 			if err := frontend.Flush(); err != nil {
-				return fmt.Errorf(failedToReceiveMessage, err)
+				return fmt.Errorf("failed to send msg to bd %w", err)
 			}
 			for {
 				//recieve response
 				retmsg, err := frontend.Receive()
 				if err != nil {
-					return fmt.Errorf(failedToReceiveMessage, err)
+					return fmt.Errorf("failed to receive msg from db %w", err)
 				}
 
 				//send responce to client
 				cl.Send(retmsg)
 				if err := cl.Flush(); err != nil {
-					return fmt.Errorf(failedToReceiveMessage, err)
+					return fmt.Errorf("failed to send msg to client %w", err)
 				}
 
 				if shouldStop(retmsg) {
