@@ -20,7 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
+	"google.golang.org/grpc"
 
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/test/feature/testutil"
@@ -237,8 +239,6 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 		return ok
 	}, timeout, 2*time.Second)
 	if !ok {
-		log.Printf("sleeping")
-		time.Sleep(time.Hour)
 		return db, fmt.Errorf("failed to ping %s", addr)
 	}
 	return db, nil
@@ -445,9 +445,29 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	if err != nil {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
 	}
-	// TODO: remove
-	// need to make sure? another coordinator took control
-	time.Sleep(3 * time.Second)
+
+	// need to make sure another coordinator took control
+	testutil.Retry(func() bool {
+		_, output, err := tctx.composer.RunCommand("qdb01", "etcdctl get coordinator_exists", time.Second)
+		if err != nil {
+			return false
+		}
+		if output == "" {
+			return false
+		}
+		slices := strings.Split(output, "\n")
+		addr := slices[1]
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			return false
+		}
+		client := protos.NewRouterServiceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_, err = client.ListRouters(ctx, &protos.ListRoutersRequest{})
+		return err == nil
+	}, time.Minute, time.Second)
+
 	return nil
 }
 
@@ -498,8 +518,6 @@ func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	if tctx.commandRetcode != code {
-		log.Printf("sleeping")
-		time.Sleep(time.Hour)
 		return fmt.Errorf("command return code is %d, while expected %d\n%s", tctx.commandRetcode, code, tctx.commandOutput)
 	}
 	return nil
@@ -657,6 +675,12 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 		return ctx, nil
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+		if err != nil {
+			if strings.Contains(err.Error(), "empty target in Build()") {
+				fmt.Println("sleeping")
+				time.Sleep(time.Hour)
+			}
+		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}
