@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -51,7 +52,11 @@ func createConnString(shardID string) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
+	if len(sd.Host) == 0 {
+		return ""
+	}
+	port := strings.Split(sd.Host[0], ":")[0]
+	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host[0], port, sd.DB, sd.Password)
 }
 
 func LoadConfig(path string) error {
@@ -80,13 +85,6 @@ Steps:
   - prepare and commit distributed move transation
 */
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			return err
-		}
-	}
-
 	from, err := pgx.Connect(ctx, createConnString(fromId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
@@ -125,13 +123,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 }
 
 func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-
 	db, err := pgx.Connect(ctx, createConnString(sh))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")

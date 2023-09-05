@@ -1,0 +1,3 @@
+addr: '[regress_router_2]:7002'
+http_addr: 'regress_router_2:7003'
+qdb_addr: '[regress_qdb_0_1]:2379'
