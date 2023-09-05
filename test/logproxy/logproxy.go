@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -17,18 +16,16 @@ import (
 )
 
 type Proxy struct {
-	host            string
-	port            string
+	toHost          string
+	toPort          string
 	interceptedData []byte
-	mut             sync.RWMutex
 }
 
-func NewProxy(host string, port string) Proxy {
+func NewProxy(toHost string, toPort string) Proxy {
 	return Proxy{
-		host:            host,
-		port:            port,
+		toHost:          toHost,
+		toPort:          toPort,
 		interceptedData: []byte{},
-		mut:             sync.RWMutex{},
 	}
 }
 
@@ -37,8 +34,7 @@ func (p *Proxy) Run() error {
 
 	listener, err := net.Listen("tcp6", "[::1]:5433")
 	if err != nil {
-		spqrlog.Zero.Fatal().Err(err)
-		return err
+		return fmt.Errorf("failed to start proxy %w", err)
 	}
 	defer listener.Close()
 
@@ -58,7 +54,7 @@ func (p *Proxy) Run() error {
 
 	go accept(listener, cChan)
 
-	spqrlog.Zero.Debug().Msg("Proxy is up and listening on port 5433")
+	spqrlog.Zero.Info().Msg("Proxy is up and listening on port 5433")
 
 	for {
 		select {
@@ -66,7 +62,6 @@ func (p *Proxy) Run() error {
 			p.Flush()
 			os.Exit(1)
 		case c := <-cChan:
-
 			go func() {
 				if err := p.serv(c); err != nil {
 					spqrlog.Zero.Fatal().Err(err)
@@ -76,8 +71,81 @@ func (p *Proxy) Run() error {
 	}
 }
 
+func (p *Proxy) ReplayLogs(host string, port string, user string, file string, db string) error {
+	ctx := context.Background()
+
+	startupMessage := &pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersionNumber,
+		Parameters: map[string]string{
+			"user":     user,
+			"database": db,
+		},
+	}
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.toHost, p.toPort))
+	if err != nil {
+		return fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", p.toHost, p.toPort), err)
+	}
+
+	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
+
+	frontend.Send(startupMessage)
+	if err := frontend.Flush(); err != nil {
+		return fmt.Errorf("failed to send msg to bd %w", err)
+	}
+	err = recieveBackend(frontend, func(msg pgproto3.BackendMessage) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var curt time.Timer
+	tim, msg, err := parseFile(f)
+	if err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+	prevT := tim
+	curt = *time.NewTimer(tim.Sub(tim))
+	for {
+		select {
+		case <-ctx.Done():
+			os.Exit(1)
+		case <-curt.C:
+			spqrlog.Zero.Debug().Msg("timer gone off")
+		}
+
+		spqrlog.Zero.Debug().Any("msg %+v ", msg).Msg("sending")
+		frontend.Send(msg)
+		if err := frontend.Flush(); err != nil {
+			return fmt.Errorf("failed to send msg to bd %w", err)
+		}
+		err = recieveBackend(frontend, func(msg pgproto3.BackendMessage) error { return nil })
+		if err != nil {
+			return err
+		}
+
+		tim, msg, err = parseFile(f)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		curt = *time.NewTimer(tim.Sub(prevT))
+		prevT = tim
+	}
+}
+
 func (p *Proxy) serv(netconn net.Conn) error {
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.host, p.port))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.toHost, p.toPort))
 	if err != nil {
 		return err
 	}
@@ -97,7 +165,6 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		if err != nil {
 			return fmt.Errorf("failed to receive msg from client %w", err)
 		}
-		fmt.Printf("message type %T\n", msg)
 
 		//writing request data to buffer
 		byt, err := encodeMessage(msg)
@@ -106,7 +173,7 @@ func (p *Proxy) serv(netconn net.Conn) error {
 		}
 		p.interceptedData = append(p.interceptedData, byt...)
 		if len(p.interceptedData) > 1000000 {
-			spqrlog.Zero.Debug().Msg("its soooo big")
+			spqrlog.Zero.Debug().Msg("flushing buffer")
 			err = p.Flush()
 			if err != nil {
 				return fmt.Errorf("failed to write to file %w", err)
@@ -119,22 +186,16 @@ func (p *Proxy) serv(netconn net.Conn) error {
 			return fmt.Errorf("failed to send msg to bd %w", err)
 		}
 
-		for {
-			//recieve response
-			retmsg, err := frontend.Receive()
-			if err != nil {
-				return fmt.Errorf("failed to receive msg from db %w", err)
-			}
-
-			//send responce to client
-			cl.Send(retmsg)
+		proc := func(msg pgproto3.BackendMessage) error {
+			cl.Send(msg)
 			if err := cl.Flush(); err != nil {
 				return fmt.Errorf("failed to send msg to client %w", err)
 			}
-
-			if shouldStop(retmsg) {
-				break
-			}
+			return nil
+		}
+		err = recieveBackend(frontend, proc)
+		if err != nil {
+			return err
 		}
 	}
 }
@@ -153,87 +214,6 @@ func (p *Proxy) Flush() error {
 	}
 
 	return nil
-}
-
-func (p *Proxy) ReplayLogs(host string, port string, user string, file string, db string) error {
-	startupMessage := &pgproto3.StartupMessage{
-		ProtocolVersion: pgproto3.ProtocolVersionNumber,
-		Parameters: map[string]string{
-			"user":     user,
-			"database": db,
-		},
-	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.host, p.port))
-	if err != nil {
-		return err
-	}
-
-	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
-
-	frontend.Send(startupMessage)
-	if err := frontend.Flush(); err != nil {
-		return fmt.Errorf("failed to send msg to bd %w", err)
-	}
-	for {
-		retmsg, err := frontend.Receive()
-		if err != nil {
-			return fmt.Errorf("failed to receive msg from db %w", err)
-		}
-
-		if shouldStop(retmsg) {
-			break
-		}
-	}
-
-	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	spqrlog.Zero.Debug().Msg("begin sending")
-
-	var curt time.Timer
-	tim, msg, err := parseFile(f)
-	if err != nil {
-		if err == io.EOF {
-			return nil
-		}
-		return err
-	}
-	prevT := tim
-	curt = *time.NewTimer(tim.Sub(tim))
-	for {
-		<-curt.C
-
-		spqrlog.Zero.Debug().Any("msg %+v ", msg).Msg("sending")
-		frontend.Send(msg)
-		if err := frontend.Flush(); err != nil {
-			return fmt.Errorf("failed to send msg to bd %w", err)
-		}
-		for {
-			retmsg, err := frontend.Receive()
-			if err != nil {
-				return fmt.Errorf("failed to receive msg from db %w", err)
-			}
-
-			if shouldStop(retmsg) {
-				break
-			}
-		}
-
-		tim, msg, err = parseFile(f)
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		spqrlog.Zero.Debug().Str("waiting for: %s", tim.Sub(prevT).String()).Msg("wait timer")
-		curt = *time.NewTimer(tim.Sub(prevT))
-		prevT = tim
-	}
 }
 
 func parseFile(f *os.File) (time.Time, pgproto3.FrontendMessage, error) {
@@ -340,25 +320,36 @@ func startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 			if err := frontend.Flush(); err != nil {
 				return fmt.Errorf("failed to send msg to bd %w", err)
 			}
-			for {
-				//recieve response
-				retmsg, err := frontend.Receive()
-				if err != nil {
-					return fmt.Errorf("failed to receive msg from db %w", err)
-				}
-
-				//send responce to client
-				cl.Send(retmsg)
+			proc := func(msg pgproto3.BackendMessage) error {
+				cl.Send(msg)
 				if err := cl.Flush(); err != nil {
 					return fmt.Errorf("failed to send msg to client %w", err)
 				}
-
-				if shouldStop(retmsg) {
-					return nil
-				}
+				return nil
 			}
+			err = recieveBackend(frontend, proc)
+			return err
+
 		default:
 			return fmt.Errorf("protocol number %d not supported", protoVer)
+		}
+	}
+}
+
+func recieveBackend(frontend *pgproto3.Frontend, process func(pgproto3.BackendMessage) error) error {
+	for {
+		retmsg, err := frontend.Receive()
+		if err != nil {
+			return fmt.Errorf("failed to receive msg from db %w", err)
+		}
+
+		err = process(retmsg)
+		if err != nil {
+			return err
+		}
+
+		if shouldStop(retmsg) {
+			return nil
 		}
 	}
 }

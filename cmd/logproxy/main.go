@@ -7,6 +7,11 @@ import (
 )
 
 var (
+	//run cmd
+	runHost string
+	runPort string
+
+	//replay cmd
 	host   string
 	port   string
 	user   string
@@ -27,10 +32,9 @@ var startProxySessionCmd = &cobra.Command{
 	Use:   "run",
 	Short: "start proxy log writing session",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		prox := logproxy.NewProxy(host, port)
-		prox.Run()
-
-		return nil
+		prox := logproxy.NewProxy(runHost, runPort)
+		err := prox.Run()
+		return err
 	},
 	SilenceUsage:  false,
 	SilenceErrors: false,
@@ -42,22 +46,15 @@ var replayLogsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		prox := logproxy.NewProxy(host, port)
 		err := prox.ReplayLogs(host, port, user, file, dbname)
-
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	},
 	SilenceUsage:  false,
 	SilenceErrors: false,
 }
 
 func init() {
-	startProxySessionCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", `database server host (default: "localhost")`)
-	startProxySessionCmd.PersistentFlags().StringVarP(&port, "port", "p", "5432", `database server port (default: 5432)`)
-	startProxySessionCmd.PersistentFlags().StringVarP(&user, "user", "U", "postgres", `database server user (default: postgres)`)
-	startProxySessionCmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "postgres", `database name to connect to (default: postgres)`)
+	startProxySessionCmd.PersistentFlags().StringVarP(&runHost, "host", "H", "localhost", `database server host (default: "localhost")`)
+	startProxySessionCmd.PersistentFlags().StringVarP(&runPort, "port", "p", "5432", `database server port (default: 5432)`)
 
 	replayLogsCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", `database server host (default: "localhost")`)
 	replayLogsCmd.PersistentFlags().StringVarP(&port, "port", "p", "5432", `database server port (default: 5432)`)
