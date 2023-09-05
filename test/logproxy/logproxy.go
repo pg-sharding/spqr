@@ -281,7 +281,6 @@ func parseFile(f *os.File) (time.Time, pgproto3.FrontendMessage, error) {
 func startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend) error {
 	for {
 		headerRaw := make([]byte, 4)
-
 		_, err := netconn.Read(headerRaw)
 		if err != nil {
 			return err
@@ -304,7 +303,6 @@ func startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 			if err != nil {
 				return err
 			}
-			// proceed next iter, for protocol version number or GSSAPI interaction
 			continue
 
 		case con.SSLREQ:
@@ -312,14 +310,12 @@ func startup(netconn net.Conn, frontend *pgproto3.Frontend, cl *pgproto3.Backend
 			if err != nil {
 				return err
 			}
-			// proceed next iter, for protocol version number or GSSAPI interaction
 			continue
 
 		case pgproto3.ProtocolVersionNumber:
 			sm := &pgproto3.StartupMessage{}
 			err = sm.Decode(msg)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err)
 				return err
 			}
 
