@@ -239,30 +239,40 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 		return ok
 	}, timeout, 2*time.Second)
 	if !ok {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to ping %s", addr)
+		return db, fmt.Errorf("failed to ping %s", addr)
 	}
 	return db, nil
 }
 
 func (tctx *testContext) establishCoordinatorConnection() error {
-	// check coordinator
-	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrRouterName) {
-			// coordinator
-			addr, err := tctx.composer.GetAddr(service, coordinatorPort)
-			if err != nil {
-				fmt.Printf("failed to get router addr %s: %s", service, err)
-				continue
-			}
-			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-			if err != nil {
-				fmt.Printf("failed to connect to SPQR router %s: %s", service, err)
-				continue
-			}
-
-			tctx.dbs["coordinator"] = db
+	// ping coordinator
+	db, ok := tctx.dbs["coordinator"]
+	var err error
+	if ok {
+		_, err = db.Exec("SHOW ROUTERS")
+		if err == nil {
 			return nil
+		}
+	}
+
+	if !ok || err != nil {
+		// check coordinator
+		for _, service := range tctx.composer.Services() {
+			if strings.HasPrefix(service, spqrRouterName) {
+				// coordinator
+				addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+				if err != nil {
+					continue
+				}
+				db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+				if err != nil {
+					tctx.dbs["waiting_coordinator"] = db
+					continue
+				}
+
+				tctx.dbs["coordinator"] = db
+				return nil
+			}
 		}
 	}
 
@@ -271,7 +281,7 @@ func (tctx *testContext) establishCoordinatorConnection() error {
 
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
-	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
+	if strings.HasSuffix(host, "admin") || strings.Contains(host, "coordinator") {
 		return db, nil
 	}
 	if !ok {

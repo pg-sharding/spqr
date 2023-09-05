@@ -176,11 +176,11 @@ var runCmd = &cobra.Command{
 
 		app := app.NewApp(router)
 
+		if err := datatransfers.LoadConfig(rcfgPath); err != nil {
+			return err
+		}
 		go func() {
 			if err := func() error {
-				if err := datatransfers.LoadConfig(rcfgPath); err != nil {
-					return err
-				}
 				if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
 					return err
 				}

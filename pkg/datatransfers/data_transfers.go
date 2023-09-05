@@ -55,8 +55,9 @@ func createConnString(shardID string) string {
 	if len(sd.Host) == 0 {
 		return ""
 	}
-	port := strings.Split(sd.Host[0], ":")[0]
-	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host[0], port, sd.DB, sd.Password)
+	host := strings.Split(sd.Host[0], ":")[0]
+	port := strings.Split(sd.Host[0], ":")[1]
+	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
 }
 
 func LoadConfig(path string) error {
