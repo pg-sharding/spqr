@@ -8,9 +8,10 @@ import (
 
 var (
 	//run cmd
-	runHost    string
-	runPort    string
-	runLogFile string
+	runHost      string
+	runPort      string
+	runLogFile   string
+	runProxyPort string
 
 	//replay cmd
 	host   string
@@ -33,7 +34,7 @@ var startProxySessionCmd = &cobra.Command{
 	Use:   "run",
 	Short: "start proxy log writing session",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		prox := logproxy.NewProxy(runHost, runPort, runLogFile)
+		prox := logproxy.NewProxy(runHost, runPort, runLogFile, runProxyPort)
 		err := prox.Run()
 		return err
 	},
@@ -45,8 +46,7 @@ var replayLogsCmd = &cobra.Command{
 	Use:   "replay",
 	Short: "replay written logs to db",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		prox := logproxy.NewProxy(host, port, file)
-		err := prox.ReplayLogs(host, port, user, dbname)
+		err := logproxy.ReplayLogs(host, port, user, dbname, file)
 		return err
 	},
 	SilenceUsage:  false,
@@ -57,6 +57,7 @@ func init() {
 	startProxySessionCmd.PersistentFlags().StringVarP(&runHost, "host", "H", "localhost", `database server host (default: "localhost")`)
 	startProxySessionCmd.PersistentFlags().StringVarP(&runPort, "port", "p", "5432", `database server port (default: 5432)`)
 	startProxySessionCmd.PersistentFlags().StringVarP(&runLogFile, "logfile", "l", "mylog.txt", `file to save logs`)
+	startProxySessionCmd.PersistentFlags().StringVarP(&runProxyPort, "proxyport", "P", "5433", `proxy port (default: 5433)`)
 
 	replayLogsCmd.PersistentFlags().StringVarP(&host, "host", "H", "localhost", `database server host (default: "localhost")`)
 	replayLogsCmd.PersistentFlags().StringVarP(&port, "port", "p", "5432", `database server port (default: 5432)`)

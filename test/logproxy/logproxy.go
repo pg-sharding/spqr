@@ -18,15 +18,17 @@ import (
 type Proxy struct {
 	toHost          string
 	toPort          string
+	proxyPort       string
 	logFileName     string
 	interceptedData []byte
 }
 
-func NewProxy(toHost string, toPort string, file string) Proxy {
+func NewProxy(toHost string, toPort string, file string, proxyPort string) Proxy {
 	return Proxy{
 		toHost:          toHost,
 		toPort:          toPort,
 		logFileName:     file,
+		proxyPort:       proxyPort,
 		interceptedData: []byte{},
 	}
 }
@@ -34,7 +36,7 @@ func NewProxy(toHost string, toPort string, file string) Proxy {
 func (p *Proxy) Run() error {
 	ctx := context.Background()
 
-	listener, err := net.Listen("tcp6", "[::1]:5433")
+	listener, err := net.Listen("tcp6", fmt.Sprintf("[::1]:%s", p.proxyPort))
 	if err != nil {
 		return fmt.Errorf("failed to start proxy %w", err)
 	}
@@ -56,7 +58,7 @@ func (p *Proxy) Run() error {
 
 	go accept(listener, cChan)
 
-	spqrlog.Zero.Info().Msg("Proxy is up and listening on port 5433")
+	spqrlog.Zero.Info().Str("port %s", p.proxyPort).Msg("Proxy is up and listening")
 
 	for {
 		select {
@@ -73,7 +75,7 @@ func (p *Proxy) Run() error {
 	}
 }
 
-func (p *Proxy) ReplayLogs(host string, port string, user string, db string) error {
+func ReplayLogs(host string, port string, user string, db string, file string) error {
 	ctx := context.Background()
 
 	startupMessage := &pgproto3.StartupMessage{
@@ -83,9 +85,9 @@ func (p *Proxy) ReplayLogs(host string, port string, user string, db string) err
 			"database": db,
 		},
 	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", p.toHost, p.toPort))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", host, port))
 	if err != nil {
-		return fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", p.toHost, p.toPort), err)
+		return fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", host, port), err)
 	}
 
 	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
@@ -99,7 +101,7 @@ func (p *Proxy) ReplayLogs(host string, port string, user string, db string) err
 		return err
 	}
 
-	f, err := os.OpenFile(p.logFileName, os.O_RDONLY, 0600)
+	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
