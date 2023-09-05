@@ -180,24 +180,26 @@ var runCmd = &cobra.Command{
 		if err := datatransfers.LoadConfig(rcfgPath); err != nil {
 			return err
 		}
-		go func() {
-			if err := func() error {
-				if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
-					return err
-				}
+		if config.RouterConfig().WithCoordinator {
+			go func() {
+				if err := func() error {
+					if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+						return err
+					}
 
-				db, err := qdb.NewXQDB(qdbImpl)
-				if err != nil {
-					return err
-				}
+					db, err := qdb.NewXQDB(qdbImpl)
+					if err != nil {
+						return err
+					}
 
-				coordinator := provider.NewCoordinator(db)
-				app := coordApp.NewApp(coordinator)
-				return app.Run()
-			}(); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-			}
-		}()
+					coordinator := provider.NewCoordinator(db)
+					app := coordApp.NewApp(coordinator)
+					return app.Run(false)
+				}(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+				}
+			}()
+		}
 		go func() {
 			defer cancelCtx()
 			for {

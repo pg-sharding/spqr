@@ -33,9 +33,11 @@ const (
 	commandExecutionTimeout         = 10 * time.Second
 	spqrShardName                   = "shard"
 	spqrRouterName                  = "router"
+	spqrCoordinatorName             = "coordinator"
 	spqrQDBName                     = "qdb"
 	spqrPort                        = 6432
 	spqrConsolePort                 = 7432
+	spqrCoordinatorPort             = 7002
 	qdbPort                         = 2379
 	shardUser                       = "regress"
 	shardPassword                   = ""
@@ -210,6 +212,17 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
+func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	ping := func(db *sqlx.DB) bool {
+		_, err := db.Exec("SHOW routers")
+		if err != nil {
+			log.Printf("failed to ping coordinator at %s: %s", addr, err)
+		}
+		return err == nil
+	}
+	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
+}
+
 func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
 		_, err := db.Exec("SHOW key_ranges")
@@ -249,7 +262,7 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	if !ok {
 		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 	}
-	if strings.HasSuffix(host, "admin") {
+	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
 		return db, nil
 	}
 	err := db.Ping()
@@ -410,6 +423,22 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
 			service = fmt.Sprintf("%s-admin", service)
+			tctx.dbs[service] = db
+		}
+	}
+
+	// check coordinator
+	for _, service := range tctx.composer.Services() {
+		if strings.HasPrefix(service, spqrCoordinatorName) {
+			// router console
+			addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
+			if err != nil {
+				return fmt.Errorf("failed to get router addr %s: %s", service, err)
+			}
+			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			if err != nil {
+				return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+			}
 			tctx.dbs[service] = db
 		}
 	}
@@ -675,12 +704,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 		return ctx, nil
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
-		if err != nil {
-			if strings.Contains(err.Error(), "empty target in Build()") {
-				fmt.Println("sleeping")
-				time.Sleep(time.Hour)
-			}
-		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}

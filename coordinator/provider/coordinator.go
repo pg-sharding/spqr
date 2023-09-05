@@ -92,15 +92,15 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 }
 
 func (ci grpcConnectionIterator) Put(client client.Client) error {
-	return fmt.Errorf("not implemented")
+	return fmt.Errorf("grpcConnectionIterator put not implemented")
 }
 
 func (ci grpcConnectionIterator) Pop(id string) (bool, error) {
-	return true, fmt.Errorf("not implemented")
+	return true, fmt.Errorf("grpcConnectionIterator pop not implemented")
 }
 
 func (ci grpcConnectionIterator) Shutdown() error {
-	return fmt.Errorf("not implemented")
+	return fmt.Errorf("grpcConnectionIterator shutdown not implemented")
 }
 
 func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) error {
@@ -263,12 +263,28 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	}
 }
 
-func (cc *qdbCoordinator) lockCoordinator(ctx context.Context) bool {
-	router := &topology.Router{
-		ID:      uuid.NewString(),
-		Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
-		State:   qdb.OPENED,
+func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) bool {
+	registerRouter := func() bool {
+		if !initialRouter {
+			return true
+		}
+		router := &topology.Router{
+			ID:      uuid.NewString(),
+			Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+			State:   qdb.OPENED,
+		}
+		if err := cc.RegisterRouter(ctx, router); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
+		}
+		if err := cc.SyncRouterMetadata(ctx, router); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
+		}
+		if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
+			return false
+		}
+		return true
 	}
+
 	if cc.db.TryCoordinatorLock(context.TODO()) != nil {
 		for {
 			select {
@@ -276,43 +292,20 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context) bool {
 				return false
 			case <-time.After(time.Second):
 				if cc.db.TryCoordinatorLock(context.TODO()) == nil {
-					if err := cc.RegisterRouter(ctx, router); err != nil {
-						spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
-					}
-					if err := cc.SyncRouterMetadata(ctx, router); err != nil {
-						spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
-					}
-					if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
-						return false
-					}
-					return true
+					return registerRouter()
 				}
 				spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
 			}
 		}
 	}
 
-	if err := cc.RegisterRouter(ctx, &topology.Router{
-		ID:      "local",
-		Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
-		State:   qdb.OPENED,
-	}); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
-	}
-	if err := cc.SyncRouterMetadata(ctx, router); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
-	}
-	if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
-		return false
-	}
-
-	return true
+	return registerRouter()
 }
 
 // RunCoordinator side effect: it runs an asynchronous goroutine
 // that checks the availability of the SPQR router
-func (cc *qdbCoordinator) RunCoordinator(ctx context.Context) {
-	if !cc.lockCoordinator(ctx) {
+func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
+	if !cc.lockCoordinator(ctx, initialRouter) {
 		return
 	}
 

@@ -562,6 +562,8 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 // ==============================================================================
 
 func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("etcdqdb: try coordiantor lock")
+
 	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")

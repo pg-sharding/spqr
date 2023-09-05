@@ -26,6 +26,9 @@ build_balancer:
 build_coorctl:
 	go build -pgo=auto -o coorctl ./cmd/coordctl
 
+build_coordinator: 
+	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
+
 build_router: 
 	go build -pgo=auto -o spqr-router $(LDFLAGS) ./cmd/router
 
@@ -35,7 +38,7 @@ build_mover:
 build_worldmock:
 	go build -pgo=auto -o spqr-worldmock ./cmd/worldmock
 
-build: build_balancer build_coorctl build_router build_mover build_worldmock
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
 
 build_images:
 	docker-compose build spqr-base-image
@@ -52,13 +55,13 @@ save_shard_image:
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
 clean:
-	rm -f spqr-router spqr-mover spqr-worldmock spqr-balancer
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 	make clean_feature_test
 
 ######################## RUN ########################
 
 run: build_images
-	docker-compose up -d --remove-orphans --build router router2 shard1 shard2 qdb01
+	docker-compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 
@@ -67,6 +70,9 @@ proxy_2sh_run:
 
 proxy_run:
 	./spqr-router run -c ./examples/router.yaml
+
+coordinator_run:
+	./spqr-coordinator run -c ./examples/coordinator.yaml
 
 pooler_run:
 	./spqr-router run -c ./examples/localrouter.yaml
@@ -80,10 +86,10 @@ regress_local: proxy_2sh_run
 	./script/regress_local.sh
 
 regress: build_images
-	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build router shard1 shard2 regress qdb01
+	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 e2e: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router shard1 shard2 qdb01 client
+	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
 stress: build_images
 	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress

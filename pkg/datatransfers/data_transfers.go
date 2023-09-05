@@ -86,6 +86,13 @@ Steps:
   - prepare and commit distributed move transation
 */
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+
 	from, err := pgx.Connect(ctx, createConnString(fromId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
@@ -124,6 +131,13 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 }
 
 func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
+	if shards == nil {
+		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+	}
+
 	db, err := pgx.Connect(ctx, createConnString(sh))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")

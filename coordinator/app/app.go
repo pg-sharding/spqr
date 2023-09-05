@@ -29,7 +29,7 @@ func NewApp(c coordinator.Coordinator) *App {
 func (app *App) Run(withPsql bool) error {
 	spqrlog.Zero.Info().Msg("running coordinator app")
 
-	app.coordinator.RunCoordinator(context.TODO())
+	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
 
 	wg := &sync.WaitGroup{}
 

@@ -29,6 +29,15 @@ services:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: .
+        ports:
+            - "7002:7002"
+            - "7003:7003"
+        hostname: spqr_coordinator
+        container_name: spqr_coordinator
     qdb01:
         image: 'bitnami/etcd:latest'
         container_name: spqr_qdb_0_1
@@ -44,8 +53,8 @@ services:
             context: .
         ports:
             - "8432:6432"
-            - "7002:7002"
-            - "7003:7003"
+            - "7012:7002"
+            - "7013:7003"
         hostname: spqr_router_1_1
         container_name: spqr_router_1_1
         environment:
@@ -57,8 +66,8 @@ services:
             context: .
         ports:
             - "8433:6432"
-            - "7012:7002"
-            - "7013:7003"
+            - "7022:7002"
+            - "7023:7003"
         hostname: spqr_router_1_2
         container_name: spqr_router_1_2
         environment:

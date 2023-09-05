@@ -36,11 +36,11 @@ services:
     ports:
       - "6432:6432"
       - "7432:7432"
-      - "7002:7002"
+      - "7012:7002"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - 'ROUTER_HOST=host: ''regress_router'''
-      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator.yaml
     hostname: regress_router
     container_name: regress_router
     depends_on:
@@ -55,11 +55,11 @@ services:
     ports:
       - "6433:6432"
       - "7433:7432"
-      - "7003:7002"
+      - "7022:7002"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - 'ROUTER_HOST=host: ''regress_router_2'''
-      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator_2.yaml
     hostname: regress_router_2
     container_name: regress_router_2
     depends_on:
@@ -67,6 +67,22 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
+
+  coordinator:
+    build:
+      dockerfile: ./docker/coordinator/Dockerfile
+      context: ../../
+    ports:
+      - "7002:7002"
+      - "7003:7003"
+    environment:
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml
+    hostname: regress_coordinator
+    container_name: regress_coordinator
+    depends_on:
+      - "router"
+      - "router2"
+      - "qdb01"
 
   qdb01:
     image: 'bitnami/etcd:latest'

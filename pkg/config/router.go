@@ -62,6 +62,8 @@ type Router struct {
 	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 
 	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
+
+	WithCoordinator bool `json:"with_coordinator" toml:with_coordinator" yaml:"with_coordinator"`
 }
 
 type QRouter struct {
