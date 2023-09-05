@@ -18,13 +18,15 @@ import (
 type Proxy struct {
 	toHost          string
 	toPort          string
+	logFileName     string
 	interceptedData []byte
 }
 
-func NewProxy(toHost string, toPort string) Proxy {
+func NewProxy(toHost string, toPort string, file string) Proxy {
 	return Proxy{
 		toHost:          toHost,
 		toPort:          toPort,
+		logFileName:     file,
 		interceptedData: []byte{},
 	}
 }
@@ -71,7 +73,7 @@ func (p *Proxy) Run() error {
 	}
 }
 
-func (p *Proxy) ReplayLogs(host string, port string, user string, file string, db string) error {
+func (p *Proxy) ReplayLogs(host string, port string, user string, db string) error {
 	ctx := context.Background()
 
 	startupMessage := &pgproto3.StartupMessage{
@@ -97,7 +99,7 @@ func (p *Proxy) ReplayLogs(host string, port string, user string, file string, d
 		return err
 	}
 
-	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
+	f, err := os.OpenFile(p.logFileName, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -118,10 +120,9 @@ func (p *Proxy) ReplayLogs(host string, port string, user string, file string, d
 		case <-ctx.Done():
 			os.Exit(1)
 		case <-curt.C:
-			spqrlog.Zero.Debug().Msg("timer gone off")
+			spqrlog.Zero.Debug().Any("msg %+v ", msg).Msg("sending")
 		}
 
-		spqrlog.Zero.Debug().Any("msg %+v ", msg).Msg("sending")
 		frontend.Send(msg)
 		if err := frontend.Flush(); err != nil {
 			return fmt.Errorf("failed to send msg to bd %w", err)
@@ -202,7 +203,7 @@ func (p *Proxy) serv(netconn net.Conn) error {
 
 func (p *Proxy) Flush() error {
 	spqrlog.Zero.Debug().Msg("flush")
-	f, err := os.OpenFile("mylog.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := os.OpenFile(p.logFileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
