@@ -34,7 +34,6 @@ const (
 	spqrQDBName                     = "qdb"
 	spqrPort                        = 6432
 	spqrConsolePort                 = 7432
-	coordinatorPort                 = 7002
 	qdbPort                         = 2379
 	shardUser                       = "regress"
 	shardPassword                   = ""
@@ -190,7 +189,7 @@ func (tctx *testContext) cleanup() {
 
 // nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
-	if strings.Contains(addr, strconv.Itoa(coordinatorPort)) || strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
+	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
 		return tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, timeout)
 	}
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
@@ -244,60 +243,12 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	return db, nil
 }
 
-func (tctx *testContext) establishCoordinatorConnection() error {
-	// ping coordinator
-	db, ok := tctx.dbs["coordinator"]
-	var err error
-	if ok {
-		_, err = db.Exec("SHOW ROUTERS")
-		if err == nil {
-			return nil
-		}
-	}
-	delete(tctx.dbs, "coordinator")
-
-	if !ok || err != nil {
-		// check coordinator
-		for _, service := range tctx.composer.Services() {
-			if strings.HasPrefix(service, spqrRouterName) {
-				// coordinator
-				addr, err := tctx.composer.GetAddr(service, coordinatorPort)
-				if err != nil {
-					continue
-				}
-				db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-				if err != nil {
-					tctx.dbs["waiting_coordinator"] = db
-					continue
-				}
-
-				tctx.dbs["coordinator"] = db
-			}
-		}
-	}
-
-	if _, ok := tctx.dbs["coordinator"]; !ok {
-		return fmt.Errorf("failed to connect to coordinator")
-	}
-	return nil
-}
-
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
-	if strings.HasSuffix(host, "admin") || strings.Contains(host, "coordinator") {
-		return db, nil
-	}
 	if !ok {
-		addr, err := tctx.composer.GetAddr(host, coordinatorPort)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-
-		db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-		tctx.dbs[host] = db
+		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+	}
+	if strings.HasSuffix(host, "admin") {
 		return db, nil
 	}
 	err := db.Ping()
@@ -478,10 +429,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		}
 	}
 
-	if err := tctx.establishCoordinatorConnection(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -496,12 +443,6 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	err := tctx.composer.Stop(service)
 	if err != nil {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
-	}
-
-	if strings.HasPrefix(service, spqrRouterName) {
-		if err := tctx.establishCoordinatorConnection(); err != nil {
-			return err
-		}
 	}
 
 	return nil
