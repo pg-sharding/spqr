@@ -135,6 +135,7 @@ func (p *Proxy) ReplayLogs(host string, port string, user string, db string) err
 		tim, msg, err = parseFile(f)
 		if err != nil {
 			if err == io.EOF {
+				frontend.SendClose(&pgproto3.Close{})
 				return nil
 			}
 			return err
@@ -242,9 +243,6 @@ func parseFile(f *os.File) (time.Time, pgproto3.FrontendMessage, error) {
 	if err != nil {
 		return time.Now(), nil, err
 	}
-	if string(tip) == "X" {
-		return time.Now(), nil, io.EOF
-	}
 
 	//size
 	rawSize := make([]byte, 4)
@@ -263,7 +261,13 @@ func parseFile(f *os.File) (time.Time, pgproto3.FrontendMessage, error) {
 		return time.Now(), nil, err
 	}
 
-	fm := &pgproto3.Query{}
+	var fm pgproto3.FrontendMessage
+	switch string(tip) {
+	case "Q":
+		fm = &pgproto3.Query{}
+	case "X":
+		return time.Now(), nil, io.EOF
+	}
 	err = fm.Decode(msg)
 	if err != nil {
 		return time.Now(), nil, err

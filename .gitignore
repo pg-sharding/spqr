@@ -14,3 +14,5 @@ y.output
 memqdb.json
 test/feature/generatedFeatures
 test/feature/logs
+
+!logproxy/
