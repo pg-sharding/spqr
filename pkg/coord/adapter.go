@@ -95,10 +95,13 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	if err != nil {
 		return err
 	}
+
 	for _, keyRange := range krs {
-		if keyRange.ID == split.Krid {
+		if keyRange.ID == split.SourceID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
+				Bound:    split.Bound,
+				SourceId: split.SourceID,
 				KeyRangeInfo: &proto.KeyRangeInfo{
 					Krid:    split.Krid,
 					ShardId: keyRange.ShardID,
@@ -116,7 +119,40 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 }
 
 func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	return fmt.Errorf("unite not implemented")
+	krs, err := a.ListKeyRanges(ctx)
+	if err != nil {
+		return err
+	}
+
+	var left *kr.KeyRange
+	var right *kr.KeyRange
+
+	for _, kr := range krs {
+		if kr.ID == unite.KeyRangeIDLeft {
+			left = kr
+		}
+		if kr.ID == unite.KeyRangeIDRight {
+			right = kr
+		}
+	}
+
+	if left == nil || right == nil {
+		return fmt.Errorf("key range on left or right was not found")
+	}
+
+	var bound []byte
+	if kr.CmpRangesEqual(left.UpperBound, right.LowerBound) {
+		bound = left.UpperBound
+	}
+	if kr.CmpRangesEqual(left.LowerBound, right.UpperBound) {
+		bound = left.LowerBound
+	}
+
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
+		Bound: bound,
+	})
+	return err
 }
 
 func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {

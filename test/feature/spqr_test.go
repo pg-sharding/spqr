@@ -216,9 +216,9 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 	ping := func(db *sqlx.DB) bool {
 		_, err := db.Exec("SHOW routers")
 		if err != nil {
-			log.Printf("failed to ping console at %s: %s", addr, err)
+			log.Printf("failed to ping coordinator at %s: %s", addr, err)
 		}
-		return true
+		return err == nil
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
@@ -431,7 +431,8 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			}
 			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
-				return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+				log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
+				continue
 			}
 			tctx.dbs[service] = db
 		}
@@ -738,6 +739,11 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 		return ctx, nil
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+		if err != nil {
+			log.Println(err)
+			log.Println("sleeping")
+			time.Sleep(time.Hour)
+		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}

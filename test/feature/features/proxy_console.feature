@@ -169,6 +169,12 @@ Feature: Proxy console
         """
         UNITE KEY RANGE krid1 WITH new_krid
         """
+        Then command return code should be "0"
+
+        When I run SQL on host "router2-admin"
+        """
+        SHOW key_ranges
+        """
         Then SQL result should match json_exactly
         """
         [{
@@ -205,9 +211,14 @@ Feature: Proxy console
         """
         SELECT * FROM test
         """
-        Then SQL result should match regexp
+        Then SQL result should match json_exactly
         """
-        .*002(.|\n)*007
+        [{
+            "id":2
+        },
+        {
+            "id":7
+        }]
         """
 
     Scenario: Show key_ranges/sharding_rules is executed in router
