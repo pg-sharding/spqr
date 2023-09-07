@@ -5,7 +5,6 @@ grpc_api_port: '7000'
 init_sql: /spqr/docker/router/init.sql
 router_mode: PROXY
 log_level: debug
-with_coordinator: true
 time_quantiles:
   - 0.8
 frontend_tls:
