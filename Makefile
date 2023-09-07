@@ -114,7 +114,6 @@ feature_test_ci:
 	(cd test/feature; go test -timeout 150m)
 
 feature_test: build_images
-	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
