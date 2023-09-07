@@ -218,7 +218,6 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 		if err != nil {
 			log.Printf("failed to ping console at %s: %s", addr, err)
 		}
-		time.Sleep(5 * time.Second)
 		return true
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
@@ -428,7 +427,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		if strings.HasPrefix(service, spqrCoordinatorName) {
 			addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
 			if err != nil {
-				return fmt.Errorf("failed to get router addr %s: %s", service, err)
+				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
 			}
 			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
@@ -739,11 +738,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 		return ctx, nil
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
-		if err != nil {
-			fmt.Println(err)
-			fmt.Println("sleeping")
-			time.Sleep(time.Hour)
-		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}
@@ -796,9 +790,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 }
 
 func TestSpqr(t *testing.T) {
-	//os.Setenv("GODOG_FEATURE_DIR", "generatedFeatures")
-	//os.Setenv("GODOG_FEATURE", "Coordinator_test__Coordinator_can_restart.feature")
-
 	paths := make([]string, 0)
 	featureDir := "features"
 	if feauterDirEnv, ok := os.LookupEnv("GODOG_FEATURE_DIR"); ok {

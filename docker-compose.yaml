@@ -53,7 +53,6 @@ services:
             context: .
         ports:
             - "8432:6432"
-            - "7012:7002"
             - "7013:7003"
         hostname: spqr_router_1_1
         container_name: spqr_router_1_1
@@ -66,7 +65,6 @@ services:
             context: .
         ports:
             - "8433:6432"
-            - "7022:7002"
             - "7023:7003"
         hostname: spqr_router_1_2
         container_name: spqr_router_1_2

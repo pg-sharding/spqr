@@ -564,7 +564,7 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Str("address", config.CoordinatorConfig().HttpAddr).
-		Msg("etcdqdb: try coordiantor lock")
+		Msg("etcdqdb: try coordinator lock")
 
 	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {

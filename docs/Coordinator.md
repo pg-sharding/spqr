@@ -12,7 +12,7 @@ psql "host=localhost port=7002 dbname=spqr-console"
 
 Then, run `SHOW routers;`. Coordinator will reply with list of knows router in current spqr installation
 
-Coordinator is run with each router, but only one coordinator is running at the time while others wait. 
+It is possible to run coordinator as a separate entity or with router using `with_coordinator` flag
 
 ## Data Balancing
 
