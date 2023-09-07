@@ -63,7 +63,7 @@ type Router struct {
 
 	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
 
-	WithCoordinator bool `json:"with_coordinator" toml:with_coordinator" yaml:"with_coordinator"`
+	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 }
 
 type QRouter struct {

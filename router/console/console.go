@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -76,10 +77,14 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
 	var mgr meta.EntityMgr = l.Coord
 
+	if !config.RouterConfig().WithCoordinator {
+		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli)
+	}
+
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
-		case spqrparser.RoutersStr, spqrparser.ClientsStr, spqrparser.PoolsStr, spqrparser.BackendConnectionsStr:
+		case spqrparser.RoutersStr:
 			coordAddr, err := l.Coord.GetCoordinator(ctx)
 			if err != nil {
 				return err
@@ -105,6 +110,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 		mgr = coord.NewAdapter(conn)
 	}
 
+	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
 	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli)
 }
 

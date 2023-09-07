@@ -291,10 +291,11 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 			case <-ctx.Done():
 				return false
 			case <-time.After(time.Second):
-				if cc.db.TryCoordinatorLock(context.TODO()) == nil {
+				if err := cc.db.TryCoordinatorLock(context.TODO()); err == nil {
 					return registerRouter()
+				} else {
+					spqrlog.Zero.Error().Err(err).Msg("qdb already taken, waiting for connection")
 				}
-				spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
 			}
 		}
 	}

@@ -44,6 +44,21 @@ services:
             shard2:
                 condition: service_healthy
 
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: ../../
+        ports:
+            - "7002:7002"
+            - "7003:7003"
+        environment:
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+        hostname: regress_coordinator
+        container_name: regress_coordinator
+        depends_on:
+            - "router"
+            - "qdb01"
+
     qdb01:
         image: 'bitnami/etcd:latest'
         hostname: regress_qdb_0_1

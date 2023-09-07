@@ -1,2 +1,5 @@
-http_addr: 'spqr_router_1_1:7003'
+addr: '[spqr_coordinator]:7002'
+http_addr: 'spqr_coordinator:7003'
 qdb_addr: '[spqr_qdb_0_1]:2379'
+log_level: INFO
+shard_data: '/spqr/docker/coordinator/shard_data.yaml'
