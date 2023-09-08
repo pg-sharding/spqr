@@ -38,4 +38,8 @@ var reservedWords = map[string]int{
 	"where":      WHERE,
 	"or":         OR,
 	"and":        AND,
+	"start":      START,
+	"trace":      TRACE,
+	"messages":   MESSAGES,
+	"client":     CLIENT,
 }
