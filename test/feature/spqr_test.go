@@ -480,7 +480,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			return false
 		}
 		addr := strings.Split(output, "\n")[1]
-		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		conn, err := grpc.Dial(addr, grpc.WithInsecure()) //nolint:all
 		if err != nil {
 			return false
 		}

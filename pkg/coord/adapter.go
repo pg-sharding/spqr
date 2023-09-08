@@ -216,8 +216,8 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 	}
 
 	c := proto.NewShardingRulesServiceClient(a.conn)
-	c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{Id: ids})
-	return rules, nil
+	_, err = c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{Id: ids})
+	return rules, err
 }
 
 func (a *adapter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
