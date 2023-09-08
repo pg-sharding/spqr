@@ -52,11 +52,11 @@ func createConnString(shardID string) string {
 	if !ok {
 		return ""
 	}
-	if len(sd.Host) == 0 {
+	if len(sd.Hosts) == 0 {
 		return ""
 	}
-	host := strings.Split(sd.Host[0], ":")[0]
-	port := strings.Split(sd.Host[0], ":")[1]
+	host := strings.Split(sd.Hosts[0], ":")[0]
+	port := strings.Split(sd.Hosts[0], ":")[1]
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
 }
 

@@ -298,6 +298,12 @@ func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest
 	return reply, err
 }
 
+func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
+	reply := &protos.UpdateCoordinatorResponse{}
+	err := l.mgr.UpdateCoordinator(ctx, req.Address)
+	return reply, err
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{

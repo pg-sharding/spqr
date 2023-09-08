@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
+	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/pg-sharding/spqr/qdb/ops"
@@ -263,6 +264,11 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 }
 
 func (cc *qdbCoordinator) lockCoordinator(ctx context.Context) bool {
+	router := &topology.Router{
+		ID:      uuid.NewString(),
+		Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+		State:   qdb.OPENED,
+	}
 	if cc.db.TryCoordinatorLock(context.TODO()) != nil {
 		for {
 			select {
@@ -270,11 +276,34 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context) bool {
 				return false
 			case <-time.After(time.Second):
 				if cc.db.TryCoordinatorLock(context.TODO()) == nil {
+					if err := cc.RegisterRouter(ctx, router); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
+					}
+					if err := cc.SyncRouterMetadata(ctx, router); err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
+					}
+					if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
+						return false
+					}
 					return true
 				}
 				spqrlog.Zero.Debug().Msg("qdb already taken, waiting for connection")
 			}
 		}
+	}
+
+	if err := cc.RegisterRouter(ctx, &topology.Router{
+		ID:      "local",
+		Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+		State:   qdb.OPENED,
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
+	}
+	if err := cc.SyncRouterMetadata(ctx, router); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
+	}
+	if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
+		return false
 	}
 
 	return true
@@ -883,10 +912,13 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 }
 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
+	spqrlog.Zero.Debug().Str("address", qRouter.Address).Msg("qdb coordinator: sync router metadata")
+
 	cc, err := DialRouter(qRouter)
 	if err != nil {
 		return err
 	}
+	defer cc.Close()
 
 	// Configure sharding rules.
 	shardingRules, err := qc.db.ListShardingRules(ctx)
@@ -961,6 +993,7 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	if err != nil {
 		return fmt.Errorf("failed to ping router: %s", err)
 	}
+	defer conn.Close()
 	cl := routerproto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 	if err != nil {
@@ -1089,6 +1122,24 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 	}
 
 	return shards, nil
+}
+
+func (qc *qdbCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		c := proto.NewTopologyServiceClient(cc)
+		spqrlog.Zero.Debug().Str("address", address).Msg("updating coordinator address")
+		_, err := c.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+			Address: address,
+		})
+		return err
+	})
+}
+
+func (qc *qdbCoordinator) GetCoordinator(ctx context.Context) (string, error) {
+	addr, err := qc.db.GetCoordinator(ctx)
+
+	spqrlog.Zero.Debug().Str("address", addr).Msg("resp qdb coordinator: get coordinator")
+	return addr, err
 }
 
 func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {

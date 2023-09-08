@@ -190,7 +190,7 @@ func (tctx *testContext) cleanup() {
 // nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
-		return tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, timeout)
+		return tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, timeout)
 	}
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
 }
@@ -200,21 +200,20 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		defer cancel()
 		err := db.PingContext(ctx)
+		if err != nil {
+			log.Printf("failed to ping postgres at %s: %s", addr, err)
+		}
 		return err == nil
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
-func (tctx *testContext) connectRouterConsoleWithCredentials(username, password, addr string, timeout time.Duration) (*sqlx.DB, error) {
+func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
-		return true
-	}
-	return tctx.connectorWithCredentials(username, password, addr, consoleName, timeout, ping)
-}
-
-func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	ping := func(db *sqlx.DB) bool {
-		_, err := db.Exec("SHOW routers")
+		_, err := db.Exec("SHOW key_ranges")
+		if err != nil {
+			log.Printf("failed to ping router console at %s: %s", addr, err)
+		}
 		return err == nil
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
@@ -238,6 +237,8 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 		return ok
 	}, timeout, 2*time.Second)
 	if !ok {
+		log.Printf("sleeping")
+		time.Sleep(time.Hour)
 		return db, fmt.Errorf("failed to ping %s", addr)
 	}
 	return db, nil
@@ -404,7 +405,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
-			db, err = tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			db, err = tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
@@ -444,7 +445,9 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 	if err != nil {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
 	}
-
+	// TODO: remove
+	// need to make sure? another coordinator took control
+	time.Sleep(3 * time.Second)
 	return nil
 }
 
@@ -467,7 +470,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 				}
 				tctx.dbs[service] = db
 
-				addr, err = tctx.composer.GetAddr(service, spqrPort)
+				addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
 				if err != nil {
 					return fmt.Errorf("failed to get router addr %s: %s", service, err)
 				}
@@ -495,6 +498,8 @@ func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocStrin
 
 func (tctx *testContext) stepCommandReturnCodeShouldBe(code int) error {
 	if tctx.commandRetcode != code {
+		log.Printf("sleeping")
+		time.Sleep(time.Hour)
 		return fmt.Errorf("command return code is %d, while expected %d\n%s", tctx.commandRetcode, code, tctx.commandOutput)
 	}
 	return nil

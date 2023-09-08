@@ -75,10 +75,11 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		rcfg, err := config.LoadRouterCfg(rcfgPath)
+		err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
+		rcfg := config.RouterConfig()
 
 		spqrlog.ReloadLogger(rcfg.LogFileName)
 
@@ -169,7 +170,7 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, &rcfg)
+		router, err := router.NewRouter(ctx, rcfg)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}

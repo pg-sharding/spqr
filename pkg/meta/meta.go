@@ -111,6 +111,8 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 }
 
 func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
+	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
+
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)

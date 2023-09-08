@@ -14,6 +14,7 @@ import (
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"google.golang.org/grpc"
 
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -567,7 +568,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		return err
 	}
 
-	op := clientv3.OpPut(coordLockKey, coordLockVal, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().HttpAddr, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
@@ -586,6 +587,29 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
+	return fmt.Errorf("UpdateCoordinator not implemented")
+}
+
+func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get coordinator addr")
+
+	resp, err := q.cli.Get(ctx, coordLockKey)
+	if err != nil {
+		return "", err
+	}
+
+	switch len(resp.Kvs) {
+	case 0:
+		return "", fmt.Errorf("coordinator address was not found")
+	case 1:
+		return string(resp.Kvs[0].Value), nil
+	default:
+		return "", fmt.Errorf("multiple addresses were found")
+	}
 }
 
 // ==============================================================================
@@ -638,7 +662,10 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop router")
 
-	resp, err := q.cli.Delete(ctx, routerNodePath(id))
+	if id == "*" {
+		id = ""
+	}
+	resp, err := q.cli.Delete(ctx, routerNodePath(id), clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}

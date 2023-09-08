@@ -26,25 +26,27 @@ func NewApp(c coordinator.Coordinator) *App {
 	}
 }
 
-func (app *App) Run() error {
+func (app *App) Run(withPsql bool) error {
 	spqrlog.Zero.Info().Msg("running coordinator app")
 
 	app.coordinator.RunCoordinator(context.TODO())
 
 	wg := &sync.WaitGroup{}
 
-	wg.Add(2)
-
+	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
 		if err := app.ServeGrpc(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
-	go func(wg *sync.WaitGroup) {
-		if err := app.ServePsql(wg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-		}
-	}(wg)
+	if withPsql {
+		wg.Add(1)
+		go func(wg *sync.WaitGroup) {
+			if err := app.ServePsql(wg); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}(wg)
+	}
 
 	wg.Wait()
 

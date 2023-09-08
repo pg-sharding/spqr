@@ -29,6 +29,7 @@ type InstanceImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
+	qdb        qdb.XQDB
 
 	stchan     chan struct{}
 	addr       string
@@ -57,12 +58,12 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		skipInitSQL = true
 	}
 
-	qdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
+	memqdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
 	if err != nil {
 		return nil, err
 	}
 
-	lc := local.NewLocalCoordinator(qdb)
+	lc := local.NewLocalCoordinator(memqdb)
 
 	// qrouter init
 	qtype := config.RouterMode(rcfg.RouterMode)
