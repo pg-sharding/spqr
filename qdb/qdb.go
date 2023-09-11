@@ -70,6 +70,9 @@ type QDB interface {
 
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
+
+	UpdateCoordinator(ctx context.Context, address string) error
+	GetCoordinator(ctx context.Context) (string, error)
 }
 
 // Extended QDB

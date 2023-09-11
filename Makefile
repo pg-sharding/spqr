@@ -61,7 +61,7 @@ clean:
 ######################## RUN ########################
 
 run: build_images
-	docker-compose up -d --remove-orphans --build router coordinator shard1 shard2 qdb01
+	docker-compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
 	docker-compose build client
 	docker-compose run --entrypoint /bin/bash client
 

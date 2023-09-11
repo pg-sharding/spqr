@@ -17,11 +17,10 @@ type DatatransferConnections struct {
 }
 
 type ShardConnect struct {
-	Host     string `json:"host" toml:"host" yaml:"host"`
-	Port     string `json:"port" toml:"port" yaml:"port"`
-	DB       string `json:"db" toml:"db" yaml:"db"`
-	User     string `json:"user" toml:"user" yaml:"user"`
-	Password string `json:"password" toml:"password" yaml:"password"`
+	Hosts    []string `json:"hosts" toml:"hosts" yaml:"hosts"`
+	DB       string   `json:"db" toml:"db" yaml:"db"`
+	User     string   `json:"usr" toml:"usr" yaml:"usr"`
+	Password string   `json:"pwd" toml:"pwd" yaml:"pwd"`
 }
 
 func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {

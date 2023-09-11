@@ -119,10 +119,11 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		 	* 3) Mark all active routes as expired
 	*/
 
-	rcfg, err := config.LoadRouterCfg(configPath)
+	err := config.LoadRouterCfg(configPath)
 	if err != nil {
 		return err
 	}
+	rcfg := config.RouterConfig()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -131,7 +132,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		return err
 	}
 
-	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(&rcfg)
+	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
 
 	return nil

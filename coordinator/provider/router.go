@@ -45,6 +45,28 @@ func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterR
 	}, nil
 }
 
+func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveRouterRequest) (*protos.RemoveRouterReply, error) {
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Id).
+		Msg("unregister router in coordinator")
+	err := r.impl.UnregisterRouter(ctx, request.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.RemoveRouterReply{}, nil
+}
+
+func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMetadataRequest) (*protos.SyncMetadataReply, error) {
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Router.Id).
+		Msg("sync router metadata in coordinator")
+	err := r.impl.SyncRouterMetadata(ctx, topology.RouterFromProto(request.Router))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.SyncMetadataReply{}, nil
+}
+
 var _ protos.RouterServiceServer = &RouterService{}
 
 func NewRouterService(impl coordinator.Coordinator) *RouterService {

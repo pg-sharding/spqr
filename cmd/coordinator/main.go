@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 
 		coordinator := provider.NewCoordinator(db)
 		app := app.NewApp(coordinator)
-		return app.Run()
+		return app.Run(true)
 	},
 }
 

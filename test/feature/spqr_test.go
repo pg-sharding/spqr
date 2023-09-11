@@ -20,7 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
+	"google.golang.org/grpc"
 
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/test/feature/testutil"
@@ -35,14 +37,14 @@ const (
 	spqrQDBName                     = "qdb"
 	spqrPort                        = 6432
 	spqrConsolePort                 = 7432
-	coordinatorPort                 = 7002
+	spqrCoordinatorPort             = 7002
 	qdbPort                         = 2379
 	shardUser                       = "regress"
 	shardPassword                   = ""
 	dbName                          = "regress"
 	consoleName                     = "spqr-console"
 	postgresqlConnectTimeout        = 30 * time.Second
-	postgresqlInitialConnectTimeout = 2 * time.Minute
+	postgresqlInitialConnectTimeout = 10 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 )
 
@@ -191,8 +193,8 @@ func (tctx *testContext) cleanup() {
 
 // nolint: unparam
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
-	if strings.Contains(addr, strconv.Itoa(coordinatorPort)) || strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
-		return tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, timeout)
+	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
+		return tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, timeout)
 	}
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
 }
@@ -202,21 +204,31 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 		defer cancel()
 		err := db.PingContext(ctx)
+		if err != nil {
+			log.Printf("failed to ping postgres at %s: %s", addr, err)
+		}
 		return err == nil
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
 }
 
-func (tctx *testContext) connectRouterConsoleWithCredentials(username, password, addr string, timeout time.Duration) (*sqlx.DB, error) {
-	ping := func(db *sqlx.DB) bool {
-		return true
-	}
-	return tctx.connectorWithCredentials(username, password, addr, consoleName, timeout, ping)
-}
-
 func (tctx *testContext) connectCoordinatorWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
 		_, err := db.Exec("SHOW routers")
+		if err != nil {
+			log.Printf("failed to ping coordinator at %s: %s", addr, err)
+		}
+		return err == nil
+	}
+	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
+}
+
+func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
+	ping := func(db *sqlx.DB) bool {
+		_, err := db.Exec("SHOW key_ranges")
+		if err != nil {
+			log.Printf("failed to ping router console at %s: %s", addr, err)
+		}
 		return err == nil
 	}
 	return tctx.connectorWithCredentials(username, password, addr, dbName, timeout, ping)
@@ -237,27 +249,13 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	testutil.Retry(func() bool {
 		return ping(db)
 	}, timeout, 2*time.Second)
-	if err != nil {
-		_ = db.Close()
-		return nil, err
-	}
 	return db, nil
 }
 
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
 	if !ok {
-		addr, err := tctx.composer.GetAddr(host, coordinatorPort)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-
-		db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-		tctx.dbs[host] = db
-		return db, nil
+		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 	}
 	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
 		return db, nil
@@ -382,17 +380,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
 	}
 
-	err = tctx.stepHostIsStopped("coordinator2")
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err := tctx.stepHostIsStarted("coordinator2")
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to start second coordinator")
-		}
-	}()
-
 	// check databases
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrShardName) {
@@ -421,26 +408,12 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			}
 			tctx.dbs[service] = db
 
+			// router console
 			addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
-			db, err = tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-			if err != nil {
-				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
-			}
-			tctx.dbs[service] = db
-		}
-	}
-
-	// check router admin console
-	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrRouterName) {
-			addr, err := tctx.composer.GetAddr(service, spqrPort)
-			if err != nil {
-				return fmt.Errorf("failed to get router addr %s: %s", service, err)
-			}
-			db, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			db, err = tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
@@ -451,18 +424,15 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 
 	// check coordinator
 	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrCoordinatorName+"2") {
-			continue
-		}
 		if strings.HasPrefix(service, spqrCoordinatorName) {
-			addr, err := tctx.composer.GetAddr(service, coordinatorPort)
+			addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
 			if err != nil {
 				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
 			}
-
 			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
-				return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+				log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
+				continue
 			}
 			tctx.dbs[service] = db
 		}
@@ -500,6 +470,27 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		return fmt.Errorf("failed to stop service %s: %s", service, err)
 	}
 
+	// need to make sure another coordinator took control
+	testutil.Retry(func() bool {
+		_, output, err := tctx.composer.RunCommand("qdb01", "etcdctl get coordinator_exists", time.Second)
+		if err != nil {
+			return false
+		}
+		if output == "" {
+			return false
+		}
+		addr := strings.Split(output, "\n")[1]
+		conn, err := grpc.Dial(addr, grpc.WithInsecure()) //nolint:all
+		if err != nil {
+			return false
+		}
+		client := protos.NewRouterServiceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_, err = client.ListRouters(ctx, &protos.ListRoutersRequest{})
+		return err == nil
+	}, time.Minute, time.Second)
+
 	return nil
 }
 
@@ -509,54 +500,73 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		return fmt.Errorf("failed to start service %s: %s", service, err)
 	}
 
-	if service == "coordinator" {
-		for _, s := range tctx.composer.Services() {
-			if strings.HasPrefix(s, service) {
-				addr, err := tctx.composer.GetAddr(service, coordinatorPort)
-				if err != nil {
-					return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
-				}
-
-				conn, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlConnectTimeout)
-				if err != nil {
-					return fmt.Errorf("error while connecting to service %s: %s", service, err)
-				}
-				tctx.dbs[service] = conn
-				return nil
-			}
+	// check databases
+	if strings.HasPrefix(service, spqrShardName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return fmt.Errorf("failed to get shard addr %s: %s", service, err)
 		}
+		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+		return nil
 	}
 
-	if strings.HasPrefix(service, "router") {
-		for _, s := range tctx.composer.Services() {
-			if strings.HasPrefix(s, service) {
-				addr, err := tctx.composer.GetAddr(service, spqrPort)
-				if err != nil {
-					return fmt.Errorf("failed to get router addr %s: %s", service, err)
-				}
-				db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
-				if err != nil {
-					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
-				}
-				tctx.dbs[service] = db
-			}
+	// check router
+	if strings.HasPrefix(service, spqrRouterName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+
+		// router console
+		addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
+		if err != nil {
+			return fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err = tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+		}
+		service = fmt.Sprintf("%s-admin", service)
+		tctx.dbs[service] = db
+
+		return nil
+	}
+
+	// check coordinator
+	if strings.HasPrefix(service, spqrCoordinatorName) {
+		addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
+		if err != nil {
+			return fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+		return nil
+	}
+
+	// check qdb
+	if strings.HasPrefix(service, spqrQDBName) {
+		addr, err := tctx.composer.GetAddr(service, qdbPort)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
 
-		// check router admin console
-		for _, s := range tctx.composer.Services() {
-			if strings.HasPrefix(s, service) {
-				addr, err := tctx.composer.GetAddr(service, spqrPort)
-				if err != nil {
-					return fmt.Errorf("failed to get router addr %s: %s", service, err)
-				}
-				db, err := tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-				if err != nil {
-					return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
-				}
-				service = fmt.Sprintf("%s-admin", service)
-				tctx.dbs[service] = db
-			}
+		db, err := qdb.NewEtcdQDB(addr)
+		if err != nil {
+			return fmt.Errorf("failed to connect to SPQR QDB %s: %s", service, err)
 		}
+		tctx.qdb = db
 		return nil
 	}
 
@@ -729,6 +739,11 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 		return ctx, nil
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
+		if err != nil {
+			log.Println(err)
+			log.Println("sleeping")
+			time.Sleep(time.Hour)
+		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
 		}

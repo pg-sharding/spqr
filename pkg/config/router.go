@@ -27,6 +27,8 @@ const (
 	ProxyMode = RouterMode("PROXY")
 )
 
+var cfgRouter Router
+
 type Router struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"`
 
@@ -60,6 +62,8 @@ type Router struct {
 	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 
 	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
+
+	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 }
 
 type QRouter struct {
@@ -99,11 +103,12 @@ type Shard struct {
 	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
-func LoadRouterCfg(cfgPath string) (Router, error) {
+func LoadRouterCfg(cfgPath string) error {
 	var rcfg Router
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -113,18 +118,21 @@ func LoadRouterCfg(cfgPath string) (Router, error) {
 	}(file)
 
 	if err := initRouterConfig(file, &rcfg); err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 
 	statistics.InitStatistics(rcfg.TimeQuantiles)
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 
 	log.Println("Running config:", string(configBytes))
-	return rcfg, nil
+	cfgRouter = rcfg
+	return nil
 }
 
 func initRouterConfig(file *os.File, cfgRouter *Router) error {
@@ -139,4 +147,8 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 		return json.NewDecoder(file).Decode(&cfgRouter)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+}
+
+func RouterConfig() *Router {
+	return &cfgRouter
 }

@@ -1,8 +1,7 @@
 version: "3.9"
 services:
     shard1:
-        image:
-            spqr-shard-image
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -16,8 +15,7 @@ services:
             timeout: 3s
             retries: 50
     shard2:
-        image:
-            spqr-shard-image
+        image: spqr-shard-image
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -77,4 +75,5 @@ services:
         hostname: regress_tests
         container_name: regress_tests
         depends_on:
-            - "coordinator"
+            - router
+            - qdb01

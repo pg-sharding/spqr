@@ -32,9 +32,9 @@ func NewApp(balancer *balancerPkg.Balancer, cfg config.Balancer) (*App, error) {
 	}
 	shardClusters := map[int]*hasql.Cluster{}
 
-	for id, shard := range *shards {
+	for id := range *shards {
 		shardClusters[id], err = balancerPkg.NewCluster(
-			shard.Hosts,
+			(*shards)[id].Hosts,
 			cfg.InstallationDBName,
 			cfg.InstallationUserName,
 			cfg.InstallationPassword,

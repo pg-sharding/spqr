@@ -383,6 +383,16 @@ func (qr *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topo
 	return ErrNotCoordinator
 }
 
+func (qr *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
+	return qr.qdb.UpdateCoordinator(ctx, addr)
+}
+
+func (qr *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) {
+	addr, err := qr.qdb.GetCoordinator(ctx)
+	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordiantor: get coordinator")
+	return addr, err
+}
+
 func (qr *LocalCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	return nil, ErrNotCoordinator
 }

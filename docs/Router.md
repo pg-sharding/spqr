@@ -46,7 +46,7 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 ### frontend_rules
 
 | **Name**                  | **Description**                                                     |
-| ------------------------- |---------------------------------------------------------------------|
+| ------------------------- | ------------------------------------------------------------------- |
 | `db`                      | the database to connect to                                          |
 | `usr`                     | the username with to connect                                        |
 | `auth_rule`               | authentication method, see [Authentication.md](./Authentication.md) |
@@ -76,7 +76,7 @@ Client's TLS config, see [tls config description](#tls-config-description) secti
 | `usr`    | the username with to connect                                                       |
 | `pwd`    | the username's password                                                            |
 | `hosts`  | list of data shard hosts in `host:port` format                                     |
-| `type`   | can be `DATA` or `WORLD`, see World                                                           |
+| `type`   | can be `DATA` or `WORLD`, see World                                                |
 | `tls`    | server's TLS config, see [TLS config description](#tls-config-description) section |
 
 ### tls config description

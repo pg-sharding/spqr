@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RouterService_ListRouters_FullMethodName = "/spqr.RouterService/ListRouters"
-	RouterService_AddRouter_FullMethodName   = "/spqr.RouterService/AddRouter"
+	RouterService_ListRouters_FullMethodName  = "/spqr.RouterService/ListRouters"
+	RouterService_AddRouter_FullMethodName    = "/spqr.RouterService/AddRouter"
+	RouterService_RemoveRouter_FullMethodName = "/spqr.RouterService/RemoveRouter"
+	RouterService_SyncMetadata_FullMethodName = "/spqr.RouterService/SyncMetadata"
 )
 
 // RouterServiceClient is the client API for RouterService service.
@@ -29,6 +31,8 @@ const (
 type RouterServiceClient interface {
 	ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error)
 	AddRouter(ctx context.Context, in *AddRouterRequest, opts ...grpc.CallOption) (*AddRouterReply, error)
+	RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*RemoveRouterReply, error)
+	SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataReply, error)
 }
 
 type routerServiceClient struct {
@@ -57,12 +61,32 @@ func (c *routerServiceClient) AddRouter(ctx context.Context, in *AddRouterReques
 	return out, nil
 }
 
+func (c *routerServiceClient) RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*RemoveRouterReply, error) {
+	out := new(RemoveRouterReply)
+	err := c.cc.Invoke(ctx, RouterService_RemoveRouter_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *routerServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataReply, error) {
+	out := new(SyncMetadataReply)
+	err := c.cc.Invoke(ctx, RouterService_SyncMetadata_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RouterServiceServer is the server API for RouterService service.
 // All implementations must embed UnimplementedRouterServiceServer
 // for forward compatibility
 type RouterServiceServer interface {
 	ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error)
 	AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error)
+	RemoveRouter(context.Context, *RemoveRouterRequest) (*RemoveRouterReply, error)
+	SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataReply, error)
 	mustEmbedUnimplementedRouterServiceServer()
 }
 
@@ -75,6 +99,12 @@ func (UnimplementedRouterServiceServer) ListRouters(context.Context, *ListRouter
 }
 func (UnimplementedRouterServiceServer) AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRouter not implemented")
+}
+func (UnimplementedRouterServiceServer) RemoveRouter(context.Context, *RemoveRouterRequest) (*RemoveRouterReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveRouter not implemented")
+}
+func (UnimplementedRouterServiceServer) SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SyncMetadata not implemented")
 }
 func (UnimplementedRouterServiceServer) mustEmbedUnimplementedRouterServiceServer() {}
 
@@ -125,6 +155,42 @@ func _RouterService_AddRouter_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RouterService_RemoveRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveRouterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouterServiceServer).RemoveRouter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RouterService_RemoveRouter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouterServiceServer).RemoveRouter(ctx, req.(*RemoveRouterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RouterService_SyncMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RouterServiceServer).SyncMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RouterService_SyncMetadata_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RouterServiceServer).SyncMetadata(ctx, req.(*SyncMetadataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RouterService_ServiceDesc is the grpc.ServiceDesc for RouterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -139,6 +205,14 @@ var RouterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddRouter",
 			Handler:    _RouterService_AddRouter_Handler,
+		},
+		{
+			MethodName: "RemoveRouter",
+			Handler:    _RouterService_RemoveRouter_Handler,
+		},
+		{
+			MethodName: "SyncMetadata",
+			Handler:    _RouterService_SyncMetadata_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

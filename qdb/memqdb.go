@@ -26,6 +26,7 @@ type MemQDB struct {
 	Dataspaces   map[string]*Dataspace               `json:"dataspaces"`
 	Routers      map[string]*Router                  `json:"routers"`
 	Transactions map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator  string                              `json:"coordinator"`
 
 	backupPath string
 	/* caches */
@@ -471,6 +472,20 @@ func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 
 func (q *MemQDB) TryCoordinatorLock(ctx context.Context) error {
 	return nil
+}
+
+func (q *MemQDB) UpdateCoordinator(ctx context.Context, address string) error {
+	spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.Coordinator = address
+	return nil
+}
+
+func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
+	return q.Coordinator, nil
 }
 
 // ==============================================================================

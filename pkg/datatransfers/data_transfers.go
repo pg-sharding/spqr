@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/jackc/pgx/v5"
@@ -51,7 +52,12 @@ func createConnString(shardID string) string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, sd.Host, sd.Port, sd.DB, sd.Password)
+	if len(sd.Hosts) == 0 {
+		return ""
+	}
+	host := strings.Split(sd.Hosts[0], ":")[0]
+	port := strings.Split(sd.Hosts[0], ":")[1]
+	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
 }
 
 func LoadConfig(path string) error {
@@ -83,7 +89,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
-			return err
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
 		}
 	}
 
