@@ -255,17 +255,7 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
 	if !ok {
-		addr, err := tctx.composer.GetAddr(host, coordinatorPort)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-
-		db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
-		}
-		tctx.dbs[host] = db
-		return db, nil
+		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 	}
 	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
 		return db, nil
@@ -390,17 +380,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
 	}
 
-	err = tctx.stepHostIsStopped("coordinator2")
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err := tctx.stepHostIsStarted("coordinator2")
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("failed to start second coordinator")
-		}
-	}()
-
 	// check databases
 	for _, service := range tctx.composer.Services() {
 		if strings.HasPrefix(service, spqrShardName) {
@@ -445,9 +424,6 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 
 	// check coordinator
 	for _, service := range tctx.composer.Services() {
-		if strings.HasPrefix(service, spqrCoordinatorName+"2") {
-			continue
-		}
 		if strings.HasPrefix(service, spqrCoordinatorName) {
 			addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
 			if err != nil {

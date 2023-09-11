@@ -85,18 +85,18 @@ services:
       - "router"
       - "router2"
       - "qdb01"
-  
+
   coordinator2:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
       context: ../../
     ports:
-      - "7004:7002"
-      - "7005:7003"
+      - "7032:7002"
+      - "7033:7003"
     environment:
-      - COORDINATOR_CONFIG=${COORDINATOR_CONFIG}
-    hostname: regress_coordinator
-    container_name: regress_coordinator2
+      - COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator2.yaml
+    hostname: regress_coordinator_2
+    container_name: regress_coordinator_2
     depends_on:
       - "router"
       - "router2"
