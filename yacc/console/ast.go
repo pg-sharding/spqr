@@ -49,6 +49,13 @@ type CreateStmt interface {
 	iCreate()
 }
 
+type TraceStmt struct {
+	ClientID string
+	All      bool
+}
+
+func (*TraceStmt) iStatement() {}
+
 type DropStmt interface {
 	iDrop()
 }

@@ -52,6 +52,8 @@ func randomHex(n int) (string, error) {
 
 	shutdown               *Shutdown
 	listen                 *Listen
+
+	trace                  *TraceStmt
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -108,6 +110,8 @@ func randomHex(n int) (string, error) {
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
 
+%token<str> START TRACE MESSAGES
+
 
 /* any operator */
 %token<str> OP
@@ -124,6 +128,8 @@ func randomHex(n int) (string, error) {
 
 %type <drop> drop_stmt
 %type <create> add_stmt create_stmt
+
+%type <trace> trace_stmt
 
 
 %type <ds> dataspace_define_stmt
@@ -166,6 +172,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| create_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| trace_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -344,6 +354,18 @@ add_stmt:
 	ADD shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
+	}
+
+
+trace_stmt:
+	START TRACE ALL MESSAGES
+	{
+		$$ = &TraceStmt{All: true}
+	} | 
+	START TRACE CLIENT any_id {
+		$$ = &TraceStmt {
+			ClientID: $4,
+		}
 	}
 
 

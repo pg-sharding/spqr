@@ -8,6 +8,41 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+func TestSimpleTrace(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/*  */
+	for _, tt := range []tcase{
+		{
+			query: "START TRACE ALL MESSAGES",
+			exp: &spqrparser.TraceStmt{
+				All: true,
+			},
+			err: nil,
+		},
+
+		{
+			query: "START TRACE CLIENT i129191",
+			exp: &spqrparser.TraceStmt{
+				ClientID: "i129191",
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestSimpleShow(t *testing.T) {
 	assert := assert.New(t)
 
