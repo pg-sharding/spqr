@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -110,10 +111,17 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLogIface) error {
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
-
 	switch stmt := tstmt.(type) {
+	//Case new message type
+	// add flag/channel/ to entityMgr or create new
+	case *spqrparser.TraceStmt:
+		cli.CompleteMsg(7)
+		if stmt.Stop {
+			return writer.StopLogging()
+		}
+		return writer.StartLogging(stmt.All, stmt.ClientID)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.Create:

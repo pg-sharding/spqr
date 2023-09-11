@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -33,6 +34,7 @@ type Local struct {
 	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
+	writer  workloadlog.WorkloadLogIface
 
 	stchan chan struct{}
 }
@@ -43,13 +45,14 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}) (*Local, error) {
+func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLogIface) (*Local, error) { // add writer class
 	return &Local{
 		Coord:   coord,
 		RRouter: rrouter,
 		qlogger: qlogprovider.NewLocalQlog(),
 		cfg:     cfg,
 		stchan:  stchan,
+		writer:  writer,
 	}, nil
 }
 
@@ -78,7 +81,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 	var mgr meta.EntityMgr = l.Coord
 
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli)
+		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
 	}
 
 	switch tstmt := tstmt.(type) {
@@ -111,7 +114,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli)
+	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer) // local.writer
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
@@ -159,6 +162,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 	spqrlog.Zero.Info().Msg("console.ProcClient start")
 
 	for {
+		spqrlog.Zero.Error().Msg("waiting for query")
 		msg, err := cl.Receive()
 
 		if err != nil {
@@ -171,6 +175,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 				_ = cl.ReplyErrMsg(err.Error())
 				// continue to consume input
 			}
+			spqrlog.Zero.Error().Msg("processed query successfully")
 		case *pgproto3.Terminate:
 			return nil
 		default:

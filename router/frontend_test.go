@@ -39,7 +39,7 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).Times(1)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{})
+	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
@@ -142,7 +142,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{})
+	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
@@ -254,7 +254,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{})
+	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }

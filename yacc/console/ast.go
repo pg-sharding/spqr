@@ -52,6 +52,7 @@ type CreateStmt interface {
 type TraceStmt struct {
 	ClientID string
 	All      bool
+	Stop     bool
 }
 
 func (*TraceStmt) iStatement() {}

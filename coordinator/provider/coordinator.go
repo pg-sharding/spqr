@@ -1078,7 +1078,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, ci, cli); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, ci, cli, nil); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {

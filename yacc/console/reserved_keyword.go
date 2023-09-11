@@ -39,6 +39,7 @@ var reservedWords = map[string]int{
 	"or":         OR,
 	"and":        AND,
 	"start":      START,
+	"stop":       STOP,
 	"trace":      TRACE,
 	"messages":   MESSAGES,
 	"client":     CLIENT,

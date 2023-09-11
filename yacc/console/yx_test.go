@@ -34,6 +34,14 @@ func TestSimpleTrace(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "STOP TRACE MESSAGES",
+			exp: &spqrparser.TraceStmt{
+				Stop: true,
+			},
+			err: nil,
+		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
 
