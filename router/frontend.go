@@ -284,7 +284,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLogIface) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
@@ -316,7 +316,14 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 		}
 
 		if writer != nil && writer.IsLogging() {
-			writer.WriteLog(msg, cl.ID())
+			switch writer.GetMode() {
+			case workloadlog.All:
+				writer.WriteLog(msg, cl.ID())
+			case workloadlog.SingleClient:
+				if writer.ClientMatches(cl.ID()) {
+					writer.WriteLog(msg, cl.ID())
+				}
+			}
 		}
 
 		if err := ProcessMessage(qr, cmngr, rst, msg); err != nil {

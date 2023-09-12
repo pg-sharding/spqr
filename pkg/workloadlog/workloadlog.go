@@ -11,18 +11,20 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
-type WorcloadLogMode string
+type WorkloadLogMode string
 
 const (
-	All          = WorcloadLogMode("all")
-	SingleClient = WorcloadLogMode("singleClient")
-	None         = WorcloadLogMode("none")
+	All          = WorkloadLogMode("all")
+	SingleClient = WorkloadLogMode("singleClient")
+	None         = WorkloadLogMode("none")
 )
 
-type WorkloadLogIface interface {
+type WorkloadLog interface {
 	StartLogging(bool, string) error
+	GetMode() WorkloadLogMode
 	IsLogging() bool
-	WriteLog(msg pgproto3.FrontendMessage, client string)
+	ClientMatches(string) bool
+	WriteLog(pgproto3.FrontendMessage, string)
 	StopLogging() error
 }
 
@@ -33,14 +35,14 @@ type TimedMessage struct {
 }
 
 type WorkloadLogger struct {
-	Mode     WorcloadLogMode
+	Mode     WorkloadLogMode
 	ClientId string
 	ch       chan TimedMessage
 	ctx      context.Context
 	cl       context.CancelFunc
 }
 
-func NewLogger() WorkloadLogIface {
+func NewLogger() WorkloadLog {
 	return &WorkloadLogger{
 		Mode: None,
 		ch:   make(chan TimedMessage),
@@ -55,14 +57,20 @@ func (wl *WorkloadLogger) StartLogging(all bool, id string) error {
 		wl.ClientId = id
 	}
 	wl.ctx, wl.cl = context.WithCancel(context.Background()) //TODO many clients
-	spqrlog.Zero.Error().Msg("starting gorutine")
 	go serv(wl.ch, wl.ctx)
-	spqrlog.Zero.Error().Msg("started gorutine")
 	return nil
 }
 
 func (wl *WorkloadLogger) IsLogging() bool {
 	return !(wl.Mode == None)
+}
+
+func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
+	return wl.Mode
+}
+
+func (wl *WorkloadLogger) ClientMatches(client string) bool {
+	return client == wl.ClientId
 }
 
 func (wl *WorkloadLogger) WriteLog(msg pgproto3.FrontendMessage, client string) {
@@ -77,24 +85,22 @@ func (wl *WorkloadLogger) StopLogging() error {
 	if !wl.IsLogging() {
 		return fmt.Errorf("was no active logging session")
 	}
-	spqrlog.Zero.Error().Msg("stopping logs")
 	wl.Mode = None
 	wl.cl()
 	return nil
 }
 
-func serv(ch chan TimedMessage, ctx context.Context) error {
+func serv(ch chan TimedMessage, ctx context.Context) {
 	interData := []byte{}
 
 	for {
 		select {
 		case <-ctx.Done():
-			spqrlog.Zero.Error().Msg("context done")
 			err := flush(interData)
 			if err != nil {
 				spqrlog.Zero.Err(err).Msg("")
 			}
-			return nil
+			return
 		case tm := <-ch:
 			byt, err := encodeMessage(tm)
 			if err != nil {
@@ -113,7 +119,6 @@ func serv(ch chan TimedMessage, ctx context.Context) error {
 }
 
 func flush(interceptedData []byte) error {
-	spqrlog.Zero.Error().Msg("saving file logs")
 	f, err := os.OpenFile("mylogs.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err

@@ -30,7 +30,7 @@ type InstanceImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
-	Writer     workloadlog.WorkloadLogIface
+	Writer     workloadlog.WorkloadLog
 
 	stchan     chan struct{}
 	addr       string

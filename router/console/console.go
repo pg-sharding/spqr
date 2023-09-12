@@ -34,7 +34,7 @@ type Local struct {
 	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
-	writer  workloadlog.WorkloadLogIface
+	writer  workloadlog.WorkloadLog
 
 	stchan chan struct{}
 }
@@ -45,7 +45,7 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLogIface) (*Local, error) { // add writer class
+func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (*Local, error) { // add writer class
 	return &Local{
 		Coord:   coord,
 		RRouter: rrouter,
@@ -175,7 +175,6 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 				_ = cl.ReplyErrMsg(err.Error())
 				// continue to consume input
 			}
-			spqrlog.Zero.Error().Msg("processed query successfully")
 		case *pgproto3.Terminate:
 			return nil
 		default:
