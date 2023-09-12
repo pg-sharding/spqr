@@ -35,17 +35,24 @@ type TimedMessage struct {
 }
 
 type WorkloadLogger struct {
-	Mode     WorkloadLogMode
-	ClientId string
-	ch       chan TimedMessage
-	ctx      context.Context
-	cl       context.CancelFunc
+	Mode         WorkloadLogMode
+	Clients      map[string]int
+	curSession   int
+	messageQueue chan TimedMessage
+	ctx          context.Context
+	cancelCtx    context.CancelFunc
+	batchSize    int
+	logFile      string
 }
 
-func NewLogger() WorkloadLog {
+func NewLogger(batchSize int, logFile string) WorkloadLog {
 	return &WorkloadLogger{
-		Mode: None,
-		ch:   make(chan TimedMessage),
+		Mode:         None,
+		Clients:      map[string]int{},
+		messageQueue: make(chan TimedMessage),
+		curSession:   0,
+		batchSize:    batchSize,
+		logFile:      logFile,
 	}
 }
 
@@ -54,10 +61,11 @@ func (wl *WorkloadLogger) StartLogging(all bool, id string) error {
 		wl.Mode = All
 	} else {
 		wl.Mode = SingleClient
-		wl.ClientId = id
+		wl.Clients[id] = wl.curSession
+		wl.curSession++
 	}
-	wl.ctx, wl.cl = context.WithCancel(context.Background()) //TODO many clients
-	go serv(wl.ch, wl.ctx)
+	wl.ctx, wl.cancelCtx = context.WithCancel(context.Background())
+	go serv(wl.messageQueue, wl.ctx, wl.batchSize, wl.logFile)
 	return nil
 }
 
@@ -70,14 +78,15 @@ func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
 }
 
 func (wl *WorkloadLogger) ClientMatches(client string) bool {
-	return client == wl.ClientId
+	_, ok := wl.Clients[client]
+	return ok
 }
 
 func (wl *WorkloadLogger) WriteLog(msg pgproto3.FrontendMessage, client string) {
-	wl.ch <- TimedMessage{
+	wl.messageQueue <- TimedMessage{
 		msg:       msg,
 		timestamp: time.Now(),
-		session:   0, //TODO convert id to session
+		session:   wl.Clients[client],
 	}
 }
 
@@ -86,17 +95,17 @@ func (wl *WorkloadLogger) StopLogging() error {
 		return fmt.Errorf("was no active logging session")
 	}
 	wl.Mode = None
-	wl.cl()
+	wl.cancelCtx()
 	return nil
 }
 
-func serv(ch chan TimedMessage, ctx context.Context) {
+func serv(ch chan TimedMessage, ctx context.Context, batchSize int, logFile string) {
 	interData := []byte{}
 
 	for {
 		select {
 		case <-ctx.Done():
-			err := flush(interData)
+			err := flush(interData, logFile)
 			if err != nil {
 				spqrlog.Zero.Err(err).Msg("")
 			}
@@ -107,8 +116,8 @@ func serv(ch chan TimedMessage, ctx context.Context) {
 				spqrlog.Zero.Err(err).Msg("")
 			}
 			interData = append(interData, byt...)
-			if len(interData) > 1000000 {
-				err = flush(interData)
+			if len(interData) > batchSize {
+				err = flush(interData, logFile)
 				if err != nil {
 					spqrlog.Zero.Err(err).Msg("")
 				}
@@ -118,8 +127,8 @@ func serv(ch chan TimedMessage, ctx context.Context) {
 	}
 }
 
-func flush(interceptedData []byte) error {
-	f, err := os.OpenFile("mylogs.txt", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+func flush(interceptedData []byte, file string) error {
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}

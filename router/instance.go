@@ -84,7 +84,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	//workload writer
-	writ := workloadlog.NewLogger()
+	writ := workloadlog.NewLogger(1000000, "mylogs.txt") //TODO config?
 
 	// request router
 	rr := rulerouter.NewRouter(frTLS, rcfg)
