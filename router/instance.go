@@ -171,7 +171,6 @@ func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	//send instance impl???
 	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer)
 }
 

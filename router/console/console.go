@@ -114,7 +114,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer) // local.writer
+	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
 }
 
 func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
@@ -162,7 +162,6 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 	spqrlog.Zero.Info().Msg("console.ProcClient start")
 
 	for {
-		spqrlog.Zero.Error().Msg("waiting for query")
 		msg, err := cl.Receive()
 
 		if err != nil {
