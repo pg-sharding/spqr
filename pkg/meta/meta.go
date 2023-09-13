@@ -118,10 +118,16 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	// add flag/channel/ to entityMgr or create new
 	case *spqrparser.TraceStmt:
 		if stmt.Stop {
-			cli.StopTraceMessages(ctx)
+			err := cli.StopTraceMessages(ctx)
+			if err != nil {
+				return err
+			}
 			return writer.StopLogging()
 		}
-		cli.StartTraceMessages(ctx)
+		err := cli.StartTraceMessages(ctx)
+		if err != nil {
+			return err
+		}
 		return writer.StartLogging(stmt.All, stmt.ClientID)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
