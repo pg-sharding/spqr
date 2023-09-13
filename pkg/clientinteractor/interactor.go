@@ -660,6 +660,34 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr st
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("start trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("START TRASCE MESSAGES"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("stop trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("STOP TRASCE MESSAGES"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
 	if err := pi.WriteHeader("drop key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

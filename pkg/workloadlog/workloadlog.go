@@ -24,7 +24,7 @@ type WorkloadLog interface {
 	GetMode() WorkloadLogMode
 	IsLogging() bool
 	ClientMatches(string) bool
-	WriteLog(pgproto3.FrontendMessage, string)
+	RecordWorkload(pgproto3.FrontendMessage, string)
 	StopLogging() error
 }
 
@@ -82,7 +82,7 @@ func (wl *WorkloadLogger) ClientMatches(client string) bool {
 	return ok
 }
 
-func (wl *WorkloadLogger) WriteLog(msg pgproto3.FrontendMessage, client string) {
+func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client string) {
 	wl.messageQueue <- TimedMessage{
 		msg:       msg,
 		timestamp: time.Now(),
