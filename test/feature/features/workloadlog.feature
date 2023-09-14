@@ -8,7 +8,8 @@ Feature: Check WorkloadLog working
         Then command return code should be "0"
         When I run SQL on host "router"
         """
-        SELECT 1
+        SELECT 1;
+        SELECT 2
         """ 
         Then command return code should be "0"
         When I run SQL on host "router-admin"
@@ -18,5 +19,5 @@ Feature: Check WorkloadLog working
         Then command return code should be "0"
         And file "go/mylogs.txt" on host "router" should match regexp
         """
-        SELECT 1
+        SELECT 1(.|\n)*SELECT 2
         """
