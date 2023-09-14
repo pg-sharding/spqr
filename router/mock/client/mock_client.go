@@ -7,6 +7,7 @@ package mock
 import (
 	context "context"
 	tls "crypto/tls"
+	net "net"
 	reflect "reflect"
 
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
@@ -132,6 +133,44 @@ func (mr *MockRouterClientMockRecorder) AssignServerConn(srv interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssignServerConn", reflect.TypeOf((*MockRouterClient)(nil).AssignServerConn), srv)
 }
 
+// AssingBackend mocks base method.
+func (m *MockRouterClient) AssingBackend(b *pgproto3.Backend) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AssingBackend", b)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AssingBackend indicates an expected call of AssingBackend.
+func (mr *MockRouterClientMockRecorder) AssingBackend(b interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssingBackend", reflect.TypeOf((*MockRouterClient)(nil).AssingBackend), b)
+}
+
+// AssingCancelKeys mocks base method.
+func (m *MockRouterClient) AssingCancelKeys(arg0, arg1 uint32) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AssingCancelKeys", arg0, arg1)
+}
+
+// AssingCancelKeys indicates an expected call of AssingCancelKeys.
+func (mr *MockRouterClientMockRecorder) AssingCancelKeys(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssingCancelKeys", reflect.TypeOf((*MockRouterClient)(nil).AssingCancelKeys), arg0, arg1)
+}
+
+// AssingCancelMsg mocks base method.
+func (m *MockRouterClient) AssingCancelMsg(arg0 *pgproto3.CancelRequest) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "AssingCancelMsg", arg0)
+}
+
+// AssingCancelMsg indicates an expected call of AssingCancelMsg.
+func (mr *MockRouterClientMockRecorder) AssingCancelMsg(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AssingCancelMsg", reflect.TypeOf((*MockRouterClient)(nil).AssingCancelMsg), arg0)
+}
+
 // Auth mocks base method.
 func (m *MockRouterClient) Auth(rt *route.Route) error {
 	m.ctrl.T.Helper()
@@ -160,6 +199,20 @@ func (mr *MockRouterClientMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockRouterClient)(nil).Cancel))
 }
 
+// CancelKey mocks base method.
+func (m *MockRouterClient) CancelKey() uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelKey")
+	ret0, _ := ret[0].(uint32)
+	return ret0
+}
+
+// CancelKey indicates an expected call of CancelKey.
+func (mr *MockRouterClientMockRecorder) CancelKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelKey", reflect.TypeOf((*MockRouterClient)(nil).CancelKey))
+}
+
 // CancelMsg mocks base method.
 func (m *MockRouterClient) CancelMsg() *pgproto3.CancelRequest {
 	m.ctrl.T.Helper()
@@ -172,6 +225,34 @@ func (m *MockRouterClient) CancelMsg() *pgproto3.CancelRequest {
 func (mr *MockRouterClientMockRecorder) CancelMsg() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelMsg", reflect.TypeOf((*MockRouterClient)(nil).CancelMsg))
+}
+
+// CancelPid mocks base method.
+func (m *MockRouterClient) CancelPid() uint32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelPid")
+	ret0, _ := ret[0].(uint32)
+	return ret0
+}
+
+// CancelPid indicates an expected call of CancelPid.
+func (mr *MockRouterClientMockRecorder) CancelPid() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPid", reflect.TypeOf((*MockRouterClient)(nil).CancelPid))
+}
+
+// CancelRequest mocks base method.
+func (m *MockRouterClient) CancelRequest() *pgproto3.CancelRequest {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CancelRequest")
+	ret0, _ := ret[0].(*pgproto3.CancelRequest)
+	return ret0
+}
+
+// CancelRequest indicates an expected call of CancelRequest.
+func (mr *MockRouterClientMockRecorder) CancelRequest() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelRequest", reflect.TypeOf((*MockRouterClient)(nil).CancelRequest))
 }
 
 // Close mocks base method.
@@ -242,6 +323,20 @@ func (mr *MockRouterClientMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockRouterClient)(nil).DefaultReply))
 }
 
+// EncyptNetConn mocks base method.
+func (m *MockRouterClient) EncyptNetConn(tlsconfig *tls.Config) net.Conn {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EncyptNetConn", tlsconfig)
+	ret0, _ := ret[0].(net.Conn)
+	return ret0
+}
+
+// EncyptNetConn indicates an expected call of EncyptNetConn.
+func (mr *MockRouterClientMockRecorder) EncyptNetConn(tlsconfig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EncyptNetConn", reflect.TypeOf((*MockRouterClient)(nil).EncyptNetConn), tlsconfig)
+}
+
 // FireMsg mocks base method.
 func (m *MockRouterClient) FireMsg(query pgproto3.FrontendMessage) error {
 	m.ctrl.T.Helper()
@@ -254,34 +349,6 @@ func (m *MockRouterClient) FireMsg(query pgproto3.FrontendMessage) error {
 func (mr *MockRouterClientMockRecorder) FireMsg(query interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FireMsg", reflect.TypeOf((*MockRouterClient)(nil).FireMsg), query)
-}
-
-// GetCancelKey mocks base method.
-func (m *MockRouterClient) GetCancelKey() uint32 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCancelKey")
-	ret0, _ := ret[0].(uint32)
-	return ret0
-}
-
-// GetCancelKey indicates an expected call of GetCancelKey.
-func (mr *MockRouterClientMockRecorder) GetCancelKey() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCancelKey", reflect.TypeOf((*MockRouterClient)(nil).GetCancelKey))
-}
-
-// GetCancelPid mocks base method.
-func (m *MockRouterClient) GetCancelPid() uint32 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCancelPid")
-	ret0, _ := ret[0].(uint32)
-	return ret0
-}
-
-// GetCancelPid indicates an expected call of GetCancelPid.
-func (mr *MockRouterClientMockRecorder) GetCancelPid() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCancelPid", reflect.TypeOf((*MockRouterClient)(nil).GetCancelPid))
 }
 
 // GetTsa mocks base method.
@@ -310,20 +377,6 @@ func (m *MockRouterClient) ID() string {
 func (mr *MockRouterClientMockRecorder) ID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockRouterClient)(nil).ID))
-}
-
-// Init mocks base method.
-func (m *MockRouterClient) Init(cfg *tls.Config) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Init", cfg)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Init indicates an expected call of Init.
-func (mr *MockRouterClientMockRecorder) Init(cfg interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockRouterClient)(nil).Init), cfg)
 }
 
 // Params mocks base method.
@@ -406,6 +459,21 @@ func (m *MockRouterClient) RUnlock() {
 func (mr *MockRouterClientMockRecorder) RUnlock() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RUnlock", reflect.TypeOf((*MockRouterClient)(nil).RUnlock))
+}
+
+// Read mocks base method.
+func (m *MockRouterClient) Read(p []byte) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Read", p)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Read indicates an expected call of Read.
+func (mr *MockRouterClientMockRecorder) Read(p interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Read", reflect.TypeOf((*MockRouterClient)(nil).Read), p)
 }
 
 // Receive mocks base method.
@@ -782,6 +850,20 @@ func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1)
 }
 
+// SetStartup mocks base method.
+func (m *MockRouterClient) SetStartup(smsg *pgproto3.StartupMessage) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetStartup", smsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetStartup indicates an expected call of SetStartup.
+func (mr *MockRouterClientMockRecorder) SetStartup(smsg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetStartup", reflect.TypeOf((*MockRouterClient)(nil).SetStartup), smsg)
+}
+
 // SetTsa mocks base method.
 func (m *MockRouterClient) SetTsa(arg0 string) {
 	m.ctrl.T.Helper()
@@ -834,20 +916,6 @@ func (mr *MockRouterClientMockRecorder) StartTx() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartTx", reflect.TypeOf((*MockRouterClient)(nil).StartTx))
 }
 
-// StartupMessage mocks base method.
-func (m *MockRouterClient) StartupMessage() *pgproto3.StartupMessage {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartupMessage")
-	ret0, _ := ret[0].(*pgproto3.StartupMessage)
-	return ret0
-}
-
-// StartupMessage indicates an expected call of StartupMessage.
-func (mr *MockRouterClientMockRecorder) StartupMessage() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartupMessage", reflect.TypeOf((*MockRouterClient)(nil).StartupMessage))
-}
-
 // StorePreparedStatement mocks base method.
 func (m *MockRouterClient) StorePreparedStatement(name, query string) {
 	m.ctrl.T.Helper()
@@ -886,4 +954,19 @@ func (m *MockRouterClient) Usr() string {
 func (mr *MockRouterClientMockRecorder) Usr() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Usr", reflect.TypeOf((*MockRouterClient)(nil).Usr))
+}
+
+// Write mocks base method.
+func (m *MockRouterClient) Write(p []byte) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Write", p)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Write indicates an expected call of Write.
+func (mr *MockRouterClientMockRecorder) Write(p interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockRouterClient)(nil).Write), p)
 }

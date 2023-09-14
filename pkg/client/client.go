@@ -2,29 +2,14 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 
-	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/router/session"
 )
 
-type Pmgr interface {
-	SetParam(string, string)
-	ResetParam(string)
-	ResetAll()
-	ConstructClientParams() *pgproto3.Query
-	Params() map[string]string
-
-	StartTx()
-	CommitActiveSet()
-	Savepoint(string)
-	Rollback()
-	RollbackToSP(string)
-}
-
 type Client interface {
-	Pmgr
+	session.RouterSessionClient
 
 	ID() string
 
@@ -38,21 +23,12 @@ type Client interface {
 	ReplyWarningf(fmt string, args ...interface{}) error
 	DefaultReply() error
 
-	Init(cfg *tls.Config) error
-
 	/* password clear text */
 	PasswordCT() (string, error)
 	PasswordMD5(salt [4]byte) (string, error)
 
-	StartupMessage() *pgproto3.StartupMessage
-
 	Usr() string
 	DB() string
-
-	Send(msg pgproto3.BackendMessage) error
-	SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error
-	Receive() (pgproto3.FrontendMessage, error)
-	ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error)
 
 	Shutdown() error
 	Reset() error

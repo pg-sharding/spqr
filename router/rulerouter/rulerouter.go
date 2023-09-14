@@ -18,6 +18,7 @@ import (
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/rule"
+	"github.com/pg-sharding/spqr/router/session"
 	"github.com/pkg/errors"
 )
 
@@ -151,7 +152,9 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
-	if err := cl.Init(r.tlsconfig); err != nil {
+	sh := &session.ProxySessionMgr{}
+
+	if err := sh.SessionInit(cl, r.tlsconfig); err != nil {
 		return cl, err
 	}
 
@@ -280,13 +283,13 @@ func (r *RuleRouterImpl) Config() *config.Router {
 func (r *RuleRouterImpl) AddClient(cl rclient.RouterClient) {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
-	r.clmp[cl.GetCancelPid()] = cl
+	r.clmp[cl.CancelPid()] = cl
 }
 
 func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
-	delete(r.clmp, cl.GetCancelPid())
+	delete(r.clmp, cl.CancelPid())
 }
 
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
@@ -294,7 +297,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	defer r.clmu.Unlock()
 
 	if cl, ok := r.clmp[csm.ProcessID]; ok {
-		if cl.GetCancelKey() != csm.SecretKey {
+		if cl.CancelKey() != csm.SecretKey {
 			return fmt.Errorf("cancel secret does not match")
 		}
 

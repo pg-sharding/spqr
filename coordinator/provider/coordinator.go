@@ -34,6 +34,7 @@ import (
 	router "github.com/pg-sharding/spqr/router"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/session"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -980,7 +981,9 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn)
 
-	if err := cl.Init(nil); err != nil {
+	sh := &session.ProxySessionMgr{}
+
+	if err := sh.SessionInit(cl, nil); err != nil {
 		return nil, err
 	}
 

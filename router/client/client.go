@@ -1,12 +1,8 @@
 package client
 
 import (
-	"bufio"
 	"context"
-	"crypto/tls"
-	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -20,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/session"
 )
 
 var NotRouted = fmt.Errorf("client not routed")
@@ -32,6 +29,8 @@ type PreparedStatementMapper interface {
 type RouterClient interface {
 	client.Client
 	PreparedStatementMapper
+
+	session.RouterSessionClient
 
 	RLock()
 	RUnlock()
@@ -63,9 +62,6 @@ type RouterClient interface {
 
 	ReplyParseComplete() error
 	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
-
-	GetCancelPid() uint32
-	GetCancelKey() uint32
 }
 
 type PsqlClient struct {
@@ -126,14 +122,6 @@ func (cl *PsqlClient) RLock() {
 
 func (cl *PsqlClient) RUnlock() {
 	cl.mu.RUnlock()
-}
-
-func (cl *PsqlClient) GetCancelPid() uint32 {
-	return cl.cancel_pid
-}
-
-func (cl *PsqlClient) GetCancelKey() uint32 {
-	return cl.cancel_key
 }
 
 func (cl *PsqlClient) SetAuthType(t uint32) error {
@@ -487,132 +475,6 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 	cl.rule = rule
 
 	return nil
-}
-
-// startup + ssl/cancel
-func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
-	spqrlog.Zero.Info().
-		Bool("ssl", tlsconfig != nil).
-		Msg("init client connection")
-
-	for {
-		var backend *pgproto3.Backend
-
-		var sm *pgproto3.StartupMessage
-
-		headerRaw := make([]byte, 4)
-
-		_, err := cl.conn.Read(headerRaw)
-		if err != nil {
-			return err
-		}
-
-		msgSize := int(binary.BigEndian.Uint32(headerRaw) - 4)
-		msg := make([]byte, msgSize)
-
-		_, err = cl.conn.Read(msg)
-		if err != nil {
-			return err
-		}
-
-		protoVer := binary.BigEndian.Uint32(msg)
-
-		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
-			Uint32("proto-version", protoVer).
-			Msg("received protocol version")
-
-		switch protoVer {
-		case conn.GSSREQ:
-			spqrlog.Zero.Debug().Msg("negotiate gss enc request")
-			_, err := cl.conn.Write([]byte{'N'})
-			if err != nil {
-				return err
-			}
-			// proceed next iter, for protocol version number or GSSAPI interaction
-			continue
-
-		case conn.SSLREQ:
-			if tlsconfig == nil {
-				_, err := cl.conn.Write([]byte{'N'})
-				if err != nil {
-					return err
-				}
-				// proceed next iter, for protocol version number or GSSAPI interaction
-				continue
-			}
-
-			_, err := cl.conn.Write([]byte{'S'})
-			if err != nil {
-				return err
-			}
-
-			cl.conn = tls.Server(cl.conn, tlsconfig)
-
-			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
-
-			frsm, err := backend.ReceiveStartupMessage()
-
-			switch msg := frsm.(type) {
-			case *pgproto3.StartupMessage:
-				sm = msg
-			default:
-				return fmt.Errorf("received unexpected message type %T", frsm)
-			}
-
-			if err != nil {
-				return err
-			}
-		//
-		case pgproto3.ProtocolVersionNumber:
-			// reuse
-			sm = &pgproto3.StartupMessage{}
-			err = sm.Decode(msg)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
-			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
-		case conn.CANCELREQ:
-			cl.csm = &pgproto3.CancelRequest{}
-			if err = cl.csm.Decode(msg); err != nil {
-				return err
-			}
-
-			return nil
-		default:
-			return fmt.Errorf("protocol number %d not supported", protoVer)
-		}
-
-		/* setup client params */
-
-		for k, v := range sm.Parameters {
-			cl.SetParam(k, v)
-		}
-
-		cl.startupMsg = sm
-		cl.be = backend
-
-		cl.cancel_key = rand.Uint32()
-		cl.cancel_pid = rand.Uint32()
-
-		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
-			Uint32("cancel_key", cl.cancel_key).
-			Uint32("cancel_pid", cl.cancel_pid)
-
-		if tlsconfig != nil && protoVer != conn.SSLREQ {
-			if err := cl.Send(
-				&pgproto3.ErrorResponse{
-					Severity: "ERROR",
-					Message:  "SSL IS REQUIRED",
-				}); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
 }
 
 func (cl *PsqlClient) Auth(rt *route.Route) error {

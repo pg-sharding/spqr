@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/session"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
@@ -41,8 +42,9 @@ func TestCancel(t *testing.T) {
 		}).Times(1)
 
 	client := client.NewPsqlClient(rconn)
+	sh := &session.ProxySessionMgr{}
 
-	err := client.Init(nil)
+	err := sh.SessionInit(client, nil)
 	assert.Equal(uint32(7), client.CancelMsg().ProcessID)
 	assert.Equal(uint32(12), client.CancelMsg().SecretKey)
 	assert.NoError(err)
@@ -86,6 +88,8 @@ func TestNoGSSAPI(t *testing.T) {
 
 	client := client.NewPsqlClient(rconn)
 
-	err := client.Init(nil)
+	sh := &session.ProxySessionMgr{}
+
+	err := sh.SessionInit(client, nil)
 	assert.Equal(exprErr, err)
 }

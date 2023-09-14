@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/session"
 )
 
 type WorldMock struct {
@@ -69,7 +70,9 @@ func (w *WorldMock) Run() error {
 func (w *WorldMock) serv(netconn net.Conn) error {
 	cl := client.NewPsqlClient(netconn)
 
-	err := cl.Init(nil)
+	sh := &session.ProxySessionMgr{}
+
+	err := sh.SessionInit(cl, nil)
 
 	if err != nil {
 		return err
@@ -94,7 +97,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 	spqrlog.Zero.Info().Msg("client auth OK")
-	
+
 	for {
 		msg, err := cl.Receive()
 		if err != nil {
