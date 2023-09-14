@@ -124,11 +124,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			}
 			return writer.StopLogging()
 		}
-		err := cli.StartTraceMessages(ctx)
-		if err != nil {
-			return err
-		}
-		return writer.StartLogging(stmt.All, stmt.ClientID)
+		writer.StartLogging(stmt.All, stmt.ClientID)
+		return cli.StartTraceMessages(ctx)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.Create:

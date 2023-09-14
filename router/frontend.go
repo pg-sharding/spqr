@@ -319,7 +319,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			switch writer.GetMode() {
 			case workloadlog.All:
 				writer.RecordWorkload(msg, cl.ID())
-			case workloadlog.SingleClient:
+			case workloadlog.Client:
 				if writer.ClientMatches(cl.ID()) {
 					writer.RecordWorkload(msg, cl.ID())
 				}

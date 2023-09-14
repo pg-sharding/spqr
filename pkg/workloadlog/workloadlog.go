@@ -14,13 +14,13 @@ import (
 type WorkloadLogMode string
 
 const (
-	All          = WorkloadLogMode("all")
-	SingleClient = WorkloadLogMode("singleClient")
-	None         = WorkloadLogMode("none")
+	All    = WorkloadLogMode("all")
+	Client = WorkloadLogMode("singleClient")
+	None   = WorkloadLogMode("none")
 )
 
 type WorkloadLog interface {
-	StartLogging(bool, string) error
+	StartLogging(bool, string)
 	GetMode() WorkloadLogMode
 	IsLogging() bool
 	ClientMatches(string) bool
@@ -35,8 +35,8 @@ type TimedMessage struct {
 }
 
 type WorkloadLogger struct {
-	Mode         WorkloadLogMode
-	Clients      map[string]int
+	mode         WorkloadLogMode
+	clients      map[string]int
 	curSession   int
 	messageQueue chan TimedMessage
 	ctx          context.Context
@@ -47,8 +47,8 @@ type WorkloadLogger struct {
 
 func NewLogger(batchSize int, logFile string) WorkloadLog {
 	return &WorkloadLogger{
-		Mode:         None,
-		Clients:      map[string]int{},
+		mode:         None,
+		clients:      map[string]int{},
 		messageQueue: make(chan TimedMessage),
 		curSession:   0,
 		batchSize:    batchSize,
@@ -56,29 +56,28 @@ func NewLogger(batchSize int, logFile string) WorkloadLog {
 	}
 }
 
-func (wl *WorkloadLogger) StartLogging(all bool, id string) error {
+func (wl *WorkloadLogger) StartLogging(all bool, id string) {
 	if all {
-		wl.Mode = All
+		wl.mode = All
 	} else {
-		wl.Mode = SingleClient
-		wl.Clients[id] = wl.curSession
+		wl.mode = Client
+		wl.clients[id] = wl.curSession
 		wl.curSession++
 	}
 	wl.ctx, wl.cancelCtx = context.WithCancel(context.Background())
-	go serv(wl.messageQueue, wl.ctx, wl.batchSize, wl.logFile)
-	return nil
+	go wl.serv()
 }
 
 func (wl *WorkloadLogger) IsLogging() bool {
-	return !(wl.Mode == None)
+	return !(wl.mode == None)
 }
 
 func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
-	return wl.Mode
+	return wl.mode
 }
 
 func (wl *WorkloadLogger) ClientMatches(client string) bool {
-	_, ok := wl.Clients[client]
+	_, ok := wl.clients[client]
 	return ok
 }
 
@@ -86,7 +85,7 @@ func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client st
 	wl.messageQueue <- TimedMessage{
 		msg:       msg,
 		timestamp: time.Now(),
-		session:   wl.Clients[client],
+		session:   wl.clients[client],
 	}
 }
 
@@ -94,30 +93,31 @@ func (wl *WorkloadLogger) StopLogging() error {
 	if !wl.IsLogging() {
 		return fmt.Errorf("was no active logging session")
 	}
-	wl.Mode = None
+	wl.mode = None
 	wl.cancelCtx()
 	return nil
 }
 
-func serv(ch chan TimedMessage, ctx context.Context, batchSize int, logFile string) {
+func (wl *WorkloadLogger) serv() {
 	interData := []byte{}
 
 	for {
 		select {
-		case <-ctx.Done():
-			err := flush(interData, logFile)
+		case <-wl.ctx.Done():
+			err := flush(interData, wl.logFile)
 			if err != nil {
 				spqrlog.Zero.Err(err).Msg("")
 			}
+			wl.clients = map[string]int{}
 			return
-		case tm := <-ch:
+		case tm := <-wl.messageQueue:
 			byt, err := encodeMessage(tm)
 			if err != nil {
 				spqrlog.Zero.Err(err).Msg("")
 			}
 			interData = append(interData, byt...)
-			if len(interData) > batchSize {
-				err = flush(interData, logFile)
+			if len(interData) > wl.batchSize {
+				err = flush(interData, wl.logFile)
 				if err != nil {
 					spqrlog.Zero.Err(err).Msg("")
 				}
