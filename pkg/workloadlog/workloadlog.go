@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -43,6 +44,7 @@ type WorkloadLogger struct {
 	cancelCtx    context.CancelFunc
 	batchSize    int
 	logFile      string
+	mutex        sync.RWMutex
 }
 
 func NewLogger(batchSize int, logFile string) WorkloadLog {
@@ -53,10 +55,16 @@ func NewLogger(batchSize int, logFile string) WorkloadLog {
 		curSession:   0,
 		batchSize:    batchSize,
 		logFile:      logFile,
+		mutex:        sync.RWMutex{},
 	}
 }
 
 func (wl *WorkloadLogger) StartLogging(all bool, id string) {
+	wl.mutex.Lock()
+	defer wl.mutex.Unlock()
+	if wl.mode == None {
+		wl.ctx, wl.cancelCtx = context.WithCancel(context.Background())
+	}
 	if all {
 		wl.mode = All
 	} else {
@@ -64,7 +72,6 @@ func (wl *WorkloadLogger) StartLogging(all bool, id string) {
 		wl.clients[id] = wl.curSession
 		wl.curSession++
 	}
-	wl.ctx, wl.cancelCtx = context.WithCancel(context.Background())
 	go wl.serv()
 }
 
@@ -77,11 +84,15 @@ func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
 }
 
 func (wl *WorkloadLogger) ClientMatches(client string) bool {
+	wl.mutex.Lock()
+	defer wl.mutex.Unlock()
 	_, ok := wl.clients[client]
 	return ok
 }
 
 func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client string) {
+	wl.mutex.Lock()
+	defer wl.mutex.Unlock()
 	wl.messageQueue <- TimedMessage{
 		msg:       msg,
 		timestamp: time.Now(),
@@ -108,6 +119,8 @@ func (wl *WorkloadLogger) serv() {
 			if err != nil {
 				spqrlog.Zero.Err(err).Msg("")
 			}
+			wl.mutex.Lock()
+			defer wl.mutex.Unlock()
 			wl.clients = map[string]int{}
 			return
 		case tm := <-wl.messageQueue:

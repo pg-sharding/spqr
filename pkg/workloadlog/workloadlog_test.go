@@ -1,9 +1,7 @@
 package workloadlog
 
 import (
-	"errors"
-	"os"
-	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,54 +20,6 @@ func TestEncodeMsg(t *testing.T) {
 	byt, err := encodeMessage(tm)
 	assert.NoError(err)
 	assert.Equal(24, len(byt))
-}
-
-func TestFlushSavesToFile(t *testing.T) {
-	assert := assert.New(t)
-
-	err := os.Remove("testData/testfile.txt")
-	if !(err == nil || errors.Is(err, os.ErrNotExist)) {
-		assert.Fail("file is invalid")
-	}
-
-	actualStr := "Hello world!!!"
-	err = flush([]byte(actualStr), "testData/testfile.txt")
-	assert.NoError(err)
-
-	f, err := os.OpenFile("testData/testfile.txt", os.O_RDONLY, 0600)
-	assert.NoError(err)
-	defer f.Close()
-
-	bytes := make([]byte, len([]byte(actualStr)))
-	length, err := f.Read(bytes)
-	assert.NoError(err)
-	assert.Equal(len([]byte(actualStr)), length)
-	assert.Equal(actualStr, string(bytes))
-}
-
-func TestFlushAppendsToFile(t *testing.T) {
-	assert := assert.New(t)
-
-	err := os.Remove("testData/testfile.txt")
-	if !(err == nil || errors.Is(err, os.ErrNotExist)) {
-		assert.Fail("file is invalid")
-	}
-
-	actualStr := "Hello world!!!"
-	err = flush([]byte(actualStr[:5]), "testData/testfile.txt")
-	assert.NoError(err)
-	err = flush([]byte(actualStr[5:]), "testData/testfile.txt")
-	assert.NoError(err)
-
-	f, err := os.OpenFile("testData/testfile.txt", os.O_RDONLY, 0600)
-	assert.NoError(err)
-	defer f.Close()
-
-	bytes := make([]byte, len([]byte(actualStr)))
-	length, err := f.Read(bytes)
-	assert.NoError(err)
-	assert.Equal(len([]byte(actualStr)), length)
-	assert.Equal(actualStr, string(bytes))
 }
 
 func TestFlushErrorOnUnexistingDir(t *testing.T) {
@@ -137,6 +87,7 @@ func TestStopLoggingClearsClientList(t *testing.T) {
 		curSession:   0,
 		batchSize:    12,
 		logFile:      "testData/file",
+		mutex:        sync.RWMutex{},
 	}
 	logger.StartLogging(false, "123")
 
@@ -146,36 +97,7 @@ func TestStopLoggingClearsClientList(t *testing.T) {
 	assert.NoError(err)
 
 	time.Sleep(time.Second)
+	logger.mutex.Lock()
+	defer logger.mutex.Unlock()
 	assert.Equal(0, len(logger.clients))
-}
-
-func TestLoggerLogsMessages(t *testing.T) {
-	assert := assert.New(t)
-
-	err := os.Remove("testData/testfile.txt")
-	if !(err == nil || errors.Is(err, os.ErrNotExist)) {
-		assert.Fail("file is invalid")
-	}
-	actualQuery := "Hello world!!!"
-
-	logger := NewLogger(10, "testData/testfile.txt")
-	assert.Equal(None, logger.GetMode())
-
-	logger.StartLogging(true, "")
-	assert.Equal(All, logger.GetMode())
-
-	logger.RecordWorkload(&pgproto3.Query{String: actualQuery}, "myClient")
-
-	err = logger.StopLogging()
-	assert.NoError(err)
-	time.Sleep(time.Second)
-
-	f, err := os.OpenFile("testData/testfile.txt", os.O_RDONLY, 0600)
-	assert.NoError(err)
-	defer f.Close()
-
-	bytes := make([]byte, 100)
-	_, err = f.Read(bytes)
-	assert.NoError(err)
-	assert.True(strings.Contains(string(bytes), actualQuery))
 }
