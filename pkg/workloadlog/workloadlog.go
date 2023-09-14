@@ -16,7 +16,7 @@ type WorkloadLogMode string
 
 const (
 	All    = WorkloadLogMode("all")
-	Client = WorkloadLogMode("singleClient")
+	Client = WorkloadLogMode("client")
 	None   = WorkloadLogMode("none")
 )
 

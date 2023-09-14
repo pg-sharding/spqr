@@ -114,8 +114,6 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 	switch stmt := tstmt.(type) {
-	//Case new message type
-	// add flag/channel/ to entityMgr or create new
 	case *spqrparser.TraceStmt:
 		if stmt.Stop {
 			err := cli.StopTraceMessages(ctx)
