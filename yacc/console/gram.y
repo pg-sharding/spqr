@@ -54,7 +54,7 @@ func randomHex(n int) (string, error) {
 	listen                 *Listen
 
 	trace                  *TraceStmt
-	stoptrace                  *StopTraceStmt
+	stoptrace              *StopTraceStmt
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
