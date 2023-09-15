@@ -57,6 +57,11 @@ type TraceStmt struct {
 
 func (*TraceStmt) iStatement() {}
 
+type StopTraceStmt struct {
+}
+
+func (*StopTraceStmt) iStatement() {}
+
 type DropStmt interface {
 	iDrop()
 }

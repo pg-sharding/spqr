@@ -54,6 +54,7 @@ func randomHex(n int) (string, error) {
 	listen                 *Listen
 
 	trace                  *TraceStmt
+	stoptrace                  *StopTraceStmt
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -129,7 +130,7 @@ func randomHex(n int) (string, error) {
 %type <create> add_stmt create_stmt
 
 %type <trace> trace_stmt
-
+%type <stoptrace> stoptrace_stmt
 
 %type <ds> dataspace_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
@@ -175,6 +176,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| trace_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| stoptrace_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -365,10 +370,12 @@ trace_stmt:
 		$$ = &TraceStmt {
 			ClientID: $4,
 		}
-	} |
+	}
+
+stoptrace_stmt:
 	STOP TRACE MESSAGES
 	{
-		$$ = &TraceStmt{Stop: true}
+		$$ = &StopTraceStmt{}
 	}
 
 

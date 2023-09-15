@@ -117,7 +117,7 @@ func (wl *WorkloadLogger) serv() {
 		case <-wl.ctx.Done():
 			err := flush(interData, wl.logFile)
 			if err != nil {
-				spqrlog.Zero.Err(err).Msg("")
+				spqrlog.Zero.Err(err).Msg("failed to save data to file")
 			}
 			wl.mutex.Lock()
 			defer wl.mutex.Unlock()
@@ -126,13 +126,13 @@ func (wl *WorkloadLogger) serv() {
 		case tm := <-wl.messageQueue:
 			byt, err := encodeMessage(tm)
 			if err != nil {
-				spqrlog.Zero.Err(err).Msg("")
+				spqrlog.Zero.Err(err).Any("data", tm).Msg("failed to encode message")
 			}
 			interData = append(interData, byt...)
 			if len(interData) > wl.batchSize {
 				err = flush(interData, wl.logFile)
 				if err != nil {
-					spqrlog.Zero.Err(err).Msg("")
+					spqrlog.Zero.Err(err).Msg("failed to save data to file")
 				}
 				interData = []byte{}
 			}

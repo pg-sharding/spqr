@@ -115,15 +115,20 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 	switch stmt := tstmt.(type) {
 	case *spqrparser.TraceStmt:
-		if stmt.Stop {
-			err := cli.StopTraceMessages(ctx)
-			if err != nil {
-				return err
-			}
-			return writer.StopLogging()
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
 		}
 		writer.StartLogging(stmt.All, stmt.ClientID)
 		return cli.StartTraceMessages(ctx)
+	case *spqrparser.StopTraceStmt:
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
+		}
+		err := writer.StopLogging()
+		if err != nil {
+			return err
+		}
+		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.Create:
