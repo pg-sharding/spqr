@@ -193,17 +193,11 @@ func recieveBackend(frontend *pgproto3.Frontend) error {
 			return fmt.Errorf("failed to receive msg from db %w", err)
 		}
 
-		if shouldStop(retmsg) {
+		switch retmsg.(type) {
+		case *pgproto3.ReadyForQuery:
 			return nil
+		default:
+			continue
 		}
-	}
-}
-
-func shouldStop(msg pgproto3.BackendMessage) bool {
-	switch msg.(type) {
-	case *pgproto3.ReadyForQuery:
-		return true
-	default:
-		return false
 	}
 }
