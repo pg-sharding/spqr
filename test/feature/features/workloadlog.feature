@@ -21,3 +21,30 @@ Feature: Check WorkloadLog working
         """
         SELECT 1(.|\n)*SELECT 2
         """
+
+    Scenario: WorkloadLogger does not interrupt queries
+        Given cluster is up and running
+        When I run SQL on host "router-admin"
+        """
+        ADD SHARDING RULE r1 COLUMNS w_id;
+        ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+        ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
+        START TRACE ALL MESSAGES
+        """ 
+        Then command return code should be "0"
+        When I run SQL on host "router"
+        """
+        CREATE TABLE xMove(w_id INT, s TEXT);
+        insert into xMove(w_id, s) values(1, '001');
+        insert into xMove(w_id, s) values(11, '002');
+        """
+        Then command return code should be "0"
+        When I run SQL on host "router"
+        """
+        SELECT * FROM xMove;
+        """
+        Then command return code should be "0"
+        And SQL result should match regexp
+        """
+        001(.|\n)*002
+        """
