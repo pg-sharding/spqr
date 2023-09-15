@@ -118,7 +118,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if writer == nil {
 			return fmt.Errorf("can not save workload from here")
 		}
-		writer.StartLogging(stmt.All, stmt.ClientID)
+		writer.StartLogging(stmt.All, stmt.Client)
 		return cli.StartTraceMessages(ctx)
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {

@@ -24,7 +24,7 @@ func TestSimpleLex(t *testing.T) {
 		},
 		{
 			query: "kill client 0xc00030f520;",
-			exp:   []int{spqrparser.KILL, spqrparser.IDENT, spqrparser.IDENT},
+			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.IDENT},
 			err:   nil,
 		},
 		{

@@ -111,7 +111,7 @@ func randomHex(n int) (string, error) {
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
 
-%token<str> START STOP TRACE CLIENTID MESSAGES
+%token<str> START STOP TRACE MESSAGES
 
 /* any operator */
 %token<str> OP
@@ -366,9 +366,9 @@ trace_stmt:
 	{
 		$$ = &TraceStmt{All: true}
 	} | 
-	START TRACE CLIENTID any_id {
+	START TRACE CLIENT any_id {
 		$$ = &TraceStmt {
-			ClientID: $4,
+			Client: $4,
 		}
 	}
 
@@ -541,6 +541,9 @@ kill_stmt:
 	KILL kill_statement_type any_val
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
+	}
+	| KILL CLIENT any_val{
+		$$ = &Kill{Cmd: "client", Target: $3}
 	}
 
 move_key_range_stmt:

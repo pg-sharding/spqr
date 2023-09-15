@@ -28,9 +28,9 @@ func TestSimpleTrace(t *testing.T) {
 		},
 
 		{
-			query: "START TRACE CLIENTID i129191",
+			query: "START TRACE CLIENT i129191",
 			exp: &spqrparser.TraceStmt{
-				ClientID: "i129191",
+				Client: "i129191",
 			},
 			err: nil,
 		},
