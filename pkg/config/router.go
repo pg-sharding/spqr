@@ -61,6 +61,9 @@ type Router struct {
 	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
 	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 
+	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
+	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
+
 	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
