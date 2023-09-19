@@ -12,12 +12,12 @@ import (
 func TestEncodeMsg(t *testing.T) {
 	assert := assert.New(t)
 	tm := TimedMessage{
-		timestamp: time.Now(),
-		msg:       &pgproto3.Terminate{},
-		session:   1,
+		Timestamp: time.Now(),
+		Msg:       &pgproto3.Terminate{},
+		Session:   1,
 	}
 
-	byt, err := encodeMessage(tm)
+	byt, err := EncodeMessage(tm)
 	assert.NoError(err)
 	assert.Equal(24, len(byt))
 }

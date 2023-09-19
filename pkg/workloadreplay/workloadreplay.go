@@ -12,13 +12,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 )
-
-type TimedMessage struct {
-	timestamp time.Time
-	msg       pgproto3.FrontendMessage
-	session   int
-}
 
 func ReplayLogs(host string, port string, user string, db string, file string) error {
 	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
@@ -27,7 +22,7 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	}
 	defer f.Close()
 
-	sessionsMessageBuffer := map[int](chan TimedMessage){}
+	sessionsMessageBuffer := map[int](chan workloadlog.TimedMessage){}
 
 	for {
 		//read next
@@ -39,19 +34,19 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 			return err
 		}
 
-		spqrlog.Zero.Info().Int("session", msg.session).Msg("session num")
+		spqrlog.Zero.Info().Int("session", msg.Session).Msg("session num")
 		// if session not exist, create
-		if _, ok := sessionsMessageBuffer[msg.session]; !ok {
-			sessionsMessageBuffer[msg.session] = make(chan TimedMessage)
-			go startNewSession(host, port, user, db, sessionsMessageBuffer[msg.session])
+		if _, ok := sessionsMessageBuffer[msg.Session]; !ok {
+			sessionsMessageBuffer[msg.Session] = make(chan workloadlog.TimedMessage)
+			go startNewSession(host, port, user, db, sessionsMessageBuffer[msg.Session])
 		}
 
 		//send to session
-		sessionsMessageBuffer[msg.session] <- msg
+		sessionsMessageBuffer[msg.Session] <- msg
 	}
 }
 
-func startNewSession(host string, port string, user string, db string, ch chan TimedMessage) error {
+func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) error {
 	ctx := context.Background()
 
 	startupMessage := &pgproto3.StartupMessage{
@@ -77,7 +72,7 @@ func startNewSession(host string, port string, user string, db string, ch chan T
 		return err
 	}
 
-	var tm TimedMessage
+	var tm workloadlog.TimedMessage
 	var prevSentTime, prevMsgTime time.Time
 	for {
 		select {
@@ -85,17 +80,17 @@ func startNewSession(host string, port string, user string, db string, ch chan T
 			os.Exit(1)
 		case tm = <-ch:
 			timeNow := time.Now()
-			timer := time.NewTimer(tm.timestamp.Sub(prevMsgTime) - timeNow.Sub(prevSentTime))
+			timer := time.NewTimer(tm.Timestamp.Sub(prevMsgTime) - timeNow.Sub(prevSentTime))
 			prevSentTime = timeNow
-			prevMsgTime = tm.timestamp
+			prevMsgTime = tm.Timestamp
 			<-timer.C
 
-			spqrlog.Zero.Info().Any("msg %+v", tm.msg).Msg("read query")
-			frontend.Send(tm.msg)
+			spqrlog.Zero.Info().Any("msg %+v", tm.Msg).Msg("read query")
+			frontend.Send(tm.Msg)
 			if err := frontend.Flush(); err != nil {
 				return fmt.Errorf("failed to send msg to bd %w", err)
 			}
-			switch tm.msg.(type) {
+			switch tm.Msg.(type) {
 			case *pgproto3.Terminate:
 				return nil
 			default:
@@ -108,16 +103,16 @@ func startNewSession(host string, port string, user string, db string, ch chan T
 	}
 }
 
-func parseFile(f *os.File) (TimedMessage, error) {
+func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	// 15 byte - timestamp
 	// 4 bytes - session number
 	// 1 byte - message header
 	// 4 bytes - message length (except header)
 	// ?? bytes - message bytes
 
-	tm := TimedMessage{
-		timestamp: time.Now(),
-		msg:       nil,
+	tm := workloadlog.TimedMessage{
+		Timestamp: time.Now(),
+		Msg:       nil,
 	}
 
 	//timestamp
@@ -179,9 +174,9 @@ func parseFile(f *os.File) (TimedMessage, error) {
 		return tm, err
 	}
 
-	tm.timestamp = ti
-	tm.msg = fm
-	tm.session = sesNum
+	tm.Timestamp = ti
+	tm.Msg = fm
+	tm.Session = sesNum
 
 	return tm, nil
 }
