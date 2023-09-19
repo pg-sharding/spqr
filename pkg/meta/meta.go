@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -110,10 +111,24 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
-
 	switch stmt := tstmt.(type) {
+	case *spqrparser.TraceStmt:
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
+		}
+		writer.StartLogging(stmt.All, stmt.Client)
+		return cli.StartTraceMessages(ctx)
+	case *spqrparser.StopTraceStmt:
+		if writer == nil {
+			return fmt.Errorf("can not save workload from here")
+		}
+		err := writer.StopLogging()
+		if err != nil {
+			return err
+		}
+		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
 		return processDrop(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.Create:

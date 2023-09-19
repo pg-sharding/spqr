@@ -50,11 +50,16 @@ type CreateStmt interface {
 }
 
 type TraceStmt struct {
-	ClientID string
-	All      bool
+	Client string
+	All    bool
 }
 
 func (*TraceStmt) iStatement() {}
+
+type StopTraceStmt struct {
+}
+
+func (*StopTraceStmt) iStatement() {}
 
 type DropStmt interface {
 	iDrop()

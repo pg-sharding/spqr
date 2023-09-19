@@ -54,6 +54,7 @@ func randomHex(n int) (string, error) {
 	listen                 *Listen
 
 	trace                  *TraceStmt
+	stoptrace              *StopTraceStmt
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -110,8 +111,7 @@ func randomHex(n int) (string, error) {
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
 
-%token<str> START TRACE MESSAGES
-
+%token<str> START STOP TRACE MESSAGES
 
 /* any operator */
 %token<str> OP
@@ -130,7 +130,7 @@ func randomHex(n int) (string, error) {
 %type <create> add_stmt create_stmt
 
 %type <trace> trace_stmt
-
+%type <stoptrace> stoptrace_stmt
 
 %type <ds> dataspace_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
@@ -176,6 +176,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| trace_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| stoptrace_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -364,8 +368,14 @@ trace_stmt:
 	} | 
 	START TRACE CLIENT any_id {
 		$$ = &TraceStmt {
-			ClientID: $4,
+			Client: $4,
 		}
+	}
+
+stoptrace_stmt:
+	STOP TRACE MESSAGES
+	{
+		$$ = &StopTraceStmt{}
 	}
 
 
@@ -531,6 +541,9 @@ kill_stmt:
 	KILL kill_statement_type any_val
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
+	}
+	| KILL CLIENT any_val{
+		$$ = &Kill{Cmd: "client", Target: $3}
 	}
 
 move_key_range_stmt:

@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -283,7 +284,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
@@ -311,6 +312,17 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 				// ok
 			default:
 				return rst.UnRouteWithError(rst.ActiveShards(), err)
+			}
+		}
+
+		if writer != nil && writer.IsLogging() {
+			switch writer.GetMode() {
+			case workloadlog.All:
+				writer.RecordWorkload(msg, cl.ID())
+			case workloadlog.Client:
+				if writer.ClientMatches(cl.ID()) {
+					writer.RecordWorkload(msg, cl.ID())
+				}
 			}
 		}
 

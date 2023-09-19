@@ -23,8 +23,23 @@ func TestSimpleLex(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: "START TRACE ALL MESSAGES",
+			exp:   []int{spqrparser.START, spqrparser.TRACE, spqrparser.ALL, spqrparser.MESSAGES},
+			err:   nil,
+		},
+		{
+			query: "START TRACE CLIENT 9df3bj3",
+			exp:   []int{spqrparser.START, spqrparser.TRACE, spqrparser.CLIENT, spqrparser.IDENT},
+			err:   nil,
+		},
+		{
+			query: "STOP TRACE MESSAGES",
+			exp:   []int{spqrparser.STOP, spqrparser.TRACE, spqrparser.MESSAGES},
+			err:   nil,
+		},
+		{
 			query: "kill client 0xc00030f520;",
-			exp:   []int{spqrparser.KILL, spqrparser.IDENT, spqrparser.IDENT},
+			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.IDENT},
 			err:   nil,
 		},
 		{

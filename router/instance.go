@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/console"
@@ -29,6 +30,7 @@ type InstanceImpl struct {
 	Qrouter    qrouter.QueryRouter
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
+	Writer     workloadlog.WorkloadLog
 
 	stchan     chan struct{}
 	addr       string
@@ -81,11 +83,14 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}
 
+	//workload writer
+	writ := workloadlog.NewLogger(1000000, "mylogs.txt") //TODO config?
+
 	// request router
 	rr := rulerouter.NewRouter(frTLS, rcfg)
 
 	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan)
+	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan, writ)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
 		return nil, err
@@ -129,6 +134,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		stchan:     stchan,
 		frTLS:      frTLS,
 		WithJaeger: rcfg.WithJaeger,
+		Writer:     writ,
 	}, nil
 }
 
@@ -165,7 +171,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, admin_console bool) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config())
+	return Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer)
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {

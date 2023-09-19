@@ -30,9 +30,15 @@ func TestSimpleTrace(t *testing.T) {
 		{
 			query: "START TRACE CLIENT i129191",
 			exp: &spqrparser.TraceStmt{
-				ClientID: "i129191",
+				Client: "i129191",
 			},
 			err: nil,
+		},
+
+		{
+			query: "STOP TRACE MESSAGES",
+			exp:   &spqrparser.StopTraceStmt{},
+			err:   nil,
 		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
