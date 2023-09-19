@@ -46,7 +46,7 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	}
 }
 
-func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) error {
+func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) {
 	ctx := context.Background()
 
 	startupMessage := &pgproto3.StartupMessage{
@@ -58,18 +58,18 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 	}
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", host, port))
 	if err != nil {
-		return fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", host, port), err)
+		spqrlog.Zero.Error().Err(fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", host, port), err))
 	}
 
 	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
 
 	frontend.Send(startupMessage)
 	if err := frontend.Flush(); err != nil {
-		return fmt.Errorf("failed to send msg to bd %w", err)
+		spqrlog.Zero.Error().Err(fmt.Errorf("failed to send msg to bd %w", err))
 	}
 	err = recieveBackend(frontend)
 	if err != nil {
-		return err
+		spqrlog.Zero.Error().Err(err)
 	}
 
 	var tm workloadlog.TimedMessage
@@ -88,15 +88,15 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 			spqrlog.Zero.Info().Any("msg %+v", tm.Msg).Msg("read query")
 			frontend.Send(tm.Msg)
 			if err := frontend.Flush(); err != nil {
-				return fmt.Errorf("failed to send msg to bd %w", err)
+				spqrlog.Zero.Error().Err(fmt.Errorf("failed to send msg to bd %w", err))
 			}
 			switch tm.Msg.(type) {
 			case *pgproto3.Terminate:
-				return nil
+				return
 			default:
 				err = recieveBackend(frontend)
 				if err != nil {
-					return err
+					spqrlog.Zero.Error().Err(err)
 				}
 			}
 		}
