@@ -1,8 +1,7 @@
 package main
 
 import (
-	"log"
-
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadreplay"
 	"github.com/spf13/cobra"
 )
@@ -43,13 +42,11 @@ func init() {
 	replayLogsCmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "postgres", `database name to connect to (default: postgres)`)
 	replayLogsCmd.PersistentFlags().StringVarP(&file, "logfile", "l", "", `file to read logs from`)
 
-	/* --- Router cmds --- */
 	rootCmd.AddCommand(replayLogsCmd)
-	/* ------------------- */
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		spqrlog.Zero.Fatal().Err(err).Msg("failed to execute command")
 	}
 }

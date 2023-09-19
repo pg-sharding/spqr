@@ -58,18 +58,18 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 	}
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", host, port))
 	if err != nil {
-		spqrlog.Zero.Error().Err(fmt.Errorf("failed to establish connection to host %s - %w", fmt.Sprintf("%s:%s", host, port), err))
+		spqrlog.Zero.Error().Err(err).Msg(fmt.Sprintf("failed to establish connection to host %s:%s", host, port))
 	}
 
 	frontend := pgproto3.NewFrontend(bufio.NewReader(conn), conn)
 
 	frontend.Send(startupMessage)
 	if err := frontend.Flush(); err != nil {
-		spqrlog.Zero.Error().Err(fmt.Errorf("failed to send msg to bd %w", err))
+		spqrlog.Zero.Error().Err(err).Msg("failed to send msg to db")
 	}
 	err = recieveBackend(frontend)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err)
+		spqrlog.Zero.Error().Err(err).Msg("error while receiving reply")
 	}
 
 	var tm workloadlog.TimedMessage
@@ -88,7 +88,7 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 			spqrlog.Zero.Info().Any("msg %+v", tm.Msg).Msg("read query")
 			frontend.Send(tm.Msg)
 			if err := frontend.Flush(); err != nil {
-				spqrlog.Zero.Error().Err(fmt.Errorf("failed to send msg to bd %w", err))
+				spqrlog.Zero.Error().Err(err).Msg("failed to send msg to bd")
 			}
 			switch tm.Msg.(type) {
 			case *pgproto3.Terminate:
@@ -96,7 +96,7 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 			default:
 				err = recieveBackend(frontend)
 				if err != nil {
-					spqrlog.Zero.Error().Err(err)
+					spqrlog.Zero.Error().Err(err).Msg("error while receiving reply")
 				}
 			}
 		}
