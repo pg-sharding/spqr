@@ -5,7 +5,7 @@ grpc_api_port: '7001'
 
 world_shard_fallback: true
 
-workload_file: mylog.txt
+workload_file: myworkloadlog.txt
 workload_batch_size: 500000
 
 router_mode: PROXY
