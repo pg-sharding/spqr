@@ -1,5 +1,6 @@
 coorctl
 .idea
+.vscode
 vendor
 tmp
 spqr-router
@@ -7,6 +8,7 @@ spqr-coordinator
 spqr-worldmock
 spqr-balancer
 spqr-mover
+spqr-workloadreplay
 y.output
 *.swp
 *.swo
