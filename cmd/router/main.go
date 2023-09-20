@@ -55,7 +55,7 @@ var (
 )
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "router-config", "r", "/etc/spqr/router.yaml", "path to router config file")
+	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "console (not daemonize) router binary or not")
@@ -64,7 +64,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
-	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "c", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
+	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")

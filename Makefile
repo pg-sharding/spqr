@@ -66,16 +66,16 @@ run: build_images
 	docker-compose run --entrypoint /bin/bash client
 
 proxy_2sh_run:
-	./spqr-router run -c ./examples/2shardproxy.yaml -d --proto-debug
+	./spqr-router run --config ./examples/2shardproxy.yaml -d --proto-debug
 
 proxy_run:
-	./spqr-router run -c ./examples/router.yaml
+	./spqr-router run --config ./examples/router.yaml
 
 coordinator_run:
-	./spqr-coordinator run -c ./examples/coordinator.yaml
+	./spqr-coordinator run --config ./examples/coordinator.yaml
 
 pooler_run:
-	./spqr-router run -c ./examples/localrouter.yaml
+	./spqr-router run --config ./examples/localrouter.yaml
 
 ####################### TESTS #######################
 
