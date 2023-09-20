@@ -38,7 +38,10 @@ build_mover:
 build_worldmock:
 	go build -pgo=auto -o spqr-worldmock ./cmd/worldmock
 
-build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock
+build_workloadreplay:
+	go build -pgo=auto -o spqr-workloadreplay ./cmd/workloadreplay
+
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay
 
 build_images:
 	docker-compose build spqr-base-image

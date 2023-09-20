@@ -30,9 +30,9 @@ type WorkloadLog interface {
 }
 
 type TimedMessage struct {
-	timestamp time.Time
-	msg       pgproto3.FrontendMessage
-	session   int
+	Timestamp time.Time
+	Msg       pgproto3.FrontendMessage
+	Session   int
 }
 
 type WorkloadLogger struct {
@@ -94,9 +94,9 @@ func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client st
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
 	wl.messageQueue <- TimedMessage{
-		msg:       msg,
-		timestamp: time.Now(),
-		session:   wl.clients[client],
+		Msg:       msg,
+		Timestamp: time.Now(),
+		Session:   wl.clients[client],
 	}
 }
 
@@ -124,7 +124,7 @@ func (wl *WorkloadLogger) serv() {
 			wl.clients = map[string]int{}
 			return
 		case tm := <-wl.messageQueue:
-			byt, err := encodeMessage(tm)
+			byt, err := EncodeMessage(tm)
 			if err != nil {
 				spqrlog.Zero.Err(err).Any("data", tm).Msg("failed to encode message")
 			}
@@ -163,16 +163,16 @@ Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
 4 bytes - message length (except header)
 ?? bytes - message bytes
 */
-func encodeMessage(tm TimedMessage) ([]byte, error) {
-	binMsg := tm.msg.Encode(nil)
+func EncodeMessage(tm TimedMessage) ([]byte, error) {
+	binMsg := tm.Msg.Encode(nil)
 
-	binTime, err := tm.timestamp.MarshalBinary()
+	binTime, err := tm.Timestamp.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
 
 	binSessionNum := make([]byte, 4)
-	binary.BigEndian.PutUint32(binSessionNum, uint32(tm.session))
+	binary.BigEndian.PutUint32(binSessionNum, uint32(tm.Session))
 
 	compl := append(binTime, binSessionNum...)
 	compl = append(compl, binMsg...)

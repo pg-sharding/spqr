@@ -84,7 +84,15 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	//workload writer
-	writ := workloadlog.NewLogger(1000000, "mylogs.txt") //TODO config?
+	batchSize := rcfg.WorkloadBatchSize
+	if batchSize == 0 {
+		batchSize = 1000000
+	}
+	logFile := rcfg.LogFileName
+	if logFile == "" {
+		logFile = "mylogs.txt"
+	}
+	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
 	rr := rulerouter.NewRouter(frTLS, rcfg)
