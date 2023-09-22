@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -66,6 +67,14 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		}
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
+		for _, opt := range st.Options {
+			switch opt {
+			case lyx.TransactionReadOnly:
+				rst.Client().SetTsa(config.TargetSessionAttrsRO)
+			case lyx.TransactionReadWrite:
+				rst.Client().SetTsa(config.TargetSessionAttrsRW)
+			}
+		}
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {

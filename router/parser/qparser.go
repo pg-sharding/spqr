@@ -31,6 +31,7 @@ type ParseState interface{}
 
 type ParseStateTXBegin struct {
 	ParseState
+	Options []lyx.TransactionModeItem
 }
 
 type ParseStateTXRollback struct {
@@ -208,15 +209,21 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			qp.state = varStmt
 		}
 		return qp.state, comment, nil
-	case *lyx.Begin:
-		qp.state = ParseStateTXBegin{}
-		return qp.state, comment, nil
-	case *lyx.Commit:
-		qp.state = ParseStateTXCommit{}
-		return qp.state, comment, nil
-	case *lyx.Rollback:
-		qp.state = ParseStateTXRollback{}
-		return qp.state, comment, nil
+	case *lyx.TransactionStmt:
+		switch q.Kind {
+		case lyx.TRANS_STMT_BEGIN:
+			qp.state = ParseStateTXBegin{
+				Options: q.Options,
+			}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_COMMIT:
+			qp.state = ParseStateTXCommit{}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_ROLLBACK:
+			qp.state = ParseStateTXRollback{}
+			return qp.state, comment, nil
+		default:
+		}
 	default:
 	}
 
