@@ -5,6 +5,15 @@ type ColumnRef struct {
 	ColName    string
 }
 
+type RangeVar struct {
+	SchemaName   string
+	RelationName string
+}
+
+type ReferenceTable struct {
+	Relname *RangeVar
+}
+
 type WhereClauseNode interface {
 }
 
@@ -208,3 +217,7 @@ func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
+
+func (*ReferenceTable) iStatement() {}
+
+func (*RangeVar) iStatement() {}

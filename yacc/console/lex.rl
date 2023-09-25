@@ -52,7 +52,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
         op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '*' | '\\' | '%' | '<' | '>' | '=' ) ;
 
         sconst = '\'' (any-'\'')* '\'';
-        identifier	=	(print - space - op_chars-'\'' - ';')*;
+        identifier	=	(print - space - op_chars-'\'' - ';' - '.')*;
 
         qidentifier	=	'"' identifier '"';
 
@@ -78,6 +78,9 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             comment => {/* nothing */};
             integer =>  { lval.str = string(lex.data[lex.ts:lex.te]); tok = SCONST; fbreak;};
 
+
+            '.' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TDOT; fbreak;};
+
             qidentifier      => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; fbreak;};
             identifier      => { 
                 
@@ -91,7 +94,6 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             sconst => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = SCONST; fbreak;};
 
             '=' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TEQ; fbreak;};
-
             operator => {
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    
                 fbreak;

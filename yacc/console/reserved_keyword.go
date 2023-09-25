@@ -43,4 +43,5 @@ var reservedWords = map[string]int{
 	"trace":      TRACE,
 	"messages":   MESSAGES,
 	"client":     CLIENT,
+	"reference":  REFERENCE,
 }
