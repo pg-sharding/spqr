@@ -792,6 +792,11 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	case qrouter.MultiMatchState:
 		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Zero.Debug().Msg("unroute multishard route")
+
+		if err := rst.manager.TXEndCB(rst); err != nil {
+			return nil
+		}
+
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
 				TxStatus: byte(txstatus.TXIDLE),
@@ -800,7 +805,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		return rst.manager.TXEndCB(rst)
+		return nil
 	}
 
 	switch rst.txStatus {
