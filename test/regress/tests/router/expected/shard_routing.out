@@ -40,7 +40,7 @@ ADD KEY RANGE krid3 FROM 21 TO 31 ROUTE TO sh2;
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxerr (i int);
-ERROR:  error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found
+ERROR:  client proccessing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status 73
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);
