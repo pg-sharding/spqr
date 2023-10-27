@@ -29,26 +29,11 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.10
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.3.0
-<<<<<<< HEAD
-<<<<<<< HEAD
-	golang.org/x/crypto v0.14.0
-	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
-	golang.yandex/hasql v1.1.1
-	google.golang.org/grpc v1.59.0
-=======
-	golang.org/x/crypto v0.13.0
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
-	golang.yandex/hasql v1.1.0
-	google.golang.org/grpc v1.58.2
->>>>>>> Extended protocol interaction basic
-=======
 	golang.org/x/crypto v0.14.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	golang.yandex/hasql v1.1.1
 	google.golang.org/grpc v1.59.0
->>>>>>> util+gomod
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -90,30 +75,12 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.10 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-<<<<<<< HEAD
-<<<<<<< HEAD
-	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.7.0 // indirect
-=======
-	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.15.0 // indirect
-	golang.org/x/sys v0.12.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
->>>>>>> Extended protocol interaction basic
-=======
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.14.0 // indirect
->>>>>>> util+gomod
 	gonum.org/v1/gonum v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
