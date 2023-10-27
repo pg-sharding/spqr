@@ -432,7 +432,7 @@ func (m *MultiShardServer) SetTxStatus(tx txstatus.TXStatus) {
 }
 
 func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
-	return m.status
+	return txstatus.TXIDLE
 }
 
 func (m *MultiShardServer) Datashards() []shard.Shard {
