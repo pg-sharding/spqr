@@ -16,6 +16,6 @@ done
 
 
 if [ -z $skip ]; then
-    docker image ls | grep odyssey | awk '{print $3}' | xargs docker image rm -f || true
+    docker image ls | grep spqr | awk '{print $3}' | xargs docker image rm -f || true
     docker rm $(docker stop $(docker ps -aq)) || true
 fi
