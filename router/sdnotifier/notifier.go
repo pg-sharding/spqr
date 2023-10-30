@@ -8,6 +8,17 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
+/*
+#include <time.h>
+static unsigned long long get_nsecs(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long long)ts.tv_sec * 1000000000UL + ts.tv_nsec;
+}
+*/
+import "C"
+
 const Timeout = 4 * time.Second
 
 type Notifier struct {
@@ -25,6 +36,10 @@ func NewNotifier(ns string, debug bool) (*Notifier, error) {
 	}
 
 	return &Notifier{sock: sock, debug: debug}, nil
+}
+
+func (n *Notifier) Reloading() error {
+	return n.send([]byte(fmt.Sprintf("RELOADING=1\nMONOTONIC_USEC=%d\n", uint64(C.get_nsecs()))))
 }
 
 func (n *Notifier) Ready() error {

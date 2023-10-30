@@ -105,7 +105,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, rcfg)
+	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan, writ)
