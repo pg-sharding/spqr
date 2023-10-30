@@ -74,7 +74,9 @@ type RelayStateMgr interface {
 type BufferedMessageType int
 
 const (
-	BufferedMessageRegular  = BufferedMessageType(0)
+	// Message from client
+	BufferedMessageRegular = BufferedMessageType(0)
+	// Message produced by spqr
 	BufferedMessageInternal = BufferedMessageType(1)
 )
 

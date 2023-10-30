@@ -33,7 +33,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))
 	state, comment, err := rst.Parse(query)
 	if err != nil {
-		return fmt.Errorf("error processing query '%v': %v", query, err)
+		return fmt.Errorf("error processing query '%v': %w", query, err)
 	}
 
 	mp, err := parser.ParseComment(comment)
