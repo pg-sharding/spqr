@@ -1,19 +1,22 @@
 package app
 
 import (
+	"fmt"
 	"net"
-	"os"
+	"time"
+
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
+
+const Timeout = 4 * time.Second
 
 type Notifier struct {
 	sock  net.Conn
 	debug bool
 }
 
-func NewNotifier(debug bool) (*Notifier, error) {
-	addr := os.Getenv("NOTIFY_SOCKET")
-
-	sock, err := net.Dial("unix", addr)
+func NewNotifier(ns string, debug bool) (*Notifier, error) {
+	sock, err := net.Dial("unixgram", ns)
 	if err != nil {
 		sock = nil
 		if debug {
@@ -33,6 +36,10 @@ func (n *Notifier) Notify() error {
 }
 
 func (n *Notifier) send(msg []byte) error {
+	if n.sock == nil {
+		return nil
+	}
+
 	_, err := n.sock.Write(msg)
 
 	if n.debug {

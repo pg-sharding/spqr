@@ -56,7 +56,7 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
 	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
@@ -71,7 +71,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	lc := local.NewLocalCoordinator(qdb)
 
 	// systemd notifier
-	notifier, err := notifier.NewNotifier(false)
+	notifier, err := notifier.NewNotifier(ns, false)
 	if err != nil {
 		return nil, err
 	}
@@ -221,10 +221,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	go accept(listener, cChan)
 
 	go func() {
-		if err := r.notifier.Notify(); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+		for {
+			if err := r.notifier.Notify(); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+			}
+			time.Sleep(notifier.Timeout)
 		}
-		time.Sleep(400 * time.Millisecond)
 	}()
 
 	for {
