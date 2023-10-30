@@ -351,6 +351,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		/* Step tree: fetch all datarow msgs */
 		for i := range m.activeShards {
 			// all shards shall be in cc state
+			spqrlog.Zero.Info().Str("shard", m.activeShards[i].Name()).Msg("multishard server: await server")
 
 			if m.states[i] != ShardCCState {
 				return nil, MultiShardSyncBroken
@@ -384,8 +385,9 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		}
 
 		m.multistate = InitialState
+		m.status = txstatus.TXIDLE
 		return &pgproto3.ReadyForQuery{
-			TxStatus: 0, // XXX : fix this
+			TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
 		}, nil
 	}
 
@@ -430,7 +432,7 @@ func (m *MultiShardServer) SetTxStatus(tx txstatus.TXStatus) {
 }
 
 func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
-	return m.status
+	return txstatus.TXIDLE
 }
 
 func (m *MultiShardServer) Datashards() []shard.Shard {

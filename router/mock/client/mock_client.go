@@ -256,20 +256,6 @@ func (mr *MockRouterClientMockRecorder) DefaultReply() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultReply", reflect.TypeOf((*MockRouterClient)(nil).DefaultReply))
 }
 
-// FireMsg mocks base method.
-func (m *MockRouterClient) FireMsg(query pgproto3.FrontendMessage) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FireMsg", query)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// FireMsg indicates an expected call of FireMsg.
-func (mr *MockRouterClientMockRecorder) FireMsg(query interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FireMsg", reflect.TypeOf((*MockRouterClient)(nil).FireMsg), query)
-}
-
 // GetCancelKey mocks base method.
 func (m *MockRouterClient) GetCancelKey() uint32 {
 	m.ctrl.T.Helper()

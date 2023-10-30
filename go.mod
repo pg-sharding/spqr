@@ -26,10 +26,11 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/xdg-go/scram v1.1.2
-	go.etcd.io/etcd/client/v3 v3.5.9
+	go.etcd.io/etcd/client/v3 v3.5.10
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.3.0
 	golang.org/x/crypto v0.14.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	golang.yandex/hasql v1.1.1
 	google.golang.org/grpc v1.59.0
@@ -70,16 +71,16 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
-	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
+	go.etcd.io/etcd/api/v3 v3.5.10 // indirect
+	go.etcd.io/etcd/client/pkg/v3 v3.5.10 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
-	golang.org/x/mod v0.11.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.7.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	gonum.org/v1/gonum v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect

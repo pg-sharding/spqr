@@ -97,7 +97,14 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
-	sh.sync_in++
+
+	switch query.(type) {
+	case *pgproto3.Query:
+		sh.sync_in++
+	case *pgproto3.Sync:
+		sh.sync_in++
+	default:
+	}
 
 	spqrlog.Zero.Debug().
 		Str("shard", sh.Name()).
@@ -184,7 +191,7 @@ func NewShard(
 		name:     key.Name,
 		beRule:   beRule,
 		ps:       shard.ParameterSet{},
-		sync_in:  1, /* startup message */
+		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
 	}
 

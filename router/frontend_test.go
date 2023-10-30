@@ -15,6 +15,7 @@ import (
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/server"
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
@@ -141,6 +142,141 @@ func TestFrontendSimple(t *testing.T) {
 
 	// receive this 4 msgs
 	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
+
+	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
+
+	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+
+	assert.NoError(err, "")
+}
+
+func TestFrontendXProto(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+
+	cl := mockcl.NewMockRouterClient(ctrl)
+	srv := mocksrv.NewMockServer(ctrl)
+	qr := mockqr.NewMockQueryRouter(ctrl)
+	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
+
+	frrule := &config.FrontendRule{
+		DB:       "db1",
+		Usr:      "user1",
+		PoolMode: config.PoolModeTransaction,
+	}
+
+	beRule := &config.BackendRule{}
+
+	srv.EXPECT().Name().AnyTimes().Return("serv1")
+
+	/* query Router */
+
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*qrouter.DataShardRoute{
+		{
+			Shkey: kr.ShardKey{
+				Name: "sh1",
+			},
+		},
+	})
+
+	cl.EXPECT().Server().AnyTimes().Return(srv)
+
+	cl.EXPECT().Usr().AnyTimes().Return("user1")
+	cl.EXPECT().DB().AnyTimes().Return("db1")
+
+	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
+
+	cl.EXPECT().Close().Times(1)
+	cl.EXPECT().Rule().AnyTimes().Return(frrule)
+
+	cl.EXPECT().ReplyParseComplete().AnyTimes()
+
+	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
+	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
+
+	cl.EXPECT().RLock().AnyTimes()
+	cl.EXPECT().RUnlock().AnyTimes()
+
+	// reroute on first query in this case
+	cmngr.EXPECT().ValidateReRoute(gomock.Any()).Return(true)
+
+	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
+
+	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
+
+	cmngr.EXPECT().TXBeginCB(gomock.Any()).AnyTimes()
+
+	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
+
+	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
+		"sh1": {},
+	})
+
+	// route to any route
+	cl.EXPECT().Route().AnyTimes().Return(route)
+
+	/* client request simple prep stmt parse */
+
+	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Parse{
+		Name:          "stmtcache_1",
+		Query:         "select 'Hello, world!'",
+		ParameterOIDs: nil,
+	}, nil)
+
+	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Describe{
+		Name:       "stmtcache_1",
+		ObjectType: 'S',
+	}, nil)
+
+	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Sync{}, nil)
+
+	cl.EXPECT().StorePreparedStatement("stmtcache_1", "select 'Hello, world!'").Times(1).Return()
+	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").Return("select 'Hello, world!'")
+
+	cl.EXPECT().ServerAcquireUse().AnyTimes()
+	cl.EXPECT().ServerReleaseUse().AnyTimes()
+
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).Return(false, server.PreparedStatementDescriptor{}).AnyTimes()
+	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).AnyTimes()
+	/* */
+
+	srv.EXPECT().Send(&pgproto3.Parse{
+		Name:          "17731273590378676854",
+		Query:         "select 'Hello, world!'",
+		ParameterOIDs: nil,
+	}).Times(1).Return(nil)
+
+	srv.EXPECT().Send(&pgproto3.Describe{
+		Name:       "17731273590378676854",
+		ObjectType: 'S',
+	}).Times(1).Return(nil)
+
+	srv.EXPECT().Send(&pgproto3.Sync{}).Times(1).Return(nil)
+
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{
+		ParameterOIDs: nil,
+	}, nil)
+
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{
+		Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("?column?"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25, /* textoid */
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		},
+	}, nil)
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
+		TxStatus: byte(txstatus.TXIDLE),
+	}, nil)
+
+	// receive this 4 msgs
+	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
