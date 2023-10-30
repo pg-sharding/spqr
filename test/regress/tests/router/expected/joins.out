@@ -64,7 +64,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;': too complex query to parse, tx status 73
+ERROR:  client proccessing error: error processing query 'SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;': too complex query to parse, tx status IDLE
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yjoin;
