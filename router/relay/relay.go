@@ -1108,6 +1108,10 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters []
 	}
 }
 
+var noopCloseRouteFunc = func() error {
+	return nil
+}
+
 func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *qrouter.DataShardRoute) (func() error, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
@@ -1119,13 +1123,11 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 	// txactive == 0 || activeSh == nil
 	// alreasy has route, no need for any hint
 	if !cmngr.ValidateReRoute(rst) {
-		return func() error {
-			return nil
-		}, nil
+		return noopCloseRouteFunc, nil
 	}
 
 	if route == nil {
-		return func() error { return nil }, fmt.Errorf("failed to use hint route")
+		return noopCloseRouteFunc, fmt.Errorf("failed to use hint route")
 	}
 
 	switch err := rst.RerouteToTargetRoute(route); err {
@@ -1140,28 +1142,18 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErrMsg(err.Error()); err != nil {
-			return func() error {
-				return nil
-			}, err
+			return noopCloseRouteFunc, err
 		}
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
 		_ = rst.Client().ReplyErrMsg("failed to match any datashard")
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
 		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next")
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
-		return func() error {
-			return nil
-		}, err
+		return noopCloseRouteFunc, err
 	}
 }
 
@@ -1173,9 +1165,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 		Msg("preparing relay step for client on any route")
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
-		return func() error {
-			return nil
-		}, nil
+		return noopCloseRouteFunc, nil
 	}
 
 	switch err := rst.RerouteToRandomRoute(); err {
@@ -1185,28 +1175,18 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErrMsg(err.Error()); err != nil {
-			return func() error {
-				return nil
-			}, err
+			return noopCloseRouteFunc, err
 		}
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
 		_ = rst.Client().ReplyErrMsg("failed to match any datashard")
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
 		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next")
-		return func() error {
-			return nil
-		}, ErrSkipQuery
+		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
-		return func() error {
-			return nil
-		}, err
+		return noopCloseRouteFunc, err
 	}
 }
 
