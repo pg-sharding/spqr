@@ -28,9 +28,7 @@ import (
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
 	route.RouteMgr
-
 	QueryRouter() qrouter.QueryRouter
-
 	Reset() error
 	StartTrace()
 	Flush()
@@ -139,11 +137,7 @@ type RelayStateImpl struct {
 	xBuf []pgproto3.FrontendMessage
 }
 
-func NewRelayState(
-	qr qrouter.QueryRouter,
-	client client.RouterClient,
-	manager poolmgr.PoolMgr,
-	rcfg *config.Router) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) *RelayStateImpl {
 	return &RelayStateImpl{
 		activeShards:       nil,
 		txStatus:           txstatus.TXIDLE,
@@ -330,11 +324,7 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection, resolving shard")
 
-<<<<<<< HEAD
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), params, rh)
-=======
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params)
->>>>>>> 0fa9a43 (add dataspaces support)
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
