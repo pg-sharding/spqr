@@ -33,9 +33,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))
 	state, comment, err := rst.Parse(query)
 	if err != nil {
-		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
-		_ = rst.Client().ReplyErrMsg(ret_err.Error())
-		return ret_err
+		return fmt.Errorf("error processing query '%v': %w", query, err)
 	}
 
 	mp, err := parser.ParseComment(comment)
@@ -170,7 +168,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
-			return rst.Client().ReplyParseComplete()
+			return nil
 		} else {
 			rst.AddQuery(msg)
 			_, err := rst.ProcessMessageBuf(true, true, cmngr)
@@ -246,7 +244,14 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
-		return rst.ProcessExtendedBuffer(cmngr)
+		if err := rst.ProcessExtendedBuffer(cmngr); err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Msg("client connection synced")
+		return nil
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
@@ -343,16 +348,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 				return nil
 				// ok
 			default:
-				// fix all reply err to client to be here
 				spqrlog.Zero.Error().
-					Uint("client", spqrlog.GetPointer(rst.Client())).
-					Err(err).
+					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).
 					Msg("client iteration done with error")
-				if rst.TxStatus() != txstatus.TXIDLE {
-					spqrlog.Zero.Error().
-						Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).
-						Msg("client sync lost due to tx status, reset connection")
-					return rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client sync lost due to tx status %d, reset connection", rst.TxStatus()))
+				if err := rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client proccessing error: %v, tx status %s", err, rst.TxStatus().String())); err != nil {
+					return err
 				}
 			}
 		}

@@ -46,15 +46,28 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
+var unsyncConnection = fmt.Errorf("failed to unroute client from connection with active TX")
+
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
 	cl.ServerAcquireUse()
 
+	if cl.Server() == nil {
+		cl.ServerReleaseUse()
+		/* If there is nothing to unroute, return */
+		return nil
+	}
+
+	if cl.Server().TxStatus() != txstatus.TXIDLE {
+		return unsyncConnection
+	}
+
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(&cl)).
+			Uint("client", spqrlog.GetPointer(cl)).
+			Uint("shardn", spqrlog.GetPointer(cl.Server())).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
@@ -112,6 +125,11 @@ func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 }
 
 func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
+	spqrlog.Zero.Debug().
+		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Int("shards", len(rst.ActiveShards())).
+		Msg("client validate rerouting of TX")
+
 	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
 

@@ -48,7 +48,7 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
-ERROR:  error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': too complex query to parse
+ERROR:  client proccessing error: error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': too complex query to parse, tx status IDLE
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  

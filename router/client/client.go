@@ -57,8 +57,6 @@ type RouterClient interface {
 	GetTsa() string
 	SetTsa(string)
 
-	FireMsg(query pgproto3.FrontendMessage) error
-
 	CancelMsg() *pgproto3.CancelRequest
 
 	ReplyParseComplete() error
@@ -218,19 +216,6 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 
 func (cl *PsqlClient) ResetAll() {
 	cl.activeParamSet = cl.startupMsg.Parameters
-}
-
-func (cl *PsqlClient) FireMsg(query pgproto3.FrontendMessage) error {
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	spqrlog.Zero.Debug().Interface("query", query).Msg("process query")
-	_ = cl.ReplyDebugNotice(fmt.Sprintf("executing your query %v", query))
-
-	if err := cl.server.Send(query); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
@@ -753,7 +738,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(cl)).
 		Type("msg-type", msg).
-		Msg("")
+		Msg("sending msg to client")
 	cl.muBe.Lock()
 	defer cl.muBe.Unlock()
 	cl.be.Send(msg)

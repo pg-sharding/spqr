@@ -82,7 +82,7 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 		spqrlog.Zero.Debug().
 			Str("shard", sh.Name()).
 			Interface("message", msg).
-			Msg("shard recieved error during check rw")
+			Msg("shard recieved msg during check rw")
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
@@ -100,7 +100,7 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 				spqrlog.Zero.Debug().
 					Str("shard", sh.Name()).
 					Msg("shard got unsync connection while calculating RW")
-				return false, reason, fmt.Errorf("connection unsync while acquirind it")
+				return false, reason, fmt.Errorf("connection unsync while acquiring it")
 			}
 
 			spqrlog.Zero.Debug().

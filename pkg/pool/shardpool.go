@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 /* pool for single host */
@@ -186,6 +187,10 @@ func (h *shardPool) Put(sh shard.Shard) error {
 		Str("shard", sh.Name()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("put connection back to pool")
+
+	if sh.TxStatus() != txstatus.TXIDLE {
+		return h.Discard(sh)
+	}
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
