@@ -1,6 +1,6 @@
 module github.com/pg-sharding/spqr
 
-go 1.20
+go 1.21.1
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -16,7 +16,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pg-sharding/lyx v0.0.0-20231026175123-707c62e70741
+	github.com/pg-sharding/lyx v0.0.0-20231031193217-a26fce852939
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
 	github.com/sevlyar/go-daemon v0.1.6
