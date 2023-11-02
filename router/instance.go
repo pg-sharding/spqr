@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
@@ -18,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
+	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
 type Router interface {
@@ -36,6 +38,8 @@ type InstanceImpl struct {
 	addr       string
 	frTLS      *tls.Config
 	WithJaeger bool
+
+	notifier *sdnotifier.Notifier
 }
 
 func (r *InstanceImpl) ID() string {
@@ -52,7 +56,7 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
 	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
@@ -65,6 +69,17 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	}
 
 	lc := local.NewLocalCoordinator(qdb)
+
+	var notifier *sdnotifier.Notifier
+	if rcfg.UseSystemdNotifier {
+		// systemd notifier
+		notifier, err = sdnotifier.NewNotifier(ns, rcfg.SystemdNotifierDebug)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		notifier = nil
+	}
 
 	// qrouter init
 	qtype := config.RouterMode(rcfg.RouterMode)
@@ -95,7 +110,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, rcfg)
+	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan, writ)
@@ -143,6 +158,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router) (*InstanceImpl, error) 
 		frTLS:      frTLS,
 		WithJaeger: rcfg.WithJaeger,
 		Writer:     writ,
+		notifier:   notifier,
 	}, nil
 }
 
@@ -191,6 +207,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 		defer func() { _ = closer.Close() }()
 	}
 
+	if r.notifier != nil {
+		if err := r.notifier.Ready(); err != nil {
+			return fmt.Errorf("could not send ready msg: %s", err)
+		}
+	}
+
 	cChan := make(chan net.Conn)
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
@@ -206,6 +228,17 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	}
 
 	go accept(listener, cChan)
+
+	if (r.notifier != nil) {
+		go func() {
+			for {
+				if err := r.notifier.Notify(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+				}
+				time.Sleep(sdnotifier.Timeout)
+			}
+		}()
+	}
 
 	for {
 		select {

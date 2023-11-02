@@ -67,6 +67,9 @@ type Router struct {
 	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
+
+	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
+	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }
 
 type QRouter struct {
