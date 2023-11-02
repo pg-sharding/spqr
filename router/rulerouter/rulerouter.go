@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
+	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/rule"
 	"github.com/pkg/errors"
@@ -53,6 +54,8 @@ type RuleRouterImpl struct {
 
 	clmu sync.Mutex
 	clmp map[uint32]rclient.RouterClient
+
+	notifier *notifier.Notifier
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
@@ -109,7 +112,6 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 }
 
 func (r *RuleRouterImpl) Reload(configPath string) error {
-
 	/*
 			* Reload config changes:
 			* While reloading router config we need
@@ -118,6 +120,11 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 			* 2) Add all new routes to router
 		 	* 3) Mark all active routes as expired
 	*/
+	if r.notifier != nil {
+		if err := r.notifier.Reloading(); err != nil {
+			return err
+		}
+	}
 
 	err := config.LoadRouterCfg(configPath)
 	if err != nil {
@@ -135,10 +142,16 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
 
+	if r.notifier != nil {
+		if err = r.notifier.Ready(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
+func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	return &RuleRouterImpl{
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
@@ -146,6 +159,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		tlsconfig: tlsconfig,
 		clmp:      map[uint32]rclient.RouterClient{},
+		notifier:  notifier,
 	}
 }
 

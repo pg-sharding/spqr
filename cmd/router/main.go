@@ -170,7 +170,7 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, rcfg)
+		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
