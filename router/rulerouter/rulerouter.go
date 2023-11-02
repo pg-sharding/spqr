@@ -120,9 +120,10 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 			* 2) Add all new routes to router
 		 	* 3) Mark all active routes as expired
 	*/
-
-	if err := r.notifier.Reloading(); err != nil {
-		return err
+	if r.notifier != nil {
+		if err := r.notifier.Reloading(); err != nil {
+			return err
+		}
 	}
 
 	err := config.LoadRouterCfg(configPath)
@@ -141,8 +142,10 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
 
-	if err = r.notifier.Ready(); err != nil {
-		return err
+	if r.notifier != nil {
+		if err = r.notifier.Ready(); err != nil {
+			return err
+		}
 	}
 
 	return nil

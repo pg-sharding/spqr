@@ -19,7 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
-	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
+	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 )
 
 type Router interface {
@@ -39,7 +39,7 @@ type InstanceImpl struct {
 	frTLS      *tls.Config
 	WithJaeger bool
 
-	notifier *notifier.Notifier
+	notifier *sdnotifier.Notifier
 }
 
 func (r *InstanceImpl) ID() string {
@@ -70,10 +70,15 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 
 	lc := local.NewLocalCoordinator(qdb)
 
-	// systemd notifier
-	notifier, err := notifier.NewNotifier(ns, false)
-	if err != nil {
-		return nil, err
+	var notifier *sdnotifier.Notifier
+	if rcfg.UseSystemdNotifier {
+		// systemd notifier
+		notifier, err = sdnotifier.NewNotifier(ns, rcfg.SystemdNotifierDebug)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		notifier = nil
 	}
 
 	// qrouter init
@@ -202,7 +207,9 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 		defer func() { _ = closer.Close() }()
 	}
 
-	r.notifier.Ready()
+	if r.notifier != nil {
+		r.notifier.Ready()
+	}
 
 	cChan := make(chan net.Conn)
 
@@ -220,14 +227,16 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 
 	go accept(listener, cChan)
 
-	go func() {
-		for {
-			if err := r.notifier.Notify(); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+	if (r.notifier != nil) {
+		go func() {
+			for {
+				if err := r.notifier.Notify(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+				}
+				time.Sleep(sdnotifier.Timeout)
 			}
-			time.Sleep(notifier.Timeout)
-		}
-	}()
+		}()
+	}
 
 	for {
 		select {
