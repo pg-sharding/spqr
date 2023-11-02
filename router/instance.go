@@ -208,7 +208,9 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener) error {
 	}
 
 	if r.notifier != nil {
-		r.notifier.Ready()
+		if err := r.notifier.Ready(); err != nil {
+			return fmt.Errorf("could not send ready msg: %s", err)
+		}
 	}
 
 	cChan := make(chan net.Conn)
