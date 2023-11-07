@@ -43,7 +43,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
 
 	if err == nil {
-		routeHint, err = func() (routehint.RouteHint, error) {
+		routeHint, _ = func() (routehint.RouteHint, error) {
 			if val, ok := mp["sharding_key"]; ok {
 				spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
@@ -60,7 +60,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 
 				meta := qrouter.NewRoutingMetadataContext(krs, rls, nil)
 
-				ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(nil, val, meta)
+				ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 				if err != nil {
 					return nil, err
 				}
@@ -71,7 +71,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 				}, nil
 			}
 
-			return nil, nil
+			return &routehint.EmptyRouteHint{}, nil
 		}()
 
 		if val, ok := mp["target-session-attrs"]; ok {
