@@ -646,6 +646,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Str("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
+		Str("ds", cl.DS()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -689,6 +690,7 @@ func (cl *PsqlClient) StartupMessage() *pgproto3.StartupMessage {
 
 const DefaultUsr = "default"
 const DefaultDB = "default"
+const DefaultDS = "default"
 
 func (cl *PsqlClient) Usr() string {
 	if usr, ok := cl.startupMsg.Parameters["user"]; ok {
@@ -703,6 +705,13 @@ func (cl *PsqlClient) DB() string {
 	}
 
 	return DefaultDB
+}
+
+func (cl *PsqlClient) DS() string {
+	if ds, ok := cl.activeParamSet["dataspace"]; ok {
+		return ds
+	}
+	return DefaultDS
 }
 
 func (cl *PsqlClient) receivepasswd() (string, error) {
@@ -915,6 +924,12 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
+func (f FakeClient) DS() string {
+	return DefaultDS
+}
+
+func (c FakeClient) SetDS(_ string) {}
+
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
@@ -938,6 +953,7 @@ func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient 
 		id:     clientInfo.ClientId,
 		user:   clientInfo.User,
 		dbname: clientInfo.Dbname,
+		dsname: clientInfo.Dsname,
 		rAddr:  rAddr,
 		shards: make([]shard.Shard, len(clientInfo.Shards)),
 	}
@@ -952,6 +968,7 @@ type NoopClient struct {
 	id     string
 	user   string
 	dbname string
+	dsname string
 	shards []shard.Shard
 	rAddr  string
 }
@@ -967,6 +984,12 @@ func (c NoopClient) Usr() string {
 func (c NoopClient) DB() string {
 	return c.dbname
 }
+
+func (c NoopClient) DS() string {
+	return c.dsname
+}
+
+func (c NoopClient) SetDS(_ string) {}
 
 func (c NoopClient) RAddr() string {
 	return c.rAddr

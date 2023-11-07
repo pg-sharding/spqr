@@ -8,13 +8,13 @@ import (
 	tls "crypto/tls"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	conn "github.com/pg-sharding/spqr/pkg/conn"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockShardinfo is a mock of Shardinfo interface.

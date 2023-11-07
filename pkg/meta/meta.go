@@ -95,7 +95,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		for _, el := range stmt.Entries {
 			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
 		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries)
+		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Dataspace)
 		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 		return cli.Shards(ctx, resp)
 	case spqrparser.KeyRangesStr:
-		ranges, err := mngr.ListKeyRanges(ctx)
+		ranges, err := mngr.ListKeyRanges(ctx, cli.GetDataspace())
 		if err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListShardingRules(ctx)
+		resp, err := mngr.ListShardingRules(ctx, cli.GetDataspace())
 		if err != nil {
 			return err
 		}
@@ -287,6 +287,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
+	case spqrparser.DataspacesStr:
+		dataspaces, err := mngr.ListDataspace(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Dataspaces(ctx, dataspaces)
 	default:
 		return unknownCoordinatorCommand
 	}

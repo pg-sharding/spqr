@@ -22,7 +22,9 @@ message AddShardingRuleRequest {
 
 message AddShardingRuleReply {}
 
-message ListShardingRuleRequest {}
+message ListShardingRuleRequest {
+  string dataspace = 1;
+}
 
 message ListShardingRuleReply {
   repeated ShardingRule rules = 1;

@@ -8,9 +8,9 @@ import (
 	tls "crypto/tls"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	conn "github.com/pg-sharding/spqr/pkg/conn"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockDBInstance is a mock of DBInstance interface.
