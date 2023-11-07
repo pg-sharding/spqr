@@ -32,7 +32,7 @@ func (a *adapter) ShareKeyRange(id string) error {
 	return fmt.Errorf("shareKeyRange not implemented")
 }
 
-func (a *adapter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (a *adapter) ListKeyRanges(ctx context.Context, _ string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
 	if err != nil {
@@ -64,7 +64,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		return nil, err
 	}
 
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListKeyRanges(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 }
 
 func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListKeyRanges(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 }
 
 func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListKeyRanges(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 }
 
 func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListKeyRanges(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := a.ListShardingRules(ctx)
+	rules, err := a.ListShardingRules(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 	return rules, err
 }
 
-func (a *adapter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, _ string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
 	if err != nil {

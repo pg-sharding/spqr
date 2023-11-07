@@ -6,10 +6,11 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound []byte `json:"from"`
-	UpperBound []byte `json:"to"`
-	ShardID    string `json:"shard_id"`
-	KeyRangeID string `json:"key_range_id"`
+	LowerBound  []byte `json:"from"`
+	UpperBound  []byte `json:"to"`
+	ShardID     string `json:"shard_id"`
+	KeyRangeID  string `json:"key_range_id"`
+	DataspaceId string `json:"dataspace_id"`
 }
 type MoveKeyRangeStatus string
 
@@ -62,9 +63,10 @@ type ShardingRuleEntry struct {
 }
 
 type ShardingRule struct {
-	ID        string              `json:"id"`
-	TableName string              `json:"table"`
-	Entries   []ShardingRuleEntry `json:"columns"`
+	ID          string              `json:"id"`
+	TableName   string              `json:"table"`
+	Entries     []ShardingRuleEntry `json:"columns"`
+	DataspaceId string              `json:"dataspace_id"`
 }
 
 type Shard struct {

@@ -90,7 +90,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 }
 
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := l.mgr.ListShardingRules(ctx)
+	rules, err := l.mgr.ListShardingRules(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +128,12 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
-func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
-	krsqdb, err := l.mgr.ListKeyRanges(ctx)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 }
 
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krs, err := l.mgr.ListKeyRanges(ctx)
+	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}

@@ -11,13 +11,13 @@ package mock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	server "github.com/pg-sharding/spqr/router/server"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockPreparedStatementHolder is a mock of PreparedStatementHolder interface.

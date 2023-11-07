@@ -33,6 +33,10 @@ type Show struct {
 	Where WhereClauseNode
 }
 
+type Set struct {
+	Element Statement
+}
+
 type Create struct {
 	Element Statement
 }
@@ -73,6 +77,7 @@ type ShardingRuleDefinition struct {
 	ID        string
 	TableName string
 	Entries   []ShardingRuleEntry
+	Dataspace string
 }
 
 type ShardingRuleEntry struct {
@@ -85,6 +90,7 @@ type KeyRangeDefinition struct {
 	UpperBound []byte
 	ShardID    string
 	KeyRangeID string
+	Dataspace  string
 }
 
 type ShardDefinition struct {
@@ -166,6 +172,7 @@ type UnregisterRouter struct {
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
+	DataspacesStr         = "dataspaces"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	ShardingRules         = "sharding_rules"
@@ -188,6 +195,7 @@ type Statement interface {
 }
 
 func (*Show) iStatement()                   {}
+func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
 func (*Lock) iStatement()                   {}

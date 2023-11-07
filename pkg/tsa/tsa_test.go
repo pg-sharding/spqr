@@ -8,9 +8,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/golang/mock/gomock"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/pg-sharding/spqr/pkg/tsa"
-	"go.uber.org/mock/gomock"
 )
 
 func TestTSA_RW(t *testing.T) {

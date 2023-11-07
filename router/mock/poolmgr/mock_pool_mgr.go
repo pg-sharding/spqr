@@ -11,11 +11,11 @@ package mock
 import (
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	client "github.com/pg-sharding/spqr/router/client"
 	poolmgr "github.com/pg-sharding/spqr/router/poolmgr"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockConnectionKeeper is a mock of ConnectionKeeper interface.

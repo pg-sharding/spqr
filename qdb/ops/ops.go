@@ -23,12 +23,16 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	}
 
 	for _, v := range existsRules {
-		v_gen := shrule.ShardingRuleFromDB(v)
-		if rule.Includes(v_gen) {
-			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, v_gen.Id)
+		if rule.Dataspace != v.DataspaceId {
+			continue
 		}
-		if v_gen.Includes(rule) {
-			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, v_gen.Id)
+
+		vGen := shrule.ShardingRuleFromDB(v)
+		if rule.Includes(vGen) {
+			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id)
+		}
+		if vGen.Includes(rule) {
+			return fmt.Errorf("sharding rule %v included in %v present in qdb", rule.Id, vGen.Id)
 		}
 	}
 
@@ -50,6 +54,9 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	for _, v := range existsKrids {
+		if keyRange.Dataspace != v.DataspaceId {
+			continue
+		}
 		if doIntersect(keyRange, v) {
 			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
@@ -58,7 +65,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
-func MatchShardingRule(ctx context.Context, mgr meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
+func MatchShardingRule(ctx context.Context, _ meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
 	/*
 	* Create set to search column names in `shardingEntries`
 	 */
