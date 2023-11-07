@@ -14,6 +14,7 @@ import (
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 
@@ -98,7 +99,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, nil, nil).Return(routingstate.ShardMatchState{
+	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
@@ -337,7 +338,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		},
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
-	}, nil).Return(routingstate.ShardMatchState{
+	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
