@@ -13,6 +13,7 @@ import (
 	reflect "reflect"
 
 	lyx "github.com/pg-sharding/lyx/lyx"
+	meta "github.com/pg-sharding/spqr/pkg/meta"
 	qrouter "github.com/pg-sharding/spqr/router/qrouter"
 	routehint "github.com/pg-sharding/spqr/router/routehint"
 	routingstate "github.com/pg-sharding/spqr/router/routingstate"
@@ -97,6 +98,20 @@ func (m *MockQueryRouter) Initialized() bool {
 func (mr *MockQueryRouterMockRecorder) Initialized() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialized", reflect.TypeOf((*MockQueryRouter)(nil).Initialized))
+}
+
+// Mgr mocks base method.
+func (m *MockQueryRouter) Mgr() meta.EntityMgr {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Mgr")
+	ret0, _ := ret[0].(meta.EntityMgr)
+	return ret0
+}
+
+// Mgr indicates an expected call of Mgr.
+func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mgr", reflect.TypeOf((*MockQueryRouter)(nil).Mgr))
 }
 
 // Route mocks base method.

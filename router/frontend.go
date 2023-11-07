@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -42,16 +43,37 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
 
 	if err == nil {
-		if val, ok := mp["sharding_key"]; ok {
-			ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(nil, val, nil)
-			if err == nil {
-				routeHint = &routehint.TargetRouteHint{
+		routeHint, err = func() (routehint.RouteHint, error) {
+			if val, ok := mp["sharding_key"]; ok {
+				spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
+
+				krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO())
+
+				if err != nil {
+					return nil, err
+				}
+
+				rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO())
+				if err != nil {
+					return nil, err
+				}
+
+				meta := qrouter.NewRoutingMetadataContext(krs, rls, nil)
+
+				ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(nil, val, meta)
+				if err != nil {
+					return nil, err
+				}
+				return &routehint.TargetRouteHint{
 					State: routingstate.ShardMatchState{
 						Routes: []*routingstate.DataShardRoute{ds},
 					},
-				}
+				}, nil
 			}
-		}
+
+			return nil, nil
+		}()
+
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")

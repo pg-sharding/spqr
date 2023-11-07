@@ -44,6 +44,10 @@ func (qr *ProxyQrouter) Initialize() bool {
 	return qr.initialized.Swap(true)
 }
 
+func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
+	return qr.mgr
+}
+
 func (qr *ProxyQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
 	rc, _ := qr.mgr.ListShards(context.TODO())
 	rv := make([]*routingstate.DataShardRoute, 0, len(rc))

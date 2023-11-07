@@ -25,6 +25,8 @@ type QueryRouter interface {
 
 	Initialized() bool
 	Initialize() bool
+
+	Mgr() meta.EntityMgr
 }
 
 func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter) (QueryRouter, error) {
