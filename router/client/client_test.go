@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/router/client"
 
+	"github.com/golang/mock/gomock"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/stretchr/testify/assert"
