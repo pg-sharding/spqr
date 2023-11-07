@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -28,6 +28,11 @@ func (qp *QParser) Query() string {
 }
 
 type ParseState interface{}
+
+type ParseSet struct {
+	ParseState
+	Element spqrparser.Statement
+}
 
 type ParseStateTXBegin struct {
 	ParseState
@@ -128,7 +133,11 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 
 	routerStmts, err := lyx.Parse(query)
 	if err != nil {
-		return qp.stmt, "", qrouter.ComplexQuery
+		state := CustomSQLQueryParse(query)
+		if state == nil {
+			return nil, comment, err
+		}
+		return state, comment, nil
 	}
 	if routerStmts == nil {
 		qp.state = ParseStateEmptyQuery{}
@@ -237,4 +246,21 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	}
 
 	return ParseStateQuery{}, comment, nil
+}
+
+func CustomSQLQueryParse(query string) ParseState {
+	spqrlog.Zero.Debug().Str("Query", query).Msg("Custom psql query parse")
+	stmt, err := spqrparser.Parse(query)
+	if err != nil {
+		return nil
+	}
+
+	switch statement := stmt.(type) {
+	case *spqrparser.Set:
+		state := &ParseSet{
+			Element: statement.Element,
+		}
+		return state
+	}
+	return nil
 }

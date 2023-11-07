@@ -20,8 +20,8 @@ import (
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestFrontendSimpleEOF(t *testing.T) {
@@ -35,6 +35,7 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
+	cl.EXPECT().DS().AnyTimes().Return("")
 	cl.EXPECT().Close().Times(1)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
@@ -69,6 +70,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
+	cl.EXPECT().DS().AnyTimes().Return("")
 
 	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
 
@@ -99,7 +101,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, "", nil).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
@@ -307,6 +309,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
+	cl.EXPECT().DS().AnyTimes().Return("")
 
 	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
 
@@ -338,7 +341,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		},
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
-	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{

@@ -12,6 +12,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	lyx "github.com/pg-sharding/lyx/lyx"
 	meta "github.com/pg-sharding/spqr/pkg/meta"
 	qrouter "github.com/pg-sharding/spqr/router/qrouter"
@@ -99,7 +100,6 @@ func (mr *MockQueryRouterMockRecorder) Initialized() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Initialized", reflect.TypeOf((*MockQueryRouter)(nil).Initialized))
 }
-
 // Mgr mocks base method.
 func (m *MockQueryRouter) Mgr() meta.EntityMgr {
 	m.ctrl.T.Helper()
@@ -119,14 +119,25 @@ func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, params [][]b
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Route", ctx, stmt, params, rh)
 	ret0, _ := ret[0].(routingstate.RoutingState)
+// Route mocks base method.
+func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte) (qrouter.RoutingState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Route", ctx, stmt, dataspace, params)
+	ret0, _ := ret[0].(qrouter.RoutingState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Route indicates an expected call of Route.
+
 func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, params, rh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, params, rh)
+
+func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, dataspace, params interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, dataspace, params)
+
 }
 
 // WorldShardsRoutes mocks base method.

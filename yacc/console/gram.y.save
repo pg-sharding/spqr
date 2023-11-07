@@ -28,7 +28,6 @@ func randomHex(n int) (string, error) {
 	bool                   bool
 	empty                  struct{}
 
-    set                    *Set
 	statement              Statement
 	show                   *Show
 
@@ -106,10 +105,10 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS
 %token <str> CLIENT
 
 %token<str> START STOP TRACE MESSAGES
@@ -124,7 +123,6 @@ func randomHex(n int) (string, error) {
 %type <str> show_statement_type
 %type <str> kill_statement_type
 
-%type <set> set_stmt
 %type <show> show_stmt
 %type <kill> kill_stmt
 
@@ -183,10 +181,6 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| stoptrace_stmt
-	{
-		setParseTree(yylex, $1)
-	}
-	| set_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -332,13 +326,6 @@ kill_statement_type:
 		}
 	}
 
-set_stmt:
-	SET dataspace_define_stmt
-	{
-	    $$ = &Set{Element: $2}
-	}
-
-
 drop_stmt:
 	DROP key_range_stmt
 	{
@@ -360,8 +347,8 @@ drop_stmt:
     }
 
 add_stmt:
-	ADD dataspace_define_stmt
-	{
+    ADD dataspace_define_stmt
+{
 		$$ = &Create{Element: $2}
 	}
 	|
@@ -440,18 +427,18 @@ dataspace_define_stmt:
 	}
 
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
+	SHARDING RULE any_id opt_dataspace sharding_rule_table_clause sharding_rule_argument_list
 	{
-		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Dataspace: $6}
+		$$ = &ShardingRuleDefinition{ID: $3, TableName: $5, Entries: $6, Dataspace: $4}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
+	SHARDING RULE opt_dataspace sharding_rule_table_clause sharding_rule_argument_list
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Dataspace: $5}
+		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $4, Entries: $5, Dataspace: $3}
 	}
 
 sharding_rule_argument_list: sharding_rule_entry
@@ -500,8 +487,8 @@ sharding_rule_hash_function_clause:
 	| /*EMPTY*/ { $$ = ""; }
 
 opt_dataspace:
-    FOR DATASPACE any_id{
-        $$ = $3
+    DATASPACE any_id{
+        $$ = $2
     }
     | /* EMPTY */ { $$ = "default" }
 

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"io"
 	"strings"
 	"time"
@@ -120,6 +121,15 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			rst.Client().CommitActiveSet()
 		}
 		return err
+	case *parser.ParseSet:
+		switch el := st.Element.(type) {
+		case *spqrparser.DataspaceDefinition:
+			rst.Client().SetParam("dataspace", el.ID)
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "Dataspace successful changed")
+		}
+		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
+		_ = rst.Client().ReplyErrMsg(ret_err.Error())
+		return ret_err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
 			if rst.PgprotoDebug() {

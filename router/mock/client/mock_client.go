@@ -13,13 +13,13 @@ import (
 	tls "crypto/tls"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
 	server "github.com/pg-sharding/spqr/router/server"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockPreparedStatementMapper is a mock of PreparedStatementMapper interface.
@@ -230,6 +230,20 @@ func (m *MockRouterClient) DB() string {
 func (mr *MockRouterClientMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockRouterClient)(nil).DB))
+}
+
+// DS mocks base method.
+func (m *MockRouterClient) DS() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DS")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// DS indicates an expected call of DS.
+func (mr *MockRouterClientMockRecorder) DS() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DS", reflect.TypeOf((*MockRouterClient)(nil).DS))
 }
 
 // DefaultReply mocks base method.
@@ -758,6 +772,18 @@ func (m *MockRouterClient) SetAuthType(arg0 uint32) error {
 func (mr *MockRouterClientMockRecorder) SetAuthType(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAuthType", reflect.TypeOf((*MockRouterClient)(nil).SetAuthType), arg0)
+}
+
+// SetDS mocks base method.
+func (m *MockRouterClient) SetDS(dataspace string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetDS", dataspace)
+}
+
+// SetDS indicates an expected call of SetDS.
+func (mr *MockRouterClientMockRecorder) SetDS(dataspace interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDS", reflect.TypeOf((*MockRouterClient)(nil).SetDS), dataspace)
 }
 
 // SetParam mocks base method.

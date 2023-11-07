@@ -16,7 +16,7 @@ import (
 var MatchShardError = fmt.Errorf("failed to match datashard")
 
 type QueryRouter interface {
-	Route(ctx context.Context, stmt lyx.Node, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error)
+	Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error)
 
 	WorldShardsRoutes() []*routingstate.DataShardRoute
 	DataShardsRoutes() []*routingstate.DataShardRoute

@@ -330,7 +330,11 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection, resolving shard")
 
+<<<<<<< HEAD
 	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), params, rh)
+=======
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params)
+>>>>>>> 0fa9a43 (add dataspaces support)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
@@ -464,6 +468,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
+		Str("dataspace", rst.Cl.DS()).
 		Uint("client", spqrlog.GetPointer(rst.Cl)).
 		Msg("connect client to datashard routes")
 
@@ -1090,6 +1095,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters []
 		Uint("client", spqrlog.GetPointer(rst.Client())).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
+		Str("ds", rst.Client().DS()).
 		Msg("preparing relay step for client")
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {

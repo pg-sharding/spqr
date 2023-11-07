@@ -406,7 +406,7 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
@@ -415,6 +415,22 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.Shar
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
 		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
+	}
+
+	return shRules, nil
+}
+
+func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		if rule.DataspaceId == dataspace {
+			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
+		}
 	}
 
 	return shRules, nil
@@ -540,7 +556,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return nil
 }
 
-func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListKeyRanges(ctx)
 	if err != nil {
 		return nil, err
@@ -548,7 +564,9 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, er
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+		if keyRange.DataspaceId == dataspace {
+			keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+		}
 	}
 
 	return keyr, nil
@@ -634,10 +652,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound: req.Bound,
-			UpperBound: krOld.UpperBound,
-			KeyRangeID: req.Krid,
-			ShardID:    krOld.ShardID,
+			LowerBound:  req.Bound,
+			UpperBound:  krOld.UpperBound,
+			KeyRangeID:  req.Krid,
+			ShardID:     krOld.ShardID,
+			DataspaceId: krOld.DataspaceId,
 		},
 	)
 
@@ -834,7 +853,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	shardingRules, err := qc.ListShardingRules(ctx)
+	shardingRules, err := qc.getAllListShardingRules(ctx)
 	if err != nil {
 		return err
 	}
