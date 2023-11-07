@@ -118,16 +118,16 @@ func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
 // Route mocks base method.
 func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Route", ctx, stmt, params, rh)
+	ret := m.ctrl.Call(m, "Route", ctx, stmt, dataspace, params, rh)
 	ret0, _ := ret[0].(routingstate.RoutingState)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Route indicates an expected call of Route.
-func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, params, rh any) *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, dataspace, params, rh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, params, rh)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, dataspace, params, rh)
 }
 
 // WorldShardsRoutes mocks base method.
