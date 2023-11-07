@@ -61,12 +61,6 @@ func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dat
 	})
 }
 
-func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	lc.mu.Lock()
-	defer lc.mu.Unlock()
-	return lc.qdb.DropDataspace(ctx, ds.Id)
-}
-
 func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -316,7 +310,7 @@ func (qr *LocalCoordinator) Shards() []string {
 
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
@@ -340,13 +334,15 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 }
 
 func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
+	rules, err := qr.qdb.ListShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var resp []*shrule.ShardingRule
 	for _, v := range rules {
-		resp = append(resp, shrule.ShardingRuleFromDB(v))
+		if v.DataspaceId == dataspace {
+			resp = append(resp, shrule.ShardingRuleFromDB(v))
+		}
 	}
 
 	return resp, nil
