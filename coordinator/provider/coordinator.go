@@ -564,7 +564,9 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) (
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+		if keyRange.DataspaceId == dataspace {
+			keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+		}
 	}
 
 	return keyr, nil

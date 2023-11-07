@@ -54,6 +54,9 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	for _, v := range existsKrids {
+		if keyRange.Dataspace != v.DataspaceId {
+			continue
+		}
 		if doIntersect(keyRange, v) {
 			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
