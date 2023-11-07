@@ -16,6 +16,8 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
+	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -37,16 +39,19 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	}
 
 	mp, err := parser.ParseComment(comment)
+	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
+
 	if err == nil {
-		// if val, ok := mp["sharding_key"]; ok {
-		// 	ds, err := qr.deparseKeyWithRangesInternal(ctx, val)
-		// 	if err != nil {
-		// 		return SkipRoutingState{}, err
-		// 	}
-		// 	return ShardMatchState{
-		// 		Routes: []*DataShardRoute{ds},
-		// 	}, nil
-		// }
+		if val, ok := mp["sharding_key"]; ok {
+			ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(nil, val, nil)
+			if err == nil {
+				routeHint = &routehint.TargetRouteHint{
+					State: routingstate.ShardMatchState{
+						Routes: []*routingstate.DataShardRoute{ds},
+					},
+				}
+			}
+		}
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
@@ -85,7 +90,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return fmt.Errorf("client relay has no connection to shards")
 		}
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		if ok {
 			rst.Client().CommitActiveSet()
 		}
@@ -99,7 +104,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		}
 
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		if ok {
 			rst.Client().Rollback()
 		}
@@ -114,7 +119,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
 		rst.AddQuery(msg)
-		if ok, err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+		if ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint); err != nil {
 			return err
 		} else if ok {
 			rst.Client().SetParam(st.Name, st.Value)
@@ -124,7 +129,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		rst.Client().ResetParam(st.Name)
 
 		if cmngr.ConnectionActive(rst) {
-			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
+			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr, routeHint); err != nil {
 				return err
 			}
 		}
@@ -133,7 +138,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateResetMetadataStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			if err != nil {
 				return err
 			}
@@ -158,7 +163,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateSetLocalStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 
@@ -171,7 +176,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 	case parser.ParseStateExecute:
@@ -181,7 +186,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 	case parser.ParseStateExplain:
@@ -189,7 +194,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		return nil
 	default:
 		rst.AddQuery(msg)
-		_, err := rst.ProcessMessageBuf(true, true, cmngr)
+		_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		return err
 	}
 }
@@ -204,12 +209,12 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.FunctionCall:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Parse:
 			// copy interface
 			cpQ := *q
@@ -219,17 +224,17 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Bind:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Describe:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Query:
 			// copy interface
 			cpQ := *q
@@ -273,7 +278,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		spqrlog.Zero.Debug().
 			Uint("client", spqrlog.GetPointer(rst.Client())).
 			Msg("client function call: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, false, true, cmngr)
+		return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q

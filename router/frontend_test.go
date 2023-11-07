@@ -13,8 +13,8 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
-	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -98,8 +98,8 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, nil).Return(qrouter.ShardMatchState{
-		Routes: []*qrouter.DataShardRoute{
+	}, nil, nil).Return(routingstate.ShardMatchState{
+		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
 					Name: "sh1",
@@ -169,7 +169,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	/* query Router */
 
-	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*qrouter.DataShardRoute{
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
 		{
 			Shkey: kr.ShardKey{
 				Name: "sh1",
@@ -337,8 +337,8 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		},
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
-	}, nil).Return(qrouter.ShardMatchState{
-		Routes: []*qrouter.DataShardRoute{
+	}, nil).Return(routingstate.ShardMatchState{
+		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
 					Name: "sh1",
