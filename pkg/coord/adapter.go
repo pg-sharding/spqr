@@ -292,7 +292,7 @@ func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, e
 	return nil, fmt.Errorf("ListDataspace not implemented")
 }
 
-func (a *adapter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
+func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
 	return fmt.Errorf("addDataspace not implemented")
 }
 
