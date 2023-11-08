@@ -331,7 +331,7 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 	return nil
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, _ string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
