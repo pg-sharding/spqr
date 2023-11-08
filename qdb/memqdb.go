@@ -309,7 +309,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks))
 }
 
-func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
+func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list all key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -317,7 +317,9 @@ func (q *MemQDB) ListKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	var ret []*KeyRange
 
 	for _, el := range q.Krs {
-		ret = append(ret, el)
+		if el.DataspaceId == dataspace || dataspace == "" {
+			ret = append(ret, el)
+		}
 	}
 
 	sort.Slice(ret, func(i, j int) bool {

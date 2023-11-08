@@ -48,15 +48,12 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
 
-	existsKrids, err := qdb.ListKeyRanges(ctx)
+	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range existsKrids {
-		if keyRange.Dataspace != v.DataspaceId {
-			continue
-		}
 		if doIntersect(keyRange, v) {
 			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
@@ -122,7 +119,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 		return err
 	}
 
-	krids, err := qdb.ListKeyRanges(ctx)
+	krids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
 	if err != nil {
 		return err
 	}

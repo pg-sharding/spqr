@@ -310,13 +310,11 @@ func (qr *LocalCoordinator) Shards() []string {
 
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
-			if keyRange.DataspaceId == dataspace {
-				ret = append(ret, kr.KeyRangeFromDB(keyRange))
-			}
+			ret = append(ret, kr.KeyRangeFromDB(keyRange))
 		}
 	}
 
