@@ -774,18 +774,6 @@ func (mr *MockRouterClientMockRecorder) SetAuthType(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAuthType", reflect.TypeOf((*MockRouterClient)(nil).SetAuthType), arg0)
 }
 
-// SetDS mocks base method.
-func (m *MockRouterClient) SetDS(dataspace string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDS", dataspace)
-}
-
-// SetDS indicates an expected call of SetDS.
-func (mr *MockRouterClientMockRecorder) SetDS(dataspace interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDS", reflect.TypeOf((*MockRouterClient)(nil).SetDS), dataspace)
-}
-
 // SetParam mocks base method.
 func (m *MockRouterClient) SetParam(arg0, arg1 string) {
 	m.ctrl.T.Helper()
