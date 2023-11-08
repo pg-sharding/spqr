@@ -355,9 +355,18 @@ drop_stmt:
 	}
 	|
 	DROP SHARDING RULE ALL
-    {
-        $$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
-    }
+	{
+		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
+	}
+	| DROP dataspace_define_stmt
+	{
+		$$ = &Drop{Element: $2}
+	}
+	|
+	DROP DATASPACE ALL
+	{
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}}
+	}
 
 add_stmt:
 	ADD dataspace_define_stmt
