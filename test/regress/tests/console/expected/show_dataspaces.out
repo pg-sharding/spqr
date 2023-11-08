@@ -6,13 +6,13 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DATASPACE ds1;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds1
 (1 row)
 
 CREATE DATASPACE ds2;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds2
 (1 row)

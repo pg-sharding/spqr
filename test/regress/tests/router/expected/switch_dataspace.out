@@ -7,13 +7,13 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DATASPACE ds1;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds1
 (1 row)
 
 CREATE DATASPACE ds2;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds2
 (1 row)
@@ -25,13 +25,13 @@ ADD SHARDING RULE r1 COLUMNS w_id FOR DATASPACE ds1;
 (1 row)
 
 ADD SHARDING RULE r2 COLUMNS w_id FOR DATASPACE ds2;
-                                    add sharding rule
+                                    add sharding rule                                     
 ------------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x] for dataspace ds2
 (1 row)
 
 ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1 FOR DATASPACE ds1;
-         add key range
+         add key range          
 --------------------------------
  created key range from 1 to 11
 (1 row)
@@ -66,3 +66,4 @@ NOTICE: send query to shard(s) : sh1
 SET DATASPACE ds2;
 SELECT * FROM xx WHERE w_id=5;
 ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': too complex query to parse, tx status IDLE
+
