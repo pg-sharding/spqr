@@ -85,7 +85,19 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.DataspaceDefinition:
 		dataspace := dataspaces.NewDataspace(stmt.ID)
-		err := mngr.AddDataspace(ctx, dataspace)
+
+		dataspaces, err := mngr.ListDataspace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ds := range dataspaces {
+			if ds.Id == dataspace.Id {
+				spqrlog.Zero.Debug().Msg("Attempt to create existing dataspace")
+				return cli.AddDataspace(ctx, dataspace)
+			}
+		}
+
+		err = mngr.AddDataspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
