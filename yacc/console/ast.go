@@ -127,17 +127,12 @@ type ShardingRuleSelector struct {
 	ID string
 }
 
-type DataspaceSelector struct {
-	ID string
-}
-
 type DropRoutersAll struct{}
 
 func (*DropRoutersAll) iStatement() {}
 
 func (*KeyRangeSelector) iDrop()     {}
 func (*ShardingRuleSelector) iDrop() {}
-func (*DataspaceSelector) iDrop()    {}
 
 const (
 	EntityRouters      = "ROUTERS"
@@ -203,7 +198,6 @@ func (*Show) iStatement()                   {}
 func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
-func (*DataspaceSelector) iStatement()      {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}

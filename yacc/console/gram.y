@@ -62,7 +62,6 @@ func randomHex(n int) (string, error) {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
-	dataspace_selector     *DataspaceSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -121,7 +120,6 @@ func randomHex(n int) (string, error) {
 
 %type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
-%type<dataspace_selector> dataspace_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -360,16 +358,6 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
-	| DROP dataspace_stmt
-	{
-		$$ = &Drop{Element: $2}
-	}
-	|
-	DROP DATASPACE ALL
-	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}}
-	}
-
 add_stmt:
 	ADD dataspace_define_stmt
 	{
@@ -564,12 +552,6 @@ key_range_stmt:
 	KEY RANGE any_id
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
-	}
-
-dataspace_stmt:
-	DATASPACE any_id
-	{
-		$$ = &DataspaceSelector{ID: $2}
 	}
 
 split_key_range_stmt:
