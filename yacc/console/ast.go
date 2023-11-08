@@ -203,6 +203,7 @@ func (*Show) iStatement()                   {}
 func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
+func (*DataspaceSelector) iStatement()      {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
