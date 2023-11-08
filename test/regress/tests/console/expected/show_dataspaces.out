@@ -2,24 +2,25 @@
 		SQPR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
-	You can find documentation here
+	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DATASPACE ds1;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds1
 (1 row)
 
 CREATE DATASPACE ds2;
-         add dataspace
+         add dataspace         
 -------------------------------
  created dataspace with id ds2
 (1 row)
 
 SHOW dataspaces;
- Dataspace ID
+ Dataspace ID 
 --------------
  ds1
  ds2
 (2 rows)
+
