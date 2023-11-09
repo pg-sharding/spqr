@@ -338,7 +338,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		},
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
-	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, nil, nil).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
