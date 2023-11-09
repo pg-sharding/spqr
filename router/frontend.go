@@ -48,7 +48,6 @@ func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspa
 		}
 
 		meta := qrouter.NewRoutingMetadataContext(krs, rls, dataspace, nil)
-
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 		if err != nil {
 			return nil, err
