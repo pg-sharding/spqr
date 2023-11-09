@@ -7,7 +7,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE SHARDING RULE r1 COLUMN i;
-                                     add sharding rule
+                                     add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [i, hash: x->x] for dataspace default
 (1 row)
@@ -48,7 +48,7 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
-ERROR:  error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37
+ERROR:  client proccessing error: error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37, tx status IDLE
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  

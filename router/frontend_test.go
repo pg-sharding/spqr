@@ -101,7 +101,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, "", nil).Return(routingstate.ShardMatchState{
+	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
@@ -184,6 +184,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
+	cl.EXPECT().DS().AnyTimes().Return("")
 
 	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
 

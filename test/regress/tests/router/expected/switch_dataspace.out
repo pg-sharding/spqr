@@ -65,4 +65,4 @@ NOTICE: send query to shard(s) : sh1
 
 SET DATASPACE ds2;
 SELECT * FROM xx WHERE w_id=5;
-ERROR:  error processing query 'SELECT * FROM xx WHERE w_id=5;': too complex query to parse
+ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': too complex query to parse, tx status IDLE

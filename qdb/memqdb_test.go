@@ -65,7 +65,7 @@ func TestMemqdbRacing(t *testing.T) {
 			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
 		},
 		func() { _, _ = memqdb.ListDataspaces(ctx) },
-		func() { _, _ = memqdb.ListKeyRanges(ctx) },
+		func() { _, _ = memqdb.ListKeyRanges(ctx, "") },
 		func() { _, _ = memqdb.ListRouters(ctx) },
 		func() { _, _ = memqdb.ListShardingRules(ctx) },
 		func() { _, _ = memqdb.ListShards(ctx) },
