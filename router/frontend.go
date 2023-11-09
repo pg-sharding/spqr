@@ -32,22 +32,22 @@ func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string) (routehint.RouteHint, error) {
+func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
 	if val, ok := params["sharding_key"]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO())
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
 
 		if err != nil {
 			return nil, err
 		}
 
-		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO())
+		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), dataspace)
 		if err != nil {
 			return nil, err
 		}
 
-		meta := qrouter.NewRoutingMetadataContext(krs, rls, nil)
+		meta := qrouter.NewRoutingMetadataContext(krs, rls, dataspace, nil)
 
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 		if err != nil {
@@ -76,7 +76,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
 
 	if err == nil {
-		routeHint, _ = deparseRouteHint(rst, mp)
+		routeHint, _ = deparseRouteHint(rst, mp, rst.Client().DS())
 
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
