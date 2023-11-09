@@ -151,7 +151,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		if strings.HasPrefix(st.Name, "__spqr") {
 			// internal spqr param, silently apply
 			rst.Client().SetParam(st.Name, st.Value)
-			rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
+			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
 			return nil
 		}
 		rst.AddQuery(msg)
