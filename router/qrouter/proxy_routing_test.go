@@ -848,7 +848,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -862,7 +862,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 	type tcase struct {
 		query     string
 		dataspace string
-		exp       qrouter.RoutingState
+		exp       routingstate.RoutingState
 		err       error
 	}
 	db, _ := qdb.NewMemQDB(MemQDBPath)
@@ -930,8 +930,8 @@ func TestInsertMultiDataspace(t *testing.T) {
 		{
 			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
 			dataspace: dataspace1,
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -952,8 +952,8 @@ func TestInsertMultiDataspace(t *testing.T) {
 		{
 			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
 			dataspace: dataspace2,
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
