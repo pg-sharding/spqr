@@ -101,7 +101,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, nil, nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
 		Routes: []*routingstate.DataShardRoute{
 			{
 				Shkey: kr.ShardKey{
