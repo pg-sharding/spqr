@@ -9,6 +9,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/router/routingstate"
 
 	"github.com/stretchr/testify/assert"
 
@@ -22,7 +24,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -54,18 +56,18 @@ func TestMultiShardRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "create table xx (i int);",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 		{
 			query: " DROP TABLE copy_test;",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 		{
 			query: "select 42;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -78,22 +80,22 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "alter table xx  add column i int;",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 		{
 			query: "vacuum xx;",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 		{
 			query: "analyze xx;",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 		{
 			query: "cluster xx;",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 	} {
@@ -101,7 +103,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -114,7 +116,7 @@ func TestComment(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -166,8 +168,8 @@ func TestComment(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "select /* oiwejow--23**/ * from  xx where i = 4;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -189,7 +191,7 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -202,7 +204,7 @@ func TestSingleShard(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -254,8 +256,8 @@ func TestSingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "select * from  xx where i = 4;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -275,8 +277,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -296,8 +298,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -316,8 +318,8 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "select * from  xx where i = 11;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -337,8 +339,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "Insert into xx (i) values (1), (2)",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -358,8 +360,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "Insert into xx (i) select * from yy where i = 8",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -379,8 +381,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -402,7 +404,7 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -415,7 +417,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -468,8 +470,8 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -491,7 +493,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -504,7 +506,7 @@ func TestJoins(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -554,8 +556,8 @@ func TestJoins(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -575,15 +577,15 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;'",
-			exp:   qrouter.MultiMatchState{},
+			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 
 		// sharding columns, but unparsed
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;'",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -605,7 +607,7 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -622,7 +624,7 @@ func TestUnnest(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -675,8 +677,8 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -696,8 +698,8 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh2",
@@ -719,7 +721,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -732,7 +734,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	type tcase struct {
 		query string
-		exp   qrouter.RoutingState
+		exp   routingstate.RoutingState
 		err   error
 	}
 	/* TODO: fix by adding configurable setting */
@@ -784,8 +786,8 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp: qrouter.ShardMatchState{
-				Routes: []*qrouter.DataShardRoute{
+			exp: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{
 					{
 						Shkey: kr.ShardKey{
 							Name: "sh1",
@@ -807,7 +809,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, nil)
+		tmp, err := pr.Route(context.TODO(), parserRes, nil, routehint.EmptyRouteHint{})
 
 		assert.NoError(err, "query %s", tt.query)
 

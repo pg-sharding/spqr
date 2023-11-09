@@ -16,7 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type LocalCoordinator struct {
@@ -120,14 +120,14 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
-func (lc *LocalCoordinator) DataShardsRoutes() []*qrouter.DataShardRoute {
+func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*qrouter.DataShardRoute
+	var ret []*routingstate.DataShardRoute
 
 	for name := range lc.DataShardCfgs {
-		ret = append(ret, &qrouter.DataShardRoute{
+		ret = append(ret, &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,
@@ -138,14 +138,14 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*qrouter.DataShardRoute {
 	return ret
 }
 
-func (lc *LocalCoordinator) WorldShardsRoutes() []*qrouter.DataShardRoute {
+func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*qrouter.DataShardRoute
+	var ret []*routingstate.DataShardRoute
 
 	for name := range lc.WorldShardCfgs {
-		ret = append(ret, &qrouter.DataShardRoute{
+		ret = append(ret, &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,

@@ -9,6 +9,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb/ops"
+	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/router/routingstate"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -124,7 +126,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingM
 	}
 }
 
-func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key string, meta *RoutingMetadataContext) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key string, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
 	spqrlog.Zero.Debug().
 		Str("key", key).
 		Msg("checking key")
@@ -140,7 +142,7 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 				return nil, err
 			}
 
-			return &DataShardRoute{
+			return &routingstate.DataShardRoute{
 				Shkey:     kr.ShardKey{Name: krkey.ShardID},
 				Matchedkr: krkey,
 			}, nil
@@ -152,15 +154,15 @@ func (qr *ProxyQrouter) deparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, ComplexQuery
 }
 
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*DataShardRoute, error) {
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number >= len(meta.params) {
 			return nil, ComplexQuery
 		}
-		return qr.deparseKeyWithRangesInternal(ctx, string(meta.params[e.Number]), meta)
+		return qr.DeparseKeyWithRangesInternal(ctx, string(meta.params[e.Number]), meta)
 	case *lyx.AExprConst:
-		return qr.deparseKeyWithRangesInternal(ctx, e.Value, meta)
+		return qr.DeparseKeyWithRangesInternal(ctx, e.Value, meta)
 	default:
 		return nil, ComplexQuery
 	}
@@ -426,10 +428,19 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byte) (RoutingState, error) {
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		return nil, ComplexQuery
 	}
+
+	// if route hint forces us to route on particular route, do it
+	switch v := rh.(type) {
+	case *routehint.EmptyRouteHint:
+		// nothing
+	case *routehint.TargetRouteHint:
+		return v.State, nil
+	}
+
 	/*
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
@@ -467,7 +478,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router
 		 */
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 		// XXX: need alter table which renames sharding column to non-sharding column check
 
 	case *lyx.CreateTable:
@@ -477,27 +488,27 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		if err := qr.CheckTableIsRoutable(ctx, node, meta); err != nil {
 			return nil, err
 		}
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 	case *lyx.Analyze:
 		/* Send vacuum to each shard */
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 	case *lyx.Cluster:
 		/* Send vacuum to each shard */
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 	case *lyx.Index:
 		/*
 		* Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: doit
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 		/*
 			case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 				// forbid under separate setting
@@ -505,14 +516,14 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		*/
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
-		return MultiMatchState{}, nil
+		return routingstate.MultiMatchState{}, nil
 	case *lyx.Insert:
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			if qr.cfg.MulticastUnroutableInsertStatement {
 				switch err {
 				case ShardingKeysMissing:
-					return MultiMatchState{}, nil
+					return routingstate.MultiMatchState{}, nil
 				}
 			}
 			return nil, err
@@ -534,8 +545,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 			}
 			if any_routable {
 				rs := qr.DataShardsRoutes()
-				return ShardMatchState{
-					Routes:             []*DataShardRoute{rs[0]},
+				return routingstate.ShardMatchState{
+					Routes:             []*routingstate.DataShardRoute{rs[0]},
 					TargetSessionAttrs: tsa,
 				}, nil
 			}
@@ -568,7 +579,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 	* Step 2: match all deparsed rules to sharding rules.
 	 */
 
-	var route ShardRoute
+	var route routingstate.ShardRoute
 	route = nil
 	if meta.exprs != nil {
 		// traverse each deparsed relation from query
@@ -577,7 +588,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, qr.mgr.QDB()); err != nil {
 
 				for _, col := range cols {
-					currroute, err := qr.deparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
+					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
 					if err != nil {
 						route_err = err
 						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
@@ -591,7 +602,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 					if route == nil {
 						route = currroute
 					} else {
-						route = combine(route, currroute)
+						route = routingstate.Combine(route, currroute)
 					}
 				}
 			}
@@ -636,7 +647,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 					if route == nil {
 						route = currroute
 					} else {
-						route = combine(route, currroute)
+						route = routingstate.Combine(route, currroute)
 					}
 				}
 			}
@@ -654,7 +665,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 					if route == nil {
 						route = currroute
 					} else {
-						route = combine(route, currroute)
+						route = routingstate.Combine(route, currroute)
 					}
 				}
 			}
@@ -663,9 +674,9 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 	if route == nil {
 		switch qr.cfg.DefaultRouteBehaviour {
 		case "BLOCK":
-			return SkipRoutingState{}, FailedToMatch
+			return routingstate.SkipRoutingState{}, FailedToMatch
 		default:
-			return MultiMatchState{}, nil
+			return routingstate.MultiMatchState{}, nil
 		}
 	}
 
@@ -673,13 +684,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		Interface("route", route).
 		Msg("parsed shard route")
 	switch v := route.(type) {
-	case *DataShardRoute:
-		return ShardMatchState{
-			Routes:             []*DataShardRoute{v},
+	case *routingstate.DataShardRoute:
+		return routingstate.ShardMatchState{
+			Routes:             []*routingstate.DataShardRoute{v},
 			TargetSessionAttrs: tsa,
 		}, nil
-	case *MultiMatchRoute:
-		return MultiMatchState{}, nil
+	case *routingstate.MultiMatchRoute:
+		return routingstate.MultiMatchState{}, nil
 	}
-	return SkipRoutingState{}, nil
+	return routingstate.SkipRoutingState{}, nil
 }

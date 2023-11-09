@@ -7,11 +7,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/router/client"
+	"go.uber.org/mock/gomock"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
 	mock_conn "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestCancel(t *testing.T) {
