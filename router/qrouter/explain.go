@@ -13,7 +13,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 	meta := NewRoutingMetadataContext(nil, nil, cli.GetDataspace(), nil)
 
 	switch node := stmt.Stmt.(type) {
-	case *lyx.VarSet:
+	case *lyx.VariableSetStmt:
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router
 		 */

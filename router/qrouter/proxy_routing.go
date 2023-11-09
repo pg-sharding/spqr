@@ -477,7 +477,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 	// case *pgquery.Node_CommentStmt:
 	// 	// shold not happen
 
-	case *lyx.VarSet:
+	case *lyx.VariableSetStmt:
 		/* TBD: maybe skip all set stmts? */
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router

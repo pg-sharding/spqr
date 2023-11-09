@@ -5,6 +5,7 @@ import (
 	"fmt"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -151,6 +152,17 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		})
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
+
+		spqrlog.Zero.Debug().
+			Str("name", st.Name).
+			Msg("applying parsed set stmt")
+
+		if strings.HasPrefix(st.Name, "__spqr") {
+			// internal spqr param, silently apply
+			rst.Client().SetParam(st.Name, st.Value)
+			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
+			return nil
+		}
 		rst.AddQuery(msg)
 		if ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint); err != nil {
 			return err

@@ -186,20 +186,28 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		qp.state = varStmt
 
 		return qp.state, comment, nil
-	case *lyx.VarSet:
+	case *lyx.VariableSetStmt:
+		spqrlog.Zero.Debug().
+			Str("name", q.Name).
+			Str("query", string(q.Kind)).
+			Bool("local", q.IsLocal).
+			Bool("session", q.Session).
+			Msg("parsed set stmt")
+		// XXX: TODO: support
 		if q.IsLocal {
 			qp.state = ParseStateSetLocalStmt{}
 			return qp.state, comment, nil
 		}
-		switch q.Type {
+
+		switch q.Kind {
+		case lyx.VarTypeResetAll:
+			qp.state = ParseStateResetAllStmt{}
 		case lyx.VarTypeReset:
 			switch q.Name {
 			case "session_authorization", "role":
 				qp.state = ParseStateResetMetadataStmt{
 					Setting: q.Name,
 				}
-			case "all":
-				qp.state = ParseStateResetAllStmt{}
 			default:
 				varStmt := ParseStateResetStmt{}
 				varStmt.Name = q.Name
@@ -209,11 +217,12 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		// case pgquery.VariableSetKind_VAR_SET_MULTI:
 		// 	qp.state = ParseStateSetLocalStmt{}
 		// 	return qp.state, comment, nil
-		case lyx.VarTypeSet:
+		case lyx.VarTypeSet, "":
 			varStmt := ParseStateSetStmt{}
 			varStmt.Name = q.Name
-
-			varStmt.Value = q.Value
+			if len(varStmt.Value) > 0 {
+				varStmt.Value = q.Value[0]
+			}
 
 			qp.state = varStmt
 		}
