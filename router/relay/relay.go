@@ -17,6 +17,8 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"github.com/spaolacci/murmur3"
@@ -26,6 +28,8 @@ import (
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
 	route.RouteMgr
+
+	QueryRouter() qrouter.QueryRouter
 
 	Reset() error
 	StartTrace()
@@ -46,14 +50,14 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) (server.PreparedStatementDescriptor, error)
 
-	PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte) error
+	PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
-	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *qrouter.DataShardRoute) (func() error, error)
+	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error)
 
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error)
+	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
@@ -113,7 +117,7 @@ type RelayStateImpl struct {
 
 	pgprotoDebug bool
 
-	routingState qrouter.RoutingState
+	routingState routingstate.RoutingState
 
 	Qr      qrouter.QueryRouter
 	qp      parser.QParser
@@ -125,7 +129,7 @@ type RelayStateImpl struct {
 
 	msgBuf []BufferedMessage
 
-	bindRoute     *qrouter.DataShardRoute
+	bindRoute     *routingstate.DataShardRoute
 	lastBindQuery string
 	lastBindName  string
 
@@ -153,6 +157,10 @@ func NewRelayState(
 		maintain_params:    rcfg.MaintainParams,
 		pgprotoDebug:       rcfg.PgprotoDebug,
 	}
+}
+
+func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
+	return rst.Qr
 }
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
@@ -269,7 +277,7 @@ func (rst *RelayStateImpl) Flush() {
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
 
-func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
+func (rst *RelayStateImpl) procRoutes(routes []*routingstate.DataShardRoute) error {
 	// if there is no routes configurted, there is nowhere to route to
 	if len(routes) == 0 {
 		return qrouter.MatchShardError
@@ -307,7 +315,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*qrouter.DataShardRoute) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) Reroute(params [][]byte) error {
+func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -322,23 +330,23 @@ func (rst *RelayStateImpl) Reroute(params [][]byte) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection, resolving shard")
 
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params)
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
-	case qrouter.MultiMatchState:
+	case routingstate.MultiMatchState:
 		if rst.TxActive() {
 			return fmt.Errorf("ddl is forbidden inside multi-shard transition")
 		}
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
-	case qrouter.ShardMatchState:
+	case routingstate.ShardMatchState:
 		// TBD: do it better
 		return rst.procRoutes(v.Routes)
-	case qrouter.SkipRoutingState:
+	case routingstate.SkipRoutingState:
 		return ErrSkipQuery
-	case qrouter.WorldRouteState:
+	case routingstate.WorldRouteState:
 		if !rst.WorldShardFallback {
 			return err
 		}
@@ -373,15 +381,15 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 		return fmt.Errorf("no routes configured")
 	}
 
-	routingState := qrouter.ShardMatchState{
-		Routes: []*qrouter.DataShardRoute{routes[rand.Int()%len(routes)]},
+	routingState := routingstate.ShardMatchState{
+		Routes: []*routingstate.DataShardRoute{routes[rand.Int()%len(routes)]},
 	}
 	rst.routingState = routingState
 
 	return rst.procRoutes(routingState.Routes)
 }
 
-func (rst *RelayStateImpl) RerouteToTargetRoute(route *qrouter.DataShardRoute) error {
+func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRoute) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -394,24 +402,24 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *qrouter.DataShardRoute) e
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	routingState := qrouter.ShardMatchState{
-		Routes: []*qrouter.DataShardRoute{route},
+	routingState := routingstate.ShardMatchState{
+		Routes: []*routingstate.DataShardRoute{route},
 	}
 	rst.routingState = routingState
 
 	return rst.procRoutes(routingState.Routes)
 }
 
-func (rst *RelayStateImpl) CurrentRoutes() []*qrouter.DataShardRoute {
+func (rst *RelayStateImpl) CurrentRoutes() []*routingstate.DataShardRoute {
 	switch q := rst.routingState.(type) {
-	case qrouter.ShardMatchState:
+	case routingstate.ShardMatchState:
 		return q.Routes
 	default:
 		return nil
 	}
 }
 
-func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
+func (rst *RelayStateImpl) RerouteWorld() ([]*routingstate.DataShardRoute, error) {
 	span := opentracing.StartSpan("reroute to world")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -435,7 +443,7 @@ func (rst *RelayStateImpl) RerouteWorld() ([]*qrouter.DataShardRoute, error) {
 	return shardRoutes, nil
 }
 
-func (rst *RelayStateImpl) Connect(shardRoutes []*qrouter.DataShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) error {
 	var serv server.Server
 	var err error
 
@@ -792,7 +800,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		Msg("complete relay iter")
 
 	switch rst.routingState.(type) {
-	case qrouter.MultiMatchState:
+	case routingstate.MultiMatchState:
 		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Zero.Debug().Msg("unroute multishard route")
 
@@ -866,7 +874,7 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 	return nil
 }
 
-func (rst *RelayStateImpl) UnrouteRoutes(routes []*qrouter.DataShardRoute) error {
+func (rst *RelayStateImpl) UnrouteRoutes(routes []*routingstate.DataShardRoute) error {
 	keys := make([]kr.ShardKey, len(routes))
 	for ind, r := range routes {
 		keys[ind] = r.Shkey
@@ -988,7 +996,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return err
 			}
 
-			if err := rst.PrepareRelayStep(cmngr, rst.saveBind.Parameters); err != nil {
+			if err := rst.PrepareRelayStep(cmngr, rst.saveBind.Parameters, &routehint.EmptyRouteHint{}); err != nil {
 				return err
 			}
 
@@ -1078,7 +1086,7 @@ func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error
 
 var _ RelayStateMgr = &RelayStateImpl{}
 
-func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte) error {
+func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
 		Str("user", rst.Client().Usr()).
@@ -1090,7 +1098,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters []
 		return nil
 	}
 
-	switch err := rst.Reroute(parameters); err {
+	switch err := rst.Reroute(parameters, rh); err {
 	case nil:
 		return nil
 	case ErrSkipQuery:
@@ -1114,7 +1122,7 @@ var noopCloseRouteFunc = func() error {
 	return nil
 }
 
-func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *qrouter.DataShardRoute) (func() error, error) {
+func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(rst.Client())).
 		Str("user", rst.Client().Usr()).
@@ -1192,8 +1200,8 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 	}
 }
 
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error) {
-	if err := rst.PrepareRelayStep(cmngr, nil); err != nil {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) (bool, error) {
+	if err := rst.PrepareRelayStep(cmngr, nil, rh); err != nil {
 		return false, err
 	}
 
@@ -1215,7 +1223,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 	if !cmngr.ConnectionActive(rst) {
 		return rst.Client().ReplyRFQ()
 	}
-	if err := rst.PrepareRelayStep(cmngr, nil); err != nil {
+	if err := rst.PrepareRelayStep(cmngr, nil, routehint.EmptyRouteHint{}); err != nil {
 		return err
 	}
 
@@ -1233,11 +1241,11 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 func (rst *RelayStateImpl) ProcessMessage(
 	msg pgproto3.FrontendMessage,
 	waitForResp, replyCl bool,
-	cmngr poolmgr.PoolMgr) error {
+	cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error {
 	spqrlog.Zero.Debug().
 		Uint("client", spqrlog.GetPointer(&rst.Cl)).
 		Msg("relay step: process message for client")
-	if err := rst.PrepareRelayStep(cmngr, nil); err != nil {
+	if err := rst.PrepareRelayStep(cmngr, nil, rh); err != nil {
 		return err
 	}
 
