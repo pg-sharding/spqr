@@ -177,7 +177,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 }
 
-func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
 
 	namespacePrefix := shardingRulesNamespace + "/"
@@ -195,8 +195,9 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-
-		rules = append(rules, rule)
+		if rule.DataspaceId == dataspace {
+			rules = append(rules, rule)
+		}
 	}
 
 	sort.Slice(rules, func(i, j int) bool {
@@ -938,6 +939,20 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list dataspaces")
 	return rules, nil
+}
+
+func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop dataspace")
+
+	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: drop dataspace")
+
+	return err
 }
 
 // ==============================================================================

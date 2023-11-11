@@ -296,6 +296,10 @@ func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) er
 	return fmt.Errorf("addDataspace not implemented")
 }
 
+func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	return fmt.Errorf("dropDataspace not implemented")
+}
+
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	return fmt.Errorf("UpdateCoordinator not implemeneted")
 }

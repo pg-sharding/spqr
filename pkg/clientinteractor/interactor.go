@@ -753,6 +753,22 @@ func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Datas
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error {
+	if err := pi.WriteHeader("drop dataspace"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, id := range ids {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop dataspace %s", id)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

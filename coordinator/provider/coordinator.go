@@ -428,7 +428,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace strin
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		if rule.DataspaceId == dataspace {
+		if rule.DataspaceId == dataspace || dataspace == "" {
 			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 		}
 	}
