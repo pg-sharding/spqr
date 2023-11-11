@@ -28,7 +28,7 @@ func randomHex(n int) (string, error) {
 	bool                   bool
 	empty                  struct{}
 
-    set                    *Set
+    	set                    *Set
 	statement              Statement
 	show                   *Show
 
@@ -62,9 +62,10 @@ func randomHex(n int) (string, error) {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
+	dataspace_selector     *DataspaceSelector
 
-    colref                 ColumnRef
-    where                  WhereClauseNode
+	colref                 ColumnRef
+	where                  WhereClauseNode
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -106,7 +107,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET HARD
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -120,6 +121,7 @@ func randomHex(n int) (string, error) {
 
 %type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
+%type<dataspace_selector> dataspace_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -349,7 +351,8 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP sharding_rule_stmt
+	|
+	DROP sharding_rule_stmt
 	{
 		$$ = &Drop{Element: $2}
 	}
@@ -358,6 +361,28 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
+	|
+	DROP dataspace_stmt
+	{
+		$$ = &Drop{Element: $2, HardDelete: false}
+	}
+	|
+	DROP DATASPACE ALL
+	{
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: false}
+	}
+	|
+	DROP dataspace_stmt HARD
+	{
+		$$ = &Drop{Element: $2, HardDelete: true}
+	}
+	|
+	DROP DATASPACE ALL HARD
+	{
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: true}
+	}
+
+
 add_stmt:
 	ADD dataspace_define_stmt
 	{
@@ -542,10 +567,16 @@ unlock_stmt:
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
 	}
 
+dataspace_stmt:
+	DATASPACE any_id
+	{
+		$$ = &DataspaceSelector{ID: $2}
+	}
+
 sharding_rule_stmt:
 	SHARDING RULE any_id
 	{
-		$$ =&ShardingRuleSelector{ID: $3}
+		$$ = &ShardingRuleSelector{ID: $3}
 	}
 
 key_range_stmt:
