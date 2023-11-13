@@ -310,13 +310,12 @@ func (qr *LocalCoordinator) Shards() []string {
 
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
-			if keyRange.DataspaceId == dataspace {
-				ret = append(ret, kr.KeyRangeFromDB(keyRange))
-			}
+			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+
 		}
 	}
 
@@ -334,15 +333,14 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 }
 
 func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx)
+	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
 	var resp []*shrule.ShardingRule
 	for _, v := range rules {
-		if v.DataspaceId == dataspace {
-			resp = append(resp, shrule.ShardingRuleFromDB(v))
-		}
+		resp = append(resp, shrule.ShardingRuleFromDB(v))
+
 	}
 
 	return resp, nil
