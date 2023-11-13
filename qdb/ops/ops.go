@@ -18,6 +18,9 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
+	if err != nil {
+		return err
+	}
 	hasDs := false
 	for _, ds := range existDataspace {
 		hasDs = ds.ID == rule.Dataspace
@@ -57,6 +60,9 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
+	if err != nil {
+		return err
+	}
 	hasDs := false
 	for _, ds := range existDataspace {
 		hasDs = ds.ID == keyRange.Dataspace
