@@ -17,7 +17,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
 	}
 
-	existsRules, err := qdb.ListShardingRules(ctx)
+	existsRules, err := qdb.ListShardingRules(ctx, rule.Dataspace)
 	if err != nil {
 		return err
 	}
