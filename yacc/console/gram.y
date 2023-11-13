@@ -363,22 +363,22 @@ drop_stmt:
 	|
 	DROP dataspace_stmt
 	{
-		$$ = &Drop{Element: $2, HardDelete = false}
+		$$ = &Drop{Element: $2, HardDelete: false}
 	}
 	|
 	DROP DATASPACE ALL
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete = false}
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: false}
 	}
 	|
 	DROP dataspace_stmt HARD
 	{
-		$$ = &Drop{Element: $2, HardDelete = true}
+		$$ = &Drop{Element: $2, HardDelete: true}
 	}
 	|
 	DROP DATASPACE ALL HARD
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete = true}
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: true}
 	}
 
 add_stmt:
