@@ -921,7 +921,8 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		return nil, err
 	}
 
-	rules := make([]*Dataspace, 0, len(resp.Kvs))
+	rules := make([]*Dataspace, 0, len(resp.Kvs)+1)
+	rules = append(rules, &Dataspace{ID: "default"})
 
 	for _, kv := range resp.Kvs {
 		var rule *Dataspace

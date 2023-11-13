@@ -613,6 +613,7 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*Dataspace
+	ret = append(ret, &Dataspace{ID: "default"})
 	for _, v := range q.Dataspaces {
 		ret = append(ret, v)
 	}
