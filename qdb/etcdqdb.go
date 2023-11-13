@@ -177,7 +177,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 }
 
-func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
 
 	namespacePrefix := shardingRulesNamespace + "/"
@@ -195,8 +195,9 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-
-		rules = append(rules, rule)
+		if rule.DataspaceId == dataspace || dataspace == "" {
+			rules = append(rules, rule)
+		}
 	}
 
 	sort.Slice(rules, func(i, j int) bool {
@@ -331,7 +332,7 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 	return nil
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -348,7 +349,9 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 			return nil, err
 		}
 
-		ret = append(ret, &krCurr)
+		if dataspace == krCurr.DataspaceId || dataspace == "" {
+			ret = append(ret, &krCurr)
+		}
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -938,6 +941,20 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list dataspaces")
 	return rules, nil
+}
+
+func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop dataspace")
+
+	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: drop dataspace")
+
+	return err
 }
 
 // ==============================================================================

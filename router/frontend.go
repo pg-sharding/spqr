@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"io"
 	"strings"
 	"time"
@@ -31,23 +32,22 @@ func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string) (routehint.RouteHint, error) {
+func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
 	if val, ok := params["sharding_key"]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO())
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
 
 		if err != nil {
 			return nil, err
 		}
 
-		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO())
+		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), dataspace)
 		if err != nil {
 			return nil, err
 		}
 
-		meta := qrouter.NewRoutingMetadataContext(krs, rls, nil)
-
+		meta := qrouter.NewRoutingMetadataContext(krs, rls, dataspace, nil)
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 		if err != nil {
 			return nil, err
@@ -75,7 +75,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
 
 	if err == nil {
-		routeHint, _ = deparseRouteHint(rst, mp)
+		routeHint, _ = deparseRouteHint(rst, mp, rst.Client().DS())
 
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
@@ -120,6 +120,15 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			rst.Client().CommitActiveSet()
 		}
 		return err
+	case *parser.ParseSet:
+		switch el := st.Element.(type) {
+		case *spqrparser.DataspaceDefinition:
+			rst.Client().SetParam("dataspace", el.ID)
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "Dataspace successful changed")
+		}
+		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
+		_ = rst.Client().ReplyErrMsg(ret_err.Error())
+		return ret_err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
 			if rst.PgprotoDebug() {
@@ -392,6 +401,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			default:
 				spqrlog.Zero.Error().
 					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).Err(err).
+					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).
 					Msg("client iteration done with error")
 				if err := rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client proccessing error: %v, tx status %s", err, rst.TxStatus().String())); err != nil {
 					return err

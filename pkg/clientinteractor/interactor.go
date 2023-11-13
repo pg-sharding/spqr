@@ -56,6 +56,14 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
+func (pi *PSQLInteractor) GetDataspace() string {
+	return pi.cl.DS()
+}
+
+func (pi *PSQLInteractor) SetDataspace(dataspace string) {
+	pi.cl.SetParam("dataspace", dataspace)
+}
+
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
 
@@ -185,6 +193,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Key range ID"),
 			TextOidFD("Shard ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
 			TextOidFD("Upper bound"),
 		},
@@ -201,6 +210,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
+				[]byte(keyRange.Dataspace),
 				keyRange.LowerBound,
 				keyRange.UpperBound,
 			},
@@ -473,6 +483,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Sharding Rule ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Table Name"),
 			TextOidFD("Columns"),
 			TextOidFD("Hash Function"),
@@ -504,6 +515,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(rule.Id),
+				[]byte(rule.Dataspace),
 				[]byte(tableName),
 				[]byte(entries.String()),
 				[]byte(hashFunctions.String()),
@@ -514,6 +526,30 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		}
 	}
 
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			TextOidFD("Dataspace ID"),
+		}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	for _, dataspace := range dataspaces {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(dataspace.Id),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 	return pi.CompleteMsg(0)
 }
 
@@ -714,6 +750,22 @@ func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Datas
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error {
+	if err := pi.WriteHeader("drop dataspace"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, id := range ids {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop dataspace %s", id)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
 	return pi.CompleteMsg(0)
 }
 

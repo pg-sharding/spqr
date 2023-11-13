@@ -28,6 +28,7 @@ func randomHex(n int) (string, error) {
 	bool                   bool
 	empty                  struct{}
 
+    set                    *Set
 	statement              Statement
 	show                   *Show
 
@@ -105,10 +106,10 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET HARD
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 
 %token<str> START STOP TRACE MESSAGES
@@ -123,6 +124,7 @@ func randomHex(n int) (string, error) {
 %type <str> show_statement_type
 %type <str> kill_statement_type
 
+%type <set> set_stmt
 %type <show> show_stmt
 %type <kill> kill_stmt
 
@@ -143,6 +145,7 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
 %type<str> sharding_rule_hash_function_clause
+%type<str> opt_dataspace
 
 %type <unlock> unlock_stmt
 %type <lock> lock_stmt
@@ -180,6 +183,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| stoptrace_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| set_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -307,7 +314,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, VersionStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DataspacesStr, VersionStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -324,6 +331,13 @@ kill_statement_type:
 			$$ = "unsupp"
 		}
 	}
+
+set_stmt:
+	SET dataspace_define_stmt
+	{
+	    $$ = &Set{Element: $2}
+	}
+
 
 drop_stmt:
 	DROP key_range_stmt
@@ -346,6 +360,11 @@ drop_stmt:
     }
 
 add_stmt:
+	ADD dataspace_define_stmt
+	{
+		$$ = &Create{Element: $2}
+	}
+	|
 	ADD sharding_rule_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -421,18 +440,18 @@ dataspace_define_stmt:
 	}
 
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
 	{
-		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5}
+		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Dataspace: $6}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4}
+		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Dataspace: $5}
 	}
 
 sharding_rule_argument_list: sharding_rule_entry
@@ -480,20 +499,25 @@ sharding_rule_hash_function_clause:
 	}
 	| /*EMPTY*/ { $$ = ""; }
 
+opt_dataspace:
+    FOR DATASPACE any_id{
+        $$ = $3
+    }
+    | /* EMPTY */ { $$ = "default" }
+
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id
+	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id opt_dataspace
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3}
+		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
 	}
-	|
-	KEY RANGE FROM any_val TO any_val ROUTE TO any_id
+	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str}
+		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
 	}
 
 
@@ -588,6 +612,5 @@ unregister_router_stmt:
     {
         $$ = &UnregisterRouter{ID: `*`}
     }
-
 %%
 

@@ -11,23 +11,23 @@ import (
 
 const MemQDBPath = ""
 
-var mockDataspace *qdb.Dataspace = &qdb.Dataspace{"123"}
-var mockShard *qdb.Shard = &qdb.Shard{
+var mockDataspace = &qdb.Dataspace{"123"}
+var mockShard = &qdb.Shard{
 	ID:    "shard_id",
 	Hosts: []string{"host1", "host2"},
 }
-var mockKeyRange *qdb.KeyRange = &qdb.KeyRange{
+var mockKeyRange = &qdb.KeyRange{
 	LowerBound: []byte{1, 2},
 	UpperBound: []byte{3, 4},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }
-var mockRouter *qdb.Router = &qdb.Router{
+var mockRouter = &qdb.Router{
 	Address: "address",
 	ID:      "router_id",
 	State:   qdb.CLOSED,
 }
-var mockShardingRule *qdb.ShardingRule = &qdb.ShardingRule{
+var mockShardingRule = &qdb.ShardingRule{
 	ID:        "sharding_rule_id",
 	TableName: "fake_table",
 	Entries: []qdb.ShardingRuleEntry{
@@ -36,7 +36,7 @@ var mockShardingRule *qdb.ShardingRule = &qdb.ShardingRule{
 		},
 	},
 }
-var mockDataTransferTransaction *qdb.DataTransferTransaction = &qdb.DataTransferTransaction{
+var mockDataTransferTransaction = &qdb.DataTransferTransaction{
 	ToShardId:   mockShard.ID,
 	FromShardId: mockShard.ID,
 	FromTxName:  "fake_tx_1",
@@ -65,9 +65,9 @@ func TestMemqdbRacing(t *testing.T) {
 			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
 		},
 		func() { _, _ = memqdb.ListDataspaces(ctx) },
-		func() { _, _ = memqdb.ListKeyRanges(ctx) },
+		func() { _, _ = memqdb.ListKeyRanges(ctx, "") },
 		func() { _, _ = memqdb.ListRouters(ctx) },
-		func() { _, _ = memqdb.ListShardingRules(ctx) },
+		func() { _, _ = memqdb.ListShardingRules(ctx, "") },
 		func() { _, _ = memqdb.ListShards(ctx) },
 		func() { _, _ = memqdb.GetKeyRange(ctx, mockKeyRange.KeyRangeID) },
 		func() { _, _ = memqdb.GetShard(ctx, mockShard.ID) },

@@ -218,6 +218,7 @@ func TestKeyRange(t *testing.T) {
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh1",
 					KeyRangeID: "krid1",
+					Dataspace:  "default",
 					LowerBound: []byte("1"),
 					UpperBound: []byte("10"),
 				},
@@ -231,6 +232,7 @@ func TestKeyRange(t *testing.T) {
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh2",
 					KeyRangeID: "krid2",
+					Dataspace:  "default",
 					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
 					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
 				},
@@ -264,6 +266,7 @@ func TestShardingRule(t *testing.T) {
 				Element: &spqrparser.ShardingRuleDefinition{
 					ID:        "rule1",
 					TableName: "",
+					Dataspace: "default",
 					Entries: []spqrparser.ShardingRuleEntry{
 						{
 							Column: "id",

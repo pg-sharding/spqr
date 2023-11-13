@@ -11,6 +11,7 @@ var reservedWords = map[string]int{
 	"create":     CREATE,
 	"add":        ADD,
 	"key":        KEY,
+	"for":        FOR,
 	"range":      RANGE,
 	"lock":       LOCK,
 	"unlock":     UNLOCK,
@@ -36,6 +37,7 @@ var reservedWords = map[string]int{
 	"hash":       HASH,
 	"function":   FUNCTION,
 	"where":      WHERE,
+	"set":        SET,
 	"or":         OR,
 	"and":        AND,
 	"start":      START,
@@ -43,4 +45,5 @@ var reservedWords = map[string]int{
 	"trace":      TRACE,
 	"messages":   MESSAGES,
 	"client":     CLIENT,
+	"hard":       HARD,
 }

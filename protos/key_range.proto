@@ -35,6 +35,7 @@ message KeyRangeInfo {
 }
 
 message ListKeyRangeRequest {
+  string dataspace = 1;
 }
 
 message AddKeyRangeRequest {
@@ -49,6 +50,7 @@ message SplitKeyRangeRequest {
 
 message MergeKeyRangeRequest {
   bytes bound = 1;
+  string dataspace = 2;
 }
 
 message MoveKeyRangeRequest {
