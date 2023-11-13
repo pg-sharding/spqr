@@ -303,7 +303,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 		return cli.Shards(ctx, resp)
 	case spqrparser.KeyRangesStr:
-		ranges, err := mngr.ListKeyRanges(ctx, cli.GetDataspace())
+		ranges, err := mngr.ListKeyRanges(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListShardingRules(ctx, cli.GetDataspace())
+		resp, err := mngr.ListShardingRules(ctx, "")
 		if err != nil {
 			return err
 		}

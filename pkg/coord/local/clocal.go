@@ -320,9 +320,7 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string)
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
-			if keyRange.DataspaceId == dataspace {
-				ret = append(ret, kr.KeyRangeFromDB(keyRange))
-			}
+			ret = append(ret, kr.KeyRangeFromDB(keyRange))
 		}
 	}
 

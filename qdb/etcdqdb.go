@@ -195,7 +195,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-		if rule.DataspaceId == dataspace {
+		if rule.DataspaceId == dataspace || dataspace == "" {
 			rules = append(rules, rule)
 		}
 	}
@@ -332,7 +332,7 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 	return nil
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context, _ string) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -349,7 +349,9 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, _ string) ([]*KeyRange, err
 			return nil, err
 		}
 
-		ret = append(ret, &krCurr)
+		if dataspace == krCurr.DataspaceId || dataspace == "" {
+			ret = append(ret, &krCurr)
+		}
 	}
 
 	sort.Slice(ret, func(i, j int) bool {

@@ -407,7 +407,7 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +421,7 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +934,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	defer cc.Close()
 
 	// Configure sharding rules.
-	shardingRules, err := qc.db.ListShardingRules(ctx)
+	shardingRules, err := qc.db.ListShardingRules(ctx, "")
 	if err != nil {
 		return err
 	}

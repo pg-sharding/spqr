@@ -175,7 +175,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*Sh
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
 	for _, v := range q.Shrules {
-		if dataspace == v.DataspaceId {
+		if dataspace == v.DataspaceId || dataspace == "" {
 			ret = append(ret, v)
 		}
 	}
