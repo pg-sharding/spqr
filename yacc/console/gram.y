@@ -346,8 +346,7 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2}
 	}
-	|
-	DROP KEY RANGE ALL
+	| DROP KEY RANGE ALL
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
@@ -355,28 +354,23 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: $2}
 	}
-	|
-	DROP SHARDING RULE ALL
+	| DROP SHARDING RULE ALL
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
-	|
-	DROP dataspace_stmt
+	| DROP dataspace_stmt
 	{
 		$$ = &Drop{Element: $2, HardDelete: false}
 	}
-	|
-	DROP DATASPACE ALL
+	| DROP DATASPACE ALL
 	{
 		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: false}
 	}
-	|
-	DROP dataspace_stmt HARD
+	| DROP dataspace_stmt HARD
 	{
 		$$ = &Drop{Element: $2, HardDelete: true}
 	}
-	|
-	DROP DATASPACE ALL HARD
+	| DROP DATASPACE ALL HARD
 	{
 		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: true}
 	}

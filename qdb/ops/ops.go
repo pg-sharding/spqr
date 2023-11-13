@@ -17,16 +17,24 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
 	}
 
+	existDataspace, err := qdb.ListDataspaces(ctx)
+	hasDs := false
+	for _, ds := range existDataspace {
+		hasDs = ds.ID == rule.Dataspace
+		if hasDs {
+			break
+		}
+	}
+	if !hasDs {
+		return fmt.Errorf("try to add sharding rule link to a non-existent dataspace")
+	}
+
 	existsRules, err := qdb.ListShardingRules(ctx, rule.Dataspace)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range existsRules {
-		if rule.Dataspace != v.DataspaceId {
-			continue
-		}
-
 		vGen := shrule.ShardingRuleFromDB(v)
 		if rule.Includes(vGen) {
 			return fmt.Errorf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id)
@@ -48,15 +56,24 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
 
+	existDataspace, err := qdb.ListDataspaces(ctx)
+	hasDs := false
+	for _, ds := range existDataspace {
+		hasDs = ds.ID == keyRange.Dataspace
+		if hasDs {
+			break
+		}
+	}
+	if !hasDs {
+		return fmt.Errorf("try to add key range link to a non-existent dataspace")
+	}
+
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range existsKrids {
-		if keyRange.Dataspace != v.DataspaceId {
-			continue
-		}
 		if doIntersect(keyRange, v) {
 			return fmt.Errorf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}

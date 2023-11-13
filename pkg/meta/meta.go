@@ -141,7 +141,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		for _, ds := range dataspaces {
 			if ds.Id == dataspace.Id {
 				spqrlog.Zero.Debug().Msg("Attempt to create existing dataspace")
-				return cli.AddDataspace(ctx, dataspace)
+				return fmt.Errorf("attempt to create existing dataspace")
 			}
 		}
 
