@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -29,8 +29,14 @@ func (qp *QParser) Query() string {
 
 type ParseState interface{}
 
+type ParseSet struct {
+	ParseState
+	Element spqrparser.Statement
+}
+
 type ParseStateTXBegin struct {
 	ParseState
+	Options []lyx.TransactionModeItem
 }
 
 type ParseStateTXRollback struct {
@@ -123,10 +129,15 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	}
 
 	qp.stmt = nil
+	spqrlog.Zero.Debug().Str("query", query).Msg("parsing client query")
 
 	routerStmts, err := lyx.Parse(query)
 	if err != nil {
-		return qp.stmt, "", qrouter.ComplexQuery
+		state := CustomSQLQueryParse(query)
+		if state == nil {
+			return nil, comment, err
+		}
+		return state, comment, nil
 	}
 	if routerStmts == nil {
 		qp.state = ParseStateEmptyQuery{}
@@ -160,30 +171,43 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		return varStmt, comment, nil
 	case *lyx.Prepare:
 		varStmt := ParseStatePrepareStmt{}
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "prep stmt query is %v", q)
+		spqrlog.Zero.Debug().
+			Type("query-type", q).
+			Msg("prep stmt query")
 		varStmt.Name = q.Id
 		// prepare *name* as *query*
 		ss := strings.Split(strings.Split(strings.Split(strings.ToLower(query), "prepare")[1], strings.ToLower(varStmt.Name))[1], "as")[1]
 		varStmt.Query = ss
 		qp.query = ss
-		spqrlog.Logger.Printf(spqrlog.DEBUG1, "parsed prep stmt %s %s", varStmt.Name, varStmt.Query)
+		spqrlog.Zero.Debug().
+			Str("name", varStmt.Name).
+			Str("query", varStmt.Query).
+			Msg("parsed prep stmt")
 		qp.state = varStmt
 
 		return qp.state, comment, nil
-	case *lyx.VarSet:
+	case *lyx.VariableSetStmt:
+		spqrlog.Zero.Debug().
+			Str("name", q.Name).
+			Str("query", string(q.Kind)).
+			Bool("local", q.IsLocal).
+			Bool("session", q.Session).
+			Msg("parsed set stmt")
+		// XXX: TODO: support
 		if q.IsLocal {
 			qp.state = ParseStateSetLocalStmt{}
 			return qp.state, comment, nil
 		}
-		switch q.Type {
+
+		switch q.Kind {
+		case lyx.VarTypeResetAll:
+			qp.state = ParseStateResetAllStmt{}
 		case lyx.VarTypeReset:
 			switch q.Name {
 			case "session_authorization", "role":
 				qp.state = ParseStateResetMetadataStmt{
 					Setting: q.Name,
 				}
-			case "all":
-				qp.state = ParseStateResetAllStmt{}
 			default:
 				varStmt := ParseStateResetStmt{}
 				varStmt.Name = q.Name
@@ -193,26 +217,50 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		// case pgquery.VariableSetKind_VAR_SET_MULTI:
 		// 	qp.state = ParseStateSetLocalStmt{}
 		// 	return qp.state, comment, nil
-		case lyx.VarTypeSet:
+		case lyx.VarTypeSet, "":
 			varStmt := ParseStateSetStmt{}
 			varStmt.Name = q.Name
-
-			varStmt.Value = q.Value
+			if len(varStmt.Value) > 0 {
+				varStmt.Value = q.Value[0]
+			}
 
 			qp.state = varStmt
 		}
 		return qp.state, comment, nil
-	case *lyx.Begin:
-		qp.state = ParseStateTXBegin{}
-		return qp.state, comment, nil
-	case *lyx.Commit:
-		qp.state = ParseStateTXCommit{}
-		return qp.state, comment, nil
-	case *lyx.Rollback:
-		qp.state = ParseStateTXRollback{}
-		return qp.state, comment, nil
+	case *lyx.TransactionStmt:
+		switch q.Kind {
+		case lyx.TRANS_STMT_BEGIN:
+			qp.state = ParseStateTXBegin{
+				Options: q.Options,
+			}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_COMMIT:
+			qp.state = ParseStateTXCommit{}
+			return qp.state, comment, nil
+		case lyx.TRANS_STMT_ROLLBACK:
+			qp.state = ParseStateTXRollback{}
+			return qp.state, comment, nil
+		default:
+		}
 	default:
 	}
 
 	return ParseStateQuery{}, comment, nil
+}
+
+func CustomSQLQueryParse(query string) ParseState {
+	spqrlog.Zero.Debug().Str("Query", query).Msg("Custom psql query parse")
+	stmt, err := spqrparser.Parse(query)
+	if err != nil {
+		return nil
+	}
+
+	switch statement := stmt.(type) {
+	case *spqrparser.Set:
+		state := &ParseSet{
+			Element: statement.Element,
+		}
+		return state
+	}
+	return nil
 }

@@ -7,40 +7,40 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ADD SHARDING RULE r1 COLUMNS w_id;
-                           add sharding rule                            
-------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x]
+                                      add sharding rule                                       
+----------------------------------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [w_id, hash: x->x] for dataspace default
 (1 row)
 
 ADD SHARDING RULE r2 COLUMNS id;
-                          add sharding rule                           
-----------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [id, hash: x->x]
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
+ created sharding rule r2 for table (*) with columns [id, hash: x->x] for dataspace default
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 10
+ created key range from 1 to 11
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+ADD KEY RANGE krid2 FROM 11 TO 21 ROUTE TO sh1;
           add key range          
 ---------------------------------
- created key range from 11 to 20
+ created key range from 11 to 21
 (1 row)
 
-ADD KEY RANGE krid3 FROM 21 TO 30 ROUTE TO sh2;
+ADD KEY RANGE krid3 FROM 21 TO 31 ROUTE TO sh2;
           add key range          
 ---------------------------------
- created key range from 21 to 30
+ created key range from 21 to 31
 (1 row)
 
 \c regress
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxerr (i int);
-ERROR:  error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found
+ERROR:  client proccessing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);

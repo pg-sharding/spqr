@@ -2,6 +2,8 @@ FROM ubuntu:focal
 
 ENV POSTGRES_USER $POSTGRES_USER
 ENV POSTGRES_DB $POSTGRES_DB
+ARG POSTGRES_VERSION=13
+ENV POSTGRES_VERSION $POSTGRES_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
@@ -23,7 +25,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    sudo postgresql-13 \
+    sudo postgresql-$POSTGRES_VERSION \
     build-essential \
     cmake \
     gcc \
@@ -34,10 +36,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     vim \
     postgresql-common \
-    postgresql-server-dev-13
+    postgresql-server-dev-$POSTGRES_VERSION
 
 COPY ./docker/shard/bin/ /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT /usr/local/bin/entrypoint.sh $POSTGRES_VERSION

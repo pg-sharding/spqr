@@ -2,13 +2,18 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rulerouter"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -17,8 +22,12 @@ type LocalQrouterServer struct {
 	protos.UnimplementedShardingRulesServiceServer
 	protos.UnimplementedRouterServiceServer
 	protos.UnimplementedTopologyServiceServer
+	protos.UnimplementedClientInfoServiceServer
+	protos.UnimplementedBackendConnectionsServiceServer
+	protos.UnimplementedPoolServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
+	rr  rulerouter.RuleRouter
 }
 
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
@@ -81,7 +90,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 }
 
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := l.mgr.ListShardingRules(ctx)
+	rules, err := l.mgr.ListShardingRules(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +128,12 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
-func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
-	krsqdb, err := l.mgr.ListKeyRanges(ctx)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +158,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := l.mgr.Unlock(ctx, id); err != nil {
+		if err := l.mgr.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
@@ -159,7 +168,7 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		Krid:     request.KeyRangeInfo.Krid,
-		SourceID: request.KeyRangeInfo.ShardId,
+		SourceID: request.SourceId,
 		Bound:    request.Bound,
 	}); err != nil {
 		return nil, err
@@ -168,11 +177,139 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr) {
+func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
+	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
+	if err != nil {
+		return nil, err
+	}
+
+	var krright *kr.KeyRange
+	var krleft *kr.KeyRange
+
+	for _, keyrange := range krs {
+		if kr.CmpRangesEqual(keyrange.LowerBound, request.Bound) {
+			krright = keyrange
+			if krleft != nil {
+				break
+			}
+			continue
+		}
+
+		if kr.CmpRangesEqual(keyrange.UpperBound, request.Bound) {
+			krleft = keyrange
+			if krright != nil {
+				break
+			}
+			continue
+		}
+	}
+
+	if krright == nil || krleft == nil {
+		return nil, fmt.Errorf("key range on the left or on the right was not found")
+	}
+
+	spqrlog.Zero.Debug().
+		Str("left krid", krleft.ID).
+		Str("right krid", krright.ID).
+		Msg("listing key ranges")
+
+	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
+		KeyRangeIDLeft:  krleft.ID,
+		KeyRangeIDRight: krright.ID,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
+func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
+	clientInfo := &protos.ClientInfo{
+		ClientId: cl.ID(),
+		User:     cl.Usr(),
+		Dbname:   cl.DB(),
+		Shards:   make([]*protos.UsedShardInfo, 0, len(cl.Shards())),
+	}
+	for _, shard := range cl.Shards() {
+		clientInfo.Shards = append(clientInfo.Shards, &protos.UsedShardInfo{
+			Instance: &protos.DBInstaceInfo{
+				Hostname: shard.Instance().Hostname(),
+			},
+		})
+	}
+	return clientInfo
+}
+
+func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
+	shardInfo := &protos.BackendConnectionsInfo{
+		BackendConnectionId: sh.ID(),
+		ShardKeyName:        sh.ShardKeyName(),
+		User:                sh.Usr(),
+		Dbname:              sh.DB(),
+		Hostname:            sh.InstanceHostname(),
+		Sync:                sh.Sync(),
+		TxServed:            sh.TxServed(),
+		TxStatus:            int64(sh.TxStatus()),
+	}
+	return shardInfo
+}
+
+func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
+	poolInfo := &protos.PoolInfo{
+		Id:            fmt.Sprintf("%p", p),
+		DB:            p.Rule().DB,
+		Usr:           p.Rule().Usr,
+		Host:          p.Hostname(),
+		RouterName:    router,
+		ConnCount:     int64(p.UsedConnectionCount()),
+		IdleConnCount: int64(p.IdleConnectionCount()),
+		QueueSize:     int64(p.QueueResidualSize()),
+	}
+	return poolInfo
+}
+
+func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
+	reply := &protos.ListClientsReply{}
+
+	err := l.rr.ClientPoolForeach(func(client client.ClientInfo) error {
+		reply.Clients = append(reply.Clients, ClientToProto(client))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.ListBackendConnectionsRequest) (*protos.ListBackendConntionsReply, error) {
+	reply := &protos.ListBackendConntionsReply{}
+
+	err := l.rr.ForEach(func(sh shard.Shardinfo) error {
+		reply.Conns = append(reply.Conns, ShardToProto(sh))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest) (*protos.ListPoolsResponse, error) {
+	reply := &protos.ListPoolsResponse{}
+
+	err := l.rr.ForEachPool(func(p pool.Pool) error {
+		reply.Pools = append(reply.Pools, PoolToProto(p, l.rr.Config().Host))
+		return nil
+	})
+	return reply, err
+}
+
+func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
+	reply := &protos.UpdateCoordinatorResponse{}
+	err := l.mgr.UpdateCoordinator(ctx, req.Address)
+	return reply, err
+}
+
+func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
 		qr:  qrouter,
 		mgr: mgr,
+		rr:  rr,
 	}
 
 	reflection.Register(server)
@@ -181,8 +318,14 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterShardingRulesServiceServer(server, lqr)
 	protos.RegisterRouterServiceServer(server, lqr)
 	protos.RegisterTopologyServiceServer(server, lqr)
+	protos.RegisterClientInfoServiceServer(server, lqr)
+	protos.RegisterBackendConnectionsServiceServer(server, lqr)
+	protos.RegisterPoolServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
 var _ protos.ShardingRulesServiceServer = &LocalQrouterServer{}
 var _ protos.RouterServiceServer = &LocalQrouterServer{}
+var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
+var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
+var _ protos.PoolServiceServer = &LocalQrouterServer{}

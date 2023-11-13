@@ -33,7 +33,9 @@ func (r RouterService) ListRouters(ctx context.Context, request *protos.ListRout
 }
 
 func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
-	spqrlog.Logger.Printf(spqrlog.DEBUG2, "registering router %s in coordinator", request.Router.Id)
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Router.Id).
+		Msg("register router in coordinator")
 	err := r.impl.RegisterRouter(ctx, topology.RouterFromProto(request.Router))
 	if err != nil {
 		return nil, err
@@ -41,6 +43,28 @@ func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterR
 	return &protos.AddRouterReply{
 		Id: request.Router.Id,
 	}, nil
+}
+
+func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveRouterRequest) (*protos.RemoveRouterReply, error) {
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Id).
+		Msg("unregister router in coordinator")
+	err := r.impl.UnregisterRouter(ctx, request.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.RemoveRouterReply{}, nil
+}
+
+func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMetadataRequest) (*protos.SyncMetadataReply, error) {
+	spqrlog.Zero.Debug().
+		Str("router-id", request.Router.Id).
+		Msg("sync router metadata in coordinator")
+	err := r.impl.SyncRouterMetadata(ctx, topology.RouterFromProto(request.Router))
+	if err != nil {
+		return nil, err
+	}
+	return &protos.SyncMetadataReply{}, nil
 }
 
 var _ protos.RouterServiceServer = &RouterService{}

@@ -16,7 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
-	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type LocalCoordinator struct {
@@ -31,6 +31,7 @@ type LocalCoordinator struct {
 	DataShardCfgs  map[string]*config.Shard
 	WorldShardCfgs map[string]*config.Shard
 
+	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
 }
 
@@ -69,6 +70,12 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 		ret = append(ret, datashards.NewDataShard(id, cfg))
 	}
 	return ret
+}
+
+func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+	return lc.qdb.DropDataspace(ctx, ds.Id)
 }
 
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
@@ -119,14 +126,14 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
-func (lc *LocalCoordinator) DataShardsRoutes() []*qrouter.DataShardRoute {
+func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*qrouter.DataShardRoute
+	var ret []*routingstate.DataShardRoute
 
 	for name := range lc.DataShardCfgs {
-		ret = append(ret, &qrouter.DataShardRoute{
+		ret = append(ret, &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,
@@ -137,14 +144,14 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*qrouter.DataShardRoute {
 	return ret
 }
 
-func (lc *LocalCoordinator) WorldShardsRoutes() []*qrouter.DataShardRoute {
+func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*qrouter.DataShardRoute
+	var ret []*routingstate.DataShardRoute
 
 	for name := range lc.WorldShardCfgs {
-		ret = append(ret, &qrouter.DataShardRoute{
+		ret = append(ret, &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,
@@ -186,8 +193,8 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 }
 
 func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-
 	var krleft *qdb.KeyRange
+	var krright *qdb.KeyRange
 	var err error
 
 	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil { //nolint:all TODO
@@ -202,54 +209,71 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	}(qr.qdb, ctx, req.KeyRangeIDLeft)
 
 	// TODO: krRight seems to be empty.
-	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDRight); err != nil {
-		return err
-	}
-	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
-		err := qdb.UnlockKeyRange(ctx, keyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return
-		}
-	}(qr.qdb, ctx, req.KeyRangeIDRight)
-
-	if err = qr.qdb.DropKeyRange(ctx, krleft.KeyRangeID); err != nil {
+	if krright, err = qr.qdb.GetKeyRange(ctx, req.KeyRangeIDRight); err != nil {
 		return err
 	}
 
-	var krRight *kr.KeyRange
-	krRight.LowerBound = krleft.LowerBound
+	if err = qr.qdb.DropKeyRange(ctx, krright.KeyRangeID); err != nil {
+		return err
+	}
 
-	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, krRight)
+	united := &kr.KeyRange{
+		LowerBound: krleft.LowerBound,
+		UpperBound: krright.UpperBound,
+		ShardID:    krleft.ShardID,
+		ID:         krleft.KeyRangeID,
+	}
+
+	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)
 }
 
 func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	var krOld *qdb.KeyRange
 	var err error
 
+	spqrlog.Zero.Debug().
+		Str("krid", req.Krid).
+		Interface("bound", req.Bound).
+		Str("source-id", req.SourceID).
+		Msg("split request is")
+
 	if krOld, err = qr.qdb.LockKeyRange(ctx, req.SourceID); err != nil {
 		return err
 	}
-	defer func(qdb qdb.QDB, ctx context.Context, krid string) {
-		err := qdb.UnlockKeyRange(ctx, krid)
-		if err != nil {
+
+	defer func() {
+		if err := qr.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
-	}(qr.qdb, ctx, req.SourceID)
+	}()
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound: req.Bound,
-			UpperBound: krOld.UpperBound,
-			KeyRangeID: req.SourceID,
+			LowerBound:  req.Bound,
+			UpperBound:  krOld.UpperBound,
+			KeyRangeID:  req.Krid,
+			ShardID:     krOld.ShardID,
+			DataspaceId: krOld.DataspaceId,
 		},
 	)
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
+	krNew.LowerBound = req.Bound
+
+	spqrlog.Zero.Debug().
+		Bytes("lower-bound", krNew.LowerBound).
+		Bytes("upper-bound", krNew.UpperBound).
+		Str("shard-id", krNew.ShardID).
+		Str("id", krNew.ID).
+		Msg("new key range")
+
+	krOld.UpperBound = req.Bound
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}
-	krOld.UpperBound = req.Bound
-	_ = qr.qdb.UpdateKeyRange(ctx, krOld)
+
+	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
+		return fmt.Errorf("failed to add a new key range: %w", err)
+	}
 
 	return nil
 }
@@ -263,7 +287,7 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
-func (qr *LocalCoordinator) Unlock(ctx context.Context, krid string) error {
+func (qr *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
 	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 
@@ -290,13 +314,14 @@ func (qr *LocalCoordinator) Shards() []string {
 	return ret
 }
 
-func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
 			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+
 		}
 	}
 
@@ -313,14 +338,15 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
 }
 
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx)
+func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
 	var resp []*shrule.ShardingRule
 	for _, v := range rules {
 		resp = append(resp, shrule.ShardingRuleFromDB(v))
+
 	}
 
 	return resp, nil
@@ -364,6 +390,16 @@ func (qr *LocalCoordinator) UnregisterRouter(ctx context.Context, id string) err
 
 func (qr *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
+}
+
+func (qr *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
+	return qr.qdb.UpdateCoordinator(ctx, addr)
+}
+
+func (qr *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) {
+	addr, err := qr.qdb.GetCoordinator(ctx)
+	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordiantor: get coordinator")
+	return addr, err
 }
 
 func (qr *LocalCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {

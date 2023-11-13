@@ -35,10 +35,21 @@ func (app *App) ServeRouter(ctx context.Context) error {
 	for addr := range listen {
 		go func(address string) {
 			defer lwg.Done()
-			listener, err := reuse.Listen("tcp", address)
-			if err != nil {
-				spqrlog.Zero.Info().Err(err).Msg("failed to listen psql")
-				return
+			var listener net.Listener
+			var err error
+
+			if app.spqr.RuleRouter.Config().ReusePort {
+				listener, err = reuse.Listen("tcp", address)
+				if err != nil {
+					spqrlog.Zero.Info().Err(err).Msg("failed to listen psql")
+					return
+				}
+			} else {
+				listener, err = net.Listen("tcp", address)
+				if err != nil {
+					spqrlog.Zero.Info().Err(err).Msg("failed to listen psql")
+					return
+				}
 			}
 			defer func(listener net.Listener) {
 				_ = listener.Close()
@@ -79,7 +90,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 	}
 
 	server := grpc.NewServer()
-	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr)
+	rgrpc.Register(server, app.spqr.Qrouter, app.spqr.Mgr, app.spqr.RuleRouter)
 	spqrlog.Zero.Info().
 		Str("address", address).
 		Msg("SPQR GRPC API is ready on")

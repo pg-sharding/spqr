@@ -28,7 +28,7 @@ func (s *InstancePoolImpl) Connection(
 	clid string,
 	key kr.ShardKey,
 	targetSessionAttrs string) (shard.Shard, error) {
-	spqrlog.Zero.Error().
+	spqrlog.Zero.Debug().
 		Str("client", clid).
 		Str("shard", key.Name).
 		Str("tsa", targetSessionAttrs).
@@ -130,7 +130,7 @@ func (s *InstancePoolImpl) List() []shard.Shard {
 	return s.pool.List()
 }
 
-func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
+func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return s.pool.ForEach(cb)
 }
 

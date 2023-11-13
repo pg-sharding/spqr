@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
+	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/rule"
 	"github.com/pkg/errors"
@@ -26,8 +27,8 @@ type RuleRouter interface {
 
 	Shutdown() error
 	Reload(configPath string) error
-	PreRoute(conn net.Conn) (rclient.RouterClient, error)
-	PreRouteAdm(conn net.Conn) (rclient.RouterClient, error)
+	PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error)
+	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
 	AddDataShard(key qdb.ShardKey) error
@@ -53,6 +54,8 @@ type RuleRouterImpl struct {
 
 	clmu sync.Mutex
 	clmp map[uint32]rclient.RouterClient
+
+	notifier *notifier.Notifier
 }
 
 func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
@@ -74,7 +77,7 @@ func (r *RuleRouterImpl) Shutdown() error {
 	return r.routePool.Shutdown()
 }
 
-func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shard) error) error {
+func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return r.routePool.ForEach(cb)
 }
 
@@ -109,7 +112,6 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 }
 
 func (r *RuleRouterImpl) Reload(configPath string) error {
-
 	/*
 			* Reload config changes:
 			* While reloading router config we need
@@ -118,29 +120,38 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 			* 2) Add all new routes to router
 		 	* 3) Mark all active routes as expired
 	*/
+	if r.notifier != nil {
+		if err := r.notifier.Reloading(); err != nil {
+			return err
+		}
+	}
 
-	rcfg, err := config.LoadRouterCfg(configPath)
+	err := config.LoadRouterCfg(configPath)
 	if err != nil {
 		return err
 	}
+	rcfg := config.RouterConfig()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// if err := spqrlog.UpdateDefaultLogLevel(rcfg.LogLevel); err != nil {
-	// 	return err
-	// }
 	if err := spqrlog.UpdateZeroLogLevel(rcfg.LogLevel); err != nil {
 		return err
 	}
 
-	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(&rcfg)
+	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)
+
+	if r.notifier != nil {
+		if err = r.notifier.Ready(); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
+func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.Notifier) *RuleRouterImpl {
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	return &RuleRouterImpl{
 		routePool: NewRouterPoolImpl(rcfg.ShardMapping),
@@ -148,10 +159,11 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router) *RuleRouterImpl {
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		tlsconfig: tlsconfig,
 		clmp:      map[uint32]rclient.RouterClient{},
+		notifier:  notifier,
 	}
 }
 
-func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
+func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
@@ -162,8 +174,8 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 		return cl, nil
 	}
 
-	if cl.DB() == "spqr-console" {
-		return cl, nil
+	if admin_client || cl.DB() == "spqr-console" {
+		return r.PreRouteInitializedClientAdm(cl)
 	}
 
 	// match client to frontend rule
@@ -225,19 +237,18 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn) (rclient.RouterClient, error) {
 	return cl, nil
 }
 
-func (r *RuleRouterImpl) PreRouteAdm(conn net.Conn) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn)
-
-	if err := cl.Init(r.tlsconfig); err != nil {
-		return nil, err
-	}
-
+func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
-		_ = cl.ReplyErrMsg("failed to make route failure response")
+		_ = cl.ReplyErrMsg(err.Error())
 		return nil, err
 	}
+
+	spqrlog.Zero.Debug().
+		Str("db", frRule.DB).
+		Str("user", frRule.Usr).
+		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
 		_ = cl.ReplyErrMsg("failed to assign rule")
@@ -265,7 +276,7 @@ func (r *RuleRouterImpl) ListShards() []string {
 func (r *RuleRouterImpl) ObsoleteRoute(key route.Key) error {
 	rt := r.routePool.Obsolete(key)
 
-	if err := rt.NofityClients(func(cl client.Client) error {
+	if err := rt.NofityClients(func(cl client.ClientInfo) error {
 		return nil
 	}); err != nil {
 		return err
@@ -308,7 +319,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }
 
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.Client) error) error {
+func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
 		return route.NofityClients(cb)
 	})

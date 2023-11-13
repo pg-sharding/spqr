@@ -4,6 +4,7 @@ admin_console_port: '7432'
 grpc_api_port: '7000'
 init_sql: /spqr/docker/router/init.sql
 router_mode: PROXY
+log_level: debug
 time_quantiles:
   - 0.8
 frontend_tls:
@@ -13,7 +14,9 @@ frontend_tls:
 frontend_rules:
   - usr: user1
     db: db1
+    pool_default: true
     pool_mode: TRANSACTION
+    pool_prepared_statement: false
     auth_rule:
       auth_method: ok
 world_shard_fallback: true

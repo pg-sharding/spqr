@@ -1,53 +1,82 @@
 package app
 
 import (
+	"context"
 	"fmt"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
-	"github.com/pg-sharding/spqr/router/rulerouter"
-	"github.com/pg-sharding/spqr/router/server"
+	"github.com/pg-sharding/spqr/router/relay"
+	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/statistics"
-	"github.com/spaolacci/murmur3"
 )
 
 type Qinteractor interface{}
 
 type QinteractorImpl struct{}
 
-func AdvancedPoolModeNeeded(rst rulerouter.RelayStateMgr) bool {
+func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr rulerouter.PoolMgr) error {
+func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
+	if val, ok := params["sharding_key"]; ok {
+		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
+
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
+
+		if err != nil {
+			return nil, err
+		}
+
+		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), dataspace)
+		if err != nil {
+			return nil, err
+		}
+
+		meta := qrouter.NewRoutingMetadataContext(krs, rls, dataspace, nil)
+		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
+		if err != nil {
+			return nil, err
+		}
+		return &routehint.TargetRouteHint{
+			State: routingstate.ShardMatchState{
+				Routes: []*routingstate.DataShardRoute{ds},
+			},
+		}, nil
+	}
+
+	return &routehint.EmptyRouteHint{}, nil
+}
+
+func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessage, cmngr poolmgr.PoolMgr) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client()))
 	state, comment, err := rst.Parse(query)
 	if err != nil {
-		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
-		_ = rst.Client().ReplyErrMsg(ret_err.Error())
-		return ret_err
+		return fmt.Errorf("error processing query '%v': %w", query, err)
 	}
 
 	mp, err := parser.ParseComment(comment)
+	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
+
 	if err == nil {
-		// if val, ok := mp["sharding_key"]; ok {
-		// 	ds, err := qr.deparseKeyWithRangesInternal(ctx, val)
-		// 	if err != nil {
-		// 		return SkipRoutingState{}, err
-		// 	}
-		// 	return ShardMatchState{
-		// 		Routes: []*DataShardRoute{ds},
-		// 	}, nil
-		// }
+		routeHint, _ = deparseRouteHint(rst, mp, rst.Client().DS())
+
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
@@ -66,6 +95,14 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		}
 		rst.AddSilentQuery(msg)
 		rst.Client().StartTx()
+		for _, opt := range st.Options {
+			switch opt {
+			case lyx.TransactionReadOnly:
+				rst.Client().SetTsa(config.TargetSessionAttrsRO)
+			case lyx.TransactionReadWrite:
+				rst.Client().SetTsa(config.TargetSessionAttrsRW)
+			}
+		}
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {
@@ -78,11 +115,20 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			return fmt.Errorf("client relay has no connection to shards")
 		}
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		if ok {
 			rst.Client().CommitActiveSet()
 		}
 		return err
+	case *parser.ParseSet:
+		switch el := st.Element.(type) {
+		case *spqrparser.DataspaceDefinition:
+			rst.Client().SetParam("dataspace", el.ID)
+			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "Dataspace successful changed")
+		}
+		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
+		_ = rst.Client().ReplyErrMsg(ret_err.Error())
+		return ret_err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
 			if rst.PgprotoDebug() {
@@ -92,7 +138,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		}
 
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		if ok {
 			rst.Client().Rollback()
 		}
@@ -106,8 +152,19 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		})
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
+
+		spqrlog.Zero.Debug().
+			Str("name", st.Name).
+			Msg("applying parsed set stmt")
+
+		if strings.HasPrefix(st.Name, "__spqr") {
+			// internal spqr param, silently apply
+			rst.Client().SetParam(st.Name, st.Value)
+			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
+			return nil
+		}
 		rst.AddQuery(msg)
-		if ok, err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
+		if ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint); err != nil {
 			return err
 		} else if ok {
 			rst.Client().SetParam(st.Name, st.Value)
@@ -117,7 +174,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		rst.Client().ResetParam(st.Name)
 
 		if cmngr.ConnectionActive(rst) {
-			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
+			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr, routeHint); err != nil {
 				return err
 			}
 		}
@@ -126,7 +183,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateResetMetadataStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			if err != nil {
 				return err
 			}
@@ -151,7 +208,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 	case parser.ParseStateSetLocalStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 
@@ -161,10 +218,10 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
-			return rst.Client().ReplyParseComplete()
+			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 	case parser.ParseStateExecute:
@@ -174,7 +231,7 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 			return err
 		}
 	case parser.ParseStateExplain:
@@ -182,14 +239,14 @@ func procQuery(rst rulerouter.RelayStateMgr, query string, msg pgproto3.Frontend
 		return nil
 	default:
 		rst.AddQuery(msg)
-		_, err := rst.ProcessMessageBuf(true, true, cmngr)
+		_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
 		return err
 	}
 }
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulerouter.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	if rst.Client().Rule().PoolMode != config.PoolModeTransaction || !rst.Client().Rule().PoolPreparedStatement {
+func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
 			return nil
@@ -197,12 +254,12 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.FunctionCall:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Parse:
 			// copy interface
 			cpQ := *q
@@ -212,17 +269,17 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Bind:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Describe:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 		case *pgproto3.Query:
 			// copy interface
 			cpQ := *q
@@ -237,59 +294,28 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
-		return rst.Sync(true, true, cmngr)
+		if err := rst.ProcessExtendedBuffer(cmngr); err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Msg("client connection synced")
+		return nil
 	case *pgproto3.Parse:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		hash := murmur3.Sum64([]byte(q.Query))
-		spqrlog.Zero.Debug().
-			Str("name", q.Name).
-			Str("query", q.Query).
-			Uint64("hash", hash)
-
-		if rst.PgprotoDebug() {
-			if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
-				return err
-			}
-		}
-		rst.Client().StorePreparedStatement(q.Name, q.Query)
-		// simply reply witch ok parse complete
-		return rst.Client().ReplyParseComplete()
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Describe:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
 
-		if q.ObjectType == 'P' {
-			if err := rst.ProcessMessage(q, true, true, cmngr); err != nil {
-				return err
-			}
-			return nil
-		}
-		query := rst.Client().PreparedStatementQueryByName(q.Name)
-		hash := murmur3.Sum64([]byte(query))
-
-		if err := rst.PrepareRelayStep(cmngr); err != nil {
-			return err
-		}
-
-		q.Name = fmt.Sprintf("%d", hash)
-		if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-			Name:  q.Name,
-			Query: query,
-		}); err != nil {
-			return err
-		}
-
-		var err error
-		if err = rst.RelayRunCommand(q, false, false); err != nil {
-			if rst.ShouldRetry(err) {
-				return fmt.Errorf("retry logic for prepared statements is not implemented")
-			}
-		}
-		return err
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.FunctionCall:
 		// copy interface
 		cpQ := *q
@@ -297,36 +323,21 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 		spqrlog.Zero.Debug().
 			Uint("client", spqrlog.GetPointer(rst.Client())).
 			Msg("client function call: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, false, true, cmngr)
+		return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
-			Msg("client execute prepared statement: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, true, true, cmngr)
+
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Bind:
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		query := rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
-		hash := murmur3.Sum64([]byte(query))
 
-		if err := rst.PrepareRelayStep(cmngr); err != nil {
-			return err
-		}
-
-		if err := rst.PrepareStatement(hash, server.PrepStmtDesc{
-			Name:  fmt.Sprintf("%d", hash),
-			Query: query,
-		}); err != nil {
-			return err
-		}
-
-		q.PreparedStatement = fmt.Sprintf("%d", hash)
-
-		return rst.RelayRunCommand(q, false, true)
+		rst.AddExtendedProtocMessage(q)
+		return nil
 	case *pgproto3.Query:
 		// copy interface
 		cpQ := *q
@@ -337,7 +348,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr rulerouter.PoolMgr, rst rulero
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.PoolMgr, rcfg *config.Router) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
@@ -347,7 +358,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 	if rcfg.PgprotoDebug {
 		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	}
-	rst := rulerouter.NewRelayState(qr, cl, cmngr, rcfg)
+	rst := relay.NewRelayState(qr, cl, cmngr, rcfg)
 
 	defer rst.Close()
 
@@ -368,6 +379,17 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 			}
 		}
 
+		if writer != nil && writer.IsLogging() {
+			switch writer.GetMode() {
+			case workloadlog.All:
+				writer.RecordWorkload(msg, cl.ID())
+			case workloadlog.Client:
+				if writer.ClientMatches(cl.ID()) {
+					writer.RecordWorkload(msg, cl.ID())
+				}
+			}
+		}
+
 		if err := ProcessMessage(qr, cmngr, rst, msg); err != nil {
 			switch err {
 			case io.ErrUnexpectedEOF:
@@ -376,16 +398,12 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr rulerouter.P
 				return nil
 				// ok
 			default:
-				// fix all reply err to client to be here
 				spqrlog.Zero.Error().
-					Uint("client", spqrlog.GetPointer(rst.Client())).
-					Err(err).
+					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).Err(err).
+					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).
 					Msg("client iteration done with error")
-				if rst.TxStatus() != txstatus.TXIDLE {
-					spqrlog.Zero.Error().
-						Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).
-						Msg("client sync lost due to tx status, reset connection")
-					return rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client sync lost due to tx status %d, reset connection", rst.TxStatus()))
+				if err := rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client proccessing error: %v, tx status %s", err, rst.TxStatus().String())); err != nil {
+					return err
 				}
 			}
 		}

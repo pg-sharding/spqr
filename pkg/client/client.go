@@ -40,13 +40,15 @@ type Client interface {
 
 	Init(cfg *tls.Config) error
 
-	PasswordCT() string
-	PasswordMD5(salt [4]byte) string
+	/* password clear text */
+	PasswordCT() (string, error)
+	PasswordMD5(salt [4]byte) (string, error)
 
 	StartupMessage() *pgproto3.StartupMessage
 
 	Usr() string
 	DB() string
+	DS() string
 
 	Send(msg pgproto3.BackendMessage) error
 	SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error

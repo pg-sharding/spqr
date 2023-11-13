@@ -43,7 +43,7 @@ var rootCmd = &cobra.Command{
 
 		err = app.ProcBalancer(ctx)
 		if err != nil {
-			spqrlog.Logger.PrintError(err)
+			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 
 		wg := &sync.WaitGroup{}
@@ -51,7 +51,7 @@ var rootCmd = &cobra.Command{
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
 			err := app.ServeAdminConsole(ctx, &bCfg)
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Zero.Fatal().Err(err).Msg("")
 			wg.Done()
 		}(wg)
 
@@ -67,7 +67,7 @@ func init() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Logger.FatalOnError(err)
+		spqrlog.Zero.Fatal().Err(err).Msg("")
 	}
 }
 

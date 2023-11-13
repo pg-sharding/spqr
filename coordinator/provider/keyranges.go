@@ -44,15 +44,15 @@ func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.L
 
 func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
-		if err := c.impl.Unlock(ctx, id); err != nil {
+		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {
 			return nil, err
 		}
 	}
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange, dataspace string) (string, error) {
+	krsqb, err := c.impl.ListKeyRanges(ctx, dataspace)
 	if err != nil {
 		return "", err
 	}
@@ -82,12 +82,12 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
+func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	if c.impl == nil {
 		return &protos.KeyRangeReply{}, nil
 	}
 
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+	krsqb, err := c.impl.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 }
 
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+	krsqb, err := c.impl.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +143,15 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.DEBUG3, "unite keyrange %#v", uniteKeyRange)
+	spqrlog.Zero.Debug().
+		Str("left", uniteKeyRange.KeyRangeIDLeft).
+		Str("right", uniteKeyRange.KeyRangeIDRight).
+		Msg("unite keyrange")
 
 	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
-		spqrlog.Logger.Printf(spqrlog.DEBUG3, "no found key ranges to merge by border %v", bound)
+		spqrlog.Zero.Debug().
+			Bytes("bound", bound).
+			Msg("key ranges to merge by border not found")
 		return &protos.ModifyReply{}, nil
 	}
 

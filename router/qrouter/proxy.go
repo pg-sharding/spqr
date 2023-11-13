@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type ProxyQrouter struct {
@@ -43,11 +44,15 @@ func (qr *ProxyQrouter) Initialize() bool {
 	return qr.initialized.Swap(true)
 }
 
-func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
+func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
+	return qr.mgr
+}
+
+func (qr *ProxyQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
 	rc, _ := qr.mgr.ListShards(context.TODO())
-	rv := make([]*DataShardRoute, 0, len(rc))
+	rv := make([]*routingstate.DataShardRoute, 0, len(rc))
 	for _, el := range rc {
-		rv = append(rv, &DataShardRoute{Shkey: kr.ShardKey{
+		rv = append(rv, &routingstate.DataShardRoute{Shkey: kr.ShardKey{
 			Name: el.ID,
 			RW:   false,
 		}})
@@ -55,14 +60,14 @@ func (qr *ProxyQrouter) DataShardsRoutes() []*DataShardRoute {
 	return rv
 }
 
-func (qr *ProxyQrouter) WorldShardsRoutes() []*DataShardRoute {
+func (qr *ProxyQrouter) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
-	var ret []*DataShardRoute
+	var ret []*routingstate.DataShardRoute
 
 	for name := range qr.WorldShardCfgs {
-		ret = append(ret, &DataShardRoute{
+		ret = append(ret, &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: name,
 				RW:   true,

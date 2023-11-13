@@ -2,6 +2,8 @@ package spqrlog
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog"
 )
 
@@ -24,8 +26,16 @@ func UpdateZeroLogLevel(logLevel string) error {
 	return nil
 }
 
+func ReloadLogger(filepath string) {
+	if filepath == "" { //
+		return // this means os.Stdout, so no need to open new file
+	}
+	newLogger := NewZeroLogger(filepath).Level(Zero.GetLevel())
+	Zero = &newLogger
+}
+
 func parseLevel(level string) zerolog.Level {
-	switch level {
+	switch strings.ToLower(level) {
 	case "disabled":
 		return zerolog.Disabled
 	case "debug":

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+service ClientInfoService {
+  rpc ListClients (ListClientsRequest) returns (ListClientsReply) {}
+}
+
+message ListClientsRequest {
+    
+}
+
+message ListClientsReply {
+  repeated ClientInfo clients = 1;
+}
+
+message ClientInfo {
+  string client_id = 1;
+  string user = 2;
+  string dbname = 3;
+  string dsname = 4;
+  repeated UsedShardInfo shards = 5;
+}
+
+message UsedShardInfo {
+    DBInstaceInfo instance = 1;
+}
+
+message DBInstaceInfo {
+    string hostname = 1;
+}

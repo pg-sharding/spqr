@@ -11,18 +11,20 @@ permissions:
 
 jobs:
   golangci:
-    name: golangci-lint check
+    name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: 1.18
       - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          cache: false
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-          args: --timeout=10m --out-format=colored-line-number
+          args: --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
+
   goimports:
     runs-on: ubuntu-latest
     name: goimports check

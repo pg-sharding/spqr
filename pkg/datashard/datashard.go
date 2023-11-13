@@ -97,7 +97,14 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
-	sh.sync_in++
+
+	switch query.(type) {
+	case *pgproto3.Query:
+		sh.sync_in++
+	case *pgproto3.Sync:
+		sh.sync_in++
+	default:
+	}
 
 	spqrlog.Zero.Debug().
 		Str("shard", sh.Name()).
@@ -125,7 +132,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 		Str("shard", sh.Name()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.sync_out).
-		Msg("shard connection received message") 
+		Msg("shard connection received message")
 	return msg, nil
 }
 
@@ -139,6 +146,14 @@ func (sh *Conn) Name() string {
 
 func (sh *Conn) Cfg() *config.Shard {
 	return sh.cfg
+}
+
+func (sh *Conn) InstanceHostname() string {
+	return sh.Instance().Hostname()
+}
+
+func (sh *Conn) ShardKeyName() string {
+	return sh.SHKey().Name
 }
 
 var _ shard.Shard = &Conn{}
@@ -176,7 +191,7 @@ func NewShard(
 		name:     key.Name,
 		beRule:   beRule,
 		ps:       shard.ParameterSet{},
-		sync_in:  1, /* startup message */
+		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
 	}
 

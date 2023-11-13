@@ -27,6 +27,8 @@ const (
 	ProxyMode = RouterMode("PROXY")
 )
 
+var cfgRouter Router
+
 type Router struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"`
 
@@ -49,9 +51,8 @@ type Router struct {
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
-	AutoConf         string            `json:"auto_conf" toml:"auto_conf" yaml:"auto_conf"`
 	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
-	UnderCoordinator bool              `json:"under_coordinator" toml:"under_coordinator" yaml:"under_coordinator"`
+	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
 	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
 	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
@@ -59,6 +60,16 @@ type Router struct {
 	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
 	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
 	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+
+	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
+	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
+
+	ReusePort bool `json:"reuse_port" toml:"reuse_port" yaml:"reuse_port"`
+
+	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
+
+	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
+	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }
 
 type QRouter struct {
@@ -98,11 +109,12 @@ type Shard struct {
 	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
-func LoadRouterCfg(cfgPath string) (Router, error) {
+func LoadRouterCfg(cfgPath string) error {
 	var rcfg Router
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 	defer func(file *os.File) {
 		err := file.Close()
@@ -112,18 +124,21 @@ func LoadRouterCfg(cfgPath string) (Router, error) {
 	}(file)
 
 	if err := initRouterConfig(file, &rcfg); err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 
 	statistics.InitStatistics(rcfg.TimeQuantiles)
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
 	if err != nil {
-		return rcfg, err
+		cfgRouter = rcfg
+		return err
 	}
 
 	log.Println("Running config:", string(configBytes))
-	return rcfg, nil
+	cfgRouter = rcfg
+	return nil
 }
 
 func initRouterConfig(file *os.File, cfgRouter *Router) error {
@@ -138,4 +153,8 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 		return json.NewDecoder(file).Decode(&cfgRouter)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+}
+
+func RouterConfig() *Router {
+	return &cfgRouter
 }

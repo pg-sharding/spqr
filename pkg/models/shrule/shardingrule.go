@@ -23,13 +23,15 @@ type ShardingRule struct {
 	Id        string
 	TableName string
 	entries   []ShardingRuleEntry
+	Dataspace string
 }
 
-func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry) *ShardingRule {
+func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry, dataspaceId string) *ShardingRule {
 	return &ShardingRule{
 		Id:        id,
 		TableName: tableName,
 		entries:   entries,
+		Dataspace: dataspaceId,
 	}
 }
 
@@ -55,13 +57,14 @@ func (s *ShardingRule) String() string {
 		return ret
 	}()
 
-	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v", s.Id, tableName, entries)
+	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v for dataspace %v", s.Id, tableName, entries, s.Dataspace)
 }
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
 		Id:        rule.ID,
 		TableName: rule.TableName,
+		Dataspace: rule.DataspaceId,
 	}
 	for _, el := range rule.Entries {
 		ret.entries = append(ret.entries, ShardingRuleEntry{
@@ -75,8 +78,9 @@ func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 
 func ShardingRuleToDB(rule *ShardingRule) *qdb.ShardingRule {
 	ret := &qdb.ShardingRule{
-		ID:        rule.Id,
-		TableName: rule.TableName,
+		ID:          rule.Id,
+		TableName:   rule.TableName,
+		DataspaceId: rule.Dataspace,
 	}
 	for _, el := range rule.entries {
 		ret.Entries = append(ret.Entries, qdb.ShardingRuleEntry{

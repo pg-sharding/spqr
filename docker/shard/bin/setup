@@ -8,16 +8,17 @@ touch $SETUP_LOG
 
 # Start postgresql
 
-cat >> /var/lib/postgresql/13/main/pg_hba.conf <<-EOF
+cat >> /var/lib/postgresql/$POSTGRES_VERSION/main/pg_hba.conf <<-EOF
 host   all       all       all           trust
 EOF
 
-cat >> /var/lib/postgresql/13/main/postgresql.conf <<-EOF
+cat >> /var/lib/postgresql/$POSTGRES_VERSION/main/postgresql.conf <<-EOF
 listen_addresses = '*'
 port = 6432
+max_prepared_transactions = 5
 EOF
 
-sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ start
+sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ start
 
 if [[ -z "$POSTGRES_USER" ]]; then
     echo "ERROR: env.POSTGRES_USER is empty"
@@ -58,4 +59,4 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POST
 #     exit 1
 # }
 
-sudo -u postgres /usr/lib/postgresql/13/bin/pg_ctl -D /var/lib/postgresql/13/main/ stop
+sudo -u postgres /usr/lib/postgresql/$POSTGRES_VERSION/bin/pg_ctl -D /var/lib/postgresql/$POSTGRES_VERSION/main/ stop

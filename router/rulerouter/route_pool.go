@@ -40,7 +40,7 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 	}
 }
 
-func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shard) error) error {
+func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return r.NotifyRoutes(func(route *route.Route) error {
 		return route.ServPool().ForEach(cb)
 	})
@@ -78,7 +78,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	for _, rt := range r.pool {
 		rt := rt
 		go func() {
-			_ = rt.NofityClients(func(cl client.Client) error {
+			_ = rt.NofityClients(func(cl client.ClientInfo) error {
 				return cl.Shutdown()
 			})
 		}()

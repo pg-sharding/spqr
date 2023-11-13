@@ -6,8 +6,8 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW routers;
- show routers  
----------------
- router local-
+ show routers  | status 
+---------------+--------
+ router local- | 
 (1 row)
 

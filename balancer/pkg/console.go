@@ -46,7 +46,8 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 		}
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "console.ProcClient start")
+	spqrlog.Zero.Info().
+		Msg("console.ProcClient start")
 
 	for {
 		msg, err := cl.Receive()
@@ -64,7 +65,9 @@ func (c *Console) Serve(ctx context.Context, cl client.Client) error {
 		case *pgproto3.Terminate:
 			return nil
 		default:
-			spqrlog.Logger.Printf(spqrlog.INFO, "got unexpected postgresql proto message with type %T", v)
+			spqrlog.Zero.Info().
+				Type("message-type", v).
+				Msg("got unexpected postgresql proto message")
 		}
 	}
 }
@@ -76,24 +79,34 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		return err
 	}
 
-	spqrlog.Logger.Printf(spqrlog.INFO, "RouterConfig '%s', parsed %T", q, tstmt)
+	spqrlog.Zero.Info().
+		Str("query", q).
+		Type("statement-type", tstmt).
+		Msg("process query")
 
 	switch stmt := tstmt.(type) {
 	case *spqrparser.Show:
-
-		spqrlog.Logger.Printf(spqrlog.INFO, "parsed %s", stmt.Cmd)
+		spqrlog.Zero.Info().
+			Str("cmd", stmt.Cmd).
+			Msg("parsed statement is")
 
 		switch stmt.Cmd {
 		case spqrparser.KeyRangesStr:
 			keyRanges, err := c.console.showKeyRanges()
 			if err != nil {
-				spqrlog.Logger.ClientErrorf("failed to show key ranges: %s", cl.ID(), err)
+				spqrlog.Zero.Error().
+					Err(err).
+					Str("client", cl.ID()).
+					Msg("failed to show key ranges")
 			}
 
 			return cli.KeyRanges(keyRanges)
 
 		default:
-			spqrlog.Logger.Printf(spqrlog.INFO, "Unknown default %s", stmt.Cmd)
+			spqrlog.Zero.Error().
+				Str("cmd", stmt.Cmd).
+				Err(err).
+				Msg("unknown stmt.Cmd")
 
 			return fmt.Errorf("Unknown show statement: %s", stmt.Cmd)
 		}
@@ -107,7 +120,11 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		border := string(stmt.Border)
 		err := c.coord.splitKeyRange(&border, split.Krid, stmt.KeyRangeFromID)
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to split key range by border %s: %#v", cl.ID(), border, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("border", border).
+				Msg("failed to split key range by border")
 		}
 
 		return cli.SplitKeyRange(ctx, split)
@@ -122,10 +139,15 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		border := stmt.KeyRangeIDR
 		err := c.coord.mergeKeyRanges(&border)
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to merge key ranges %s and %s: %#v", cl.ID(), stmt.KeyRangeIDL, stmt.KeyRangeIDR, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("left", stmt.KeyRangeIDL).
+				Str("right", stmt.KeyRangeIDR).
+				Msg("failed to merge key ranges")
 		}
 
-		return cli.MergeKeyRanges(ctx, unite, cl)
+		return cli.MergeKeyRanges(ctx, unite)
 
 	case *spqrparser.MoveKeyRange:
 		// Get key range border by stmt.KeyRangeID
@@ -136,12 +158,21 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 		shardID, err := strconv.Atoi(stmt.DestShardID)
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to detect shard %s: %#v", cl.ID(), stmt.DestShardID, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("dest-shard-id", stmt.DestShardID).
+				Msg("failed to detect shard")
 		}
 
 		err = c.coord.moveKeyRange(keyRangeBorders, Shard{id: shardID})
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to move key range %s to shard %v: %#v", cl.ID(), stmt.KeyRangeID, stmt.DestShardID, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("key-range", stmt.KeyRangeID).
+				Str("dest-shard", stmt.DestShardID).
+				Msg("failed to move key range")
 		}
 
 		moveKeyRange := &kr.MoveKeyRange{Krid: stmt.KeyRangeID, ShardId: stmt.DestShardID}
@@ -153,7 +184,11 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		keyRange := KeyRange{}
 		err := c.coord.lockKeyRange(keyRange)
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to lock key range %s: %#v", cl.ID(), stmt.KeyRangeID, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("key-range", stmt.KeyRangeID).
+				Msg("failed to lock key range")
 		}
 
 		return cli.LockKeyRange(ctx, stmt.KeyRangeID)
@@ -163,7 +198,11 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		keyRange := KeyRange{}
 		err := c.coord.unlockKeyRange(keyRange)
 		if err != nil {
-			spqrlog.Logger.ClientErrorf("failed to unlock key range %s: %#v", cl.ID(), stmt.KeyRangeID, err)
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("client", cl.ID()).
+				Str("key-range", stmt.KeyRangeID).
+				Msg("failed to unlock key range")
 		}
 
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
@@ -173,9 +212,12 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		return fmt.Errorf("not implemented")
 
 	default:
-		spqrlog.Logger.Printf(spqrlog.INFO, "got unexcepted console request %v %T", tstmt, tstmt)
+		spqrlog.Zero.Error().
+			Type("type", tstmt).
+			Interface("tstmt", tstmt).
+			Msg("got unexcepted console request")
 		if err := cl.DefaultReply(); err != nil {
-			spqrlog.Logger.FatalOnError(err)
+			spqrlog.Zero.Fatal().Err(err).Msg("")
 		}
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 /* pool for single host */
@@ -64,6 +65,10 @@ func NewshardPool(allocFn ConnectionAllocFn, host string, beRule *config.Backend
 
 func (h *shardPool) Hostname() string {
 	return h.host
+}
+
+func (h *shardPool) RouterName() string {
+	return "unimplemented"
 }
 
 func (h *shardPool) Rule() *config.BackendRule {
@@ -183,6 +188,10 @@ func (h *shardPool) Put(sh shard.Shard) error {
 		Str("host", sh.Instance().Hostname()).
 		Msg("put connection back to pool")
 
+	if sh.TxStatus() != txstatus.TXIDLE {
+		return h.Discard(sh)
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -195,7 +204,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	return nil
 }
 
-func (h *shardPool) ForEach(cb func(sh shard.Shard) error) error {
+func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -240,7 +249,7 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	}
 }
 
-func (c *cPool) ForEach(cb func(sh shard.Shard) error) error {
+func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
 		return true

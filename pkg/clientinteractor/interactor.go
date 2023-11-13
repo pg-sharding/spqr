@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"github.com/pg-sharding/spqr/router/statistics"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -53,6 +54,14 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	}
 
 	return nil
+}
+
+func (pi *PSQLInteractor) GetDataspace() string {
+	return pi.cl.DS()
+}
+
+func (pi *PSQLInteractor) SetDataspace(dataspace string) {
+	pi.cl.SetParam("dataspace", dataspace)
 }
 
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
@@ -116,6 +125,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
+		"pool router",
 		"pool db",
 		"pool usr",
 		"pool host",
@@ -125,10 +135,10 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-
 	for _, p := range ps {
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
+			p.RouterName(),
 			p.Rule().DB,
 			p.Rule().Usr,
 			p.Hostname(),
@@ -141,6 +151,21 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	}
 
 	return pi.CompleteMsg(len(ps))
+}
+
+func (pi *PSQLInteractor) Version(_ context.Context) error {
+	if err := pi.WriteHeader("SPQR version"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	msg := &pgproto3.DataRow{Values: [][]byte{[]byte(pkg.SpqrVersionRevision)}}
+	if err := pi.cl.Send(msg); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
 }
 
 func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
@@ -168,6 +193,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Key range ID"),
 			TextOidFD("Shard ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
 			TextOidFD("Upper bound"),
 		},
@@ -184,6 +210,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
+				[]byte(keyRange.Dataspace),
 				keyRange.LowerBound,
 				keyRange.UpperBound,
 			},
@@ -312,7 +339,7 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 	case spqrparser.WhereClauseEmpty:
 		return true, nil
 	case spqrparser.WhereClauseOp:
-		switch where.Op {
+		switch strings.ToLower(where.Op) {
 		case "and":
 			left, err := MatchRow(row, nameToIndex, where.Left)
 			if err != nil {
@@ -365,14 +392,13 @@ type TableDesc interface {
 type ClientDesc struct {
 }
 
-func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
+func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
-	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname}
-	routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
-	shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
+	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname, rAddr}
+
 	for _, el := range *quantiles {
-		rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-		rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
+		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Shard, el, cl.ID())))
 	}
 	return rowData
 }
@@ -380,7 +406,7 @@ func (_ ClientDesc) GetRow(cl client.Client, hostname string) []string {
 func (_ ClientDesc) GetHeader() []string {
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
-		"client_id", "user", "dbname", "server_id",
+		"client_id", "user", "dbname", "server_id", "router_address",
 	}
 	for _, el := range *quantiles {
 		headers = append(headers, fmt.Sprintf("router_time_%g", el))
@@ -400,8 +426,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 	return columns
 }
 
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, condition spqrparser.WhereClauseNode) error {
-	quantiles := statistics.GetQuantiles()
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, condition spqrparser.WhereClauseNode) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
@@ -412,20 +437,12 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 	}
 
 	for _, cl := range clients {
-		routerStat := statistics.GetClientTimeStatistics(statistics.Router, cl.ID())
-		shardStat := statistics.GetClientTimeStatistics(statistics.Shard, cl.ID())
-		rowData := []string{cl.ID(), cl.Usr(), cl.DB(), ""}
-		for _, el := range *quantiles {
-			rowData = append(rowData, fmt.Sprintf("%.2fms", routerStat.Quantile(el)))
-			rowData = append(rowData, fmt.Sprintf("%.2fms", shardStat.Quantile(el)))
-		}
-
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
 				if sh == nil {
 					continue
 				}
-				row := desc.GetRow(cl, sh.Instance().Hostname())
+				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
 
 				match, err := MatchRow(row, rowDesc, condition)
 				if err != nil {
@@ -441,7 +458,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 				}
 			}
 		} else {
-			row := desc.GetRow(cl, "no backend connection")
+			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
 
 			match, err := MatchRow(row, rowDesc, condition)
 			if err != nil {
@@ -466,6 +483,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Sharding Rule ID"),
+			TextOidFD("Dataspace ID"),
 			TextOidFD("Table Name"),
 			TextOidFD("Columns"),
 			TextOidFD("Hash Function"),
@@ -497,6 +515,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(rule.Id),
+				[]byte(rule.Dataspace),
 				[]byte(tableName),
 				[]byte(entries.String()),
 				[]byte(hashFunctions.String()),
@@ -507,6 +526,30 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 		}
 	}
 
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			TextOidFD("Dataspace ID"),
+		}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+	for _, dataspace := range dataspaces {
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(dataspace.Id),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 	return pi.CompleteMsg(0)
 }
 
@@ -557,7 +600,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange, cl client.Client) error {
+func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			{
@@ -575,7 +618,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
-		if err := cl.Send(msg); err != nil {
+		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}
@@ -610,13 +653,13 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 }
 
 func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
-	if err := pi.WriteHeader("show routers"); err != nil {
+	if err := pi.WriteHeader("show routers", "status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, msg := range resp {
-		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router %s-%s", msg.ID, msg.Address), string(msg.State)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -653,6 +696,34 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr st
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("start trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("START TRASCE MESSAGES"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
+	if err := pi.WriteHeader("stop trace messages"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow("STOP TRASCE MESSAGES"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
 	if err := pi.WriteHeader("drop key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -682,6 +753,22 @@ func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Datas
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error {
+	if err := pi.WriteHeader("drop dataspace"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, id := range ids {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop dataspace %s", id)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -708,15 +795,20 @@ func (pi *PSQLInteractor) KillClient(clientID string) error {
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shard) error {
-	if err := pi.WriteHeader("backend connection id", "shard name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
+	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, sh := range shs {
+		router := "no data"
+		s, ok := sh.(shard.CoordShardinfo)
+		if ok {
+			router = s.Router()
+		}
 
-		if err := pi.WriteDataRow(sh.ID(), sh.SHKey().Name, sh.Instance().Hostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(sh.ID(), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
