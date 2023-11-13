@@ -36,7 +36,7 @@ type EntityMgr interface {
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
-func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func processDrop(ctx context.Context, dstmt spqrparser.Statement, isHard bool, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -76,6 +76,54 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, mngr EntityMgr
 			}
 			return cli.DropShardingRule(ctx, stmt.ID)
 		}
+	case *spqrparser.DataspaceSelector:
+		id := stmt.ID
+		if stmt.ID == "*" {
+			id = ""
+		}
+		srs, err := mngr.ListShardingRules(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		krs, err := mngr.ListKeyRanges(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if len(srs)+len(krs) != 0 && !isHard {
+			return fmt.Errorf("Dataspace have Key Ranges or/and Shrding Rules. Use HARD drop to delete this")
+		}
+
+		for _, kr := range krs {
+			err = mngr.DropKeyRange(ctx, kr.ID)
+			if err != nil {
+				return err
+			}
+		}
+		for _, sr := range srs {
+			err = mngr.DropShardingRule(ctx, sr.Id)
+			if err != nil {
+				return err
+			}
+		}
+
+		dss, err := mngr.ListDataspace(ctx)
+		ret := make([]string, 0)
+		if err != nil {
+			return err
+		}
+		for _, ds := range dss {
+			if ds.Id == id || id == "" {
+				ret = append(ret, ds.ID())
+				err = mngr.DropDataspace(ctx, ds)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return cli.DropDataspace(ctx, ret)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -85,7 +133,19 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	switch stmt := astmt.(type) {
 	case *spqrparser.DataspaceDefinition:
 		dataspace := dataspaces.NewDataspace(stmt.ID)
-		err := mngr.AddDataspace(ctx, dataspace)
+
+		dataspaces, err := mngr.ListDataspace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, ds := range dataspaces {
+			if ds.Id == dataspace.Id {
+				spqrlog.Zero.Debug().Msg("Attempt to create existing dataspace")
+				return cli.AddDataspace(ctx, dataspace)
+			}
+		}
+
+		err = mngr.AddDataspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
@@ -130,7 +190,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, mgr, cli)
+		return processDrop(ctx, stmt.Element, stmt.HardDelete, mgr, cli)
 	case *spqrparser.Create:
 		return processCreate(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.MoveKeyRange:
@@ -246,7 +306,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 		return cli.Shards(ctx, resp)
 	case spqrparser.KeyRangesStr:
-		ranges, err := mngr.ListKeyRanges(ctx, cli.GetDataspace())
+		ranges, err := mngr.ListKeyRanges(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -259,7 +319,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListShardingRules(ctx, cli.GetDataspace())
+		resp, err := mngr.ListShardingRules(ctx, "")
 		if err != nil {
 			return err
 		}
