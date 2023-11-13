@@ -310,7 +310,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		return
 	}
 
-	ranges, err := cc.db.ListKeyRanges(context.TODO())
+	ranges, err := cc.db.ListKeyRanges(context.TODO(), "")
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
@@ -407,7 +407,7 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +421,7 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 }
 
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx)
+	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -557,7 +557,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 }
 
 func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	keyRanges, err := qc.db.ListKeyRanges(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +934,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	defer cc.Close()
 
 	// Configure sharding rules.
-	shardingRules, err := qc.db.ListShardingRules(ctx)
+	shardingRules, err := qc.db.ListShardingRules(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -960,7 +960,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Msg("add sharding rules response")
 
 	// Configure key ranges.
-	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	keyRanges, err := qc.db.ListKeyRanges(ctx, "")
 	if err != nil {
 		return err
 	}

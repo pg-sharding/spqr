@@ -72,6 +72,12 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 	return ret
 }
 
+func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+	return lc.qdb.DropDataspace(ctx, ds.Id)
+}
+
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
