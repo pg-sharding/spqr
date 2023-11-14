@@ -146,6 +146,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 
 		spqrlog.Zero.Debug().
 			Str("name", st.Name).
+			Str("value", st.Value).
 			Msg("applying parsed set stmt")
 
 		if strings.HasPrefix(st.Name, "__spqr") {

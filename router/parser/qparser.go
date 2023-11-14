@@ -211,7 +211,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		case lyx.VarTypeSet, "":
 			varStmt := ParseStateSetStmt{}
 			varStmt.Name = q.Name
-			if len(varStmt.Value) > 0 {
+			if len(q.Value) > 0 {
 				varStmt.Value = q.Value[0]
 			}
 
