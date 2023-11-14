@@ -16,7 +16,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pg-sharding/lyx v0.0.0-20231109123010-e632197ddf59
+	github.com/pg-sharding/lyx v0.0.0-20231114085525-b7d52902c8f3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.31.0
 	github.com/sevlyar/go-daemon v0.1.6
@@ -30,7 +30,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.3.0
 	golang.org/x/crypto v0.15.0
-	golang.org/x/exp v0.0.0-20231108232855-2478ac86f678
+	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	golang.yandex/hasql v1.1.1
 	google.golang.org/grpc v1.59.0
