@@ -122,6 +122,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 	}
 
 	cl.id = fmt.Sprintf("%p", cl)
+	cl.activeParamSet["dataspace"] = "default"
 
 	return cl
 }
