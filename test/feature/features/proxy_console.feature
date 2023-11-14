@@ -47,6 +47,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
+            "Dataspace ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1",
             "Upper bound":"10"
@@ -60,6 +61,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
+            "Dataspace ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"r1",
             "Table Name":"*"
@@ -77,6 +79,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
+            "Dataspace ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1",
             "Upper bound":"10"
@@ -90,6 +93,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
+            "Dataspace ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"r1",
             "Table Name":"*"
@@ -153,12 +157,14 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
+            "Dataspace ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1",
             "Upper bound":"5"
         },
         {
             "Key range ID":"new_krid",
+            "Dataspace ID":"default",
             "Lower bound":"5",
             "Shard ID":"sh1",
             "Upper bound":"10"
@@ -179,6 +185,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
+            "Dataspace ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1",
             "Upper bound":"10"
@@ -254,6 +261,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
+            "Dataspace ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"old_rule",
             "Table Name":"*"
