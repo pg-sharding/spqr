@@ -114,7 +114,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isHard bool, m
 			return err
 		}
 		for _, ds := range dss {
-			if ds.Id == id || id == "" {
+			if (ds.Id == id || id == "") && ds.Id != "default" {
 				ret = append(ret, ds.ID())
 				err = mngr.DropDataspace(ctx, ds)
 				if err != nil {

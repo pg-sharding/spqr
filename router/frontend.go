@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 	"io"
 	"strings"
 	"time"
@@ -120,15 +119,6 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			rst.Client().CommitActiveSet()
 		}
 		return err
-	case *parser.ParseSet:
-		switch el := st.Element.(type) {
-		case *spqrparser.DataspaceDefinition:
-			rst.Client().SetParam("dataspace", el.ID)
-			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "Dataspace successful changed")
-		}
-		ret_err := fmt.Errorf("error processing query '%v': %v", query, err)
-		_ = rst.Client().ReplyErrMsg(ret_err.Error())
-		return ret_err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
 			if rst.PgprotoDebug() {
@@ -152,15 +142,18 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		})
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
+		spqrlog.Zero.Debug().Msg(st.Name)
+		spqrlog.Zero.Debug().Msg(st.Value)
 
 		spqrlog.Zero.Debug().
 			Str("name", st.Name).
 			Str("value", st.Value).
 			Msg("applying parsed set stmt")
 
-		if strings.HasPrefix(st.Name, "__spqr") {
-			// internal spqr param, silently apply
-			rst.Client().SetParam(st.Name, st.Value)
+		if strings.HasPrefix(st.Name, "__spqr__") {
+			param := st.Name[8:len(st.Name)]
+			param = strings.ToLower(param)
+			rst.Client().SetParam(param, st.Value)
 			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
 			return nil
 		}

@@ -450,7 +450,6 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 	 */
 
 	krs, err := qr.mgr.ListKeyRanges(ctx, dataspace)
-
 	if err != nil {
 		return nil, err
 	}

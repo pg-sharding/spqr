@@ -1,4 +1,5 @@
 \c spqr-console
+DROP DATASPACE ALL HARD;
 
 CREATE DATASPACE ds1;
 CREATE DATASPACE ds2;
@@ -13,7 +14,7 @@ ADD KEY RANGE krid3 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds2;
 
 \c regress
 
-SET DATASPACE ds1;
+SET __spqr__DATASPACE = ds1;
 
 CREATE TABLE xx (w_id int);
 
@@ -23,6 +24,6 @@ INSERT INTO xx(w_id) VALUES(20);
 
 SELECT * FROM xx WHERE w_id=5;
 
-SET DATASPACE ds2;
+SET __spqr__DATASPACE = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
