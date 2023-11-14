@@ -24,6 +24,7 @@ func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Ad
 		UpperBound: []byte(request.KeyRangeInfo.KeyRange.UpperBound),
 		ID:         request.KeyRangeInfo.Krid,
 		ShardID:    request.KeyRangeInfo.ShardId,
+		Dataspace:  "default",
 	})
 	if err != nil {
 		return nil, err

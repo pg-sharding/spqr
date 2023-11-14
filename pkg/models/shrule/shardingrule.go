@@ -111,6 +111,7 @@ func ShardingRuleFromProto(rule *proto.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
 		Id:        rule.Id,
 		TableName: rule.TableName,
+		Dataspace: "default",
 	}
 	for _, el := range rule.ShardingRuleEntry {
 		ret.entries = append(ret.entries, ShardingRuleEntry{
