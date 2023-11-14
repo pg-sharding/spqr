@@ -20,7 +20,8 @@ CREATE DATASPACE ds2;
 SHOW dataspaces;
  Dataspace ID 
 --------------
+ default
  ds1
  ds2
-(2 rows)
+(3 rows)
 

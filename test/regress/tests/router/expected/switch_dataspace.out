@@ -13,7 +13,6 @@ DROP DATASPACE ALL HARD;
  drop dataspace ds2
 (2 rows)
 
-
 CREATE DATASPACE ds1;
          add dataspace         
 -------------------------------
