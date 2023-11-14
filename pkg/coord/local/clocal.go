@@ -221,6 +221,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 		LowerBound: krleft.LowerBound,
 		UpperBound: krright.UpperBound,
 		ShardID:    krleft.ShardID,
+		Dataspace:  krleft.DataspaceId,
 		ID:         krleft.KeyRangeID,
 	}
 
