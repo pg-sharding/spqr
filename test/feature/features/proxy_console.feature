@@ -247,6 +247,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"old_krid",
+            "Dataspace ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh2",
             "Upper bound":"10"
