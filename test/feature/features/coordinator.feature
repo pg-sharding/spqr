@@ -217,6 +217,7 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     SPLIT KEY RANGE krid3 FROM krid1 BY 5;
+    SHOW key_ranges
     """
     Then command return code should be "0"
     And SQL result should match json

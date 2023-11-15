@@ -3,7 +3,6 @@ package ops
 import (
 	"context"
 	"fmt"
-
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
