@@ -258,8 +258,6 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		},
 	)
 
-	krNew.LowerBound = req.Bound
-
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
 		Bytes("upper-bound", krNew.UpperBound).

@@ -220,6 +220,7 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 		Bytes("lower-bound", keyRange.LowerBound).
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
+		Str("dataspace-id", keyRange.DataspaceId).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -279,6 +280,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Bytes("lower-bound", keyRange.LowerBound).
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
+		Str("dataspace-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
