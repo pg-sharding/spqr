@@ -481,11 +481,11 @@ Feature: Coordinator test
     And SQL result should match json
     """
     [{
-      "Key range ID":"krid1",
+      "Key range ID":"krid3",
       "Dataspace ID":"default",
-      "Lower bound":"0",
+      "Lower bound":"31",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"40"
     }]
     """
 
