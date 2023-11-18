@@ -84,9 +84,6 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 }
 
 func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	if c.impl == nil {
-		return &protos.KeyRangeReply{}, nil
-	}
 
 	krsqb, err := c.impl.ListKeyRanges(ctx, "")
 	if err != nil {

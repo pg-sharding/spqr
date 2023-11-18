@@ -97,7 +97,8 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 			LowerBound: string(kr.LowerBound),
 			UpperBound: string(kr.UpperBound),
 		},
-		ShardId: kr.ShardID,
-		Krid:    kr.ID,
+		ShardId:     kr.ShardID,
+		Krid:        kr.ID,
+		DataspaceId: kr.Dataspace,
 	}
 }
