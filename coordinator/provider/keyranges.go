@@ -88,7 +88,7 @@ func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.L
 		return &protos.KeyRangeReply{}, nil
 	}
 
-	krsqb, err := c.impl.ListKeyRanges(ctx, request.Dataspace)
+	krsqb, err := c.impl.ListKeyRanges(ctx, "")
 	if err != nil {
 		return nil, err
 	}
