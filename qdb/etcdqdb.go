@@ -195,7 +195,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-		if rule.DataspaceId == dataspace || dataspace == "" {
+		if rule.DataspaceId == dataspace {
 			rules = append(rules, rule)
 		}
 	}

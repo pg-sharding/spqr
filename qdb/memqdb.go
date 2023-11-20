@@ -335,7 +335,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange
 	var ret []*KeyRange
 
 	for _, el := range q.Krs {
-		if el.DataspaceId == dataspace || dataspace == "" {
+		if el.DataspaceId == dataspace {
 			ret = append(ret, el)
 		}
 	}

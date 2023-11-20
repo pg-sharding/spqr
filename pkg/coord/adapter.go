@@ -79,7 +79,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		return nil, err
 	}
 
-	krs, err := a.ListKeyRanges(ctx, "")
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 }
 
 func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx, "")
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 }
 
 func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx, "")
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 }
 
 func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx, "")
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := a.ListShardingRules(ctx, "")
+	rules, err := a.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
