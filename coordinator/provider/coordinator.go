@@ -378,7 +378,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 
 			return nil
 		}(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
+			return err
 		}
 	}
 
