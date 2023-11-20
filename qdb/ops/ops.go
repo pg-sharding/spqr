@@ -70,7 +70,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		}
 	}
 	if !hasDs {
-		return fmt.Errorf("try to add key range link to a non-existent dataspace")
+		return fmt.Errorf("try to add key range link to a non-existent dataspace: '%s'", keyRange.Dataspace)
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
