@@ -521,40 +521,21 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		return err
 	}
 
-	resp, err := qc.db.ListRouters(ctx)
-	if err != nil {
-		return err
-	}
-
-	// notify all routers
-	for _, r := range resp {
-		cc, err := DialRouter(&topology.Router{
-			ID:      r.ID,
-			Address: r.Addr(),
-		})
-		if err != nil {
-			return err
-		}
-
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
 			KeyRangeInfo: keyRange.ToProto(),
 		})
 
 		if err != nil {
-			spqrlog.Zero.Debug().
-				Str("router", r.ID).
-				Err(err).
-				Msg("etcdqdb: notify router add key range")
-			continue
+			return err
 		}
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("add key range response")
-	}
-
-	return nil
+		return nil
+	})
 }
 
 func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
