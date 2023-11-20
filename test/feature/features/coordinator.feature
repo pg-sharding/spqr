@@ -473,7 +473,7 @@ Feature: Coordinator test
     #
     Given host "coordinator" is stopped
     And host "coordinator" is started
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinatorjhfieurhfgiuer"
     """
     SHOW key_ranges
     """
