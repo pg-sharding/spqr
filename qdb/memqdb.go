@@ -175,9 +175,25 @@ func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*Sh
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
 	for _, v := range q.Shrules {
-		if dataspace == v.DataspaceId || dataspace == "" {
+		if dataspace == v.DataspaceId {
 			ret = append(ret, v)
 		}
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].ID < ret[j].ID
+	})
+
+	return ret, nil
+}
+
+func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+	var ret []*ShardingRule
+	for _, v := range q.Shrules {
+		ret = append(ret, v)
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
@@ -322,6 +338,23 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange
 		if el.DataspaceId == dataspace || dataspace == "" {
 			ret = append(ret, el)
 		}
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	})
+
+	return ret, nil
+}
+func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list all key ranges")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	var ret []*KeyRange
+
+	for _, el := range q.Krs {
+		ret = append(ret, el)
 	}
 
 	sort.Slice(ret, func(i, j int) bool {

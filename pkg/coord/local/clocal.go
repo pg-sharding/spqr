@@ -326,6 +326,19 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string)
 
 	return ret, nil
 }
+func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	var ret []*kr.KeyRange
+	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
+		return nil, err
+	} else {
+		for _, keyRange := range krs {
+			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+
+		}
+	}
+
+	return ret, nil
+}
 
 func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return []*topology.Router{{
@@ -339,6 +352,20 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 
 func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
 	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
+	if err != nil {
+		return nil, err
+	}
+	var resp []*shrule.ShardingRule
+	for _, v := range rules {
+		resp = append(resp, shrule.ShardingRuleFromDB(v))
+
+	}
+
+	return resp, nil
+}
+
+func (qr *LocalCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}

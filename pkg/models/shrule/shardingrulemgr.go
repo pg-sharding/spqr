@@ -7,4 +7,5 @@ type ShardingRulesMgr interface {
 	DropShardingRule(ctx context.Context, id string) error
 	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
 	ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error)
+	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
 }

@@ -47,6 +47,21 @@ func (a *adapter) ListKeyRanges(ctx context.Context, _ string) ([]*kr.KeyRange, 
 	return krs, nil
 }
 
+func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
+	for i, keyRange := range reply.KeyRangesInfo {
+		krs[i] = kr.KeyRangeFromProto(keyRange)
+	}
+
+	return krs, nil
+}
+
 func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
@@ -221,6 +236,20 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 }
 
 func (a *adapter) ListShardingRules(ctx context.Context, _ string) ([]*shrule.ShardingRule, error) {
+	c := proto.NewShardingRulesServiceClient(a.conn)
+	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	shrules := make([]*shrule.ShardingRule, len(reply.Rules))
+	for i, sh := range reply.Rules {
+		shrules[i] = shrule.ShardingRuleFromProto(sh)
+	}
+
+	return shrules, nil
+}
+func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
 	if err != nil {

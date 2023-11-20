@@ -408,7 +408,7 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx, "")
+	rulesList, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -432,6 +432,20 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace strin
 		if rule.DataspaceId == dataspace {
 			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 		}
+	}
+
+	return shRules, nil
+}
+
+func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListAllShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 	}
 
 	return shRules, nil
@@ -540,6 +554,19 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 
 func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListKeyRanges(ctx, dataspace)
+	if err != nil {
+		return nil, err
+	}
+
+	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	for _, keyRange := range keyRanges {
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+	}
+
+	return keyr, nil
+}
+func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -914,7 +941,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	defer cc.Close()
 
 	// Configure sharding rules.
-	shardingRules, err := qc.db.ListShardingRules(ctx, "")
+	shardingRules, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
 		return err
 	}
@@ -940,7 +967,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Msg("add sharding rules response")
 
 	// Configure key ranges.
-	keyRanges, err := qc.db.ListKeyRanges(ctx, "")
+	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}

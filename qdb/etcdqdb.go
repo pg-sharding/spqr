@@ -211,6 +211,38 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 	return rules, nil
 }
 
+func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
+
+	namespacePrefix := shardingRulesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*ShardingRule, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
+		var rule *ShardingRule
+		if err := json.Unmarshal(kv.Value, &rule); err != nil {
+			return nil, err
+		}
+		rules = append(rules, rule)
+	}
+
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list sharding rules")
+
+	return rules, nil
+}
+
 // ==============================================================================
 //                                 KEY RANGES
 // ==============================================================================
@@ -351,9 +383,39 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 			return nil, err
 		}
 
-		if dataspace == krCurr.DataspaceId || dataspace == "" {
+		if dataspace == krCurr.DataspaceId {
 			ret = append(ret, &krCurr)
 		}
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list key ranges")
+
+	return ret, nil
+}
+
+func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
+
+	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*KeyRange
+
+	for _, e := range resp.Kvs {
+		var krCurr KeyRange
+
+		if err := json.Unmarshal(e.Value, &krCurr); err != nil {
+			return nil, err
+		}
+		ret = append(ret, &krCurr)
 	}
 
 	sort.Slice(ret, func(i, j int) bool {
