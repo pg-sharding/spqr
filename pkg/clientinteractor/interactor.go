@@ -219,18 +219,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			return err
 		}
 	}
-
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{},
-		&pgproto3.ReadyForQuery{},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return nil
+	return pi.CompleteMsg(0)
 }
 
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
