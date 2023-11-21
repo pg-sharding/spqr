@@ -44,8 +44,8 @@ type Create struct {
 func (*Create) iStatement() {}
 
 type Drop struct {
-	Element    Statement
-	HardDelete bool
+	Element     Statement
+	ForceDelete bool
 }
 
 func (*Drop) iStatement() {}

@@ -951,25 +951,25 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:362
 		{
-			yyVAL.drop = &Drop{Element: yyDollar[2].dataspace_selector, HardDelete: false}
+			yyVAL.drop = &Drop{Element: yyDollar[2].dataspace_selector, ForceDelete: false}
 		}
 	case 43:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:366
 		{
-			yyVAL.drop = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: false}
+			yyVAL.drop = &Drop{Element: &DataspaceSelector{ID: `*`}, ForceDelete: false}
 		}
 	case 44:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:370
 		{
-			yyVAL.drop = &Drop{Element: yyDollar[2].dataspace_selector, HardDelete: true}
+			yyVAL.drop = &Drop{Element: yyDollar[2].dataspace_selector, ForceDelete: true}
 		}
 	case 45:
 		yyDollar = yyS[yypt-4 : yypt+1]
 //line gram.y:374
 		{
-			yyVAL.drop = &Drop{Element: &DataspaceSelector{ID: `*`}, HardDelete: true}
+			yyVAL.drop = &Drop{Element: &DataspaceSelector{ID: `*`}, ForceDelete: true}
 		}
 	case 46:
 		yyDollar = yyS[yypt-2 : yypt+1]
