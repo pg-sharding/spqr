@@ -26,13 +26,13 @@ CREATE DATASPACE ds2;
 (1 row)
 
 ADD SHARDING RULE r1 COLUMNS w_id FOR DATASPACE ds1;
-                                    add sharding rule
+                                    add sharding rule                                    
 -----------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 dataspace
 (1 row)
 
 ADD SHARDING RULE r2 COLUMNS w_id FOR DATASPACE ds2;
-                                    add sharding rule
+                                    add sharding rule                                    
 -----------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 dataspace
 (1 row)

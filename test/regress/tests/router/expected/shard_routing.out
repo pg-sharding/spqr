@@ -7,13 +7,13 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ADD SHARDING RULE r1 COLUMNS w_id;
-                                      add sharding rule
+                                      add sharding rule                                      
 ---------------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE r2 COLUMNS id;
-                                     add sharding rule
+                                     add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)

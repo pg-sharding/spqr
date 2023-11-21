@@ -7,13 +7,13 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ADD SHARDING RULE t1 TABLE orders COLUMN id;
-                                        add sharding rule
+                                       add sharding rule                                        
 ------------------------------------------------------------------------------------------------
  created sharding rule t1 for table (orders) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE t2 TABLE delivery COLUMN order_id;
-                                            add sharding rule
+                                           add sharding rule                                            
 --------------------------------------------------------------------------------------------------------
  created sharding rule t2 for table (delivery) with columns [order_id, hash: x->x] in default dataspace
 (1 row)

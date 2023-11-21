@@ -36,7 +36,7 @@ type EntityMgr interface {
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
 
-func processDrop(ctx context.Context, dstmt spqrparser.Statement, isHard bool, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := dstmt.(type) {
 	case *spqrparser.KeyRangeSelector:
 		if stmt.KeyRangeID == "*" {
@@ -91,7 +91,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isHard bool, m
 			return err
 		}
 
-		if len(srs)+len(krs) != 0 && !isHard {
+		if len(srs)+len(krs) != 0 && !isCascade {
 			return fmt.Errorf("Dataspace have Key Ranges or/and Shrding Rules. Use CASCADE drop to delete this")
 		}
 

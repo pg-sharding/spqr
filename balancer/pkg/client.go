@@ -31,7 +31,7 @@ func (c BalancerClient) DB() string {
 }
 
 func (c BalancerClient) DS() string {
-	return "DefaultDS"
+	return "default"
 }
 
 func (c BalancerClient) SetDS(_ string) {}

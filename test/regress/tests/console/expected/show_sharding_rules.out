@@ -6,21 +6,21 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 ADD SHARDING RULE rule1 COLUMNS id;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] for dataspace default
+                                      add sharding rule                                       
+----------------------------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE rule2 COLUMNS idx;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule rule2 for table (*) with columns [idx, hash: x->x] for dataspace default
+                                       add sharding rule                                       
+-----------------------------------------------------------------------------------------------
+ created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE rule3 COLUMNS idy;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule rule3 for table (*) with columns [idy, hash: x->x] for dataspace default
+                                       add sharding rule                                       
+-----------------------------------------------------------------------------------------------
+ created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default dataspace
 (1 row)
 
 SHOW sharding_rules;

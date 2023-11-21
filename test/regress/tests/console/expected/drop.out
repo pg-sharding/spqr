@@ -18,21 +18,21 @@ ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
 (1 row)
 
 ADD SHARDING RULE rule1 COLUMNS id;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] for dataspace default
+                                      add sharding rule                                       
+----------------------------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE rule2 COLUMNS idx;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule rule2 for table (*) with columns [idx, hash: x->x] for dataspace default
+                                       add sharding rule                                       
+-----------------------------------------------------------------------------------------------
+ created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default dataspace
 (1 row)
 
 ADD SHARDING RULE rule3 COLUMNS idy;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule rule3 for table (*) with columns [idy, hash: x->x] for dataspace default
+                                       add sharding rule                                       
+-----------------------------------------------------------------------------------------------
+ created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default dataspace
 (1 row)
 
 SHOW key_ranges;
