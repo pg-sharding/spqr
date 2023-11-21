@@ -113,7 +113,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 }
 
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx, request.Dataspace)
+	krsqb, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
