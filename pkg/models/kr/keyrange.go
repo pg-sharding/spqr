@@ -78,6 +78,7 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 		UpperBound: []byte(kr.KeyRange.UpperBound),
 		ShardID:    kr.ShardId,
 		ID:         kr.Krid,
+		Dataspace:  kr.DataspaceId,
 	}
 }
 

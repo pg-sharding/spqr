@@ -311,7 +311,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		return
 	}
 
-	ranges, err := cc.db.ListKeyRanges(context.TODO(), "")
+	ranges, err := cc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
@@ -378,7 +378,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 
 			return nil
 		}(); err != nil {
-			return err
+			spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 		}
 	}
 
