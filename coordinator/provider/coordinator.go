@@ -808,7 +808,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound: krRight.LowerBound,
+			Bound:     krRight.LowerBound,
+			Dataspace: krRight.DataspaceId,
 		})
 
 		spqrlog.Zero.Debug().
