@@ -98,7 +98,7 @@ const SPLIT = 57369
 const MOVE = 57370
 const COMPOSE = 57371
 const SET = 57372
-const HARD = 57373
+const FORCE = 57373
 const SHARDING = 57374
 const COLUMN = 57375
 const TABLE = 57376
@@ -162,7 +162,7 @@ var yyToknames = [...]string{
 	"MOVE",
 	"COMPOSE",
 	"SET",
-	"HARD",
+	"FORCE",
 	"SHARDING",
 	"COLUMN",
 	"TABLE",
