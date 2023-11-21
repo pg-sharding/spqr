@@ -107,7 +107,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET FORCE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -360,19 +360,19 @@ drop_stmt:
 	}
 	| DROP dataspace_stmt
 	{
-		$$ = &Drop{Element: $2, ForceDelete: false}
+		$$ = &Drop{Element: $2, CascadeDelete: false}
 	}
 	| DROP DATASPACE ALL
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, ForceDelete: false}
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: false}
 	}
-	| DROP dataspace_stmt FORCE
+	| DROP dataspace_stmt CASCADE
 	{
-		$$ = &Drop{Element: $2, ForceDelete: true}
+		$$ = &Drop{Element: $2, CascadeDelete: true}
 	}
-	| DROP DATASPACE ALL FORCE
+	| DROP DATASPACE ALL CASCADE
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, ForceDelete: true}
+		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: true}
 	}
 
 add_stmt:

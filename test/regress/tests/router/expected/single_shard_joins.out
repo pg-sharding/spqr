@@ -7,9 +7,9 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE SHARDING RULE r1 COLUMN i;
-                                     add sharding rule                                     
--------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [i, hash: x->x] for dataspace default
+                                     add sharding rule
+------------------------------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [i, hash: x->x] in default dataspace
 (1 row)
 
 CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;

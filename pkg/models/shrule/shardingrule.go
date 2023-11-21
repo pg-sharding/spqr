@@ -57,7 +57,7 @@ func (s *ShardingRule) String() string {
 		return ret
 	}()
 
-	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v for dataspace %v", s.Id, tableName, entries, s.Dataspace)
+	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v created %v rule", s.Id, tableName, entries, s.Dataspace)
 }
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {

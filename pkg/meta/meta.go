@@ -92,7 +92,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isHard bool, m
 		}
 
 		if len(srs)+len(krs) != 0 && !isHard {
-			return fmt.Errorf("Dataspace have Key Ranges or/and Shrding Rules. Use HARD drop to delete this")
+			return fmt.Errorf("Dataspace have Key Ranges or/and Shrding Rules. Use CASCADE drop to delete this")
 		}
 
 		for _, kr := range krs {
@@ -190,7 +190,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.StopTraceMessages(ctx)
 	case *spqrparser.Drop:
-		return processDrop(ctx, stmt.Element, stmt.ForceDelete, mgr, cli)
+		return processDrop(ctx, stmt.Element, stmt.CascadeDelete, mgr, cli)
 	case *spqrparser.Create:
 		return processCreate(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.MoveKeyRange:

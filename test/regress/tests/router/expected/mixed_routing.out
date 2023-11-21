@@ -8,9 +8,9 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that numeric type works
 ADD SHARDING RULE t1 COLUMNS id;
-                                     add sharding rule                                      
---------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] for dataspace default
+                                     add sharding rule
+-------------------------------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
 ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
