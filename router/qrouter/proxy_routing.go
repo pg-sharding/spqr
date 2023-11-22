@@ -481,6 +481,14 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		return routingstate.MultiMatchState{}, nil
 		// XXX: need alter table which renames sharding column to non-sharding column check
 
+	case *lyx.VariableShowStmt:
+		/*
+			if we want to reroute to execute this stmt, route to random shard
+			XXX: support intelegent show support, without direct query dispatch
+		*/
+		return routingstate.RandomMatchState{}, nil
+		// XXX: need alter table which renames sharding column to non-sharding column check
+
 	case *lyx.CreateTable:
 		/*
 		* Disallow to create table which does not contain any sharding column
@@ -558,13 +566,15 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		if err != nil {
 			return nil, err
 		}
-	default:
+	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			return nil, err
 		}
+	default:
+		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
 	}
 
 	/* Step 1.5: check if query contains any unparsed columns that are sharding rule column.
