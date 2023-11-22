@@ -566,8 +566,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 		if err != nil {
 			return nil, err
 		}
-	case *lyx.Delete, *lyx.Update:
-		// UPDATE and/or DELETE stmts, which
+	case *lyx.Delete, *lyx.Update, *lyx.Copy:
+		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
