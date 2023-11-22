@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/port"
 	"go.uber.org/mock/gomock"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -40,7 +41,7 @@ func TestCancel(t *testing.T) {
 			return 12, nil
 		}).Times(1)
 
-	client := client.NewPsqlClient(rconn)
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType)
 
 	err := client.Init(nil)
 	assert.Equal(uint32(7), client.CancelMsg().ProcessID)
@@ -84,7 +85,7 @@ func TestNoGSSAPI(t *testing.T) {
 		return 4, nil
 	}).Times(1)
 
-	client := client.NewPsqlClient(rconn)
+	client := client.NewPsqlClient(rconn, port.DefaultRouterPortType)
 
 	err := client.Init(nil)
 	assert.Equal(exprErr, err)

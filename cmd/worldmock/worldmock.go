@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 )
 
@@ -67,7 +68,7 @@ func (w *WorldMock) Run() error {
 }
 
 func (w *WorldMock) serv(netconn net.Conn) error {
-	cl := client.NewPsqlClient(netconn)
+	cl := client.NewPsqlClient(netconn, port.DefaultRouterPortType)
 
 	err := cl.Init(nil)
 
@@ -94,7 +95,7 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 	spqrlog.Zero.Info().Msg("client auth OK")
-	
+
 	for {
 		msg, err := cl.Receive()
 		if err != nil {

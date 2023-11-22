@@ -14,6 +14,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/port"
 )
 
 // TODO use only one place to store strings
@@ -868,7 +869,7 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 }
 
 func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsconfig *tls.Config) error {
-	cl := client.NewPsqlClient(conn)
+	cl := client.NewPsqlClient(conn, port.DefaultRouterPortType)
 
 	if err := cl.Init(tlsconfig); err != nil {
 		return err

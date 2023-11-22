@@ -16,9 +16,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
-	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
+	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/rule"
+	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +28,7 @@ type RuleRouter interface {
 
 	Shutdown() error
 	Reload(configPath string) error
-	PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error)
+	PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error)
 	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
 	ObsoleteRoute(key route.Key) error
 
@@ -163,8 +164,8 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 	}
 }
 
-func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn)
+func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
+	cl := rclient.NewPsqlClient(conn, pt)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
 		return cl, err
@@ -174,7 +175,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, admin_client bool) (rclient.Rou
 		return cl, nil
 	}
 
-	if admin_client || cl.DB() == "spqr-console" {
+	if pt == port.ADMRouterPortType || cl.DB() == "spqr-console" {
 		return r.PreRouteInitializedClientAdm(cl)
 	}
 

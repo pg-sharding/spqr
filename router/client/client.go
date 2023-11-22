@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 )
@@ -105,14 +106,21 @@ type PsqlClient struct {
 	server server.Server
 }
 
-func NewPsqlClient(pgconn conn.RawConn) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
+	tsa := config.TargetSessionAttrsRW
+
+	// enforce default port behaviour
+	if pt == port.RORouterPortType {
+		tsa = config.TargetSessionAttrsRO
+	}
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
 		conn:           pgconn,
 		startupMsg:     &pgproto3.StartupMessage{},
 		prepStmts:      map[string]string{},
-		tsa:            config.TargetSessionAttrsRW,
+		tsa:            tsa,
 	}
+
 	cl.id = fmt.Sprintf("%p", cl)
 
 	return cl
