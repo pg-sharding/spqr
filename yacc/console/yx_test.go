@@ -49,6 +49,50 @@ func TestSimpleTrace(t *testing.T) {
 	}
 }
 
+func TestCreate(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	/*  */
+	for _, tt := range []tcase{
+		{
+			query: "CREATE REFERENCE TABLE tab",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceTable{
+					Relname: &spqrparser.RangeVar{
+						RelationName: "tab",
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: "CREATE REFERENCE TABLE schema.tab",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceTable{
+					Relname: &spqrparser.RangeVar{
+						SchemaName:   "schema",
+						RelationName: "tab",
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestSimpleShow(t *testing.T) {
 	assert := assert.New(t)
 

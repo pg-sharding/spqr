@@ -28,6 +28,8 @@ func randomHex(n int) (string, error) {
 	bool                   bool
 	empty                  struct{}
 
+	rangevar               *RangeVar
+
 	statement              Statement
 	show                   *Show
 
@@ -42,6 +44,7 @@ func randomHex(n int) (string, error) {
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
 	sharding_rule          *ShardingRuleDefinition
+	reftable               *ReferenceTable
 
 	register_router        *RegisterRouter
 	unregister_router      *UnregisterRouter
@@ -92,6 +95,8 @@ func randomHex(n int) (string, error) {
 
 // '(' & ')'
 %token<str> TOPENBR TCLOSEBR
+// '.'
+%token <str> TDOT
 
 %type<str> operator where_operator
 
@@ -106,6 +111,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE
+%token <str> REFERENCE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS
@@ -136,6 +142,7 @@ func randomHex(n int) (string, error) {
 %type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
+%type <reftable> reftable_define_stmt
 
 %type<entrieslist> sharding_rule_argument_list
 %type<shruleEntry> sharding_rule_entry
@@ -154,6 +161,8 @@ func randomHex(n int) (string, error) {
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
 %start any_command
+
+%type <rangevar> qual_relation
 
 %%
 
@@ -378,25 +387,46 @@ stoptrace_stmt:
 		$$ = &StopTraceStmt{}
 	}
 
+qual_relation:
+	any_id { 
+		$$ = &RangeVar{
+			RelationName: $1,
+		}
+	} | any_id TDOT any_id {
+		$$ = &RangeVar{
+			SchemaName: $1,
+			RelationName: $3,
+		}
+	}
+
+reftable_define_stmt: 
+	REFERENCE TABLE qual_relation  {
+		$$ = &ReferenceTable {
+			Relname: $3,
+		}
+	}
 
 create_stmt:
 	CREATE dataspace_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	}
-	|
+	} |
 	CREATE sharding_rule_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	}
-	|
+	} |
 	CREATE key_range_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	}|
+	} |
 	CREATE shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
+	} |
+	CREATE reftable_define_stmt {
+		$$ = &Create{
+			Element: $2,
+		}
 	}
 
 
