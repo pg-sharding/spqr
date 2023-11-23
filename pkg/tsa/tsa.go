@@ -91,6 +91,7 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 				Msg("shard checking read-write")
 			if len(qt.Values) == 1 && len(qt.Values[0]) == 3 && qt.Values[0][0] == 'o' && qt.Values[0][1] == 'f' && qt.Values[0][2] == 'f' {
 				res = true
+				reason = "is primary"
 			} else {
 				reason = fmt.Sprintf("transaction_read_only is %+v", qt.Values)
 			}

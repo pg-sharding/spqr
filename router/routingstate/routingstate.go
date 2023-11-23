@@ -18,6 +18,8 @@ func Combine(sh1, sh2 ShardRoute) ShardRoute {
 	switch shq1 := sh1.(type) {
 	case *MultiMatchRoute:
 		return sh2
+	case *RandomMatchState:
+		return sh2
 	case *DataShardRoute:
 		switch shq2 := sh2.(type) {
 		case *MultiMatchRoute:
@@ -58,6 +60,10 @@ type MultiMatchState struct {
 }
 
 type SkipRoutingState struct {
+	RoutingState
+}
+
+type RandomMatchState struct {
 	RoutingState
 }
 

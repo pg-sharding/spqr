@@ -346,6 +346,8 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		return rst.procRoutes(v.Routes)
 	case routingstate.SkipRoutingState:
 		return ErrSkipQuery
+	case routingstate.RandomMatchState:
+		return rst.RerouteToRandomRoute()
 	case routingstate.WorldRouteState:
 		if !rst.WorldShardFallback {
 			return err
