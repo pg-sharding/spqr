@@ -320,7 +320,7 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	return nil, fmt.Errorf("ListDataspace not implemented")
+	c := proto.NewShardingRulesServiceClient(a.conn)
 }
 
 func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
