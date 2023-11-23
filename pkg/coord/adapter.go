@@ -320,15 +320,38 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	c := proto.NewShardingRulesServiceClient(a.conn)
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	dss := make([]*dataspaces.Dataspace, len(resp.Dataspaces))
+	for i, ds := range resp.Dataspaces {
+		dss[i] = dataspaces.DataspaceFromProto(ds)
+	}
+
+	return dss, nil
 }
 
 func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	return fmt.Errorf("addDataspace not implemented")
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
+		Dataspaces: []*proto.Dataspace{dataspaces.DataspaceToProto(ds)},
+	})
+	return err
 }
 
 func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	return fmt.Errorf("dropDataspace not implemented")
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
+		Ids: []string{ds.Id},
+	})
+
+	return err
 }
 
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
