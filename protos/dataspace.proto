@@ -17,7 +17,7 @@ message AddDataspaceReply{}
 message ListDataspaceRequest{}
 
 message ListDataspaceReply{
-  repeated Dataspace dataspaces;
+  repeated Dataspace dataspaces = 1;
 }
 
 message DropDataspaceRequest{
@@ -27,8 +27,8 @@ message DropDataspaceRequest{
 message DropDataspaceReply{}
 
 
-service ShardingRulesService {
-  rpc AddDataspace(AddDataspaceRequest) returns (AddDataspaceReply]) {}
+service DataspaceService {
+  rpc AddDataspace(AddDataspaceRequest) returns (AddDataspaceReply) {}
   rpc DropDataspace(DropDataspaceRequest) returns (DropDataspaceReply) {}
   rpc ListDataspace(ListDataspaceRequest) returns (ListDataspaceReply) {}
 }
