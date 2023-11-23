@@ -36,7 +36,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 	lwg.Add(len(listen))
 
 	for addr, portType := range listen {
-		go func(address string) {
+		go func(address string, pt port.RouterPortType) {
 			defer lwg.Done()
 			var listener net.Listener
 			var err error
@@ -61,8 +61,8 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			spqrlog.Zero.Info().
 				Str("address", address).
 				Msg("SPQR Router is ready by postgresql proto")
-			_ = app.spqr.Run(ctx, listener, portType)
-		}(addr)
+			_ = app.spqr.Run(ctx, listener, pt)
+		}(addr, portType)
 	}
 	lwg.Wait()
 
