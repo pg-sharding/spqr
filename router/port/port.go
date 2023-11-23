@@ -7,5 +7,5 @@ const (
 
 	RORouterPortType = RouterPortType(1)
 
-	ADMRouterPortType = RouterPortType(1)
+	ADMRouterPortType = RouterPortType(2)
 )
