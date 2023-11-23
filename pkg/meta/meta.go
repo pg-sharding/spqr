@@ -77,18 +77,26 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropShardingRule(ctx, stmt.ID)
 		}
 	case *spqrparser.DataspaceSelector:
-		id := stmt.ID
-		if stmt.ID == "*" {
-			id = ""
-		}
-		srs, err := mngr.ListShardingRules(ctx, id)
+		srs, err := mngr.ListShardingRules(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
 
-		krs, err := mngr.ListKeyRanges(ctx, id)
+		krs, err := mngr.ListKeyRanges(ctx, stmt.ID)
 		if err != nil {
 			return err
+		}
+
+		if stmt.ID == "*" {
+			srs, err = mngr.ListAllShardingRules(ctx)
+			if err != nil {
+				return err
+			}
+
+			krs, err = mngr.ListAllKeyRanges(ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		if len(srs)+len(krs) != 0 && !isCascade {
@@ -114,8 +122,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return err
 		}
 		for _, ds := range dss {
-			if (ds.Id == id || id == "") && ds.Id != "default" {
+			if (ds.Id == stmt.ID || stmt.ID == "*") && ds.Id != "default" {
 				ret = append(ret, ds.ID())
+				if ds.ID() == cli.GetDataspace() {
+					cli.SetDataspace("default")
+				}
 				err = mngr.DropDataspace(ctx, ds)
 				if err != nil {
 					return err

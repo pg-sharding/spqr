@@ -1,0 +1,70 @@
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+ADD SHARDING RULE rule1 COLUMNS id FOR DATASPACE ds1;
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 dataspace
+(1 row)
+
+ADD SHARDING RULE rule2 COLUMNS id FOR DATASPACE ds2;
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule rule2 for table (*) with columns [id, hash: x->x] in ds2 dataspace
+(1 row)
+
+ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1 FOR DATASPACE ds1;
+         add key range          
+--------------------------------
+ created key range from 1 to 11
+(1 row)
+
+ADD KEY RANGE krid2 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds1;
+          add key range          
+---------------------------------
+ created key range from 11 to 31
+(1 row)
+
+ADD KEY RANGE krid3 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds2;
+          add key range          
+---------------------------------
+ created key range from 11 to 31
+(1 row)
+
+DROP DATASPACE ds1;
+ERROR:  Dataspace have Key Ranges or/and Shrding Rules. Use CASCADE drop to delete this
+SHOW dataspaces;
+ Dataspace ID 
+--------------
+ default
+ ds1
+ ds2
+(3 rows)
+
+DROP DATASPACE ALL CASCADE;
+   drop dataspace   
+--------------------
+ drop dataspace ds1
+ drop dataspace ds2
+(2 rows)
+
+SHOW dataspaces;
+ Dataspace ID 
+--------------
+ default
+(1 row)
+
+SHOW key_ranges;
+ Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
+--------------+----------+--------------+-------------+-------------
+(0 rows)
+
+SHOW sharding_rules;
+ Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
+------------------+--------------+------------+---------+---------------
+(0 rows)
+

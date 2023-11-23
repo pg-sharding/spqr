@@ -7,3 +7,4 @@ test: show_version
 test: drop
 test: add
 test: teardown
+test: delete_dataspace

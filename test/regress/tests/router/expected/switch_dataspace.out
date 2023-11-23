@@ -7,11 +7,9 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DATASPACE ALL CASCADE;
-   drop dataspace   
---------------------
- drop dataspace ds1
- drop dataspace ds2
-(2 rows)
+ drop dataspace 
+----------------
+(0 rows)
 
 CREATE DATASPACE ds1;
          add dataspace         
