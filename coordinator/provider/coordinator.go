@@ -34,6 +34,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	router "github.com/pg-sharding/spqr/router"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
@@ -1005,7 +1006,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 }
 
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
-	cl := psqlclient.NewPsqlClient(nconn)
+	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType)
 
 	if err := cl.Init(nil); err != nil {
 		return nil, err

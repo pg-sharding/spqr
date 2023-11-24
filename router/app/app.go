@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	router "github.com/pg-sharding/spqr/router"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
+	"github.com/pg-sharding/spqr/router/port"
 	"google.golang.org/grpc"
 )
 
@@ -25,15 +26,20 @@ func NewApp(sg *router.InstanceImpl) *App {
 func (app *App) ServeRouter(ctx context.Context) error {
 	var lwg sync.WaitGroup
 
-	listen := map[string]struct{}{
-		net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterPort):                       {},
-		net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort): {},
+	listen := map[string]port.RouterPortType{
+		net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterPort):                       port.DefaultRouterPortType,
+		net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort): port.DefaultRouterPortType,
+	}
+
+	if app.spqr.RuleRouter.Config().RouterROPort != "" {
+		listen[net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterROPort)] = port.RORouterPortType
+		listen[net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterROPort)] = port.RORouterPortType
 	}
 
 	lwg.Add(len(listen))
 
-	for addr := range listen {
-		go func(address string) {
+	for addr, portType := range listen {
+		go func(address string, pt port.RouterPortType) {
 			defer lwg.Done()
 			var listener net.Listener
 			var err error
@@ -58,8 +64,8 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			spqrlog.Zero.Info().
 				Str("address", address).
 				Msg("SPQR Router is ready by postgresql proto")
-			_ = app.spqr.Run(ctx, listener)
-		}(addr)
+			_ = app.spqr.Run(ctx, listener, pt)
+		}(addr, portType)
 	}
 	lwg.Wait()
 
