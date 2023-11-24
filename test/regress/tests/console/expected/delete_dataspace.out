@@ -36,7 +36,8 @@ ADD KEY RANGE krid3 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds2;
 (1 row)
 
 DROP DATASPACE ds1;
-ERROR:  Dataspace have Key Ranges or/and Shrding Rules. Use CASCADE drop to delete this
+ERROR:  cannot drop dataspace ds1 because other objects depend on it
+HINT: Use DROP ... CASCADE to drop the dependent objects too.
 SHOW dataspaces;
  Dataspace ID 
 --------------
