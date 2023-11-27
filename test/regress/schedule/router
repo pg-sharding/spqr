@@ -9,4 +9,4 @@ test: with_tables
 test: single_shard_joins
 test: multishard
 test: error
-
+test: routing_hint
