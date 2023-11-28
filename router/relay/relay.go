@@ -1003,6 +1003,13 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			unprocessed++
 
+			if rst.bindRoute == nil {
+				_, err := rst.DeployPrepStmt(q.PreparedStatement)
+				if err != nil {
+					return err
+				}
+			}
+
 		case *pgproto3.Describe:
 			if q.ObjectType == 'P' {
 				spqrlog.Zero.Debug().
@@ -1072,7 +1079,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		}
 	}
 
+	// cleanup
 	rst.xBuf = nil
+	rst.bindRoute = nil
 
 	return rst.Client().Send(&pgproto3.ReadyForQuery{
 		TxStatus: byte(rst.TxStatus()),
