@@ -443,6 +443,14 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		// nothing
 	case *routehint.TargetRouteHint:
 		return v.State, nil
+	case *routehint.ScatterRouteHint:
+		// still, need to check config settings
+		switch qr.cfg.DefaultRouteBehaviour {
+		case "BLOCK":
+			return routingstate.SkipRoutingState{}, FailedToMatch
+		default:
+			return routingstate.MultiMatchState{}, nil
+		}
 	}
 
 	/*
