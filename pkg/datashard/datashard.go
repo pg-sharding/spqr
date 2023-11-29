@@ -45,6 +45,8 @@ type Conn struct {
 	id string
 
 	status txstatus.TXStatus
+
+	mp map[uint64]shard.PreparedStatementDescriptor
 }
 
 func (sh *Conn) Close() error {
@@ -193,6 +195,7 @@ func NewShard(
 		ps:       shard.ParameterSet{},
 		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
+		mp:       map[uint64]shard.PreparedStatementDescriptor{},
 	}
 
 	dtSh.id = fmt.Sprintf("%p", dtSh)
@@ -315,4 +318,13 @@ func (sh *Conn) SetTxStatus(tx txstatus.TXStatus) {
 
 func (sh *Conn) TxStatus() txstatus.TXStatus {
 	return sh.status
+}
+
+func (srv *Conn) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+	rd, ok := srv.mp[hash]
+	return ok, rd
+}
+
+func (srv *Conn) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+	srv.mp[hash] = rd
 }

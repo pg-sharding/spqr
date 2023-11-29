@@ -13,58 +13,7 @@ import (
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
-	server "github.com/pg-sharding/spqr/router/server"
 )
-
-// MockPreparedStatementHolder is a mock of PreparedStatementHolder interface.
-type MockPreparedStatementHolder struct {
-	ctrl     *gomock.Controller
-	recorder *MockPreparedStatementHolderMockRecorder
-}
-
-// MockPreparedStatementHolderMockRecorder is the mock recorder for MockPreparedStatementHolder.
-type MockPreparedStatementHolderMockRecorder struct {
-	mock *MockPreparedStatementHolder
-}
-
-// NewMockPreparedStatementHolder creates a new mock instance.
-func NewMockPreparedStatementHolder(ctrl *gomock.Controller) *MockPreparedStatementHolder {
-	mock := &MockPreparedStatementHolder{ctrl: ctrl}
-	mock.recorder = &MockPreparedStatementHolderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPreparedStatementHolder) EXPECT() *MockPreparedStatementHolderMockRecorder {
-	return m.recorder
-}
-
-// HasPrepareStatement mocks base method.
-func (m *MockPreparedStatementHolder) HasPrepareStatement(hash uint64) (bool, server.PreparedStatementDescriptor) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(server.PreparedStatementDescriptor)
-	return ret0, ret1
-}
-
-// HasPrepareStatement indicates an expected call of HasPrepareStatement.
-func (mr *MockPreparedStatementHolderMockRecorder) HasPrepareStatement(hash interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPrepareStatement", reflect.TypeOf((*MockPreparedStatementHolder)(nil).HasPrepareStatement), hash)
-}
-
-// PrepareStatement mocks base method.
-func (m *MockPreparedStatementHolder) PrepareStatement(hash uint64, rd server.PreparedStatementDescriptor) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareStatement", hash, rd)
-}
-
-// PrepareStatement indicates an expected call of PrepareStatement.
-func (mr *MockPreparedStatementHolderMockRecorder) PrepareStatement(hash, rd interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareStatement", reflect.TypeOf((*MockPreparedStatementHolder)(nil).PrepareStatement), hash, rd)
-}
 
 // MockServer is a mock of Server interface.
 type MockServer struct {
@@ -132,11 +81,11 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockServer) HasPrepareStatement(hash uint64) (bool, server.PreparedStatementDescriptor) {
+func (m *MockServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(server.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(shard.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -161,7 +110,7 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 }
 
 // PrepareStatement mocks base method.
-func (m *MockServer) PrepareStatement(hash uint64, rd server.PreparedStatementDescriptor) {
+func (m *MockServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "PrepareStatement", hash, rd)
 }

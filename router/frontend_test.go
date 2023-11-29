@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	app "github.com/pg-sharding/spqr/router"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
@@ -16,7 +17,6 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
-	"github.com/pg-sharding/spqr/router/server"
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
@@ -238,7 +238,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).Return(false, server.PreparedStatementDescriptor{}).AnyTimes()
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).Return(false, shard.PreparedStatementDescriptor{}).AnyTimes()
 	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).AnyTimes()
 	/* */
 

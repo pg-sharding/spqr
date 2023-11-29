@@ -47,14 +47,13 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 }
 
 func prepBase(fr *pgproto3.Frontend) error {
-
 	fr.Send(&pgproto3.Parse{
-		Name:  "s1",
+		Name:  "",
 		Query: "show transaction_read_only",
 	})
 	if *dodesc {
 		fr.Send(&pgproto3.Describe{
-			Name:       "s1",
+			Name:       "",
 			ObjectType: byte('S'),
 		})
 	}
@@ -67,7 +66,7 @@ func prepBase(fr *pgproto3.Frontend) error {
 		return err
 	}
 	fr.Send(&pgproto3.Bind{
-		PreparedStatement: "s1",
+		PreparedStatement: "",
 	})
 
 	fr.Send(&pgproto3.Describe{
