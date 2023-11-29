@@ -9,3 +9,6 @@ ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 CREATE TABLE test(id int, age int);
 INSERT INTO test(id, age) VALUES (10, 16) /*sharding_key: 30*/;
 INSERT INTO test(id, age) VALUES (10, 16) /*sharding_key: 3000*/;
+\c spqr-console
+DROP KEY RANGE ALL;
+DROP SHARDING RULE ALL;
