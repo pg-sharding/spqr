@@ -16,6 +16,8 @@ We ran PostgreSQL on s3.medium (8 vCPU, 100% vCPU rate, 32 GB RAM) instances and
 | 1000       | 8	       | 64  | 1303 | 78180 | 1221.5625    |
 | 1000       | 16        | 128 | 1543 | 92580 | 723.28125    |
 
+As you can see, one router scales workload decently up to 8 shards.
 ![TPC-C test results](tpcc.png)
+However, at some point adding more routers is necessary. But still there's a big room for improvement of router performance.
 
 You can compare this results with [Vitess and Aurora](https://www.amazon.science/publications/amazon-aurora-on-avoiding-distributed-consensus-for-i-os-commits-and-membership-changes), Perfomance Results.
