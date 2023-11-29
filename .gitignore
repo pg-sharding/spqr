@@ -15,3 +15,5 @@ y.output
 memqdb.json
 test/feature/generatedFeatures
 test/feature/logs
+yacc/console/gram.y.save
+.DS_Store

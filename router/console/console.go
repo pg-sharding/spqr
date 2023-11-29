@@ -99,7 +99,6 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 			defer conn.Close()
 			mgr = coord.NewAdapter(conn)
 		}
-
 	default:
 		coordAddr, err := l.Coord.GetCoordinator(ctx)
 		if err != nil {

@@ -24,6 +24,7 @@ func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Ad
 		UpperBound: []byte(request.KeyRangeInfo.KeyRange.UpperBound),
 		ID:         request.KeyRangeInfo.Krid,
 		ShardID:    request.KeyRangeInfo.ShardId,
+		Dataspace:  "default",
 	})
 	if err != nil {
 		return nil, err
@@ -51,8 +52,8 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange) (string, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange, dataspace string) (string, error) {
+	krsqb, err := c.impl.ListKeyRanges(ctx, dataspace)
 	if err != nil {
 		return "", err
 	}
@@ -82,12 +83,9 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) ListKeyRange(ctx context.Context, _ *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
-	if c.impl == nil {
-		return &protos.KeyRangeReply{}, nil
-	}
+func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+	krsqb, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +113,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 }
 
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx)
+	krsqb, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}

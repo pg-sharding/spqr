@@ -32,7 +32,24 @@ func (a *adapter) ShareKeyRange(id string) error {
 	return fmt.Errorf("shareKeyRange not implemented")
 }
 
-func (a *adapter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
+	for i, keyRange := range reply.KeyRangesInfo {
+		if keyRange.DataspaceId == dataspace {
+			krs[i] = kr.KeyRangeFromProto(keyRange)
+		}
+	}
+
+	return krs, nil
+}
+
+func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
 	if err != nil {
@@ -64,7 +81,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		return nil, err
 	}
 
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +108,7 @@ func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 }
 
 func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -119,7 +136,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 }
 
 func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -156,7 +173,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 }
 
 func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
-	krs, err := a.ListKeyRanges(ctx)
+	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}
@@ -206,7 +223,7 @@ func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := a.ListShardingRules(ctx)
+	rules, err := a.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +237,21 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 	return rules, err
 }
 
-func (a *adapter) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, _ string) ([]*shrule.ShardingRule, error) {
+	c := proto.NewShardingRulesServiceClient(a.conn)
+	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	shrules := make([]*shrule.ShardingRule, len(reply.Rules))
+	for i, sh := range reply.Rules {
+		shrules[i] = shrule.ShardingRuleFromProto(sh)
+	}
+
+	return shrules, nil
+}
+func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
 	if err != nil {
@@ -289,11 +320,38 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	return nil, fmt.Errorf("ListDataspace not implemented")
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	dss := make([]*dataspaces.Dataspace, len(resp.Dataspaces))
+	for i, ds := range resp.Dataspaces {
+		dss[i] = dataspaces.DataspaceFromProto(ds)
+	}
+
+	return dss, nil
 }
 
-func (a *adapter) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
-	return fmt.Errorf("addDataspace not implemented")
+func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
+		Dataspaces: []*proto.Dataspace{dataspaces.DataspaceToProto(ds)},
+	})
+	return err
+}
+
+func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
+		Ids: []string{ds.Id},
+	})
+
+	return err
 }
 
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {

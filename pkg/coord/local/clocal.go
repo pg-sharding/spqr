@@ -72,6 +72,12 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 	return ret
 }
 
+func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+	return lc.qdb.DropDataspace(ctx, ds.Id)
+}
+
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
@@ -215,6 +221,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 		LowerBound: krleft.LowerBound,
 		UpperBound: krright.UpperBound,
 		ShardID:    krleft.ShardID,
+		Dataspace:  krleft.DataspaceId,
 		ID:         krleft.KeyRangeID,
 	}
 
@@ -243,14 +250,13 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound: req.Bound,
-			UpperBound: krOld.UpperBound,
-			KeyRangeID: req.Krid,
-			ShardID:    krOld.ShardID,
+			LowerBound:  req.Bound,
+			UpperBound:  krOld.UpperBound,
+			KeyRangeID:  req.Krid,
+			ShardID:     krOld.ShardID,
+			DataspaceId: krOld.DataspaceId,
 		},
 	)
-
-	krNew.LowerBound = req.Bound
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
@@ -307,13 +313,27 @@ func (qr *LocalCoordinator) Shards() []string {
 	return ret
 }
 
-func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
 			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+
+		}
+	}
+
+	return ret, nil
+}
+func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	var ret []*kr.KeyRange
+	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
+		return nil, err
+	} else {
+		for _, keyRange := range krs {
+			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+
 		}
 	}
 
@@ -330,14 +350,29 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
 }
 
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx)
+func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
 	var resp []*shrule.ShardingRule
 	for _, v := range rules {
 		resp = append(resp, shrule.ShardingRuleFromDB(v))
+
+	}
+
+	return resp, nil
+}
+
+func (qr *LocalCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListAllShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var resp []*shrule.ShardingRule
+	for _, v := range rules {
+		resp = append(resp, shrule.ShardingRuleFromDB(v))
+
 	}
 
 	return resp, nil

@@ -49,14 +49,16 @@ type QDB interface {
 	DropShardingRule(ctx context.Context, id string) error
 	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
 	GetShardingRule(ctx context.Context, id string) (*ShardingRule, error)
-	ListShardingRules(ctx context.Context) ([]*ShardingRule, error)
+	ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error)
+	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
 	DropKeyRangeAll(ctx context.Context) error
-	ListKeyRanges(_ context.Context) ([]*KeyRange, error)
+	ListKeyRanges(_ context.Context, datspace string) ([]*KeyRange, error)
+	ListAllKeyRanges(_ context.Context) ([]*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
@@ -70,6 +72,7 @@ type QDB interface {
 
 	AddDataspace(ctx context.Context, ks *Dataspace) error
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
+	DropDataspace(ctx context.Context, id string) error
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)

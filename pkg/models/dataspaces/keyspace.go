@@ -1,6 +1,9 @@
 package dataspaces
 
-import "github.com/pg-sharding/spqr/qdb"
+import (
+	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
+)
 
 type Dataspace struct {
 	Id string
@@ -22,5 +25,16 @@ func (s *Dataspace) ID() string {
 func DataspaceFromDB(rule *qdb.Dataspace) *Dataspace {
 	return &Dataspace{
 		Id: rule.ID,
+	}
+}
+
+func DataspaceFromProto(ds *proto.Dataspace) *Dataspace {
+	return &Dataspace{
+		Id: ds.Id,
+	}
+}
+func DataspaceToProto(ds *Dataspace) *proto.Dataspace {
+	return &proto.Dataspace{
+		Id: ds.Id,
 	}
 }

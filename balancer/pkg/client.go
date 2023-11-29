@@ -30,6 +30,12 @@ func (c BalancerClient) DB() string {
 	return "DefaultDB"
 }
 
+func (c BalancerClient) DS() string {
+	return "default"
+}
+
+func (c BalancerClient) SetDS(_ string) {}
+
 func (c BalancerClient) ID() string {
 	return "balancerID"
 }

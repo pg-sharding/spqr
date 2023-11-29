@@ -177,7 +177,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 }
 
-func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
 
 	namespacePrefix := shardingRulesNamespace + "/"
@@ -195,7 +195,40 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context) ([]*ShardingRule, error
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
+		if rule.DataspaceId == dataspace {
+			rules = append(rules, rule)
+		}
+	}
 
+	sort.Slice(rules, func(i, j int) bool {
+		return rules[i].ID < rules[j].ID
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list sharding rules")
+
+	return rules, nil
+}
+
+func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
+
+	namespacePrefix := shardingRulesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	rules := make([]*ShardingRule, 0, len(resp.Kvs))
+
+	for _, kv := range resp.Kvs {
+		// XXX: multi-column routing schemas
+		// A sharding rule currently supports only one column
+		var rule *ShardingRule
+		if err := json.Unmarshal(kv.Value, &rule); err != nil {
+			return nil, err
+		}
 		rules = append(rules, rule)
 	}
 
@@ -219,6 +252,7 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 		Bytes("lower-bound", keyRange.LowerBound).
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
+		Str("dataspace-id", keyRange.DataspaceId).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -278,6 +312,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 		Bytes("lower-bound", keyRange.LowerBound).
 		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
+		Str("dataspace-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -331,7 +366,7 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 	return nil
 }
 
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -348,6 +383,38 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 			return nil, err
 		}
 
+		if dataspace == krCurr.DataspaceId {
+			ret = append(ret, &krCurr)
+		}
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	})
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: list key ranges")
+
+	return ret, nil
+}
+
+func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
+
+	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*KeyRange
+
+	for _, e := range resp.Kvs {
+		var krCurr KeyRange
+
+		if err := json.Unmarshal(e.Value, &krCurr); err != nil {
+			return nil, err
+		}
 		ret = append(ret, &krCurr)
 	}
 
@@ -918,7 +985,8 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		return nil, err
 	}
 
-	rules := make([]*Dataspace, 0, len(resp.Kvs))
+	rules := make([]*Dataspace, 0, len(resp.Kvs)+1)
+	rules = append(rules, &Dataspace{ID: "default"})
 
 	for _, kv := range resp.Kvs {
 		var rule *Dataspace
@@ -938,6 +1006,20 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 		Interface("response", resp).
 		Msg("etcdqdb: list dataspaces")
 	return rules, nil
+}
+
+func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop dataspace")
+
+	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+
+	spqrlog.Zero.Debug().
+		Interface("response", resp).
+		Msg("etcdqdb: drop dataspace")
+
+	return err
 }
 
 // ==============================================================================

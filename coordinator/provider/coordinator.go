@@ -311,7 +311,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		return
 	}
 
-	ranges, err := cc.db.ListKeyRanges(context.TODO())
+	ranges, err := cc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
@@ -373,12 +373,12 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			}
 
 			if err := cb(cc); err != nil {
-				return err
+				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 			}
 
 			return nil
 		}(); err != nil {
-			spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
+			return err
 		}
 	}
 
@@ -407,8 +407,38 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx)
+func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListAllShardingRules(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
+	}
+
+	return shRules, nil
+}
+
+func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
+	if err != nil {
+		return nil, err
+	}
+
+	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
+	for _, rule := range rulesList {
+		if rule.DataspaceId == dataspace {
+			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
+		}
+	}
+
+	return shRules, nil
+}
+
+func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -505,44 +535,38 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		return err
 	}
 
-	resp, err := qc.db.ListRouters(ctx)
-	if err != nil {
-		return err
-	}
-
-	// notify all routers
-	for _, r := range resp {
-		cc, err := DialRouter(&topology.Router{
-			ID:      r.ID,
-			Address: r.Addr(),
-		})
-		if err != nil {
-			return err
-		}
-
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
 			KeyRangeInfo: keyRange.ToProto(),
 		})
 
 		if err != nil {
-			spqrlog.Zero.Debug().
-				Str("router", r.ID).
-				Err(err).
-				Msg("etcdqdb: notify router add key range")
-			continue
+			return err
 		}
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("add key range response")
-	}
-
-	return nil
+		return nil
+	})
 }
 
-func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRanges(ctx)
+func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListKeyRanges(ctx, dataspace)
+	if err != nil {
+		return nil, err
+	}
+
+	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
+	for _, keyRange := range keyRanges {
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+	}
+
+	return keyr, nil
+}
+func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -635,10 +659,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound: req.Bound,
-			UpperBound: krOld.UpperBound,
-			KeyRangeID: req.Krid,
-			ShardID:    krOld.ShardID,
+			LowerBound:  req.Bound,
+			UpperBound:  krOld.UpperBound,
+			KeyRangeID:  req.Krid,
+			ShardID:     krOld.ShardID,
+			DataspaceId: krOld.DataspaceId,
 		},
 	)
 
@@ -783,7 +808,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound: krRight.LowerBound,
+			Bound:     krRight.LowerBound,
+			Dataspace: krRight.DataspaceId,
 		})
 
 		spqrlog.Zero.Debug().
@@ -835,7 +861,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	shardingRules, err := qc.ListShardingRules(ctx)
+	shardingRules, err := qc.getAllListShardingRules(ctx)
 	if err != nil {
 		return err
 	}
@@ -916,7 +942,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	defer cc.Close()
 
 	// Configure sharding rules.
-	shardingRules, err := qc.db.ListShardingRules(ctx)
+	shardingRules, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
 		return err
 	}
@@ -942,7 +968,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Msg("add sharding rules response")
 
 	// Configure key ranges.
-	keyRanges, err := qc.db.ListKeyRanges(ctx)
+	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
 	}

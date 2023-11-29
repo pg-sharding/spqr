@@ -28,9 +28,7 @@ import (
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
 	route.RouteMgr
-
 	QueryRouter() qrouter.QueryRouter
-
 	Reset() error
 	StartTrace()
 	Flush()
@@ -139,11 +137,7 @@ type RelayStateImpl struct {
 	xBuf []pgproto3.FrontendMessage
 }
 
-func NewRelayState(
-	qr qrouter.QueryRouter,
-	client client.RouterClient,
-	manager poolmgr.PoolMgr,
-	rcfg *config.Router) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) *RelayStateImpl {
 	return &RelayStateImpl{
 		activeShards:       nil,
 		txStatus:           txstatus.TXIDLE,
@@ -330,7 +324,7 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection, resolving shard")
 
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), params, rh)
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
@@ -466,6 +460,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
+		Str("dataspace", rst.Cl.DS()).
 		Uint("client", spqrlog.GetPointer(rst.Cl)).
 		Msg("connect client to datashard routes")
 
@@ -1101,6 +1096,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters []
 		Uint("client", spqrlog.GetPointer(rst.Client())).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
+		Str("ds", rst.Client().DS()).
 		Msg("preparing relay step for client")
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {

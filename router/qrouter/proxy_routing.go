@@ -48,8 +48,9 @@ type RoutingMetadataContext struct {
 	// INSERT INTO x (...) SELECT 7
 	TargetList []lyx.Node
 
-	rls []*shrule.ShardingRule
-	krs []*kr.KeyRange
+	rls       []*shrule.ShardingRule
+	krs       []*kr.KeyRange
+	dataspace string
 
 	params [][]byte
 	// TODO: include client ops and metadata here
@@ -69,6 +70,7 @@ func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
 func NewRoutingMetadataContext(
 	krs []*kr.KeyRange,
 	rls []*shrule.ShardingRule,
+	ds string,
 	params [][]byte) *RoutingMetadataContext {
 	return &RoutingMetadataContext{
 		rels:             map[string][]string{},
@@ -77,6 +79,7 @@ func NewRoutingMetadataContext(
 		unparsed_columns: map[string]struct{}{},
 		krs:              krs,
 		rls:              rls,
+		dataspace:        ds,
 		params:           params,
 	}
 }
@@ -137,7 +140,8 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 		Msg("checking key with key ranges")
 
 	for _, krkey := range meta.krs {
-		if kr.CmpRangesLessEqual(krkey.LowerBound, []byte(key)) && kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
+		if kr.CmpRangesLessEqual(krkey.LowerBound, []byte(key)) &&
+			kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
 			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
 				return nil, err
 			}
@@ -428,7 +432,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		return nil, ComplexQuery
 	}
@@ -445,18 +449,17 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, params [][]byt
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
 
-	krs, err := qr.mgr.ListKeyRanges(ctx)
-
+	krs, err := qr.mgr.ListKeyRanges(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
 
-	rls, err := qr.mgr.ListShardingRules(ctx)
+	rls, err := qr.mgr.ListShardingRules(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls, params)
+	meta := NewRoutingMetadataContext(krs, rls, dataspace, params)
 
 	tsa := config.TargetSessionAttrsAny
 
