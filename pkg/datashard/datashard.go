@@ -195,6 +195,7 @@ func NewShard(
 		ps:       shard.ParameterSet{},
 		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
+		mp:       map[uint64]shard.PreparedStatementDescriptor{},
 	}
 
 	dtSh.id = fmt.Sprintf("%p", dtSh)

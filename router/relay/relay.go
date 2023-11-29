@@ -178,6 +178,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	rst.Cl.ServerAcquireUse()
 
 	if ok, rd := rst.Cl.Server().HasPrepareStatement(hash); ok {
+		rst.Cl.ServerReleaseUse()
 		return rd, nil
 	}
 
