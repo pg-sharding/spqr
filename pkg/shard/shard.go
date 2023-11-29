@@ -41,8 +41,19 @@ type CoordShardinfo interface {
 	Router() string
 }
 
+type PreparedStatementDescriptor struct {
+	ParamDesc pgproto3.ParameterDescription
+	RowDesc   pgproto3.RowDescription
+}
+
+type PreparedStatementHolder interface {
+	HasPrepareStatement(hash uint64) (bool, PreparedStatementDescriptor)
+	PrepareStatement(hash uint64, rd PreparedStatementDescriptor)
+}
+
 type Shard interface {
 	txstatus.TxStatusMgr
+	PreparedStatementHolder
 	Shardinfo
 
 	Cfg() *config.Shard

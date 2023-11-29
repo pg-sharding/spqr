@@ -10,6 +10,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -49,7 +50,7 @@ type RelayStateMgr interface {
 	Client() client.RouterClient
 
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error
-	PrepareStatement(hash uint64, d server.PrepStmtDesc) (server.PreparedStatementDescriptor, error)
+	PrepareStatement(hash uint64, d server.PrepStmtDesc) (shard.PreparedStatementDescriptor, error)
 
 	PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
@@ -173,7 +174,7 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 	return rst.txStatus
 }
 
-func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) (server.PreparedStatementDescriptor, error) {
+func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) (shard.PreparedStatementDescriptor, error) {
 	rst.Cl.ServerAcquireUse()
 
 	if ok, rd := rst.Cl.Server().HasPrepareStatement(hash); ok {
@@ -188,7 +189,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Name:  d.Name,
 		Query: d.Query,
 	}); err != nil {
-		return server.PreparedStatementDescriptor{}, err
+		return shard.PreparedStatementDescriptor{}, err
 	}
 
 	err := rst.FireMsg(&pgproto3.Describe{
@@ -196,17 +197,17 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Name:       d.Name,
 	})
 	if err != nil {
-		return server.PreparedStatementDescriptor{}, err
+		return shard.PreparedStatementDescriptor{}, err
 	}
 
 	spqrlog.Zero.Debug().Str("client", rst.Client().ID()).Msg("syncing connection")
 
 	_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
 	if err != nil {
-		return server.PreparedStatementDescriptor{}, err
+		return shard.PreparedStatementDescriptor{}, err
 	}
 
-	rd := server.PreparedStatementDescriptor{}
+	rd := shard.PreparedStatementDescriptor{}
 
 	for _, msg := range unreplied {
 		switch q := msg.(type) {
@@ -229,6 +230,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	rst.Cl.Server().PrepareStatement(hash, rd)
 	return rd, nil
 }
+
 func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 	return rst.routerMode
 }
@@ -906,7 +908,7 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 	rst.xBuf = append(rst.xBuf, q)
 }
 
-func (rst *RelayStateImpl) DeployPrepStmt(qname string) (server.PreparedStatementDescriptor, error) {
+func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatementDescriptor, error) {
 	query := rst.Client().PreparedStatementQueryByName(qname)
 	hash := murmur3.Sum64([]byte(query))
 

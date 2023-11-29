@@ -19,7 +19,6 @@ var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 type ShardServer struct {
 	pool  pool.DBPool
 	shard shard.Shard
-	mp    map[uint64]PreparedStatementDescriptor
 	// protects shard
 	mu sync.RWMutex
 }
@@ -27,14 +26,12 @@ type ShardServer struct {
 func NewShardServer(spool pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool: spool,
-		mp:   make(map[uint64]PreparedStatementDescriptor),
 		mu:   sync.RWMutex{},
 	}
 }
 
-func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, PreparedStatementDescriptor) {
-	rd, ok := srv.mp[hash]
-	return ok, rd
+func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+	return srv.shard.HasPrepareStatement(hash)
 }
 
 func (srv *ShardServer) Name() string {
@@ -46,8 +43,8 @@ func (srv *ShardServer) Name() string {
 	return srv.shard.Name()
 }
 
-func (srv *ShardServer) PrepareStatement(hash uint64, rd PreparedStatementDescriptor) {
-	srv.mp[hash] = rd
+func (srv *ShardServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+	srv.shard.PrepareStatement(hash, rd)
 }
 
 func (srv *ShardServer) Sync() int64 {
