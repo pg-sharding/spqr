@@ -131,7 +131,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Str("shard", sh.ID()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.sync_out).
 		Msg("shard connection received message")
