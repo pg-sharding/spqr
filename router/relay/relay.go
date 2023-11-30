@@ -921,7 +921,12 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatement
 		Msg("deploy prepared statement")
 
 	// TODO: multi-shard statements
-	rst.bindRoute = rst.CurrentRoutes()[0]
+	routes := rst.CurrentRoutes()
+	if len(routes) > 0 {
+		rst.bindRoute = routes[0]
+	} else {
+		rst.bindRoute = nil
+	}
 
 	name := fmt.Sprintf("%d", hash)
 	return rst.PrepareStatement(hash, server.PrepStmtDesc{
