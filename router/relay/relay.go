@@ -925,7 +925,7 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatement
 	if len(routes) == 1 {
 		rst.bindRoute = routes[0]
 	} else {
-		return shard.PreparedStatementDescriptor{}, fmt.Errorf("failed to deplou prepared statement %s", query)
+		return shard.PreparedStatementDescriptor{}, fmt.Errorf("failed to deploy prepared statement %s", query)
 	}
 
 	name := fmt.Sprintf("%d", hash)

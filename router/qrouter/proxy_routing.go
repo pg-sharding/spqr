@@ -481,8 +481,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		/*
 		* SET x = y etc, do not dispatch any statement to shards, just process this in router
 		 */
-		return routingstate.MultiMatchState{}, nil
-		// XXX: need alter table which renames sharding column to non-sharding column check
+		return routingstate.RandomMatchState{}, nil
 
 	case *lyx.VariableShowStmt:
 		/*
@@ -490,8 +489,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 			XXX: support intelegent show support, without direct query dispatch
 		*/
 		return routingstate.RandomMatchState{}, nil
-		// XXX: need alter table which renames sharding column to non-sharding column check
 
+	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		/*
 		* Disallow to create table which does not contain any sharding column
