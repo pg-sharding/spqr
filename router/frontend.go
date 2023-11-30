@@ -142,9 +142,6 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		})
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
-		spqrlog.Zero.Debug().Msg(st.Name)
-		spqrlog.Zero.Debug().Msg(st.Value)
-
 		spqrlog.Zero.Debug().
 			Str("name", st.Name).
 			Str("value", st.Value).
