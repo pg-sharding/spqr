@@ -986,9 +986,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			rst.saveBind.Parameters = q.Parameters
 			rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
 
-			if err := rst.Cl.Send(&pgproto3.BindComplete{}); err != nil {
-				return err
-			}
+			// Do not respond here with bind complete, as relay step should do itself
 
 			_, _, err := rst.qp.Parse(rst.lastBindQuery)
 			if err != nil {
