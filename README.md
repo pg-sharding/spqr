@@ -16,17 +16,15 @@ For more about SPQR, please see [docs/](docs/).
 
 SPQR works well when you do not have queries that can be loaded strictly on one shard.
 
-| Feature                         | Description |
-| ------------------------------- | ----------- |
-| Sharding                        | If it possible, the router tries to determine on the first transaction statement to which shard this transaction should be sent. But you can explicitly specify a shard in a comment request. |
-| Transaction and session pooling | Just right in your favorite connection poller (Odyssey or PgBouncer) |
-| Multiple routers for fault tolerance. | The router stores the sharding rules only for cache purposes, information about the entire installation is stores inside the QDB service, so the number of routers running simultaneously is unlimited |
-| Liquid data migrations                | Data migration between shards aims to balance the workload across shards proportionally. The main idea is to minimize any locking impact during these migrations, which is accomplished by reducing the size of the data ranges being transferred. |
-| Limited cross-shard queries           | SPQR router support limited cross-shard queries. This is made from best-effort logic in a non-disruptive and non-consistent way and is used mainly for testing purposes. Please do not use this in your production. |
-| Works over PostgreSQL protocol | Router and coordinator work on the PostgreSQL protocol. This means that you can connect to them via psql |
-| Falling unrouted queries to the world shard | SPQR is optimized for single-shard OLTP queries. But we have long-term plans to support routing queries for 2 or more shards |
-| Minor overhead for query execution | We have some benchmarks [here](docs/Benchmarks.md) and [here](https://gitlab.com/postgres-ai/postgresql-consulting/tests-and-benchmarks/-/issues/30) |
-| Varias authentication types | From basic OK and plain text to MD5 and SCRUM, see [Authentication.md](docs/Authentication.md) |
+- **Sharding**. If it possible, the router tries to determine on the first transaction statement to which shard this transaction should be sent. But you can explicitly specify a shard in a comment request.
+- **Transaction and session pooling**. Just right in your favorite connection poller (Odyssey or PgBouncer).
+- **Multiple routers for fault tolerance**. The router stores the sharding rules only for cache purposes, information about the entire installation is stores inside the QDB service, so the number of routers running simultaneously is unlimited.
+- **Liquid data migrations**. Data migration between shards aims to balance the workload across shards proportionally. The main idea is to minimize any locking impact during these migrations, which is accomplished by reducing the size of the data ranges being transferred.
+- **Limited cross-shard queries**. SPQR router support limited cross-shard queries. This is made from best-effort logic in a non-disruptive and non-consistent way and is used mainly for testing purposes. Please do not use this in your production.
+- **Works over PostgreSQL protocol**. Router and coordinator work on the PostgreSQL protocol. This means that you can connect to them via psql.
+- **Minor overhead for query execution**. We have some benchmarks [here](docs/Benchmarks.md) and [here](https://gitlab.com/postgres-ai/postgresql-consulting/tests-and-benchmarks/-/issues/30).
+- **Varias authentication types**. From basic OK and plain text to MD5 and SCRUM, see [Authentication.md](docs/Authentication.md).
+- *Falling unrouted queries to the world shard*. SPQR is optimized for single-shard OLTP queries. But we have long-term plans to support routing queries for 2 or more shards.
 
 ## Development
 
