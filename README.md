@@ -26,6 +26,8 @@ SPQR works well when you do not have queries that can be loaded strictly on one 
 - **Dedicated read-only mode**. Once enabled, the router will respond to a SHOW transaction_read_only command with "true" and handle only read-only queries, similar to a standard PostgreSQL replica.
 - **Minor overhead for query execution**. See benchmarks [here](docs/Benchmarks.md) and [here](https://gitlab.com/postgres-ai/postgresql-consulting/tests-and-benchmarks/-/issues/30).
 - **Varias authentication types**. From basic OK and plain text to MD5 and SCRUM, see [Authentication.md](docs/Authentication.md).
+- **Live configuration reloading**. You can send a SIGHUP signal to the router's process. This will trigger the router to reload its configuration file and apply any changes without interrupting its operation.
+- **Statistics**. You can get access to statitics in router's administrative console via [SHOW command](https://github.com/pg-sharding/spqr/blob/master/yacc/console/gram.y#L319). 
 - *Falling unrouted queries to the world shard*. SPQR is optimized for single-shard OLTP queries. But we have long-term plans to support routing queries for 2 or more shards.
 
 ## Development
