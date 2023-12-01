@@ -402,7 +402,8 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
-	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	namespacePrefix := keyRangesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
