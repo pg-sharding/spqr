@@ -369,34 +369,34 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
-	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
+	namespacePrefix := keyRangesNamespace + "/"
+	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	var ret []*KeyRange
+	keyRanges := make([]*KeyRange, 0, len(resp.Kvs))
 
 	for _, e := range resp.Kvs {
-		var krCurr KeyRange
-
-		if err := json.Unmarshal(e.Value, &krCurr); err != nil {
+		var kr *KeyRange
+		if err := json.Unmarshal(e.Value, &kr); err != nil {
 			return nil, err
 		}
 
-		if dataspace == krCurr.DataspaceId {
-			ret = append(ret, &krCurr)
+		if dataspace == kr.DataspaceId {
+			keyRanges = append(keyRanges, kr)
 		}
 	}
 
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].KeyRangeID < ret[j].KeyRangeID
+	sort.Slice(keyRanges, func(i, j int) bool {
+		return keyRanges[i].KeyRangeID < keyRanges[j].KeyRangeID
 	})
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
 		Msg("etcdqdb: list key ranges")
 
-	return ret, nil
+	return keyRanges, nil
 }
 
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
