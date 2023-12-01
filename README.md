@@ -45,7 +45,7 @@ spqr-router run --config path-to-router-config.yaml
 
 ## Tests
 
-SPQR has all types of tests: unit, regress and, end-to-end. These tests require Docker Compose, and can be run using `make`. For more information on testing, please see `unittest`, `regress`, and `feature` sections in [Makefile](./Makefile).
+SPQR has all types of tests: unit, regress, and end-to-end. These tests require Docker Compose, and can be run using `make`. For more information on testing, please see `unittest`, `regress`, and `feature` sections in [Makefile](./Makefile).
 
 ## License
 
