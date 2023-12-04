@@ -933,7 +933,9 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 }
 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
-	spqrlog.Zero.Debug().Str("address", qRouter.Address).Msg("qdb coordinator: sync router metadata")
+	spqrlog.Zero.Debug().
+		Str("address", qRouter.Address).
+		Msg("qdb coordinator: sync router metadata")
 
 	cc, err := DialRouter(qRouter)
 	if err != nil {
@@ -949,7 +951,6 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 
 	var protoShardingRules []*routerproto.ShardingRule
 	shClient := routerproto.NewShardingRulesServiceClient(cc)
-	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, shRule := range shardingRules {
 		protoShardingRules = append(protoShardingRules,
 			shrule.ShardingRuleToProto(shrule.ShardingRuleFromDB(shRule)))
@@ -972,10 +973,8 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	if err != nil {
 		return err
 	}
-	if _, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{}); err != nil {
-		return err
-	}
-
+	
+	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	for _, keyRange := range keyRanges {
 		resp, err := krClient.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
 			KeyRangeInfo: kr.KeyRangeFromDB(keyRange).ToProto(),
@@ -987,8 +986,9 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
-			Msg("got response while adding key range")
+			Msg("add key range response")
 	}
+	spqrlog.Zero.Debug().Msg("add all key ranges: ok")
 
 	rCl := routerproto.NewTopologyServiceClient(cc)
 	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
