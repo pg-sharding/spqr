@@ -31,22 +31,3 @@ INSERT INTO test(id, age) VALUES (10, 16) /*sharding_key: 30*/;
 NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*sharding_key: 3000*/;
 NOTICE: send query to shard(s) : sh1
-\c spqr-console
-
-		SQPR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
