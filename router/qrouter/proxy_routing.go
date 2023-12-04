@@ -8,7 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb/ops"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
@@ -414,6 +414,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 }
 
 var ParseError = fmt.Errorf("parsing stmt error")
+var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 
@@ -426,7 +427,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		entries = append(entries, elt.ColName)
 	}
 
-	if _, err := ops.MatchShardingRule(ctx, qr.mgr, node.TableName, entries, qr.mgr.QDB()); err == ops.ErrRuleIntersect {
+	if _, err := MatchShardingRule(ctx, node.TableName, entries, qr.mgr.QDB()); err == ErrRuleIntersect {
 		return nil
 	}
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
@@ -582,7 +583,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 	/* Step 1.5: check if query contains any unparsed columns that are sharding rule column.
 	Reject query if so */
 	for colname := range meta.unparsed_columns {
-		if _, err := ops.MatchShardingRule(ctx, qr.mgr, "", []string{colname}, qr.mgr.QDB()); err == ops.ErrRuleIntersect {
+		if _, err := MatchShardingRule(ctx, "", []string{colname}, qr.mgr.QDB()); err == ErrRuleIntersect {
 			return nil, ComplexQuery
 		}
 	}
@@ -597,7 +598,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := ops.MatchShardingRule(ctx, qr.mgr, tname, cols, qr.mgr.QDB()); err != nil {
+			if _, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
 
 				for _, col := range cols {
 					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
@@ -628,7 +629,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 	spqrlog.Zero.Debug().Interface("insertStmtCols", meta.InsertStmtCols)
 
 	if len(meta.InsertStmtCols) != 0 {
-		if rule, err := ops.MatchShardingRule(ctx, qr.mgr, meta.InsertStmtRel, meta.InsertStmtCols, qr.mgr.QDB()); err != nil {
+		if rule, err := MatchShardingRule(ctx, meta.InsertStmtRel, meta.InsertStmtCols, qr.mgr.QDB()); err != nil {
 			// compute matched sharding rule offsets
 			offsets := make([]int, 0)
 			j := 0
@@ -705,4 +706,51 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		return routingstate.MultiMatchState{}, nil
 	}
 	return routingstate.SkipRoutingState{}, nil
+}
+
+func MatchShardingRule(ctx context.Context, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
+	/*
+	* Create set to search column names in `shardingEntries`
+	 */
+	checkSet := make(map[string]struct{}, len(shardingEntries))
+
+	for _, k := range shardingEntries {
+		checkSet[k] = struct{}{}
+	}
+
+	var mrule *qdb.ShardingRule
+
+	mrule = nil
+
+	err := db.MatchShardingRules(ctx, func(rules map[string]*qdb.ShardingRule) error {
+		for _, rule := range rules {
+			// Simple optimisation
+			if len(rule.Entries) > len(shardingEntries) {
+				continue
+			}
+
+			if rule.TableName != "" && rule.TableName != relationName {
+				continue
+			}
+
+			allColumnsMatched := true
+
+			for _, v := range rule.Entries {
+				if _, ok := checkSet[v.Column]; !ok {
+					allColumnsMatched = false
+					break
+				}
+			}
+
+			/* In this rule, we successfully matched all columns */
+			if allColumnsMatched {
+				mrule = rule
+				return ErrRuleIntersect
+			}
+		}
+
+		return nil
+	})
+
+	return mrule, err
 }

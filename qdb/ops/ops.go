@@ -3,13 +3,11 @@ package ops
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
@@ -85,53 +83,6 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
-}
-
-func MatchShardingRule(ctx context.Context, _ meta.EntityMgr, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
-	/*
-	* Create set to search column names in `shardingEntries`
-	 */
-	checkSet := make(map[string]struct{}, len(shardingEntries))
-
-	for _, k := range shardingEntries {
-		checkSet[k] = struct{}{}
-	}
-
-	var mrule *qdb.ShardingRule
-
-	mrule = nil
-
-	err := db.MatchShardingRules(ctx, func(rules map[string]*qdb.ShardingRule) error {
-		for _, rule := range rules {
-			// Simple optimisation
-			if len(rule.Entries) > len(shardingEntries) {
-				continue
-			}
-
-			if rule.TableName != "" && rule.TableName != relationName {
-				continue
-			}
-
-			allColumnsMatched := true
-
-			for _, v := range rule.Entries {
-				if _, ok := checkSet[v.Column]; !ok {
-					allColumnsMatched = false
-					break
-				}
-			}
-
-			/* In this rule, we successfully matched all columns */
-			if allColumnsMatched {
-				mrule = rule
-				return ErrRuleIntersect
-			}
-		}
-
-		return nil
-	})
-
-	return mrule, err
 }
 
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
