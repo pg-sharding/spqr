@@ -182,8 +182,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 		Str("dataspace", dataspace).
 		Msg("etcdqdb: list sharding rules")
 
-	namespacePrefix := shardingRulesNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +216,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
 
-	namespacePrefix := shardingRulesNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -374,8 +372,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 		Str("dataspace", dataspace).
 		Msg("etcdqdb: list key ranges")
 
-	namespacePrefix := keyRangesNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -408,8 +405,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
-	namespacePrefix := keyRangesNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -917,8 +913,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
 
-	namespacePrefix := shardsNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, shardsNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -986,8 +981,7 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list dataspaces")
 
-	namespacePrefix := dataspaceNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, dataspaceNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -1036,8 +1030,7 @@ func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list move key range operations")
 
-	namespacePrefix := keyRangeMovesNamespace + "/"
-	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangeMovesNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
