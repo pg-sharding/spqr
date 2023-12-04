@@ -101,6 +101,7 @@ type FrontendRule struct {
 const (
 	TargetSessionAttrsRW  = "read-write"
 	TargetSessionAttrsRO  = "read-only"
+	TargetSessionAttrsPS  = "prefer-standby"
 	TargetSessionAttrsAny = "any"
 )
 

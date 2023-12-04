@@ -24,6 +24,67 @@ type InstancePoolImpl struct {
 
 var _ DBPool = &InstancePoolImpl{}
 
+func (s *InstancePoolImpl) SelectReadOnlyShardHost(
+	clid string,
+	key kr.ShardKey, hosts []string) (shard.Shard, error) {
+	total_msg := ""
+
+	for _, host := range hosts {
+		shard, err := s.pool.Connection(clid, key, host)
+		if err != nil {
+			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("host", host).
+				Str("client", clid).
+				Msg("failed to get connection to host for client")
+			continue
+		}
+		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+			_ = s.pool.Discard(shard)
+			continue
+		} else if ch {
+			total_msg += fmt.Sprintf("host %s: read-only check fail: %s ", host, reason)
+			_ = s.Put(shard)
+			continue
+		}
+
+		return shard, nil
+	}
+	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
+}
+
+func (s *InstancePoolImpl) SelectReadWriteShardHost(
+	clid string,
+	key kr.ShardKey, hosts []string) (shard.Shard, error) {
+	total_msg := ""
+	for _, host := range hosts {
+		shard, err := s.pool.Connection(clid, key, host)
+		if err != nil {
+			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+			spqrlog.Zero.Error().
+				Err(err).
+				Str("host", host).
+				Str("client", clid).
+				Msg("failed to get connection to host for client")
+			continue
+		}
+		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+			_ = s.pool.Discard(shard)
+			continue
+		} else if !ch {
+			total_msg += fmt.Sprintf("host %s: read-write check fail: %s ", host, reason)
+			_ = s.Put(shard)
+			continue
+		}
+
+		return shard, nil
+	}
+	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
+}
+
 func (s *InstancePoolImpl) Connection(
 	clid string,
 	key kr.ShardKey,
@@ -60,58 +121,15 @@ func (s *InstancePoolImpl) Connection(
 		}
 		return nil, fmt.Errorf("failed to get connection to any shard host within %s", total_msg)
 	case config.TargetSessionAttrsRO:
-		total_msg := ""
-
-		for _, host := range hosts {
-			shard, err := s.pool.Connection(clid, key, host)
-			if err != nil {
-				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Zero.Error().
-					Err(err).
-					Str("host", host).
-					Str("client", clid).
-					Msg("failed to get connection to host for client")
-				continue
-			}
-			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				_ = s.pool.Discard(shard)
-				continue
-			} else if ch {
-				total_msg += fmt.Sprintf("host %s: read-only check fail: %s ", host, reason)
-				_ = s.Put(shard)
-				continue
-			}
-
-			return shard, nil
+		return s.SelectReadOnlyShardHost(clid, key, hosts)
+	case config.TargetSessionAttrsPS:
+		if res, err := s.SelectReadOnlyShardHost(clid, key, hosts); err != nil {
+			return s.SelectReadWriteShardHost(clid, key, hosts)
+		} else {
+			return res, nil
 		}
-		return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
 	case config.TargetSessionAttrsRW:
-		total_msg := ""
-		for _, host := range hosts {
-			shard, err := s.pool.Connection(clid, key, host)
-			if err != nil {
-				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				spqrlog.Zero.Error().
-					Err(err).
-					Str("host", host).
-					Str("client", clid).
-					Msg("failed to get connection to host for client")
-				continue
-			}
-			if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-				_ = s.pool.Discard(shard)
-				continue
-			} else if !ch {
-				total_msg += fmt.Sprintf("host %s: read-write check fail: %s ", host, reason)
-				_ = s.Put(shard)
-				continue
-			}
-
-			return shard, nil
-		}
-		return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
+		return s.SelectReadWriteShardHost(clid, key, hosts)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}

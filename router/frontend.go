@@ -97,7 +97,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		for _, opt := range st.Options {
 			switch opt {
 			case lyx.TransactionReadOnly:
-				rst.Client().SetTsa(config.TargetSessionAttrsRO)
+				rst.Client().SetTsa(config.TargetSessionAttrsPS)
 			case lyx.TransactionReadWrite:
 				rst.Client().SetTsa(config.TargetSessionAttrsRW)
 			}

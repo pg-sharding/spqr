@@ -93,7 +93,8 @@ type PsqlClient struct {
 	prepStmts map[string]string
 
 	/* target-session-attrs */
-	tsa string
+	tsa        string
+	defaultTsa string
 
 	/* protects client.Send() (backend) */
 	muBe sync.Mutex
@@ -111,14 +112,16 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 
 	// enforce default port behaviour
 	if pt == port.RORouterPortType {
-		tsa = config.TargetSessionAttrsRO
+		tsa = config.TargetSessionAttrsPS
 	}
+
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
 		conn:           pgconn,
 		startupMsg:     &pgproto3.StartupMessage{},
 		prepStmts:      map[string]string{},
 		tsa:            tsa,
+		defaultTsa:     tsa,
 	}
 
 	cl.id = fmt.Sprintf("%p", cl)
@@ -449,6 +452,7 @@ func (cl *PsqlClient) Unroute() error {
 		return nil
 	}
 	cl.server = nil
+	cl.ResetTsa()
 	return nil
 }
 
@@ -898,6 +902,10 @@ func (cl *PsqlClient) GetTsa() string {
 
 func (cl *PsqlClient) SetTsa(s string) {
 	cl.tsa = s
+}
+
+func (cl *PsqlClient) ResetTsa() {
+	cl.tsa = cl.defaultTsa
 }
 
 func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
