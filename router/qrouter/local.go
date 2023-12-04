@@ -64,11 +64,9 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard)
 
 func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ string, _ [][]byte, _ routehint.RouteHint) (routingstate.RoutingState, error) {
 	return routingstate.ShardMatchState{
-		Routes: []*routingstate.DataShardRoute{
-			{
-				Shkey: kr.ShardKey{
-					Name: l.ds.ID,
-				},
+		Route: &routingstate.DataShardRoute{
+			Shkey: kr.ShardKey{
+				Name: l.ds.ID,
 			},
 		},
 	}, nil

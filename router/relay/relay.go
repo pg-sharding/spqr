@@ -340,7 +340,7 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:
 		// TBD: do it better
-		return rst.procRoutes(v.Routes)
+		return rst.procRoutes([]*routingstate.DataShardRoute{v.Route})
 	case routingstate.SkipRoutingState:
 		return ErrSkipQuery
 	case routingstate.RandomMatchState:
@@ -381,11 +381,11 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	}
 
 	routingState := routingstate.ShardMatchState{
-		Routes: []*routingstate.DataShardRoute{routes[rand.Int()%len(routes)]},
+		Route: routes[rand.Int()%len(routes)],
 	}
 	rst.routingState = routingState
 
-	return rst.procRoutes(routingState.Routes)
+	return rst.procRoutes([]*routingstate.DataShardRoute{routingState.Route})
 }
 
 func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRoute) error {
@@ -402,17 +402,17 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRou
 		Msg("rerouting the client connection to target shard, resolving shard")
 
 	routingState := routingstate.ShardMatchState{
-		Routes: []*routingstate.DataShardRoute{route},
+		Route: route,
 	}
 	rst.routingState = routingState
 
-	return rst.procRoutes(routingState.Routes)
+	return rst.procRoutes([]*routingstate.DataShardRoute{route})
 }
 
 func (rst *RelayStateImpl) CurrentRoutes() []*routingstate.DataShardRoute {
 	switch q := rst.routingState.(type) {
 	case routingstate.ShardMatchState:
-		return q.Routes
+		return []*routingstate.DataShardRoute{q.Route}
 	default:
 		return nil
 	}

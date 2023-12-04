@@ -102,11 +102,9 @@ func TestFrontendSimple(t *testing.T) {
 		},
 		Where: &lyx.AExprEmpty{},
 	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
-		Routes: []*routingstate.DataShardRoute{
-			{
-				Shkey: kr.ShardKey{
-					Name: "sh1",
-				},
+		Route: &routingstate.DataShardRoute{
+			Shkey: kr.ShardKey{
+				Name: "sh1",
 			},
 		},
 	}, nil).Times(1)
@@ -342,11 +340,9 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
 	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
-		Routes: []*routingstate.DataShardRoute{
-			{
-				Shkey: kr.ShardKey{
-					Name: "sh1",
-				},
+		Route: &routingstate.DataShardRoute{
+			Shkey: kr.ShardKey{
+				Name: "sh1",
 			},
 		},
 	}, nil).Times(1)

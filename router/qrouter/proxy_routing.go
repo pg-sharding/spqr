@@ -432,7 +432,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.ShardRoute, error) {
+func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		return nil, ComplexQuery
 	}
@@ -557,7 +557,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 			if any_routable {
 				rs := qr.DataShardsRoutes()
 				return routingstate.ShardMatchState{
-					Routes:             []*routingstate.DataShardRoute{rs[0]},
+					Route:              rs[0],
 					TargetSessionAttrs: tsa,
 				}, nil
 			}
@@ -592,7 +592,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 	 * Step 2: match all deparsed rules to sharding rules.
 	 */
 
-	var route routingstate.ShardRoute
+	var route routingstate.RoutingState
 	route = nil
 	if meta.exprs != nil {
 		// traverse each deparsed relation from query
@@ -612,11 +612,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 						Str("table", tname).
 						Strs("columns", cols).
 						Msg("calculated route for table/cols")
-					if route == nil {
-						route = currroute
-					} else {
-						route = routingstate.Combine(route, currroute)
-					}
+					route = routingstate.Combine(route, routingstate.ShardMatchState{
+						Route:              currroute,
+						TargetSessionAttrs: tsa,
+					})
 				}
 			}
 		}
@@ -657,11 +656,12 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 						Interface("current-route", currroute).
 						Msg("deparsed route from current route")
 					routed = true
-					if route == nil {
-						route = currroute
-					} else {
-						route = routingstate.Combine(route, currroute)
-					}
+
+					route = routingstate.Combine(route, routingstate.ShardMatchState{
+						Route:              currroute,
+						TargetSessionAttrs: tsa,
+					})
+
 				}
 			}
 
@@ -675,18 +675,18 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 					spqrlog.Zero.Debug().
 						Interface("current-route", currroute).
 						Msg("deparsed route from current route")
-					if route == nil {
-						route = currroute
-					} else {
-						route = routingstate.Combine(route, currroute)
-					}
+
+					route = routingstate.Combine(route, routingstate.ShardMatchState{
+						Route:              currroute,
+						TargetSessionAttrs: tsa,
+					})
 				}
 			}
 		}
 	}
 	// set up this varibale if not yet
 	if route == nil {
-		route = routingstate.MultiMatchRoute{}
+		route = routingstate.MultiMatchState{}
 	}
 
 	return route, nil
@@ -698,18 +698,13 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		return nil, err
 	}
 
-	tsa := config.TargetSessionAttrsAny
-
 	spqrlog.Zero.Debug().
 		Interface("route", route).
 		Msg("parsed shard route")
 	switch v := route.(type) {
-	case *routingstate.DataShardRoute:
-		return routingstate.ShardMatchState{
-			Routes:             []*routingstate.DataShardRoute{v},
-			TargetSessionAttrs: tsa,
-		}, nil
-	case *routingstate.MultiMatchRoute:
+	case routingstate.ShardMatchState:
+		return v, nil
+	case routingstate.MultiMatchState:
 		switch qr.cfg.DefaultRouteBehaviour {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, FailedToMatch

@@ -56,7 +56,7 @@ func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspa
 		}
 		return &routehint.TargetRouteHint{
 			State: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{ds},
+				Route: ds,
 			},
 		}, nil
 	}
