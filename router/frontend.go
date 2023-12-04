@@ -87,12 +87,11 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateTXBegin:
 		if rst.TxStatus() != txstatus.TXIDLE {
 			// ignore this
-			if rst.PgprotoDebug() {
-				_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			}
+			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 		}
 		rst.AddSilentQuery(msg)
+		rst.SetTxStatus(txstatus.TXACT)
 		rst.Client().StartTx()
 		for _, opt := range st.Options {
 			switch opt {
@@ -105,9 +104,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT {
-			if rst.PgprotoDebug() {
-				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			}
+			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
 		}
 		if !cmngr.ConnectionActive(rst) {
@@ -121,9 +118,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		return err
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT {
-			if rst.PgprotoDebug() {
-				_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			}
+			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "ROLLBACK")
 		}
 
