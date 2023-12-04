@@ -152,6 +152,17 @@ NOTICE: send query to shard(s) : sh2
  -211212 | 2121221 |   21
 (9 rows)
 
+SELECT DISTINCT * FROM xxtt1 WHERE w_id=21;
+NOTICE: send query to shard(s) : sh2
+    i    |    j    | w_id 
+---------+---------+------
+ -211212 | 2121221 |   21
+      12 |         |   21
+      21 |         |   21
+ 2121221 |         |   21
+         |         |   21
+(5 rows)
+
 -- check that aliases works
 SELECT * FROM xxtt1 a WHERE a.w_id >= 1;
 NOTICE: send query to shard(s) : sh1

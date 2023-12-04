@@ -50,6 +50,7 @@ INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 SELECT * FROM xxtt1 WHERE w_id >= 20;
 SELECT * FROM xxtt1 WHERE w_id >= 21;
+SELECT DISTINCT * FROM xxtt1 WHERE w_id=21;
 
 -- check that aliases works
 SELECT * FROM xxtt1 a WHERE a.w_id >= 1;
