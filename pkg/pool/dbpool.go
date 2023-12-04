@@ -24,15 +24,13 @@ type InstancePoolImpl struct {
 
 var _ DBPool = &InstancePoolImpl{}
 
-func (s *InstancePoolImpl) SelectReadOnlyShardHost(
+func (s *InstancePoolImpl) traverseHostsMatchCB(
 	clid string,
-	key kr.ShardKey, hosts []string) (shard.Shard, error) {
-	total_msg := ""
+	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
 
 	for _, host := range hosts {
 		shard, err := s.pool.Connection(clid, key, host)
 		if err != nil {
-			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 			spqrlog.Zero.Error().
 				Err(err).
 				Str("host", host).
@@ -40,48 +38,63 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 				Msg("failed to get connection to host for client")
 			continue
 		}
-		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-			_ = s.pool.Discard(shard)
-			continue
-		} else if ch {
-			total_msg += fmt.Sprintf("host %s: read-only check fail: %s ", host, reason)
-			_ = s.Put(shard)
+
+		// callback should Discard/Put connection to Pool properly here
+		if !cb(shard) {
 			continue
 		}
 
-		return shard, nil
+		return shard
 	}
+
+	return nil
+}
+
+func (s *InstancePoolImpl) SelectReadOnlyShardHost(
+	clid string,
+	key kr.ShardKey, hosts []string) (shard.Shard, error) {
+	total_msg := ""
+	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
+		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+			total_msg += fmt.Sprintf("host %s: ", shard.Instance().Hostname()) + err.Error()
+			_ = s.pool.Discard(shard)
+			return false
+		} else if ch {
+			total_msg += fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason)
+			_ = s.Put(shard)
+			return false
+		}
+		return true
+	})
+	if sh != nil {
+		return sh, nil
+	}
+
 	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
 }
 
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	clid string,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
-	total_msg := ""
-	for _, host := range hosts {
-		shard, err := s.pool.Connection(clid, key, host)
-		if err != nil {
-			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-			spqrlog.Zero.Error().
-				Err(err).
-				Str("host", host).
-				Str("client", clid).
-				Msg("failed to get connection to host for client")
-			continue
-		}
-		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-			total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
-			_ = s.pool.Discard(shard)
-			continue
-		} else if !ch {
-			total_msg += fmt.Sprintf("host %s: read-write check fail: %s ", host, reason)
-			_ = s.Put(shard)
-			continue
-		}
 
-		return shard, nil
+	total_msg := ""
+	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
+
+		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+			total_msg += fmt.Sprintf("host %s: ", shard.Instance().Hostname()) + err.Error()
+			_ = s.pool.Discard(shard)
+			return false
+		} else if !ch {
+			total_msg += fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason)
+			_ = s.Put(shard)
+			return false
+		}
+		return true
+	})
+	if sh != nil {
+		return sh, nil
 	}
+
 	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
 }
 
