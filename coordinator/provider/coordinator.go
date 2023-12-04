@@ -991,7 +991,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
-			Msg("add key range response")
+			Msg("got response while adding key range")
 	}
 	spqrlog.Zero.Debug().Msg("successfully add all key ranges")
 
