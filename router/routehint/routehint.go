@@ -11,7 +11,10 @@ type EmptyRouteHint struct {
 }
 
 type TargetRouteHint struct {
+	RouteHint
 	State routingstate.RoutingState
 }
 
-func (t *TargetRouteHint) iRouteHint() {}
+type ScatterRouteHint struct {
+	RouteHint
+}

@@ -2,6 +2,7 @@ log_level: log
 
 host: '::1'
 router_port: '6432'
+router_ro_port: '6433'
 admin_console_port: '7432'
 grpc_api_port: '7010'
 
@@ -52,6 +53,7 @@ shards:
     type: DATA
     hosts:
       - 'localhost:5550'
+      - 'localhost:5650'
   sh2:
     tls:
       key_file: /etc/odyssey/ssl/server.key
@@ -60,4 +62,4 @@ shards:
     type: DATA
     hosts:
       - 'localhost:5551'
-      - 'localhost:5552'
+      - 'localhost:5651'

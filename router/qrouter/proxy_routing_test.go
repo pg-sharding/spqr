@@ -69,11 +69,9 @@ func TestMultiShardRouting(t *testing.T) {
 		{
 			query: "select 42;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -175,18 +173,16 @@ func TestComment(t *testing.T) {
 		{
 			query: "select /* oiwejow--23**/ * from  xx where i = 4;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -268,18 +264,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "select * from  xx where i = 4;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -290,18 +284,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("25"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -312,18 +304,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							Dataspace:  dataspace,
-							ID:         "id2",
-							LowerBound: []byte("11"),
-							UpperBound: []byte("25"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						Dataspace:  dataspace,
+						ID:         "id2",
+						LowerBound: []byte("11"),
+						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -333,18 +323,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "select * from  xx where i = 11;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("25"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -355,18 +343,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "Insert into xx (i) values (1), (2)",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -377,18 +363,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "Insert into xx (i) select * from yy where i = 8",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -399,18 +383,16 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("25"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -493,18 +475,16 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -584,18 +564,16 @@ func TestJoins(t *testing.T) {
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("21"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -613,17 +591,15 @@ func TestJoins(t *testing.T) {
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;'",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							LowerBound: []byte("11"),
-							UpperBound: []byte("21"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						LowerBound: []byte("11"),
+						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -642,7 +618,7 @@ func TestJoins(t *testing.T) {
 		} else {
 			assert.NoError(err, "query %s", tt.query)
 
-			assert.Equal(tt.exp, tmp)
+			assert.Equal(tt.exp, tmp, tt.query)
 		}
 	}
 }
@@ -710,18 +686,16 @@ func TestUnnest(t *testing.T) {
 		{
 			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("21"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -732,18 +706,16 @@ func TestUnnest(t *testing.T) {
 		{
 			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace,
-							LowerBound: []byte("11"),
-							UpperBound: []byte("21"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace,
+						LowerBound: []byte("11"),
+						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -825,18 +797,16 @@ func TestCopySingleShard(t *testing.T) {
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -931,18 +901,16 @@ func TestInsertMultiDataspace(t *testing.T) {
 			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
 			dataspace: dataspace1,
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh1",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh1",
-							ID:         "id1",
-							Dataspace:  dataspace1,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace1,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -953,18 +921,16 @@ func TestInsertMultiDataspace(t *testing.T) {
 			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
 			dataspace: dataspace2,
 			exp: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{
-					{
-						Shkey: kr.ShardKey{
-							Name: "sh2",
-						},
-						Matchedkr: &kr.KeyRange{
-							ShardID:    "sh2",
-							ID:         "id2",
-							Dataspace:  dataspace2,
-							LowerBound: []byte("1"),
-							UpperBound: []byte("11"),
-						},
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh2",
+						ID:         "id2",
+						Dataspace:  dataspace2,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -980,6 +946,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }

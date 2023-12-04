@@ -32,7 +32,10 @@ func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 }
 
 func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
-	if val, ok := params["sharding_key"]; ok {
+	if _, ok := params[client.SPQR_SCATTER_QUERY]; ok {
+		return &routehint.ScatterRouteHint{}, nil
+	}
+	if val, ok := params[client.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
@@ -53,7 +56,7 @@ func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspa
 		}
 		return &routehint.TargetRouteHint{
 			State: routingstate.ShardMatchState{
-				Routes: []*routingstate.DataShardRoute{ds},
+				Route: ds,
 			},
 		}, nil
 	}

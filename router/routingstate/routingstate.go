@@ -7,52 +7,53 @@ import (
 
 const NOSHARD = ""
 
-type ShardRoute interface {
-}
+func Combine(sh1, sh2 RoutingState) RoutingState {
+	if sh1 == nil && sh2 == nil {
+		return nil
+	}
+	if sh1 == nil {
+		return sh2
+	}
+	if sh2 == nil {
+		return sh1
+	}
 
-func Combine(sh1, sh2 ShardRoute) ShardRoute {
 	spqrlog.Zero.Debug().
 		Interface("route1", sh1).
 		Interface("route2", sh2).
 		Msg("combine two routes")
 	switch shq1 := sh1.(type) {
-	case *MultiMatchRoute:
+	case *MultiMatchState:
 		return sh2
 	case *RandomMatchState:
 		return sh2
-	case *DataShardRoute:
+	case *ShardMatchState:
 		switch shq2 := sh2.(type) {
-		case *MultiMatchRoute:
+		case *MultiMatchState:
 			return sh1
-		case *DataShardRoute:
-			if shq2.Shkey.Name == shq1.Shkey.Name {
+		case *ShardMatchState:
+			if shq2.Route.Shkey.Name == shq1.Route.Shkey.Name {
 				return sh1
 			}
 		}
 	}
-	return &MultiMatchRoute{}
-}
-
-type DataShardRoute struct {
-	ShardRoute
-
-	Shkey     kr.ShardKey
-	Matchedkr *kr.KeyRange
+	return &MultiMatchState{}
 }
 
 type RoutingState interface {
 	iState()
 }
 
+type DataShardRoute struct {
+	Shkey     kr.ShardKey
+	Matchedkr *kr.KeyRange
+}
+
 type ShardMatchState struct {
 	RoutingState
 
-	Routes             []*DataShardRoute
+	Route              *DataShardRoute
 	TargetSessionAttrs string
-}
-
-type MultiMatchRoute struct {
-	ShardRoute
 }
 
 type MultiMatchState struct {
