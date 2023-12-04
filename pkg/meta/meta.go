@@ -291,7 +291,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 }
 
 func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("show shatement")
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
