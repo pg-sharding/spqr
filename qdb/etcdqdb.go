@@ -178,7 +178,9 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 }
 
 func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
+	spqrlog.Zero.Debug().
+		Str("dataspace", dataspace).
+		Msg("etcdqdb: list sharding rules")
 
 	namespacePrefix := shardingRulesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
@@ -206,6 +208,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
+		Str("dataspace", dataspace).
 		Msg("etcdqdb: list sharding rules")
 
 	return rules, nil
@@ -238,7 +241,7 @@ func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, er
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list sharding rules")
+		Msg("etcdqdb: list all sharding rules")
 
 	return rules, nil
 }
@@ -367,7 +370,9 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 }
 
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
+	spqrlog.Zero.Debug().
+		Str("dataspace", dataspace).
+		Msg("etcdqdb: list key ranges")
 
 	namespacePrefix := keyRangesNamespace + "/"
 	resp, err := q.cli.Get(ctx, namespacePrefix, clientv3.WithPrefix())
@@ -394,6 +399,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
+		Str("dataspace", dataspace).
 		Msg("etcdqdb: list key ranges")
 
 	return keyRanges, nil
@@ -425,7 +431,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list key ranges")
+		Msg("etcdqdb: list all key ranges")
 
 	return ret, nil
 }
