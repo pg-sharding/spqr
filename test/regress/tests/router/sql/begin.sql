@@ -6,7 +6,6 @@ ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
 ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 
 \c regress
-/* TODO: BEGIN READ ONLY doesnt work */
 CREATE TABLE test_beg(id int, age int);
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 INSERT INTO test_beg(id, age) VALUES (10, 16);
@@ -55,3 +54,11 @@ SELECT * FROM test_beg WHERE id=10;
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 SELECT * FROM test_beg WHERE id=10;
 ROLLBACK;
+
+BEGIN TRANSACTION READ ONLY;
+SELECT * FROM test_beg WHERE id=10;
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+ROLLBACK;
+
+\c spqr-console
+DROP DATASPACE ALL CASCADE

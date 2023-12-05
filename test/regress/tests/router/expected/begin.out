@@ -36,7 +36,6 @@ ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 (1 row)
 
 \c regress
-/* TODO: BEGIN READ ONLY doesnt work */
 CREATE TABLE test_beg(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO test_beg(id, age) VALUES (10, 16);
@@ -185,3 +184,28 @@ SELECT * FROM test_beg WHERE id=10;
 (3 rows)
 
 ROLLBACK;
+BEGIN TRANSACTION READ ONLY;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+ERROR:  cannot execute INSERT in a read-only transaction
+ROLLBACK;
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DATASPACE ALL CASCADE
+ drop dataspace 
+----------------
+(0 rows)
+
