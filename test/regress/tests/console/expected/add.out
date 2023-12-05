@@ -92,6 +92,8 @@ SHOW sharding_rules;
  rule1            | default      | *          | id       | x->x
 (3 rows)
 
+ADD KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard;
+ERROR:  unknown shard nonexistentshard
 DROP SHARDING RULE ALL;
          drop sharding rule          
 -------------------------------------

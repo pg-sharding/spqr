@@ -22,6 +22,8 @@ ADD SHARDING RULE dog TABLE delivery COLUMN order_id;
 
 SHOW sharding_rules;
 
+ADD KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard;
+
 DROP SHARDING RULE ALL;
 DROP KEY RANGE ALL;
 

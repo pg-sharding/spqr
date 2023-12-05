@@ -933,7 +933,9 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 }
 
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
-	spqrlog.Zero.Debug().Str("address", qRouter.Address).Msg("qdb coordinator: sync router metadata")
+	spqrlog.Zero.Debug().
+		Str("address", qRouter.Address).
+		Msg("qdb coordinator: sync router metadata")
 
 	cc, err := DialRouter(qRouter)
 	if err != nil {
@@ -942,6 +944,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	defer cc.Close()
 
 	// Configure sharding rules.
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure sharding rules")
 	shardingRules, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
 		return err
@@ -968,6 +971,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		Msg("add sharding rules response")
 
 	// Configure key ranges.
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
@@ -989,6 +993,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 			Interface("response", resp).
 			Msg("got response while adding key range")
 	}
+	spqrlog.Zero.Debug().Msg("successfully add all key ranges")
 
 	rCl := routerproto.NewTopologyServiceClient(cc)
 	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {

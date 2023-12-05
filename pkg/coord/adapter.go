@@ -34,16 +34,16 @@ func (a *adapter) ShareKeyRange(id string) error {
 
 func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
+	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
+		Dataspace: dataspace,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		if keyRange.DataspaceId == dataspace {
-			krs[i] = kr.KeyRangeFromProto(keyRange)
-		}
+		krs[i] = kr.KeyRangeFromProto(keyRange)
 	}
 
 	return krs, nil
@@ -237,9 +237,11 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 	return rules, err
 }
 
-func (a *adapter) ListShardingRules(ctx context.Context, _ string) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
-	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
+	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
+		Dataspace: dataspace,
+	})
 	if err != nil {
 		return nil, err
 	}

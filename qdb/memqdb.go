@@ -170,7 +170,9 @@ func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule,
 }
 
 func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
+	spqrlog.Zero.Debug().
+		Str("dataspace", dataspace).
+		Msg("memqdb: list sharding rules")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
@@ -188,7 +190,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*Sh
 }
 
 func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
+	spqrlog.Zero.Debug().Msg("memqdb: list all sharding rules")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*ShardingRule
@@ -328,7 +330,9 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list all key ranges")
+	spqrlog.Zero.Debug().
+		Str("dataspace", dataspace).
+		Msg("memqdb: list key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 

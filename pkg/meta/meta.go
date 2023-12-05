@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb/ops"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -173,7 +174,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		return cli.AddShardingRule(ctx, shardingRule)
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
-		if err := mngr.AddKeyRange(ctx, req); err != nil {
+		if err := ops.AddKeyRangeWithChecks(ctx, mngr.QDB(), req); err != nil {
 			return cli.ReportError(err)
 		}
 		return cli.AddKeyRange(ctx, req)
@@ -291,7 +292,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 }
 
 func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor) error {
-	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("show shatement")
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process show statement")
 	switch stmt.Cmd {
 	case spqrparser.BackendConnectionsStr:
 
