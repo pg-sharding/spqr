@@ -18,9 +18,9 @@ DROP KEY RANGE ALL;
 (0 rows)
 
 ADD SHARDING RULE t1 COLUMNS id;
-                          add sharding rule                           
-----------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x]
+                                     add sharding rule                                     
+-------------------------------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
 ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
@@ -36,32 +36,152 @@ ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 (1 row)
 
 \c regress
+/* TODO: BEGIN READ ONLY doesnt work */
 CREATE TABLE test_beg(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2
-BEGIN;
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-INSERT INTO test_beg(id, age) VALUES (10, 16);
-ROLLBACK;
-SELECT * from test_beg;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
-(0 rows)
+ 10 |  16
+ 10 |  16
+(2 rows)
 
-BEGIN;
-INSERT INTO test_beg(id, age) VALUES (10, 16);
+BEGIN TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT * FROM test_beg WHERE id=10;
 NOTICE: send query to shard(s) : sh1
-INSERT INTO test_beg(id, age) VALUES (10, 16);
-INSERT INTO test_beg(id, age) VALUES (20, 16);
-COMMIT;
-SELECT * from test_beg;
-NOTICE: send query to shard(s) : sh1,sh2
  id | age 
 ----+-----
  10 |  16
  10 |  16
- 20 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
 (3 rows)
 
+ROLLBACK;
+BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
+/* TODO: Different ISOLATION LEVEL have to effect */
+BEGIN TRANSACTION READ WRITE;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
+BEGIN TRANSACTION DEFERRABLE;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
+BEGIN TRANSACTION NOT DEFERRABLE;
+SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO test_beg(id, age) VALUES (10, 16);
+SELECT * FROM test_beg WHERE id=10;
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+ 10 |  16
+(3 rows)
+
+ROLLBACK;
