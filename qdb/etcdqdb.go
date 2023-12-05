@@ -47,16 +47,16 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyspace               = "key_space"
-	keyRangesNamespace     = "/keyranges"
-	dataspaceNamespace     = "/dataspaces"
-	keyRangeMovesNamespace = "/krmoves"
-	routersNamespace       = "/routers"
-	shardingRulesNamespace = "/sharding_rules"
-	shardsNamespace        = "/shards"
+	keyRangesNamespace     = "/keyranges/"
+	dataspaceNamespace     = "/dataspaces/"
+	keyRangeMovesNamespace = "/krmoves/"
+	routersNamespace       = "/routers/"
+	shardingRulesNamespace = "/sharding_rules/"
+	shardsNamespace        = "/shards/"
+	
 	CoordKeepAliveTtl      = 3
+	keyspace               = "key_space"
 	coordLockKey           = "coordinator_exists"
-	coordLockVal           = "exists"
 )
 
 func keyLockPath(key string) string {
