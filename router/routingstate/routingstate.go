@@ -23,15 +23,15 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 		Interface("route2", sh2).
 		Msg("combine two routes")
 	switch shq1 := sh1.(type) {
-	case *MultiMatchState:
+	case MultiMatchState:
 		return sh2
-	case *RandomMatchState:
+	case RandomMatchState:
 		return sh2
-	case *ShardMatchState:
+	case ShardMatchState:
 		switch shq2 := sh2.(type) {
-		case *MultiMatchState:
+		case MultiMatchState:
 			return sh1
-		case *ShardMatchState:
+		case ShardMatchState:
 			if shq2.Route.Shkey.Name == shq1.Route.Shkey.Name {
 				return sh1
 			}
