@@ -7,5 +7,5 @@ ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
 \c regress
 
 CREATE TABLE test(id int, age int);
-INSERT INTO test(id, age) VALUES (10, 16) /*__spqr_sharding_key: 30*/;
-INSERT INTO test(id, age) VALUES (10, 16) /*__spqr_sharding_key: 3000*/;
+INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
+INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000*/;
