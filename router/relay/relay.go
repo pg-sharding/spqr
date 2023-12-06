@@ -608,7 +608,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 	}
 
 	spqrlog.Zero.Debug().
-		Strs("shards", server.DatashardIds()).
+		Strs("shards", shard.ShardIDs(server.Datashards())).
 		Type("query-type", query).
 		Msg("client process query")
 
@@ -918,7 +918,7 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatement
 		Str("query", query).
 		Uint64("hash", hash).
 		Str("client", rst.Client().ID()).
-		Strs("shards", rst.Client().Server().DatashardIds()).
+		Strs("shards", shard.ShardIDs(rst.Client().Server().Datashards())).
 		Msg("deploy prepared statement")
 
 	// TODO: multi-shard statements

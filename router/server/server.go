@@ -24,7 +24,6 @@ type Server interface {
 	AddDataShard(clid string, shardKey kr.ShardKey, tsa string) error
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 	Datashards() []shard.Shard
-	DatashardIds() []string
 
 	Cancel() error
 

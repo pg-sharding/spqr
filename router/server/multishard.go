@@ -439,12 +439,4 @@ func (m *MultiShardServer) Datashards() []shard.Shard {
 	return m.activeShards
 }
 
-func (m *MultiShardServer) DatashardIds() []string {
-	ret := []string{}
-	for _, shard := range m.activeShards {
-		ret = append(ret, shard.ID())
-	}
-	return ret
-}
-
 var _ Server = &MultiShardServer{}
