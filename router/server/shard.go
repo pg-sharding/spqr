@@ -144,7 +144,7 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Uint("single-shard", spqrlog.GetPointer(srv)).
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).
-		Str("shard", srv.Datashards()[0].ID()).
+		Strs("shards", srv.DatashardIds()).
 		Msg("single-shard receiving msg from server")
 	return msg, err
 }
@@ -192,6 +192,10 @@ func (srv *ShardServer) Datashards() []shard.Shard {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
 	return []shard.Shard{srv.shard}
+}
+
+func (srv *ShardServer) DatashardIds() []string {
+	return []string{srv.shard.ID()}
 }
 
 var _ Server = &ShardServer{}

@@ -65,6 +65,7 @@ func TestFrontendSimple(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
+	srv.EXPECT().DatashardIds().AnyTimes().Return([]string{"sh1"})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 
@@ -167,6 +168,7 @@ func TestFrontendXProto(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
+	srv.EXPECT().DatashardIds().AnyTimes().Return([]string{"sh1"})
 
 	/* query Router */
 
@@ -302,6 +304,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
+	srv.EXPECT().DatashardIds().AnyTimes().Return([]string{"sh1"})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 
