@@ -175,20 +175,6 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Datashards", reflect.TypeOf((*MockServer)(nil).Datashards))
 }
 
-// DatashardIds mocks base method
-func (m *MockServer) DatashardIds() []string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DatashardIds")
-	ret0, _ := ret[0].([]string)
-	return ret0
-}
-
-// DatashardIds indicates an expected call of DatashardIds
-func (mr *MockServerMockRecorder) DatashardIds() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DatashardIds", reflect.TypeOf((*MockServer)(nil).DatashardIds))
-}
-
 // Cancel mocks base method
 func (m *MockServer) Cancel() error {
 	m.ctrl.T.Helper()
