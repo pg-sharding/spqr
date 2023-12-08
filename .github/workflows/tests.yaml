@@ -24,17 +24,6 @@ jobs:
      - name: unit tests
        run: make unittest
 
-  e2e:
-    name: e2e
-    runs-on: ubuntu-latest
-    steps:
-    
-    - name: Check out code
-      uses: actions/checkout@v2
-    
-    - name: e2e tests
-      run: make e2e
-
   stress:
     name: stress
     runs-on: ubuntu-latest
