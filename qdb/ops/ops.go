@@ -6,8 +6,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/qdb"
+	"strconv"
 )
-
 
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
@@ -52,6 +52,13 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return err
 	}
 
+	lowerInt, lowerErr := strconv.Atoi(string(keyRange.LowerBound))
+	upperInt, upperErr := strconv.Atoi(string(keyRange.UpperBound))
+	if lowerErr == nil && upperErr == nil {
+		if lowerInt < 0 || upperInt < 0 {
+			return fmt.Errorf("key range bounds must be positive number or equal zero")
+		}
+	}
 	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
 		return fmt.Errorf("key range %v already present in qdb", keyRange.ID)
 	}
