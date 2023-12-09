@@ -555,7 +555,6 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
