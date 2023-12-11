@@ -19,7 +19,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb/ops"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
