@@ -325,11 +325,17 @@ func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 }
 
 func (a *adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
-	return fmt.Errorf("addDataShard not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	_, err := c.AddDataShard(ctx,
+		&proto.AddShardRequest{Shard: &proto.Shard{Id: shard.ID, Hosts: shard.Cfg.Hosts}})
+	return err
 }
 
 func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
-	return fmt.Errorf("addWorldShard not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	_, err := c.AddWorldShard(ctx,
+		&proto.AddWorldShardRequest{Shard: &proto.Shard{Id: shard.ID, Hosts: shard.Cfg.Hosts}})
+	return err
 }
 
 func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
