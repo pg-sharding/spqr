@@ -175,7 +175,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := ops.AddKeyRangeWithChecks(ctx, mngr.QDB(), req); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("The shard does not exist")
+			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
 		}
 		return cli.AddKeyRange(ctx, req)
