@@ -3,7 +3,6 @@ package coord
 import (
 	"context"
 	"fmt"
-
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -65,8 +64,28 @@ func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 }
 
 func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	_, err := a.GetShardInfo(ctx, kr.ShardID)
+	if err != nil {
+		return err
+	}
+
+	existDataspace, err := a.ListDataspace(ctx)
+	if err != nil {
+		return err
+	}
+	hasDs := false
+	for _, ds := range existDataspace {
+		hasDs = kr.Dataspace == ds.Id
+		if hasDs {
+			break
+		}
+	}
+	if !hasDs {
+		return fmt.Errorf("try to add key range link to a non-existent dataspace")
+	}
+
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
+	_, err = c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
 		KeyRangeInfo: kr.ToProto(),
 	})
 	return err
@@ -318,7 +337,13 @@ func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 }
 
 func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
-	return nil, fmt.Errorf("GetShardInfo not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
+	if err != nil {
+		return nil, err
+	}
+
+	return datashards.DataShardFromProto(resp.ShardInfo), nil
 }
 
 func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
