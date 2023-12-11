@@ -174,7 +174,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		return cli.AddShardingRule(ctx, shardingRule)
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
-		if err := ops.AddKeyRangeWithChecks(ctx, mngr.QDB(), req); err != nil {
+		if err := mngr.AddKeyRange(ctx, req); err != nil {
 			return cli.ReportError(err)
 		}
 		return cli.AddKeyRange(ctx, req)
