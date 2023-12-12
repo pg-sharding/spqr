@@ -94,6 +94,9 @@ regress: build_images
 hibernate_regress: build_images
 	docker-compose -f test/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
+jdbc_regress: build_images
+	docker-compose -f test/jdbc-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+
 e2e: build_images
 	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
