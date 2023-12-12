@@ -69,12 +69,12 @@ func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 		return err
 	}
 
-	existDataspace, err := a.ListDataspace(ctx)
+	dataspaces, err := a.ListDataspace(ctx)
 	if err != nil {
 		return err
 	}
 	hasDs := false
-	for _, ds := range existDataspace {
+	for _, ds := range dataspaces {
 		hasDs = kr.Dataspace == ds.Id
 		if hasDs {
 			break
