@@ -113,6 +113,8 @@ func randomHex(n int) (string, error) {
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 
+%token <str> IDENTITY MURMUR CITY 
+
 %token<str> START STOP TRACE MESSAGES
 
 /* any operator */
@@ -147,6 +149,7 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
 %type<str> sharding_rule_hash_function_clause
+%type<str> hash_function_name
 %type<str> opt_dataspace
 
 %type <unlock> unlock_stmt
@@ -508,8 +511,18 @@ sharding_rule_column_clause:
 		$$ = $2
 	}/* to be backward-compatable*/
 
+
+hash_function_name:
+	IDENTITY {
+		$$ = "identity"
+	} | MURMUR HASH {
+		$$ = "murmur"
+	} | CITY HASH {
+		$$ = "city"
+	}
+
 sharding_rule_hash_function_clause:
-	HASH FUNCTION any_id
+	HASH FUNCTION hash_function_name
 	{
 		$$ = $3
 	}

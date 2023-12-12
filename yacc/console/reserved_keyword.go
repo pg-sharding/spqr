@@ -46,4 +46,8 @@ var reservedWords = map[string]int{
 	"messages":   MESSAGES,
 	"client":     CLIENT,
 	"cascade":    CASCADE,
+	"murmur":     MURMUR,
+	"city":       CITY,
+	"identity":   IDENTITY,
+	"ident":      IDENTITY,
 }

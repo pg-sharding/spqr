@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -158,15 +159,23 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, ComplexQuery
 }
 
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number >= len(meta.params) {
 			return nil, ComplexQuery
 		}
-		return qr.DeparseKeyWithRangesInternal(ctx, string(meta.params[e.Number]), meta)
+		hashedKey, err := hashfunction.ApplyHashFunction((meta.params[e.Number]), hf)
+		if err != nil {
+			return nil, err
+		}
+		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	case *lyx.AExprConst:
-		return qr.DeparseKeyWithRangesInternal(ctx, e.Value, meta)
+		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
+		if err != nil {
+			return nil, err
+		}
+		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	default:
 		return nil, ComplexQuery
 	}
@@ -599,10 +608,23 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
+			if rule, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
 
-				for _, col := range cols {
-					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
+				for indx, col := range cols {
+					hf, err := hashfunction.HashFunctionByName(rule.Entries[indx].HashFunction)
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+						continue
+					}
+
+					hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[tname][col]), hf)
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						continue
+					}
+
+					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 					if err != nil {
 						route_err = err
 						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
@@ -647,40 +669,49 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 			meta.offsets = offsets
 			routed := false
 			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta)
+				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
 				if err != nil {
 					/* failed, ignore */
 				} else {
+					currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, hf)
+					if err != nil {
+						/* failed, ignore */
+					} else {
 
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
-					routed = true
+						spqrlog.Zero.Debug().
+							Interface("current-route", currroute).
+							Msg("deparsed route from current route")
+						routed = true
 
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
-
+						route = routingstate.Combine(route, routingstate.ShardMatchState{
+							Route:              currroute,
+							TargetSessionAttrs: tsa,
+						})
+					}
 				}
 			}
 
 			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
 				// only first value from value list
 
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta)
-				if err != nil { /* failed, ignore */
-
+				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+				if err != nil {
+					/* failed, ignore */
 				} else {
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
 
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
+					currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, hf)
+					if err != nil { /* failed, ignore */
+
+					} else {
+						spqrlog.Zero.Debug().
+							Interface("current-route", currroute).
+							Msg("deparsed route from current route")
+
+						route = routingstate.Combine(route, routingstate.ShardMatchState{
+							Route:              currroute,
+							TargetSessionAttrs: tsa,
+						})
+					}
 				}
 			}
 		}
