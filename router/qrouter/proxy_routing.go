@@ -609,9 +609,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 		var route_err error
 		for tname, cols := range meta.rels {
 			if rule, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
-
-				for indx, col := range cols {
-					hf, err := hashfunction.HashFunctionByName(rule.Entries[indx].HashFunction)
+				for _, col := range cols {
+					// TODO: multi-column hash functions
+					hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
 					if err != nil {
 						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 						continue
