@@ -31,7 +31,7 @@ services:
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
-      context: ../../
+      context: ../../..
     ports:
       - "6432:6432"
     environment:
@@ -47,7 +47,7 @@ services:
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
-      context: ../../
+      context: ../../..
     ports:
       - "7002:7002"
       - "7003:7003"
@@ -71,15 +71,9 @@ services:
 
   regress:
     build:
-      context: https://github.com/EinKrebs/spqr-hibernation.git
-      args:
-        - POSTGRES_HOST=regress_router
-        - POSTGRES_PORT=6432
-        - POSTGRES_DATABASE=regress
-        - POSTGRES_USER=regress
-        - POSTGRES_PASSWORD=12345678
+      context: https://github.com/pg-sharding/jdbc-spqr.git
+    entrypoint: mvn test -DpgHost="regress_router" -DpgPort=6432 -DpgDb=regress -DpgUser=regress -DpgPassword=12345678
     hostname: regress_tests
     container_name: regress_tests
     depends_on:
-      - router
-      - qdb01
+      - coordinator
