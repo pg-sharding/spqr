@@ -26,7 +26,7 @@ type Pmgr interface {
 type Client interface {
 	Pmgr
 
-	ID() string
+	ID() uint
 
 	ReplyErrMsg(errmsg string) error
 	ReplyRFQ() error

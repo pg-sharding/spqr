@@ -225,7 +225,7 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 
 func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{
-		ClientId: cl.ID(),
+		ClientId: uint64(cl.ID()),
 		User:     cl.Usr(),
 		Dbname:   cl.DB(),
 		Shards:   make([]*protos.UsedShardInfo, 0, len(cl.Shards())),
@@ -242,7 +242,7 @@ func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 
 func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	shardInfo := &protos.BackendConnectionsInfo{
-		BackendConnectionId: sh.ID(),
+		BackendConnectionId: uint64(sh.ID()),
 		ShardKeyName:        sh.ShardKeyName(),
 		User:                sh.Usr(),
 		Dbname:              sh.DB(),

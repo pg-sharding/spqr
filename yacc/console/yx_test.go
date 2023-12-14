@@ -114,7 +114,7 @@ func TestSimpleShow(t *testing.T) {
 			query: "kill client 0xc00030f520;",
 			exp: &spqrparser.Kill{
 				Cmd:    spqrparser.ClientStr,
-				Target: "0xc00030f520",
+				Target: 824636929312,
 			},
 			err: nil,
 		},

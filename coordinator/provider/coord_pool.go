@@ -19,7 +19,7 @@ func NewCoordPool(info *protos.PoolInfo) *CoordPool {
 	}
 }
 
-func (r *CoordPool) Connection(clid string, shardKey kr.ShardKey) (shard.Shard, error) {
+func (r *CoordPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
 	return nil, fmt.Errorf("unimplemented")
 }
 

@@ -17,7 +17,7 @@ message ListBackendConntionsReply {
 }
 
 message BackendConnectionsInfo {
-  string backend_connection_id = 1;
+  uint64 backend_connection_id = 1;
   string shard_key_name = 2;
   string hostname = 3;
   string user = 4;

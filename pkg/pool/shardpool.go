@@ -21,7 +21,7 @@ type shardPool struct {
 
 	queue chan struct{}
 
-	active map[string]shard.Shard
+	active map[uint]shard.Shard
 
 	alloc ConnectionAllocFn
 
@@ -43,7 +43,7 @@ func NewshardPool(allocFn ConnectionAllocFn, host string, beRule *config.Backend
 	ret := &shardPool{
 		mu:              sync.Mutex{},
 		pool:            nil,
-		active:          make(map[string]shard.Shard),
+		active:          make(map[uint]shard.Shard),
 		alloc:           allocFn,
 		beRule:          beRule,
 		host:            host,
@@ -104,7 +104,7 @@ func (s *shardPool) QueueResidualSize() int {
 }
 
 func (h *shardPool) Connection(
-	clid string,
+	clid uint,
 	shardKey kr.ShardKey) (shard.Shard, error) {
 
 	if err := func() error {
@@ -112,7 +112,7 @@ func (h *shardPool) Connection(
 			select {
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
 				spqrlog.Zero.Info().
-					Str("client", clid).
+					Uint("client", clid).
 					Str("host", h.host).
 					Msg("still waiting for backend connection to host")
 			case <-h.queue:
@@ -137,8 +137,8 @@ func (h *shardPool) Connection(
 			h.active[sh.ID()] = sh
 			h.mu.Unlock()
 			spqrlog.Zero.Debug().
-				Str("client", clid).
-				Str("shard", sh.ID()).
+				Uint("client", clid).
+				Uint("shard", sh.ID()).
 				Str("host", sh.Instance().Hostname()).
 				Msg("connection pool for client: reuse cached shard connection to instance")
 			return sh, nil
@@ -164,7 +164,7 @@ func (h *shardPool) Connection(
 
 func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.ID()).
+		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("discard connection to hostname from pool")
 
@@ -184,7 +184,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 
 func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.ID()).
+		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("put connection back to pool")
 
@@ -276,7 +276,7 @@ func (c *cPool) List() []shard.Shard {
 	return ret
 }
 
-func (c *cPool) Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
 		pool = NewshardPool(c.alloc, host, c.beRule)

@@ -299,10 +299,10 @@ func (mr *MockRouterClientMockRecorder) GetTsa() *gomock.Call {
 }
 
 // ID mocks base method.
-func (m *MockRouterClient) ID() string {
+func (m *MockRouterClient) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(uint)
 	return ret0
 }
 

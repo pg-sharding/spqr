@@ -17,7 +17,7 @@ message ListClientsReply {
 }
 
 message ClientInfo {
-  string client_id = 1;
+  uint64 client_id = 1;
   string user = 2;
   string dbname = 3;
   string dsname = 4;

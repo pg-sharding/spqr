@@ -25,7 +25,7 @@ type InstancePoolImpl struct {
 var _ DBPool = &InstancePoolImpl{}
 
 func (s *InstancePoolImpl) traverseHostsMatchCB(
-	clid string,
+	clid uint,
 	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
 
 	for _, host := range hosts {
@@ -34,7 +34,7 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 			spqrlog.Zero.Error().
 				Err(err).
 				Str("host", host).
-				Str("client", clid).
+				Uint("client", clid).
 				Msg("failed to get connection to host for client")
 			continue
 		}
@@ -51,7 +51,7 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 }
 
 func (s *InstancePoolImpl) SelectReadOnlyShardHost(
-	clid string,
+	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
 	total_msg := ""
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
@@ -74,7 +74,7 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 }
 
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
-	clid string,
+	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
 
 	total_msg := ""
@@ -99,11 +99,11 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 }
 
 func (s *InstancePoolImpl) Connection(
-	clid string,
+	clid uint,
 	key kr.ShardKey,
 	targetSessionAttrs string) (shard.Shard, error) {
 	spqrlog.Zero.Debug().
-		Str("client", clid).
+		Uint("client", clid).
 		Str("shard", key.Name).
 		Str("tsa", targetSessionAttrs).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
@@ -126,7 +126,7 @@ func (s *InstancePoolImpl) Connection(
 				spqrlog.Zero.Error().
 					Err(err).
 					Str("host", host).
-					Str("client", clid).
+					Uint("client", clid).
 					Msg("failed to get connection to host for client")
 				continue
 			}
