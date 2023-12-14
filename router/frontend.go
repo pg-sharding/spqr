@@ -146,8 +146,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			Msg("applying parsed set stmt")
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
-			param := st.Name[8:len(st.Name)]
-			param = strings.ToLower(param)
+			param := strings.ToLower(st.Name[8:len(st.Name)])
 			rst.Client().SetParam(param, st.Value)
 			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
 			return nil
@@ -160,8 +159,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		}
 		return nil
 	case parser.ParseStateShowStmt:
-		param := st.Name[8:len(st.Name)]
-		param = strings.ToLower(param)
+		param := strings.ToLower(st.Name[8:len(st.Name)])
 
 		// manually create router responce
 		// here we just reply single row with single column value
@@ -178,7 +176,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		_ = rst.Client().Send(
 			&pgproto3.DataRow{
 				Values: [][]byte{
-					[]byte(rst.Client().Params()["dataspace"]),
+					[]byte(rst.Client().Params()[param]),
 				},
 			},
 		)
