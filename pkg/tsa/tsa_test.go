@@ -23,6 +23,8 @@ func TestTSA_RW(t *testing.T) {
 
 	sh := mocksh.NewMockShard(ctrl)
 
+	sh.EXPECT().ID().AnyTimes()
+
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
 	sh.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Times(1)
 
@@ -62,6 +64,8 @@ func TestTSA_RO(t *testing.T) {
 	instance := mockinst.NewMockDBInstance(ctrl)
 
 	sh := mocksh.NewMockShard(ctrl)
+
+	sh.EXPECT().ID().AnyTimes()
 
 	sh.EXPECT().Instance().AnyTimes().Return(instance)
 	sh.EXPECT().Send(&pgproto3.Query{String: "SHOW transaction_read_only"}).Times(1)

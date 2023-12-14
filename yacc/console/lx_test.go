@@ -38,8 +38,8 @@ func TestSimpleLex(t *testing.T) {
 			err:   nil,
 		},
 		{
-			query: "kill client 0xc00030f520;",
-			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.IDENT},
+			query: "kill client 1234567;",
+			exp:   []int{spqrparser.KILL, spqrparser.CLIENT, spqrparser.ICONST},
 			err:   nil,
 		},
 		{

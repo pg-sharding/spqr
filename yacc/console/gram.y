@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
+	"strconv"
 )
 
 
@@ -550,6 +551,10 @@ key_range_define_stmt:
 	{
 		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
 	}
+	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	{
+		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+	}
 	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
@@ -557,6 +562,14 @@ key_range_define_stmt:
 			panic(err)
 		}
 		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+	}
+	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	{
+		str, err := randomHex(6)
+		if err != nil {
+			panic(err)
+		}
+		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
 	}
 
 
