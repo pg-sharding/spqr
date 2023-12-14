@@ -52,7 +52,12 @@ func (s *ShardingRule) String() string {
 	entries := func() []string {
 		var ret []string
 		for _, el := range s.Entries() {
-			ret = append(ret, fmt.Sprintf("%v, hash: x->x", el.Column))
+			switch el.HashFunction {
+			case "ident", "identity", "":
+				ret = append(ret, fmt.Sprintf("%v, hash: x->x", el.Column))
+			default:
+				ret = append(ret, fmt.Sprintf("%v, hash: %v", el.Column, el.HashFunction))
+			}
 		}
 		return ret
 	}()

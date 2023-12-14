@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -158,15 +159,27 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, ComplexQuery
 }
 
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
+func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number >= len(meta.params) {
 			return nil, ComplexQuery
 		}
-		return qr.DeparseKeyWithRangesInternal(ctx, string(meta.params[e.Number]), meta)
+		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number], hf)
+		if err != nil {
+			return nil, err
+		}
+		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	case *lyx.AExprConst:
-		return qr.DeparseKeyWithRangesInternal(ctx, e.Value, meta)
+		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
+		if err != nil {
+			return nil, err
+		}
+
+		spqrlog.Zero.Debug().Str("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	default:
 		return nil, ComplexQuery
 	}
@@ -599,20 +612,37 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 		// traverse each deparsed relation from query
 		var route_err error
 		for tname, cols := range meta.rels {
-			if _, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
-
+			if rule, err := MatchShardingRule(ctx, tname, cols, qr.mgr.QDB()); err != nil {
 				for _, col := range cols {
-					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, meta.exprs[tname][col], meta)
+					// TODO: multi-column hash functions
+					hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+						continue
+					}
+
+					hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[tname][col]), hf)
+
+					spqrlog.Zero.Debug().Str("key", meta.exprs[tname][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+					if err != nil {
+						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+						continue
+					}
+
+					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 					if err != nil {
 						route_err = err
 						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
 						continue
 					}
+
 					spqrlog.Zero.Debug().
 						Interface("currroute", currroute).
 						Str("table", tname).
 						Strs("columns", cols).
 						Msg("calculated route for table/cols")
+
 					route = routingstate.Combine(route, routingstate.ShardMatchState{
 						Route:              currroute,
 						TargetSessionAttrs: tsa,
@@ -644,15 +674,18 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 				}
 			}
 
+			hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+			if err != nil {
+				/* failed to resolve hash function */
+				return nil, err
+			}
+
 			meta.offsets = offsets
 			routed := false
 			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta)
-				if err != nil {
-					/* failed, ignore */
-				} else {
-
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, hf)
+				if err == nil {
+					/* else failed, ignore */
 					spqrlog.Zero.Debug().
 						Interface("current-route", currroute).
 						Msg("deparsed route from current route")
@@ -662,17 +695,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 						Route:              currroute,
 						TargetSessionAttrs: tsa,
 					})
-
 				}
 			}
 
 			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
 				// only first value from value list
 
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta)
-				if err != nil { /* failed, ignore */
-
-				} else {
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, hf)
+				if err == nil { /* else failed, ignore */
 					spqrlog.Zero.Debug().
 						Interface("current-route", currroute).
 						Msg("deparsed route from current route")
