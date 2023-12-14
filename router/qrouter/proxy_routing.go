@@ -636,11 +636,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
 						continue
 					}
+
 					spqrlog.Zero.Debug().
 						Interface("currroute", currroute).
 						Str("table", tname).
 						Strs("columns", cols).
 						Msg("calculated route for table/cols")
+
 					route = routingstate.Combine(route, routingstate.ShardMatchState{
 						Route:              currroute,
 						TargetSessionAttrs: tsa,

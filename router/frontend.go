@@ -162,7 +162,11 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateShowStmt:
 		param := st.Name[8:len(st.Name)]
 		param = strings.ToLower(param)
-		rst.Client().Send(
+
+		// manually create router responce
+		// here we just reply single row with single column value
+
+		_ = rst.Client().Send(
 			&pgproto3.RowDescription{
 				Fields: []pgproto3.FieldDescription{
 					{
@@ -171,7 +175,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 				},
 			},
 		)
-		rst.Client().Send(
+		_ = rst.Client().Send(
 			&pgproto3.DataRow{
 				Values: [][]byte{
 					[]byte(rst.Client().Params()["dataspace"]),
