@@ -106,8 +106,8 @@ func (c *CoordShardInfo) InstanceHostname() string {
 	return c.underlying.Hostname
 }
 
-func (c *CoordShardInfo) ID() string {
-	return c.underlying.BackendConnectionId
+func (c *CoordShardInfo) ID() uint {
+	return uint(c.underlying.BackendConnectionId)
 }
 
 func (c *CoordShardInfo) ShardKeyName() string {

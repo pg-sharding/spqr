@@ -3,6 +3,7 @@ package spqrparser
 
 import (
     "strings"
+    "strconv"
 )
 
 
@@ -76,7 +77,14 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             whitespace => { /* do nothing */ };
             # integer const is string const 
             comment => {/* nothing */};
-            integer =>  { lval.str = string(lex.data[lex.ts:lex.te]); tok = SCONST; fbreak;};
+            integer =>  { 
+                vl, err := strconv.Atoi(string(lex.data[lex.ts:lex.te]))
+                if err != nil {
+                    vl = 0
+                }
+                lval.uinteger = uint(vl); tok = ICONST; fbreak;    
+            };
+
 
             qidentifier      => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; fbreak;};
             identifier      => { 

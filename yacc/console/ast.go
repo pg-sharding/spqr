@@ -55,7 +55,7 @@ type CreateStmt interface {
 }
 
 type TraceStmt struct {
-	Client string
+	Client uint
 	All    bool
 }
 

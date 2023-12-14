@@ -36,8 +36,8 @@ func (c BalancerClient) DS() string {
 
 func (c BalancerClient) SetDS(_ string) {}
 
-func (c BalancerClient) ID() string {
-	return "balancerID"
+func (c BalancerClient) ID() uint {
+	return 0x123456789
 }
 
 func (c BalancerClient) Receive() (pgproto3.FrontendMessage, error) {
