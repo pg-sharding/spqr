@@ -7,10 +7,13 @@ ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
 ADD KEY RANGE krid2 FROM 11 TO 21 ROUTE TO sh1;
 ADD KEY RANGE krid3 FROM 21 TO 31 ROUTE TO sh2;
 
+ADD KEY RANGE krid4 FROM 31 TO (INF) ROUTE TO sh2;
+
 \c regress
 CREATE TABLE xx (w_id int);
 CREATE TABLE xxerr (i int);
 CREATE TABLE xxtt1 (i int, j int, w_id int);
+CREATE TABLE xxtt_inf (w_id int);
 
 INSERT INTO xx (w_id) VALUES (1);
 INSERT INTO xx (w_id) VALUES (10);
@@ -18,6 +21,12 @@ INSERT INTO xx (w_id) VALUES (20);
 INSERT INTO xx (w_id) VALUES (21);
 INSERT INTO xx (w_id) VALUES (30);
 
+INSERT INTO xxtt_inf (w_id) VALUES (1);
+INSERT INTO xxtt_inf (w_id) VALUES (10);
+INSERT INTO xxtt_inf (w_id) VALUES (20);
+INSERT INTO xxtt_inf (w_id) VALUES (21);
+INSERT INTO xxtt_inf (w_id) VALUES (30);
+INSERT INTO xxtt_inf (w_id) VALUES (999969);
 
 SELECT * FROM xx WHERE w_id >= 1;
 SELECT * FROM xx WHERE w_id >= 20;

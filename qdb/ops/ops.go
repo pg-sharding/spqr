@@ -8,7 +8,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
 		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)

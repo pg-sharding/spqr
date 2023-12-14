@@ -36,12 +36,20 @@ ADD KEY RANGE krid3 FROM 21 TO 31 ROUTE TO sh2;
  created key range from 21 to 31
 (1 row)
 
+ADD KEY RANGE krid4 FROM 31 TO (INF) ROUTE TO sh2;
+           add key range            
+------------------------------------
+ created key range from 31 to (INF)
+(1 row)
+
 \c regress
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxerr (i int);
 ERROR:  client proccessing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE xxtt_inf (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);
 NOTICE: send query to shard(s) : sh1
@@ -52,6 +60,18 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (21);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (w_id) VALUES (30);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xxtt_inf (w_id) VALUES (1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xxtt_inf (w_id) VALUES (10);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xxtt_inf (w_id) VALUES (20);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xxtt_inf (w_id) VALUES (21);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xxtt_inf (w_id) VALUES (30);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xxtt_inf (w_id) VALUES (999969);
 NOTICE: send query to shard(s) : sh2
 SELECT * FROM xx WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
