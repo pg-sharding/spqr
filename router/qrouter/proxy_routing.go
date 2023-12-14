@@ -674,52 +674,43 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 				}
 			}
 
+			hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+			if err != nil {
+				/* failed to resolve hash function */
+				return nil, err
+			}
+
 			meta.offsets = offsets
 			routed := false
 			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-				if err != nil {
-					/* failed, ignore */
-				} else {
-					currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, hf)
-					if err != nil {
-						/* failed, ignore */
-					} else {
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, hf)
+				if err == nil {
+					/* else failed, ignore */
+					spqrlog.Zero.Debug().
+						Interface("current-route", currroute).
+						Msg("deparsed route from current route")
+					routed = true
 
-						spqrlog.Zero.Debug().
-							Interface("current-route", currroute).
-							Msg("deparsed route from current route")
-						routed = true
-
-						route = routingstate.Combine(route, routingstate.ShardMatchState{
-							Route:              currroute,
-							TargetSessionAttrs: tsa,
-						})
-					}
+					route = routingstate.Combine(route, routingstate.ShardMatchState{
+						Route:              currroute,
+						TargetSessionAttrs: tsa,
+					})
 				}
 			}
 
 			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
 				// only first value from value list
 
-				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-				if err != nil {
-					/* failed, ignore */
-				} else {
+				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, hf)
+				if err == nil { /* else failed, ignore */
+					spqrlog.Zero.Debug().
+						Interface("current-route", currroute).
+						Msg("deparsed route from current route")
 
-					currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, hf)
-					if err != nil { /* failed, ignore */
-
-					} else {
-						spqrlog.Zero.Debug().
-							Interface("current-route", currroute).
-							Msg("deparsed route from current route")
-
-						route = routingstate.Combine(route, routingstate.ShardMatchState{
-							Route:              currroute,
-							TargetSessionAttrs: tsa,
-						})
-					}
+					route = routingstate.Combine(route, routingstate.ShardMatchState{
+						Route:              currroute,
+						TargetSessionAttrs: tsa,
+					})
 				}
 			}
 		}
