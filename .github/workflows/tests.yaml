@@ -116,7 +116,7 @@ jobs:
     steps:
       - name: Install Latest Docker
         run: |
-          for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
+          for pkg in docker.io docker-doc podman-docker containerd runc; do sudo apt-get remove $pkg; done
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
           sudo apt-get update

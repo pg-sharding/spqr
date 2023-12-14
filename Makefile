@@ -44,17 +44,17 @@ build_workloadreplay:
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay
 
 build_images:
-	docker-compose build spqr-base-image
+	docker compose build spqr-base-image
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
-		docker-compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
+		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
 	else\
-		docker-compose build spqr-shard-image;\
+		docker compose build spqr-shard-image;\
 	fi
 
 save_shard_image:
 	sudo rm -f spqr-shard-image-*
-	docker-compose build ${IMAGE_SHARD};\
+	docker compose build ${IMAGE_SHARD};\
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
 clean:
@@ -64,9 +64,9 @@ clean:
 ######################## RUN ########################
 
 run: build_images
-	docker-compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
-	docker-compose build client
-	docker-compose run --entrypoint /bin/bash client
+	docker compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
+	docker compose build client
+	docker compose run --entrypoint /bin/bash client
 
 proxy_2sh_run:
 	./spqr-router run --config ./examples/2shardproxy.yaml -d --proto-debug
@@ -89,26 +89,26 @@ regress_local: proxy_2sh_run
 	./script/regress_local.sh
 
 regress: build_images
-	docker-compose -f test/regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 hibernate_regress: build_images
-	docker-compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 jdbc_regress: build_images
-	docker-compose -f test/drivers/jdbc-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/drivers/jdbc-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 gorm_regress: build_images
-	docker-compose -f test/drivers/gorm-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/drivers/gorm-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 e2e: build_images
-	docker-compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
+	docker compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
 stress: build_images
-	docker-compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
+	docker compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
 
 split_feature_test:
-	docker-compose build slicer
-	(cd test/feature/features; tar -c .) | docker-compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)
+	docker compose build slicer
+	(cd test/feature/features; tar -c .) | docker compose run slicer | (mkdir test/feature/generatedFeatures; cd test/feature/generatedFeatures; tar -x)
 
 clean_feature_test:
 	rm -rf test/feature/generatedFeatures
@@ -116,11 +116,11 @@ clean_feature_test:
 feature_test_ci:
 	@if [ "x" = "${CACHE_FILE_SHARD}x" ]; then\
 		echo "Rebuild";\
-		docker-compose build spqr-shard-image;\
+		docker compose build spqr-shard-image;\
 	else\
 		docker load -i ${CACHE_FILE_SHARD};\
 	fi
-	docker-compose build spqr-base-image
+	docker compose build spqr-base-image
 	go build ./test/feature/...
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
