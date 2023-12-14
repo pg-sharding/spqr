@@ -138,7 +138,7 @@ func (h *shardPool) Connection(
 			h.mu.Unlock()
 			spqrlog.Zero.Debug().
 				Str("client", clid).
-				Str("shard", sh.Name()).
+				Str("shard", sh.ID()).
 				Str("host", sh.Instance().Hostname()).
 				Msg("connection pool for client: reuse cached shard connection to instance")
 			return sh, nil
@@ -164,7 +164,7 @@ func (h *shardPool) Connection(
 
 func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Str("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("discard connection to hostname from pool")
 
@@ -184,7 +184,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 
 func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Str("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("put connection back to pool")
 

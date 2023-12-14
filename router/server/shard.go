@@ -127,7 +127,7 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
 	spqrlog.Zero.Debug().
-		Uint("single-shard", spqrlog.GetPointer(srv)).
+		Str("single-shard", srv.shard.ID()).
 		Type("query-type", query).
 		Msg("single-shard sending msg to server")
 	if srv.shard == nil {
@@ -141,7 +141,7 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	defer srv.mu.RUnlock()
 	msg, err := srv.shard.Receive()
 	spqrlog.Zero.Debug().
-		Uint("single-shard", spqrlog.GetPointer(srv)).
+		Str("single-shard", srv.shard.ID()).
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).
 		Strs("shards", shard.ShardIDs(srv.Datashards())).

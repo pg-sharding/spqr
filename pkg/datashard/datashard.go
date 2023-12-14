@@ -90,7 +90,7 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 		spqrlog.Zero.Debug().
 			Err(err).
 			Str("host", sh.dedicated.Hostname()).
-			Str("shard", sh.Name()).
+			Str("shard", sh.ID()).
 			Msg("failed to init ssl on host of datashard")
 		return err
 	}
@@ -109,7 +109,7 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Str("shard", sh.ID()).
 		Interface("query", query).
 		Int64("sync-in", sh.sync_in).
 		Msg("shard connection send message")
@@ -214,7 +214,7 @@ func NewShard(
 
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Str("shard", sh.ID()).
 		Interface("msg", sm).
 		Msg("shard connection startup message")
 	if err := sh.dedicated.Send(sm); err != nil {

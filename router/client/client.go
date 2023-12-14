@@ -516,7 +516,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		protoVer := binary.BigEndian.Uint32(msg)
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
+			Str("client", cl.ID()).
 			Uint32("proto-version", protoVer).
 			Msg("received protocol version")
 
@@ -595,7 +595,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		cl.cancel_pid = rand.Uint32()
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
+			Str("client", cl.ID()).
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
@@ -750,7 +750,7 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Str("client", cl.ID()).
 		Interface("message", msg).
 		Msg("client received message")
 	return msg, err
@@ -758,7 +758,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Str("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")
 	cl.muBe.Lock()
@@ -769,7 +769,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Str("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("")
 	ch := make(chan error)

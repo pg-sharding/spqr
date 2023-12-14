@@ -321,7 +321,7 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 	span.SetTag("db", rst.Cl.DB())
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Interface("statement", rst.qp.Stmt()).
 		Interface("params", params).
 		Interface("statement", rst.qp.Stmt()).
@@ -371,7 +371,7 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	span.SetTag("db", rst.Cl.DB())
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
@@ -397,7 +397,7 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRou
 	span.SetTag("db", rst.Cl.DB())
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
@@ -464,7 +464,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
 		Str("dataspace", rst.Cl.DS()).
-		Uint("client", spqrlog.GetPointer(rst.Cl)).
+		Str("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
@@ -473,7 +473,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	if rst.maintain_params {
 		query := rst.Cl.ConstructClientParams()
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Cl)).
+			Str("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
 		_, _, _, err = rst.ProcQuery(query, true, false)
@@ -701,7 +701,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 
 func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Msg("flushing message buffer")
 
 	ok := true
@@ -761,7 +761,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 	}
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Msg("flushing message buffer: relay compeleted")
 
 	return txst, ok, nil
@@ -794,7 +794,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Str("txstatus", rst.txStatus.String()).
 		Msg("complete relay iter")
 
@@ -889,7 +889,7 @@ func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) e
 
 func (rst *RelayStateImpl) AddQuery(q pgproto3.FrontendMessage) {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Type("message-type", q).
 		Msg("client relay: adding message to message buffer")
 	rst.msgBuf = append(rst.msgBuf, RegularBufferedMessage(q))
@@ -1100,7 +1100,7 @@ var _ RelayStateMgr = &RelayStateImpl{}
 
 func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Str("ds", rst.Client().DS()).
@@ -1136,7 +1136,7 @@ var noopCloseRouteFunc = func() error {
 
 func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error) {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Int("curr routes len", len(rst.activeShards)).
@@ -1181,7 +1181,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 
 func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error) {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client on any route")
@@ -1228,7 +1228,7 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr po
 
 func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Str("client", rst.Client().ID()).
 		Msg("client relay exeсuting sync for client")
 
 	// if we have no active connections, we have noting to sync
@@ -1255,7 +1255,7 @@ func (rst *RelayStateImpl) ProcessMessage(
 	waitForResp, replyCl bool,
 	cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(&rst.Cl)).
+		Str("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
 	if err := rst.PrepareRelayStep(cmngr, nil, rh); err != nil {
 		return err

@@ -333,7 +333,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		cpQ := *q
 		q = &cpQ
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Str("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
 		return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
 	case *pgproto3.Execute:
@@ -411,7 +411,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 				// ok
 			default:
 				spqrlog.Zero.Error().
-					Uint("client", spqrlog.GetPointer(rst.Client())).Int("tx-status", int(rst.TxStatus())).Err(err).
+					Str("client", rst.Client().ID()).Int("tx-status", int(rst.TxStatus())).Err(err).
 					Msg("client iteration done with error")
 				if err := rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client proccessing error: %v, tx status %s", err, rst.TxStatus().String())); err != nil {
 					return err
