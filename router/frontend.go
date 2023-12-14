@@ -159,6 +159,27 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			rst.Client().SetParam(st.Name, st.Value)
 		}
 		return nil
+	case parser.ParseStateShowStmt:
+		param := st.Name[8:len(st.Name)]
+		param = strings.ToLower(param)
+		rst.Client().Send(
+			&pgproto3.RowDescription{
+				Fields: []pgproto3.FieldDescription{
+					{
+						DataTypeOID: 25,
+					},
+				},
+			},
+		)
+		rst.Client().Send(
+			&pgproto3.DataRow{
+				Values: [][]byte{
+					[]byte(rst.Client().Params()["dataspace"]),
+				},
+			},
+		)
+		_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SHOW")
+		return nil
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 

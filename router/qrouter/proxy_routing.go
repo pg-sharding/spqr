@@ -165,16 +165,20 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 		if e.Number >= len(meta.params) {
 			return nil, ComplexQuery
 		}
-		hashedKey, err := hashfunction.ApplyHashFunction((meta.params[e.Number]), hf)
+		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number], hf)
 		if err != nil {
 			return nil, err
 		}
+		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	case *lyx.AExprConst:
 		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
 		if err != nil {
 			return nil, err
 		}
+
+		spqrlog.Zero.Debug().Str("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	default:
 		return nil, ComplexQuery
@@ -618,6 +622,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 					}
 
 					hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[tname][col]), hf)
+
+					spqrlog.Zero.Debug().Str("key", meta.exprs[tname][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 
 					if err != nil {
 						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")

@@ -71,6 +71,11 @@ type ParseStateResetStmt struct {
 	Name string
 }
 
+type ParseStateShowStmt struct {
+	ParseState
+	Name string
+}
+
 type ParseStateResetAllStmt struct {
 	ParseState
 }
@@ -175,6 +180,14 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 		qp.state = varStmt
 
 		return qp.state, comment, nil
+	case *lyx.VariableShowStmt:
+		if strings.HasPrefix(q.Name, "__spqr__") {
+			return ParseStateShowStmt{
+				Name: q.Name,
+			}, comment, nil
+		}
+
+		return ParseStateQuery{}, comment, nil
 	case *lyx.VariableSetStmt:
 		spqrlog.Zero.Debug().
 			Str("name", q.Name).
