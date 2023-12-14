@@ -121,7 +121,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		err := c.coord.splitKeyRange(&border, split.Krid, stmt.KeyRangeFromID)
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("border", border).
 				Msg("failed to split key range by border")
 		}
@@ -139,7 +140,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		err := c.coord.mergeKeyRanges(&border)
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("left", stmt.KeyRangeIDL).
 				Str("right", stmt.KeyRangeIDR).
 				Msg("failed to merge key ranges")
@@ -157,7 +159,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		shardID, err := strconv.Atoi(stmt.DestShardID)
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("dest-shard-id", stmt.DestShardID).
 				Msg("failed to detect shard")
 		}
@@ -165,7 +168,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		err = c.coord.moveKeyRange(keyRangeBorders, Shard{id: shardID})
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("key-range", stmt.KeyRangeID).
 				Str("dest-shard", stmt.DestShardID).
 				Msg("failed to move key range")
@@ -181,7 +185,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		err := c.coord.lockKeyRange(keyRange)
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("key-range", stmt.KeyRangeID).
 				Msg("failed to lock key range")
 		}
@@ -194,7 +199,8 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 		err := c.coord.unlockKeyRange(keyRange)
 		if err != nil {
 			spqrlog.Zero.Error().
-				Err(err).Uint("client", cl.ID()).
+				Err(err).
+				Uint("client", cl.ID()).
 				Str("key-range", stmt.KeyRangeID).
 				Msg("failed to unlock key range")
 		}
