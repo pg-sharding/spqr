@@ -23,7 +23,7 @@ func TestCoordPoolConn(t *testing.T) {
 	assert := assert.New(t)
 	p := provider.CoordPool{}
 
-	_, err := p.Connection("klid", kr.ShardKey{})
+	_, err := p.Connection(0x12345678, kr.ShardKey{})
 
 	assert.Error(err)
 }

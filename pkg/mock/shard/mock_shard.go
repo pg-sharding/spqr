@@ -55,10 +55,10 @@ func (mr *MockShardinfoMockRecorder) DB() *gomock.Call {
 }
 
 // ID mocks base method.
-func (m *MockShardinfo) ID() string {
+func (m *MockShardinfo) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(uint)
 	return ret0
 }
 
@@ -190,10 +190,10 @@ func (mr *MockCoordShardinfoMockRecorder) DB() *gomock.Call {
 }
 
 // ID mocks base method.
-func (m *MockCoordShardinfo) ID() string {
+func (m *MockCoordShardinfo) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(uint)
 	return ret0
 }
 
@@ -488,10 +488,10 @@ func (mr *MockShardMockRecorder) HasPrepareStatement(hash interface{}) *gomock.C
 }
 
 // ID mocks base method.
-func (m *MockShard) ID() string {
+func (m *MockShard) ID() uint {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(uint)
 	return ret0
 }
 

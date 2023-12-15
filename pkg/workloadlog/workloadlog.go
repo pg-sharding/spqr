@@ -21,11 +21,11 @@ const (
 )
 
 type WorkloadLog interface {
-	StartLogging(bool, string)
+	StartLogging(bool, uint)
 	GetMode() WorkloadLogMode
 	IsLogging() bool
-	ClientMatches(string) bool
-	RecordWorkload(pgproto3.FrontendMessage, string)
+	ClientMatches(uint) bool
+	RecordWorkload(pgproto3.FrontendMessage, uint)
 	StopLogging() error
 }
 
@@ -37,7 +37,7 @@ type TimedMessage struct {
 
 type WorkloadLogger struct {
 	mode         WorkloadLogMode
-	clients      map[string]int
+	clients      map[uint]int
 	curSession   int
 	messageQueue chan TimedMessage
 	ctx          context.Context
@@ -50,7 +50,7 @@ type WorkloadLogger struct {
 func NewLogger(batchSize int, logFile string) WorkloadLog {
 	return &WorkloadLogger{
 		mode:         None,
-		clients:      map[string]int{},
+		clients:      map[uint]int{},
 		messageQueue: make(chan TimedMessage),
 		curSession:   0,
 		batchSize:    batchSize,
@@ -59,7 +59,7 @@ func NewLogger(batchSize int, logFile string) WorkloadLog {
 	}
 }
 
-func (wl *WorkloadLogger) StartLogging(all bool, id string) {
+func (wl *WorkloadLogger) StartLogging(all bool, id uint) {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
 	if wl.mode == None {
@@ -83,14 +83,14 @@ func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
 	return wl.mode
 }
 
-func (wl *WorkloadLogger) ClientMatches(client string) bool {
+func (wl *WorkloadLogger) ClientMatches(client uint) bool {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
 	_, ok := wl.clients[client]
 	return ok
 }
 
-func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client string) {
+func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client uint) {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
 	wl.messageQueue <- TimedMessage{
@@ -121,7 +121,7 @@ func (wl *WorkloadLogger) serv() {
 			}
 			wl.mutex.Lock()
 			defer wl.mutex.Unlock()
-			wl.clients = map[string]int{}
+			wl.clients = map[uint]int{}
 			return
 		case tm := <-wl.messageQueue:
 			byt, err := EncodeMessage(tm)

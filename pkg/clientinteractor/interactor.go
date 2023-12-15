@@ -383,7 +383,7 @@ type ClientDesc struct {
 
 func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
-	rowData := []string{cl.ID(), cl.Usr(), cl.DB(), hostname, rAddr}
+	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
 
 	for _, el := range *quantiles {
 		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
@@ -770,13 +770,13 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 	return pi.CompleteMsg(0)
 }
 
-func (pi *PSQLInteractor) KillClient(clientID string) error {
+func (pi *PSQLInteractor) KillClient(clientID uint) error {
 	if err := pi.WriteHeader("kill client"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("the client %s was killed", clientID)); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("the client %d was killed", clientID)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -796,7 +796,7 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 			router = s.Router()
 		}
 
-		if err := pi.WriteDataRow(sh.ID(), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

@@ -26,7 +26,7 @@ func (ps ParameterSet) Save(status ParameterStatus) bool {
 }
 
 type Shardinfo interface {
-	ID() string
+	ID() uint
 	ShardKeyName() string
 	InstanceHostname() string
 	Usr() string

@@ -66,7 +66,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
+			Uint("client", cl.ID()).
 			Uint("shardn", spqrlog.GetPointer(cl.Server())).
 			Str("key", shkey.Name).
 			Msg("client unrouting from datashard")
@@ -126,7 +126,7 @@ func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 
 func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Uint("client", rst.Client().ID()).
 		Int("shards", len(rst.ActiveShards())).
 		Msg("client validate rerouting of TX")
 
@@ -140,7 +140,7 @@ func (t *TxConnManager) TXBeginCB(rst ConnectionKeeper) error {
 func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
 	ash := rst.ActiveShards()
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(rst.Client())).
+		Uint("client", rst.Client().ID()).
 		Msg("client end of transaction, unrouting from active shards")
 	rst.ActiveShardsReset()
 

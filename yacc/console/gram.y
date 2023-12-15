@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"strings"
+	"strconv"
 )
 
 
@@ -24,7 +25,8 @@ func randomHex(n int) (string, error) {
 	str                    string
 	byte                   byte
 	bytes                  []byte
-	int                    int
+	integer                int
+	uinteger               uint
 	bool                   bool
 	empty                  struct{}
 
@@ -89,6 +91,8 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
+%token<uinteger> ICONST
+
 // ';'
 %token<str> TSEMICOLON
 
@@ -100,6 +104,8 @@ func randomHex(n int) (string, error) {
 %type<colref> ColRef
 
 %type<str> any_val any_id
+
+%type<uinteger> any_uint
 
 // CMDS
 %type <statement> command
@@ -242,6 +248,11 @@ command:
 	| unregister_router_stmt
 	{
 		setParseTree(yylex, $1)
+	}
+
+any_uint:
+	ICONST {
+		$$ = uint($1)
 	}
 
 any_val: SCONST
@@ -404,7 +415,7 @@ trace_stmt:
 	{
 		$$ = &TraceStmt{All: true}
 	} | 
-	START TRACE CLIENT any_id {
+	START TRACE CLIENT any_uint {
 		$$ = &TraceStmt {
 			Client: $4,
 		}
@@ -540,6 +551,10 @@ key_range_define_stmt:
 	{
 		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
 	}
+	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	{
+		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+	}
 	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
@@ -547,6 +562,14 @@ key_range_define_stmt:
 			panic(err)
 		}
 		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+	}
+	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	{
+		str, err := randomHex(6)
+		if err != nil {
+			panic(err)
+		}
+		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
 	}
 
 
@@ -597,11 +620,11 @@ split_key_range_stmt:
 	}
 
 kill_stmt:
-	KILL kill_statement_type any_val
+	KILL kill_statement_type any_uint
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
 	}
-	| KILL CLIENT any_val{
+	| KILL CLIENT any_uint {
 		$$ = &Kill{Cmd: "client", Target: $3}
 	}
 

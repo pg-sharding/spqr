@@ -83,7 +83,8 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 		break
 	}
 
-	serv, err := r.servPool.Connection("internal", anyK, "")
+	// maxuint64
+	serv, err := r.servPool.Connection(0xFFFFFFFFFFFFFFFF, anyK, "")
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
@@ -119,7 +120,7 @@ func (r *Route) AddClient(cl client.Client) error {
 	return r.clPool.Put(cl)
 }
 
-func (r *Route) ReleaseClient(clientID string) (bool, error) {
+func (r *Route) ReleaseClient(clientID uint) (bool, error) {
 	return r.clPool.Pop(clientID)
 }
 

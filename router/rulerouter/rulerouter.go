@@ -326,7 +326,7 @@ func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) er
 	})
 }
 
-func (rr *RuleRouterImpl) Pop(clientID string) (bool, error) {
+func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
 	err := rr.routePool.NotifyRoutes(func(route *route.Route) error {
 		ok, nestedErr := route.ReleaseClient(clientID)

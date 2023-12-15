@@ -21,18 +21,18 @@ type startTimes struct {
 }
 
 type statistics struct {
-	RouterTime        map[string]*tdigest.TDigest
-	ShardTime         map[string]*tdigest.TDigest
-	TimeData          map[string]*startTimes
+	RouterTime        map[uint]*tdigest.TDigest
+	ShardTime         map[uint]*tdigest.TDigest
+	TimeData          map[uint]*startTimes
 	Quantiles         []float64
 	NeedToCollectData bool
 	lock              sync.RWMutex
 }
 
 var queryStatistics = statistics{
-	RouterTime: make(map[string]*tdigest.TDigest),
-	ShardTime:  make(map[string]*tdigest.TDigest),
-	TimeData:   make(map[string]*startTimes),
+	RouterTime: make(map[uint]*tdigest.TDigest),
+	ShardTime:  make(map[uint]*tdigest.TDigest),
+	TimeData:   make(map[uint]*startTimes),
 	lock:       sync.RWMutex{},
 }
 
@@ -49,7 +49,7 @@ func GetQuantiles() *[]float64 {
 	return &queryStatistics.Quantiles
 }
 
-func GetTimeQuantile(tip StatisticsType, q float64, client string) float64 {
+func GetTimeQuantile(tip StatisticsType, q float64, client uint) float64 {
 	queryStatistics.lock.Lock()
 	defer queryStatistics.lock.Unlock()
 
@@ -73,7 +73,7 @@ func GetTimeQuantile(tip StatisticsType, q float64, client string) float64 {
 	}
 }
 
-func RecordStartTime(tip StatisticsType, t time.Time, client string) {
+func RecordStartTime(tip StatisticsType, t time.Time, client uint) {
 	if queryStatistics.NeedToCollectData {
 		return
 	}
@@ -92,7 +92,7 @@ func RecordStartTime(tip StatisticsType, t time.Time, client string) {
 	}
 }
 
-func RecordFinishedTransaction(t time.Time, client string) {
+func RecordFinishedTransaction(t time.Time, client uint) {
 	if queryStatistics.NeedToCollectData {
 		return
 	}

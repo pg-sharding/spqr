@@ -96,7 +96,7 @@ func (ci grpcConnectionIterator) Put(client client.Client) error {
 	return fmt.Errorf("grpcConnectionIterator put not implemented")
 }
 
-func (ci grpcConnectionIterator) Pop(id string) (bool, error) {
+func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
 	return true, fmt.Errorf("grpcConnectionIterator pop not implemented")
 }
 

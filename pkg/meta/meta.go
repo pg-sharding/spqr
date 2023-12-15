@@ -284,7 +284,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 			return err
 		}
 		if !ok {
-			return fmt.Errorf("No such client %s", stmt.Target)
+			return fmt.Errorf("No such client %d", stmt.Target)
 		}
 		return cli.KillClient(stmt.Target)
 	default:

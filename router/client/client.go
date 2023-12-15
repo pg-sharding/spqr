@@ -89,7 +89,6 @@ type PsqlClient struct {
 
 	r *route.Route
 
-	id        string
 	prepStmts map[string]string
 
 	/* target-session-attrs */
@@ -124,7 +123,6 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 		defaultTsa:     tsa,
 	}
 
-	cl.id = fmt.Sprintf("%p", cl)
 	cl.activeParamSet["dataspace"] = "default"
 
 	return cl
@@ -417,9 +415,8 @@ func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error
 	return cl.ReplyWarningMsg(fmt.Sprintf(fmtString, args...))
 }
 
-// Deprecated: use spqrlog.GetPointer instead
-func (cl *PsqlClient) ID() string {
-	return cl.id
+func (cl *PsqlClient) ID() uint {
+	return spqrlog.GetPointer(cl)
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {
@@ -516,7 +513,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		protoVer := binary.BigEndian.Uint32(msg)
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
+			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
 			Msg("received protocol version")
 
@@ -595,7 +592,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		cl.cancel_pid = rand.Uint32()
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(cl)).
+			Uint("client", cl.ID()).
 			Uint32("cancel_key", cl.cancel_key).
 			Uint32("cancel_pid", cl.cancel_pid)
 
@@ -641,7 +638,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 	}
 
 	spqrlog.Zero.Info().
-		Str("client", cl.ID()).
+		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Str("ds", cl.DS()).
@@ -750,7 +747,7 @@ func (cl *PsqlClient) PasswordMD5(salt [4]byte) (string, error) {
 func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	msg, err := cl.be.Receive()
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Uint("client", cl.ID()).
 		Interface("message", msg).
 		Msg("client received message")
 	return msg, err
@@ -758,7 +755,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 
 func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("sending msg to client")
 	cl.muBe.Lock()
@@ -769,7 +766,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(cl)).
+		Uint("client", cl.ID()).
 		Type("msg-type", msg).
 		Msg("")
 	ch := make(chan error)
@@ -936,8 +933,8 @@ func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
 
-func (f FakeClient) ID() string {
-	return "fdijoidjs"
+func (f FakeClient) ID() uint {
+	return spqrlog.GetPointer(f)
 }
 
 func (f FakeClient) Receive() (pgproto3.FrontendMessage, error) {
@@ -952,7 +949,7 @@ var _ RouterClient = &FakeClient{}
 
 func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient {
 	client := NoopClient{
-		id:     clientInfo.ClientId,
+		id:     uint(clientInfo.ClientId),
 		user:   clientInfo.User,
 		dbname: clientInfo.Dbname,
 		dsname: clientInfo.Dsname,
@@ -967,7 +964,7 @@ func NewNoopClient(clientInfo *routerproto.ClientInfo, rAddr string) NoopClient 
 
 type NoopClient struct {
 	client.Client
-	id     string
+	id     uint
 	user   string
 	dbname string
 	dsname string
@@ -975,7 +972,7 @@ type NoopClient struct {
 	rAddr  string
 }
 
-func (c NoopClient) ID() string {
+func (c NoopClient) ID() uint {
 	return c.id
 }
 

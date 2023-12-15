@@ -182,7 +182,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 	}
 
 	spqrlog.Zero.Debug().
-		Uint("client", spqrlog.GetPointer(routerClient)).
+		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
 	cmngr, err := poolmgr.MatchConnectionPooler(routerClient, r.RuleRouter.Config())

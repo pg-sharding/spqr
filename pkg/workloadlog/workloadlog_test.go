@@ -34,7 +34,7 @@ func TestStartLoggingForAll(t *testing.T) {
 	assert := assert.New(t)
 
 	logger := NewLogger(10, "testData/file")
-	logger.StartLogging(true, "")
+	logger.StartLogging(true, 0)
 
 	assert.Equal(All, logger.GetMode())
 }
@@ -43,14 +43,14 @@ func TestStartLoggingForClients(t *testing.T) {
 	assert := assert.New(t)
 
 	logger := NewLogger(10, "testData/file")
-	logger.StartLogging(false, "123")
-	logger.StartLogging(false, "abc")
+	logger.StartLogging(false, 123)
+	logger.StartLogging(false, 124)
 
 	assert.Equal(Client, logger.GetMode())
 
-	assert.True(logger.ClientMatches("123"))
-	assert.True(logger.ClientMatches("abc"))
-	assert.False(logger.ClientMatches("0x45632"))
+	assert.True(logger.ClientMatches(123))
+	assert.True(logger.ClientMatches(124))
+	assert.False(logger.ClientMatches(145))
 }
 
 func TestStopLogging(t *testing.T) {
@@ -59,7 +59,7 @@ func TestStopLogging(t *testing.T) {
 	logger := NewLogger(10, "testData/file")
 	assert.Equal(None, logger.GetMode())
 
-	logger.StartLogging(true, "")
+	logger.StartLogging(true, 0)
 	assert.Equal(All, logger.GetMode())
 
 	err := logger.StopLogging()
@@ -82,14 +82,14 @@ func TestStopLoggingClearsClientList(t *testing.T) {
 
 	logger := &WorkloadLogger{
 		mode:         None,
-		clients:      map[string]int{},
+		clients:      map[uint]int{},
 		messageQueue: make(chan TimedMessage),
 		curSession:   0,
 		batchSize:    12,
 		logFile:      "testData/file",
 		mutex:        sync.RWMutex{},
 	}
-	logger.StartLogging(false, "123")
+	logger.StartLogging(false, 123)
 
 	assert.Equal(1, len(logger.clients))
 

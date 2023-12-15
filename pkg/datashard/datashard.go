@@ -90,7 +90,7 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 		spqrlog.Zero.Debug().
 			Err(err).
 			Str("host", sh.dedicated.Hostname()).
-			Str("shard", sh.Name()).
+			Uint("shard", sh.ID()).
 			Msg("failed to init ssl on host of datashard")
 		return err
 	}
@@ -109,7 +109,7 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Uint("shard", sh.ID()).
 		Interface("query", query).
 		Int64("sync-in", sh.sync_in).
 		Msg("shard connection send message")
@@ -131,7 +131,7 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 
 	spqrlog.Zero.Debug().
-		Str("shard", sh.ID()).
+		Uint("shard", sh.ID()).
 		Interface("msg", msg).
 		Int64("sync-out", sh.sync_out).
 		Msg("shard connection received message")
@@ -166,8 +166,8 @@ func (sh *Conn) SHKey() kr.ShardKey {
 	}
 }
 
-func (sh *Conn) ID() string {
-	return sh.id
+func (sh *Conn) ID() uint {
+	return spqrlog.GetPointer(sh)
 }
 
 func (sh *Conn) Usr() string {
@@ -198,8 +198,6 @@ func NewShard(
 		mp:       map[uint64]shard.PreparedStatementDescriptor{},
 	}
 
-	dtSh.id = fmt.Sprintf("%p", dtSh)
-
 	dtSh.dedicated = pgi
 
 	if dtSh.dedicated.Status() == conn.NotInitialized {
@@ -214,7 +212,7 @@ func NewShard(
 
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 	spqrlog.Zero.Debug().
-		Str("shard", sh.Name()).
+		Uint("shard", sh.ID()).
 		Interface("msg", sm).
 		Msg("shard connection startup message")
 	if err := sh.dedicated.Send(sm); err != nil {

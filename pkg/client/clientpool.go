@@ -25,14 +25,14 @@ type Pool interface {
 	ClientPoolForeach(cb func(client ClientInfo) error) error
 
 	Put(client Client) error
-	Pop(id string) (bool, error)
+	Pop(id uint) (bool, error)
 
 	Shutdown() error
 }
 
 type PoolImpl struct {
 	mu   sync.Mutex
-	pool map[string]Client
+	pool map[uint]Client
 }
 
 var _ Pool = &PoolImpl{}
@@ -46,7 +46,7 @@ func (c *PoolImpl) Put(client Client) error {
 	return nil
 }
 
-func (c *PoolImpl) Pop(id string) (bool, error) {
+func (c *PoolImpl) Pop(id uint) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -91,7 +91,7 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 func NewClientPool() Pool {
 	return &PoolImpl{
-		pool: map[string]Client{},
+		pool: map[uint]Client{},
 		mu:   sync.Mutex{},
 	}
 }

@@ -28,9 +28,9 @@ func TestSimpleTrace(t *testing.T) {
 		},
 
 		{
-			query: "START TRACE CLIENT i129191",
+			query: "START TRACE CLIENT 129191;",
 			exp: &spqrparser.TraceStmt{
-				Client: "i129191",
+				Client: 129191,
 			},
 			err: nil,
 		},
@@ -111,10 +111,10 @@ func TestSimpleShow(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "kill client 0xc00030f520;",
+			query: "kill client 824636929312;",
 			exp: &spqrparser.Kill{
 				Cmd:    spqrparser.ClientStr,
-				Target: "0xc00030f520",
+				Target: 824636929312,
 			},
 			err: nil,
 		},

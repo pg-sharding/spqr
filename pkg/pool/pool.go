@@ -29,7 +29,7 @@ type Pool interface {
 	ConnectionKepper
 	shard.ShardIterator
 
-	Connection(clid string, shardKey kr.ShardKey) (shard.Shard, error)
+	Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error)
 }
 
 type MultiShardPool interface {
@@ -37,7 +37,7 @@ type MultiShardPool interface {
 	shard.ShardIterator
 	PoolIterator
 
-	Connection(clid string, shardKey kr.ShardKey, host string) (shard.Shard, error)
+	Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
 
 	InitRule(rule *config.BackendRule) error
 	Cut(host string) []shard.Shard

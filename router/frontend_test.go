@@ -64,7 +64,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	beRule := &config.BackendRule{}
 
-
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
@@ -74,7 +73,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().DS().AnyTimes().Return("")
 
-	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
+	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(
@@ -187,7 +186,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().DS().AnyTimes().Return("")
 
-	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
+	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(frrule)
@@ -313,7 +312,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().DS().AnyTimes().Return("")
 
-	cl.EXPECT().ID().AnyTimes().Return("lolkekcheburek")
+	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(
