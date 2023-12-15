@@ -6,5 +6,6 @@ test: show_dataspaces
 test: show_version
 test: drop
 test: add
+test: hash
 test: teardown
 test: delete_dataspace
