@@ -328,6 +328,13 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		Msg("rerouting the client connection, resolving shard")
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
+
+	spqrlog.Zero.Debug().
+		Uint("client", rst.Client().ID()).
+		Interface("routing-state", routingState).
+		Err(err).
+		Msg("parsing routing state done")
+
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
