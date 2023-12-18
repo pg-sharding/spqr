@@ -1036,6 +1036,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 				rst.AddSilentQuery(rst.saveBind)
+				// do not send saved bind twice
+				rst.saveBind = nil
 				rst.AddQuery(q)
 
 				if _, _, err := rst.RelayStep(&pgproto3.Sync{}, true, true); err != nil {
@@ -1068,9 +1070,17 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		case *pgproto3.Execute:
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
-				Msg("Execute prepared statement")
+				Msg("Execute prepared statement, reset saved bind")
+
+			/* Case when do decribe stmt was issued before Execute+Sync*/
+			if rst.saveBind != nil {
+				rst.AddSilentQuery(rst.saveBind)
+				// do not send saved bind twice
+			}
 
 			rst.AddQuery(q)
+			rst.saveBind = nil
+			rst.bindRoute = nil
 			unprocessed++
 		case *pgproto3.Close:
 			//
