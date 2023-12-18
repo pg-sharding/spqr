@@ -729,11 +729,10 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace stri
 		return nil, err
 	}
 
-	spqrlog.Zero.Debug().
-		Interface("route", route).
-		Msg("parsed shard route")
 	switch v := route.(type) {
 	case routingstate.ShardMatchState:
+		return v, nil
+	case routingstate.RandomMatchState:
 		return v, nil
 	case routingstate.MultiMatchState:
 		switch qr.cfg.DefaultRouteBehaviour {
