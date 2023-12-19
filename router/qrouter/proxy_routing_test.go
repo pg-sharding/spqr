@@ -1033,6 +1033,12 @@ func TestSetStmt(t *testing.T) {
 			exp:       routingstate.RandomMatchState{},
 			err:       nil,
 		},
+		{
+			query:     "SHOW TRANSACTION ISOLATION LEVEL;",
+			dataspace: dataspace1,
+			exp:       routingstate.RandomMatchState{},
+			err:       nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
