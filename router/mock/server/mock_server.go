@@ -39,7 +39,7 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, tsa string) error {
+func (m *MockServer) AddDataShard(clid string, shardKey kr.ShardKey, tsa string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, tsa)
 	ret0, _ := ret[0].(error)
