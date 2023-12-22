@@ -448,7 +448,8 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
 	if stmt == nil {
-		return nil, ComplexQuery
+		// empty statement
+		return routingstate.RandomMatchState{}, nil
 	}
 
 	// if route hint forces us to route on particular route, do it

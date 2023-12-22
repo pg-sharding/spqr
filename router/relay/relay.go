@@ -324,7 +324,6 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 		Uint("client", rst.Client().ID()).
 		Interface("statement", rst.qp.Stmt()).
 		Interface("params", params).
-		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection, resolving shard")
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
@@ -980,6 +979,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			}
 			rst.Client().StorePreparedStatement(q.Name, q.Query)
 
+			// tdb: fix this
+			rst.plainQ = q.Query
+
 			_ = rst.Client().ReplyParseComplete()
 		case *pgproto3.Bind:
 			spqrlog.Zero.Debug().
@@ -1102,9 +1104,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 	rst.xBuf = nil
 	rst.bindRoute = nil
 
-	return rst.Client().Send(&pgproto3.ReadyForQuery{
-		TxStatus: byte(rst.TxStatus()),
-	})
+	return nil
 }
 
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
