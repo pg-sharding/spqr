@@ -70,4 +70,4 @@ NOTICE: send query to shard(s) : sh1
 
 SET __spqr__DATASPACE = ds2;
 SELECT * FROM xx WHERE w_id=5;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': too complex query to parse, tx status IDLE
+ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
