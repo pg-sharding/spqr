@@ -103,7 +103,7 @@ func NewXQDB(qdbType string) (XQDB, error) {
 		etcd, err := NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
 		sh := make(map[string]Shard)
 		for id, data := range shard.ShardsData {
-			sh[id] = *&Shard{ID: id, Hosts: data.Hosts}
+			sh[id] = Shard{ID: id, Hosts: data.Hosts}
 		}
 		etcd.SetShards(sh)
 		return etcd, err

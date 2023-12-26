@@ -80,10 +80,6 @@ func shardingRuleNodePath(key string) string {
 	return path.Join(shardingRulesNamespace, key)
 }
 
-func shardNodePath(key string) string {
-	return path.Join(shardsNamespace, key)
-}
-
 func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
 }
