@@ -44,6 +44,10 @@ var lock sync.RWMutex
 
 var localConfigDir = "/../../cmd/mover/shard_data.yaml"
 
+func GetShards() *config.DatatransferConnections {
+	return shards
+}
+
 func createConnString(shardID string) string {
 	lock.Lock()
 	defer lock.Unlock()

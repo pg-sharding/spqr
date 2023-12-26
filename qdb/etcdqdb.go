@@ -19,8 +19,9 @@ import (
 )
 
 type EtcdQDB struct {
-	cli *clientv3.Client
-	mu  sync.Mutex
+	cli    *clientv3.Client
+	mu     sync.Mutex
+	shards map[string]Shard
 }
 
 var _ QDB = &EtcdQDB{}
@@ -44,6 +45,10 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	return &EtcdQDB{
 		cli: cli,
 	}, nil
+}
+
+func (qdb *EtcdQDB) SetShards(sh map[string]Shard) {
+	qdb.shards = sh
 }
 
 const (
@@ -889,42 +894,15 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 // ==============================================================================
 
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
-	spqrlog.Zero.Debug().
-		Str("id", shard.ID).
-		Strs("hosts", shard.Hosts).
-		Msg("etcdqdb: add shard")
-
-	bytes, err := json.Marshal(shard)
-	if err != nil {
-		return err
-	}
-	resp, err := q.cli.Put(ctx, shardNodePath(shard.ID), string(bytes))
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: add shard")
-
-	return nil
+	return fmt.Errorf("AddShard is not implemented")
 }
 
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
 
-	resp, err := q.cli.Get(ctx, shardsNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	shards := make([]*Shard, 0, len(resp.Kvs))
-	for _, kv := range resp.Kvs {
-		var shard *Shard
-		if err := json.Unmarshal(kv.Value, &shard); err != nil {
-			return nil, err
-		}
-		shards = append(shards, shard)
+	shards := make([]*Shard, 0, len(q.shards))
+	for _, kv := range q.shards {
+		shards = append(shards, &kv)
 	}
 
 	sort.Slice(shards, func(i, j int) bool {
@@ -939,22 +917,11 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 		Str("id", id).
 		Msg("etcdqdb: get shard")
 
-	nodePath := shardNodePath(id)
-	resp, err := q.cli.Get(ctx, nodePath)
-	if err != nil {
-		return nil, err
+	sh, exist := q.shards[id]
+	if !exist {
+		return nil, fmt.Errorf("unknown shard %s", id)
 	}
-
-	shardInfo := &Shard{
-		ID: id,
-	}
-
-	for _, shard := range resp.Kvs {
-		// The Port field is always for a while.
-		shardInfo.Hosts = append(shardInfo.Hosts, string(shard.Value))
-	}
-
-	return shardInfo, nil
+	return &sh, nil
 }
 
 // ==============================================================================
