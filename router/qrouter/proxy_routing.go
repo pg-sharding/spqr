@@ -112,6 +112,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (string
 }
 
 var ComplexQuery = fmt.Errorf("too complex query to parse")
+var FailedToFindKeyRange = fmt.Errorf("failed to match key with ranges")
 var FailedToMatch = fmt.Errorf("failed to match query to any sharding rule")
 var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
@@ -156,7 +157,7 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
-	return nil, ComplexQuery
+	return nil, FailedToFindKeyRange
 }
 
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
