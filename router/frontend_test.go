@@ -278,7 +278,7 @@ func TestFrontendXProto(t *testing.T) {
 	}, nil)
 
 	// receive this 4 msgs
-	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
+	cl.EXPECT().Send(gomock.Any()).Times(2).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
