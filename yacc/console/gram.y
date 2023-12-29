@@ -262,6 +262,8 @@ any_val: SCONST
 	IDENT
 	{
 		$$ = string($1)
+	} | ICONST {
+		$$ = strconv.Itoa(int($1))
 	}
 
 any_id: IDENT
