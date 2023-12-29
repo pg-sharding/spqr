@@ -285,3 +285,33 @@ func TestShardingRule(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestSPlitKeyRange(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SPLIT KEY RANGE krid3 FROM krid1 BY 5;",
+			exp: &spqrparser.SplitKeyRange{
+				Border:         []byte("5"),
+				KeyRangeFromID: "krid1",
+				KeyRangeID:     "krid3",
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
