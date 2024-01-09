@@ -1,3 +1,4 @@
+test: show_clients
 test: show_shards
 test: show_routers
 test: show_key_ranges
