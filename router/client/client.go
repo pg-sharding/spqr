@@ -15,11 +15,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
+	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/server"
 )
 
@@ -68,9 +70,10 @@ type RouterClient interface {
 }
 
 type PsqlClient struct {
-	client.Client
+	// client.Client
 
 	activeParamSet      map[string]string
+	internalParamSet    map[string]string
 	savepointParamSet   map[string]map[string]string
 	savepointParamTxCnt map[string]int
 	beginTxParamSet     map[string]string
@@ -101,9 +104,71 @@ type PsqlClient struct {
 
 	startupMsg *pgproto3.StartupMessage
 
+	bindParams [][]byte
+
+	rh routehint.RouteHint
+
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+// BindParams implements RouterClient.
+func (cl *PsqlClient) BindParams() [][]byte {
+	return cl.bindParams
+}
+
+// SetBindParams implements RouterClient.
+func (cl *PsqlClient) SetBindParams(p [][]byte) {
+	cl.bindParams = p
+}
+
+// Dataspace implements RouterClient.
+func (cl *PsqlClient) Dataspace() string {
+	val, _ := cl.internalParamSet[session.SPQR_DATASPACE]
+	return val
+}
+
+// SetDataspace implements RouterClient.
+func (cl *PsqlClient) SetDataspace(d string) {
+	cl.internalParamSet[session.SPQR_DATASPACE] = d
+}
+
+// SetShardingKey implements RouterClient.
+func (cl *PsqlClient) SetShardingKey(k string) {
+	cl.internalParamSet[session.SPQR_SHARDING_KEY] = k
+}
+
+// ShardingKey implements RouterClient.
+func (cl *PsqlClient) ShardingKey() string {
+	val, _ := cl.internalParamSet[session.SPQR_SHARDING_KEY]
+	return val
+}
+
+// DefaultRouteBehaviour implements RouterClient.
+func (cl *PsqlClient) DefaultRouteBehaviour() string {
+	val, _ := cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]
+	return val
+}
+
+// SetDefaultRouteBehaviour implements RouterClient.
+func (cl *PsqlClient) SetDefaultRouteBehaviour(b string) {
+	cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR] = b
+}
+
+// ReceiveCtx implements RouterClient.
+func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error) {
+	panic("unimplemented")
+}
+
+// RouteHint implements RouterClient.
+func (cl *PsqlClient) RouteHint() routehint.RouteHint {
+	return cl.rh
+}
+
+// SetRouteHint implements RouterClient.
+func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
+	cl.rh = rh
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
@@ -115,12 +180,14 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 	}
 
 	cl := &PsqlClient{
-		activeParamSet: make(map[string]string),
-		conn:           pgconn,
-		startupMsg:     &pgproto3.StartupMessage{},
-		prepStmts:      map[string]string{},
-		tsa:            tsa,
-		defaultTsa:     tsa,
+		activeParamSet:   make(map[string]string),
+		internalParamSet: make(map[string]string),
+		conn:             pgconn,
+		startupMsg:       &pgproto3.StartupMessage{},
+		prepStmts:        map[string]string{},
+		tsa:              tsa,
+		defaultTsa:       tsa,
+		rh:               routehint.EmptyRouteHint{},
 	}
 
 	cl.activeParamSet["dataspace"] = "default"
@@ -187,7 +254,7 @@ func (cl *PsqlClient) Rollback() {
 	cl.txCnt = 0
 }
 
-func (cl *PsqlClient) RollbackToSp(name string) {
+func (cl *PsqlClient) RollbackToSP(name string) {
 	cl.activeParamSet = cl.savepointParamSet[name]
 	targetTxCnt := cl.savepointParamTxCnt[name]
 	for k := range cl.savepointParamSet {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/router/routehint"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pkg/errors"
 
@@ -16,7 +16,7 @@ import (
 var MatchShardError = fmt.Errorf("failed to match datashard")
 
 type QueryRouter interface {
-	Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error)
+	Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error)
 
 	WorldShardsRoutes() []*routingstate.DataShardRoute
 	DataShardsRoutes() []*routingstate.DataShardRoute

@@ -15,7 +15,6 @@ import (
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
 	"github.com/pg-sharding/spqr/router/route"
-	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -35,7 +34,7 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().DS().AnyTimes().Return("")
+	cl.EXPECT().Dataspace().AnyTimes().Return("")
 	cl.EXPECT().Close().Times(1)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
@@ -71,7 +70,10 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().DS().AnyTimes().Return("")
+	cl.EXPECT().Dataspace().AnyTimes().Return("")
+
+	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
+	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -102,7 +104,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprConst{Value: "1"},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, gomock.Any()).Return(routingstate.ShardMatchState{
 		Route: &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: "sh1",
@@ -184,7 +186,10 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().DS().AnyTimes().Return("")
+	cl.EXPECT().Dataspace().AnyTimes().Return("")
+
+	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
+	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -310,7 +315,10 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().DS().AnyTimes().Return("")
+	cl.EXPECT().Dataspace().AnyTimes().Return("")
+
+	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
+	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -342,7 +350,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		},
 		Where:  &lyx.AExprEmpty{},
 		IsFrom: true,
-	}, "", nil, &routehint.EmptyRouteHint{}).Return(routingstate.ShardMatchState{
+	}, gomock.Any()).Return(routingstate.ShardMatchState{
 		Route: &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{
 				Name: "sh1",

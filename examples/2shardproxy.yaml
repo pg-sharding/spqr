@@ -11,6 +11,9 @@ show_notice_messages: false
 world_shard_fallback: true
 router_mode: PROXY
 
+query_routing:
+  default_route_behaviour: "BLOCK"
+
 init_sql: "examples/init.sql"
 memqdb_backup_path: "memqdb.json"
 

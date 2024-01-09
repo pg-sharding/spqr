@@ -57,11 +57,11 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 }
 
 func (pi *PSQLInteractor) GetDataspace() string {
-	return pi.cl.DS()
+	return pi.cl.Dataspace()
 }
 
 func (pi *PSQLInteractor) SetDataspace(dataspace string) {
-	pi.cl.SetParam("dataspace", dataspace)
+	pi.cl.SetDataspace(dataspace)
 }
 
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81

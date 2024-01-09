@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/routehint"
@@ -447,14 +448,14 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
+func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		// empty statement
 		return routingstate.RandomMatchState{}, nil
 	}
 
 	// if route hint forces us to route on particular route, do it
-	switch v := rh.(type) {
+	switch v := sph.RouteHint().(type) {
 	case *routehint.EmptyRouteHint:
 		// nothing
 	case *routehint.TargetRouteHint:
@@ -468,17 +469,17 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
 
-	krs, err := qr.mgr.ListKeyRanges(ctx, dataspace)
+	krs, err := qr.mgr.ListKeyRanges(ctx, sph.Dataspace())
 	if err != nil {
 		return nil, err
 	}
 
-	rls, err := qr.mgr.ListShardingRules(ctx, dataspace)
+	rls, err := qr.mgr.ListShardingRules(ctx, sph.Dataspace())
 	if err != nil {
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls, dataspace, params)
+	meta := NewRoutingMetadataContext(krs, rls, sph.Dataspace(), sph.BindParams())
 
 	tsa := config.TargetSessionAttrsAny
 
@@ -725,8 +726,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 	return route, nil
 }
 
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, dataspace string, params [][]byte, rh routehint.RouteHint) (routingstate.RoutingState, error) {
-	route, err := qr.routeWithRules(ctx, stmt, dataspace, params, rh)
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
+	route, err := qr.routeWithRules(ctx, stmt, sph)
 	if err != nil {
 		return nil, err
 	}

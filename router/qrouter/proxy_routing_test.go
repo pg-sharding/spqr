@@ -7,9 +7,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
-	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
 	"github.com/stretchr/testify/assert"
@@ -103,7 +103,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -194,7 +194,7 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -404,7 +404,7 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -496,7 +496,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -611,7 +611,7 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -727,7 +727,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -818,7 +818,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -942,7 +942,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, tt.dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1044,7 +1044,7 @@ func TestSetStmt(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, tt.dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
