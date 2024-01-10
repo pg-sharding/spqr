@@ -68,7 +68,7 @@ func (w *WorldMock) Run() error {
 }
 
 func (w *WorldMock) serv(netconn net.Conn) error {
-	cl := client.NewPsqlClient(netconn, port.DefaultRouterPortType)
+	cl := client.NewPsqlClient(netconn, port.DefaultRouterPortType, "")
 
 	err := cl.Init(nil)
 

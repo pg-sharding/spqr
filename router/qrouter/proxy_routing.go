@@ -738,7 +738,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case routingstate.RandomMatchState:
 		return v, nil
 	case routingstate.MultiMatchState:
-		switch qr.cfg.DefaultRouteBehaviour {
+		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, FailedToMatch
 		default:
@@ -781,6 +781,8 @@ func MatchShardingRule(ctx context.Context, relationName string, shardingEntries
 					break
 				}
 			}
+
+			spqrlog.Zero.Debug().Str("rname", rule.ID).Bool("matched", allColumnsMatched).Msg("matching rule")
 
 			/* In this rule, we successfully matched all columns */
 			if allColumnsMatched {

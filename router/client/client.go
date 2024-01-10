@@ -171,7 +171,7 @@ func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
 	cl.rh = rh
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string) *PsqlClient {
 	tsa := config.TargetSessionAttrsRW
 
 	// enforce default port behaviour
@@ -182,7 +182,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
 		internalParamSet: map[string]string{
-			session.SPQR_DATASPACE: "default",
+			session.SPQR_DATASPACE:               "default",
+			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
 		conn:       pgconn,
 		startupMsg: &pgproto3.StartupMessage{},

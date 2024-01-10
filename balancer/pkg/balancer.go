@@ -869,7 +869,7 @@ func (b *Balancer) RunAdm(ctx context.Context, listener net.Listener, tlsCfg *tl
 }
 
 func (b *Balancer) servAdm(ctx context.Context, conn net.Conn, tlsconfig *tls.Config) error {
-	cl := client.NewPsqlClient(conn, port.DefaultRouterPortType)
+	cl := client.NewPsqlClient(conn, port.DefaultRouterPortType, "")
 
 	if err := cl.Init(tlsconfig); err != nil {
 		return err
