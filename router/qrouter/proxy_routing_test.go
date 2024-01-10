@@ -1054,3 +1054,103 @@ func TestSetStmt(t *testing.T) {
 		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
+
+func TestMiscRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query     string
+		dataspace string
+		exp       routingstate.RoutingState
+		err       error
+	}
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	dataspace1 := "ds1"
+	dataspace2 := "ds2"
+
+	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+		ID:          "id1",
+		DataspaceId: dataspace1,
+		TableName:   "",
+		Entries: []qdb.ShardingRuleEntry{
+			{
+				Column: "i",
+			},
+		},
+	})
+
+	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+		ID:          "id1",
+		DataspaceId: dataspace2,
+		TableName:   "",
+		Entries: []qdb.ShardingRuleEntry{
+			{
+				Column: "i",
+			},
+		},
+	})
+
+	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:     "sh1",
+		DataspaceId: dataspace1,
+		KeyRangeID:  "id1",
+		LowerBound:  []byte("1"),
+		UpperBound:  []byte("11"),
+	})
+
+	assert.NoError(err)
+
+	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:     "sh2",
+		DataspaceId: dataspace2,
+		KeyRangeID:  "id2",
+		LowerBound:  []byte("1"),
+		UpperBound:  []byte("11"),
+	})
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {
+			Hosts: nil,
+		},
+		"sh2": {
+			Hosts: nil,
+		},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	})
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query:     "SELECT * FROM information_schema.columns;",
+			dataspace: dataspace1,
+			exp:       routingstate.RandomMatchState{},
+			err:       nil,
+		},
+
+		{
+			query:     "SELECT * FROM information_schema.columns JOIN tt ON true",
+			dataspace: dataspace1,
+			exp:       nil,
+			err:       qrouter.InformationSchemaCombinedQuery,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		tmp, err := pr.Route(context.TODO(), parserRes, tt.dataspace, nil, routehint.EmptyRouteHint{})
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp, tt.query)
+		} else {
+			assert.Error(tt.err, err, tt.query)
+		}
+	}
+}
