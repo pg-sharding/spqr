@@ -556,34 +556,39 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 			return nil, err
 		}
 	case *lyx.Select:
-
+		/* We cannot route SQL stmt with no FROM clause provided, but there is still
+		* a few cases to consider
+		 */
 		if len(node.FromClause) == 0 {
-
 			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
 			data-independent expr */
-			any_routable := true
+
+			spqrlog.Zero.Debug().Msg("checking any routable")
+
+			any_routable := false
 			for _, expr := range node.TargetList {
-				switch expr.(type) {
+				switch e := expr.(type) {
 				case *lyx.AExprConst:
 					// ok
+					any_routable = true
+				case *lyx.ColumnRef:
+					/* Step 1.4.8.1 - SELECT current_schema special case */
+					if e.ColName == "current_schema" {
+						any_routable = true
+					}
 				default:
-					any_routable = false
 				}
 			}
 			if any_routable {
-				rs := qr.DataShardsRoutes()
-				return routingstate.ShardMatchState{
-					Route:              rs[0],
-					TargetSessionAttrs: tsa,
-				}, nil
+				return routingstate.RandomMatchState{}, nil
 			}
-		}
-
-		// SELECT stmts, which
-		// would be routed with their WHERE clause
-		err := qr.deparseShardingMapping(ctx, stmt, meta)
-		if err != nil {
-			return nil, err
+		} else {
+			// SELECT stmts, which
+			// would be routed with their WHERE clause
+			err := qr.deparseShardingMapping(ctx, stmt, meta)
+			if err != nil {
+				return nil, err
+			}
 		}
 	case *lyx.Delete, *lyx.Update, *lyx.Copy:
 		// UPDATE and/or DELETE, COPY stmts, which
