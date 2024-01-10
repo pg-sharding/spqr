@@ -125,7 +125,7 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 
 // Dataspace implements RouterClient.
 func (cl *PsqlClient) Dataspace() string {
-	val, _ := cl.internalParamSet[session.SPQR_DATASPACE]
+	val := cl.internalParamSet[session.SPQR_DATASPACE]
 	return val
 }
 
@@ -141,13 +141,13 @@ func (cl *PsqlClient) SetShardingKey(k string) {
 
 // ShardingKey implements RouterClient.
 func (cl *PsqlClient) ShardingKey() string {
-	val, _ := cl.internalParamSet[session.SPQR_SHARDING_KEY]
+	val := cl.internalParamSet[session.SPQR_SHARDING_KEY]
 	return val
 }
 
 // DefaultRouteBehaviour implements RouterClient.
 func (cl *PsqlClient) DefaultRouteBehaviour() string {
-	val, _ := cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]
+	val := cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]
 	return val
 }
 
@@ -180,17 +180,17 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType) *PsqlClient {
 	}
 
 	cl := &PsqlClient{
-		activeParamSet:   make(map[string]string),
-		internalParamSet: make(map[string]string),
-		conn:             pgconn,
-		startupMsg:       &pgproto3.StartupMessage{},
-		prepStmts:        map[string]string{},
-		tsa:              tsa,
-		defaultTsa:       tsa,
-		rh:               routehint.EmptyRouteHint{},
+		activeParamSet: make(map[string]string),
+		internalParamSet: map[string]string{
+			session.SPQR_DATASPACE: "default",
+		},
+		conn:       pgconn,
+		startupMsg: &pgproto3.StartupMessage{},
+		prepStmts:  map[string]string{},
+		tsa:        tsa,
+		defaultTsa: tsa,
+		rh:         routehint.EmptyRouteHint{},
 	}
-
-	cl.activeParamSet["dataspace"] = "default"
 
 	return cl
 }
@@ -708,7 +708,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("ds", cl.DS()).
+		Str("ds", cl.Dataspace()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -767,13 +767,6 @@ func (cl *PsqlClient) DB() string {
 	}
 
 	return DefaultDB
-}
-
-func (cl *PsqlClient) DS() string {
-	if ds, ok := cl.activeParamSet["dataspace"]; ok {
-		return ds
-	}
-	return DefaultDS
 }
 
 func (cl *PsqlClient) receivepasswd() (string, error) {
@@ -990,7 +983,7 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) DS() string {
+func (f FakeClient) Dataspace() string {
 	return DefaultDS
 }
 
@@ -1051,7 +1044,7 @@ func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c NoopClient) DS() string {
+func (c NoopClient) Dataspace() string {
 	return c.dsname
 }
 

@@ -30,7 +30,7 @@ func (c BalancerClient) DB() string {
 	return "DefaultDB"
 }
 
-func (c BalancerClient) DS() string {
+func (c BalancerClient) Dataspace() string {
 	return "default"
 }
 
