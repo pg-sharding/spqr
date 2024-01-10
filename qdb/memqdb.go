@@ -17,16 +17,17 @@ type MemQDB struct {
 	mu           sync.RWMutex
 	muDeletedKrs sync.RWMutex
 
-	deletedKrs   map[string]bool
-	Locks        map[string]*sync.RWMutex            `json:"locks"`
-	Freq         map[string]bool                     `json:"freq"`
-	Krs          map[string]*KeyRange                `json:"krs"`
-	Shards       map[string]*Shard                   `json:"shards"`
-	Shrules      map[string]*ShardingRule            `json:"shrules"`
-	Dataspaces   map[string]*Dataspace               `json:"dataspaces"`
-	Routers      map[string]*Router                  `json:"routers"`
-	Transactions map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator  string                              `json:"coordinator"`
+	deletedKrs     map[string]bool
+	Locks          map[string]*sync.RWMutex            `json:"locks"`
+	Freq           map[string]bool                     `json:"freq"`
+	Krs            map[string]*KeyRange                `json:"krs"`
+	Shards         map[string]*Shard                   `json:"shards"`
+	Shrules        map[string]*ShardingRule            `json:"shrules"`
+	Dataspaces     map[string]*Dataspace               `json:"dataspaces"`
+	TableDataspace map[string]string                   `json:"table_dataspace"`
+	Routers        map[string]*Router                  `json:"routers"`
+	Transactions   map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator    string                              `json:"coordinator"`
 
 	backupPath string
 	/* caches */
@@ -36,15 +37,16 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:         map[string]bool{},
-		Krs:          map[string]*KeyRange{},
-		Locks:        map[string]*sync.RWMutex{},
-		Shards:       map[string]*Shard{},
-		Shrules:      map[string]*ShardingRule{},
-		Dataspaces:   map[string]*Dataspace{},
-		Routers:      map[string]*Router{},
-		Transactions: map[string]*DataTransferTransaction{},
-		deletedKrs:   map[string]bool{},
+		Freq:           map[string]bool{},
+		Krs:            map[string]*KeyRange{},
+		Locks:          map[string]*sync.RWMutex{},
+		Shards:         map[string]*Shard{},
+		Shrules:        map[string]*ShardingRule{},
+		Dataspaces:     map[string]*Dataspace{},
+		TableDataspace: map[string]string{},
+		Routers:        map[string]*Router{},
+		Transactions:   map[string]*DataTransferTransaction{},
+		deletedKrs:     map[string]bool{},
 
 		backupPath: backupPath,
 	}, nil
@@ -668,4 +670,28 @@ func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 	defer q.mu.Unlock()
 
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Dataspaces, id))
+}
+
+func (q *MemQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
+	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: attach table to dataspace")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TableDataspace, table, id))
+}
+
+func (q *MemQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get dataspace for table")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if _, ok := q.TableDataspace[table]; !ok {
+		return &Dataspace{ID: "default"}, nil
+	}
+
+	if dataspace, ok := q.Dataspaces[q.TableDataspace[table]]; ok {
+		return dataspace, nil
+	} else {
+		return nil, fmt.Errorf("dataspace with id \"%s\" not found", q.TableDataspace[table])
+	}
 }
