@@ -206,7 +206,7 @@ func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, err
 }
 
 func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
-	spqrlog.Zero.Debug().Msg("memqdb: list sharding rules")
+	spqrlog.Zero.Debug().Msg("memqdb: match sharding rules")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	return m(q.Shrules)
