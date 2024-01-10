@@ -74,6 +74,9 @@ type QDB interface {
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 	DropDataspace(ctx context.Context, id string) error
 
+	AttachToDataspace(ctx context.Context, table string, id string) error
+	GetDataspace(ctx context.Context, table string) (*Dataspace, error)
+
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 }
