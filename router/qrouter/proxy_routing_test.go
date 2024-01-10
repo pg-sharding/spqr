@@ -68,15 +68,13 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "select 42;",
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: nil,
+			exp:   routingstate.RandomMatchState{},
+			err:   nil,
+		},
+		{
+			query: "select current_schema;",
+			exp:   routingstate.RandomMatchState{},
+			err:   nil,
 		},
 		{
 			query: "alter table xx  add column i int;",
