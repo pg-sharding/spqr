@@ -53,6 +53,7 @@ const (
 	routersNamespace       = "/routers/"
 	shardingRulesNamespace = "/sharding_rules/"
 	shardsNamespace        = "/shards/"
+	tableNamespace         = "/databases/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -81,6 +82,10 @@ func shardNodePath(key string) string {
 
 func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
+}
+
+func tableNodePath(key string) string {
+	return path.Join(tableNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
@@ -1040,6 +1045,42 @@ func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 		Msg("etcdqdb: drop dataspace")
 
 	return err
+}
+
+func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
+	spqrlog.Zero.Debug().
+		Str("table", table).
+		Str("id", id).
+		Msg("etcdqdb: attach table to dataspace")
+
+	resp, err := q.cli.Put(ctx, tableNodePath(table), id)
+
+	spqrlog.Zero.Debug().
+		Interface("responce", resp).
+		Msg("etcdqdb: attach table to dataspace")
+
+	return err
+}
+
+func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
+	spqrlog.Zero.Debug().
+		Str("table", table).
+		Msg("etcdqdb: get dataspace for table")
+
+	resp, err := q.cli.Get(ctx, tableNodePath(table))
+
+	if len(resp.Kvs) == 0 {
+		return &Dataspace{ID: "default"}, err
+	}
+
+	id := string(resp.Kvs[0].Value)
+	resp, err = q.cli.Get(ctx, dataspaceNodePath(id))
+
+	if len(resp.Kvs) == 0 {
+		return nil, fmt.Errorf("dataspace with id \"%s\" not found", id)
+	}
+
+	return &Dataspace{ID: id}, err
 }
 
 // ==============================================================================
