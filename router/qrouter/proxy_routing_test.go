@@ -1144,7 +1144,7 @@ func TestMiscRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, tt.dataspace, nil, routehint.EmptyRouteHint{})
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
 
