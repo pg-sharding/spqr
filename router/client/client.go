@@ -125,13 +125,21 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 
 // Dataspace implements RouterClient.
 func (cl *PsqlClient) Dataspace() string {
-	val := cl.internalParamSet[session.SPQR_DATASPACE]
-	return val
+	if val, ok := cl.internalParamSet[session.SPQR_DATASPACE]; ok {
+		return val
+	}
+	return DefaultDS
 }
 
 // SetDataspace implements RouterClient.
 func (cl *PsqlClient) SetDataspace(d string) {
 	cl.internalParamSet[session.SPQR_DATASPACE] = d
+}
+
+// DataspaceIsDefault implements RouterClient.
+func (cl *PsqlClient) DataspaceIsDefault() bool {
+	_, ok := cl.internalParamSet[session.SPQR_DATASPACE]
+	return !ok
 }
 
 // SetShardingKey implements RouterClient.
@@ -988,6 +996,10 @@ func (f FakeClient) Dataspace() string {
 	return DefaultDS
 }
 
+func (f FakeClient) DataspaceIsDefault() bool {
+	return true
+}
+
 func (c FakeClient) SetDS(_ string) {}
 
 func NewFakeClient() *FakeClient {
@@ -1047,6 +1059,10 @@ func (c NoopClient) DB() string {
 
 func (c NoopClient) Dataspace() string {
 	return c.dsname
+}
+
+func (c NoopClient) DataspaceIsDefault() bool {
+	return true
 }
 
 func (c NoopClient) SetDS(_ string) {}

@@ -356,6 +356,28 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 	return err
 }
 
+func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	_, err := c.AttachToDataspace(ctx, &proto.AttachToDataspaceRequest{
+		Table:     table,
+		Dataspace: dataspaces.DataspaceToProto(ds),
+	})
+
+	return err
+}
+
+func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
+	c := proto.NewDataspaceServiceClient(a.conn)
+
+	resp, err := c.GetDataspace(ctx, &proto.GetDataspaceRequest{Table: table})
+	if err != nil {
+		return nil, err
+	}
+
+	return dataspaces.DataspaceFromProto(resp.Dataspace), nil
+}
+
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	return fmt.Errorf("UpdateCoordinator not implemeneted")
 }

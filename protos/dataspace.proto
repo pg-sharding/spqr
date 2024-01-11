@@ -26,9 +26,25 @@ message DropDataspaceRequest{
 
 message DropDataspaceReply{}
 
+message AttachToDataspaceRequest{
+  string table = 1;
+  Dataspace dataspace = 2;
+}
+
+message AttachToDataspaceReply{}
+
+message GetDataspaceRequest{
+  string table = 1;
+}
+
+message GetDataspaceReply {
+  Dataspace dataspace = 1;
+}
 
 service DataspaceService {
   rpc AddDataspace(AddDataspaceRequest) returns (AddDataspaceReply) {}
   rpc DropDataspace(DropDataspaceRequest) returns (DropDataspaceReply) {}
   rpc ListDataspace(ListDataspaceRequest) returns (ListDataspaceReply) {}
+  rpc AttachToDataspace(AttachToDataspaceRequest) returns (AttachToDataspaceReply) {}
+  rpc GetDataspace(GetDataspaceRequest) returns (GetDataspaceReply) {}
 }

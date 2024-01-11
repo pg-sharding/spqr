@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jackc/pgx/v5"
+	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
