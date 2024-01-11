@@ -1037,7 +1037,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 }
 
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
-	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType)
+	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType, "")
 
 	if err := cl.Init(nil); err != nil {
 		return nil, err

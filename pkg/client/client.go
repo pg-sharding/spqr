@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
@@ -25,6 +26,7 @@ type Pmgr interface {
 
 type Client interface {
 	Pmgr
+	session.SessionParamsHolder
 
 	ID() uint
 
@@ -48,7 +50,6 @@ type Client interface {
 
 	Usr() string
 	DB() string
-	DS() string
 
 	Send(msg pgproto3.BackendMessage) error
 	SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error

@@ -8,8 +8,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -62,7 +62,7 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard)
 	return nil
 }
 
-func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ string, _ [][]byte, _ routehint.RouteHint) (routingstate.RoutingState, error) {
+func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	return routingstate.ShardMatchState{
 		Route: &routingstate.DataShardRoute{
 			Shkey: kr.ShardKey{

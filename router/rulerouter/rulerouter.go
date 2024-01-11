@@ -165,7 +165,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 }
 
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn, pt)
+	cl := rclient.NewPsqlClient(conn, pt, r.Config().Qr.DefaultRouteBehaviour)
 
 	if err := cl.Init(r.tlsconfig); err != nil {
 		return cl, err

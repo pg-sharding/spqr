@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -32,10 +33,10 @@ func AdvancedPoolModeNeeded(rst relay.RelayStateMgr) bool {
 }
 
 func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
-	if _, ok := params[client.SPQR_SCATTER_QUERY]; ok {
+	if _, ok := params[session.SPQR_SCATTER_QUERY]; ok {
 		return &routehint.ScatterRouteHint{}, nil
 	}
-	if val, ok := params[client.SPQR_SHARDING_KEY]; ok {
+	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
 		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
@@ -74,15 +75,27 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	}
 
 	mp, err := parser.ParseComment(comment)
-	var routeHint routehint.RouteHint = &routehint.EmptyRouteHint{}
 
 	if err == nil {
-		routeHint, _ = deparseRouteHint(rst, mp, rst.Client().DS())
+		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Dataspace())
+		rst.Client().SetRouteHint(routeHint)
 
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
 			rst.Client().SetTsa(val)
+		}
+		if val, ok := mp[session.SPQR_DATASPACE]; ok {
+			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse dataspace from comment")
+			rst.Client().SetDataspace(val)
+		}
+		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
+			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse default route behaviour from comment")
+			rst.Client().SetDefaultRouteBehaviour(val)
+		}
+		if val, ok := mp[session.SPQR_SHARDING_KEY]; ok {
+			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse sharding key from comment")
+			rst.Client().SetShardingKey(val)
 		}
 	}
 
@@ -114,7 +127,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return fmt.Errorf("client relay has no connection to shards")
 		}
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
 		if ok {
 			rst.Client().CommitActiveSet()
 		}
@@ -126,7 +139,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		}
 
 		rst.AddQuery(msg)
-		ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+		ok, err := rst.ProcessMessageBuf(true, true, cmngr)
 		if ok {
 			rst.Client().Rollback()
 		}
@@ -146,13 +159,22 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			Msg("applying parsed set stmt")
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
-			param := strings.ToLower(st.Name[8:len(st.Name)])
-			rst.Client().SetParam(param, st.Value)
+			switch st.Name {
+			case session.SPQR_DATASPACE:
+				rst.Client().SetDataspace(st.Value)
+			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+				rst.Client().SetDefaultRouteBehaviour(st.Value)
+			case session.SPQR_SHARDING_KEY:
+				rst.Client().SetShardingKey(st.Value)
+			default:
+				rst.Client().SetParam(st.Name, st.Value)
+			}
+
 			_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SET")
 			return nil
 		}
 		rst.AddQuery(msg)
-		if ok, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint); err != nil {
+		if ok, err := rst.ProcessMessageBuf(true, true, cmngr); err != nil {
 			return err
 		} else if ok {
 			rst.Client().SetParam(st.Name, st.Value)
@@ -186,7 +208,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		rst.Client().ResetParam(st.Name)
 
 		if cmngr.ConnectionActive(rst) {
-			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr, routeHint); err != nil {
+			if err := rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, cmngr); err != nil {
 				return err
 			}
 		}
@@ -195,7 +217,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateResetMetadataStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			if err != nil {
 				return err
 			}
@@ -220,7 +242,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	case parser.ParseStateSetLocalStmt:
 		if cmngr.ConnectionActive(rst) {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
 
@@ -233,7 +255,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
 	case parser.ParseStateExecute:
@@ -243,7 +265,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return nil
 		} else {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+			_, err := rst.ProcessMessageBuf(true, true, cmngr)
 			return err
 		}
 	case parser.ParseStateExplain:
@@ -251,7 +273,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		return nil
 	default:
 		rst.AddQuery(msg)
-		_, err := rst.ProcessMessageBuf(true, true, cmngr, routeHint)
+		_, err := rst.ProcessMessageBuf(true, true, cmngr)
 		return err
 	}
 }
@@ -266,12 +288,12 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
+			return rst.ProcessMessage(q, true, true, cmngr)
 		case *pgproto3.FunctionCall:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr, routehint.EmptyRouteHint{})
+			return rst.ProcessMessage(q, true, true, cmngr)
 		case *pgproto3.Parse:
 			// copy interface
 			cpQ := *q
@@ -281,17 +303,17 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
+			return rst.ProcessMessage(q, false, true, cmngr)
 		case *pgproto3.Bind:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
+			return rst.ProcessMessage(q, false, true, cmngr)
 		case *pgproto3.Describe:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
+			return rst.ProcessMessage(q, false, true, cmngr)
 		case *pgproto3.Query:
 			// copy interface
 			cpQ := *q
@@ -335,7 +357,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, false, true, cmngr, routehint.EmptyRouteHint{})
+		return rst.ProcessMessage(q, false, true, cmngr)
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q

@@ -18,7 +18,6 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
-	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -49,14 +48,14 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
 	PrepareStatement(hash uint64, d server.PrepStmtDesc) (shard.PreparedStatementDescriptor, error)
 
-	PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error
+	PrepareRelayStep(cmngr poolmgr.PoolMgr) error
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
 	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error)
 
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) (bool, error)
+	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
@@ -312,7 +311,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*routingstate.DataShardRoute) err
 	return nil
 }
 
-func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) error {
+func (rst *RelayStateImpl) Reroute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -323,10 +322,10 @@ func (rst *RelayStateImpl) Reroute(params [][]byte, rh routehint.RouteHint) erro
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Interface("statement", rst.qp.Stmt()).
-		Interface("params", params).
+		Interface("params", rst.Client().BindParams()).
 		Msg("rerouting the client connection, resolving shard")
 
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl.DS(), params, rh)
+	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -469,7 +468,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
-		Str("dataspace", rst.Cl.DS()).
+		Str("dataspace", rst.Cl.Dataspace()).
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 
@@ -998,7 +997,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
 			rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
-			rst.saveBind.Parameters = q.Parameters
+			rst.Client().SetBindParams(q.Parameters)
 			rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
 
 			// Do not respond here with bind complete, as relay step should do itself
@@ -1008,7 +1007,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return err
 			}
 
-			if err := rst.PrepareRelayStep(cmngr, rst.saveBind.Parameters, &routehint.EmptyRouteHint{}); err != nil {
+			if err := rst.PrepareRelayStep(cmngr); err != nil {
 				return err
 			}
 
@@ -1115,19 +1114,19 @@ func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error
 
 var _ RelayStateMgr = &RelayStateImpl{}
 
-func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr, parameters [][]byte, rh routehint.RouteHint) error {
+func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
-		Str("ds", rst.Client().DS()).
+		Str("ds", rst.Client().Dataspace()).
 		Msg("preparing relay step for client")
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
 	}
 
-	switch err := rst.Reroute(parameters, rh); err {
+	switch err := rst.Reroute(); err {
 	case nil:
 		return nil
 	case ErrSkipQuery:
@@ -1229,8 +1228,8 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 	}
 }
 
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr, rh routehint.RouteHint) (bool, error) {
-	if err := rst.PrepareRelayStep(cmngr, nil, rh); err != nil {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error) {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
 
@@ -1252,7 +1251,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 	if !cmngr.ConnectionActive(rst) {
 		return rst.Client().ReplyRFQ()
 	}
-	if err := rst.PrepareRelayStep(cmngr, nil, routehint.EmptyRouteHint{}); err != nil {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}
 
@@ -1270,11 +1269,11 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 func (rst *RelayStateImpl) ProcessMessage(
 	msg pgproto3.FrontendMessage,
 	waitForResp, replyCl bool,
-	cmngr poolmgr.PoolMgr, rh routehint.RouteHint) error {
+	cmngr poolmgr.PoolMgr) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
-	if err := rst.PrepareRelayStep(cmngr, nil, rh); err != nil {
+	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
 	}
 
