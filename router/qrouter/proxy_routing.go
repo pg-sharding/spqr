@@ -625,6 +625,31 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	/*
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
+	if dataspace == "" {
+		rel, err := qr.getRelations(stmt)
+		if err != nil || rel == nil {
+			return nil, fmt.Errorf("could not get relation from node")
+		}
+		switch t := rel.(type) {
+		case SpecificRelation:
+			if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
+				return nil, err
+			} else {
+				dataspace = relDataspace.Id
+			}
+		case RelationList:
+			for _, relName := range t.Relations {
+				if relDataspace, err := qr.mgr.GetDataspace(ctx, relName); err != nil {
+					return nil, err
+				} else {
+					if dataspace != "" && dataspace != relDataspace.Id {
+						return nil, fmt.Errorf("mismatching dataspaces %s and %s", dataspace, relDataspace)
+					}
+					dataspace = relDataspace.Id
+				}
+			}
+		}
+	}
 
 	krs, err := qr.mgr.ListKeyRanges(ctx, sph.Dataspace())
 	if err != nil {
