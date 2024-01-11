@@ -636,28 +636,47 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		Str("address", config.CoordinatorConfig().HttpAddr).
 		Msg("etcdqdb: try coordinator lock")
 
-	resp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
+	leaseGrantResp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to make lease")
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease grant failed")
 		return err
 	}
 
-	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().HttpAddr, clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	// KeepAlive attempts to keep the given lease alive forever. If the keepalive responses posted
+	// to the channel are not consumed promptly the channel may become full. When full, the lease
+	// client will continue sending keep alive requests to the etcd server, but will drop responses
+	// until there is capacity on the channel to send more responses.
+	
+	leaseRespCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
+		return err
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case resp := <-leaseRespCh:
+				spqrlog.Zero.Debug().
+					Uint64("raft-term", resp.RaftTerm).
+					Int64("lease-id", int64(resp.ID)).
+					Msg("lease responses channel")
+			}
+		}
+	}()
+
+	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().HttpAddr, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to commit coordinator lock")
+		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: failed to commit coordinator lock")
 		return err
 	}
 
 	if !stat.Succeeded {
 		return fmt.Errorf("qdb is already in use")
-	}
-
-	_, err = q.cli.Lease.KeepAlive(ctx, resp.ID)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to renew lock")
-		return err
 	}
 
 	return nil
