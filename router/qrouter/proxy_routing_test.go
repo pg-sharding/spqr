@@ -77,6 +77,11 @@ func TestMultiShardRouting(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: "select current_schema();",
+			exp:   routingstate.RandomMatchState{},
+			err:   nil,
+		},
+		{
 			query: "alter table xx  add column i int;",
 			exp:   routingstate.MultiMatchState{},
 			err:   nil,

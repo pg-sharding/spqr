@@ -568,11 +568,16 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, datas
 			any_routable := false
 			for _, expr := range node.TargetList {
 				switch e := expr.(type) {
+				case *lyx.FuncApplication:
+					/* Step 1.4.8.1 - SELECT current_schema() special case */
+					if e.Name == "current_schema" {
+						any_routable = true
+					}
 				case *lyx.AExprConst:
 					// ok
 					any_routable = true
 				case *lyx.ColumnRef:
-					/* Step 1.4.8.1 - SELECT current_schema special case */
+					/* Step 1.4.8.2 - SELECT current_schema special case */
 					if e.ColName == "current_schema" {
 						any_routable = true
 					}
