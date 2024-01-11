@@ -438,28 +438,28 @@ func (qr *ProxyQrouter) getRelations(qstmt lyx.Node) (StatementRelation, error) 
 			return &AnyRelation{}, ComplexQuery
 		}
 	case *lyx.Select:
-		if stmt.FromClause == nil {
-			return nil, nil
+		if stmt.FromClause == nil || len(stmt.FromClause) == 0 {
+			return &AnyRelation{}, nil
 		}
-		if len(stmt.FromClause) == 0 {
+		//if len(stmt.FromClause) == 0 {
+		//
+		//	/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
+		//	data-independent expr */
+		//	any_routable := true
+		//	for _, expr := range stmt.TargetList {
+		//		switch expr.(type) {
+		//		case *lyx.AExprConst:
+		//			// ok
+		//		default:
+		//			any_routable = false
+		//		}
+		//	}
+		//	if any_routable {
+		//		return &AnyRelation{}, nil
+		//	}
+		//}
 
-			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
-			data-independent expr */
-			any_routable := true
-			for _, expr := range stmt.TargetList {
-				switch expr.(type) {
-				case *lyx.AExprConst:
-					// ok
-				default:
-					any_routable = false
-				}
-			}
-			if any_routable {
-				return &AnyRelation{}, nil
-			}
-		}
-
-		// Get first relation name out of FROM clause
+		// Get relation names out of FROM clause
 		return qr.getRelationFromNode(stmt.FromClause[0])
 	case *lyx.Delete:
 		return qr.getRelationFromNode(stmt.TableRef)
