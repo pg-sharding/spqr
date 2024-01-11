@@ -357,6 +357,149 @@ func (qr *ProxyQrouter) deparseFromClauseList(
 	return nil
 }
 
+type StatementRelation interface {
+	iRelation()
+}
+
+type AnyRelation struct{}
+type SpecificRelation struct {
+	Name string
+}
+type RelationList struct {
+	Relations []string
+}
+
+func (r AnyRelation) iRelation()      {}
+func (r SpecificRelation) iRelation() {}
+func (r RelationList) iRelation()     {}
+
+var _ StatementRelation = AnyRelation{}
+var _ StatementRelation = SpecificRelation{}
+
+func (qr *ProxyQrouter) getRelations(qstmt lyx.Node) (StatementRelation, error) {
+	switch stmt := qstmt.(type) {
+
+	/* TDB: comments? */
+
+	case *lyx.VariableSetStmt:
+		/* TBD: maybe skip all set stmts? */
+		/*
+		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
+		 */
+		return &AnyRelation{}, nil
+
+	case *lyx.VariableShowStmt:
+		/*
+		 if we want to reroute to execute this stmt, route to random shard
+		 XXX: support intelegent show support, without direct query dispatch
+		*/
+		return &AnyRelation{}, nil
+
+	// XXX: need alter table which renames sharding column to non-sharding column check
+	case *lyx.CreateTable:
+		/*
+		 * Disallow to create table which does not contain any sharding column
+		 */
+		return &AnyRelation{}, nil
+	case *lyx.Vacuum:
+		/* Send vacuum to each shard */
+		return &AnyRelation{}, nil
+	case *lyx.Analyze:
+		/* Send vacuum to each shard */
+		return &AnyRelation{}, nil
+	case *lyx.Cluster:
+		/* Send vacuum to each shard */
+		return &AnyRelation{}, nil
+	case *lyx.Index:
+		/*
+		 * Disallow to index on table which does not contain any sharding column
+		 */
+		// XXX: doit
+		return &AnyRelation{}, nil
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
+		// support simple ddl commands, route them to every chard
+		// this is not fully ACID (not atomic at least)
+		return &AnyRelation{}, nil
+		/*
+			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
+				 // forbid under separate setting
+				 return MultiMatchState{}, nil
+		*/
+	case *lyx.CreateRole, *lyx.CreateDatabase:
+		// forbid under separate setting
+		return &AnyRelation{}, nil
+	case *lyx.Insert:
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			return &SpecificRelation{Name: q.RelationName}, nil
+		default:
+			return &AnyRelation{}, ComplexQuery
+		}
+	case *lyx.Select:
+		if stmt.FromClause == nil {
+			return nil, nil
+		}
+		if len(stmt.FromClause) == 0 {
+
+			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
+			data-independent expr */
+			any_routable := true
+			for _, expr := range stmt.TargetList {
+				switch expr.(type) {
+				case *lyx.AExprConst:
+					// ok
+				default:
+					any_routable = false
+				}
+			}
+			if any_routable {
+				return &AnyRelation{}, nil
+			}
+		}
+
+		// Get first relation name out of FROM clause
+		return qr.getRelationFromNode(stmt.FromClause[0])
+	case *lyx.Delete:
+		return qr.getRelationFromNode(stmt.TableRef)
+	case *lyx.Update:
+		return qr.getRelationFromNode(stmt.TableRef)
+	case *lyx.Copy:
+		return qr.getRelationFromNode(stmt.TableRef)
+	default:
+		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
+	}
+	return nil, nil
+}
+
+/* get all relations out of FROM clause */
+func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationList, error) {
+	spqrlog.Zero.Debug().
+		Type("node-type", node).
+		Msg("getting relation name out of from node")
+	switch q := node.(type) {
+	case *lyx.RangeVar:
+		return &RelationList{Relations: []string{q.RelationName}}, nil
+	case *lyx.JoinExpr:
+		var rRel, lRel *RelationList
+		var err error
+		if rRel, err = qr.getRelationFromNode(q.Rarg); err != nil {
+			return nil, err
+		}
+		if lRel, err = qr.getRelationFromNode(q.Larg); err != nil {
+			return nil, err
+		}
+		lRel.Relations = append(lRel.Relations, rRel.Relations...)
+		return lRel, nil
+	default:
+		// other cases to consider
+		// lateral join, natual, etc
+	}
+
+	return nil, nil
+}
+
 func (qr *ProxyQrouter) deparseShardingMapping(
 	ctx context.Context,
 	qstmt lyx.Node,
