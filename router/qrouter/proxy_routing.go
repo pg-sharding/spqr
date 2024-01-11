@@ -301,7 +301,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 	return ComplexQuery
 }
 
-/* deparses from  cluase  */
+/* deparses from clause */
 func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
