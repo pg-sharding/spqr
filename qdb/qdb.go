@@ -3,6 +3,7 @@ package qdb
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 )
@@ -98,7 +99,17 @@ type XQDB interface {
 func NewXQDB(qdbType string) (XQDB, error) {
 	switch qdbType {
 	case "etcd":
-		return NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+		shard, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+		}
+		etcd, err := NewEtcdQDB(config.CoordinatorConfig().QdbAddr)
+		sh := make(map[string]Shard)
+		for id, data := range shard.ShardsData {
+			sh[id] = Shard{ID: id, Hosts: data.Hosts}
+		}
+		etcd.SetShards(sh)
+		return etcd, err
 	case "mem":
 		return NewMemQDB("")
 	default:
