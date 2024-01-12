@@ -1,18 +1,11 @@
 version: '3'
 
 services:
-    spqr-shard-image:
+    shard1:
         image: spqr-shard-image
         build:
             dockerfile: ./docker/shard/Dockerfile
             context: .
-    spqr-base-image:
-        image: spqr-base-image
-        build:
-            dockerfile: ./docker/spqr/Dockerfile
-            context: .
-    shard1:
-        image: spqr-shard-image
         environment:
             - POSTGRES_USER=user1
             - POSTGRES_DB=db1
