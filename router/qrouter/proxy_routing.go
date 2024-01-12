@@ -631,13 +631,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, fmt.Errorf("could not get relation from node")
 		}
 		switch t := rel.(type) {
-		case SpecificRelation:
+		case *SpecificRelation:
 			if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
 				return nil, err
 			} else {
+				// TODO: this may break future calls
 				sph.SetDataspace(relDataspace.Id)
 			}
-		case RelationList:
+		case *RelationList:
 			var dataspace string
 			for _, relName := range t.Relations {
 				if relDataspace, err := qr.mgr.GetDataspace(ctx, relName); err != nil {
@@ -650,6 +651,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 				}
 			}
 			sph.SetDataspace(dataspace)
+		case *AnyRelation:
+			break
+		default:
+			return nil, fmt.Errorf("unknown statement relation type %T", rel)
 		}
 	}
 
