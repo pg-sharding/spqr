@@ -286,7 +286,7 @@ func TestShardingRule(t *testing.T) {
 	}
 }
 
-func TestSPlitKeyRange(t *testing.T) {
+func TestSplitKeyRange(t *testing.T) {
 
 	assert := assert.New(t)
 
