@@ -293,7 +293,7 @@ func (qr *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) err
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
-		Msg("adding nodee")
+		Msg("adding node")
 
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 
