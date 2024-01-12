@@ -53,7 +53,7 @@ const (
 	routersNamespace       = "/routers/"
 	shardingRulesNamespace = "/sharding_rules/"
 	shardsNamespace        = "/shards/"
-	tableNamespace         = "/databases/"
+	tableNamespace         = "/table_mappings/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -651,7 +651,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	// to the channel are not consumed promptly the channel may become full. When full, the lease
 	// client will continue sending keep alive requests to the etcd server, but will drop responses
 	// until there is capacity on the channel to send more responses.
-	
+
 	leaseRespCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
