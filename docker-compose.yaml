@@ -77,12 +77,6 @@ services:
             context: .
         hostname: spqr_balancer
         container_name: spqr_balancer
-    client:
-        build:
-            dockerfile: ./docker/tests/Dockerfile
-            context: .
-        hostname: spqr_client
-        container_name: spqr_client
     slicer:
         build:
             dockerfile: ./docker/slicer/Dockerfile
