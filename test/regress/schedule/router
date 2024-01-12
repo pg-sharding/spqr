@@ -11,3 +11,4 @@ test: multishard
 test: error
 test: routing_hint
 test: begin
+test: switch_dataspace
