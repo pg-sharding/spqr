@@ -50,4 +50,5 @@ var reservedWords = map[string]int{
 	"city":       CITY,
 	"identity":   IDENTITY,
 	"ident":      IDENTITY,
+	"attach":     ATTACH,
 }

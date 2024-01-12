@@ -74,6 +74,17 @@ func TestSimpleLex(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ATTACH TABLE t TO DATASPACE ds1;",
+			exp: []int{
+				spqrparser.ATTACH,
+				spqrparser.TABLE,
+				spqrparser.IDENT,
+				spqrparser.TO,
+				spqrparser.DATASPACE,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
