@@ -633,6 +633,7 @@ func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.Do
 
 func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
+	query = strings.Replace(query, "\"", "", 2)
 
 	err := tctx.executePostgresql(host, query, struct{}{})
 	return err
@@ -668,6 +669,39 @@ func (tctx *testContext) stepFileOnHostShouldMatch(path string, node string, mat
 		return err
 	}
 	return m(string(actualContent), expectedContent)
+}
+
+func (tctx *testContext) stepSaveResponseBodyAtPathAsJSON(rowIndex string, column string) error {
+	i, err := strconv.Atoi(rowIndex)
+	if err != nil {
+		return fmt.Errorf("Failed to get row index: %q not a number", rowIndex)
+	}
+	if i >= len(tctx.sqlQueryResult) {
+		return fmt.Errorf("Failed to get row at index %q: index is out of range", i)
+	}
+
+	a, b := tctx.sqlQueryResult[i][column]
+	if !b {
+		return fmt.Errorf("column does not exist")
+	}
+
+	actualPartByte, err := json.Marshal(a)
+	if err != nil {
+		return fmt.Errorf("Can't marshal to json: %w", err)
+	}
+
+	tctx.variables[column] = string(actualPartByte)
+	return nil
+}
+
+func (tctx *testContext) stepHideField(fieldName string) error {
+	for _, row := range tctx.sqlQueryResult {
+		_, ok := row[fieldName]
+		if ok {
+			row[fieldName] = "**IGNORE**"
+		}
+	}
+	return nil
 }
 
 func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) error {
@@ -732,6 +766,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
 			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 		}
+		tctx.variables = make(map[string]interface{})
 		return ctx, nil
 	})
 	s.StepContext().Before(func(ctx context.Context, step *godog.Step) (context.Context, error) {
@@ -792,6 +827,10 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
+
+	// variable manipulation
+	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
+	s.Step(`^hide "([^"]*)" field$`, tctx.stepHideField)
 
 }
 

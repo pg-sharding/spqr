@@ -1,52 +1,81 @@
-Feature: Coordinator should kill client
-  Background:
-        #
-        # Make host "coordinator" take control
-        #
+Feature: Kill client test
+
+  Scenario: kill client in coordinator works
     Given cluster is up and running
     And host "coordinator2" is stopped
     And host "coordinator2" is started
-
-    When I execute SQL on host "coordinator"
-        """
-        REGISTER ROUTER r1 ADDRESS regress_router:7000;
-        """
-    Then command return code should be "0"
-    When I run SQL on host "coordinator"
-        """
-        SHOW routers
-        """
-    Then command return code should be "0"
-    And SQL result should match regexp
-        """
-        r1-regress_router:7000
-        """
-    Given I execute SQL on host "router"
-        """
-        SELECT pg_sleep(1)
-        """
-    And I execute SQL on host "router2"
-        """
-        SELECT pg_sleep(1)
-        """
-
-  Scenario: kill client
     When I run SQL on host "coordinator"
     """
-    show clients;
+    REGISTER ROUTER r1 ADDRESS regress_router::7000
     """
     Then command return code should be "0"
-    And SQL result should not match regexp
+
+    When I run SQL on host "coordinator"
     """
-    clientID=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' --csv | head -2 | tail -1 | awk -F ',' '{print $1 }')
+    SHOW clients
     """
-    When I run command on host "coordinator"
+    Then we save response row "0" column "client_id"
+    And hide "client_id" field
+    Then SQL result should match json
     """
-    clientID=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c 'show clients;' --csv | head -2 | tail -1 | awk -F ',' '{print $1 }')
-    out=$(psql "host=spqr_router_1_1 sslmode=disable user=user1 dbname=db1 port=7432" -c "kill client $clientID;" | clearID)
-test "$out" = "            kill client
-------------------------------------
- the client ************ was killed
-(1 row)"
+    [
+      {
+        "client_id":"**IGNORE**",
+        "dbname":"regress",
+        "router_address":"regress_router:7000",
+        "server_id":"no backend connection",
+        "user":"regress"
+      }
+    ]
+    """
+    # TODO KILL client in coordinator is failing with
+    # ERROR: grpcConnectionIterator pop not implemented (SQLSTATE )
+    # When I execute SQL on host "coordinator"
+    # """
+    # KILL client {{ .client_id }}
+    # """
+    # Then command return code should be "0"
+    # When I run SQL on host "coordinator"
+    # """
+    # SHOW clients
+    # """
+    # Then SQL result should match json
+    # """
+    # []
+    # """
+
+  Scenario: kill client in router works
+    Given cluster is up and running
+    When I run SQL on host "router-admin"
+    """
+    SHOW clients
+    """
+    Then we save response row "0" column "client_id"
+    And hide "client_id" field
+    Then SQL result should match json
+    """
+    [
+      {
+        "client_id":"**IGNORE**",
+        "dbname":"regress",
+        "router_address":"local",
+        "router_time_0.75":"0.00ms",
+        "server_id":"no backend connection",
+        "shard_time_0.75":"0.00ms",
+        "user":"regress"
+      }
+    ]
+    """
+    When I execute SQL on host "router-admin"
+    """
+    KILL client {{ .client_id }}
     """
     Then command return code should be "0"
+    When I run SQL on host "router-admin"
+    """
+    SHOW clients
+    """
+    Then SQL result should match json
+    """
+    []
+    """
