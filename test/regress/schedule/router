@@ -1,4 +1,4 @@
-
+test: switch_dataspace
 test: shard_routing
 test: mixed_routing
 test: copy_routing
