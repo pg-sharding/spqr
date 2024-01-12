@@ -269,6 +269,12 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
+	case *spqrparser.AttachTable:
+		ds := &dataspaces.Dataspace{Id: stmt.Dataspace.ID}
+		if err := mgr.AttachToDataspace(ctx, stmt.Table, ds); err != nil {
+			return err
+		}
+		return cli.AttachTable(ctx, stmt.Table, ds)
 	default:
 		return unknownCoordinatorCommand
 	}
