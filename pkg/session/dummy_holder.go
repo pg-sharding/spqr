@@ -3,12 +3,11 @@ package session
 import "github.com/pg-sharding/spqr/router/routehint"
 
 type DummySessionParamHandler struct {
-	b                [][]byte
-	dataspace        string
-	dataspaceChanged bool
-	behaviour        string
-	key              string
-	rh               routehint.RouteHint
+	b         [][]byte
+	dataspace string
+	behaviour string
+	key       string
+	rh        routehint.RouteHint
 }
 
 func NewDummyHandler(dataspace string) SessionParamsHolder {
@@ -46,11 +45,10 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 // SetDataspace implements session.SessionParamsHolder.
 func (t *DummySessionParamHandler) SetDataspace(d string) {
 	t.dataspace = d
-	t.dataspaceChanged = true
 }
 
 func (t *DummySessionParamHandler) DataspaceIsDefault() bool {
-	return !t.dataspaceChanged
+	return false
 }
 
 // SetDefaultRouteBehaviour implements session.SessionParamsHolder.
