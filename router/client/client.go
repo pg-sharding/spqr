@@ -111,6 +111,8 @@ type PsqlClient struct {
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+
+	dataspaceChanged bool
 }
 
 // BindParams implements RouterClient.
@@ -134,12 +136,12 @@ func (cl *PsqlClient) Dataspace() string {
 // SetDataspace implements RouterClient.
 func (cl *PsqlClient) SetDataspace(d string) {
 	cl.internalParamSet[session.SPQR_DATASPACE] = d
+	cl.dataspaceChanged = true
 }
 
 // DataspaceIsDefault implements RouterClient.
 func (cl *PsqlClient) DataspaceIsDefault() bool {
-	_, ok := cl.internalParamSet[session.SPQR_DATASPACE]
-	return !ok
+	return !cl.dataspaceChanged
 }
 
 // SetShardingKey implements RouterClient.
