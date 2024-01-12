@@ -166,15 +166,8 @@ generate: build_images
 	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
 	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
 
-	docker cp spqr-generator-1:/spqr/pkg/mock/pgx/mock_pgxconn_iface.go pkg/mock/pgx/mock_pgxconn_iface.go
-	docker cp spqr-generator-1:/spqr/pkg/mock/pgx/mock_pgx_tx.go pkg/mock/pgx/mock_pgx_tx.go
-	docker cp spqr-generator-1:/spqr/pkg/mock/conn/raw_mock.go pkg/mock/conn/raw_mock.go
-	docker cp spqr-generator-1:/spqr/router/mock/server/mock_server.go router/mock/server/mock_server.go
-	docker cp spqr-generator-1:/spqr/pkg/mock/conn/mock_instance.go pkg/mock/conn/mock_instance.go
-	docker cp spqr-generator-1:/spqr/pkg/mock/shard/mock_shard.go pkg/mock/shard/mock_shard.go
-	docker cp spqr-generator-1:/spqr/router/mock/client/mock_client.go router/mock/client/mock_client.go
-	docker cp spqr-generator-1:/spqr/router/mock/poolmgr/mock_pool_mgr.go router/mock/poolmgr/mock_pool_mgr.go
-	docker cp spqr-generator-1:/spqr/router/mock/qrouter/mock_qrouter.go router/mock/qrouter/mock_qrouter.go
+	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
+	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
 
 version = $(shell git describe --tags --abbrev=0)
 package:
