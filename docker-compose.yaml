@@ -81,7 +81,3 @@ services:
         build:
             dockerfile: ./docker/slicer/Dockerfile
             context: .
-    generator:
-        build:
-            dockerfile: ./docker/generator/Dockerfile
-            context: .
