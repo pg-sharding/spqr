@@ -625,6 +625,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	/*
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
+
+	queryDataspace := ""
 	if sph.DataspaceIsDefault() {
 		rel, err := qr.getRelations(stmt)
 		if err != nil || rel == nil {
@@ -635,8 +637,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
 				return nil, err
 			} else {
-				// TODO: this may break future calls
-				sph.SetDataspace(relDataspace.Id)
+				queryDataspace = relDataspace.Id
 			}
 		case *RelationList:
 			var dataspace string
@@ -650,25 +651,27 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 					dataspace = relDataspace.Id
 				}
 			}
-			sph.SetDataspace(dataspace)
+			queryDataspace = dataspace
 		case *AnyRelation:
 			break
 		default:
 			return nil, fmt.Errorf("unknown statement relation type %T", rel)
 		}
+	} else {
+		queryDataspace = sph.Dataspace()
 	}
 
-	krs, err := qr.mgr.ListKeyRanges(ctx, sph.Dataspace())
+	krs, err := qr.mgr.ListKeyRanges(ctx, queryDataspace)
 	if err != nil {
 		return nil, err
 	}
 
-	rls, err := qr.mgr.ListShardingRules(ctx, sph.Dataspace())
+	rls, err := qr.mgr.ListShardingRules(ctx, queryDataspace)
 	if err != nil {
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls, sph.Dataspace(), sph.BindParams())
+	meta := NewRoutingMetadataContext(krs, rls, queryDataspace, sph.BindParams())
 
 	tsa := config.TargetSessionAttrsAny
 
