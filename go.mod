@@ -10,7 +10,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.5.0
-	github.com/jackc/pgx/v5 v5.5.0
+	github.com/jackc/pgx/v5 v5.5.2
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/juju/errors v1.0.0
 	github.com/lib/pq v1.10.9
@@ -36,7 +36,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require google.golang.org/protobuf v1.31.0 // indirect
+require google.golang.org/protobuf v1.31.0
 
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
@@ -52,7 +52,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/go-faster/city v1.0.1
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.4 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
