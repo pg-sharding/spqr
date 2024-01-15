@@ -82,6 +82,7 @@ func (r *RuleRouterImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return r.routePool.ForEach(cb)
 }
 
+// TODO : unit tests
 func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[route.Key]*config.BackendRule, *config.FrontendRule, *config.BackendRule) {
 	frontendRules := map[route.Key]*config.FrontendRule{}
 	var defaultFrontendRule *config.FrontendRule
@@ -112,6 +113,7 @@ func ParseRules(rcfg *config.Router) (map[route.Key]*config.FrontendRule, map[ro
 	return frontendRules, backendRules, defaultFrontendRule, defaultBackendRule
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) Reload(configPath string) error {
 	/*
 			* Reload config changes:
@@ -164,6 +166,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 	}
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn, pt, r.Config().Qr.DefaultRouteBehaviour)
 
@@ -238,6 +241,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	return cl, nil
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
@@ -264,6 +268,7 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	return cl, nil
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) ListShards() []string {
 	var ret []string
 
@@ -274,6 +279,7 @@ func (r *RuleRouterImpl) ListShards() []string {
 	return ret
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) ObsoleteRoute(key route.Key) error {
 	rt := r.routePool.Obsolete(key)
 
@@ -286,6 +292,7 @@ func (r *RuleRouterImpl) ObsoleteRoute(key route.Key) error {
 	return nil
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) Config() *config.Router {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -293,18 +300,21 @@ func (r *RuleRouterImpl) Config() *config.Router {
 	return r.rcfg
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) AddClient(cl rclient.RouterClient) {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
 	r.clmp[cl.GetCancelPid()] = cl
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
 	delete(r.clmp, cl.GetCancelPid())
 }
 
+// TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	r.clmu.Lock()
 	defer r.clmu.Unlock()
@@ -320,12 +330,14 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 	return fmt.Errorf("no client with pid %d", csm.ProcessID)
 }
 
+// TODO : unit tests
 func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
 		return route.NofityClients(cb)
 	})
 }
 
+// TODO : unit tests
 func (rr *RuleRouterImpl) Pop(clientID uint) (bool, error) {
 	var popped = false
 	err := rr.routePool.NotifyRoutes(func(route *route.Route) error {

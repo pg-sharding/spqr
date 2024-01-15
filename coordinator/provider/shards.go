@@ -27,6 +27,7 @@ func NewShardServer(impl coordinator.Coordinator) *ShardServer {
 
 var _ protos.ShardServiceServer = &ShardServer{}
 
+// TODO : unit tests
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
 	newShard := request.GetShard()
 
@@ -43,6 +44,7 @@ func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorl
 	panic("implement me")
 }
 
+// TODO : unit tests
 // TODO: remove ShardRequest.
 func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
 	shardList, err := s.impl.ListShards(ctx)
@@ -64,6 +66,7 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 	}, nil
 }
 
+// TODO : unit tests
 func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardInfoReply, error) {
 	shardInfo, err := s.impl.GetShardInfo(ctx, shardRequest.Id)
 	if err != nil {

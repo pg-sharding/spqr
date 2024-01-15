@@ -35,6 +35,7 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -53,6 +54,7 @@ func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Da
 	return retDsp, nil
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -61,6 +63,7 @@ func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dat
 	})
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -68,6 +71,7 @@ func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string,
 	return lc.qdb.AttachToDataspace(ctx, table, ds.Id)
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -79,6 +83,7 @@ func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*da
 	return dataspaces.NewDataspace(ret.ID), nil
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -90,12 +95,14 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 	return ret
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	return lc.qdb.DropDataspace(ctx, ds.Id)
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
@@ -126,6 +133,7 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.Da
 	return nil
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -136,6 +144,7 @@ func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	return lc.qdb.DropKeyRange(ctx, id)
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -144,6 +153,7 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	return lc.qdb.DropKeyRangeAll(ctx)
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -162,6 +172,7 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 	return ret
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -198,6 +209,7 @@ func (lc *LocalCoordinator) WorldShards() []string {
 	return ret
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
@@ -210,6 +222,7 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, reqKr)
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	var krleft *qdb.KeyRange
 	var krright *qdb.KeyRange
@@ -246,6 +259,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	var krOld *qdb.KeyRange
 	var err error
@@ -295,6 +309,7 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 	return nil
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qr.qdb.LockKeyRange(ctx, krid)
 	if err != nil {
@@ -304,10 +319,12 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 	return kr.KeyRangeFromDB(keyRangeDB), nil
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
 	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 
+// TODO : unit tests
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
@@ -321,6 +338,7 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.Dat
 	})
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) Shards() []string {
 	var ret []string
 
@@ -331,6 +349,7 @@ func (qr *LocalCoordinator) Shards() []string {
 	return ret
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
@@ -344,6 +363,8 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string)
 
 	return ret, nil
 }
+
+// TODO : unit tests
 func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
@@ -358,6 +379,7 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 	return ret, nil
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return []*topology.Router{{
 		ID: "local",
@@ -368,6 +390,7 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
 	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
 	if err != nil {
@@ -382,6 +405,7 @@ func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace str
 	return resp, nil
 }
 
+// TODO : unit tests
 func (qr *LocalCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rules, err := qr.qdb.ListAllShardingRules(ctx)
 	if err != nil {
@@ -410,6 +434,7 @@ func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) e
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")
 
+// TODO : unit tests
 func (qr *LocalCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rules, err := qr.qdb.DropShardingRuleAll(ctx)
 	if err != nil {

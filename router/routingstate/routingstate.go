@@ -7,6 +7,7 @@ import (
 
 const NOSHARD = ""
 
+// TODO : unit tests
 func Combine(sh1, sh2 RoutingState) RoutingState {
 	if sh1 == nil && sh2 == nil {
 		return nil

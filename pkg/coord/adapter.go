@@ -28,10 +28,13 @@ func (a *adapter) QDB() qdb.QDB {
 	return nil
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) ShareKeyRange(id string) error {
 	return fmt.Errorf("shareKeyRange not implemented")
 }
 
+// TODO : unit tests
 func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
@@ -49,6 +52,7 @@ func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.Ke
 	return krs, nil
 }
 
+// TODO : unit tests
 func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
@@ -64,6 +68,7 @@ func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 	return krs, nil
 }
 
+// TODO : unit tests
 func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
@@ -72,6 +77,7 @@ func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.LockKeyRange(ctx, &proto.LockKeyRangeRequest{
@@ -95,6 +101,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 	return nil, fmt.Errorf("key range with id %s not found", krid)
 }
 
+// TODO : unit tests
 func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.UnlockKeyRange(ctx, &proto.UnlockKeyRangeRequest{
@@ -107,6 +114,7 @@ func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 	return nil
 }
 
+// TODO : unit tests
 func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
@@ -135,6 +143,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	return fmt.Errorf("key range with id %s not found", split.Krid)
 }
 
+// TODO : unit tests
 func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
@@ -172,6 +181,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
@@ -192,6 +202,7 @@ func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	return fmt.Errorf("key range with id %s not found", move.Krid)
 }
 
+// TODO : unit tests
 func (a *adapter) DropKeyRange(ctx context.Context, krid string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
@@ -200,12 +211,14 @@ func (a *adapter) DropKeyRange(ctx context.Context, krid string) error {
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) DropKeyRangeAll(ctx context.Context) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropAllKeyRanges(ctx, &proto.DropAllKeyRangesRequest{})
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	_, err := c.AddShardingRules(ctx, &proto.AddShardingRuleRequest{
@@ -214,6 +227,7 @@ func (a *adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	_, err := c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{
@@ -222,6 +236,7 @@ func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rules, err := a.ListAllShardingRules(ctx)
 	if err != nil {
@@ -237,6 +252,7 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 	return rules, err
 }
 
+// TODO : unit tests
 func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
@@ -253,6 +269,8 @@ func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*s
 
 	return shrules, nil
 }
+
+// TODO : unit tests
 func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
@@ -268,6 +286,7 @@ func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingR
 	return shrules, nil
 }
 
+// TODO : unit tests
 func (a *adapter) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.AddRouter(ctx, &proto.AddRouterRequest{
@@ -276,6 +295,7 @@ func (a *adapter) RegisterRouter(ctx context.Context, r *topology.Router) error 
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	c := proto.NewRouterServiceClient(a.conn)
 	resp, err := c.ListRouters(ctx, &proto.ListRoutersRequest{})
@@ -289,6 +309,7 @@ func (a *adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return routers, nil
 }
 
+// TODO : unit tests
 func (a *adapter) UnregisterRouter(ctx context.Context, id string) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.RemoveRouter(ctx, &proto.RemoveRouterRequest{
@@ -297,6 +318,7 @@ func (a *adapter) UnregisterRouter(ctx context.Context, id string) error {
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.SyncMetadata(ctx, &proto.SyncMetadataRequest{
@@ -305,22 +327,31 @@ func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 	return err
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
 	return fmt.Errorf("addDataShard not implemented")
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
 	return fmt.Errorf("addWorldShard not implemented")
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	return nil, fmt.Errorf("ListShards not implemented")
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	return nil, fmt.Errorf("GetShardInfo not implemented")
 }
 
+// TODO : unit tests
 func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
@@ -337,6 +368,7 @@ func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, e
 	return dss, nil
 }
 
+// TODO : unit tests
 func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
@@ -346,6 +378,7 @@ func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) er
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
@@ -356,6 +389,7 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
@@ -367,6 +401,7 @@ func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *datas
 	return err
 }
 
+// TODO : unit tests
 func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
@@ -378,10 +413,14 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 	return dataspaces.DataspaceFromProto(resp.Dataspace), nil
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	return fmt.Errorf("UpdateCoordinator not implemeneted")
 }
 
+// TODO : unit tests
+// TODO : implement
 func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("GetCoordinator not implemented")
 }

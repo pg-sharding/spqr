@@ -62,6 +62,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	return route
 }
 
+// TODO : unit tests
 func (r *Route) SetParams(ps shard.ParameterSet) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -69,6 +70,7 @@ func (r *Route) SetParams(ps shard.ParameterSet) {
 	r.params = ps
 }
 
+// TODO : unit tests
 func (r *Route) Params() (shard.ParameterSet, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

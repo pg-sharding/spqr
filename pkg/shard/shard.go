@@ -17,6 +17,7 @@ type ParameterStatus struct {
 
 type ParameterSet map[string]string
 
+// TODO : unit tests
 func (ps ParameterSet) Save(status ParameterStatus) bool {
 	if _, ok := ps[status.Name]; ok {
 		return false

@@ -37,6 +37,7 @@ type PoolImpl struct {
 
 var _ Pool = &PoolImpl{}
 
+// TODO : unit tests
 func (c *PoolImpl) Put(client Client) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -46,6 +47,7 @@ func (c *PoolImpl) Put(client Client) error {
 	return nil
 }
 
+// TODO : unit tests
 func (c *PoolImpl) Pop(id uint) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -60,8 +62,8 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 	return ok, err
 }
 
+// TODO : unit tests
 func (c *PoolImpl) Shutdown() error {
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -75,6 +77,8 @@ func (c *PoolImpl) Shutdown() error {
 
 	return nil
 }
+
+// TODO : unit tests
 func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 	c.mu.Lock()

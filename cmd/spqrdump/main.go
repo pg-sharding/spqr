@@ -36,6 +36,7 @@ var endpoint string
 var proto string
 var passwd string
 
+// TODO : unit tests
 func DumpRules() error {
 	cc, err := Dial(endpoint)
 	if err != nil {
@@ -56,6 +57,7 @@ func DumpRules() error {
 	return nil
 }
 
+// TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
 	for {
 		if msg, err := fr.Receive(); err != nil {
@@ -76,6 +78,7 @@ func waitRFQ(fr *pgproto3.Frontend) error {
 	}
 }
 
+// TODO : unit tests
 func getconn() (*pgproto3.Frontend, error) {
 
 	cc, err := net.Dial("tcp", endpoint)
@@ -129,6 +132,7 @@ func getconn() (*pgproto3.Frontend, error) {
 	return frontend, nil
 }
 
+// TODO : unit tests
 func DumpRulesPSQL() error {
 
 	frontend, err := getconn()
@@ -171,6 +175,7 @@ func DumpRulesPSQL() error {
 	}
 }
 
+// TODO : unit tests
 func DumpKeyRangesPSQL() error {
 
 	frontend, err := getconn()
@@ -218,6 +223,7 @@ func DumpKeyRangesPSQL() error {
 	}
 }
 
+// TODO : unit tests
 func DumpKeyRanges() error {
 	cc, err := Dial(endpoint)
 	if err != nil {

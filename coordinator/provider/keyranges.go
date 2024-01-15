@@ -18,6 +18,7 @@ type CoordinatorService struct {
 	impl coordinator.Coordinator
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
 		LowerBound: []byte(request.KeyRangeInfo.KeyRange.LowerBound),
@@ -33,6 +34,7 @@ func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		_, err := c.impl.LockKeyRange(ctx, id)
@@ -43,6 +45,7 @@ func (c *CoordinatorService) LockKeyRange(ctx context.Context, request *protos.L
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		if err := c.impl.UnlockKeyRange(ctx, id); err != nil {
@@ -52,6 +55,7 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange, dataspace string) (string, error) {
 	krsqb, err := c.impl.ListKeyRanges(ctx, dataspace)
 	if err != nil {
@@ -69,6 +73,7 @@ func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *p
 	return "", fmt.Errorf("key range not found")
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	splitKR := &kr.SplitKeyRange{
 		Bound:    request.Bound,
@@ -83,6 +88,7 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
 	krsqb, err := c.impl.ListAllKeyRanges(ctx)
@@ -101,6 +107,7 @@ func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.L
 	}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
 		Krid:    request.KeyRange.Krid,
@@ -112,6 +119,7 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	krsqb, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {

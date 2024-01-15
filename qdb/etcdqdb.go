@@ -96,6 +96,7 @@ func keyRangeMovesNodePath(key string) string {
 //                               SHARDING RULES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
 	spqrlog.Zero.Debug().
 		Str("id", rule.ID).
@@ -121,6 +122,7 @@ func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error
 	return err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -138,6 +140,7 @@ func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: drop all sharding rules")
 
@@ -153,6 +156,7 @@ func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, err
 	return nil, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -182,6 +186,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().
 		Str("dataspace", dataspace).
@@ -218,6 +223,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 	return rules, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
 
@@ -253,6 +259,7 @@ func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, er
 //                                 KEY RANGES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
@@ -280,6 +287,7 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	return err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange, error) {
 	// caller ensures key is locked
 	raw, err := q.cli.Get(ctx, nodePath)
@@ -300,6 +308,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 	}
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -313,6 +322,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	return ret, err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
@@ -338,6 +348,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 	return err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("etcdqdb: drop all key ranges")
 
@@ -353,6 +364,7 @@ func (q *EtcdQDB) DropKeyRangeAll(ctx context.Context) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -366,12 +378,13 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 
 	return err
 }
-
+// TODO : unit tests
+// TODO : implement
 func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
-	/* TODO: support */
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("dataspace", dataspace).
@@ -407,6 +420,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 	return keyRanges, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list all key ranges")
 
@@ -437,6 +451,7 @@ func (q *EtcdQDB) ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -501,6 +516,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 	}
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -552,6 +568,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 	}
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -572,6 +589,7 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 	}
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ShareKeyRange(id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -583,6 +601,7 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 //                           Transfer transactions
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	bts, err := json.Marshal(info)
 	if err != nil {
@@ -599,6 +618,7 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
 	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
@@ -623,6 +643,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 	return &st, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	_, err := q.cli.Delete(ctx, key)
 	if err != nil {
@@ -636,6 +657,7 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 //	                           COORDINATOR LOCK
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Str("address", config.CoordinatorConfig().HttpAddr).
@@ -687,10 +709,13 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	return nil
 }
 
+// TODO : unit tests
+// TODO : implement
 func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
 	return fmt.Errorf("UpdateCoordinator not implemented")
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get coordinator addr")
@@ -714,6 +739,7 @@ func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 //                                  ROUTERS
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	spqrlog.Zero.Debug().
 		Str("id", r.ID).
@@ -755,6 +781,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -775,6 +802,7 @@ func (q *EtcdQDB) DeleteRouter(ctx context.Context, id string) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -827,6 +855,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -877,6 +906,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list routers")
 	resp, err := q.cli.Get(ctx, routersNamespace, clientv3.WithPrefix())
@@ -912,6 +942,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 //                                  SHARDS
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().
 		Str("id", shard.ID).
@@ -934,6 +965,7 @@ func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list shards")
 
@@ -958,6 +990,7 @@ func (q *EtcdQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	return shards, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -985,6 +1018,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 //                                  DATASPACES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
 	spqrlog.Zero.Debug().
 		Str("id", dataspace.ID).
@@ -1002,6 +1036,7 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list dataspaces")
 
@@ -1033,6 +1068,7 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	return rules, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
@@ -1047,6 +1083,7 @@ func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 	return err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
 	spqrlog.Zero.Debug().
 		Str("table", table).
@@ -1062,6 +1099,7 @@ func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string
 	return err
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
 	spqrlog.Zero.Debug().
 		Str("table", table).
@@ -1087,6 +1125,7 @@ func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, e
 //                              KEY RANGE MOVES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list move key range operations")
 
@@ -1115,6 +1154,7 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 	return moves, nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
 	spqrlog.Zero.Debug().
 		Str("id", m.MoveId).
@@ -1137,6 +1177,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 	return nil
 }
 
+// TODO : unit tests
 func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).

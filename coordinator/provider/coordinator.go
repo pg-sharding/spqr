@@ -43,6 +43,7 @@ type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
 
+// TODO : unit tests
 func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()
 	rtrs, err := ci.qdbCoordinator.db.ListRouters(ctx)
@@ -70,6 +71,7 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 	return nil
 }
 
+// TODO : unit tests
 func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
@@ -92,18 +94,25 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 	})
 }
 
+// TODO : implement
+// TODO : unit tests
 func (ci grpcConnectionIterator) Put(client client.Client) error {
 	return fmt.Errorf("grpcConnectionIterator put not implemented")
 }
 
+// TODO : implement
+// TODO : unit tests
 func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
 	return true, fmt.Errorf("grpcConnectionIterator pop not implemented")
 }
 
+// TODO : implement
+// TODO : unit tests
 func (ci grpcConnectionIterator) Shutdown() error {
 	return fmt.Errorf("grpcConnectionIterator shutdown not implemented")
 }
 
+// TODO : unit tests
 func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
@@ -126,6 +135,7 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 	})
 }
 
+// TODO : unit tests
 func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
@@ -189,6 +199,7 @@ var _ coordinator.Coordinator = &qdbCoordinator{}
 
 // watchRouters traverse routers one check if they are opened
 // for clients. If not, initialize metadata and open router
+// TODO : unit tests
 func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	for {
 		spqrlog.Zero.Debug().Msg("start routers watch iteration")
@@ -264,6 +275,7 @@ func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
 	}
 }
 
+// TODO : unit tests
 func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) bool {
 	registerRouter := func() bool {
 		if !initialRouter {
@@ -304,6 +316,7 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 	return registerRouter()
 }
 
+// TODO : unit tests
 // RunCoordinator side effect: it runs an asynchronous goroutine
 // that checks the availability of the SPQR router
 func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
@@ -347,6 +360,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 	go cc.watchRouters(context.TODO())
 }
 
+// TODO : unit tests
 // traverseRouters traverse each route and run callback for each of them
 // cb receives grpc connection to router`s admin console
 func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.ClientConn) error) error {
@@ -385,6 +399,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	return nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	resp, err := qc.db.ListRouters(ctx)
 	if err != nil {
@@ -403,10 +418,12 @@ func (qc *qdbCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, 
 	return retRouters, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router) error {
 	return qc.db.AddRouter(ctx, topology.RouterToDB(router))
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
@@ -421,6 +438,7 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 	return shRules, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
 	if err != nil {
@@ -437,6 +455,7 @@ func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace strin
 	return shRules, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListAllShardingRules(ctx)
 	if err != nil {
@@ -451,6 +470,7 @@ func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.S
 	return shRules, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	// Store sharding rule to metadb.
 	if err := ops.AddShardingRuleWithChecks(ctx, qc.db, rule); err != nil {
@@ -473,6 +493,7 @@ func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	})
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
 
@@ -521,6 +542,7 @@ func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.Sh
 	return ret, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
@@ -552,6 +574,7 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	})
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListKeyRanges(ctx, dataspace)
 	if err != nil {
@@ -565,6 +588,8 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) (
 
 	return keyr, nil
 }
+
+// TODO : unit tests
 func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {
@@ -579,10 +604,12 @@ func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange,
 	return keyr, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) MoveKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	return ops.ModifyKeyRangeWithChecks(ctx, qc.db, keyRange)
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qc.db.LockKeyRange(ctx, keyRangeID)
 	if err != nil {
@@ -607,6 +634,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 	})
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string) error {
 	if err := qc.db.UnlockKeyRange(ctx, keyRangeID); err != nil {
 		return err
@@ -627,6 +655,7 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 	})
 }
 
+// TODO : unit tests
 // Split TODO: check bounds and keyRangeID (sourceID)
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
@@ -701,6 +730,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	return nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all key ranges")
@@ -719,6 +749,7 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	return qc.db.DropKeyRangeAll(ctx)
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
@@ -740,6 +771,7 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	return qc.db.DropKeyRange(ctx, id)
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) DropShardingRule(ctx context.Context, id string) error {
 	// TODO: exclusive lock all routers
 	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
@@ -762,6 +794,7 @@ func (qc *qdbCoordinator) DropShardingRule(ctx context.Context, id string) error
 	return qc.db.DropShardingRule(ctx, id)
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft)
 	if err != nil {
@@ -823,6 +856,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	return nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKeyRange) (string, error) {
 	ls, err := qc.db.ListKeyRangeMoves(ctx)
 	if err != nil {
@@ -845,6 +879,7 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	return m.MoveId, nil
 }
 
+// TODO : unit tests
 // Move key range from one logical shard to another
 // This function reshards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
@@ -932,6 +967,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
@@ -1007,6 +1043,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	return nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	// TODO: list routers and deduplicate
 	spqrlog.Zero.Debug().
@@ -1029,6 +1066,7 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) error {
 	spqrlog.Zero.Debug().
 		Str("router", rID).
@@ -1036,6 +1074,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType, "")
 
@@ -1070,6 +1109,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 	return cl, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
 	cl, err := qc.PrepareClient(nconn)
 	if err != nil {
@@ -1122,6 +1162,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 	}
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
 	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.Hosts))
 }
@@ -1130,6 +1171,7 @@ func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataSha
 	panic("implement me")
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	shardList, err := qc.db.ListShards(ctx)
 	if err != nil {
@@ -1150,6 +1192,7 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 	return shards, nil
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		c := proto.NewTopologyServiceClient(cc)
@@ -1161,6 +1204,7 @@ func (qc *qdbCoordinator) UpdateCoordinator(ctx context.Context, address string)
 	})
 }
 
+// TODO : unit tests
 func (qc *qdbCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 	addr, err := qc.db.GetCoordinator(ctx)
 

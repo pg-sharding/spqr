@@ -24,6 +24,7 @@ type InstancePoolImpl struct {
 
 var _ DBPool = &InstancePoolImpl{}
 
+// TODO : unit tests
 func (s *InstancePoolImpl) traverseHostsMatchCB(
 	clid uint,
 	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
@@ -50,6 +51,7 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 	return nil
 }
 
+// TODO : unit tests
 func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
@@ -73,6 +75,7 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
 }
 
+// TODO : unit tests
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
@@ -98,6 +101,7 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
 }
 
+// TODO : unit tests
 func (s *InstancePoolImpl) Connection(
 	clid uint,
 	key kr.ShardKey,
@@ -165,6 +169,7 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return s.pool.ForEach(cb)
 }
 
+// TODO : unit tests
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
 		spqrlog.Zero.Error().

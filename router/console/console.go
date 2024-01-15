@@ -62,6 +62,7 @@ type TopoCntl interface {
 	datashards.ShardsMgr
 }
 
+// TODO : unit tests
 func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
@@ -77,6 +78,7 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 	return l.proxyProc(ctx, tstmt, cli)
 }
 
+// TODO : unit tests
 func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
 	var mgr meta.EntityMgr = l.Coord
 
@@ -128,6 +130,7 @@ const greeting = `
 https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
+// TODO : unit tests
 func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 	msgs := []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},

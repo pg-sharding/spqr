@@ -48,6 +48,7 @@ func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 	return qr.mgr
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
 	rc, _ := qr.mgr.ListShards(context.TODO())
 	rv := make([]*routingstate.DataShardRoute, 0, len(rc))
@@ -60,6 +61,7 @@ func (qr *ProxyQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
 	return rv
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()

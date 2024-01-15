@@ -103,6 +103,7 @@ func (s *shardPool) QueueResidualSize() int {
 	return len(s.queue)
 }
 
+// TODO : unit tests
 func (h *shardPool) Connection(
 	clid uint,
 	shardKey kr.ShardKey) (shard.Shard, error) {
@@ -162,6 +163,7 @@ func (h *shardPool) Connection(
 	return sh, nil
 }
 
+// TODO : unit tests
 func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -182,6 +184,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 	return err
 }
 
+// TODO : unit tests
 func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -204,6 +207,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	return nil
 }
 
+// TODO : unit tests
 func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -222,6 +226,7 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return nil
 }
 
+// TODO : unit tests
 func (h *shardPool) List() []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -249,6 +254,7 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	}
 }
 
+// TODO : unit tests
 func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
@@ -257,6 +263,8 @@ func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 
 	return nil
 }
+
+// TODO : unit tests
 func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = cb(value.(Pool))
@@ -266,6 +274,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	return nil
 }
 
+// TODO : unit tests
 func (c *cPool) List() []shard.Shard {
 	var ret []shard.Shard
 
@@ -276,6 +285,7 @@ func (c *cPool) List() []shard.Shard {
 	return ret
 }
 
+// TODO : unit tests
 func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
@@ -287,11 +297,13 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 	return pool.Connection(clid, shardKey)
 }
 
+// TODO : unit tests
 func (c *cPool) Cut(host string) []shard.Shard {
 	rt, _ := c.pools.LoadAndDelete(host)
 	return rt.([]shard.Shard)
 }
 
+// TODO : unit tests
 func (c *cPool) Put(host shard.Shard) error {
 	if val, ok := c.pools.Load(host.Instance().Hostname()); ok {
 		return val.(Pool).Put(host)
@@ -301,6 +313,7 @@ func (c *cPool) Put(host shard.Shard) error {
 	}
 }
 
+// TODO : unit tests
 func (c *cPool) Discard(sh shard.Shard) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Discard(sh)
@@ -310,6 +323,7 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	}
 }
 
+// TODO : unit tests
 func (c *cPool) InitRule(rule *config.BackendRule) error {
 	c.beRule = rule
 	return nil

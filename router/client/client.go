@@ -166,6 +166,7 @@ func (cl *PsqlClient) SetDefaultRouteBehaviour(b string) {
 	cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR] = b
 }
 
+// TODO : implement, unit tests
 // ReceiveCtx implements RouterClient.
 func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error) {
 	panic("unimplemented")
