@@ -11,7 +11,9 @@ import (
 
 const MemQDBPath = ""
 
-var mockDataspace = &qdb.Dataspace{"123"}
+var mockDataspace = &qdb.Dataspace{
+	ID: "123",
+}
 var mockShard = &qdb.Shard{
 	ID:    "shard_id",
 	Hosts: []string{"host1", "host2"},

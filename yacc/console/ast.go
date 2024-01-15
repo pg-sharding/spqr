@@ -71,7 +71,8 @@ type DropStmt interface {
 }
 
 type DataspaceDefinition struct {
-	ID string
+	ID       string
+	ColTypes []string
 }
 
 type ShardingRuleDefinition struct {

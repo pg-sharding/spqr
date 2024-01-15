@@ -81,6 +81,14 @@ func NewShard(ID string, hosts []string) *Shard {
 	}
 }
 
+type ShardinColumnType string
+
+var (
+	ColumnTypeVarchar = ShardinColumnType("varchar")
+	ColumnTypeInteger = ShardinColumnType("integer")
+)
+
 type Dataspace struct {
-	ID string `json:"id"`
+	ID       string              `json:"id"`
+	ColTypes []ShardinColumnType `json:"col_types,omitempty"`
 }

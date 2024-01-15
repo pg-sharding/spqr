@@ -51,4 +51,8 @@ var reservedWords = map[string]int{
 	"identity":   IDENTITY,
 	"ident":      IDENTITY,
 	"attach":     ATTACH,
+	"types":      TYPES,
+	"varchar":    VARCHAR,
+	"int":        INT,
+	"integer":    INTEGER,
 }

@@ -99,6 +99,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
             sconst => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = SCONST; fbreak;};
 
             '=' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TEQ; fbreak;};
+            ',' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TCOMMA; fbreak;};
 
             operator => {
                 lval.str = string(lex.data[lex.ts:lex.te]); tok = int(OP);    
