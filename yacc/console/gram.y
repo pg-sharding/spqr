@@ -418,9 +418,6 @@ add_stmt:
 	ADD shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	} | CREATE dataspace_define_stmt
-	{
-		$$ = &Create{Element: $2}
 	}
 
 trace_stmt:

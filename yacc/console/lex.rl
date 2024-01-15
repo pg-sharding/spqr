@@ -53,7 +53,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
         op_chars	=	( '~' | '!' | '@' | '#' | '^' | '&' | '|' | '`' | '?' | '+' | '*' | '\\' | '%' | '<' | '>' | '=' ) ;
 
         sconst = '\'' (any-'\'')* '\'';
-        identifier	=	(print - space - op_chars-'\'' - ';')*;
+        identifier	=	(print - space - op_chars-'\'' - ';' - ',')*;
 
         qidentifier	=	'"' identifier '"';
 

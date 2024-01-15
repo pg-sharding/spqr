@@ -85,6 +85,20 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.DATASPACE,
+				spqrparser.IDENT,
+				spqrparser.SHARDING,
+				spqrparser.COLUMN,
+				spqrparser.TYPES,
+				spqrparser.VARCHAR,
+				spqrparser.TCOMMA,
+				spqrparser.VARCHAR,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

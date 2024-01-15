@@ -368,6 +368,19 @@ func TestDataspace(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DataspaceDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"varchar",
+						"varchar",
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
