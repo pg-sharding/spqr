@@ -52,6 +52,7 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 	}, nil
 }
 
+// TODO : unit tests
 func RestoreQDB(backupPath string) (*MemQDB, error) {
 	qdb, err := NewMemQDB(backupPath)
 	if err != nil {
@@ -87,6 +88,7 @@ func RestoreQDB(backupPath string) (*MemQDB, error) {
 	return qdb, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) DumpState() error {
 	if q.backupPath == "" {
 		return nil
@@ -123,6 +125,7 @@ func (q *MemQDB) DumpState() error {
 //                               SHARDING RULES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
 	spqrlog.Zero.Debug().Interface("rule", rule).Msg("memqdb: add sharding rule")
 	q.mu.Lock()
@@ -131,6 +134,7 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shrules, rule.ID, rule))
 }
 
+// TODO : unit tests
 func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: drop sharding rule")
 	q.mu.Lock()
@@ -139,6 +143,7 @@ func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Shrules, id))
 }
 
+// TODO : unit tests
 func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: drop sharding rule all")
 	q.mu.Lock()
@@ -160,6 +165,7 @@ func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, erro
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
 	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
 	q.mu.RLock()
@@ -171,6 +177,7 @@ func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule,
 	return nil, fmt.Errorf("rule with id %s not found", id)
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().
 		Str("dataspace", dataspace).
@@ -191,6 +198,7 @@ func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*Sh
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list all sharding rules")
 	q.mu.RLock()
@@ -207,6 +215,7 @@ func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, err
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
 	spqrlog.Zero.Debug().Msg("memqdb: match sharding rules")
 	q.mu.RLock()
@@ -218,6 +227,7 @@ func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[stri
 //                                 KEY RANGES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 	q.mu.Lock()
@@ -228,6 +238,7 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
 }
 
+// TODO : unit tests
 func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
 	q.mu.RLock()
@@ -241,6 +252,7 @@ func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) 
 	return krs, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
 	q.mu.Lock()
@@ -249,6 +261,7 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange))
 }
 
+// TODO : unit tests
 func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
@@ -283,6 +296,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.Locks, id))
 }
 
+// TODO : unit tests
 func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: drop all key ranges")
 	q.mu.RLock()
@@ -331,6 +345,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 	return ExecuteCommands(q.DumpState, NewDropCommand(q.Krs), NewDropCommand(q.Locks))
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("dataspace", dataspace).
@@ -352,6 +367,8 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange
 
 	return ret, nil
 }
+
+// TODO : unit tests
 func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list all key ranges")
 	q.mu.RLock()
@@ -370,6 +387,7 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error {
 	q.muDeletedKrs.RLock()
 
@@ -391,6 +409,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 	return nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: lock key range")
 	q.mu.RLock()
@@ -421,6 +440,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	return krs, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: unlock key range")
 	q.mu.RLock()
@@ -445,6 +465,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 		}))
 }
 
+// TODO : unit tests
 func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: check locked key range")
 	q.mu.RLock()
@@ -462,6 +483,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	return krs, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) ShareKeyRange(id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: sharing key with key")
 
@@ -486,12 +508,14 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 //                           Transfer transactions
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
+// TODO : unit tests
 func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -503,6 +527,7 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 	return ans, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -517,6 +542,7 @@ func (q *MemQDB) TryCoordinatorLock(ctx context.Context) error {
 	return nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) UpdateCoordinator(ctx context.Context, address string) error {
 	spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
 
@@ -535,6 +561,7 @@ func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
 //                                  ROUTERS
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
 	spqrlog.Zero.Debug().Interface("router", r).Msg("memqdb: add router")
 	q.mu.Lock()
@@ -543,6 +570,7 @@ func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, r.ID, r))
 }
 
+// TODO : unit tests
 func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("router", id).Msg("memqdb: delete router")
 	q.mu.Lock()
@@ -551,6 +579,7 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Routers, id))
 }
 
+// TODO : unit tests
 func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
@@ -563,6 +592,7 @@ func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
 }
 
+// TODO : unit tests
 func (q *MemQDB) CloseRouter(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
@@ -575,6 +605,7 @@ func (q *MemQDB) CloseRouter(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Routers, id, q.Routers[id]))
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list routers")
 	q.mu.RLock()
@@ -597,6 +628,7 @@ func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 //                                  SHARDS
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().Interface("shard", shard).Msg("memqdb: add shard")
 	q.mu.Lock()
@@ -605,6 +637,7 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shards, shard.ID, shard))
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list shards")
 	q.mu.RLock()
@@ -623,6 +656,7 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: get shard")
 	q.mu.RLock()
@@ -639,6 +673,7 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 //                                 DATASPACES
 // ==============================================================================
 
+// TODO : unit tests
 func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
 	spqrlog.Zero.Debug().Interface("dataspace", dataspace).Msg("memqdb: add dataspace")
 	q.mu.Lock()
@@ -647,6 +682,7 @@ func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Dataspaces, dataspace.ID, dataspace))
 }
 
+// TODO : unit tests
 func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list dataspaces")
 	q.mu.RLock()
@@ -664,6 +700,7 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 	return ret, nil
 }
 
+// TODO : unit tests
 func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: delete dataspace")
 	q.mu.Lock()
@@ -672,6 +709,7 @@ func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Dataspaces, id))
 }
 
+// TODO : unit tests
 func (q *MemQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
 	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: attach table to dataspace")
 	q.mu.Lock()
@@ -680,6 +718,7 @@ func (q *MemQDB) AttachToDataspace(ctx context.Context, table string, id string)
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TableDataspace, table, id))
 }
 
+// TODO : unit tests
 func (q *MemQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get dataspace for table")
 	q.mu.RLock()

@@ -15,6 +15,7 @@ func NewLocalQlog() *LocalQlog {
 	return &LocalQlog{}
 }
 
+// TODO : unit tests
 func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
 
 	// TODO: use
@@ -35,6 +36,7 @@ func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) erro
 	return nil
 }
 
+// TODO : unit tests
 func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return []string{}, err

@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 )
 
+// TODO : unit tests
 func ReplayLogs(host string, port string, user string, db string, file string) error {
 	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
 	if err != nil {
@@ -46,6 +47,7 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	}
 }
 
+// TODO : unit tests
 func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) {
 	ctx := context.Background()
 
@@ -103,6 +105,7 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 	}
 }
 
+// TODO : unit tests
 func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	// 15 byte - timestamp
 	// 4 bytes - session number
@@ -181,6 +184,7 @@ func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	return tm, nil
 }
 
+// TODO : unit tests
 func recieveBackend(frontend *pgproto3.Frontend) error {
 	for {
 		retmsg, err := frontend.Receive()

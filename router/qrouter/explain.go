@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 )
 
+// TODO : unit tests
 func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *clientinteractor.PSQLInteractor) error {
 	meta := NewRoutingMetadataContext(nil, nil, cli.GetDataspace(), nil)
 
@@ -71,6 +72,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 	return ReportStmtDeparsedAttrs(ctx, cli, meta)
 }
 
+// TODO : unit tests
 func ReportStmtDeparsedAttrs(ctx context.Context, pi *clientinteractor.PSQLInteractor, meta *RoutingMetadataContext) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

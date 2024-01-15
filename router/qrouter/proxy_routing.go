@@ -70,6 +70,7 @@ type RoutingMetadataContext struct {
 	// TODO: include client ops and metadata here
 }
 
+// TODO : unit tests
 func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
 	for i := range m.rls {
 		for _, c := range m.rls[i].Entries() {
@@ -98,6 +99,7 @@ func NewRoutingMetadataContext(
 	}
 }
 
+// TODO : unit tests
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr *lyx.AExprConst) {
 	meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
@@ -107,6 +109,7 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN
 	meta.exprs[resolvedRelation][colname] = expr.Value
 }
 
+// TODO : unit tests
 func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (RelationFQN, error) {
 	if resolvedRelation, ok := meta.tableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree
@@ -135,7 +138,6 @@ var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
 // returns alias and column name
-
 func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingMetadataContext) (string, string, error) {
 	switch q := expr.(type) {
 	case *lyx.ColumnRef:
@@ -145,6 +147,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingM
 	}
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key string, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
 	spqrlog.Zero.Debug().
 		Str("key", key).
@@ -174,6 +177,7 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 	return nil, FailedToFindKeyRange
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
@@ -200,7 +204,8 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 	}
 }
 
-/* deparse sharding column-value pair from query Where clause */
+// TODO : unit tests
+// deparse sharding column-value pair from query Where clause
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) error {
 
 	queue := make([]lyx.Node, 0)
@@ -283,6 +288,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 	return nil
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.Node, meta *RoutingMetadataContext) error {
 	switch s := selectStmt.(type) {
 	case *lyx.Select:
@@ -314,7 +320,8 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 	return ComplexQuery
 }
 
-/* deparses from clause */
+// TODO : unit tests
+// deparses from clause
 func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -345,6 +352,7 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 	return nil
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) deparseFromClauseList(
 	clause []lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	for _, node := range clause {
@@ -376,6 +384,7 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
+// TODO : unit tests
 func (qr *ProxyQrouter) getRelations(qstmt lyx.Node) (StatementRelation, error) {
 	switch stmt := qstmt.(type) {
 
@@ -473,7 +482,8 @@ func (qr *ProxyQrouter) getRelations(qstmt lyx.Node) (StatementRelation, error) 
 	return nil, nil
 }
 
-/* get all relations out of FROM clause */
+// TODO : unit tests
+// get all relations out of FROM clause
 func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationList, error) {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
@@ -500,6 +510,7 @@ func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationL
 	return nil, nil
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) deparseShardingMapping(
 	ctx context.Context,
 	qstmt lyx.Node,
@@ -588,8 +599,8 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 var ParseError = fmt.Errorf("parsing stmt error")
 var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
+// TODO : unit tests
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
-
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable, meta *RoutingMetadataContext) error {
 
 	var entries []string
@@ -951,6 +962,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	return route, nil
 }
 
+// TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	route, err := qr.routeWithRules(ctx, stmt, sph)
 	if err != nil {
@@ -973,6 +985,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	return routingstate.SkipRoutingState{}, nil
 }
 
+// TODO : unit tests
 func MatchShardingRule(ctx context.Context, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
 	/*
 	* Create set to search column names in `shardingEntries`

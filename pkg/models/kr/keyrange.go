@@ -21,6 +21,7 @@ type KeyRange struct {
 	Dataspace  string
 }
 
+// TODO : unit tests
 func CmpRangesLess(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) < string(other)
@@ -29,6 +30,7 @@ func CmpRangesLess(kr []byte, other []byte) bool {
 	return len(kr) < len(other)
 }
 
+// TODO : unit tests
 func CmpRangesLessEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) <= string(other)
@@ -37,6 +39,7 @@ func CmpRangesLessEqual(kr []byte, other []byte) bool {
 	return len(kr) < len(other)
 }
 
+// TODO : unit tests
 func CmpRangesEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) == string(other)
@@ -45,6 +48,7 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 	return false
 }
 
+// TODO : unit tests
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: kr.LowerBound,
@@ -55,6 +59,7 @@ func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	}
 }
 
+// TODO : unit tests
 func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	if kr == nil {
 		return nil
@@ -68,8 +73,8 @@ func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	}
 }
 
+// TODO : unit tests
 func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
-
 	if kr == nil {
 		return nil
 	}
@@ -82,6 +87,7 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 	}
 }
 
+// TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		LowerBound:  kr.LowerBound,
@@ -92,6 +98,7 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	}
 }
 
+// TODO : unit tests
 func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 	return &proto.KeyRangeInfo{
 		KeyRange: &proto.KeyRange{

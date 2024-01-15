@@ -40,12 +40,14 @@ func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 	}
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return r.NotifyRoutes(func(route *route.Route) error {
 		return route.ServPool().ForEach(cb)
 	})
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -62,6 +64,7 @@ func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
 	return nil
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -72,6 +75,7 @@ func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
 	return ret
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) Shutdown() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -87,6 +91,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	return nil
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	beRule *config.BackendRule,
 	frRule *config.FrontendRule) (*route.Route, error) {
@@ -112,6 +117,7 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	return nroute, nil
 }
 
+// TODO : unit tests
 func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

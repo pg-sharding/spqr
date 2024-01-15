@@ -30,10 +30,12 @@ func NewShardServer(spool pool.DBPool) *ShardServer {
 	}
 }
 
+// TODO : unit tests
 func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
 	return srv.shard.HasPrepareStatement(hash)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Name() string {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -43,10 +45,12 @@ func (srv *ShardServer) Name() string {
 	return srv.shard.Name()
 }
 
+// TODO : unit tests
 func (srv *ShardServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
 	srv.shard.PrepareStatement(hash, rd)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Sync() int64 {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -56,6 +60,7 @@ func (srv *ShardServer) Sync() int64 {
 	return srv.shard.Sync()
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Reset() error {
 	// todo there are no shard writes, so use rLock
 	srv.mu.RLock()
@@ -66,6 +71,7 @@ func (srv *ShardServer) Reset() error {
 	return nil
 }
 
+// TODO : unit tests
 func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRule) error {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -98,6 +104,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 	return nil
 }
 
+// TODO : unit tests
 func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) error {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -114,6 +121,7 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) e
 	return nil
 }
 
+// TODO : unit tests
 func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -123,6 +131,7 @@ func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
 	return srv.shard.AddTLSConf(cfg)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -136,6 +145,7 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	return srv.shard.Send(query)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -149,12 +159,14 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	return msg, err
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
 	return srv.cleanupLockFree(rule)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) cleanupLockFree(rule *config.FrontendRule) error {
 	if srv.shard == nil {
 		return ErrShardUnavailable
@@ -162,6 +174,7 @@ func (srv *ShardServer) cleanupLockFree(rule *config.FrontendRule) error {
 	return srv.shard.Cleanup(rule)
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Cancel() error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -171,6 +184,7 @@ func (srv *ShardServer) Cancel() error {
 	return srv.shard.Cancel()
 }
 
+// TODO : unit tests
 func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -179,6 +193,7 @@ func (srv *ShardServer) SetTxStatus(tx txstatus.TXStatus) {
 	}
 }
 
+// TODO : unit tests
 func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -188,6 +203,7 @@ func (srv *ShardServer) TxStatus() txstatus.TXStatus {
 	return srv.shard.TxStatus()
 }
 
+// TODO : unit tests
 func (srv *ShardServer) Datashards() []shard.Shard {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()

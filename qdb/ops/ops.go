@@ -8,7 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-
+// TODO : unit tests
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
 		return fmt.Errorf("sharding rule %v already present in qdb", rule.Id)
@@ -47,6 +47,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	return qdb.AddShardingRule(ctx, shrule.ShardingRuleToDB(rule))
 }
 
+// TODO : unit tests
 func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	if _, err := qdb.GetShard(ctx, keyRange.ShardID); err != nil {
 		return err
@@ -85,6 +86,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	return qdb.AddKeyRange(ctx, keyRange.ToDB())
 }
 
+// TODO : unit tests
 func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRange) error {
 	_, err := qdb.CheckLockedKeyRange(ctx, keyRange.ID)
 	if err != nil {
@@ -113,6 +115,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
 }
 
+// TODO : unit tests
 // This method checks if two key ranges intersect
 func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
 	// l0     r0      l1      r1

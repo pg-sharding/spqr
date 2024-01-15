@@ -56,12 +56,14 @@ func (l *LocalQrouter) Initialized() bool {
 	return true
 }
 
+// TODO : unit tests
 func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard) error {
 	spqrlog.Zero.Debug().Str("shard", ds.ID).Msg("adding data shard")
 	l.ds = ds
 	return nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	return routingstate.ShardMatchState{
 		Route: &routingstate.DataShardRoute{

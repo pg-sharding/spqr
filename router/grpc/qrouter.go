@@ -30,11 +30,13 @@ type LocalQrouterServer struct {
 	rr  rulerouter.RuleRouter
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
 	l.qr.Initialize()
 	return &protos.OpenRouterReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *protos.GetRouterStatusRequest) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
 		return &protos.GetRouterStatusReply{
@@ -46,11 +48,13 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *proto
 	}, nil
 }
 
+// TODO : implement, unit tests
 func (l *LocalQrouterServer) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		err := l.mgr.DropKeyRange(ctx, id)
@@ -61,6 +65,7 @@ func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.D
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
 	if err := l.mgr.DropKeyRangeAll(ctx); err != nil {
 		return nil, err
@@ -68,6 +73,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.Dro
 	return &protos.DropAllKeyRangesResponse{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.KeyRange.Krid, ShardId: request.ToShardId})
 	if err != nil {
@@ -77,6 +83,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
 		err := l.mgr.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
@@ -89,6 +96,7 @@ func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *prot
 	return &protos.AddShardingRuleReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	rules, err := l.mgr.ListShardingRules(ctx, request.Dataspace)
 	if err != nil {
@@ -106,6 +114,7 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 	}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
 	spqrlog.Zero.Debug().
 		Strs("rules", request.Id).
@@ -119,6 +128,7 @@ func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *pro
 	return &protos.DropShardingRuleReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
@@ -128,6 +138,7 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
@@ -147,6 +158,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 	}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		if _, err := l.mgr.LockKeyRange(ctx, id); err != nil {
@@ -156,6 +168,7 @@ func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.L
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos.UnlockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		if err := l.mgr.UnlockKeyRange(ctx, id); err != nil {
@@ -165,6 +178,7 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		Krid:     request.KeyRangeInfo.Krid,
@@ -177,6 +191,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
@@ -223,6 +238,7 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO : unit tests
 func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{
 		ClientId: uint64(cl.ID()),
@@ -240,6 +256,7 @@ func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	return clientInfo
 }
 
+// TODO : unit tests
 func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	shardInfo := &protos.BackendConnectionsInfo{
 		BackendConnectionId: uint64(sh.ID()),
@@ -254,6 +271,7 @@ func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 	return shardInfo
 }
 
+// TODO : unit tests
 func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 	poolInfo := &protos.PoolInfo{
 		Id:            fmt.Sprintf("%p", p),
@@ -268,6 +286,7 @@ func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 	return poolInfo
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
@@ -278,6 +297,7 @@ func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsReq
 	return reply, err
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.ListBackendConnectionsRequest) (*protos.ListBackendConntionsReply, error) {
 	reply := &protos.ListBackendConntionsReply{}
 
@@ -288,6 +308,7 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.Lis
 	return reply, err
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest) (*protos.ListPoolsResponse, error) {
 	reply := &protos.ListPoolsResponse{}
 
@@ -298,6 +319,7 @@ func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest
 	return reply, err
 }
 
+// TODO : unit tests
 func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
 	reply := &protos.UpdateCoordinatorResponse{}
 	err := l.mgr.UpdateCoordinator(ctx, req.Address)

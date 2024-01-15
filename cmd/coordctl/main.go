@@ -14,6 +14,7 @@ import (
 )
 
 // TDB: move to util
+// TODO : unit tests
 func randomHex(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {

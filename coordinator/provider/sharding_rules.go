@@ -13,6 +13,7 @@ type ShardingRulesService struct {
 	impl coordinator.Coordinator
 }
 
+// TODO : unit tests
 func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	for _, rule := range request.Rules {
 		err := s.impl.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
@@ -24,6 +25,7 @@ func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *pr
 	return &protos.AddShardingRuleReply{}, nil
 }
 
+// TODO : unit tests
 func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	rules, err := s.impl.ListAllShardingRules(ctx)
 	if err != nil {

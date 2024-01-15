@@ -29,6 +29,7 @@ type RulesMgrImpl struct {
 	be MatchMgr[config.BackendRule]
 }
 
+// TODO : unit tests
 func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[route.Key]*config.BackendRule, dfr *config.FrontendRule, dbe *config.BackendRule) {
 	F.mu.Lock()
 	defer F.mu.Unlock()
@@ -73,10 +74,12 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 	F.be = be
 }
 
+// TODO : unit tests
 func (F *RulesMgrImpl) MatchKeyFrontend(key route.Key) (*config.FrontendRule, error) {
 	return F.fe.MatchKey(key, "frontend rules")
 }
 
+// TODO : unit tests
 func (F *RulesMgrImpl) MatchKeyBackend(key route.Key) (*config.BackendRule, error) {
 	return F.be.MatchKey(key, "backend rules")
 }
@@ -86,6 +89,7 @@ type MgrImpl[T any] struct {
 	defaultRuleAllocator func(key route.Key) *T
 }
 
+// TODO : unit tests
 func (m *MgrImpl[T]) MatchKey(key route.Key, underlyingEntityName string) (*T, error) {
 	matchRule, ok := m.rule[key]
 	if ok {

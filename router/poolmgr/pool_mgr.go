@@ -33,6 +33,7 @@ type PoolMgr interface {
 	ConnectionActive(rst ConnectionKeeper) bool
 }
 
+// TODO : unit tests
 func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
 	return client.ReplyErrMsg(errmsg.Error())
@@ -42,12 +43,14 @@ type TxConnManager struct {
 	ReplyNotice bool
 }
 
+// TODO : unit tests
 func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
 var unsyncConnection = fmt.Errorf("failed to unroute client from connection with active TX")
 
+// TODO : unit tests
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
@@ -87,6 +90,7 @@ func NewTxConnManager(rcfg *config.Router) *TxConnManager {
 	}
 }
 
+// TODO : unit tests
 func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	var shardNames []string
 	for _, shkey := range sh {
@@ -98,6 +102,7 @@ func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
 }
 
+// TODO : unit tests
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 	if t.ReplyNotice {
 		if err := replyShardMatches(client, sh); err != nil {
@@ -120,10 +125,12 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 	return nil
 }
 
+// TODO : unit tests
 func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
 
+// TODO : unit tests
 func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -137,6 +144,7 @@ func (t *TxConnManager) TXBeginCB(rst ConnectionKeeper) error {
 	return nil
 }
 
+// TODO : unit tests
 func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
 	ash := rst.ActiveShards()
 	spqrlog.Zero.Debug().
@@ -151,10 +159,12 @@ type SessConnManager struct {
 	ReplyNotice bool
 }
 
+// TODO : unit tests
 func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	return unRouteWithError(s, client, sh, errmsg)
 }
 
+// TODO : unit tests
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
@@ -180,6 +190,7 @@ func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
 	return nil
 }
 
+// TODO : unit tests
 func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
 	if s.ReplyNotice {
 		if err := replyShardMatches(client, sh); err != nil {
@@ -199,10 +210,12 @@ func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) 
 	return nil
 }
 
+// TODO : unit tests
 func (t *SessConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
 
+// TODO : unit tests
 func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil
 }
@@ -213,6 +226,7 @@ func NewSessConnManager(rcfg *config.Router) *SessConnManager {
 	}
 }
 
+// TODO : unit tests
 func MatchConnectionPooler(client client.RouterClient, rcfg *config.Router) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
 	case config.PoolModeSession:

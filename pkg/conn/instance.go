@@ -126,6 +126,7 @@ func (pgi *PostgreSQLInstance) Tls() *tls.Config {
 
 var _ DBInstance = &PostgreSQLInstance{}
 
+// TODO : unit tests
 func (pgi *PostgreSQLInstance) ReqBackendSsl(tlsconfig *tls.Config) error {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, 8)

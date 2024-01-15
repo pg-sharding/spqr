@@ -40,6 +40,7 @@ func NewPSQLInteractor(cl client.Client) *PSQLInteractor {
 	}
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.CommandComplete{CommandTag: []byte(fmt.Sprintf("SELECT %d", rowCnt))},
@@ -56,10 +57,12 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) GetDataspace() string {
 	return pi.cl.Dataspace()
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) SetDataspace(dataspace string) {
 	pi.cl.SetDataspace(dataspace)
 }
@@ -67,6 +70,7 @@ func (pi *PSQLInteractor) SetDataspace(dataspace string) {
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
 
+// TODO : unit tests
 func TextOidFD(stmt string) pgproto3.FieldDescription {
 	return pgproto3.FieldDescription{
 		Name:                 []byte(stmt),
@@ -79,6 +83,7 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 	}
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) WriteHeader(stmts ...string) error {
 	var desc []pgproto3.FieldDescription
 	for _, stmt := range stmts {
@@ -87,6 +92,7 @@ func (pi *PSQLInteractor) WriteHeader(stmts ...string) error {
 	return pi.cl.Send(&pgproto3.RowDescription{Fields: desc})
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) WriteDataRow(msgs ...string) error {
 	vals := make([][]byte, 0)
 	for _, msg := range msgs {
@@ -95,6 +101,7 @@ func (pi *PSQLInteractor) WriteDataRow(msgs ...string) error {
 	return pi.cl.Send(&pgproto3.DataRow{Values: vals})
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Databases(dbs []string) error {
 	if err := pi.WriteHeader("show databases"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -122,6 +129,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 	return pi.CompleteMsg(len(dbs))
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	if err := pi.WriteHeader(
 		"pool id",
@@ -153,6 +161,7 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 	return pi.CompleteMsg(len(ps))
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Version(_ context.Context) error {
 	if err := pi.WriteHeader("SPQR version"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -168,6 +177,7 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 	if err := pi.WriteHeader("add datashard"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -186,6 +196,7 @@ func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
@@ -222,6 +233,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	if err := pi.WriteHeader("add key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -240,6 +252,7 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyRange) error {
 	if err := pi.WriteHeader("split key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -258,6 +271,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 	if err := pi.WriteHeader("lock key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -278,6 +292,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error {
 	if err := pi.WriteHeader("unlock key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -300,6 +315,7 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard) error {
 	if err := pi.WriteHeader("listing data shards"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -320,6 +336,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.WhereClauseNode) (bool, error) {
 	if condition == nil {
 		return true, nil
@@ -381,7 +398,8 @@ type TableDesc interface {
 type ClientDesc struct {
 }
 
-func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
+// TODO : unit tests
+func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
 	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
 
@@ -392,7 +410,8 @@ func (_ ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []st
 	return rowData
 }
 
-func (_ ClientDesc) GetHeader() []string {
+// TODO : unit tests
+func (ClientDesc) GetHeader() []string {
 	quantiles := statistics.GetQuantiles()
 	headers := []string{
 		"client_id", "user", "dbname", "server_id", "router_address",
@@ -404,6 +423,7 @@ func (_ ClientDesc) GetHeader() []string {
 	return headers
 }
 
+// TODO : unit tests
 func GetColumnsMap(desc TableDesc) map[string]int {
 	header := desc.GetHeader()
 	columns := make(map[string]int, len(header))
@@ -415,6 +435,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 	return columns
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, condition spqrparser.WhereClauseNode) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
@@ -468,6 +489,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 	return pi.CompleteMsg(len(clients))
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -518,6 +540,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -542,6 +565,7 @@ func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspac
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) ReportError(err error) error {
 	if err == nil {
 		return nil
@@ -562,6 +586,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 	return nil
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, id string) error {
 	if err := pi.WriteHeader("drop sharding rule"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -575,6 +600,7 @@ func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, id string) error
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	if err := pi.WriteHeader("add sharding rule"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -588,6 +614,7 @@ func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.Shar
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -614,6 +641,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 	return nil
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -640,6 +668,7 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 	return nil
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 	if err := pi.WriteHeader("show routers", "status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -656,6 +685,7 @@ func (pi *PSQLInteractor) Routers(resp []*topology.Router) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) UnregisterRouter(id string) error {
 	if err := pi.WriteHeader("unregister routers"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -670,6 +700,7 @@ func (pi *PSQLInteractor) UnregisterRouter(id string) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr string) error {
 	if err := pi.WriteHeader("register routers"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -684,6 +715,7 @@ func (pi *PSQLInteractor) RegisterRouter(ctx context.Context, id string, addr st
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
 	if err := pi.WriteHeader("start trace messages"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -698,6 +730,7 @@ func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
 	if err := pi.WriteHeader("stop trace messages"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -712,6 +745,7 @@ func (pi *PSQLInteractor) StopTraceMessages(ctx context.Context) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error {
 	if err := pi.WriteHeader("drop key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -728,6 +762,7 @@ func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error 
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
 	if err := pi.WriteHeader("add dataspace"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -741,6 +776,7 @@ func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Datas
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error {
 	if err := pi.WriteHeader("drop dataspace"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -757,6 +793,7 @@ func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) AttachTable(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
 	if err := pi.WriteHeader("attach table"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -770,6 +807,7 @@ func (pi *PSQLInteractor) AttachTable(ctx context.Context, table string, ds *dat
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -783,6 +821,7 @@ func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) KillClient(clientID uint) error {
 	if err := pi.WriteHeader("kill client"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -796,6 +835,7 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 	return pi.CompleteMsg(0)
 }
 
+// TODO : unit tests
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
 	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

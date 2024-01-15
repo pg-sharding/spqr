@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
+// TODO : unit tests
 func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 	sm := &pgproto3.StartupMessage{
 		ProtocolVersion: pgproto3.ProtocolVersionNumber,
@@ -65,6 +66,7 @@ func (sh *Conn) TxServed() int64 {
 	return sh.tx_served
 }
 
+// TODO : unit tests
 func (sh *Conn) Cancel() error {
 	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), sh.dedicated.ShardName(), nil /* no tls for cancel */)
 	if err != nil {
@@ -97,6 +99,7 @@ func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
 	return nil
 }
 
+// TODO : unit tests
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
 
@@ -116,6 +119,7 @@ func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	return sh.dedicated.Send(query)
 }
 
+// TODO : unit tests
 func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	msg, err := sh.dedicated.Receive()
 	if err != nil {
@@ -210,6 +214,7 @@ func NewShard(
 	return dtSh, nil
 }
 
+// TODO : unit tests
 func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -265,6 +270,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 	}
 }
 
+// TODO : unit tests
 func (sh *Conn) fire(q string) error {
 	if err := sh.Send(&pgproto3.Query{
 		String: q,
@@ -294,6 +300,7 @@ func (sh *Conn) fire(q string) error {
 	}
 }
 
+// TODO : unit tests
 func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 	if rule.PoolRollback {
 		if err := sh.fire("ROLLBACK"); err != nil {
@@ -318,11 +325,13 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 	return sh.status
 }
 
+// TODO : unit tests
 func (srv *Conn) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
 	rd, ok := srv.mp[hash]
 	return ok, rd
 }
 
+// TODO : unit tests
 func (srv *Conn) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
 	srv.mp[hash] = rd
 }

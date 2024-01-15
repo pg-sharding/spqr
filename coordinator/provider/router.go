@@ -15,6 +15,7 @@ type RouterService struct {
 	impl coordinator.Coordinator
 }
 
+// TODO : unit tests
 func (r RouterService) ListRouters(ctx context.Context, request *protos.ListRoutersRequest) (*protos.ListRoutersReply, error) {
 	routers, err := r.impl.ListRouters(ctx)
 	if err != nil {
@@ -32,6 +33,7 @@ func (r RouterService) ListRouters(ctx context.Context, request *protos.ListRout
 	}, nil
 }
 
+// TODO : unit tests
 func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterRequest) (*protos.AddRouterReply, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", request.Router.Id).
@@ -45,6 +47,7 @@ func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterR
 	}, nil
 }
 
+// TODO : unit tests
 func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveRouterRequest) (*protos.RemoveRouterReply, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", request.Id).
@@ -56,6 +59,7 @@ func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveR
 	return &protos.RemoveRouterReply{}, nil
 }
 
+// TODO : unit tests
 func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMetadataRequest) (*protos.SyncMetadataReply, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", request.Router.Id).

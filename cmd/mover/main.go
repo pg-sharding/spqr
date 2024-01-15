@@ -41,6 +41,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 	return p.w.Write(bt)
 }
 
+// TODO : unit tests
 func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
