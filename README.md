@@ -55,4 +55,4 @@ The SPQR source code is distributed under the PostgreSQL Global Development Grou
 
 ## Chat
 
-We have a Telegram chat to discuss SPQR usage and development, to join use [invite link](https://t.me/+jMGhyjwicpI3ZWQy).
+We have [Discord server](https://discord.gg/rKYVXkPu) and  [Telegram chat](https://t.me/+jMGhyjwicpI3ZWQy) to discuss SPQR usage and development.
