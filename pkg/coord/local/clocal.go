@@ -61,6 +61,24 @@ func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dat
 	})
 }
 
+func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	return lc.qdb.AttachToDataspace(ctx, table, ds.Id)
+}
+
+func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	ret, err := lc.qdb.GetDataspace(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+	return dataspaces.NewDataspace(ret.ID), nil
+}
+
 func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()

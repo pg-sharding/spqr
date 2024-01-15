@@ -257,6 +257,20 @@ func (mr *MockRouterClientMockRecorder) Dataspace() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dataspace", reflect.TypeOf((*MockRouterClient)(nil).Dataspace))
 }
 
+// DataspaceIsDefault mocks base method.
+func (m *MockRouterClient) DataspaceIsDefault() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DataspaceIsDefault")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DataspaceIsDefault indicates an expected call of DataspaceIsDefault.
+func (mr *MockRouterClientMockRecorder) DataspaceIsDefault() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataspaceIsDefault", reflect.TypeOf((*MockRouterClient)(nil).DataspaceIsDefault))
+}
+
 // DefaultReply mocks base method.
 func (m *MockRouterClient) DefaultReply() error {
 	m.ctrl.T.Helper()

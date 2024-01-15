@@ -47,6 +47,10 @@ func (t *DummySessionParamHandler) SetDataspace(d string) {
 	t.dataspace = d
 }
 
+func (t *DummySessionParamHandler) DataspaceIsDefault() bool {
+	return false
+}
+
 // SetDefaultRouteBehaviour implements session.SessionParamsHolder.
 func (t *DummySessionParamHandler) SetDefaultRouteBehaviour(b string) {
 	t.behaviour = b

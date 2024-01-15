@@ -757,6 +757,19 @@ func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) AttachTable(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+	if err := pi.WriteHeader("attach table"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("attached table %s to dataspace %s", table, ds.ID())); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	return pi.CompleteMsg(0)
+}
+
 func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

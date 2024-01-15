@@ -8,6 +8,7 @@ type SessionParamsHolder interface {
 	// get current session dataspace
 	Dataspace() string
 	SetDataspace(string)
+	DataspaceIsDefault() bool
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string

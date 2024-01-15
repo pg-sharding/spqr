@@ -58,6 +58,8 @@ func randomHex(n int) (string, error) {
 
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
+
+	attach                 *AttachTable
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -113,7 +115,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -143,6 +145,8 @@ func randomHex(n int) (string, error) {
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
+
+%type <attach> attach_stmt
 
 %type <ds> dataspace_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
@@ -246,6 +250,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| unregister_router_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| attach_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -427,6 +435,16 @@ stoptrace_stmt:
 	STOP TRACE MESSAGES
 	{
 		$$ = &StopTraceStmt{}
+	}
+
+
+attach_stmt:
+	ATTACH TABLE any_id TO dataspace_stmt
+	{
+		$$ = &AttachTable{
+			Table: $3,
+			Dataspace: $5,
+		}
 	}
 
 

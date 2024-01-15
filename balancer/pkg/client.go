@@ -34,6 +34,10 @@ func (c BalancerClient) Dataspace() string {
 	return "default"
 }
 
+func (c BalancerClient) DataspaceIsDefault() bool {
+	return true
+}
+
 func (c BalancerClient) SetDS(_ string) {}
 
 func (c BalancerClient) ID() uint {

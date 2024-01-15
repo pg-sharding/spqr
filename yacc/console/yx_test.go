@@ -315,3 +315,32 @@ func TestSplitKeyRange(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestAttachTable(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "ATTACH TABLE t TO DATASPACE ds1;",
+			exp: &spqrparser.AttachTable{
+				Table:     "t",
+				Dataspace: &spqrparser.DataspaceSelector{ID: "ds1"},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}

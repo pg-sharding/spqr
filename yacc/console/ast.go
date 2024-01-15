@@ -175,6 +175,11 @@ type UnregisterRouter struct {
 	ID string
 }
 
+type AttachTable struct {
+	Table     string
+	Dataspace *DataspaceSelector
+}
+
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
@@ -223,3 +228,5 @@ func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
+
+func (*AttachTable) iStatement() {}
