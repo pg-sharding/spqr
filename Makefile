@@ -161,6 +161,15 @@ yaccgen:
 
 gen: gogen yaccgen mockgen
 
+generate: build_images
+	docker build -f docker/generator/Dockerfile -t spqr-generator .
+	docker run --name spqr-generator-1 spqr-generator
+	docker cp spqr-generator-1:/spqr/pkg/protos/. pkg/protos
+	docker cp spqr-generator-1:/spqr/yacc/console/. yacc/console
+	docker cp spqr-generator-1:/spqr/pkg/mock/. pkg/mock
+	docker cp spqr-generator-1:/spqr/router/mock/. router/mock
+	docker container rm spqr-generator-1
+
 version = $(shell git describe --tags --abbrev=0)
 package:
 	sed -i 's/SPQR_VERSION/$(version)/g' debian/changelog
