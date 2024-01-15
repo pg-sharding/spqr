@@ -49,6 +49,17 @@ jobs:
           POSTGRES_VERSION=14 make regress
           POSTGRES_VERSION=15 make regress
 
+  gorm-regress:
+    name: Run regression tests with GORM
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        run: make gorm_regress
+
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
