@@ -542,18 +542,32 @@ func (mr *MockRouterClientMockRecorder) ReplyDebugNoticef(fmt interface{}, args 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyDebugNoticef", reflect.TypeOf((*MockRouterClient)(nil).ReplyDebugNoticef), varargs...)
 }
 
-// ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(errmsg error) error {
+// ReplyErr mocks base method.
+func (m *MockRouterClient) ReplyErr(errmsg error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyErrMsg", errmsg)
+	ret := m.ctrl.Call(m, "ReplyErr", errmsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyErr indicates an expected call of ReplyErr.
+func (mr *MockRouterClientMockRecorder) ReplyErr(errmsg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErr", reflect.TypeOf((*MockRouterClient)(nil).ReplyErr), errmsg)
+}
+
+// ReplyErrMsg mocks base method.
+func (m *MockRouterClient) ReplyErrMsg(e, c string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyErrMsg indicates an expected call of ReplyErrMsg.
-func (mr *MockRouterClientMockRecorder) ReplyErrMsg(errmsg interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), errmsg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c)
 }
 
 // ReplyNotice mocks base method.
