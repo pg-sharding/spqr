@@ -74,7 +74,7 @@ func TestPrepStmt(t *testing.T) {
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
 					Name:  "stmt1",
-					Query: "select * from tt where id = $1",
+					Query: "select 11 as test",
 				},
 				&pgproto3.Describe{
 					ObjectType: 'S',
@@ -85,11 +85,21 @@ func TestPrepStmt(t *testing.T) {
 			Responce: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{
-					ParameterOIDs: []uint32{23},
+					ParameterOIDs: []uint32{},
 				},
-				&pgproto3.RowDescription{},
-				&pgproto3.CommandComplete{},
-				&pgproto3.ReadyForQuery{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("test"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73, /*txidle*/
+				},
 			},
 		},
 	} {
