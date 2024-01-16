@@ -1158,15 +1158,15 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 	case nil:
 		return nil
 	case ErrSkipQuery:
-		if err := rst.Client().ReplyErrMsg(err); err != nil {
+		if err := rst.Client().ReplyErr(err); err != nil {
 			return err
 		}
 		return ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("failed to match any datashard"))
+		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SPQRD")
 		return ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("skip executing this query, wait for next"))
+		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
 		return ErrSkipQuery
 	default:
 		rst.msgBuf = nil
@@ -1208,15 +1208,15 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 			return nil
 		}, nil
 	case ErrSkipQuery:
-		if err := rst.Client().ReplyErrMsg(err); err != nil {
+		if err := rst.Client().ReplyErr(err); err != nil {
 			return noopCloseRouteFunc, err
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("failed to match any datashard"))
+		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SQPRD")
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("skip executing this query, wait for next"))
+		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
@@ -1242,15 +1242,15 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 			return rst.UnrouteRoutes(rst.CurrentRoutes())
 		}, nil
 	case ErrSkipQuery:
-		if err := rst.Client().ReplyErrMsg(err); err != nil {
+		if err := rst.Client().ReplyErr(err); err != nil {
 			return noopCloseRouteFunc, err
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("failed to match any datashard"))
+		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SQPRD")
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg(fmt.Errorf("skip executing this query, wait for next"))
+		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil

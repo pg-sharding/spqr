@@ -911,32 +911,13 @@ func (cl *PsqlClient) Params() map[string]string {
 	return cl.activeParamSet
 }
 
-func (cl *PsqlClient) ReplyErrMsg(e error) error {
-	var clerrmsg string
-	if cl.ReplyClientId {
-		clerrmsg = fmt.Sprintf("client %p: error %v", cl, e.Error())
-	} else {
-		clerrmsg = e.Error()
-	}
-
-	var resp *pgproto3.ErrorResponse
-
-	switch er := e.(type) {
-	case *models.SpqrError:
-		resp = &pgproto3.ErrorResponse{
-			Message:  clerrmsg,
-			Severity: "ERROR",
-			Code:     er.ErrorCode,
-		}
-	default:
-		resp = &pgproto3.ErrorResponse{
-			Message:  clerrmsg,
-			Severity: "ERROR",
-			Code:     "SPQRU",
-		}
-	}
+func (cl *PsqlClient) ReplyErrMsg(e string, c string) error {
 	for _, msg := range []pgproto3.BackendMessage{
-		resp,
+		&pgproto3.ErrorResponse{
+			Message:  e,
+			Severity: "ERROR",
+			Code:     c,
+		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
 		},
@@ -946,6 +927,22 @@ func (cl *PsqlClient) ReplyErrMsg(e error) error {
 		}
 	}
 	return nil
+}
+func (cl *PsqlClient) ReplyErr(e error) error {
+	var clerrmsg string
+
+	if cl.ReplyClientId {
+		clerrmsg = fmt.Sprintf("client %p: error %v", cl, e.Error())
+	} else {
+		clerrmsg = e.Error()
+	}
+
+	switch er := e.(type) {
+	case *models.SpqrError:
+		return cl.ReplyErrMsg(er.ErrorCode, clerrmsg)
+	default:
+		return cl.ReplyErrMsg(clerrmsg, "SPQRU")
+	}
 }
 
 func (cl *PsqlClient) ReplyRFQ() error {

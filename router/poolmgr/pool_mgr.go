@@ -36,7 +36,7 @@ type PoolMgr interface {
 // TODO : unit tests
 func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
 	_ = cmngr.UnRouteCB(client, sh)
-	return client.ReplyErrMsg(errmsg)
+	return client.ReplyErr(errmsg)
 }
 
 type TxConnManager struct {
