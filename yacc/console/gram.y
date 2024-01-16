@@ -23,6 +23,7 @@ func randomHex(n int) (string, error) {
 // as ${PREFIX}SymType, of which a reference is passed to the lexer.
 %union {
 	str                    string
+	strlist                []string
 	byte                   byte
 	bytes                  []byte
 	integer                int
@@ -59,6 +60,8 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
+	dataspace              *DataspaceDefinition
+
 	attach                 *AttachTable
 	
 	entrieslist            []ShardingRuleEntry
@@ -89,6 +92,8 @@ func randomHex(n int) (string, error) {
 
 // '='
 %token<str> TEQ
+// ','
+%token<str> TCOMMA
 
 /* any const */
 %token<str> SCONST
@@ -125,18 +130,20 @@ func randomHex(n int) (string, error) {
 
 %token<str> START STOP TRACE MESSAGES
 
+
+%token<str> VARCHAR INTEGER INT TYPES
+
 /* any operator */
 %token<str> OP
 
 
 %type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
-%type<dataspace_selector> dataspace_stmt
+%type<dataspace_selector> dataspace_select_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
 
-%type <set> set_stmt
 %type <show> show_stmt
 %type <kill> kill_stmt
 
@@ -161,6 +168,10 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_hash_function_clause
 %type<str> hash_function_name
 %type<str> opt_dataspace
+
+%type<strlist> col_types_list opt_col_types
+%type<str> col_types_elem
+
 
 %type <unlock> unlock_stmt
 %type <lock> lock_stmt
@@ -198,10 +209,6 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| stoptrace_stmt
-	{
-		setParseTree(yylex, $1)
-	}
-	| set_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -358,13 +365,6 @@ kill_statement_type:
 		}
 	}
 
-set_stmt:
-	SET dataspace_define_stmt
-	{
-	    $$ = &Set{Element: $2}
-	}
-
-
 drop_stmt:
 	DROP key_range_stmt
 	{
@@ -382,7 +382,7 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
-	| DROP dataspace_stmt
+	| DROP dataspace_select_stmt
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: false}
 	}
@@ -390,7 +390,7 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: false}
 	}
-	| DROP dataspace_stmt CASCADE
+	| DROP dataspace_select_stmt CASCADE
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: true}
 	}
@@ -400,6 +400,7 @@ drop_stmt:
 	}
 
 add_stmt:
+	// TODO: drop
 	ADD dataspace_define_stmt
 	{
 		$$ = &Create{Element: $2}
@@ -413,12 +414,11 @@ add_stmt:
 	ADD key_range_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	}|
+	} |
 	ADD shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
-
 
 trace_stmt:
 	START TRACE ALL MESSAGES
@@ -439,7 +439,7 @@ stoptrace_stmt:
 
 
 attach_stmt:
-	ATTACH TABLE any_id TO dataspace_stmt
+	ATTACH TABLE any_id TO dataspace_select_stmt
 	{
 		$$ = &AttachTable{
 			Table: $3,
@@ -484,9 +484,38 @@ lock_stmt:
 
 
 dataspace_define_stmt:
-	DATASPACE any_id
+	DATASPACE any_id opt_col_types
 	{
-		$$ = &DataspaceDefinition{ID: $2}
+		$$ = &DataspaceDefinition{
+			ID: $2,
+			ColTypes: $3,
+		}
+	}
+
+opt_col_types:
+	SHARDING COLUMN TYPES col_types_list {
+		$$ = $4
+	} | { 
+		/* empty column types should be prohibited */
+		$$ = nil 
+	}
+
+col_types_elem:
+	VARCHAR {
+		$$ = "varchar"
+	} | INTEGER {
+		$$ = "integer"
+	} | INT {
+		$$ = "integer"
+	}
+
+col_types_list:
+	col_types_list TCOMMA col_types_elem {
+		$$ = append($1, $3)
+	} | col_types_elem {
+		$$ = []string {
+			$1,
+		}
 	}
 
 sharding_rule_define_stmt:
@@ -627,7 +656,7 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
-dataspace_stmt:
+dataspace_select_stmt:
 	DATASPACE any_id
 	{
 		$$ = &DataspaceSelector{ID: $2}
