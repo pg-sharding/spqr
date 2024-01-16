@@ -543,7 +543,7 @@ func (mr *MockRouterClientMockRecorder) ReplyDebugNoticef(fmt interface{}, args 
 }
 
 // ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(errmsg string) error {
+func (m *MockRouterClient) ReplyErrMsg(errmsg error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReplyErrMsg", errmsg)
 	ret0, _ := ret[0].(error)
