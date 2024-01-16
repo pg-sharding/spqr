@@ -1,0 +1,85 @@
+version: "3.9"
+services:
+    shard1:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=regress
+            - POSTGRES_DB=regress
+        ports:
+            - "7432:6432"
+        hostname: spqr_shard_1
+        container_name: spqr_shard_1
+        healthcheck:
+            test: psql -h spqr_shard_1 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
+    shard2:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=regress
+            - POSTGRES_DB=regress
+        ports:
+            - "7433:6432"
+        hostname: spqr_shard_2
+        container_name: spqr_shard_2
+        healthcheck:
+            test: psql -h spqr_shard_2 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
+    router:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6432:6432"
+        environment:
+            - ROUTER_CONFIG=/spqr/test/regress/conf/router.yaml
+        hostname: regress_router
+        container_name: regress_router
+        depends_on:
+            shard1:
+                condition: service_healthy
+            shard2:
+                condition: service_healthy
+
+    coordinator:
+        build:
+            dockerfile: ./docker/coordinator/Dockerfile
+            context: ../../
+        ports:
+            - "7002:7002"
+            - "7003:7003"
+        environment:
+            - COORDINATOR_CONFIG=/spqr/test/regress/conf/coordinator.yaml
+        hostname: regress_coordinator
+        container_name: regress_coordinator
+        depends_on:
+            - "router"
+            - "qdb01"
+
+    qdb01:
+        image: 'bitnami/etcd:latest'
+        hostname: regress_qdb_0_1
+        container_name: regress_qdb_0_1
+        environment:
+            ALLOW_NONE_AUTHENTICATION: "yes"
+            ETCD_LOG_LEVEL: "debug"
+        ports:
+            - "2379:2379"
+
+    regress:
+        build:
+            dockerfile: test/xproto/Dockerfile
+            context: ../..
+        hostname: xproto_tests
+        container_name: xproto_tests
+        environment:
+            POSTGRES_HOST: regress_router
+            POSTGRES_DB: regress
+            POSTGRES_USER: regress
+            POSTGRES_PASSWORD: 12345678
+        depends_on:
+            - router
+            - qdb01
