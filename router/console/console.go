@@ -175,7 +175,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 			if err := l.ProcessQuery(ctx, v.String, cl); err != nil {
-				_ = cl.ReplyErrMsg(err.Error())
+				_ = cl.ReplyErrMsg(err)
 				// continue to consume input
 			}
 		case *pgproto3.Terminate:

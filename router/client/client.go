@@ -910,12 +910,12 @@ func (cl *PsqlClient) Params() map[string]string {
 	return cl.activeParamSet
 }
 
-func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
+func (cl *PsqlClient) ReplyErrMsg(errmsg error) error {
 	var clerrmsg string
 	if cl.ReplyClientId {
-		clerrmsg = fmt.Sprintf("client %p: error %v", cl, errmsg)
+		clerrmsg = fmt.Sprintf("client %p: error %v", cl, errmsg.Error())
 	} else {
-		clerrmsg = errmsg
+		clerrmsg = errmsg.Error()
 	}
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{

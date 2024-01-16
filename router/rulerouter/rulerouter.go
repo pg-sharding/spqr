@@ -220,7 +220,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if err := cl.Auth(rt); err != nil {
-		_ = cl.ReplyErrMsg(err.Error())
+		_ = cl.ReplyErrMsg(err)
 		return cl, err
 	}
 
@@ -246,7 +246,7 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
-		_ = cl.ReplyErrMsg(err.Error())
+		_ = cl.ReplyErrMsg(err)
 		return nil, err
 	}
 
@@ -256,12 +256,12 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule")
+		_ = cl.ReplyErrMsg(fmt.Errorf("failed to assign rule"))
 		return nil, err
 	}
 
 	if err := auth.AuthFrontend(cl, frRule); err != nil {
-		_ = cl.ReplyErrMsg(err.Error())
+		_ = cl.ReplyErrMsg(err)
 		return cl, err
 	}
 

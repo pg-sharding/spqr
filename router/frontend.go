@@ -269,7 +269,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return err
 		}
 	case parser.ParseStateExplain:
-		_ = rst.Client().ReplyErrMsg("parse state explain is not implemented")
+		_ = rst.Client().ReplyErrMsg(fmt.Errorf("parse state explain is not implemented"))
 		return nil
 	default:
 		rst.AddQuery(msg)
