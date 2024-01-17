@@ -148,51 +148,51 @@ func TestPrepStmt(t *testing.T) {
 			},
 		},
 
-		//{
-		//	Request: []pgproto3.FrontendMessage{
-		//		&pgproto3.Parse{
-		//			Name:  "stmt2",
-		//			Query: "select 22 as test",
-		//		},
-		//		&pgproto3.Describe{
-		//			ObjectType: 'S',
-		//			Name:       "stmt2",
-		//		},
-		//		&pgproto3.Bind{
-		//			PreparedStatement: "stmt2",
-		//		},
-		//		&pgproto3.Execute{},
-		//		&pgproto3.Sync{},
-		//	},
-		//	Responce: []pgproto3.BackendMessage{
-		//		&pgproto3.ParseComplete{},
-		//		&pgproto3.ParameterDescription{
-		//			ParameterOIDs: []uint32{},
-		//		},
-		//		&pgproto3.RowDescription{
-		//			Fields: []pgproto3.FieldDescription{
-		//				{
-		//					Name:         []byte("test"),
-		//					DataTypeOID:  23,
-		//					DataTypeSize: 4,
-		//					TypeModifier: -1,
-		//				},
-		//			},
-		//		},
-		//		&pgproto3.BindComplete{},
-		//		&pgproto3.DataRow{
-		//			Values: [][]byte{
-		//				[]byte("22"),
-		//			},
-		//		},
-		//		&pgproto3.CommandComplete{
-		//			CommandTag: []byte("SELECT 1"),
-		//		},
-		//		&pgproto3.ReadyForQuery{
-		//			TxStatus: 73, /*txidle*/
-		//		},
-		//	},
-		//},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmt2",
+					Query: "select 22 as test",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "stmt2",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "stmt2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Responce: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("test"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("22"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73, /*txidle*/
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
