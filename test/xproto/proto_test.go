@@ -87,7 +87,7 @@ func TestPrepStmt(t *testing.T) {
 
 	type MessageGroup struct {
 		Request  []pgproto3.FrontendMessage
-		Responce []pgproto3.BackendMessage
+		Response []pgproto3.BackendMessage
 	}
 
 	for _, msgroup := range []MessageGroup{
@@ -103,7 +103,7 @@ func TestPrepStmt(t *testing.T) {
 				},
 				&pgproto3.Sync{},
 			},
-			Responce: []pgproto3.BackendMessage{
+			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{
 					ParameterOIDs: []uint32{},
@@ -132,7 +132,7 @@ func TestPrepStmt(t *testing.T) {
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 			},
-			Responce: []pgproto3.BackendMessage{
+			Response: []pgproto3.BackendMessage{
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
 					Values: [][]byte{
@@ -164,7 +164,7 @@ func TestPrepStmt(t *testing.T) {
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 			},
-			Responce: []pgproto3.BackendMessage{
+			Response: []pgproto3.BackendMessage{
 				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{
 					ParameterOIDs: []uint32{},
@@ -198,7 +198,7 @@ func TestPrepStmt(t *testing.T) {
 			frontend.Send(msg)
 		}
 		_ = frontend.Flush()
-		for _, msg := range msgroup.Responce {
+		for _, msg := range msgroup.Response {
 			retMsg, err := frontend.Receive()
 			assert.NoError(t, err)
 			assert.Equal(t, msg, retMsg)
