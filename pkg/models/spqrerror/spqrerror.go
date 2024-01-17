@@ -12,17 +12,19 @@ const (
 	SPQR_MISS_SHARDING_KEY = "SPQRM"
 	SPQR_CROSS_SHARD_QUERY = "SPQRX"
 	SPQR_ROUTING_ERROR     = "SPQRR"
+	SPQR_CONNECTION_ERROR  = "SPQRO"
 )
 
 var existingErrorCodeMap = map[string]string{
-	"SPQRD": "failed to match any datashard",
-	"SQPRE": "skip executing this query, wait for next",
-	"SPQRC": "ComplexQuery",
-	"SPQRF": "FailedToMatch",
-	"SPQRS": "SkipColumn",
-	"SPQRM": "ShardingKeysMissing",
-	"SPQRX": "CrossShardQueryUnsupported",
-	"SPQRR": "Routing error",
+	SPQR_NO_DATASHARD:      "failed to match any datashard",
+	SPQR_SKIP:              "skip executing this query, wait for next",
+	SPQR_COMPLEX_QUERY:     "ComplexQuery",
+	SPQR_FAILED_MATCH:      "FailedToMatch",
+	SPQR_SKIP_COLUMN:       "SkipColumn",
+	SPQR_MISS_SHARDING_KEY: "ShardingKeysMissing",
+	SPQR_CROSS_SHARD_QUERY: "CrossShardQueryUnsupported",
+	SPQR_ROUTING_ERROR:     "Routing error",
+	SPQR_CONNECTION_ERROR:  "Connection error",
 }
 
 func GetMessageByCode(errorCode string) string {
