@@ -54,11 +54,14 @@ func getConnectionParams() map[string]string {
 		user = "user1"
 	}
 	password := os.Getenv("POSTGRES_PASSWORD")
-	return map[string]string{
+	res := map[string]string{
 		"user":     user,
 		"database": database,
-		"password": password,
 	}
+	if password != "" {
+		res["password"] = password
+	}
+	return res
 }
 
 func TestPrepStmt(t *testing.T) {
