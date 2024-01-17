@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"io"
 	"strings"
 	"time"
@@ -269,7 +270,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 			return err
 		}
 	case parser.ParseStateExplain:
-		_ = rst.Client().ReplyErrMsg("parse state explain is not implemented", "SPQRU")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
 		return nil
 	default:
 		rst.AddQuery(msg)

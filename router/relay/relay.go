@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"time"
 
@@ -1163,10 +1164,10 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 		}
 		return ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SPQRD")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		return ErrSkipQuery
 	default:
 		rst.msgBuf = nil
@@ -1213,10 +1214,10 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SQPRD")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
@@ -1247,10 +1248,10 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 		}
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
-		_ = rst.Client().ReplyErrMsg("failed to match any datashard", "SQPRD")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsg("skip executing this query, wait for next", "SQPRE")
+		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil

@@ -3,6 +3,7 @@ package rulerouter
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"sync"
 
@@ -256,7 +257,7 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule", "SPQRU")
+		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR)
 		return nil, err
 	}
 

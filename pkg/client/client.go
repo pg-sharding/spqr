@@ -31,6 +31,7 @@ type Client interface {
 	ID() uint
 
 	ReplyErrMsg(e string, c string) error
+	ReplyErrMsgByCode(code string) error
 	ReplyErr(errmsg error) error
 	ReplyRFQ() error
 	ReplyNotice(message string) error
