@@ -30,12 +30,12 @@ services:
             retries: 50
     router:
         build:
-            dockerfile: ./docker/router/Dockerfile
+            dockerfile: ./test/xproto/router/Dockerfile
             context: ../../
         ports:
             - "6432:6432"
         environment:
-            - ROUTER_CONFIG=/spqr/test/regress/conf/router.yaml
+            - ROUTER_CONFIG=/spqr/test/xproto/conf/router.yaml
         hostname: regress_router
         container_name: regress_router
         depends_on:
