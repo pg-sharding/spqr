@@ -60,6 +60,17 @@ jobs:
       - name: Run tests
         run: make gorm_regress
 
+  xproto-regress:
+    name: Run regression tests for extended protocol
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        run: make xproto_regress
+
   feature_prepare:
     name: feature_prepare
     runs-on: ubuntu-latest
