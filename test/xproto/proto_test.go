@@ -16,7 +16,11 @@ func getC() (net.Conn, error) {
 	if host == "" {
 		host = "[::1]"
 	}
-	addr := fmt.Sprintf("%s:6432", host)
+	port := os.Getenv("POSTGRES_PORT")
+	if port == "" {
+		port = "6432"
+	}
+	addr := fmt.Sprintf("%s:%s", host, port)
 	return net.Dial(proto, addr)
 }
 
