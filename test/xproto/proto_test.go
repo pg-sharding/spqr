@@ -201,6 +201,15 @@ func TestPrepStmt(t *testing.T) {
 		for _, msg := range msgroup.Response {
 			retMsg, err := frontend.Receive()
 			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			default:
+				break
+			}
 			assert.Equal(t, msg, retMsg)
 		}
 	}
