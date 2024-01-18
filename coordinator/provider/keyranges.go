@@ -163,7 +163,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	}
 
 	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to unite key ranges: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to unite key ranges: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	return &protos.ModifyReply{}, nil

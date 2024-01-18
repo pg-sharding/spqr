@@ -710,7 +710,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}
 
 	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("failed to add a new key range: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.NewSpqrError(fmt.Sprintf("failed to add a new key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -832,11 +832,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	krLeft.UpperBound = krRight.UpperBound
 
 	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("failed to drop an old key range: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.NewSpqrError(fmt.Sprintf("failed to drop an old key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("failed to update a new key range: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.NewSpqrError(fmt.Sprintf("failed to update a new key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {

@@ -164,7 +164,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	}
 
 	if left == nil || right == nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("key range on left or right was not found"), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.NewSpqrError("key range on left or right was not found", spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	var bound []byte

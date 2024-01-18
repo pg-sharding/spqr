@@ -395,7 +395,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 	}
 
 	if err := rows.Close(); err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to close keyRange rows: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to close keyRange rows: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	kr := KeyRange{
