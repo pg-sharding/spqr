@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
@@ -70,7 +71,7 @@ func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *p
 		}
 	}
 
-	return "", fmt.Errorf("key range not found")
+	return "", spqrerror.NewSpqrError("key range not found", spqrerror.SPQR_KEYRANGE_ERROR)
 }
 
 // TODO : unit tests
@@ -162,7 +163,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	}
 
 	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
-		return nil, fmt.Errorf("failed to unite key ranges: %w", err)
+		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to unite key ranges: %w", err), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	return &protos.ModifyReply{}, nil
