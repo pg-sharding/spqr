@@ -111,7 +111,7 @@ func SetupSharding() {
 	}
 }
 
-func CreateTable() {
+func CreateTables() {
 	host := os.Getenv("POSTGRES_HOST")
 	if host == "" {
 		host = "[::1]"
@@ -147,11 +147,15 @@ func CreateTable() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s", err)
 	}
+	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s", err)
+	}
 }
 
 func TestMain(m *testing.M) {
 	SetupSharding()
-	CreateTable()
+	CreateTables()
 	code := m.Run()
 	os.Exit(code)
 }
@@ -354,6 +358,58 @@ func TestPrepStmt(t *testing.T) {
 							binary.BigEndian.PutUint32(res, 1)
 							return res
 						}(),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73, /*txidle*/
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmt4",
+					Query: "INSERT INTO text_table (\"id\") values ($1) RETURNING \"id\"",
+				},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "stmt4",
+				},
+				&pgproto3.Bind{
+					PreparedStatement:    "stmt4",
+					DestinationPortal:    "",
+					ParameterFormatCodes: []int16{pgproto3.TextFormat},
+					Parameters: [][]byte{
+						[]byte("1"),
+					},
+					ResultFormatCodes: []int16{pgproto3.TextFormat},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{25},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							DataTypeOID:          25,
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							TableAttributeNumber: 1,
+						},
+					},
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
 					},
 				},
 				&pgproto3.CommandComplete{
