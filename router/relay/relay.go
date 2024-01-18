@@ -1033,6 +1033,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
 			rst.Client().SetBindParams(q.Parameters)
 			rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
+			rst.saveBind.Parameters = q.Parameters
 
 			// Do not respond here with bind complete, as relay step should do itself
 
