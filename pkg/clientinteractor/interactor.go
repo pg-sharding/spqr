@@ -59,11 +59,6 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) GetDataspace() string {
-	return pi.cl.Dataspace()
-}
-
-// TODO : unit tests
 func (pi *PSQLInteractor) SetDataspace(dataspace string) {
 	pi.cl.SetDataspace(dataspace)
 }

@@ -3,7 +3,6 @@ package meta
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -17,14 +16,12 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
 	topology.RouterMgr
 	datashards.ShardsMgr
 	dataspaces.DataspaceMgr
@@ -54,64 +51,28 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
-	case *spqrparser.ShardingRuleSelector:
-		if stmt.ID == "*" {
-			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
-				return cli.ReportError(err)
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
 
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}())
-			}
-		} else {
-			spqrlog.Zero.Debug().Str("rule", stmt.ID).Msg("parsed drop")
-			err := mngr.DropShardingRule(ctx, stmt.ID)
-			if err != nil {
-				return cli.ReportError(err)
-			}
-			return cli.DropShardingRule(ctx, stmt.ID)
-		}
 	case *spqrparser.DataspaceSelector:
-		srs, err := mngr.ListShardingRules(ctx, stmt.ID)
-		if err != nil {
-			return err
-		}
 
 		krs, err := mngr.ListKeyRanges(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
 
-		if stmt.ID == "*" {
-			srs, err = mngr.ListAllShardingRules(ctx)
-			if err != nil {
-				return err
-			}
-
-			krs, err = mngr.ListAllKeyRanges(ctx)
-			if err != nil {
-				return err
-			}
+		krs, err = mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return err
 		}
 
-		if len(srs)+len(krs) != 0 && !isCascade {
+		if len(krs) != 0 && !isCascade {
 			return fmt.Errorf("cannot drop dataspace %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
-			err = mngr.DropKeyRange(ctx, kr.ID)
-			if err != nil {
-				return err
+			if stmt.ID == "*" || kr.Dataspace != stmt.ID {
+				continue
 			}
-		}
-		for _, sr := range srs {
-			err = mngr.DropShardingRule(ctx, sr.Id)
+			err = mngr.DropKeyRange(ctx, kr.ID)
 			if err != nil {
 				return err
 			}
@@ -145,7 +106,12 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.DataspaceDefinition:
-		dataspace := dataspaces.NewDataspace(stmt.ID)
+		if len(stmt.ColTypes) == 0 {
+			spqrlog.Zero.Debug().Msg("Dataspace should have at least one column type specified")
+			return fmt.Errorf("Dataspace should have at least one column type specified")
+		}
+
+		dataspace := dataspaces.DataspaceFromSQL(stmt)
 
 		dataspaces, err := mngr.ListDataspace(ctx)
 		if err != nil {
@@ -163,16 +129,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return err
 		}
 		return cli.AddDataspace(ctx, dataspace)
-	case *spqrparser.ShardingRuleDefinition:
-		entries := make([]shrule.ShardingRuleEntry, 0)
-		for _, el := range stmt.Entries {
-			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
-		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Dataspace)
-		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
-			return err
-		}
-		return cli.AddShardingRule(ctx, shardingRule)
+
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
@@ -273,7 +230,9 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.AttachTable:
-		ds := &dataspaces.Dataspace{Id: stmt.Dataspace.ID}
+		ds := &dataspaces.Dataspace{
+			Id: stmt.Dataspace.ID,
+		}
 		if err := mgr.AttachToDataspace(ctx, stmt.Table, ds); err != nil {
 			return err
 		}
