@@ -3,9 +3,10 @@ package relay
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -334,12 +335,6 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Interface("routing-state", routingState).
-		Err(err).
-		Msg("parsing routing state done")
-
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 	}
@@ -349,6 +344,10 @@ func (rst *RelayStateImpl) Reroute() error {
 		if rst.TxActive() {
 			return fmt.Errorf("ddl is forbidden inside multi-shard transition")
 		}
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Err(err).
+			Msgf("parsed multi-sahrd routing state")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:
 		// TBD: do it better
@@ -938,10 +937,16 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 	rst.xBuf = append(rst.xBuf, q)
 }
 
+var MultiShardPrepStmtDeployError = fmt.Errorf("multishard prepared statement deploy is not supported")
+
 // TODO : unit tests
 func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatementDescriptor, error) {
 	query := rst.Client().PreparedStatementQueryByName(qname)
 	hash := murmur3.Sum64([]byte(query))
+
+	if len(rst.Client().Server().Datashards()) != 1 {
+		return shard.PreparedStatementDescriptor{}, MultiShardPrepStmtDeployError
+	}
 
 	spqrlog.Zero.Debug().
 		Str("name", qname).

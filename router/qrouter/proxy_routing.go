@@ -179,16 +179,17 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 
 // TODO : unit tests
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
+
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
-		if e.Number >= len(meta.params) {
+		if e.Number > len(meta.params) {
 			return nil, ComplexQuery
 		}
-		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number], hf)
+		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number-1], hf)
 		if err != nil {
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number-1])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	case *lyx.AExprConst:
@@ -543,7 +544,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		meta.InsertStmtCols = cols
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
-
 			meta.InsertStmtRel = q.RelationName
 		default:
 			return ComplexQuery
