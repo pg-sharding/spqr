@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"net"
 	"os"
 	"testing"
-
-	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +74,7 @@ func getConnectionParams() map[string]string {
 func SetupSharding() {
 	host := os.Getenv("POSTGRES_HOST")
 	if host == "" {
-		host = "::1"
+		host = "[::1]"
 	}
 	port := os.Getenv("POSTGRES_PORT")
 	if port == "" {
@@ -115,7 +114,7 @@ func SetupSharding() {
 func CreateTable() {
 	host := os.Getenv("POSTGRES_HOST")
 	if host == "" {
-		host = "::1"
+		host = "[::1]"
 	}
 	port := os.Getenv("POSTGRES_PORT")
 	if port == "" {
@@ -144,7 +143,6 @@ func CreateTable() {
 		_ = conn.Close(context.Background())
 	}()
 
-	_, err = conn.Exec(context.Background(), "drop TABLE t;")
 	_, err = conn.Exec(context.Background(), "CREATE TABLE t (id int)")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s", err)
