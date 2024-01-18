@@ -347,7 +347,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Err(err).
-			Msgf("parsed multi-sahrd routing state")
+			Msgf("parsed multi-shard routing state")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:
 		// TBD: do it better
