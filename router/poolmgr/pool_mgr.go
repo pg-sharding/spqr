@@ -56,14 +56,15 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	anyerr = nil
 
 	cl.ServerAcquireUse()
-	defer cl.ServerReleaseUse()
 
 	if cl.Server() == nil {
 		/* If there is nothing to unroute, return */
+		cl.ServerReleaseUse()
 		return nil
 	}
 
 	if cl.Server().TxStatus() != txstatus.TXIDLE {
+		cl.ServerReleaseUse()
 		return unsyncConnection
 	}
 
@@ -78,6 +79,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 		}
 	}
 
+	cl.ServerReleaseUse()
 	_ = cl.Unroute()
 
 	return anyerr
