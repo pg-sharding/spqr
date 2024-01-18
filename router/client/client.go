@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
 
@@ -910,17 +911,20 @@ func (cl *PsqlClient) Params() map[string]string {
 	return cl.activeParamSet
 }
 
-func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
+func (cl *PsqlClient) ReplyErrMsg(msg string, code string) error {
 	var clerrmsg string
+
 	if cl.ReplyClientId {
-		clerrmsg = fmt.Sprintf("client %p: error %v", cl, errmsg)
+		clerrmsg = fmt.Sprintf("client %p: error %v", cl, msg)
 	} else {
-		clerrmsg = errmsg
+		clerrmsg = msg
 	}
+
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
 			Message:  clerrmsg,
 			Severity: "ERROR",
+			Code:     code,
 		},
 		&pgproto3.ReadyForQuery{
 			TxStatus: byte(txstatus.TXIDLE),
@@ -930,8 +934,20 @@ func (cl *PsqlClient) ReplyErrMsg(errmsg string) error {
 			return err
 		}
 	}
-
 	return nil
+}
+func (cl *PsqlClient) ReplyErr(e error) error {
+	switch er := e.(type) {
+	case *spqrerror.SpqrError:
+		return cl.ReplyErrMsg(er.Error(), er.ErrorCode)
+	default:
+		return cl.ReplyErrMsg(e.Error(), "SPQRU")
+	}
+}
+
+func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
+	clerrmsg := fmt.Sprintf("Code: %s. Name: %s.", code, spqrerror.GetMessageByCode(code))
+	return cl.ReplyErrMsg(clerrmsg, code)
 }
 
 func (cl *PsqlClient) ReplyRFQ() error {

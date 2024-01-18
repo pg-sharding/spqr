@@ -80,7 +80,7 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 
 // TODO : unit tests
 func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr meta.EntityMgr = l.Coord
+	var mgr = l.Coord
 
 	if !config.RouterConfig().WithCoordinator {
 		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
@@ -175,7 +175,7 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 		switch v := msg.(type) {
 		case *pgproto3.Query:
 			if err := l.ProcessQuery(ctx, v.String, cl); err != nil {
-				_ = cl.ReplyErrMsg(err.Error())
+				_ = cl.ReplyErr(err)
 				// continue to consume input
 			}
 		case *pgproto3.Terminate:

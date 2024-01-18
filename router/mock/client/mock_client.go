@@ -542,18 +542,46 @@ func (mr *MockRouterClientMockRecorder) ReplyDebugNoticef(fmt interface{}, args 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyDebugNoticef", reflect.TypeOf((*MockRouterClient)(nil).ReplyDebugNoticef), varargs...)
 }
 
-// ReplyErrMsg mocks base method.
-func (m *MockRouterClient) ReplyErrMsg(errmsg string) error {
+// ReplyErr mocks base method.
+func (m *MockRouterClient) ReplyErr(errmsg error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyErrMsg", errmsg)
+	ret := m.ctrl.Call(m, "ReplyErr", errmsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyErr indicates an expected call of ReplyErr.
+func (mr *MockRouterClientMockRecorder) ReplyErr(errmsg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErr", reflect.TypeOf((*MockRouterClient)(nil).ReplyErr), errmsg)
+}
+
+// ReplyErrMsg mocks base method.
+func (m *MockRouterClient) ReplyErrMsg(e, c string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyErrMsg", e, c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyErrMsg indicates an expected call of ReplyErrMsg.
-func (mr *MockRouterClientMockRecorder) ReplyErrMsg(errmsg interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyErrMsg(e, c interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), errmsg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsg", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsg), e, c)
+}
+
+// ReplyErrMsgByCode mocks base method.
+func (m *MockRouterClient) ReplyErrMsgByCode(code string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyErrMsgByCode", code)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyErrMsgByCode indicates an expected call of ReplyErrMsgByCode.
+func (mr *MockRouterClientMockRecorder) ReplyErrMsgByCode(code interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyErrMsgByCode", reflect.TypeOf((*MockRouterClient)(nil).ReplyErrMsgByCode), code)
 }
 
 // ReplyNotice mocks base method.
