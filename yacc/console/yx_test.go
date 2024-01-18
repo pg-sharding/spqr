@@ -213,7 +213,7 @@ func TestKeyRange(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
+			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh1",
@@ -227,7 +227,7 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
-			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh2",
@@ -235,43 +235,6 @@ func TestKeyRange(t *testing.T) {
 					Dataspace:  "default",
 					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
 					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
-				},
-			},
-			err: nil,
-		},
-	} {
-
-		tmp, err := spqrparser.Parse(tt.query)
-
-		assert.NoError(err, "query %s", tt.query)
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
-	}
-}
-
-func TestShardingRule(t *testing.T) {
-
-	assert := assert.New(t)
-
-	type tcase struct {
-		query string
-		exp   spqrparser.Statement
-		err   error
-	}
-
-	for _, tt := range []tcase{
-		{
-			query: "ADD SHARDING RULE rule1 COLUMNS id;",
-			exp: &spqrparser.Create{
-				Element: &spqrparser.ShardingRuleDefinition{
-					ID:        "rule1",
-					TableName: "",
-					Dataspace: "default",
-					Entries: []spqrparser.ShardingRuleEntry{
-						{
-							Column: "id",
-						},
-					},
 				},
 			},
 			err: nil,
@@ -328,9 +291,12 @@ func TestAttachTable(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ATTACH TABLE t TO DATASPACE ds1;",
+			query: "ALTER DATASPACE ds1 ATTACH TABLE t (id);",
 			exp: &spqrparser.AttachTable{
-				Table:     "t",
+				Relation: &spqrparser.ShardedRelaion{
+					Name:    "t",
+					Columns: []string{"id"},
+				},
 				Dataspace: &spqrparser.DataspaceSelector{ID: "ds1"},
 			},
 			err: nil,
@@ -376,6 +342,29 @@ func TestDataspace(t *testing.T) {
 					ColTypes: []string{
 						"varchar",
 						"varchar",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar RELATIONS t(id, id2), t2(indx, indx2)",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DataspaceDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"varchar",
+						"varchar",
+					},
+					Relations: []*spqrparser.ShardedRelaion{
+						{
+							Name:    "t",
+							Columns: []string{"id", "id2"},
+						},
+						{
+							Name:    "t2",
+							Columns: []string{"indx", "indx2"},
+						},
 					},
 				},
 			},

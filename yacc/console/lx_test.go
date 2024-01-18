@@ -99,6 +99,16 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.VARCHAR,
 			},
 		},
+		{
+			query: "create t (id)",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.IDENT,
+				spqrparser.TOPENBR,
+				spqrparser.IDENT,
+				spqrparser.TCLOSEBR,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

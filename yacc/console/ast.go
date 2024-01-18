@@ -70,21 +70,15 @@ type DropStmt interface {
 	iDrop()
 }
 
+type ShardedRelaion struct {
+	Name    string
+	Columns []string
+}
+
 type DataspaceDefinition struct {
-	ID       string
-	ColTypes []string
-}
-
-type ShardingRuleDefinition struct {
 	ID        string
-	TableName string
-	Entries   []ShardingRuleEntry
-	Dataspace string
-}
-
-type ShardingRuleEntry struct {
-	Column       string
-	HashFunction string
+	ColTypes  []string
+	Relations []*ShardedRelaion
 }
 
 type KeyRangeDefinition struct {
@@ -100,10 +94,9 @@ type ShardDefinition struct {
 	Hosts []string
 }
 
-func (*KeyRangeDefinition) iCreate()     {}
-func (*ShardDefinition) iCreate()        {}
-func (*DataspaceDefinition) iCreate()    {}
-func (*ShardingRuleDefinition) iCreate() {}
+func (*KeyRangeDefinition) iCreate()  {}
+func (*ShardDefinition) iCreate()     {}
+func (*DataspaceDefinition) iCreate() {}
 
 type SplitKeyRange struct {
 	Border         []byte
@@ -125,10 +118,6 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
-type ShardingRuleSelector struct {
-	ID string
-}
-
 type DataspaceSelector struct {
 	ID string
 }
@@ -137,14 +126,12 @@ type DropRoutersAll struct{}
 
 func (*DropRoutersAll) iStatement() {}
 
-func (*KeyRangeSelector) iDrop()     {}
-func (*ShardingRuleSelector) iDrop() {}
-func (*DataspaceSelector) iDrop()    {}
+func (*KeyRangeSelector) iDrop()  {}
+func (*DataspaceSelector) iDrop() {}
 
 const (
-	EntityRouters      = "ROUTERS"
-	EntityKeyRanges    = "KEY_RANGES"
-	EntityShardingRule = "SHARDING_RULE"
+	EntityRouters   = "ROUTERS"
+	EntityKeyRanges = "KEY_RANGES"
 )
 
 type Lock struct {
@@ -177,7 +164,7 @@ type UnregisterRouter struct {
 }
 
 type AttachTable struct {
-	Table     string
+	Relation  *ShardedRelaion
 	Dataspace *DataspaceSelector
 }
 
@@ -187,7 +174,6 @@ const (
 	DataspacesStr         = "dataspaces"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
-	ShardingRules         = "sharding_rules"
 	KeyRangesStr          = "key_ranges"
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
@@ -206,26 +192,24 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()                   {}
-func (*Set) iStatement()                    {}
-func (*KeyRangeSelector) iStatement()       {}
-func (*ShardingRuleSelector) iStatement()   {}
-func (*DataspaceSelector) iStatement()      {}
-func (*Lock) iStatement()                   {}
-func (*Unlock) iStatement()                 {}
-func (*Shutdown) iStatement()               {}
-func (*Listen) iStatement()                 {}
-func (*MoveKeyRange) iStatement()           {}
-func (*SplitKeyRange) iStatement()          {}
-func (*UniteKeyRange) iStatement()          {}
-func (*DataspaceDefinition) iStatement()    {}
-func (*ShardingRuleDefinition) iStatement() {}
-func (*KeyRangeDefinition) iStatement()     {}
-func (*ShardDefinition) iStatement()        {}
-func (*Kill) iStatement()                   {}
-func (*WhereClauseLeaf) iStatement()        {}
-func (*WhereClauseEmpty) iStatement()       {}
-func (*WhereClauseOp) iStatement()          {}
+func (*Show) iStatement()                {}
+func (*Set) iStatement()                 {}
+func (*KeyRangeSelector) iStatement()    {}
+func (*DataspaceSelector) iStatement()   {}
+func (*Lock) iStatement()                {}
+func (*Unlock) iStatement()              {}
+func (*Shutdown) iStatement()            {}
+func (*Listen) iStatement()              {}
+func (*MoveKeyRange) iStatement()        {}
+func (*SplitKeyRange) iStatement()       {}
+func (*UniteKeyRange) iStatement()       {}
+func (*DataspaceDefinition) iStatement() {}
+func (*KeyRangeDefinition) iStatement()  {}
+func (*ShardDefinition) iStatement()     {}
+func (*Kill) iStatement()                {}
+func (*WhereClauseLeaf) iStatement()     {}
+func (*WhereClauseEmpty) iStatement()    {}
+func (*WhereClauseOp) iStatement()       {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
