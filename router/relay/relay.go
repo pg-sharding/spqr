@@ -993,6 +993,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 	unprocessed := 0
 
+	defer func() {
+		// cleanup
+		rst.xBuf = nil
+		rst.bindRoute = nil
+	}()
+
 	for _, msg := range rst.xBuf {
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
@@ -1134,10 +1140,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			return err
 		}
 	}
-
-	// cleanup
-	rst.xBuf = nil
-	rst.bindRoute = nil
 
 	return nil
 }
