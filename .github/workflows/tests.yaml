@@ -50,7 +50,7 @@ jobs:
           POSTGRES_VERSION=15 make regress
 
   gorm-regress:
-    name: gorm_regress
+    name: drivers_gorm
     runs-on: ubuntu-latest
     steps:
 
@@ -61,7 +61,7 @@ jobs:
         run: make gorm_regress
 
   xproto-regress:
-    name: xproto_regress
+    name: xproto
     runs-on: ubuntu-latest
     steps:
 
