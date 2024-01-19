@@ -419,6 +419,177 @@ func TestPrepStmt(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmt1",
+					Query: "SELECT set_config($1, $2, $3)",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "stmt1",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmt1",
+					Parameters: [][]byte{
+						[]byte("client_encoding"),
+						[]byte("UTF8"),
+						[]byte("false"),
+					},
+				},
+				&pgproto3.Describe{ObjectType: 'P'},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmt2",
+					Query: "SELECT pg_is_in_recovery(), current_setting('transaction_read_only')::bool",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{
+					ObjectType: 'S',
+					Name:       "stmt2",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmt2",
+				},
+				&pgproto3.Describe{ObjectType: 'P'},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmt1",
+					Parameters: [][]byte{
+						[]byte("statement_timeout"),
+						[]byte("19"),
+						[]byte("false"),
+					},
+				},
+				&pgproto3.Describe{ObjectType: 'P'},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{25, 25, 16},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("set_config"),
+							DataTypeOID:  25,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("set_config"),
+							DataTypeOID:  25,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{Values: [][]byte{
+					[]byte("UTF8"),
+				}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				/* select pg in recovery */
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  16,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
+						{
+							Name:         []byte("current_setting"),
+							DataTypeOID:  16,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("pg_is_in_recovery"),
+							DataTypeOID:  16,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
+						{
+							Name:         []byte("current_setting"),
+							DataTypeOID:  16,
+							TypeModifier: -1,
+							DataTypeSize: 1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{Values: [][]byte{
+					[]byte("f"),
+					[]byte("f"),
+				}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				/* execute again */
+				&pgproto3.BindComplete{},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("set_config"),
+							DataTypeOID:  25,
+							TypeModifier: -1,
+							DataTypeSize: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{Values: [][]byte{
+					[]byte("19ms"),
+				}},
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
