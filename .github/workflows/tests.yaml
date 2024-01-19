@@ -50,7 +50,7 @@ jobs:
           POSTGRES_VERSION=15 make regress
 
   gorm-regress:
-    name: Run regression tests with GORM
+    name: gorm_regress
     runs-on: ubuntu-latest
     steps:
 
@@ -61,7 +61,7 @@ jobs:
         run: make gorm_regress
 
   xproto-regress:
-    name: Run regression tests for extended protocol
+    name: xproto_regress
     runs-on: ubuntu-latest
     steps:
 
