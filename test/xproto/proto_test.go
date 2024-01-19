@@ -506,6 +506,10 @@ func TestPrepStmt(t *testing.T) {
 					},
 				},
 
+				&pgproto3.ParameterStatus{
+					Name:  "client_encoding",
+					Value: "UTF8",
+				},
 				&pgproto3.DataRow{Values: [][]byte{
 					[]byte("UTF8"),
 				}},
