@@ -222,7 +222,6 @@ func TestPrepStmt(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Bind{
