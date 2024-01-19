@@ -674,23 +674,18 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	// client will continue sending keep alive requests to the etcd server, but will drop responses
 	// until there is capacity on the channel to send more responses.
 
-	leaseRespCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
+	keepAliveCh, err := q.cli.Lease.KeepAlive(ctx, leaseGrantResp.ID)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("etcdqdb: lease keep alive failed")
 		return err
 	}
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case resp := <-leaseRespCh:
-				spqrlog.Zero.Debug().
-					Uint64("raft-term", resp.RaftTerm).
-					Int64("lease-id", int64(resp.ID)).
-					Msg("lease responses channel")
-			}
+		for resp := range keepAliveCh {
+			spqrlog.Zero.Debug().
+				Uint64("raft-term", resp.RaftTerm).
+				Int64("lease-id", int64(resp.ID)).
+				Msg("etcd keep alive channel")
 		}
 	}()
 
