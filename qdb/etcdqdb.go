@@ -1021,7 +1021,12 @@ func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error 
 		Str("id", dataspace.ID).
 		Msg("etcdqdb: add dataspace")
 
-	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), dataspace.ID)
+	rawDs, err := json.Marshal(dataspace)
+	if err != nil {
+		return err
+	}
+
+	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), string(rawDs))
 	if err != nil {
 		return err
 	}

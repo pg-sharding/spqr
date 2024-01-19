@@ -32,12 +32,12 @@ type Interactor interface {
 }
 
 type PSQLInteractor struct {
-	cl client.Client
+	Cl client.Client
 }
 
 func NewPSQLInteractor(cl client.Client) *PSQLInteractor {
 	return &PSQLInteractor{
-		cl: cl,
+		Cl: cl,
 	}
 }
 
@@ -49,7 +49,7 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -60,7 +60,7 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 
 // TODO : unit tests
 func (pi *PSQLInteractor) SetDataspace(dataspace string) {
-	pi.cl.SetDataspace(dataspace)
+	pi.Cl.SetDataspace(dataspace)
 }
 
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
@@ -85,7 +85,7 @@ func (pi *PSQLInteractor) WriteHeader(stmts ...string) error {
 	for _, stmt := range stmts {
 		desc = append(desc, TextOidFD(stmt))
 	}
-	return pi.cl.Send(&pgproto3.RowDescription{Fields: desc})
+	return pi.Cl.Send(&pgproto3.RowDescription{Fields: desc})
 }
 
 // TODO : unit tests
@@ -94,7 +94,7 @@ func (pi *PSQLInteractor) WriteDataRow(msgs ...string) error {
 	for _, msg := range msgs {
 		vals = append(vals, []byte(msg))
 	}
-	return pi.cl.Send(&pgproto3.DataRow{Values: vals})
+	return pi.Cl.Send(&pgproto3.DataRow{Values: vals})
 }
 
 // TODO : unit tests
@@ -114,7 +114,7 @@ func (pi *PSQLInteractor) Databases(dbs []string) error {
 	}
 
 	for _, db := range dbs {
-		if err := pi.cl.Send(&pgproto3.DataRow{
+		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("database %s", db))},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -165,7 +165,7 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 	}
 
 	msg := &pgproto3.DataRow{Values: [][]byte{[]byte(pkg.SpqrVersionRevision)}}
-	if err := pi.cl.Send(msg); err != nil {
+	if err := pi.Cl.Send(msg); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -183,7 +183,7 @@ func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created datashard with name %s", shard.ID))}},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -206,14 +206,14 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		},
 		},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
 
 	for _, keyRange := range krs {
-		if err := pi.cl.Send(&pgproto3.DataRow{
+		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
@@ -239,7 +239,7 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %s to %s", keyRange.LowerBound, keyRange.UpperBound))}},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -258,7 +258,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("split key range %v by %s", split.SourceID, string(split.Bound)))}},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -279,7 +279,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 			[]byte(fmt.Sprintf("lock key range with id %v", krid))},
 		},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -302,7 +302,7 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 		},
 		},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -321,7 +321,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 	spqrlog.Zero.Debug().Msg("listing shards")
 
 	for _, shard := range shards {
-		if err := pi.cl.Send(&pgproto3.DataRow{
+		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{[]byte(fmt.Sprintf("datashard with ID %s", shard.ID))},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -496,7 +496,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 			TextOidFD("Hash Function"),
 		}},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -519,7 +519,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 			tableName = rule.TableName
 		}
 
-		if err := pi.cl.Send(&pgproto3.DataRow{
+		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(rule.Id),
 				[]byte(rule.Dataspace),
@@ -543,13 +543,13 @@ func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspac
 			TextOidFD("Dataspace ID"),
 		}},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 	}
 	for _, dataspace := range dataspaces {
-		if err := pi.cl.Send(&pgproto3.DataRow{
+		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(dataspace.Id),
 			},
@@ -574,7 +574,7 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 			TxStatus: byte(txstatus.TXIDLE),
 		},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			return err
 		}
 	}
@@ -629,7 +629,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}
@@ -656,7 +656,7 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
-		if err := pi.cl.Send(msg); err != nil {
+		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}

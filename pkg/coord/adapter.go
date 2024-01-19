@@ -393,7 +393,7 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
-	_, err := c.AttachToDataspace(ctx, &proto.AttachToDataspaceRequest{
+	_, err := c.AlterDataspaceAttachTable(ctx, &proto.AlterDataspaceAttachTableRequest{
 		Table:     table,
 		Dataspace: dataspaces.DataspaceToProto(ds),
 	})
@@ -405,7 +405,9 @@ func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *datas
 func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
-	resp, err := c.GetDataspace(ctx, &proto.GetDataspaceRequest{Table: table})
+	resp, err := c.GetDataspaceForRelation(ctx, &proto.GetDataspaceForRelationRequest{
+		RelationName: table,
+	})
 	if err != nil {
 		return nil, err
 	}

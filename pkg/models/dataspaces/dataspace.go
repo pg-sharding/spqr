@@ -14,12 +14,12 @@ type ShardedRelation struct {
 type Dataspace struct {
 	Id        string
 	ColTypes  []string
-	Relations []ShardedRelation
+	Relations map[string]ShardedRelation
 }
 
 // local table sharding rule -> route to world
 
-func NewDataspace(id string, rels []ShardedRelation) *Dataspace {
+func NewDataspace(id string, rels map[string]ShardedRelation) *Dataspace {
 	return &Dataspace{
 		Id:        id,
 		Relations: rels,
@@ -35,10 +35,10 @@ func DataspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Dataspace {
 		Id: ds.ID,
 	}
 	for _, r := range ds.Relations {
-		ret.Relations = append(ret.Relations, ShardedRelation{
+		ret.Relations[r.Name] = ShardedRelation{
 			Name:        r.Name,
 			ColumnNames: r.Columns,
-		})
+		}
 	}
 
 	return ret

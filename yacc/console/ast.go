@@ -55,7 +55,7 @@ type CreateStmt interface {
 }
 
 type TraceStmt struct {
-	Client uint
+	Client int64
 	All    bool
 }
 
@@ -81,9 +81,13 @@ type DataspaceDefinition struct {
 	Relations []*ShardedRelaion
 }
 
+type KeyRangeBound struct {
+	Pivots [][]byte
+}
+
 type KeyRangeDefinition struct {
-	LowerBound []byte
-	UpperBound []byte
+	LowerBound *KeyRangeBound
+	UpperBound *KeyRangeBound
 	ShardID    string
 	KeyRangeID string
 	Dataspace  string
@@ -149,7 +153,7 @@ type Shutdown struct{}
 
 type Kill struct {
 	Cmd    string
-	Target uint
+	Target int64
 }
 
 // coordinator

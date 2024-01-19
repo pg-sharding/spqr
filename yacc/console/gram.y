@@ -5,8 +5,8 @@ package spqrparser
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/binary"
 	"strings"
-	"strconv"
 )
 
 
@@ -26,7 +26,7 @@ func randomHex(n int) (string, error) {
 	strlist                []string
 	byte                   byte
 	bytes                  []byte
-	integer                int
+	integer                int64
 	uinteger               uint
 	bool                   bool
 	empty                  struct{}
@@ -52,6 +52,7 @@ func randomHex(n int) (string, error) {
 	split                  *SplitKeyRange
 	move                   *MoveKeyRange
 	unite                  *UniteKeyRange
+	krbound                *KeyRangeBound
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -96,7 +97,7 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
-%token<uinteger> ICONST
+%token<integer> ICONST
 
 // ';'
 %token<str> TSEMICOLON
@@ -110,10 +111,13 @@ func randomHex(n int) (string, error) {
 
 %type<str> any_val any_id
 
-%type<uinteger> any_uint
+%type<integer> any_int
 
 // CMDS
 %type <statement> command
+%type<bytes> key_range_bound_elem
+
+%type<krbound>  key_range_bound
 
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
@@ -258,9 +262,9 @@ command:
 		setParseTree(yylex, $1)
 	}
 
-any_uint:
+any_int:
 	ICONST {
-		$$ = uint($1)
+		$$ = int64($1)
 	}
 
 any_val: SCONST
@@ -270,9 +274,7 @@ any_val: SCONST
 	IDENT
 	{
 		$$ = string($1)
-	} | ICONST {
-		$$ = strconv.Itoa(int($1))
-	}
+	} 
 
 any_id: IDENT
 	{
@@ -367,10 +369,6 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP dataspace_select_stmt
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: false}
-	}
 	| DROP DATASPACE ALL opt_cascade
 	{
 		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: $4}
@@ -388,7 +386,7 @@ trace_stmt:
 	{
 		$$ = &TraceStmt{All: true}
 	} | 
-	START TRACE CLIENT any_uint {
+	START TRACE CLIENT any_int {
 		$$ = &TraceStmt {
 			Client: $4,
 		}
@@ -524,30 +522,42 @@ opt_dataspace:
     | /* EMPTY */ { $$ = "default" }
 
 
+key_range_bound_elem:
+	any_val {
+		$$ = []byte($1)
+	}
+	| any_int {
+		buf := make([]byte, 8)
+		binary.PutVarint(buf, $1)
+		$$ = buf
+	}
+
+key_range_bound:
+	key_range_bound_elem { 
+		$$ = &KeyRangeBound{
+			Pivots: [][]byte{
+				$1,
+			}
+		}
+	} 
+	| key_range_bound TCOMMA key_range_bound_elem {
+		$$ = &KeyRangeBound{
+			Pivots: append($1.Pivots, $3),
+		}
+	}
+
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	KEY RANGE any_id FROM key_range_bound TO key_range_bound ROUTE TO any_id opt_dataspace
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{LowerBound: $5, UpperBound: $7, ShardID: $10, KeyRangeID: $3, Dataspace: $11}
 	}
-	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
-	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
-	}
-	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	| KEY RANGE FROM key_range_bound TO key_range_bound ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
-	}
-	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
-	{
-		str, err := randomHex(6)
-		if err != nil {
-			panic(err)
-		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{LowerBound: $4, UpperBound: $6, ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
 	}
 
 
@@ -592,11 +602,11 @@ split_key_range_stmt:
 	}
 
 kill_stmt:
-	KILL kill_statement_type any_uint
+	KILL kill_statement_type any_int
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
 	}
-	| KILL CLIENT any_uint {
+	| KILL CLIENT any_int {
 		$$ = &Kill{Cmd: "client", Target: $3}
 	}
 
