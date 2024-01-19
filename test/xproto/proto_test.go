@@ -423,17 +423,17 @@ func TestPrepStmt(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
-					Name:  "stmt1",
+					Name:  "pstmt1",
 					Query: "SELECT set_config($1, $2, $3)",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Describe{
 					ObjectType: 'S',
-					Name:       "stmt1",
+					Name:       "pstmt1",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
-					PreparedStatement: "stmt1",
+					PreparedStatement: "pstmt1",
 					Parameters: [][]byte{
 						[]byte("client_encoding"),
 						[]byte("UTF8"),
@@ -445,23 +445,23 @@ func TestPrepStmt(t *testing.T) {
 				&pgproto3.Sync{},
 
 				&pgproto3.Parse{
-					Name:  "stmt2",
+					Name:  "pstmt2",
 					Query: "SELECT pg_is_in_recovery(), current_setting('transaction_read_only')::bool",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Describe{
 					ObjectType: 'S',
-					Name:       "stmt2",
+					Name:       "pstmt2",
 				},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
-					PreparedStatement: "stmt2",
+					PreparedStatement: "pstmt2",
 				},
 				&pgproto3.Describe{ObjectType: 'P'},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
-					PreparedStatement: "stmt1",
+					PreparedStatement: "pstmt1",
 					Parameters: [][]byte{
 						[]byte("statement_timeout"),
 						[]byte("19"),
