@@ -222,7 +222,6 @@ func TestPrepStmt(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Bind{
@@ -425,7 +424,11 @@ func TestPrepStmt(t *testing.T) {
 			frontend.Send(msg)
 		}
 		_ = frontend.Flush()
+		backendFinished := false
 		for _, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
 			retMsg, err := frontend.Receive()
 			assert.NoError(t, err)
 			switch retMsgType := retMsg.(type) {
@@ -433,6 +436,13 @@ func TestPrepStmt(t *testing.T) {
 				for i := range retMsgType.Fields {
 					// We don't want to check table OID
 					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
 				}
 			default:
 				break
