@@ -37,11 +37,11 @@ func NewConnectionKepperData(info *protos.PoolInfo) *ConnectionKepperData {
 }
 
 func (r *ConnectionKepperData) Put(host shard.Shard) error {
-	return spqrerror.NewSpqrError("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
 }
 
 func (r *ConnectionKepperData) Discard(sh shard.Shard) error {
-	return spqrerror.NewSpqrError("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
 }
 
 func (r *ConnectionKepperData) UsedConnectionCount() int {

@@ -374,18 +374,18 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 			}
 			return right, nil
 		default:
-			return true, spqrerror.NewSpqrError(fmt.Sprintf("not supported logic operation: %s", where.Op), spqrerror.SPQR_COMPLEX_QUERY)
+			return true, spqrerror.New(fmt.Sprintf("not supported logic operation: %s", where.Op), spqrerror.SPQR_COMPLEX_QUERY)
 		}
 	case spqrparser.WhereClauseLeaf:
 		switch where.Op {
 		case "=":
 			i, ok := nameToIndex[where.ColRef.ColName]
 			if !ok {
-				return true, spqrerror.NewSpqrError(fmt.Sprintf("column %s not exists", where.ColRef.ColName), spqrerror.SPQR_COMPLEX_QUERY)
+				return true, spqrerror.New(fmt.Sprintf("column %s not exists", where.ColRef.ColName), spqrerror.SPQR_COMPLEX_QUERY)
 			}
 			return row[i] == where.Value, nil
 		default:
-			return true, spqrerror.NewSpqrError(fmt.Sprintf("not supported operation %s", where.Op), spqrerror.SPQR_COMPLEX_QUERY)
+			return true, spqrerror.New(fmt.Sprintf("not supported operation %s", where.Op), spqrerror.SPQR_COMPLEX_QUERY)
 		}
 	default:
 		return false, nil

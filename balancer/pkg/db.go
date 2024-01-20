@@ -140,7 +140,7 @@ func NewCluster(addrs []string, dbname, user, password, sslMode, sslRootCert str
 
 		db, err := sql.Open("pgx", connString)
 		if err != nil {
-			return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to open pgx connection %v: %v", connString, err), spqrerror.SPQR_CONNECTION_ERROR)
+			return nil, spqrerror.New(fmt.Sprintf("failed to open pgx connection %v: %v", connString, err), spqrerror.SPQR_CONNECTION_ERROR)
 		}
 		// TODO may be some connections settings here?
 
@@ -156,7 +156,7 @@ func ConnString(addr, dbname, user, password, sslMode, sslRootCert string) (stri
 
 	host, portFromAddr, err := net.SplitHostPort(addr)
 	if err != nil {
-		return "", spqrerror.NewSpqrError(fmt.Sprintf("invalid host spec: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
+		return "", spqrerror.New(fmt.Sprintf("invalid host spec: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
 	}
 	connParams = append(connParams, "host="+host)
 	connParams = append(connParams, "port="+portFromAddr)
@@ -195,7 +195,7 @@ func GetMasterConn(cluster *hasql.Cluster, retries int, sleepMS int) (*sql.Conn,
 	defer cancel()
 	node, err := cluster.WaitForPrimary(ctx)
 	if err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("there is no node with role master: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
+		return nil, spqrerror.New(fmt.Sprintf("there is no node with role master: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
 	}
 	return GetNodeConn(context.TODO(), node, retries, sleepMS)
 }
@@ -206,7 +206,7 @@ func GetNodeConn(parentctx context.Context, node hasql.Node, retries int, sleepM
 
 	conn, err := node.DB().Conn(ctx)
 	if err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to get connection with master node: %v", err), spqrerror.SPQR_CONNECTION_ERROR)
+		return nil, spqrerror.New(fmt.Sprintf("failed to get connection with master node: %v", err), spqrerror.SPQR_CONNECTION_ERROR)
 	}
 
 	return conn, nil

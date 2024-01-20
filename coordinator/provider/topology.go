@@ -16,17 +16,17 @@ type TopologyService struct {
 
 // TODO : implement
 func (r *TopologyService) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
-	return nil, spqrerror.NewSpqrError("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return nil, spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
 }
 
 // TODO : implement
 func (r *TopologyService) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
-	return nil, spqrerror.NewSpqrError("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return nil, spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
 }
 
 // TODO : implement
 func (r *TopologyService) UpdateCoordinator(ctx context.Context, in *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
-	return nil, spqrerror.NewSpqrError("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return nil, spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
 }
 
 func NewTopologyService(impl coordinator.Coordinator) *TopologyService {

@@ -16,6 +16,8 @@ const (
 	SPQR_KEYRANGE_ERROR      = "SPQRK"
 	SPQR_SHARDING_RULE_ERROR = "SPQRH"
 	SPQR_TRANSFER_ERROR      = "SPQRT"
+	SPQR_NO_DATASPACE        = "SPQRN"
+	SPQR_NOTIMPLEMENTED      = "SPQRI"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -31,6 +33,8 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:      "Keyrange error",
 	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
 	SPQR_TRANSFER_ERROR:      "Transfer error",
+	SPQR_NO_DATASPACE:        "No dataspace",
+	SPQR_NOTIMPLEMENTED:      "Not implemented",
 }
 
 func GetMessageByCode(errorCode string) string {
@@ -49,9 +53,16 @@ type SpqrError struct {
 	ErrorCode string
 }
 
-func NewSpqrError(errorMsg string, errorCode string) *SpqrError {
+func New(errorMsg string, errorCode string) *SpqrError {
 	err := &SpqrError{
 		Err:       fmt.Errorf(errorMsg),
+		ErrorCode: errorCode,
+	}
+	return err
+}
+func Newf(errorCode string, format string, a ...any) *SpqrError {
+	err := &SpqrError{
+		Err:       fmt.Errorf(format, a),
 		ErrorCode: errorCode,
 	}
 	return err

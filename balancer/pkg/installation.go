@@ -194,7 +194,7 @@ func AddHostStats(stats *map[string]map[string]Stats, additionalStats *map[strin
 func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	cluster, ok := (*i.shardClusters)[shard.id]
 	if !ok {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("not known shard %d", shard.id), spqrerror.SPQR_NO_DATASHARD)
+		return nil, spqrerror.New(fmt.Sprintf("not known shard %d", shard.id), spqrerror.SPQR_NO_DATASHARD)
 	}
 
 	nodes := cluster.Nodes()
@@ -395,7 +395,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 	}
 
 	if err := rows.Close(); err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to close keyRange rows: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.New(fmt.Sprintf("failed to close keyRange rows: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	kr := KeyRange{

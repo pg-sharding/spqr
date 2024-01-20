@@ -71,7 +71,7 @@ func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *p
 		}
 	}
 
-	return "", spqrerror.NewSpqrError("key range not found", spqrerror.SPQR_KEYRANGE_ERROR)
+	return "", spqrerror.New("key range not found", spqrerror.SPQR_KEYRANGE_ERROR)
 }
 
 // TODO : unit tests
@@ -163,7 +163,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	}
 
 	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
-		return nil, spqrerror.NewSpqrError(fmt.Sprintf("failed to unite key ranges: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.New(fmt.Sprintf("failed to unite key ranges: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	return &protos.ModifyReply{}, nil

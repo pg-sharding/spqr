@@ -109,7 +109,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 				Err(err).
 				Msg("unknown stmt.Cmd")
 
-			return spqrerror.NewSpqrError(fmt.Sprintf("Unknown show statement: %s", stmt.Cmd), spqrerror.SPQR_COMPLEX_QUERY)
+			return spqrerror.New(fmt.Sprintf("Unknown show statement: %s", stmt.Cmd), spqrerror.SPQR_COMPLEX_QUERY)
 		}
 
 	case *spqrparser.SplitKeyRange:
@@ -210,7 +210,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 	case *spqrparser.Shutdown:
 		//t.stchan <- struct{}{}
-		return spqrerror.NewSpqrError("not implemented", spqrerror.SPQR_UNEXPECTED)
+		return spqrerror.New("not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
 
 	default:
 		spqrlog.Zero.Error().

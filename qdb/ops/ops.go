@@ -12,7 +12,7 @@ import (
 // TODO : unit tests
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("sharding rule %v already present in qdb", rule.Id), spqrerror.SPQR_COMPLEX_QUERY)
+		return spqrerror.New(fmt.Sprintf("sharding rule %v already present in qdb", rule.Id), spqrerror.SPQR_COMPLEX_QUERY)
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
@@ -27,7 +27,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		}
 	}
 	if !exists {
-		return spqrerror.NewSpqrError("try to add sharding rule link to a non-existent dataspace", spqrerror.SPQR_COMPLEX_QUERY)
+		return spqrerror.New("try to add sharding rule link to a non-existent dataspace", spqrerror.SPQR_NO_DATASPACE)
 	}
 
 	existsRules, err := qdb.ListShardingRules(ctx, rule.Dataspace)
@@ -38,10 +38,10 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	for _, v := range existsRules {
 		vGen := shrule.ShardingRuleFromDB(v)
 		if rule.Includes(vGen) {
-			return spqrerror.NewSpqrError(fmt.Sprintf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
+			return spqrerror.New(fmt.Sprintf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
 		}
 		if vGen.Includes(rule) {
-			return spqrerror.NewSpqrError(fmt.Sprintf("sharding rule %v included in %v present in qdb", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
+			return spqrerror.New(fmt.Sprintf("sharding rule %v included in %v present in qdb", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
 		}
 	}
 
@@ -55,22 +55,22 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
-		return spqrerror.NewSpqrError(fmt.Sprintf("key range %v already present in qdb", keyRange.ID), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.New(fmt.Sprintf("key range %v already present in qdb", keyRange.ID), spqrerror.SPQR_KEYRANGE_ERROR)
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
 	if err != nil {
 		return err
 	}
-	hasDs := false
+	exists := false
 	for _, ds := range existDataspace {
-		hasDs = ds.ID == keyRange.Dataspace
-		if hasDs {
+		exists = ds.ID == keyRange.Dataspace
+		if exists {
 			break
 		}
 	}
-	if !hasDs {
-		return spqrerror.NewSpqrError("try to add key range link to a non-existent dataspace", spqrerror.SPQR_COMPLEX_QUERY)
+	if !exists {
+		return spqrerror.New("try to add key range link to a non-existent dataspace", spqrerror.SPQR_NO_DATASPACE)
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
@@ -80,7 +80,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 
 	for _, v := range existsKrids {
 		if doIntersect(keyRange, v) {
-			return spqrerror.NewSpqrError(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.New(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
 		}
 	}
 
@@ -109,7 +109,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			continue
 		}
 		if doIntersect(keyRange, v) {
-			return spqrerror.NewSpqrError(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.New(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
 		}
 	}
 
