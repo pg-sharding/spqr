@@ -19,14 +19,14 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	if err != nil {
 		return err
 	}
-	hasDs := false
+	exists := false
 	for _, ds := range existDataspace {
-		hasDs = ds.ID == rule.Dataspace
-		if hasDs {
+		exists = ds.ID == rule.Dataspace
+		if exists {
 			break
 		}
 	}
-	if !hasDs {
+	if !exists {
 		return spqrerror.NewSpqrError("try to add sharding rule link to a non-existent dataspace", spqrerror.SPQR_COMPLEX_QUERY)
 	}
 
