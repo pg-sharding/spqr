@@ -58,6 +58,5 @@ func NewSpqrError(errorMsg string, errorCode string) *SpqrError {
 }
 
 func (er *SpqrError) Error() string {
-	return fmt.Sprintf("Code: %s. Name: %s. Description: %s.",
-		er.ErrorCode, GetMessageByCode(er.ErrorCode), er.Err)
+	return er.Error()
 }
