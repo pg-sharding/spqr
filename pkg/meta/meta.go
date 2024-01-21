@@ -86,8 +86,8 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if (ds.Id == stmt.ID || stmt.ID == "*") && ds.Id != "default" {
 				ret = append(ret, ds.ID())
-				if ds.ID() == cli.GetDataspace() {
-					cli.SetDataspace("default")
+				if ds.ID() == cli.Cl.Dataspace() {
+					cli.Cl.SetDataspace("default")
 				}
 				err = mngr.DropDataspace(ctx, ds)
 				if err != nil {
@@ -150,7 +150,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if writer == nil {
 			return fmt.Errorf("can not save workload from here")
 		}
-		writer.StartLogging(stmt.All, stmt.Client)
+		writer.StartLogging(stmt.All, uint(stmt.Client))
 		return cli.StartTraceMessages(ctx)
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {

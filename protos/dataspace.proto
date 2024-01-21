@@ -4,8 +4,15 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-message Dataspace{
+message ShardedRelation {
+  string name = 1;
+  repeated string colnames = 2;
+}
+
+message Dataspace {
   string id = 1;
+  repeated string coltypes = 2;
+  repeated ShardedRelation relations = 3;
 }
 
 message AddDataspaceRequest{
@@ -26,18 +33,27 @@ message DropDataspaceRequest{
 
 message DropDataspaceReply{}
 
-message AttachToDataspaceRequest{
-  string table = 1;
-  Dataspace dataspace = 2;
+message AlterDataspaceAttachRelationRequest{
+  string id = 1;
+  repeated ShardedRelation relations = 2;
 }
 
-message AttachToDataspaceReply{}
+message AlterDataspaceAttachRelationReply{}
 
 message GetDataspaceRequest{
-  string table = 1;
+  string id = 1;
 }
 
 message GetDataspaceReply {
+  Dataspace dataspace = 1;
+}
+
+message GetDataspaceForRelationRequest {
+  string relationName = 1;
+}
+
+
+message GetDataspaceForRelationReply {
   Dataspace dataspace = 1;
 }
 
@@ -45,6 +61,7 @@ service DataspaceService {
   rpc AddDataspace(AddDataspaceRequest) returns (AddDataspaceReply) {}
   rpc DropDataspace(DropDataspaceRequest) returns (DropDataspaceReply) {}
   rpc ListDataspace(ListDataspaceRequest) returns (ListDataspaceReply) {}
-  rpc AttachToDataspace(AttachToDataspaceRequest) returns (AttachToDataspaceReply) {}
+  rpc AlterDataspaceAttachRelation(AlterDataspaceAttachRelationRequest) returns (AlterDataspaceAttachRelationReply) {}
   rpc GetDataspace(GetDataspaceRequest) returns (GetDataspaceReply) {}
+  rpc GetDataspaceForRelation(GetDataspaceForRelationRequest) returns (GetDataspaceForRelationReply) {}
 }

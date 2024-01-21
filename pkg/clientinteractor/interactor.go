@@ -58,13 +58,11 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
-// TODO : unit tests
-func (pi *PSQLInteractor) SetDataspace(dataspace string) {
-	pi.Cl.SetDataspace(dataspace)
-}
-
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
+
+// BOOLOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L34
+const BOOLOID = 16
 
 // TODO : unit tests
 func TextOidFD(stmt string) pgproto3.FieldDescription {

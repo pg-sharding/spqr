@@ -48,13 +48,13 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace     = "/keyranges/"
-	dataspaceNamespace     = "/dataspaces/"
-	keyRangeMovesNamespace = "/krmoves/"
-	routersNamespace       = "/routers/"
-	shardingRulesNamespace = "/sharding_rules/"
-	shardsNamespace        = "/shards/"
-	tableNamespace         = "/table_mappings/"
+	keyRangesNamespace             = "/keyranges/"
+	dataspaceNamespace             = "/dataspaces/"
+	dataspaceReverseIndexNamespace = "/dataspace_reverse_index/"
+	keyRangeMovesNamespace         = "/krmoves/"
+	routersNamespace               = "/routers/"
+	shardingRulesNamespace         = "/sharding_rules/"
+	shardsNamespace                = "/shards/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -85,12 +85,12 @@ func dataspaceNodePath(key string) string {
 	return path.Join(dataspaceNamespace, key)
 }
 
-func tableNodePath(key string) string {
-	return path.Join(tableNamespace, key)
-}
-
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
+}
+
+func reverseIndexNodePath(relation string) string {
+	return path.Join(dataspaceReverseIndexNamespace, relation)
 }
 
 // ==============================================================================
@@ -1086,13 +1086,30 @@ func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
+func (q *EtcdQDB) AlterDataspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error {
 	spqrlog.Zero.Debug().
-		Str("table", table).
 		Str("id", id).
 		Msg("etcdqdb: attach table to dataspace")
 
-	resp, err := q.cli.Put(ctx, tableNodePath(table), id)
+	resp, err := q.cli.Get(ctx, dataspaceNodePath(id))
+
+	if len(resp.Kvs) == 0 {
+		return fmt.Errorf("dataspace with id \"%s\" not found", id)
+	}
+
+	var ds *Dataspace
+	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
+		return err
+	}
+
+	for _, r := range rels {
+		if _, ok := ds.Relations[r.Name]; ok {
+			// relation already attached
+			// error out?
+			continue
+		}
+		ds.Relations[r.Name] = r
+	}
 
 	spqrlog.Zero.Debug().
 		Interface("responce", resp).
@@ -1102,12 +1119,32 @@ func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
+func (q *EtcdQDB) GetDataspace(ctx context.Context, id string) (*Dataspace, error) {
 	spqrlog.Zero.Debug().
-		Str("table", table).
+		Str("id", id).
 		Msg("etcdqdb: get dataspace for table")
 
-	resp, err := q.cli.Get(ctx, tableNodePath(table))
+	resp, err := q.cli.Get(ctx, dataspaceNodePath(id))
+
+	if len(resp.Kvs) == 0 {
+		return nil, fmt.Errorf("dataspace with id \"%s\" not found", id)
+	}
+
+	var ds *Dataspace
+	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
+		return nil, err
+	}
+
+	return ds, err
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) GetDataspaceForRelation(ctx context.Context, relation string) (*Dataspace, error) {
+	spqrlog.Zero.Debug().
+		Str("relation", relation).
+		Msg("etcdqdb: get dataspace for table")
+
+	resp, err := q.cli.Get(ctx, reverseIndexNodePath(relation))
 
 	if len(resp.Kvs) == 0 {
 		return &Dataspace{ID: "default"}, err
@@ -1120,7 +1157,12 @@ func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, e
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", id)
 	}
 
-	return &Dataspace{ID: id}, err
+	var ds *Dataspace
+	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
+		return nil, err
+	}
+
+	return ds, err
 }
 
 // ==============================================================================

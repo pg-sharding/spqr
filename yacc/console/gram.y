@@ -537,7 +537,7 @@ key_range_bound:
 		$$ = &KeyRangeBound{
 			Pivots: [][]byte{
 				$1,
-			}
+			},
 		}
 	} 
 	| key_range_bound TCOMMA key_range_bound_elem {

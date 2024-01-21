@@ -25,7 +25,7 @@ type DataspaceServiceClient interface {
 	AddDataspace(ctx context.Context, in *AddDataspaceRequest, opts ...grpc.CallOption) (*AddDataspaceReply, error)
 	DropDataspace(ctx context.Context, in *DropDataspaceRequest, opts ...grpc.CallOption) (*DropDataspaceReply, error)
 	ListDataspace(ctx context.Context, in *ListDataspaceRequest, opts ...grpc.CallOption) (*ListDataspaceReply, error)
-	AlterDataspaceAttachTable(ctx context.Context, in *AlterDataspaceAttachTableRequest, opts ...grpc.CallOption) (*AlterDataspaceAttachTableReply, error)
+	AlterDataspaceAttachRelation(ctx context.Context, in *AlterDataspaceAttachRelationRequest, opts ...grpc.CallOption) (*AlterDataspaceAttachRelationReply, error)
 	GetDataspace(ctx context.Context, in *GetDataspaceRequest, opts ...grpc.CallOption) (*GetDataspaceReply, error)
 	GetDataspaceForRelation(ctx context.Context, in *GetDataspaceForRelationRequest, opts ...grpc.CallOption) (*GetDataspaceForRelationReply, error)
 }
@@ -65,9 +65,9 @@ func (c *dataspaceServiceClient) ListDataspace(ctx context.Context, in *ListData
 	return out, nil
 }
 
-func (c *dataspaceServiceClient) AlterDataspaceAttachTable(ctx context.Context, in *AlterDataspaceAttachTableRequest, opts ...grpc.CallOption) (*AlterDataspaceAttachTableReply, error) {
-	out := new(AlterDataspaceAttachTableReply)
-	err := c.cc.Invoke(ctx, "/spqr.DataspaceService/AlterDataspaceAttachTable", in, out, opts...)
+func (c *dataspaceServiceClient) AlterDataspaceAttachRelation(ctx context.Context, in *AlterDataspaceAttachRelationRequest, opts ...grpc.CallOption) (*AlterDataspaceAttachRelationReply, error) {
+	out := new(AlterDataspaceAttachRelationReply)
+	err := c.cc.Invoke(ctx, "/spqr.DataspaceService/AlterDataspaceAttachRelation", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ type DataspaceServiceServer interface {
 	AddDataspace(context.Context, *AddDataspaceRequest) (*AddDataspaceReply, error)
 	DropDataspace(context.Context, *DropDataspaceRequest) (*DropDataspaceReply, error)
 	ListDataspace(context.Context, *ListDataspaceRequest) (*ListDataspaceReply, error)
-	AlterDataspaceAttachTable(context.Context, *AlterDataspaceAttachTableRequest) (*AlterDataspaceAttachTableReply, error)
+	AlterDataspaceAttachRelation(context.Context, *AlterDataspaceAttachRelationRequest) (*AlterDataspaceAttachRelationReply, error)
 	GetDataspace(context.Context, *GetDataspaceRequest) (*GetDataspaceReply, error)
 	GetDataspaceForRelation(context.Context, *GetDataspaceForRelationRequest) (*GetDataspaceForRelationReply, error)
 	mustEmbedUnimplementedDataspaceServiceServer()
@@ -118,8 +118,8 @@ func (UnimplementedDataspaceServiceServer) DropDataspace(context.Context, *DropD
 func (UnimplementedDataspaceServiceServer) ListDataspace(context.Context, *ListDataspaceRequest) (*ListDataspaceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDataspace not implemented")
 }
-func (UnimplementedDataspaceServiceServer) AlterDataspaceAttachTable(context.Context, *AlterDataspaceAttachTableRequest) (*AlterDataspaceAttachTableReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AlterDataspaceAttachTable not implemented")
+func (UnimplementedDataspaceServiceServer) AlterDataspaceAttachRelation(context.Context, *AlterDataspaceAttachRelationRequest) (*AlterDataspaceAttachRelationReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AlterDataspaceAttachRelation not implemented")
 }
 func (UnimplementedDataspaceServiceServer) GetDataspace(context.Context, *GetDataspaceRequest) (*GetDataspaceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDataspace not implemented")
@@ -194,20 +194,20 @@ func _DataspaceService_ListDataspace_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DataspaceService_AlterDataspaceAttachTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AlterDataspaceAttachTableRequest)
+func _DataspaceService_AlterDataspaceAttachRelation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDataspaceAttachRelationRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).AlterDataspaceAttachTable(ctx, in)
+		return srv.(DataspaceServiceServer).AlterDataspaceAttachRelation(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/spqr.DataspaceService/AlterDataspaceAttachTable",
+		FullMethod: "/spqr.DataspaceService/AlterDataspaceAttachRelation",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).AlterDataspaceAttachTable(ctx, req.(*AlterDataspaceAttachTableRequest))
+		return srv.(DataspaceServiceServer).AlterDataspaceAttachRelation(ctx, req.(*AlterDataspaceAttachRelationRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -268,8 +268,8 @@ var DataspaceService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DataspaceService_ListDataspace_Handler,
 		},
 		{
-			MethodName: "AlterDataspaceAttachTable",
-			Handler:    _DataspaceService_AlterDataspaceAttachTable_Handler,
+			MethodName: "AlterDataspaceAttachRelation",
+			Handler:    _DataspaceService_AlterDataspaceAttachRelation_Handler,
 		},
 		{
 			MethodName: "GetDataspace",

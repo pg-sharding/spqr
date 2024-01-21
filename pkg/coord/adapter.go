@@ -390,12 +390,13 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 }
 
 // TODO : unit tests
-func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+func (a *adapter) AlterDataspaceAttachRelation(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
-	_, err := c.AlterDataspaceAttachTable(ctx, &proto.AlterDataspaceAttachTableRequest{
+	_, err := c.AlterDataspaceAttachRelation(ctx, &proto.AlterDataspaceAttachRelationRequest{
+		
+		Relations: ,
 		Table:     table,
-		Dataspace: dataspaces.DataspaceToProto(ds),
 	})
 
 	return err

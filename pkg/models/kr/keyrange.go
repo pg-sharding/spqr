@@ -30,13 +30,17 @@ func CmpRangesLess(kr []byte, other []byte) bool {
 	return len(kr) < len(other)
 }
 
-// TODO : unit tests
-func CmpRangesLessEqual(kr []byte, other []byte) bool {
+func CmpRangesLessEqualStringsDeprecated(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) <= string(other)
 	}
 
 	return len(kr) < len(other)
+}
+
+// TODO : unit tests
+func CmpRangesLessEqualStrings(kr []byte, other []byte) bool {
+	return string(kr) <= string(other)
 }
 
 // TODO : unit tests

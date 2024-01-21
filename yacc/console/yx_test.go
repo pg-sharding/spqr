@@ -219,10 +219,39 @@ func TestKeyRange(t *testing.T) {
 					ShardID:    "sh1",
 					KeyRangeID: "krid1",
 					Dataspace:  "default",
-					LowerBound: []byte("1"),
-					UpperBound: []byte("10"),
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte{
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								1,
+							},
+						},
+					},
+					UpperBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte{
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								0,
+								10,
+							},
+						},
+					},
 				},
 			},
+
 			err: nil,
 		},
 
@@ -233,8 +262,16 @@ func TestKeyRange(t *testing.T) {
 					ShardID:    "sh2",
 					KeyRangeID: "krid2",
 					Dataspace:  "default",
-					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
-					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte("88888888-8888-8888-8888-888888888889"),
+						},
+					},
+					UpperBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
+						},
+					},
 				},
 			},
 			err: nil,

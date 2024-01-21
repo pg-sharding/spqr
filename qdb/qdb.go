@@ -68,7 +68,7 @@ type QDB interface {
 	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
 	DropDataspace(ctx context.Context, id string) error
 	/* TBD: alter detach */
-	AlterDataspaceAttach(ctx context.Context, id string, rels []ShardedRelation) error
+	AlterDataspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error
 	GetDataspace(ctx context.Context, id string) (*Dataspace, error)
 	GetDataspaceForRelation(ctx context.Context, table string) (*Dataspace, error)
 
