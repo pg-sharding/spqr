@@ -49,8 +49,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:  false,
+		SilenceErrors: false,
 	}
 )
 

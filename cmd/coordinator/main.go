@@ -25,8 +25,8 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := config.LoadCoordinatorCfg(cfgPath); err != nil {
 			return err
@@ -55,6 +55,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Error().Err(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }
