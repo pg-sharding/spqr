@@ -1043,7 +1043,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			// Do not respond here with bind complete, as relay step should do itself
 
-			_, _, err := rst.qp.Parse(rst.lastBindQuery)
+			_, _, err := rst.Parse(rst.lastBindQuery)
 			if err != nil {
 				return err
 			}
@@ -1115,7 +1115,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
 
-			/* Case when do decribe stmt was issued before Execute+Sync*/
+			/* Case when no decribe stmt was issued before Execute+Sync*/
 			if rst.saveBind != nil {
 				rst.AddSilentQuery(rst.saveBind)
 				// do not send saved bind twice

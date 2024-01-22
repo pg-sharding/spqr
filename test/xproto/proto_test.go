@@ -314,6 +314,11 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 				&pgproto3.Query{
 					String: "BEGIN",
 				},
+
+				&pgproto3.Query{
+					String: "SELECT 3 as kek",
+				},
+
 				&pgproto3.Query{
 					String: "SET search_path to 'lol'",
 				},
@@ -339,6 +344,33 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 					TxStatus: 84,
 				},
 
+				// select response
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("kek"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{'3'},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				// set
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SET"),
 				},

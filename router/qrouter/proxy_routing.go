@@ -640,33 +640,32 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	queryDataspace := ""
 	if sph.DataspaceIsDefault() {
 		rel, err := qr.getRelations(stmt)
-		if err != nil || rel == nil {
-			return nil, fmt.Errorf("could not get relation from node")
-		}
-		switch t := rel.(type) {
-		case *SpecificRelation:
-			if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
-				return nil, err
-			} else {
-				queryDataspace = relDataspace.Id
-			}
-		case *RelationList:
-			var dataspace string
-			for _, relName := range t.Relations {
-				if relDataspace, err := qr.mgr.GetDataspace(ctx, relName); err != nil {
+		if err == nil && rel != nil {
+			switch t := rel.(type) {
+			case *SpecificRelation:
+				if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
 					return nil, err
 				} else {
-					if dataspace != "" && dataspace != relDataspace.Id {
-						return nil, fmt.Errorf("mismatching dataspaces %s and %s", dataspace, relDataspace)
-					}
-					dataspace = relDataspace.Id
+					queryDataspace = relDataspace.Id
 				}
+			case *RelationList:
+				var dataspace string
+				for _, relName := range t.Relations {
+					if relDataspace, err := qr.mgr.GetDataspace(ctx, relName); err != nil {
+						return nil, err
+					} else {
+						if dataspace != "" && dataspace != relDataspace.Id {
+							return nil, fmt.Errorf("mismatching dataspaces %s and %s", dataspace, relDataspace)
+						}
+						dataspace = relDataspace.Id
+					}
+				}
+				queryDataspace = dataspace
+			case *AnyRelation:
+				break
+			default:
+				return nil, fmt.Errorf("unknown statement relation type %T", rel)
 			}
-			queryDataspace = dataspace
-		case *AnyRelation:
-			break
-		default:
-			return nil, fmt.Errorf("unknown statement relation type %T", rel)
 		}
 	} else {
 		queryDataspace = sph.Dataspace()
