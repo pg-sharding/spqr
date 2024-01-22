@@ -3,7 +3,6 @@ package qdb
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"os"
 	"sort"
@@ -175,7 +174,7 @@ func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule,
 	if ok {
 		return rule, nil
 	}
-	return nil, spqrerror.New(fmt.Sprintf("rule with id %s not found", id), spqrerror.SPQR_SHARDING_RULE_ERROR)
+	return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "rule with id %s not found", id)
 }
 
 // TODO : unit tests
@@ -247,7 +246,7 @@ func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) 
 
 	krs, ok := q.Krs[id]
 	if !ok {
-		return nil, spqrerror.New(fmt.Sprintf("there is no key range %s", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "there is no key range %s", id)
 	}
 
 	return krs, nil
@@ -270,7 +269,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 	q.muDeletedKrs.Lock()
 	if q.deletedKrs[id] {
 		q.muDeletedKrs.Unlock()
-		return spqrerror.New(fmt.Sprintf("key range '%s' already deleted", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' already deleted", id)
 	}
 	q.deletedKrs[id] = true
 	q.muDeletedKrs.Unlock()
@@ -309,7 +308,7 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 		if q.deletedKrs[id] {
 			q.muDeletedKrs.Unlock()
 			q.mu.RUnlock()
-			return spqrerror.New(fmt.Sprintf("key range '%s' already deleted", id), spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' already deleted", id)
 		}
 		ids = append(ids, id)
 		q.deletedKrs[id] = true
@@ -394,7 +393,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 
 	if _, ok := q.deletedKrs[id]; ok {
 		q.muDeletedKrs.RUnlock()
-		return spqrerror.New(fmt.Sprintf("key range '%s' deleted", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted", id)
 	}
 	q.muDeletedKrs.RUnlock()
 
@@ -405,7 +404,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 	}
 
 	if _, ok := q.Krs[id]; !ok {
-		return spqrerror.New(fmt.Sprintf("key range '%s' deleted after lock acuired", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted after lock acuired", id)
 	}
 	return nil
 }
@@ -419,7 +418,7 @@ func (q *MemQDB) LockKeyRange(_ context.Context, id string) (*KeyRange, error) {
 
 	krs, ok := q.Krs[id]
 	if !ok {
-		return nil, spqrerror.New(fmt.Sprintf("key range '%s' does not exist", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' does not exist", id)
 	}
 
 	err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, true),
@@ -449,7 +448,7 @@ func (q *MemQDB) UnlockKeyRange(_ context.Context, id string) error {
 	defer spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: exit: unlock key range")
 
 	if !q.Freq[id] {
-		return spqrerror.New(fmt.Sprintf("key range %v not locked", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Freq, id, false),
@@ -478,7 +477,7 @@ func (q *MemQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange,
 	}
 
 	if !q.Freq[id] {
-		return nil, spqrerror.New(fmt.Sprintf("key range %v not locked", id), spqrerror.SPQR_KEYRANGE_ERROR)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	}
 
 	return krs, nil
@@ -523,7 +522,7 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 
 	ans, ok := q.Transactions[key]
 	if !ok {
-		return nil, spqrerror.New(fmt.Sprintf("no tx with key %s", key), spqrerror.SPQR_TRANSFER_ERROR)
+		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no tx with key %s", key)
 	}
 	return ans, nil
 }
@@ -667,7 +666,7 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 		return &Shard{ID: id}, nil
 	}
 
-	return nil, spqrerror.New(fmt.Sprintf("unknown shard %s", id), spqrerror.SPQR_NO_DATASHARD)
+	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
 
 // ==============================================================================
@@ -732,6 +731,6 @@ func (q *MemQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, er
 	if dataspace, ok := q.Dataspaces[q.TableDataspace[table]]; ok {
 		return dataspace, nil
 	} else {
-		return nil, spqrerror.New(fmt.Sprintf("dataspace with id \"%s\" not found", q.TableDataspace[table]), spqrerror.SPQR_COMPLEX_QUERY)
+		return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "dataspace with id \"%s\" not found", q.TableDataspace[table])
 	}
 }

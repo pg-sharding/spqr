@@ -62,12 +62,12 @@ func New(errorMsg string, errorCode string) *SpqrError {
 }
 func Newf(errorCode string, format string, a ...any) *SpqrError {
 	err := &SpqrError{
-		Err:       fmt.Errorf(format, a),
+		Err:       fmt.Errorf(format, a...),
 		ErrorCode: errorCode,
 	}
 	return err
 }
 
 func (er *SpqrError) Error() string {
-	return er.Error()
+	return er.Err.Error()
 }

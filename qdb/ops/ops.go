@@ -2,7 +2,6 @@ package ops
 
 import (
 	"context"
-	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -12,7 +11,7 @@ import (
 // TODO : unit tests
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
-		return spqrerror.New(fmt.Sprintf("sharding rule %v already present in qdb", rule.Id), spqrerror.SPQR_COMPLEX_QUERY)
+		return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "sharding rule %v already present in qdb", rule.Id)
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
@@ -38,10 +37,10 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 	for _, v := range existsRules {
 		vGen := shrule.ShardingRuleFromDB(v)
 		if rule.Includes(vGen) {
-			return spqrerror.New(fmt.Sprintf("sharding rule %v inlude existing rule %v", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
+			return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v inlude existing rule %v", rule.Id, vGen.Id)
 		}
 		if vGen.Includes(rule) {
-			return spqrerror.New(fmt.Sprintf("sharding rule %v included in %v present in qdb", rule.Id, vGen.Id), spqrerror.SPQR_SHARDING_RULE_ERROR)
+			return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v included in %v present in qdb", rule.Id, vGen.Id)
 		}
 	}
 
@@ -55,7 +54,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	if _, err := qdb.GetKeyRange(ctx, keyRange.ID); err == nil {
-		return spqrerror.New(fmt.Sprintf("key range %v already present in qdb", keyRange.ID), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", keyRange.ID)
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
@@ -80,7 +79,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 
 	for _, v := range existsKrids {
 		if doIntersect(keyRange, v) {
-			return spqrerror.New(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
@@ -109,7 +108,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			continue
 		}
 		if doIntersect(keyRange, v) {
-			return spqrerror.New(fmt.Sprintf("key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID), spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 

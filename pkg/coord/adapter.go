@@ -2,7 +2,6 @@ package coord
 
 import (
 	"context"
-	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -99,7 +98,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		}
 	}
 
-	return nil, spqrerror.New(fmt.Sprintf("key range with id %s not found", krid), spqrerror.SPQR_KEYRANGE_ERROR)
+	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
 }
 
 // TODO : unit tests
@@ -141,7 +140,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		}
 	}
 
-	return spqrerror.New(fmt.Sprintf("key range with id %s not found", split.Krid), spqrerror.SPQR_KEYRANGE_ERROR)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
 }
 
 // TODO : unit tests
@@ -200,7 +199,7 @@ func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 		}
 	}
 
-	return spqrerror.New(fmt.Sprintf("key range with id %s not found", move.Krid), spqrerror.SPQR_KEYRANGE_ERROR)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
 // TODO : unit tests

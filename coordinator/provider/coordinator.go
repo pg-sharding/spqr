@@ -666,7 +666,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Msg("split request is")
 
 	if _, err := qc.db.GetKeyRange(ctx, req.Krid); err == nil {
-		return spqrerror.New(fmt.Sprintf("key range %v already present in qdb", req.Krid), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
 	krOld, err := qc.db.LockKeyRange(ctx, req.SourceID)
@@ -710,7 +710,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}
 
 	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
-		return spqrerror.New(fmt.Sprintf("failed to add a new key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -832,11 +832,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	krLeft.UpperBound = krRight.UpperBound
 
 	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
-		return spqrerror.New(fmt.Sprintf("failed to drop an old key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
 
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
-		return spqrerror.New(fmt.Sprintf("failed to update a new key range: %s", err.Error()), spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -1055,13 +1055,13 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	// ping router
 	conn, err := DialRouter(r)
 	if err != nil {
-		return spqrerror.New(fmt.Sprintf("failed to ping router: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
 	defer conn.Close()
 	cl := routerproto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 	if err != nil {
-		return spqrerror.New(fmt.Sprintf("failed to ping router: %s", err), spqrerror.SPQR_CONNECTION_ERROR)
+		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
 
 	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
@@ -1158,7 +1158,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				spqrlog.Zero.Debug().Msg("processed OK")
 			}
 		default:
-			return spqrerror.New(fmt.Sprintf("unsupported msg type %T", msg), spqrerror.SPQR_COMPLEX_QUERY)
+			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "unsupported msg type %T", msg)
 		}
 	}
 }

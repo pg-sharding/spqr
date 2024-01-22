@@ -3,7 +3,6 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"strconv"
 
@@ -109,7 +108,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 				Err(err).
 				Msg("unknown stmt.Cmd")
 
-			return spqrerror.New(fmt.Sprintf("Unknown show statement: %s", stmt.Cmd), spqrerror.SPQR_COMPLEX_QUERY)
+			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "Unknown show statement: %s", stmt.Cmd)
 		}
 
 	case *spqrparser.SplitKeyRange:
