@@ -492,7 +492,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "no such key")
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "no such key")
 	}
 
 	err := q.TryLockKeyRange(lock, id, true)
