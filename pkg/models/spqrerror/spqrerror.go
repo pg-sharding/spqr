@@ -69,5 +69,5 @@ func Newf(errorCode string, format string, a ...any) *SpqrError {
 }
 
 func (er *SpqrError) Error() string {
-	return er.Err.Error()
+	return fmt.Sprintf("%s.", er.Err.Error())
 }
