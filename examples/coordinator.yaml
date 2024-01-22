@@ -1,5 +1,6 @@
-addr: 'localhost:7002'
-http_addr: 'localhost:7003'
+host: localhost
+coordinator_port: 7002
+grpc_api_port: 7003
 qdb_addr: 'localhost:2379'
 log_level: INFO
 shard_data: '/spqr/docker/coordinator/shard_data.yaml'
