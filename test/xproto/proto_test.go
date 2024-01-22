@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"net"
 	"os"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/stretchr/testify/assert"
@@ -158,6 +159,428 @@ func TestMain(m *testing.M) {
 	CreateTables()
 	code := m.Run()
 	os.Exit(code)
+}
+
+func TestSimpleAdvadsedParsing(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SELECT 1 as s",
+				},
+				&pgproto3.Query{
+					String: "COMMIT",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("s"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{'1'},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for _, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg)
+		}
+	}
+}
+
+func TestSimpleAdvadsedSETParsing(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN",
+				},
+				&pgproto3.Query{
+					String: "SET search_path to 'lol'",
+				},
+
+				&pgproto3.Query{
+					String: "SHOW search_path",
+				},
+
+				&pgproto3.Query{
+					String: "COMMIT",
+				},
+
+				&pgproto3.Query{
+					String: "SHOW search_path",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SET"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				// show response
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("search_path"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{'l', 'o', 'l'},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SHOW"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 84,
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				// show response after commit (unrouted)
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("search_path"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{'l', 'o', 'l'},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SHOW"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for _, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg)
+		}
+	}
+}
+
+func TestPrepStmtAdvadsedParsing(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmt1",
+					Query: "BEGIN;",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Parse{
+					Name:  "stmt2",
+					Query: "SELECT 1;",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmt3",
+					Query: "ROLLBACK;",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmt1",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmt2",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmt3",
+				},
+				&pgproto3.Execute{},
+
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						{'1'},
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: 73,
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for _, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg)
+		}
+	}
 }
 
 func TestPrepStmt(t *testing.T) {
@@ -436,7 +859,10 @@ func TestPrepStmt(t *testing.T) {
 					PreparedStatement: "pstmt1",
 					Parameters: [][]byte{
 						[]byte("client_encoding"),
-						[]byte("UTF8"),
+						// we need to set client encoding
+						// to non-default param, to recieve a param status
+						// message
+						[]byte("KOI8R"),
 						[]byte("false"),
 					},
 				},
@@ -506,14 +932,17 @@ func TestPrepStmt(t *testing.T) {
 					},
 				},
 
+				&pgproto3.DataRow{Values: [][]byte{
+					[]byte("KOI8R"),
+				}},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+
 				&pgproto3.ParameterStatus{
 					Name:  "client_encoding",
-					Value: "UTF8",
+					Value: "KOI8R",
 				},
-				&pgproto3.DataRow{Values: [][]byte{
-					[]byte("UTF8"),
-				}},
-				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+
 				&pgproto3.ReadyForQuery{
 					TxStatus: 73,
 				},
