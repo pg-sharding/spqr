@@ -75,7 +75,7 @@ type ShardedRelaion struct {
 	Columns []string
 }
 
-type DataspaceDefinition struct {
+type KeyspaceDefinition struct {
 	ID        string
 	ColTypes  []string
 	Relations []*ShardedRelaion
@@ -87,10 +87,9 @@ type KeyRangeBound struct {
 
 type KeyRangeDefinition struct {
 	LowerBound *KeyRangeBound
-	UpperBound *KeyRangeBound
 	ShardID    string
 	KeyRangeID string
-	Dataspace  string
+	Keyspace   string
 }
 
 type ShardDefinition struct {
@@ -98,9 +97,9 @@ type ShardDefinition struct {
 	Hosts []string
 }
 
-func (*KeyRangeDefinition) iCreate()  {}
-func (*ShardDefinition) iCreate()     {}
-func (*DataspaceDefinition) iCreate() {}
+func (*KeyRangeDefinition) iCreate() {}
+func (*ShardDefinition) iCreate()    {}
+func (*KeyspaceDefinition) iCreate() {}
 
 type SplitKeyRange struct {
 	Border         []byte
@@ -122,7 +121,7 @@ type KeyRangeSelector struct {
 	KeyRangeID string
 }
 
-type DataspaceSelector struct {
+type KeyspaceSelector struct {
 	ID string
 }
 
@@ -130,8 +129,8 @@ type DropRoutersAll struct{}
 
 func (*DropRoutersAll) iStatement() {}
 
-func (*KeyRangeSelector) iDrop()  {}
-func (*DataspaceSelector) iDrop() {}
+func (*KeyRangeSelector) iDrop() {}
+func (*KeyspaceSelector) iDrop() {}
 
 const (
 	EntityRouters   = "ROUTERS"
@@ -168,14 +167,14 @@ type UnregisterRouter struct {
 }
 
 type AttachTable struct {
-	Relation  *ShardedRelaion
-	Dataspace *DataspaceSelector
+	Relation *ShardedRelaion
+	Keyspace *KeyspaceSelector
 }
 
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
-	DataspacesStr         = "dataspaces"
+	KeyspacesStr          = "keyspaces"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	KeyRangesStr          = "key_ranges"
@@ -196,24 +195,24 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()                {}
-func (*Set) iStatement()                 {}
-func (*KeyRangeSelector) iStatement()    {}
-func (*DataspaceSelector) iStatement()   {}
-func (*Lock) iStatement()                {}
-func (*Unlock) iStatement()              {}
-func (*Shutdown) iStatement()            {}
-func (*Listen) iStatement()              {}
-func (*MoveKeyRange) iStatement()        {}
-func (*SplitKeyRange) iStatement()       {}
-func (*UniteKeyRange) iStatement()       {}
-func (*DataspaceDefinition) iStatement() {}
-func (*KeyRangeDefinition) iStatement()  {}
-func (*ShardDefinition) iStatement()     {}
-func (*Kill) iStatement()                {}
-func (*WhereClauseLeaf) iStatement()     {}
-func (*WhereClauseEmpty) iStatement()    {}
-func (*WhereClauseOp) iStatement()       {}
+func (*Show) iStatement()               {}
+func (*Set) iStatement()                {}
+func (*KeyRangeSelector) iStatement()   {}
+func (*KeyspaceSelector) iStatement()   {}
+func (*Lock) iStatement()               {}
+func (*Unlock) iStatement()             {}
+func (*Shutdown) iStatement()           {}
+func (*Listen) iStatement()             {}
+func (*MoveKeyRange) iStatement()       {}
+func (*SplitKeyRange) iStatement()      {}
+func (*UniteKeyRange) iStatement()      {}
+func (*KeyspaceDefinition) iStatement() {}
+func (*KeyRangeDefinition) iStatement() {}
+func (*ShardDefinition) iStatement()    {}
+func (*Kill) iStatement()               {}
+func (*WhereClauseLeaf) iStatement()    {}
+func (*WhereClauseEmpty) iStatement()   {}
+func (*WhereClauseOp) iStatement()      {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

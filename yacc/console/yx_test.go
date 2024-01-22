@@ -213,16 +213,15 @@ func TestKeyRange(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
+			query: "CREATE KEY RANGE krid1 IN DATAPACE ds1 FROM 1 ROUTE TO sh1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh1",
 					KeyRangeID: "krid1",
-					Dataspace:  "default",
+					Keyspace:   "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							[]byte{
-								0,
+							{
 								0,
 								0,
 								0,
@@ -234,21 +233,6 @@ func TestKeyRange(t *testing.T) {
 							},
 						},
 					},
-					UpperBound: &spqrparser.KeyRangeBound{
-						Pivots: [][]byte{
-							[]byte{
-								0,
-								0,
-								0,
-								0,
-								0,
-								0,
-								0,
-								0,
-								10,
-							},
-						},
-					},
 				},
 			},
 
@@ -256,20 +240,15 @@ func TestKeyRange(t *testing.T) {
 		},
 
 		{
-			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 ROUTE TO sh2;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh2",
 					KeyRangeID: "krid2",
-					Dataspace:  "default",
+					Keyspace:   "default",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
 							[]byte("88888888-8888-8888-8888-888888888889"),
-						},
-					},
-					UpperBound: &spqrparser.KeyRangeBound{
-						Pivots: [][]byte{
-							[]byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
 						},
 					},
 				},
@@ -328,13 +307,13 @@ func TestAttachTable(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ALTER DATASPACE ds1 ATTACH TABLE t (id);",
+			query: "ALTER KEYSPACE ds1 ATTACH TABLE t (id);",
 			exp: &spqrparser.AttachTable{
 				Relation: &spqrparser.ShardedRelaion{
 					Name:    "t",
 					Columns: []string{"id"},
 				},
-				Dataspace: &spqrparser.DataspaceSelector{ID: "ds1"},
+				Keyspace: &spqrparser.KeyspaceSelector{ID: "ds1"},
 			},
 			err: nil,
 		},
@@ -348,7 +327,7 @@ func TestAttachTable(t *testing.T) {
 	}
 }
 
-func TestDataspace(t *testing.T) {
+func TestKeyspace(t *testing.T) {
 
 	assert := assert.New(t)
 
@@ -360,9 +339,9 @@ func TestDataspace(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES integer;",
+			query: "CREATE KEYSPACE db1 SHARDING COLUMN TYPES integer;",
 			exp: &spqrparser.Create{
-				Element: &spqrparser.DataspaceDefinition{
+				Element: &spqrparser.KeyspaceDefinition{
 					ID: "db1",
 					ColTypes: []string{
 						"integer",
@@ -372,9 +351,9 @@ func TestDataspace(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar;",
+			query: "CREATE KEYSPACE db1 SHARDING COLUMN TYPES varchar, varchar;",
 			exp: &spqrparser.Create{
-				Element: &spqrparser.DataspaceDefinition{
+				Element: &spqrparser.KeyspaceDefinition{
 					ID: "db1",
 					ColTypes: []string{
 						"varchar",
@@ -385,9 +364,9 @@ func TestDataspace(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar RELATIONS t(id, id2), t2(indx, indx2)",
+			query: "CREATE KEYSPACE db1 SHARDING COLUMN TYPES varchar, varchar RELATIONS t(id, id2), t2(indx, indx2)",
 			exp: &spqrparser.Create{
-				Element: &spqrparser.DataspaceDefinition{
+				Element: &spqrparser.KeyspaceDefinition{
 					ID: "db1",
 					ColTypes: []string{
 						"varchar",

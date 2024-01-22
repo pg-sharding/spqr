@@ -64,13 +64,13 @@ type QDB interface {
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 
 	/* DATASPACES */
-	AddDataspace(ctx context.Context, ds *Dataspace) error
-	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
-	DropDataspace(ctx context.Context, id string) error
+	AddKeyspace(ctx context.Context, ds *Keyspace) error
+	ListKeyspaces(ctx context.Context) ([]*Keyspace, error)
+	DropKeyspace(ctx context.Context, id string) error
 	/* TBD: alter detach */
-	AlterDataspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error
-	GetDataspace(ctx context.Context, id string) (*Dataspace, error)
-	GetDataspaceForRelation(ctx context.Context, table string) (*Dataspace, error)
+	AlterKeyspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error
+	GetKeyspace(ctx context.Context, id string) (*Keyspace, error)
+	GetKeyspaceForRelation(ctx context.Context, table string) (*Keyspace, error)
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -121,58 +120,36 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingM
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, evals []interface{}, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
+func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, evals []interface{}, krs []*kr.KeyRange, types []string) (*routingstate.DataShardRoute, error) {
 
 	spqrlog.Zero.Debug().
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	for _, krkey := range krs {
-		if kr.CmpRangesLessEqual(krkey.LowerBound, evals) &&
-			kr.CmpRangesLess(evals, krkey.UpperBound) {
-			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
-				return nil, err
-			}
+	var mathed_key_range *kr.KeyRange = nil
 
-			return &routingstate.DataShardRoute{
-				Shkey:     kr.ShardKey{Name: krkey.ShardID},
-				Matchedkr: krkey,
-			}, nil
+	for _, krkey := range krs {
+		if kr.CmpRangesLessEqual(krkey.LowerBound, evals, types) {
+			if mathed_key_range != nil && kr.CmpRangesLessEqual(mathed_key_range.LowerBound, krkey.LowerBound, types) {
+				mathed_key_range = krkey
+			}
 		}
+	}
+
+	if mathed_key_range == nil {
+		if err := qr.mgr.ShareKeyRange(mathed_key_range.ID); err != nil {
+			return nil, err
+		}
+
+		return &routingstate.DataShardRoute{
+			Shkey:     kr.ShardKey{Name: mathed_key_range.ShardID},
+			Matchedkr: mathed_key_range,
+		}, nil
 	}
 
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
 	return nil, FailedToFindKeyRange
-}
-
-// TODO : unit tests
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
-
-	switch e := expr.(type) {
-	case *lyx.ParamRef:
-		if e.Number > len(meta.params) {
-			return nil, ComplexQuery
-		}
-		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number-1], hf)
-		if err != nil {
-			return nil, err
-		}
-		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number-1])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-
-		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
-	case *lyx.AExprIConst:
-		// if
-		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
-		if err != nil {
-			return nil, err
-		}
-
-		spqrlog.Zero.Debug().Str("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
-	default:
-		return nil, ComplexQuery
-	}
 }
 
 func (meta *RoutingMetadataContext) RecordConstExprOnColumnReference(colref *lyx.ColumnRef, val interface{}) {
@@ -650,15 +627,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 				spqrlog.Zero.Debug().
 					Interface("currroute", currroute).
-					Str("table", rfqn.RelationName).
+					Str("relation", rfqn.RelationName).
 					Strs("columns", cols).
-					Msg("calculated route for table/cols")
+					Msg("calculated route for relation/cols")
 
 				route = routingstate.Combine(route, routingstate.ShardMatchState{
 					Route:              currroute,
 					TargetSessionAttrs: tsa,
 				})
-
 			}
 		}
 		if route == nil && route_err != nil {
@@ -666,67 +642,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		}
 	}
 
-	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists)
-	spqrlog.Zero.Debug().Interface("insertStmtCols", meta.InsertStmtCols)
-
-	if len(meta.InsertStmtCols) != 0 {
-		if ds, err := MatchDataspace(ctx, meta.InsertStmtRel, meta.InsertStmtCols, qr.mgr.QDB()); err != nil {
-			// compute matched sharding rule offsets
-			offsets := make([]int, 0)
-			j := 0
-			cols := ds.Relations[meta.InsertStmtRel]
-			// TODO: check mapping by rules with multiple columns
-			for i, s := range meta.InsertStmtCols {
-				if j == len(ds.ColTypes) {
-					break
-				}
-				if s == cols.ColNames[j] {
-					offsets = append(offsets, i)
-					j++
-				}
-			}
-
-			hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-			if err != nil {
-				/* failed to resolve hash function */
-				return nil, err
-			}
-
-			meta.offsets = offsets
-			routed := false
-			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, hf)
-				if err == nil {
-					/* else failed, ignore */
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
-					routed = true
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
-				}
-			}
-
-			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
-				// only first value from value list
-
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, hf)
-				if err == nil { /* else failed, ignore */
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
-				}
-			}
-		}
-	}
 	// set up this varibale if not yet
 	if route == nil {
 		route = routingstate.MultiMatchState{}

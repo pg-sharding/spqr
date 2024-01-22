@@ -36,7 +36,7 @@ type LocalCoordinator struct {
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
+func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Keyspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -44,10 +44,10 @@ func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Da
 	if err != nil {
 		return nil, err
 	}
-	var retDsp []*dataspaces.Dataspace
+	var retDsp []*dataspaces.Keyspace
 
 	for _, dsp := range resp {
-		retDsp = append(retDsp, &dataspaces.Dataspace{
+		retDsp = append(retDsp, &dataspaces.Keyspace{
 			Id: dsp.ID,
 		})
 	}
@@ -55,7 +55,7 @@ func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	return lc.qdb.AddDataspace(ctx, &qdb.Dataspace{
@@ -64,7 +64,7 @@ func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dat
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -72,7 +72,7 @@ func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string,
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
+func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Keyspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -96,7 +96,7 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	return lc.qdb.DropDataspace(ctx, ds.Id)

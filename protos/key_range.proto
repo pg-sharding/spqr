@@ -22,14 +22,13 @@ enum KeyRangeStatus {
   AVAILABLE = 1;
 }
 
-message KeyRange {
-  string lower_bound = 1;
-  string upper_bound = 2;
+message KeyRangeBound {
+  repeated bytes lower_bound = 1;
 }
 
 // key range info is mapped to shard
 message KeyRangeInfo {
-  KeyRange key_range = 1;
+  KeyRangeBound bound = 1;
   string krid = 2;
   string shardId = 3;
   string dataspaceId = 4;

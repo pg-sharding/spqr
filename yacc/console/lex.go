@@ -129,15 +129,15 @@ tr2:
  lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; {( lex.p)++;  lex.cs = 4; goto _out }}
 	case 6:
 	{( lex.p) = ( lex.te) - 1
- 
-                
+     
                 lval.str = string(lex.data[lex.ts:lex.te]);
                 if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 
                 }
-                {( lex.p)++;  lex.cs = 4; goto _out }}
+                {( lex.p)++;  lex.cs = 4; goto _out }
+            }
 	case 8:
 	{( lex.p) = ( lex.te) - 1
  lval.str = string(lex.data[lex.ts:lex.te]); tok = TEQ; {( lex.p)++;  lex.cs = 4; goto _out }}
@@ -175,15 +175,15 @@ tr20:
 //line lex.rl:98
  lex.te = ( lex.p)
 ( lex.p)--
-{ 
-                
+{     
                 lval.str = string(lex.data[lex.ts:lex.te]);
                 if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 
                 }
-                {( lex.p)++;  lex.cs = 4; goto _out }}
+                {( lex.p)++;  lex.cs = 4; goto _out }
+            }
 	goto st4
 tr23:
 //line lex.rl:79
@@ -200,7 +200,7 @@ tr25:
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
+                lval.integer = int64(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
             }
 	goto st4
 tr26:
@@ -212,7 +212,7 @@ tr26:
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
+                lval.integer = int64(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
             }
 	goto st4
 	st4:

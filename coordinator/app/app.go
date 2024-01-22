@@ -98,13 +98,11 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	krserv := provider.NewKeyRangeService(app.coordinator)
 	rrserv := provider.NewRouterService(app.coordinator)
 	toposerv := provider.NewTopologyService(app.coordinator)
-	shardingRulesServ := provider.NewShardingRulesServer(app.coordinator)
 	shardServ := provider.NewShardServer(app.coordinator)
 
 	protos.RegisterKeyRangeServiceServer(serv, krserv)
 	protos.RegisterRouterServiceServer(serv, rrserv)
 	protos.RegisterTopologyServiceServer(serv, toposerv)
-	protos.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
 	protos.RegisterShardServiceServer(serv, shardServ)
 
 	httpAddr := config.CoordinatorConfig().Host

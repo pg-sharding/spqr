@@ -42,7 +42,7 @@ func randomHex(n int) (string, error) {
 	lock                   *Lock
 	unlock                 *Unlock
 
-	ds                     *DataspaceDefinition
+	ds                     *KeyspaceDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
 
@@ -60,7 +60,7 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
-	dataspace              *DataspaceDefinition
+	keyspace              *KeyspaceDefinition
 
 	attach                 *AttachTable
 
@@ -68,7 +68,7 @@ func randomHex(n int) (string, error) {
 	sharedRelationList     []*ShardedRelaion
 
 	key_range_selector     *KeyRangeSelector
-	dataspace_selector     *DataspaceSelector
+	keyspace_selector     *KeyspaceSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -123,9 +123,9 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE KEYSPACE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST RULE COLUMNS VERSION
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR IN
 %token <str> CLIENT
 
 %token<str> RELATIONS ALTER
@@ -141,7 +141,7 @@ func randomHex(n int) (string, error) {
 %token<str> OP
 
 %type<key_range_selector> key_range_stmt
-%type<dataspace_selector> dataspace_select_stmt
+%type<keyspace_selector> keyspace_select_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -157,12 +157,12 @@ func randomHex(n int) (string, error) {
 
 %type <attach> attach_stmt
 
-%type <ds> dataspace_define_stmt
+%type <ds> keyspace_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
 %type<str> hash_function_name
-%type<str> opt_dataspace
+%type<str> opt_keyspace
 
 %type<strlist> col_types_list opt_col_types
 %type<str> col_types_elem
@@ -342,7 +342,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ClientsStr, StatusStr, DataspacesStr, VersionStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ClientsStr, StatusStr, KeyspacesStr, VersionStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -369,11 +369,11 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP DATASPACE ALL opt_cascade
+	| DROP KEYSPACE ALL opt_cascade
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: $4}
+		$$ = &Drop{Element: &KeyspaceSelector{ID: `*`}, CascadeDelete: $4}
 	}
-	| DROP dataspace_select_stmt opt_cascade
+	| DROP keyspace_select_stmt opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
@@ -400,17 +400,17 @@ stoptrace_stmt:
 
 
 attach_stmt:
-	ALTER dataspace_select_stmt ATTACH TABLE ds_relations_elem
+	ALTER keyspace_select_stmt ATTACH TABLE ds_relations_elem
 	{
 		$$ = &AttachTable{
 			Relation: $5,
-			Dataspace: $2,
+			Keyspace: $2,
 		}
 	}
 
 
 create_stmt:
-	CREATE dataspace_define_stmt
+	CREATE keyspace_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -439,10 +439,10 @@ lock_stmt:
 	// or lock someting else
 
 
-dataspace_define_stmt:
-	DATASPACE any_id opt_col_types opt_ds_relations
+keyspace_define_stmt:
+	KEYSPACE any_id opt_col_types opt_ds_relations
 	{
-		$$ = &DataspaceDefinition{
+		$$ = &KeyspaceDefinition{
 			ID: $2,
 			ColTypes: $3,
 			Relations: $4,
@@ -515,8 +515,8 @@ hash_function_name:
 		$$ = "city"
 	}
 
-opt_dataspace:
-    FOR DATASPACE any_id{
+opt_keyspace:
+    IN KEYSPACE any_id {
         $$ = $3
     }
     | /* EMPTY */ { $$ = "default" }
@@ -547,17 +547,27 @@ key_range_bound:
 	}
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM key_range_bound TO key_range_bound ROUTE TO any_id opt_dataspace
+	KEY RANGE any_id opt_keyspace FROM key_range_bound ROUTE TO any_id 
 	{
-		$$ = &KeyRangeDefinition{LowerBound: $5, UpperBound: $7, ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			 KeyRangeID: $3, 
+			 Keyspace: $4,
+			 LowerBound: $6,
+			 ShardID: $9,
+		}
 	}
-	| KEY RANGE FROM key_range_bound TO key_range_bound ROUTE TO any_id opt_dataspace
+	| KEY RANGE opt_keyspace FROM key_range_bound ROUTE TO any_id
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: $4, UpperBound: $6, ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{
+			LowerBound: $5,
+			ShardID: $8,
+			KeyRangeID: "kr"+str,
+			Keyspace: $3,
+		}
 	}
 
 
@@ -589,10 +599,10 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
-dataspace_select_stmt:
-	DATASPACE any_id
+keyspace_select_stmt:
+	KEYSPACE any_id
 	{
-		$$ = &DataspaceSelector{ID: $2}
+		$$ = &KeyspaceSelector{ID: $2}
 	}
 
 split_key_range_stmt:

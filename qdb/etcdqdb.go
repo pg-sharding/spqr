@@ -48,13 +48,13 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace             = "/keyranges/"
-	dataspaceNamespace             = "/dataspaces/"
-	dataspaceReverseIndexNamespace = "/dataspace_reverse_index/"
-	keyRangeMovesNamespace         = "/krmoves/"
-	routersNamespace               = "/routers/"
-	shardingRulesNamespace         = "/sharding_rules/"
-	shardsNamespace                = "/shards/"
+	keyRangesNamespace            = "/keyranges/"
+	keyspaceNamespace             = "/keyspaces/"
+	keyspaceReverseIndexNamespace = "/keyspace_reverse_index/"
+	keyRangeMovesNamespace        = "/krmoves/"
+	routersNamespace              = "/routers/"
+	shardingRulesNamespace        = "/sharding_rules/"
+	shardsNamespace               = "/shards/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -81,8 +81,8 @@ func shardNodePath(key string) string {
 	return path.Join(shardsNamespace, key)
 }
 
-func dataspaceNodePath(key string) string {
-	return path.Join(dataspaceNamespace, key)
+func keyspaceNodePath(key string) string {
+	return path.Join(keyspaceNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
@@ -90,7 +90,7 @@ func keyRangeMovesNodePath(key string) string {
 }
 
 func reverseIndexNodePath(relation string) string {
-	return path.Join(dataspaceReverseIndexNamespace, relation)
+	return path.Join(keyspaceReverseIndexNamespace, relation)
 }
 
 // ==============================================================================
@@ -188,9 +188,9 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context, keyspace string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
+		Str("keyspace", keyspace).
 		Msg("etcdqdb: list sharding rules")
 
 	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
@@ -207,7 +207,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-		if rule.DataspaceId == dataspace {
+		if rule.KeyspaceId == keyspace {
 			rules = append(rules, rule)
 		}
 	}
@@ -218,7 +218,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*S
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Str("dataspace", dataspace).
+		Str("keyspace", keyspace).
 		Msg("etcdqdb: list sharding rules")
 
 	return rules, nil
@@ -263,10 +263,9 @@ func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, er
 // TODO : unit tests
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
+		Bytes("lower-bound", keyRange.LowerBound[0]).
 		Str("shard-id", keyRange.ShardID).
-		Str("dataspace-id", keyRange.DataspaceId).
+		Str("keyspace-id", keyRange.KeyspaceId).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -326,10 +325,9 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 // TODO : unit tests
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
+		Bytes("lower-bound", keyRange.LowerBound[0]).
 		Str("shard-id", keyRange.ShardID).
-		Str("dataspace-id", keyRange.KeyRangeID).
+		Str("keyspace-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -387,9 +385,9 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, keyspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
+		Str("keyspace", keyspace).
 		Msg("etcdqdb: list key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -405,7 +403,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 			return nil, err
 		}
 
-		if dataspace == kr.DataspaceId {
+		if keyspace == kr.KeyspaceId {
 			keyRanges = append(keyRanges, kr)
 		}
 	}
@@ -416,7 +414,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Str("dataspace", dataspace).
+		Str("keyspace", keyspace).
 		Msg("etcdqdb: list key ranges")
 
 	return keyRanges, nil
@@ -1016,42 +1014,42 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
+func (q *EtcdQDB) AddKeyspace(ctx context.Context, keyspace *Keyspace) error {
 	spqrlog.Zero.Debug().
-		Str("id", dataspace.ID).
-		Msg("etcdqdb: add dataspace")
+		Str("id", keyspace.ID).
+		Msg("etcdqdb: add keyspace")
 
-	rawDs, err := json.Marshal(dataspace)
+	rawDs, err := json.Marshal(keyspace)
 	if err != nil {
 		return err
 	}
 
-	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), string(rawDs))
+	resp, err := q.cli.Put(ctx, keyspaceNodePath(keyspace.ID), string(rawDs))
 	if err != nil {
 		return err
 	}
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: add dataspace")
+		Msg("etcdqdb: add keyspace")
 
 	return nil
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list dataspaces")
+func (q *EtcdQDB) ListKeyspaces(ctx context.Context) ([]*Keyspace, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list keyspaces")
 
-	resp, err := q.cli.Get(ctx, dataspaceNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyspaceNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make([]*Dataspace, 0, len(resp.Kvs)+1)
-	rules = append(rules, &Dataspace{ID: "default"})
+	rules := make([]*Keyspace, 0, len(resp.Kvs)+1)
+	rules = append(rules, &Keyspace{ID: "default"})
 
 	for _, kv := range resp.Kvs {
-		var rule *Dataspace
+		var rule *Keyspace
 		err := json.Unmarshal(kv.Value, &rule)
 		if err != nil {
 			return nil, err
@@ -1066,38 +1064,38 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list dataspaces")
+		Msg("etcdqdb: list keyspaces")
 	return rules, nil
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropKeyspace(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: drop dataspace")
+		Msg("etcdqdb: drop keyspace")
 
-	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+	resp, err := q.cli.Delete(ctx, keyspaceNodePath(id))
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: drop dataspace")
+		Msg("etcdqdb: drop keyspace")
 
 	return err
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) AlterDataspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error {
+func (q *EtcdQDB) AlterKeyspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: attach table to dataspace")
+		Msg("etcdqdb: attach table to keyspace")
 
-	resp, err := q.cli.Get(ctx, dataspaceNodePath(id))
+	resp, err := q.cli.Get(ctx, keyspaceNodePath(id))
 
 	if len(resp.Kvs) == 0 {
-		return fmt.Errorf("dataspace with id \"%s\" not found", id)
+		return fmt.Errorf("keyspace with id \"%s\" not found", id)
 	}
 
-	var ds *Dataspace
+	var ds *Keyspace
 	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
 		return err
 	}
@@ -1113,24 +1111,24 @@ func (q *EtcdQDB) AlterDataspaceAttachRelation(ctx context.Context, id string, r
 
 	spqrlog.Zero.Debug().
 		Interface("responce", resp).
-		Msg("etcdqdb: attach table to dataspace")
+		Msg("etcdqdb: attach table to keyspace")
 
 	return err
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetDataspace(ctx context.Context, id string) (*Dataspace, error) {
+func (q *EtcdQDB) GetKeyspace(ctx context.Context, id string) (*Keyspace, error) {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: get dataspace for table")
+		Msg("etcdqdb: get keyspace for table")
 
-	resp, err := q.cli.Get(ctx, dataspaceNodePath(id))
+	resp, err := q.cli.Get(ctx, keyspaceNodePath(id))
 
 	if len(resp.Kvs) == 0 {
-		return nil, fmt.Errorf("dataspace with id \"%s\" not found", id)
+		return nil, fmt.Errorf("keyspace with id \"%s\" not found", id)
 	}
 
-	var ds *Dataspace
+	var ds *Keyspace
 	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
 		return nil, err
 	}
@@ -1139,25 +1137,29 @@ func (q *EtcdQDB) GetDataspace(ctx context.Context, id string) (*Dataspace, erro
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetDataspaceForRelation(ctx context.Context, relation string) (*Dataspace, error) {
+func (q *EtcdQDB) GetKeyspaceForRelation(ctx context.Context, relation string) (*Keyspace, error) {
 	spqrlog.Zero.Debug().
 		Str("relation", relation).
-		Msg("etcdqdb: get dataspace for table")
+		Msg("etcdqdb: get keyspace for table")
 
 	resp, err := q.cli.Get(ctx, reverseIndexNodePath(relation))
 
 	if len(resp.Kvs) == 0 {
-		return &Dataspace{ID: "default"}, err
+		return &Keyspace{ID: "default"}, err
 	}
 
 	id := string(resp.Kvs[0].Value)
-	resp, err = q.cli.Get(ctx, dataspaceNodePath(id))
+	resp, err = q.cli.Get(ctx, keyspaceNodePath(id))
 
 	if len(resp.Kvs) == 0 {
+<<<<<<< HEAD
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", id)
+=======
+		return nil, fmt.Errorf("keyspace with id \"%s\" not found", id)
+>>>>>>> Change dataspace to keyspace, drop upper bound from key range definition
 	}
 
-	var ds *Dataspace
+	var ds *Keyspace
 	if err := json.Unmarshal(resp.Kvs[0].Value, &ds); err != nil {
 		return nil, err
 	}

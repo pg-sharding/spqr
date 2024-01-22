@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -22,7 +21,6 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/pg-sharding/spqr/router/routehint"
-	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/statistics"
 )
 
@@ -41,21 +39,21 @@ func deparseRouteHint(rst relay.RelayStateMgr, params map[string]string, dataspa
 	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
+		// TBD: support this
+		// krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
 
-		if err != nil {
-			return nil, err
-		}
-		meta := qrouter.NewRoutingMetadataContext(krs, dataspace, nil)
-		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
-		if err != nil {
-			return nil, err
-		}
-		return &routehint.TargetRouteHint{
-			State: routingstate.ShardMatchState{
-				Route: ds,
-			},
-		}, nil
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// return &routehint.TargetRouteHint{
+		// 	State: routingstate.ShardMatchState{
+		// 		Route: ds,
+		// 	},
+		// }, nil
 	}
 
 	return &routehint.EmptyRouteHint{}, nil

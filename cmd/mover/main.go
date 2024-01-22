@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -42,7 +41,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 // TODO : unit tests
-func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
+func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, keyNextRange kr.KeyRange, ks ) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -64,28 +63,6 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(txFrom)
-
-	rows, err := txFrom.Query(ctx, `
-SELECT table_schema, table_name
-FROM information_schema.columns
-WHERE column_name=$1;
-`, key.Entries()[0].Column)
-	if err != nil {
-		return err
-	}
-	var ress []MoveTableRes
-
-	for rows.Next() {
-		var curres MoveTableRes
-		err = rows.Scan(&curres.TableSchema, &curres.TableName)
-		if err != nil {
-			return err
-		}
-
-		ress = append(ress, curres)
-	}
-
-	rows.Close()
 
 	for _, v := range ress {
 		spqrlog.Zero.Debug().
@@ -160,15 +137,8 @@ func main() {
 	//my_rule := shrule.NewShardingRule("r1", "fast", entrys)
 	//db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
 
-	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return
-	}
-
 	if err := moveData(ctx,
-		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
-		shrule.ShardingRuleFromDB(shRule)); err != nil {
+		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb)}); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

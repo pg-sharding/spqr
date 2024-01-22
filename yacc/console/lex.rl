@@ -82,7 +82,7 @@ func (lex *Lexer) Lex(lval *yySymType) int {
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; fbreak;    
+                lval.integer = int64(vl); tok = ICONST; fbreak;    
             };
 
             '-' integer =>  { 
@@ -90,20 +90,20 @@ func (lex *Lexer) Lex(lval *yySymType) int {
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; fbreak;    
+                lval.integer = int64(vl); tok = ICONST; fbreak;    
             };
 
 
             qidentifier      => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = IDENT; fbreak;};
-            identifier      => { 
-                
+            identifier      => {     
                 lval.str = string(lex.data[lex.ts:lex.te]);
                 if ttype, ok := reservedWords[strings.ToLower(lval.str)]; ok {
                     tok = ttype;
                 } else {
                     tok = IDENT; 
                 }
-                fbreak;};
+                fbreak;
+            };
             sconst => { lval.str = string(lex.data[lex.ts + 1:lex.te - 1]); tok = SCONST; fbreak;};
 
             '=' => { lval.str = string(lex.data[lex.ts:lex.te]); tok = TEQ; fbreak;};

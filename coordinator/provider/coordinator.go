@@ -440,115 +440,10 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		if rule.DataspaceId == dataspace {
-			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-		}
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	// Store sharding rule to metadb.
-	if err := ops.AddShardingRuleWithChecks(ctx, qc.db, rule); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewShardingRulesServiceClient(cc)
-		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
-			Rules: []*routerproto.ShardingRule{shrule.ShardingRuleToProto(rule)},
-		})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("add sharding rules response")
-		return nil
-	})
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
-
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewShardingRulesServiceClient(cc)
-		// TODO: support drop sharding rules all in grpc somehow
-		listResp, err := cl.ListShardingRules(context.TODO(), &routerproto.ListShardingRuleRequest{})
-		if err != nil {
-			return err
-		}
-
-		var ids []string
-		for _, v := range listResp.Rules {
-			ids = append(ids, v.Id)
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", listResp).
-			Msg("list sharding rules response")
-
-		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
-			Id: ids,
-		})
-
-		spqrlog.Zero.Debug().
-			Interface("response", dropResp).
-			Msg("drop sharding rules response")
-
-		return err
-	}); err != nil {
-		return nil, err
-	}
-
-	// Drop sharding rules from qdb.
-	rules, err := qc.db.DropShardingRuleAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []*shrule.ShardingRule
-
-	for _, v := range rules {
-		ret = append(ret, shrule.ShardingRuleFromDB(v))
-	}
-
-	return ret, nil
-}
-
-// TODO : unit tests
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
+		Bytes("lower-bound", keyRange.OutFunc(0)).
 		Str("shard-id", keyRange.ShardID).
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
@@ -581,10 +476,15 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) (
 	if err != nil {
 		return nil, err
 	}
+	ds, err := qc.db.GetDataspace(ctx, dataspace)
+	if err != nil {
+		return nil, err
+	}
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 	}
 
 	return keyr, nil
@@ -599,7 +499,11 @@ func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange,
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		keyr = append(keyr, kr.KeyRangeFromDB(keyRange))
+		ds, err := qc.db.GetDataspace(ctx, keyRange.DataspaceId)
+		if err != nil {
+			return nil, err
+		}
+		keyr = append(keyr, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 	}
 
 	return keyr, nil
@@ -617,7 +521,9 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 		return nil, err
 	}
 
-	keyRange := kr.KeyRangeFromDB(keyRangeDB)
+	ds, err := qc.db.GetDataspace(ctx, keyRangeDB.DataspaceId)
+
+	keyRange := kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
 
 	return keyRange, qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
@@ -690,7 +596,6 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
 			LowerBound:  req.Bound,
-			UpperBound:  krOld.UpperBound,
 			KeyRangeID:  req.Krid,
 			ShardID:     krOld.ShardID,
 			DataspaceId: krOld.DataspaceId,
@@ -698,13 +603,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	)
 
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krNew.LowerBound).
-		Bytes("upper-bound", krNew.UpperBound).
+		Bytes("lower-bound", krNew.OutFunc(0)).
 		Str("shard-id", krNew.ShardID).
 		Str("id", krNew.ID).
 		Msg("new key range")
 
-	krOld.UpperBound = req.Bound
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}

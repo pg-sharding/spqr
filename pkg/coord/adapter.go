@@ -352,7 +352,7 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 // TODO : unit tests
-func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
+func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Keyspace, error) {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
 	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
@@ -360,26 +360,26 @@ func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, e
 		return nil, err
 	}
 
-	dss := make([]*dataspaces.Dataspace, len(resp.Dataspaces))
+	dss := make([]*dataspaces.Keyspace, len(resp.Dataspaces))
 	for i, ds := range resp.Dataspaces {
-		dss[i] = dataspaces.DataspaceFromProto(ds)
+		dss[i] = dataspaces.KeyspaceFromProto(ds)
 	}
 
 	return dss, nil
 }
 
 // TODO : unit tests
-func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
 	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
-		Dataspaces: []*proto.Dataspace{dataspaces.DataspaceToProto(ds)},
+		Dataspaces: []*proto.Dataspace{dataspaces.KeyspaceToProto(ds)},
 	})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
 	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
@@ -390,7 +390,7 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 }
 
 // TODO : unit tests
-func (a *adapter) AlterDataspaceAttachRelation(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+func (a *adapter) AlterDataspaceAttachRelation(ctx context.Context, table string, ds *dataspaces.Keyspace) error {
 	c := proto.NewDataspaceServiceClient(a.conn)
 
 	_, err := c.AlterDataspaceAttachRelation(ctx, &proto.AlterDataspaceAttachRelationRequest{
@@ -413,7 +413,7 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 		return nil, err
 	}
 
-	return dataspaces.DataspaceFromProto(resp.Dataspace), nil
+	return dataspaces.KeyspaceFromProto(resp.Dataspace), nil
 }
 
 // TODO : unit tests

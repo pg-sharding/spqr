@@ -200,7 +200,6 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			TextOidFD("Shard ID"),
 			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
-			TextOidFD("Upper bound"),
 		},
 		},
 	} {
@@ -211,16 +210,20 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	}
 
 	for _, keyRange := range krs {
+		bound := []byte{}
+		for ind := range keyRange.LowerBound {
+			bound = append(bound, keyRange.OutFunc(ind)...)
+		}
+
 		if err := pi.Cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
 				[]byte(keyRange.Dataspace),
-				keyRange.LowerBound,
-				keyRange.UpperBound,
+				bound,
 			},
 		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+			spqrlog.Zero.Error().Err(err).Msg("response to client failed")
 			return err
 		}
 	}
@@ -229,13 +232,13 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 
 // TODO : unit tests
 func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
-	if err := pi.WriteHeader("add key range"); err != nil {
+	if err := pi.WriteHeader("Add key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %s to %s", keyRange.LowerBound, keyRange.UpperBound))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range with bound %+v", keyRange.LowerBound))}},
 	} {
 		if err := pi.Cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -535,7 +538,7 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
+func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Keyspace) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Dataspace ID"),
@@ -757,7 +760,7 @@ func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error 
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
+func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Keyspace) error {
 	if err := pi.WriteHeader("add dataspace"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
@@ -788,13 +791,13 @@ func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AttachTable(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
-	if err := pi.WriteHeader("attach table"); err != nil {
+func (pi *PSQLInteractor) AttachTable(ctx context.Context, id string, relation dataspaces.ShardedRelation) error {
+	if err := pi.WriteHeader("attach relation"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("attached table %s to dataspace %s", table, ds.ID())); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("attached relation %s to dataspace %s", relation.Name, id)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

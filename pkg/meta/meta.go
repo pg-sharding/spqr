@@ -111,7 +111,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return fmt.Errorf("Dataspace should have at least one column type specified")
 		}
 
-		dataspace := dataspaces.DataspaceFromSQL(stmt)
+		dataspace := dataspaces.KeyspaceFromSQL(stmt)
 
 		dataspaces, err := mngr.ListDataspace(ctx)
 		if err != nil {
@@ -131,7 +131,11 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		return cli.AddDataspace(ctx, dataspace)
 
 	case *spqrparser.KeyRangeDefinition:
-		req := kr.KeyRangeFromSQL(stmt)
+		ds, err := mngr.GetDataspace(ctx, stmt.Dataspace)
+		if err != nil {
+			return cli.ReportError(err)
+		}
+		req := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
@@ -230,13 +234,18 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.AttachTable:
-		ds := &dataspaces.Dataspace{
-			Id: stmt.Dataspace.ID,
+		mp := map[string]dataspaces.ShardedRelation{}
+		mp[stmt.Relation.Name] = dataspaces.ShardedRelation{
+			Name:        stmt.Relation.Name,
+			ColumnNames: stmt.Relation.Columns,
 		}
-		if err := mgr.AttachToDataspace(ctx, stmt.Table, ds); err != nil {
+		if err := mgr.AlterDataspaceAttachRelation(ctx, stmt.Dataspace.ID, mp); err != nil {
 			return err
 		}
-		return cli.AttachTable(ctx, stmt.Table, ds)
+		return cli.AttachTable(ctx, stmt.Dataspace.ID, dataspaces.ShardedRelation{
+			Name:        stmt.Relation.Name,
+			ColumnNames: stmt.Relation.Columns,
+		})
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -247,14 +256,14 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := pool.Pop(stmt.Target)
+		ok, err := pool.Pop(uint(stmt.Target))
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return fmt.Errorf("No such client %d", stmt.Target)
 		}
-		return cli.KillClient(stmt.Target)
+		return cli.KillClient(uint(stmt.Target))
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -300,13 +309,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShardingRules:
-		resp, err := mngr.ListAllShardingRules(ctx)
-		if err != nil {
-			return err
-		}
 
-		return cli.ShardingRules(ctx, resp)
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {

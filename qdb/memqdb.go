@@ -24,13 +24,13 @@ type MemQDB struct {
 	Freq       map[string]bool          `json:"freq"`
 	Krs        map[string]*KeyRange     `json:"krs"`
 	Shards     map[string]*Shard        `json:"shards"`
-	Dataspaces map[string]*Dataspace    `json:"dataspaces"`
+	Keyspaces  map[string]*Keyspace     `json:"keyspaces"`
 
-	// maps relation name to its dataspace, if assinged to any
-	TableDataspace map[string]*Dataspace               `json:"table_dataspace"`
-	Routers        map[string]*Router                  `json:"routers"`
-	Transactions   map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator    string                              `json:"coordinator"`
+	// maps relation name to its keyspace, if assinged to any
+	ReverseIndex map[string]*Keyspace                `json:"keyspace_reverse_index"`
+	Routers      map[string]*Router                  `json:"routers"`
+	Transactions map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator  string                              `json:"coordinator"`
 
 	backupPath string
 	/* caches */
@@ -40,15 +40,15 @@ var _ QDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:           map[string]bool{},
-		Krs:            map[string]*KeyRange{},
-		Locks:          map[string]*sync.RWMutex{},
-		Shards:         map[string]*Shard{},
-		Dataspaces:     map[string]*Dataspace{},
-		TableDataspace: map[string]*Dataspace{},
-		Routers:        map[string]*Router{},
-		Transactions:   map[string]*DataTransferTransaction{},
-		deletedKrs:     map[string]bool{},
+		Freq:         map[string]bool{},
+		Krs:          map[string]*KeyRange{},
+		Locks:        map[string]*sync.RWMutex{},
+		Shards:       map[string]*Shard{},
+		Keyspaces:    map[string]*Keyspace{},
+		ReverseIndex: map[string]*Keyspace{},
+		Routers:      map[string]*Router{},
+		Transactions: map[string]*DataTransferTransaction{},
+		deletedKrs:   map[string]bool{},
 
 		backupPath: backupPath,
 	}, nil
@@ -246,9 +246,9 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange, error) {
+func (q *MemQDB) ListKeyRanges(_ context.Context, keyspace string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
+		Str("keyspace", keyspace).
 		Msg("memqdb: list key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -256,7 +256,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange
 	var ret []*KeyRange
 
 	for _, el := range q.Krs {
-		if el.DataspaceId == dataspace {
+		if el.KeyspaceId == keyspace {
 			ret = append(ret, el)
 		}
 	}
@@ -574,22 +574,22 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
-	spqrlog.Zero.Debug().Interface("dataspace", dataspace).Msg("memqdb: add dataspace")
+func (q *MemQDB) AddKeyspace(ctx context.Context, keyspace *Keyspace) error {
+	spqrlog.Zero.Debug().Interface("keyspace", keyspace).Msg("memqdb: add keyspace")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Dataspaces, dataspace.ID, dataspace))
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Keyspaces, keyspace.ID, keyspace))
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list dataspaces")
+func (q *MemQDB) ListKeyspaces(ctx context.Context) ([]*Keyspace, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list keyspaces")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	var ret []*Dataspace
-	ret = append(ret, &Dataspace{ID: "default"})
-	for _, v := range q.Dataspaces {
+	var ret []*Keyspace
+	ret = append(ret, &Keyspace{ID: "default"})
+	for _, v := range q.Keyspaces {
 		ret = append(ret, v)
 	}
 
@@ -601,52 +601,65 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: delete dataspace")
+func (q *MemQDB) DropKeyspace(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("keyspace", id).Msg("memqdb: delete keyspace")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Dataspaces, id))
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Keyspaces, id))
 }
 
-// AlterDataspaceAttach implements QDB.
-func (q *MemQDB) AlterDataspaceAttach(ctx context.Context, id string, rels []ShardedRelation) error {
-	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: alter dataspace attach relations")
+// AlterKeyspaceAttach implements QDB.
+func (q *MemQDB) AlterKeyspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error {
+	spqrlog.Zero.Debug().Str("keyspace", id).Msg("memqdb: alter keyspace attach relations")
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if ds, ok := q.Dataspaces[id]; !ok {
-		return fmt.Errorf("no such dataspace: %s", id)
+	if ds, ok := q.Keyspaces[id]; !ok {
+		return fmt.Errorf("no such keyspace: %s", id)
 	} else {
 		for _, r := range rels {
 			ds.Relations[r.Name] = r
 
-			q.TableDataspace[r.Name] = ds
+			q.ReverseIndex[r.Name] = ds
 			// not very fast
-			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.TableDataspace, r.Name, ds)); err != nil {
+			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.ReverseIndex, r.Name, ds)); err != nil {
 				return err
 			}
 		}
 
-		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Dataspaces, id, ds)); err != nil {
+		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Keyspaces, id, ds)); err != nil {
 			return err
 		}
 		return nil
 	}
 }
 
-// GetDataspaceForRelation implements QDB.
-func (q *MemQDB) GetDataspaceForRelation(ctx context.Context, relation string) (*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get dataspace for relations")
+// GetKeyspaceForRelation implements QDB.
+func (q *MemQDB) GetKeyspaceForRelation(ctx context.Context, relation string) (*Keyspace, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get keyspace for relations")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if ds, ok := q.TableDataspace[relation]; !ok {
+	if ds, ok := q.ReverseIndex[relation]; !ok {
 		return ds, nil
 	}
 
-	if dataspace, ok := q.TableDataspace[relation]; ok {
-		return dataspace, nil
+	if keyspace, ok := q.ReverseIndex[relation]; ok {
+		return keyspace, nil
 	} else {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", q.TableDataspace[table])
+		return nil, fmt.Errorf("keyspace for relation \"%s\" not found", relation)
+	}
+}
+
+// TODO : unit tests
+func (q *MemQDB) GetKeyspace(ctx context.Context, id string) (*Keyspace, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get keyspace by its id")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if ds, ok := q.Keyspaces[id]; ok {
+		return ds, nil
+	} else {
+		return nil, fmt.Errorf("keyspace with id \"%s\" not found", id)
 	}
 }

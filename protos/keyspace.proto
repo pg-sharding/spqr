@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+message ShardedRelation {
+  string name = 1;
+  repeated string colnames = 2;
+}
+
+message Keyspace {
+  string id = 1;
+  repeated string coltypes = 2;
+  repeated ShardedRelation relations = 3;
+}
+
+message AddKeyspaceRequest{
+  repeated Keyspace dataspaces = 1;
+}
+
+message AddKeyspaceReply{}
+
+message ListKeyspaceRequest{}
+
+message ListKeyspaceReply{
+  repeated Keyspace dataspaces = 1;
+}
+
+message DropKeyspaceRequest{
+  repeated string ids = 1;
+}
+
+message DropKeyspaceReply{}
+
+message AlterKeyspaceAttachRelationRequest{
+  string id = 1;
+  repeated ShardedRelation relations = 2;
+}
+
+message AlterKeyspaceAttachRelationReply{}
+
+message GetKeyspaceRequest{
+  string id = 1;
+}
+
+message GetKeyspaceReply {
+  Keyspace dataspace = 1;
+}
+
+message GetKeyspaceForRelationRequest {
+  string relationName = 1;
+}
+
+
+message GetKeyspaceForRelationReply {
+  Keyspace dataspace = 1;
+}
+
+service KeyspaceService {
+  rpc AddKeyspace(AddKeyspaceRequest) returns (AddKeyspaceReply) {}
+  rpc DropKeyspace(DropKeyspaceRequest) returns (DropKeyspaceReply) {}
+  rpc ListKeyspace(ListKeyspaceRequest) returns (ListKeyspaceReply) {}
+  rpc AlterKeyspaceAttachRelation(AlterKeyspaceAttachRelationRequest) returns (AlterKeyspaceAttachRelationReply) {}
+  rpc GetKeyspace(GetKeyspaceRequest) returns (GetKeyspaceReply) {}
+  rpc GetKeyspaceForRelation(GetKeyspaceForRelationRequest) returns (GetKeyspaceForRelationReply) {}
+}

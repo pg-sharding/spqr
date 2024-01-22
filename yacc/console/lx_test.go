@@ -58,15 +58,13 @@ func TestSimpleLex(t *testing.T) {
 		},
 
 		{
-			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 ROUTE TO sh2;",
 			exp: []int{
 				spqrparser.ADD,
 				spqrparser.KEY,
 				spqrparser.RANGE,
 				spqrparser.IDENT,
 				spqrparser.FROM,
-				spqrparser.IDENT,
-				spqrparser.TO,
 				spqrparser.IDENT,
 				spqrparser.ROUTE,
 				spqrparser.TO,
@@ -81,15 +79,15 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.TABLE,
 				spqrparser.IDENT,
 				spqrparser.TO,
-				spqrparser.DATASPACE,
+				spqrparser.KEYSPACE,
 				spqrparser.IDENT,
 			},
 		},
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar",
+			query: "CREATE KEYSPACE db1 SHARDING COLUMN TYPES varchar, varchar",
 			exp: []int{
 				spqrparser.CREATE,
-				spqrparser.DATASPACE,
+				spqrparser.KEYSPACE,
 				spqrparser.IDENT,
 				spqrparser.SHARDING,
 				spqrparser.COLUMN,

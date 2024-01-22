@@ -6,12 +6,18 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+var (
+	ColumnTypeVarchar           = "varchar"
+	ColumnTypeVarcharDeprecated = "varchar_d"
+	ColumnTypeInteger           = "integer"
+)
+
 type ShardedRelation struct {
 	Name        string
 	ColumnNames []string
 }
 
-type Dataspace struct {
+type Keyspace struct {
 	Id        string
 	ColTypes  []string
 	Relations map[string]ShardedRelation
@@ -19,19 +25,26 @@ type Dataspace struct {
 
 // local table sharding rule -> route to world
 
-func NewDataspace(id string, rels map[string]ShardedRelation) *Dataspace {
-	return &Dataspace{
+func NewDataspace(id string, rels map[string]ShardedRelation) *Keyspace {
+	return &Keyspace{
 		Id:        id,
 		Relations: rels,
 	}
 }
 
-func (s *Dataspace) ID() string {
+func ShardedRelationFromDB(sr qdb.ShardedRelation) ShardedRelation {
+	return ShardedRelation{
+		Name:        sr.Name,
+		ColumnNames: sr.ColNames,
+	}
+}
+
+func (s *Keyspace) ID() string {
 	return s.Id
 }
 
-func DataspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Dataspace {
-	ret := &Dataspace{
+func KeyspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Keyspace {
+	ret := &Keyspace{
 		Id: ds.ID,
 	}
 	for _, r := range ds.Relations {
@@ -44,22 +57,28 @@ func DataspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Dataspace {
 	return ret
 }
 
-func DataspaceFromDB(ds *qdb.Dataspace) *Dataspace {
-	return &Dataspace{
-		Id: ds.ID,
-		// Relations: rule.Relations,
-		// ColTypes:  rule.ColTypes,
+func DataspaceFromDB(ds *qdb.Dataspace) *Keyspace {
+	ks := &Keyspace{
+		Id:        ds.ID,
+		Relations: map[string]ShardedRelation{},
+		ColTypes:  ds.ColTypes,
 	}
+	for k, v := range ds.Relations {
+		ks.Relations[k] = ShardedRelationFromDB(v)
+	}
+	return ks
 }
 
-func DataspaceFromProto(ds *proto.Dataspace) *Dataspace {
-	return &Dataspace{
+func KeyspaceFromProto(ds *proto.Dataspace) *Keyspace {
+	return &Keyspace{
 		Id: ds.Id,
 		// ColTypes: ds.ColTypes,
 	}
 }
-func DataspaceToProto(ds *Dataspace) *proto.Dataspace {
+
+func KeyspaceToProto(ds *Keyspace) *proto.Dataspace {
 	return &proto.Dataspace{
-		Id: ds.Id,
+		Id:       ds.Id,
+		Coltypes: ds.ColTypes,
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pkg/errors"
@@ -21,7 +22,7 @@ type QueryRouter interface {
 	WorldShardsRoutes() []*routingstate.DataShardRoute
 	DataShardsRoutes() []*routingstate.DataShardRoute
 
-	DeparseKeyWithRangesInternal(ctx context.Context, key string, meta *RoutingMetadataContext) (*routingstate.DataShardRoute, error)
+	DeparseKeyWithRangesInternal(ctx context.Context, evals []interface{}, krs []*kr.KeyRange, types []string) (*routingstate.DataShardRoute, error)
 
 	Initialized() bool
 	Initialize() bool
