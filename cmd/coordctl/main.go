@@ -224,7 +224,5 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Err(err).Msg("")
-	}
+	rootCmd.Execute()
 }

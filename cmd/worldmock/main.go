@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/spf13/cobra"
 )
 
@@ -11,8 +10,8 @@ var rootCmd = &cobra.Command{
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 }
 
 var cfgPath string
@@ -24,6 +23,8 @@ var runCmd = &cobra.Command{
 		w := NewWorldMock(addr)
 		return w.Run()
 	},
+	SilenceUsage:  false,
+	SilenceErrors: false,
 }
 
 func init() {
@@ -33,7 +34,5 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Fatal().Err(err).Msg("")
-	}
+	rootCmd.Execute()
 }

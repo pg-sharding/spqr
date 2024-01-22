@@ -287,12 +287,6 @@ func init() {
 	rootCmd.AddCommand(dump)
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-	}
-}
-
 func main() {
-	Execute()
+	rootCmd.Execute()
 }

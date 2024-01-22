@@ -5,7 +5,6 @@ import (
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
 	"runtime"
@@ -25,8 +24,8 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := config.LoadCoordinatorCfg(cfgPath); err != nil {
 			return err
@@ -54,7 +53,5 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Error().Err(err)
-	}
+	rootCmd.Execute()
 }

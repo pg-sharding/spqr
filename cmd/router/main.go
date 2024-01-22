@@ -49,8 +49,8 @@ var (
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:  false,
+		SilenceErrors: false,
 	}
 )
 
@@ -305,7 +305,5 @@ var runCmd = &cobra.Command{
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Fatal().Err(err).Msg("")
-	}
+	rootCmd.Execute()
 }

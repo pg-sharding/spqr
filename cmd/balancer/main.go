@@ -65,12 +65,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/balancer.yaml", "path to config file")
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Fatal().Err(err).Msg("")
-	}
-}
-
 func main() {
-	Execute()
+	rootCmd.Execute()
 }

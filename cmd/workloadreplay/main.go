@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadreplay"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +45,5 @@ func init() {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Fatal().Err(err).Msg("failed to execute command")
-	}
+	rootCmd.Execute()
 }
