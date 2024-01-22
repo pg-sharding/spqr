@@ -209,7 +209,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 	case *spqrparser.Shutdown:
 		//t.stchan <- struct{}{}
-		return spqrerror.New("not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
+		return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 
 	default:
 		spqrlog.Zero.Error().

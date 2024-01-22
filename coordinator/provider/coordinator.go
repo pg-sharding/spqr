@@ -98,19 +98,19 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Put(client client.Client) error {
-	return spqrerror.New("grpcConnectionIterator put not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator put not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
-	return true, spqrerror.New("grpcConnectionIterator pop not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
+	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Shutdown() error {
-	return spqrerror.New("grpcConnectionIterator shutdown not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
 // TODO : unit tests
@@ -375,7 +375,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	for _, rtr := range rtrs {
 		if err := func() error {
 			if rtr.State != qdb.OPENED {
-				return spqrerror.New("router is closed", spqrerror.SPQR_UNEXPECTED)
+				return spqrerror.New(spqrerror.SPQR_ROUTER_ERROR, "router is closed")
 			}
 
 			// TODO: run cb`s async
@@ -681,10 +681,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}()
 
 	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) || kr.CmpRangesEqual(req.Bound, krOld.UpperBound) {
-		return spqrerror.New("failed to split because bound equals lower or upper bound of the key range", spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower or upper bound of the key range")
 	}
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
-		return spqrerror.New("failed to split because bound is out of key range", spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
 	}
 
 	krNew := kr.KeyRangeFromDB(
@@ -820,11 +820,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}()
 
 	if krLeft.ShardID != krRight.ShardID {
-		return spqrerror.New("failed to unite key ranges routing different shards", spqrerror.SPQR_KEYRANGE_ERROR)
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
 	}
 	if !kr.CmpRangesEqual(krLeft.UpperBound, krRight.LowerBound) {
 		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
-			return spqrerror.New("failed to unite non-adjacent key ranges", spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
 		krLeft, krRight = krRight, krLeft
 	}

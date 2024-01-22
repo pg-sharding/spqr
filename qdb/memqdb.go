@@ -492,7 +492,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		return spqrerror.New("no such key", spqrerror.SPQR_COMPLEX_QUERY)
+		return spqrerror.New(spqrerror.SPQR_COMPLEX_QUERY, "no such key")
 	}
 
 	err := q.TryLockKeyRange(lock, id, true)
@@ -731,6 +731,6 @@ func (q *MemQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, er
 	if dataspace, ok := q.Dataspaces[q.TableDataspace[table]]; ok {
 		return dataspace, nil
 	} else {
-		return nil, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "dataspace with id \"%s\" not found", q.TableDataspace[table])
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", q.TableDataspace[table])
 	}
 }

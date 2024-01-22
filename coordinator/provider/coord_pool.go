@@ -22,11 +22,11 @@ func NewCoordPool(info *protos.PoolInfo) *CoordPool {
 // TODO : unit tests
 // TODO : implement
 func (r *CoordPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
-	return nil, spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "unimplemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (r *CoordPool) ForEach(cb func(p shard.Shardinfo) error) error {
-	return spqrerror.New("unimplemented", spqrerror.SPQR_UNEXPECTED)
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "unimplemented")
 }

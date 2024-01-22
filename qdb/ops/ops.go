@@ -11,7 +11,7 @@ import (
 // TODO : unit tests
 func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.ShardingRule) error {
 	if _, err := qdb.GetShardingRule(ctx, rule.Id); err == nil {
-		return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "sharding rule %v already present in qdb", rule.Id)
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v already present in qdb", rule.Id)
 	}
 
 	existDataspace, err := qdb.ListDataspaces(ctx)
@@ -26,7 +26,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		}
 	}
 	if !exists {
-		return spqrerror.New("try to add sharding rule link to a non-existent dataspace", spqrerror.SPQR_NO_DATASPACE)
+		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "try to add sharding rule link to a non-existent dataspace")
 	}
 
 	existsRules, err := qdb.ListShardingRules(ctx, rule.Dataspace)
@@ -69,7 +69,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		}
 	}
 	if !exists {
-		return spqrerror.New("try to add key range link to a non-existent dataspace", spqrerror.SPQR_NO_DATASPACE)
+		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "try to add key range link to a non-existent dataspace")
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)

@@ -513,7 +513,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 			return val, nil
 
 		case <-fetchCtx.Done():
-			return nil, spqrerror.New("deadlines exceeded", spqrerror.SPQR_KEYRANGE_ERROR)
+			return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
 		}
 	}
 }
@@ -565,7 +565,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 				return nil
 			}
 		case <-fetchCtx.Done():
-			return spqrerror.New("deadlines exceeded", spqrerror.SPQR_KEYRANGE_ERROR)
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
 		}
 	}
 }
@@ -700,7 +700,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	if !stat.Succeeded {
-		return spqrerror.New("qdb is already in use", spqrerror.SPQR_UNEXPECTED)
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
 	return nil
@@ -709,7 +709,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 // TODO : unit tests
 // TODO : implement
 func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
-	return spqrerror.New("UpdateCoordinator not implemented", spqrerror.SPQR_NOTIMPLEMENTED)
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemented")
 }
 
 // TODO : unit tests
@@ -724,11 +724,11 @@ func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return "", spqrerror.New("coordinator address was not found", spqrerror.SPQR_CONNECTION_ERROR)
+		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "coordinator address was not found")
 	case 1:
 		return string(resp.Kvs[0].Value), nil
 	default:
-		return "", spqrerror.New("multiple addresses were found", spqrerror.SPQR_CONNECTION_ERROR)
+		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "multiple addresses were found")
 	}
 }
 
@@ -749,7 +749,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 		return err
 	}
 	if len(getResp.Kvs) != 0 {
-		return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "router with id %s already exists", r.ID)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router id %s already exists", r.ID)
 	}
 
 	routers, err := q.ListRouters(ctx)
@@ -758,7 +758,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	}
 	for _, router := range routers {
 		if router.Address == r.Address {
-			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "router with address %s already exists", r.Address)
+			return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with address %s already exists", r.Address)
 		}
 	}
 
@@ -809,7 +809,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
 	}
 
 	var routers []*Router
@@ -825,7 +825,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	/*  */
 
 	if len(routers) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == OPENED {
@@ -862,7 +862,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
 	}
 
 	var routers []*Router
@@ -876,7 +876,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	}
 
 	if len(routers) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == CLOSED {
@@ -1112,7 +1112,7 @@ func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, e
 	resp, err = q.cli.Get(ctx, dataspaceNodePath(id))
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "dataspace with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", id)
 	}
 
 	return &Dataspace{ID: id}, err

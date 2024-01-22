@@ -70,7 +70,7 @@ func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *p
 		}
 	}
 
-	return "", spqrerror.New("key range not found", spqrerror.SPQR_KEYRANGE_ERROR)
+	return "", spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range not found")
 }
 
 // TODO : unit tests
