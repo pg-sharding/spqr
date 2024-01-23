@@ -1161,6 +1161,13 @@ func TestMiscRouting(t *testing.T) {
 			exp:       nil,
 			err:       qrouter.InformationSchemaCombinedQuery,
 		},
+
+		{
+			query:     "select 'Hello, world!'",
+			dataspace: dataspace1,
+			exp:       routingstate.RandomMatchState{},
+			err:       nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
