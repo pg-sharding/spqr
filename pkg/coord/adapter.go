@@ -414,7 +414,6 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	c := proto.NewTopologyServiceClient(a.conn)
 	_, err := c.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{Address: address})
