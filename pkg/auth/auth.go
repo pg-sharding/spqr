@@ -9,12 +9,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/go-ldap/ldap/v3"
-	"github.com/xdg-go/scram"
-	"golang.org/x/crypto/pbkdf2"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/xdg-go/scram"
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -289,18 +288,45 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		if rule.AuthRule.LDAPConfig == nil {
 			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
 		}
-		if rule.AuthRule.LDAPConfig.LdapUrl != "" {
-			l, err := ldap.DialURL(rule.AuthRule.LDAPConfig.LdapUrl)
-			if err != nil {
-				return err
-			}
-			defer l.Close()
+		l, err := ldap.DialURL(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort), ldap.DialWithTLSConfig(&tls.Config{InsecureSkipVerify: true}))
+		if err != nil {
+			return err
+		}
+		defer l.Close()
+		err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
+		if err != nil {
+			return err
+		}
+		err = l.Bind(rule.AuthRule.LDAPConfig.LdapBindDn, rule.AuthRule.LDAPConfig.LdapBindPasswd)
+		if err != nil {
+			return err
+		}
+		searchRequest := ldap.NewSearchRequest(
+			rule.AuthRule.LDAPConfig.LdapBaseDn,
+			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+			fmt.Sprintf("(&(objectClass=organizationalPerson)(uid=%s))", ldap.EscapeFilter(cl.Usr())),
+			[]string{"dn"},
+			nil,
+		)
+		sr, err := l.Search(searchRequest)
+		if err != nil {
+			return err
+		}
 
-			// Reconnect with TLS
-			err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
-			if err != nil {
-				return err
-			}
+		if len(sr.Entries) != 1 {
+			return fmt.Errorf("User does not exist or too many entries returned")
+		}
+
+		userdn := sr.Entries[0].DN
+
+		// Bind as the user to verify their password
+		passwd, err := cl.PasswordCT()
+		if err != nil {
+			return err
+		}
+		err = l.Bind(userdn, passwd)
+		if err != nil {
+			return err
 		}
 		return nil
 	default:
