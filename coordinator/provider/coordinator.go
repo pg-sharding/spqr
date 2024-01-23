@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"time"
 
@@ -97,19 +98,19 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Put(client client.Client) error {
-	return fmt.Errorf("grpcConnectionIterator put not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator put not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
-	return true, fmt.Errorf("grpcConnectionIterator pop not implemented")
+	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
 // TODO : implement
 // TODO : unit tests
 func (ci grpcConnectionIterator) Shutdown() error {
-	return fmt.Errorf("grpcConnectionIterator shutdown not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
 // TODO : unit tests
@@ -374,7 +375,7 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 	for _, rtr := range rtrs {
 		if err := func() error {
 			if rtr.State != qdb.OPENED {
-				return fmt.Errorf("router is closed")
+				return spqrerror.New(spqrerror.SPQR_ROUTER_ERROR, "router is closed")
 			}
 
 			// TODO: run cb`s async
@@ -665,7 +666,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Msg("split request is")
 
 	if _, err := qc.db.GetKeyRange(ctx, req.Krid); err == nil {
-		return fmt.Errorf("key range %v already present in qdb", req.Krid)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", req.Krid)
 	}
 
 	krOld, err := qc.db.LockKeyRange(ctx, req.SourceID)
@@ -680,10 +681,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}()
 
 	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) || kr.CmpRangesEqual(req.Bound, krOld.UpperBound) {
-		return fmt.Errorf("failed to split because bound equals lower or upper bound of the key range")
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower or upper bound of the key range")
 	}
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
-		return fmt.Errorf("failed to split because bound is out of key range")
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
 	}
 
 	krNew := kr.KeyRangeFromDB(
@@ -709,7 +710,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	}
 
 	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
-		return fmt.Errorf("failed to add a new key range: %w", err)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -819,11 +820,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	}()
 
 	if krLeft.ShardID != krRight.ShardID {
-		return fmt.Errorf("failed to unite key ranges routing different shards")
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
 	}
 	if !kr.CmpRangesEqual(krLeft.UpperBound, krRight.LowerBound) {
 		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
-			return fmt.Errorf("failed to unite non-adjacent key ranges")
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
 		krLeft, krRight = krRight, krLeft
 	}
@@ -831,11 +832,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	krLeft.UpperBound = krRight.UpperBound
 
 	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
-		return fmt.Errorf("failed to drop an old key range: %w", err)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
 
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
-		return fmt.Errorf("failed to update a new key range: %w", err)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
@@ -1054,13 +1055,13 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	// ping router
 	conn, err := DialRouter(r)
 	if err != nil {
-		return fmt.Errorf("failed to ping router: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
 	defer conn.Close()
 	cl := routerproto.NewTopologyServiceClient(conn)
 	_, err = cl.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
 	if err != nil {
-		return fmt.Errorf("failed to ping router: %s", err)
+		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}
 
 	return qc.db.AddRouter(ctx, qdb.NewRouter(r.Address, r.ID, qdb.OPENED))
@@ -1157,7 +1158,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error 
 				spqrlog.Zero.Debug().Msg("processed OK")
 			}
 		default:
-			return cli.ReportError(fmt.Errorf("unsupported msg type %T", msg))
+			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "unsupported msg type %T", msg)
 		}
 	}
 }

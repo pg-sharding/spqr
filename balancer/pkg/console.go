@@ -3,7 +3,7 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -108,7 +108,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 				Err(err).
 				Msg("unknown stmt.Cmd")
 
-			return fmt.Errorf("Unknown show statement: %s", stmt.Cmd)
+			return spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "Unknown show statement: %s", stmt.Cmd)
 		}
 
 	case *spqrparser.SplitKeyRange:
@@ -209,7 +209,7 @@ func (c *Console) ProcessQuery(ctx context.Context, q string, cl client.Client) 
 
 	case *spqrparser.Shutdown:
 		//t.stchan <- struct{}{}
-		return fmt.Errorf("not implemented")
+		return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "not implemented")
 
 	default:
 		spqrlog.Zero.Error().

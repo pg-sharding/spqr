@@ -3,6 +3,7 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"strconv"
 	"strings"
@@ -373,18 +374,18 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 			}
 			return right, nil
 		default:
-			return true, fmt.Errorf("not supported logic operation: %s", where.Op)
+			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported logic operation: %s", where.Op)
 		}
 	case spqrparser.WhereClauseLeaf:
 		switch where.Op {
 		case "=":
 			i, ok := nameToIndex[where.ColRef.ColName]
 			if !ok {
-				return true, fmt.Errorf("column %s not exists", where.ColRef.ColName)
+				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s not exists", where.ColRef.ColName)
 			}
 			return row[i] == where.Value, nil
 		default:
-			return true, fmt.Errorf("not supported operation %s", where.Op)
+			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported operation %s", where.Op)
 		}
 	default:
 		return false, nil

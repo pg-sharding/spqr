@@ -2,7 +2,7 @@ package coord
 
 import (
 	"context"
-	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
@@ -31,7 +31,7 @@ func (a *adapter) QDB() qdb.QDB {
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) ShareKeyRange(id string) error {
-	return fmt.Errorf("shareKeyRange not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "shareKeyRange not implemented")
 }
 
 // TODO : unit tests
@@ -98,7 +98,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		}
 	}
 
-	return nil, fmt.Errorf("key range with id %s not found", krid)
+	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
 }
 
 // TODO : unit tests
@@ -140,7 +140,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		}
 	}
 
-	return fmt.Errorf("key range with id %s not found", split.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
 }
 
 // TODO : unit tests
@@ -163,7 +163,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	}
 
 	if left == nil || right == nil {
-		return fmt.Errorf("key range on left or right was not found")
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
 	}
 
 	var bound []byte
@@ -199,7 +199,7 @@ func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 		}
 	}
 
-	return fmt.Errorf("key range with id %s not found", move.Krid)
+	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
 // TODO : unit tests
@@ -330,25 +330,25 @@ func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
-	return fmt.Errorf("addDataShard not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addDataShard not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
-	return fmt.Errorf("addWorldShard not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
-	return nil, fmt.Errorf("ListShards not implemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ListShards not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
-	return nil, fmt.Errorf("GetShardInfo not implemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetShardInfo not implemented")
 }
 
 // TODO : unit tests
@@ -416,11 +416,11 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
-	return fmt.Errorf("UpdateCoordinator not implemeneted")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemeneted")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
-	return "", fmt.Errorf("GetCoordinator not implemented")
+	return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetCoordinator not implemented")
 }

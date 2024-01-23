@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
@@ -22,11 +22,11 @@ func NewCoordPool(info *protos.PoolInfo) *CoordPool {
 // TODO : unit tests
 // TODO : implement
 func (r *CoordPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
-	return nil, fmt.Errorf("unimplemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "CoordPool.Connection method unimplemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (r *CoordPool) ForEach(cb func(p shard.Shardinfo) error) error {
-	return fmt.Errorf("unimplemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "CoordPool.ForEach method unimplemented")
 }

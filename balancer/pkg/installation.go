@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math"
 	"math/big"
 	"strings"
@@ -193,7 +194,7 @@ func AddHostStats(stats *map[string]map[string]Stats, additionalStats *map[strin
 func (i *Installation) GetShardStats(shard Shard, keyRanges []KeyRange) (map[string]map[string]Stats, error) {
 	cluster, ok := (*i.shardClusters)[shard.id]
 	if !ok {
-		return nil, fmt.Errorf("not known shard %d", shard.id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "not known shard %d", shard.id)
 	}
 
 	nodes := cluster.Nodes()
@@ -394,7 +395,7 @@ func (i *Installation) GetKeyDistanceByRange(conn *sql.Conn, keyRange KeyRange) 
 	}
 
 	if err := rows.Close(); err != nil {
-		return nil, fmt.Errorf("failed to close keyRange rows: %w", err)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to close keyRange rows: %s", err.Error())
 	}
 
 	kr := KeyRange{

@@ -946,7 +946,7 @@ func (cl *PsqlClient) ReplyErr(e error) error {
 }
 
 func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
-	clerrmsg := fmt.Sprintf("Code: %s. Name: %s.", code, spqrerror.GetMessageByCode(code))
+	clerrmsg := spqrerror.GetMessageByCode(code)
 	return cl.ReplyErrMsg(clerrmsg, code)
 }
 

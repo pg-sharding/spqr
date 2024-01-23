@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -37,11 +37,11 @@ func NewConnectionKepperData(info *protos.PoolInfo) *ConnectionKepperData {
 }
 
 func (r *ConnectionKepperData) Put(host shard.Shard) error {
-	return fmt.Errorf("unimplemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ConnectionKepperData Put not implemented")
 }
 
 func (r *ConnectionKepperData) Discard(sh shard.Shard) error {
-	return fmt.Errorf("unimplemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ConnectionKepperData Discard not implemented")
 }
 
 func (r *ConnectionKepperData) UsedConnectionCount() int {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"path"
 	"sort"
 	"sync"
@@ -169,7 +170,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, fmt.Errorf("sharding rule %v already present in qdb", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v already present in qdb", id)
 	case 1:
 		var rule ShardingRule
 		if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
@@ -181,7 +182,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 		return &rule, nil
 	default:
-		return nil, fmt.Errorf("too much sharding rules matched: %d", len(resp.Kvs))
+		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much sharding rules matched: %d", len(resp.Kvs))
 	}
 
 }
@@ -304,7 +305,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 		return &ret, nil
 
 	default:
-		return nil, fmt.Errorf("failed to fetch key range with id %v", nodePath)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range with id %v", nodePath)
 	}
 }
 
@@ -378,6 +379,7 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 
 	return err
 }
+
 // TODO : unit tests
 // TODO : implement
 func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
@@ -486,9 +488,9 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 
 			return q.GetKeyRange(ctx, keyRangeID)
 		case 1:
-			return nil, fmt.Errorf("key range with id %v locked", keyRangeID)
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v locked", keyRangeID)
 		default:
-			return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
 
@@ -511,7 +513,7 @@ func (q *EtcdQDB) LockKeyRange(ctx context.Context, id string) (*KeyRange, error
 			return val, nil
 
 		case <-fetchCtx.Done():
-			return nil, fmt.Errorf("deadlines exceeded")
+			return nil, spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
 		}
 	}
 }
@@ -544,12 +546,12 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 		}
 		switch len(resp.Kvs) {
 		case 0:
-			return fmt.Errorf("key range with id %v unlocked", keyRangeID)
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %v unlocked", keyRangeID)
 		case 1:
 			_, err := q.cli.Delete(ctx, keyLockPath(keyRangeNodePath(keyRangeID)))
 			return err
 		default:
-			return fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 		}
 	}
 
@@ -563,7 +565,7 @@ func (q *EtcdQDB) UnlockKeyRange(ctx context.Context, id string) error {
 				return nil
 			}
 		case <-fetchCtx.Done():
-			return fmt.Errorf("deadlines exceeded")
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "lock key range deadlines exceeded")
 		}
 	}
 }
@@ -581,11 +583,11 @@ func (q *EtcdQDB) CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange
 
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, fmt.Errorf("key range %v not locked", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v not locked", id)
 	case 1:
 		return q.GetKeyRange(ctx, id)
 	default:
-		return nil, fmt.Errorf("too much key ranges matched: %d", len(resp.Kvs))
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "too much key ranges matched: %d", len(resp.Kvs))
 	}
 }
 
@@ -638,7 +640,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 		}
 	}
 	if st.ToStatus == "" {
-		return nil, fmt.Errorf("no transaction in qdb with key %s", key)
+		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no transaction in qdb with key %s", key)
 	}
 	return &st, nil
 }
@@ -698,7 +700,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	if !stat.Succeeded {
-		return fmt.Errorf("qdb is already in use")
+		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
 	return nil
@@ -707,7 +709,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 // TODO : unit tests
 // TODO : implement
 func (q *EtcdQDB) UpdateCoordinator(ctx context.Context, address string) error {
-	return fmt.Errorf("UpdateCoordinator not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemented")
 }
 
 // TODO : unit tests
@@ -722,11 +724,11 @@ func (q *EtcdQDB) GetCoordinator(ctx context.Context) (string, error) {
 
 	switch len(resp.Kvs) {
 	case 0:
-		return "", fmt.Errorf("coordinator address was not found")
+		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "coordinator address was not found")
 	case 1:
 		return string(resp.Kvs[0].Value), nil
 	default:
-		return "", fmt.Errorf("multiple addresses were found")
+		return "", spqrerror.New(spqrerror.SPQR_CONNECTION_ERROR, "multiple addresses were found")
 	}
 }
 
@@ -747,7 +749,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 		return err
 	}
 	if len(getResp.Kvs) != 0 {
-		return fmt.Errorf("router with id %s already exists", r.ID)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router id %s already exists", r.ID)
 	}
 
 	routers, err := q.ListRouters(ctx)
@@ -756,7 +758,7 @@ func (q *EtcdQDB) AddRouter(ctx context.Context, r *Router) error {
 	}
 	for _, router := range routers {
 		if router.Address == r.Address {
-			return fmt.Errorf("router with address %s already exists", r.Address)
+			return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with address %s already exists", r.Address)
 		}
 	}
 
@@ -807,7 +809,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return fmt.Errorf("router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
 	}
 
 	var routers []*Router
@@ -823,7 +825,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 	/*  */
 
 	if len(routers) != 1 {
-		return fmt.Errorf("sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == OPENED {
@@ -860,7 +862,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return fmt.Errorf("router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
 	}
 
 	var routers []*Router
@@ -874,7 +876,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 	}
 
 	if len(routers) != 1 {
-		return fmt.Errorf("sync failed: more than one router with id %s", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "sync failed: more than one router with id %s", id)
 	}
 
 	if routers[0].State == CLOSED {
@@ -1110,7 +1112,7 @@ func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, e
 	resp, err = q.cli.Get(ctx, dataspaceNodePath(id))
 
 	if len(resp.Kvs) == 0 {
-		return nil, fmt.Errorf("dataspace with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", id)
 	}
 
 	return &Dataspace{ID: id}, err
@@ -1183,7 +1185,7 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 		return err
 	}
 	if len(resp.Kvs) != 1 {
-		return fmt.Errorf("failed to update move key range operation by id %s", moveId)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update move key range operation by id %s", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
