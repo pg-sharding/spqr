@@ -422,5 +422,7 @@ func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
-	return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetCoordinator not implemented")
+	c := proto.NewTopologyServiceClient(a.conn)
+	resp, err := c.GetCoordinator(ctx, &proto.GetCoordinatorRequest{})
+	return resp.Address, err
 }

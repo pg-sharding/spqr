@@ -23,6 +23,7 @@ const (
 	TopologyService_GetRouterStatus_FullMethodName   = "/spqr.TopologyService/GetRouterStatus"
 	TopologyService_CloseRouter_FullMethodName       = "/spqr.TopologyService/CloseRouter"
 	TopologyService_UpdateCoordinator_FullMethodName = "/spqr.TopologyService/UpdateCoordinator"
+	TopologyService_GetCoordinator_FullMethodName    = "/spqr.TopologyService/GetCoordinator"
 )
 
 // TopologyServiceClient is the client API for TopologyService service.
@@ -33,6 +34,7 @@ type TopologyServiceClient interface {
 	GetRouterStatus(ctx context.Context, in *GetRouterStatusRequest, opts ...grpc.CallOption) (*GetRouterStatusReply, error)
 	CloseRouter(ctx context.Context, in *CloseRouterRequest, opts ...grpc.CallOption) (*CloseRouterReply, error)
 	UpdateCoordinator(ctx context.Context, in *UpdateCoordinatorRequest, opts ...grpc.CallOption) (*UpdateCoordinatorResponse, error)
+	GetCoordinator(ctx context.Context, in *GetCoordinatorRequest, opts ...grpc.CallOption) (*GetCoordinatorResponse, error)
 }
 
 type topologyServiceClient struct {
@@ -79,6 +81,15 @@ func (c *topologyServiceClient) UpdateCoordinator(ctx context.Context, in *Updat
 	return out, nil
 }
 
+func (c *topologyServiceClient) GetCoordinator(ctx context.Context, in *GetCoordinatorRequest, opts ...grpc.CallOption) (*GetCoordinatorResponse, error) {
+	out := new(GetCoordinatorResponse)
+	err := c.cc.Invoke(ctx, TopologyService_GetCoordinator_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TopologyServiceServer is the server API for TopologyService service.
 // All implementations must embed UnimplementedTopologyServiceServer
 // for forward compatibility
@@ -87,6 +98,7 @@ type TopologyServiceServer interface {
 	GetRouterStatus(context.Context, *GetRouterStatusRequest) (*GetRouterStatusReply, error)
 	CloseRouter(context.Context, *CloseRouterRequest) (*CloseRouterReply, error)
 	UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*UpdateCoordinatorResponse, error)
+	GetCoordinator(context.Context, *GetCoordinatorRequest) (*GetCoordinatorResponse, error)
 	mustEmbedUnimplementedTopologyServiceServer()
 }
 
@@ -105,6 +117,9 @@ func (UnimplementedTopologyServiceServer) CloseRouter(context.Context, *CloseRou
 }
 func (UnimplementedTopologyServiceServer) UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*UpdateCoordinatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateCoordinator not implemented")
+}
+func (UnimplementedTopologyServiceServer) GetCoordinator(context.Context, *GetCoordinatorRequest) (*GetCoordinatorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCoordinator not implemented")
 }
 func (UnimplementedTopologyServiceServer) mustEmbedUnimplementedTopologyServiceServer() {}
 
@@ -191,6 +206,24 @@ func _TopologyService_UpdateCoordinator_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TopologyService_GetCoordinator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCoordinatorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TopologyServiceServer).GetCoordinator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TopologyService_GetCoordinator_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TopologyServiceServer).GetCoordinator(ctx, req.(*GetCoordinatorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TopologyService_ServiceDesc is the grpc.ServiceDesc for TopologyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -213,6 +246,10 @@ var TopologyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateCoordinator",
 			Handler:    _TopologyService_UpdateCoordinator_Handler,
+		},
+		{
+			MethodName: "GetCoordinator",
+			Handler:    _TopologyService_GetCoordinator_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
