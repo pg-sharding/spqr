@@ -223,6 +223,8 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			case *lyx.ColumnRef:
 				/* simple key-value pair */
 				switch rght := texpr.Right.(type) {
+				case *lyx.ParamRef:
+					// ignore
 				case *lyx.AExprConst:
 					alias, colname := lft.TableAlias, lft.ColName
 
