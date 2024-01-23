@@ -35,14 +35,14 @@ func (app *App) Run(withPsql bool) error {
 
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
-		if err := app.ServeGrpc(wg); err != nil {
+		if err := app.ServeGrpcApi(wg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
 	if withPsql {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			if err := app.ServePsql(wg); err != nil {
+			if err := app.ServeCoordinator(wg); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
 		}(wg)
@@ -54,19 +54,19 @@ func (app *App) Run(withPsql bool) error {
 	return nil
 }
 
-func (app *App) ServePsql(wg *sync.WaitGroup) error {
+func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	var lwg sync.WaitGroup
 
-	listen := map[string]struct{}{
-		"localhost:7002":                {},
-		config.CoordinatorConfig().Addr: {},
+	listen := []string{
+		"localhost:7002",
+		net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().CoordinatorPort),
 	}
 
 	lwg.Add(len(listen))
 
-	for addr := range listen {
+	for _, addr := range listen {
 		go func(addr string) {
 			defer lwg.Done()
 			spqrlog.Zero.Info().Str("address", addr).Msg("serve psql")
@@ -89,7 +89,7 @@ func (app *App) ServePsql(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
+func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
 	serv := grpc.NewServer()
@@ -107,7 +107,7 @@ func (app *App) ServeGrpc(wg *sync.WaitGroup) error {
 	protos.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
 	protos.RegisterShardServiceServer(serv, shardServ)
 
-	httpAddr := config.CoordinatorConfig().HttpAddr
+	httpAddr := config.CoordinatorConfig().Host
 
 	spqrlog.Zero.Info().
 		Str("address", httpAddr).

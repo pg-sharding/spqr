@@ -1,2 +1,4 @@
-http_addr: 'regress_router_2:7003'
+host: regress_router_2
+coordinator_port: 7002
+grpc_api_port: 7003
 qdb_addr: '[regress_qdb_0_1]:2379'

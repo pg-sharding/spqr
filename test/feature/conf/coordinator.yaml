@@ -1,5 +1,6 @@
-http_addr: 'regress_coordinator:7003'
-addr: 'regress_coordinator:7002'
+host: regress_coordinator
+coordinator_port: 7002
+grpc_api_port: 7003
 qdb_addr: '[regress_qdb_0_1]:2379'
 log_level: INFO
 shard_data: '/spqr/test/feature/conf/shard_data.yaml'

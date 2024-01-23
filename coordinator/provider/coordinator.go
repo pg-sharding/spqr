@@ -293,7 +293,7 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		if err := cc.SyncRouterMetadata(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
 		}
-		if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().HttpAddr); err != nil {
+		if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().Host); err != nil {
 			return false
 		}
 		return true

@@ -14,11 +14,12 @@ import (
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
-	LogLevel     string `json:"log_level" toml:"log_level" yaml:"log_level"`
-	QdbAddr      string `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
-	HttpAddr     string `json:"http_addr" toml:"http_addr" yaml:"http_addr"`
-	Addr         string `json:"addr" toml:"addr" yaml:"addr"`
-	ShardDataCfg string `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
+	LogLevel        string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	QdbAddr         string `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
+	Host            string `json:"host" toml:"host" yaml:"host"`
+	CoordinatorPort string `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
+	GrpcApiPort     string `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	ShardDataCfg    string `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
 }
 
 func LoadCoordinatorCfg(cfgPath string) error {
