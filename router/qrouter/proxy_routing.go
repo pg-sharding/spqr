@@ -70,7 +70,6 @@ type RoutingMetadataContext struct {
 	// TODO: include client ops and metadata here
 }
 
-// TODO : unit tests
 func (m *RoutingMetadataContext) CheckColumnRls(colname string) bool {
 	for i := range m.rls {
 		for _, c := range m.rls[i].Entries() {
