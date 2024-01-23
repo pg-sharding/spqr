@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/xdg-go/scram"
 	"golang.org/x/crypto/pbkdf2"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -288,23 +289,42 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		if rule.AuthRule.LDAPConfig == nil {
 			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
 		}
-		l, err := ldap.DialURL(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort), ldap.DialWithTLSConfig(&tls.Config{InsecureSkipVerify: true}))
+		fmt.Println(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort))
+		l, err := ldap.DialURL(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort))
 		if err != nil {
 			return err
 		}
 		defer l.Close()
-		err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
-		if err != nil {
-			return err
+		if rule.AuthRule.LDAPConfig.LdapTLS {
+			err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
+			if err != nil {
+				return err
+			}
 		}
-		err = l.Bind(rule.AuthRule.LDAPConfig.LdapBindDn, rule.AuthRule.LDAPConfig.LdapBindPasswd)
-		if err != nil {
-			return err
+		if rule.AuthRule.LDAPConfig.LdapBindPasswd != "" || rule.AuthRule.LDAPConfig.LdapBindDn != "" {
+			err = l.Bind(rule.AuthRule.LDAPConfig.LdapBindDn, rule.AuthRule.LDAPConfig.LdapBindPasswd)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = l.UnauthenticatedBind(cl.Usr())
+			if err != nil {
+				return err
+			}
+		}
+		var searchFilter string
+		if rule.AuthRule.LDAPConfig.LdapSearchFilter != "" {
+			searchFilter = strings.ReplaceAll(rule.AuthRule.LDAPConfig.LdapSearchFilter, "$username", ldap.EscapeFilter(cl.Usr()))
+		} else {
+			if rule.AuthRule.LDAPConfig.LdapSearchAttribute == "" {
+				rule.AuthRule.LDAPConfig.LdapSearchAttribute = "uid"
+			}
+			searchFilter = fmt.Sprintf("(%s=%s)", rule.AuthRule.LDAPConfig.LdapSearchAttribute, ldap.EscapeFilter(cl.Usr()))
 		}
 		searchRequest := ldap.NewSearchRequest(
 			rule.AuthRule.LDAPConfig.LdapBaseDn,
 			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			fmt.Sprintf("(&(objectClass=organizationalPerson)(uid=%s))", ldap.EscapeFilter(cl.Usr())),
+			searchFilter,
 			[]string{"dn"},
 			nil,
 		)
