@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	noSuchHashFunction = fmt.Errorf("no such hash function")
+	errNoSuchHashFunction = fmt.Errorf("no such hash function")
 )
 
 func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
@@ -26,13 +26,13 @@ func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
 	case HashFunctionIdent:
 		return inp, nil
 	case HashFunctionMurmur:
-		h := murmur3.Sum64(inp)
-		return []byte(strconv.FormatUint(h, 10)), nil
+		h := murmur3.Sum32(inp)
+		return []byte(strconv.FormatUint(uint64(h), 10)), nil
 	case HashFunctionCity:
-		h := city.Hash64(inp)
-		return []byte(strconv.FormatUint(h, 10)), nil
+		h := city.Hash32(inp)
+		return []byte(strconv.FormatUint(uint64(h), 10)), nil
 	default:
-		return nil, noSuchHashFunction
+		return nil, errNoSuchHashFunction
 	}
 }
 
@@ -45,6 +45,6 @@ func HashFunctionByName(hfn string) (HashFunctionType, error) {
 	case "city":
 		return HashFunctionCity, nil
 	default:
-		return 0, noSuchHashFunction
+		return 0, errNoSuchHashFunction
 	}
 }
