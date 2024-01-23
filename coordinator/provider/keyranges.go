@@ -21,7 +21,7 @@ type CoordinatorService struct {
 
 // TODO : unit tests
 func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	ds, err := c.impl.GetDataspace(ctx, request.KeyRangeInfo.DataspaceId)
+	ds, err := c.impl.GetKeyspace(ctx, request.KeyRangeInfo.KeyspaceId)
 	if err != nil {
 		return nil, err
 	}

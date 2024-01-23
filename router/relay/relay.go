@@ -478,7 +478,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
-		Str("dataspace", rst.Cl.Dataspace()).
+		Str("dataspace", rst.Cl.Keyspace()).
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 
@@ -1159,7 +1159,7 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
-		Str("ds", rst.Client().Dataspace()).
+		Str("ds", rst.Client().Keyspace()).
 		Msg("preparing relay step for client")
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {

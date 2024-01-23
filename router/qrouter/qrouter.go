@@ -22,7 +22,7 @@ type QueryRouter interface {
 	WorldShardsRoutes() []*routingstate.DataShardRoute
 	DataShardsRoutes() []*routingstate.DataShardRoute
 
-	DeparseKeyWithRangesInternal(ctx context.Context, evals []interface{}, krs []*kr.KeyRange, types []string) (*routingstate.DataShardRoute, error)
+	DeparseKeyWithRangesInternal(ctx context.Context, evals kr.KeyRangeBound, krs []*kr.KeyRange, types []string) (*routingstate.DataShardRoute, error)
 
 	Initialized() bool
 	Initialize() bool

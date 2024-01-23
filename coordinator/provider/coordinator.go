@@ -476,7 +476,7 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) (
 	if err != nil {
 		return nil, err
 	}
-	ds, err := qc.db.GetDataspace(ctx, dataspace)
+	ds, err := qc.db.GetKeyspace(ctx, dataspace)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +499,7 @@ func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange,
 
 	keyr := make([]*kr.KeyRange, 0, len(keyRanges))
 	for _, keyRange := range keyRanges {
-		ds, err := qc.db.GetDataspace(ctx, keyRange.DataspaceId)
+		ds, err := qc.db.GetKeyspace(ctx, keyRange.KeyspaceId)
 		if err != nil {
 			return nil, err
 		}
@@ -521,7 +521,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 		return nil, err
 	}
 
-	ds, err := qc.db.GetDataspace(ctx, keyRangeDB.DataspaceId)
+	ds, err := qc.db.GetKeyspace(ctx, keyRangeDB.KeyspaceId)
 
 	keyRange := kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes)
 
@@ -579,6 +579,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if err != nil {
 		return err
 	}
+	ds, err := qc.db.GetKeyspace(ctx, krOld.KeyspaceId)
+	if err != nil {
+		return err
+	}
 
 	defer func() {
 		if err := qc.db.UnlockKeyRange(ctx, req.SourceID); err != nil {
@@ -595,11 +599,12 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound:  req.Bound,
-			KeyRangeID:  req.Krid,
-			ShardID:     krOld.ShardID,
-			DataspaceId: krOld.DataspaceId,
+			LowerBound: req.Bound,
+			KeyRangeID: req.Krid,
+			ShardID:    krOld.ShardID,
+			KeyspaceId: krOld.KeyspaceId,
 		},
+		ds.ColTypes,
 	)
 
 	spqrlog.Zero.Debug().
@@ -745,8 +750,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound:     krRight.LowerBound,
-			Dataspace: krRight.DataspaceId,
+			Bound:    krRight.LowerBound,
+			Keyspace: krRight.KeyspaceId,
 		})
 
 		spqrlog.Zero.Debug().

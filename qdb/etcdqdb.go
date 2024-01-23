@@ -1144,6 +1144,10 @@ func (q *EtcdQDB) GetKeyspaceForRelation(ctx context.Context, relation string) (
 
 	resp, err := q.cli.Get(ctx, reverseIndexNodePath(relation))
 
+	if err != nil {
+		return nil, err
+	}
+
 	if len(resp.Kvs) == 0 {
 		return &Keyspace{ID: "default"}, err
 	}

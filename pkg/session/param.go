@@ -6,9 +6,9 @@ import (
 
 type SessionParamsHolder interface {
 	// get current session dataspace
-	Dataspace() string
-	SetDataspace(string)
-	DataspaceIsDefault() bool
+	Keyspace() string
+	SetKeyspace(string)
+	KeyspaceIsDefault() bool
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string

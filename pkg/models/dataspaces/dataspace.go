@@ -25,7 +25,7 @@ type Keyspace struct {
 
 // local table sharding rule -> route to world
 
-func NewDataspace(id string, rels map[string]ShardedRelation) *Keyspace {
+func NewKeyspace(id string, rels map[string]ShardedRelation) *Keyspace {
 	return &Keyspace{
 		Id:        id,
 		Relations: rels,
@@ -43,7 +43,7 @@ func (s *Keyspace) ID() string {
 	return s.Id
 }
 
-func KeyspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Keyspace {
+func KeyspaceFromSQL(ds *spqrparser.KeyspaceDefinition) *Keyspace {
 	ret := &Keyspace{
 		Id: ds.ID,
 	}
@@ -57,7 +57,7 @@ func KeyspaceFromSQL(ds *spqrparser.DataspaceDefinition) *Keyspace {
 	return ret
 }
 
-func DataspaceFromDB(ds *qdb.Dataspace) *Keyspace {
+func KeyspaceFromDB(ds *qdb.Keyspace) *Keyspace {
 	ks := &Keyspace{
 		Id:        ds.ID,
 		Relations: map[string]ShardedRelation{},
@@ -69,15 +69,15 @@ func DataspaceFromDB(ds *qdb.Dataspace) *Keyspace {
 	return ks
 }
 
-func KeyspaceFromProto(ds *proto.Dataspace) *Keyspace {
+func KeyspaceFromProto(ds *proto.Keyspace) *Keyspace {
 	return &Keyspace{
 		Id: ds.Id,
 		// ColTypes: ds.ColTypes,
 	}
 }
 
-func KeyspaceToProto(ds *Keyspace) *proto.Dataspace {
-	return &proto.Dataspace{
+func KeyspaceToProto(ds *Keyspace) *proto.Keyspace {
+	return &proto.Keyspace{
 		Id:       ds.Id,
 		Coltypes: ds.ColTypes,
 	}

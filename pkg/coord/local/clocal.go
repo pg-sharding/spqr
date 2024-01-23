@@ -36,11 +36,11 @@ type LocalCoordinator struct {
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Keyspace, error) {
+func (lc *LocalCoordinator) ListKeyspace(ctx context.Context) ([]*dataspaces.Keyspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	resp, err := lc.qdb.ListDataspaces(ctx)
+	resp, err := lc.qdb.ListKeyspaces(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -55,32 +55,32 @@ func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Ke
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
+func (lc *LocalCoordinator) AddKeyspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.AddDataspace(ctx, &qdb.Dataspace{
+	return lc.qdb.AddKeyspace(ctx, &qdb.Keyspace{
 		ID: ds.Id,
 	})
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Keyspace) error {
+func (lc *LocalCoordinator) AttachToKeyspace(ctx context.Context, table string, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	return lc.qdb.AttachToDataspace(ctx, table, ds.Id)
+	return lc.qdb.AttachToKeyspace(ctx, table, ds.Id)
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Keyspace, error) {
+func (lc *LocalCoordinator) GetKeyspace(ctx context.Context, table string) (*dataspaces.Keyspace, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	ret, err := lc.qdb.GetDataspace(ctx, table)
+	ret, err := lc.qdb.GetKeyspace(ctx, table)
 	if err != nil {
 		return nil, err
 	}
-	return dataspaces.NewDataspace(ret.ID), nil
+	return dataspaces.NewKeyspace(ret.ID), nil
 }
 
 // TODO : unit tests
@@ -96,10 +96,10 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
+func (lc *LocalCoordinator) DropKeyspace(ctx context.Context, ds *dataspaces.Keyspace) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.DropDataspace(ctx, ds.Id)
+	return lc.qdb.DropKeyspace(ctx, ds.Id)
 }
 
 // TODO : unit tests
@@ -250,9 +250,8 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 
 	united := &kr.KeyRange{
 		LowerBound: krleft.LowerBound,
-		UpperBound: krright.UpperBound,
 		ShardID:    krleft.ShardID,
-		Dataspace:  krleft.DataspaceId,
+		Keyspace:   krleft.KeyspaceId,
 		ID:         krleft.KeyRangeID,
 	}
 
@@ -282,17 +281,15 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound:  req.Bound,
-			UpperBound:  krOld.UpperBound,
-			KeyRangeID:  req.Krid,
-			ShardID:     krOld.ShardID,
-			DataspaceId: krOld.DataspaceId,
+			LowerBound: req.Bound,
+			KeyRangeID: req.Krid,
+			ShardID:    krOld.ShardID,
+			KeyspaceId: krOld.KeyspaceId,
 		},
 	)
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
-		Bytes("upper-bound", krNew.UpperBound).
 		Str("shard-id", krNew.ShardID).
 		Str("id", krNew.ID).
 		Msg("new key range")
@@ -315,8 +312,9 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 	if err != nil {
 		return nil, err
 	}
+	ds, err := qr.qdb.GetKeyspace(ctx, keyRangeDB.KeyspaceId)
 
-	return kr.KeyRangeFromDB(keyRangeDB), nil
+	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes), nil
 }
 
 // TODO : unit tests
@@ -372,7 +370,6 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 	} else {
 		for _, keyRange := range krs {
 			ret = append(ret, kr.KeyRangeFromDB(keyRange))
-
 		}
 	}
 
@@ -386,44 +383,6 @@ func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 	}}, nil
 }
 
-func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
-}
-
-// TODO : unit tests
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
-	if err != nil {
-		return nil, err
-	}
-	var resp []*shrule.ShardingRule
-	for _, v := range rules {
-		resp = append(resp, shrule.ShardingRuleFromDB(v))
-
-	}
-
-	return resp, nil
-}
-
-// TODO : unit tests
-func (qr *LocalCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var resp []*shrule.ShardingRule
-	for _, v := range rules {
-		resp = append(resp, shrule.ShardingRuleFromDB(v))
-
-	}
-
-	return resp, nil
-}
-
-func (qr *LocalCoordinator) DropShardingRule(ctx context.Context, id string) error {
-	return qr.qdb.DropShardingRule(ctx, id)
-}
-
 func (qr *LocalCoordinator) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
@@ -433,21 +392,6 @@ func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) e
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")
-
-// TODO : unit tests
-func (qr *LocalCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.DropShardingRuleAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retRules []*shrule.ShardingRule
-
-	for _, r := range rules {
-		retRules = append(retRules, shrule.ShardingRuleFromDB(r))
-	}
-
-	return retRules, nil
-}
 
 func (qr *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator

@@ -105,7 +105,7 @@ func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *pro
 
 // TODO : unit tests
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	ds, err := l.mgr.GetDataspace(ctx, request.KeyRangeInfo.DataspaceId)
+	ds, err := l.mgr.GetKeyspace(ctx, request.KeyRangeInfo.KeyspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
-	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Keyspace)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
+	krs, err := l.mgr.ListKeyRanges(ctx, request.Keyspace)
 	if err != nil {
 		return nil, err
 	}

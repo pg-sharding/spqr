@@ -31,11 +31,11 @@ message KeyRangeInfo {
   KeyRangeBound bound = 1;
   string krid = 2;
   string shardId = 3;
-  string dataspaceId = 4;
+  string KeyspaceId = 4;
 }
 
 message ListKeyRangeRequest {
-  string dataspace = 1;
+  string keyspace = 1;
 }
 
 message AddKeyRangeRequest {
@@ -50,7 +50,7 @@ message SplitKeyRangeRequest {
 
 message MergeKeyRangeRequest {
   bytes bound = 1;
-  string dataspace = 2;
+  string keyspace = 2;
 }
 
 message MoveKeyRangeRequest {

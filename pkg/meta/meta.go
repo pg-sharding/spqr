@@ -24,7 +24,7 @@ type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
 	datashards.ShardsMgr
-	dataspaces.DataspaceMgr
+	dataspaces.KeyspaceMgr
 
 	ShareKeyRange(id string) error
 
@@ -52,7 +52,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
 
-	case *spqrparser.DataspaceSelector:
+	case *spqrparser.KeyspaceSelector:
 
 		krs, err := mngr.ListKeyRanges(ctx, stmt.ID)
 		if err != nil {
@@ -69,7 +69,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		for _, kr := range krs {
-			if stmt.ID == "*" || kr.Dataspace != stmt.ID {
+			if stmt.ID == "*" || kr.Keyspace != stmt.ID {
 				continue
 			}
 			err = mngr.DropKeyRange(ctx, kr.ID)
@@ -78,7 +78,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 		}
 
-		dss, err := mngr.ListDataspace(ctx)
+		dss, err := mngr.ListKeyspace(ctx)
 		ret := make([]string, 0)
 		if err != nil {
 			return err
@@ -86,17 +86,17 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if (ds.Id == stmt.ID || stmt.ID == "*") && ds.Id != "default" {
 				ret = append(ret, ds.ID())
-				if ds.ID() == cli.Cl.Dataspace() {
-					cli.Cl.SetDataspace("default")
+				if ds.ID() == cli.Cl.Keyspace() {
+					cli.Cl.SetKeyspace("default")
 				}
-				err = mngr.DropDataspace(ctx, ds)
+				err = mngr.DropKeyspace(ctx, ds)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		return cli.DropDataspace(ctx, ret)
+		return cli.DropKeyspace(ctx, ret)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -105,15 +105,15 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 // TODO : unit tests
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
-	case *spqrparser.DataspaceDefinition:
+	case *spqrparser.KeyspaceDefinition:
 		if len(stmt.ColTypes) == 0 {
-			spqrlog.Zero.Debug().Msg("Dataspace should have at least one column type specified")
-			return fmt.Errorf("Dataspace should have at least one column type specified")
+			spqrlog.Zero.Debug().Msg("Keyspace should have at least one column type specified")
+			return fmt.Errorf("Keyspace should have at least one column type specified")
 		}
 
 		dataspace := dataspaces.KeyspaceFromSQL(stmt)
 
-		dataspaces, err := mngr.ListDataspace(ctx)
+		dataspaces, err := mngr.ListKeyspace(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,14 +124,14 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 
-		err = mngr.AddDataspace(ctx, dataspace)
+		err = mngr.AddKeyspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
-		return cli.AddDataspace(ctx, dataspace)
+		return cli.AddKeyspace(ctx, dataspace)
 
 	case *spqrparser.KeyRangeDefinition:
-		ds, err := mngr.GetDataspace(ctx, stmt.Dataspace)
+		ds, err := mngr.GetKeyspace(ctx, stmt.Keyspace)
 		if err != nil {
 			return cli.ReportError(err)
 		}
@@ -239,10 +239,10 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			Name:        stmt.Relation.Name,
 			ColumnNames: stmt.Relation.Columns,
 		}
-		if err := mgr.AlterDataspaceAttachRelation(ctx, stmt.Dataspace.ID, mp); err != nil {
+		if err := mgr.AlterKeyspaceAttachRelation(ctx, stmt.Keyspace.ID, mp); err != nil {
 			return err
 		}
-		return cli.AttachTable(ctx, stmt.Dataspace.ID, dataspaces.ShardedRelation{
+		return cli.AttachTable(ctx, stmt.Keyspace.ID, dataspaces.ShardedRelation{
 			Name:        stmt.Relation.Name,
 			ColumnNames: stmt.Relation.Columns,
 		})
@@ -332,12 +332,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
-	case spqrparser.DataspacesStr:
-		dataspaces, err := mngr.ListDataspace(ctx)
+	case spqrparser.KeyspacesStr:
+		dataspaces, err := mngr.ListKeyspace(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Dataspaces(ctx, dataspaces)
+		return cli.Keyspaces(ctx, dataspaces)
 	default:
 		return unknownCoordinatorCommand
 	}

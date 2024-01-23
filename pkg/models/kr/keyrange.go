@@ -9,7 +9,7 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-type KeyRangeBound []byte
+type KeyRangeBound []interface{}
 
 type ShardKey struct {
 	Name string
@@ -18,10 +18,10 @@ type ShardKey struct {
 
 // qdb KeyRange with types
 type KeyRange struct {
-	LowerBound []interface{}
+	LowerBound KeyRangeBound
 	ShardID    string
 	ID         string
-	Dataspace  string
+	Keyspace   string
 
 	ColumnTypes []string
 }
@@ -71,7 +71,7 @@ func (kr *KeyRange) Raw() [][]byte {
 }
 
 // TODO : unit tests
-func CmpRangesLessEqual(bound []interface{}, key []interface{}, types []string) bool {
+func CmpRangesLessEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	for i := 0; i < len(bound); i++ {
 		switch types[i] {
 		case dataspaces.ColumnTypeInteger:
@@ -125,7 +125,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 	kr := &KeyRange{
 		ShardID:     krdb.ShardID,
 		ID:          krdb.KeyRangeID,
-		Dataspace:   krdb.DataspaceId,
+		Keyspace:    krdb.KeyspaceId,
 		ColumnTypes: colTypes,
 	}
 
@@ -142,9 +142,9 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, coltypes []string) *K
 		return nil
 	}
 	kr := &KeyRange{
-		ShardID:   krsql.ShardID,
-		ID:        krsql.KeyRangeID,
-		Dataspace: krsql.Dataspace,
+		ShardID:  krsql.ShardID,
+		ID:       krsql.KeyRangeID,
+		Keyspace: krsql.Keyspace,
 	}
 
 	for i := 0; i < len(coltypes); i++ {
@@ -160,13 +160,13 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, coltypes []string) *KeyRange
 		return nil
 	}
 	kr := &KeyRange{
-		ShardID:   krproto.ShardId,
-		ID:        krproto.Krid,
-		Dataspace: krproto.DataspaceId,
+		ShardID:  krproto.ShardId,
+		ID:       krproto.Krid,
+		Keyspace: krproto.KeyspaceId,
 	}
 
 	for i := 0; i < len(coltypes); i++ {
-		kr.InFunc(i, krproto.KeyRange.LowerBound[i])
+		kr.InFunc(i, krproto.Bound.LowerBound[i])
 	}
 
 	return kr
@@ -175,10 +175,10 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, coltypes []string) *KeyRange
 // TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	krqb := &qdb.KeyRange{
-		LowerBound:  make([][]byte, len(kr.ColumnTypes)),
-		ShardID:     kr.ShardID,
-		KeyRangeID:  kr.ID,
-		DataspaceId: kr.Dataspace,
+		LowerBound: make([][]byte, len(kr.ColumnTypes)),
+		ShardID:    kr.ShardID,
+		KeyRangeID: kr.ID,
+		KeyspaceId: kr.Keyspace,
 	}
 	for i := 0; i < len(kr.ColumnTypes); i++ {
 		krqb.LowerBound[i] = kr.OutFunc(i)
@@ -189,16 +189,16 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 // TODO : unit tests
 func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 	krprot := &proto.KeyRangeInfo{
-		KeyRange: &proto.KeyRange{
+		Bound: &proto.KeyRangeBound{
 			LowerBound: make([][]byte, len(kr.ColumnTypes)),
 		},
-		ShardId:     kr.ShardID,
-		Krid:        kr.ID,
-		DataspaceId: kr.Dataspace,
+		ShardId:    kr.ShardID,
+		Krid:       kr.ID,
+		KeyspaceId: kr.Keyspace,
 	}
 
 	for i := 0; i < len(kr.ColumnTypes); i++ {
-		krprot.KeyRange.LowerBound[i] = kr.OutFunc(i)
+		krprot.Bound.LowerBound[i] = kr.OutFunc(i)
 	}
 
 	return krprot

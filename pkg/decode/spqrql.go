@@ -10,5 +10,5 @@ import (
 func DecodeKeyRange(krg *protos.KeyRangeInfo) string {
 	/* TODO: composite key support */
 
-	return fmt.Sprintf("CREATE KEY RANGE %s IN DATASPACE %s FROM %s ROUTE TO %s", krg.Krid, krg.DataspaceId, krg.KeyRange.LowerBound, krg.ShardId)
+	return fmt.Sprintf("CREATE KEY RANGE %s IN DATASPACE %s FROM %s ROUTE TO %s", krg.Krid, krg.KeyspaceId, krg.Bound.LowerBound[0], krg.ShardId)
 }

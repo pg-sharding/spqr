@@ -4,13 +4,13 @@ import (
 	"context"
 )
 
-type DataspaceMgr interface {
-	ListDataspace(ctx context.Context) ([]*Keyspace, error)
-	AddDataspace(ctx context.Context, ds *Keyspace) error
-	DropDataspace(ctx context.Context, ds *Keyspace) error
+type KeyspaceMgr interface {
+	ListKeyspace(ctx context.Context) ([]*Keyspace, error)
+	AddKeyspace(ctx context.Context, ds *Keyspace) error
+	DropKeyspace(ctx context.Context, ds *Keyspace) error
 
-	AlterDataspaceAttachRelation(ctx context.Context, dsid string, rels map[string]ShardedRelation) error
+	AlterKeyspaceAttachRelation(ctx context.Context, dsid string, rels map[string]ShardedRelation) error
 
-	GetDataspace(ctx context.Context, id string) (*Keyspace, error)
-	GetDataspaceForRelation(ctx context.Context, relation string) (*Keyspace, error)
+	GetKeyspace(ctx context.Context, id string) (*Keyspace, error)
+	GetKeyspaceForRelation(ctx context.Context, relation string) (*Keyspace, error)
 }

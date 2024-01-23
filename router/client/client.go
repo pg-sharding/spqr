@@ -6,9 +6,10 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -126,22 +127,22 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// Dataspace implements RouterClient.
-func (cl *PsqlClient) Dataspace() string {
+// Keyspace implements RouterClient.
+func (cl *PsqlClient) Keyspace() string {
 	if val, ok := cl.internalParamSet[session.SPQR_DATASPACE]; ok {
 		return val
 	}
 	return DefaultDS
 }
 
-// SetDataspace implements RouterClient.
-func (cl *PsqlClient) SetDataspace(d string) {
+// SetKeyspace implements RouterClient.
+func (cl *PsqlClient) SetKeyspace(d string) {
 	cl.internalParamSet[session.SPQR_DATASPACE] = d
 	cl.dataspaceChanged = true
 }
 
-// DataspaceIsDefault implements RouterClient.
-func (cl *PsqlClient) DataspaceIsDefault() bool {
+// KeyspaceIsDefault implements RouterClient.
+func (cl *PsqlClient) KeyspaceIsDefault() bool {
 	return !cl.dataspaceChanged
 }
 
@@ -721,7 +722,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("ds", cl.Dataspace()).
+		Str("ds", cl.Keyspace()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -1011,11 +1012,11 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) Dataspace() string {
+func (f FakeClient) Keyspace() string {
 	return DefaultDS
 }
 
-func (f FakeClient) DataspaceIsDefault() bool {
+func (f FakeClient) KeyspaceIsDefault() bool {
 	return true
 }
 
@@ -1076,11 +1077,11 @@ func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c NoopClient) Dataspace() string {
+func (c NoopClient) Keyspace() string {
 	return c.dsname
 }
 
-func (c NoopClient) DataspaceIsDefault() bool {
+func (c NoopClient) KeyspaceIsDefault() bool {
 	return true
 }
 

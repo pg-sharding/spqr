@@ -20,28 +20,17 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", keyRange.ID)
 	}
 
-	existDataspace, err := qdb.ListKeyspaces(ctx)
+	_, err := qdb.GetKeyspace(ctx, keyRange.Keyspace)
 	if err != nil {
-		return err
-	}
-	exists := false
-	for _, ds := range existDataspace {
-		exists = ds.ID == keyRange.Dataspace
-		if exists {
-			break
-		}
-	}
-	if !exists {
-		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "try to add key range link to a non-existent dataspace")
+		return fmt.Errorf("try to add key range link to a non-existent dataspace")
 	}
 
-	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
+	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Keyspace)
 	if err != nil {
 		return err
 	}
 
 	for _, v := range existsKrids {
-
 		raw := keyRange.Raw()
 		eq := len(raw) == len(v.LowerBound)
 		if eq {
@@ -69,7 +58,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 		return err
 	}
 
-	krids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
+	krids, err := qdb.ListKeyRanges(ctx, keyRange.Keyspace)
 	if err != nil {
 		return err
 	}

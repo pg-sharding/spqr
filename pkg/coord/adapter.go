@@ -5,7 +5,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/keyspaces"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -35,10 +35,10 @@ func (a *adapter) ShareKeyRange(id string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+func (a *adapter) ListKeyRanges(ctx context.Context, keyspace string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
-		Dataspace: dataspace,
+		Keyspace: keyspace,
 	})
 	if err != nil {
 		return nil, err
@@ -253,10 +253,10 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 }
 
 // TODO : unit tests
-func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, keyspace string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
-		Dataspace: dataspace,
+		Keyspace: keyspace,
 	})
 	if err != nil {
 		return nil, err
@@ -352,37 +352,37 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 // TODO : unit tests
-func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Keyspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) ListKeyspace(ctx context.Context) ([]*keyspaces.Keyspace, error) {
+	c := proto.NewKeyspaceServiceClient(a.conn)
 
-	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
+	resp, err := c.ListKeyspace(ctx, &proto.ListKeyspaceRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	dss := make([]*dataspaces.Keyspace, len(resp.Dataspaces))
-	for i, ds := range resp.Dataspaces {
-		dss[i] = dataspaces.KeyspaceFromProto(ds)
+	dss := make([]*keyspaces.Keyspace, len(resp.Keyspaces))
+	for i, ds := range resp.Keyspaces {
+		dss[i] = keyspaces.KeyspaceFromProto(ds)
 	}
 
 	return dss, nil
 }
 
 // TODO : unit tests
-func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) AddKeyspace(ctx context.Context, ds *keyspaces.Keyspace) error {
+	c := proto.NewKeyspaceServiceClient(a.conn)
 
-	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
-		Dataspaces: []*proto.Dataspace{dataspaces.KeyspaceToProto(ds)},
+	_, err := c.AddKeyspace(ctx, &proto.AddKeyspaceRequest{
+		Keyspaces: []*proto.Keyspace{keyspaces.KeyspaceToProto(ds)},
 	})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Keyspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) DropKeyspace(ctx context.Context, ds *keyspaces.Keyspace) error {
+	c := proto.NewKeyspaceServiceClient(a.conn)
 
-	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
+	_, err := c.DropKeyspace(ctx, &proto.DropKeyspaceRequest{
 		Ids: []string{ds.Id},
 	})
 
@@ -390,10 +390,10 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Keyspace) er
 }
 
 // TODO : unit tests
-func (a *adapter) AlterDataspaceAttachRelation(ctx context.Context, table string, ds *dataspaces.Keyspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) AlterKeyspaceAttachRelation(ctx context.Context, table string, ds *keyspaces.Keyspace) error {
+	c := proto.NewKeyspaceServiceClient(a.conn)
 
-	_, err := c.AlterDataspaceAttachRelation(ctx, &proto.AlterDataspaceAttachRelationRequest{
+	_, err := c.AlterKeyspaceAttachRelation(ctx, &proto.AlterKeyspaceAttachRelationRequest{
 		
 		Relations: ,
 		Table:     table,
@@ -403,17 +403,17 @@ func (a *adapter) AlterDataspaceAttachRelation(ctx context.Context, table string
 }
 
 // TODO : unit tests
-func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) GetKeyspace(ctx context.Context, table string) (*keyspaces.Keyspace, error) {
+	c := proto.NewKeyspaceServiceClient(a.conn)
 
-	resp, err := c.GetDataspaceForRelation(ctx, &proto.GetDataspaceForRelationRequest{
+	resp, err := c.GetKeyspaceForRelation(ctx, &proto.GetKeyspaceForRelationRequest{
 		RelationName: table,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return dataspaces.KeyspaceFromProto(resp.Dataspace), nil
+	return keyspaces.KeyspaceFromProto(resp.Keyspace), nil
 }
 
 // TODO : unit tests

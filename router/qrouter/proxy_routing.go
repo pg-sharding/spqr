@@ -50,9 +50,7 @@ type RoutingMetadataContext struct {
 	// For
 	// INSERT INTO x VALUES(**)
 	// routing
-	ValuesLists    []lyx.Node
-	InsertStmtCols []string
-	InsertStmtRel  string
+	ValuesLists []lyx.Node
 
 	// For
 	// INSERT INTO x (...) SELECT 7
@@ -189,6 +187,9 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 					meta.RecordConstExprOnColumnReference(lft, &rght.Value)
 				/* do not record null value here AExprNConst*/
 				case *lyx.AExprNConst:
+
+				case *lyx.ParamRef:
+					// meta.params[rght.Number-1]
 
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
@@ -337,21 +338,39 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			Strs("statements", cols).
 			Msg("deparsed insert statement columns")
 
-		meta.InsertStmtCols = cols
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
-			meta.InsertStmtRel = q.RelationName
+			rfqn := RelationFQN{
+				RelationName: q.RelationName,
+				SchemaName:   q.SchemaName,
+			}
+			meta.rels[rfqn] = cols
+
+			_, offsets, matched, err := MatchKeyspace(ctx, rfqn.RelationName, cols, qr.mgr.QDB())
+			if err != nil && matched {
+				meta.offsets = offsets
+			}
+
+			if stmt.SubSelect != nil {
+				// try some advansed routing infomation deduction
+				// This code considers cases like
+				// INSERT INFO *rel* SELECT 1, 2 and INSERT INFO *rel* VALUES (1, 2)
+
+				switch subSel := stmt.SubSelect.(type) {
+				case *lyx.Select:
+					spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
+					_ = qr.DeparseSelectStmt(ctx, subSel, meta)
+					/* try target list */
+					spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
+					/* this target list for some insert (...) sharding column */
+					meta.TargetList = subSel.TargetList
+				case *lyx.ValueClause:
+
+				}
+			}
+
 		default:
 			return ComplexQuery
-		}
-
-		if selectStmt := stmt.SubSelect; selectStmt != nil {
-			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-			_ = qr.DeparseSelectStmt(ctx, selectStmt, meta)
-			/* try target list */
-			spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
-			/* this target list for some insert (...) sharding column */
-			meta.TargetList = selectStmt.(*lyx.Select).TargetList
 		}
 
 		return nil
@@ -406,10 +425,12 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		entries = append(entries, elt.ColName)
 	}
 
-	if _, err := MatchDataspace(ctx, node.TableName, entries, qr.mgr.QDB()); err == ErrRuleIntersect {
-		return nil
+	if _, _, matched, err := MatchKeyspace(ctx, node.TableName, entries, qr.mgr.QDB()); err != nil {
+		return err
+	} else if !matched {
+		return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 	}
-	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
+	return nil
 }
 
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
@@ -601,45 +622,52 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 	var route routingstate.RoutingState
 	route = nil
-	if meta.exprs != nil {
-		// traverse each deparsed relation from query
-		var route_err error
-		for rfqn, cols := range meta.rels {
-			if ds, err := MatchDataspace(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
-
-				// get key ranges for current query dataspace.
-				krs, err := qr.mgr.ListKeyRanges(ctx, ds.ID)
-				if err != nil {
-					return nil, err
-				}
-
-				current_key := make([]interface{}, len(cols))
-				for i := 0; i < len(cols); i++ {
-					current_key[i] = meta.exprs[rfqn][cols[i]]
-				}
-
-				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, current_key, krs, ds.ColTypes)
-				if err != nil {
-					route_err = err
-					spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
-					continue
-				}
-
-				spqrlog.Zero.Debug().
-					Interface("currroute", currroute).
-					Str("relation", rfqn.RelationName).
-					Strs("columns", cols).
-					Msg("calculated route for relation/cols")
-
-				route = routingstate.Combine(route, routingstate.ShardMatchState{
-					Route:              currroute,
-					TargetSessionAttrs: tsa,
-				})
-			}
+	// traverse each deparsed relation from query
+	var route_err error
+	for rfqn, cols := range meta.rels {
+		ds, _, matched, err := MatchKeyspace(ctx, rfqn.RelationName, cols, qr.mgr.QDB())
+		if err != nil {
+			route_err = err
+			spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+			continue
 		}
-		if route == nil && route_err != nil {
-			return nil, route_err
+
+		if !matched {
+			continue
 		}
+
+		// get key ranges for current query dataspace.
+		krs, err := qr.mgr.ListKeyRanges(ctx, ds.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		current_key := make(kr.KeyRangeBound, len(cols))
+		for i := 0; i < len(cols); i++ {
+			current_key[i] = meta.exprs[rfqn][cols[i]]
+		}
+
+		currroute, err := qr.DeparseKeyWithRangesInternal(ctx, current_key, krs, ds.ColTypes)
+		if err != nil {
+			route_err = err
+			spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+			continue
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("currroute", currroute).
+			Str("relation", rfqn.RelationName).
+			Strs("columns", cols).
+			Msg("calculated route for relation/cols")
+
+		route = routingstate.Combine(route, routingstate.ShardMatchState{
+			Route:              currroute,
+			TargetSessionAttrs: tsa,
+		})
+	}
+
+	if route == nil && route_err != nil {
+		return nil, route_err
 	}
 
 	// set up this varibale if not yet
@@ -674,30 +702,35 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 }
 
 // TODO : unit tests
-func MatchDataspace(ctx context.Context, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.Dataspace, error) {
+func MatchKeyspace(ctx context.Context, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.Keyspace, []int, bool, error) {
 	/*
 	* Create set to search column names in `shardingEntries`
 	 */
 	checkSet := make(map[string]struct{}, len(shardingEntries))
+	offsets := []int{}
 
-	for _, k := range shardingEntries {
+	for ind, k := range shardingEntries {
 		checkSet[k] = struct{}{}
+		offsets = append(offsets, ind)
 	}
 
-	ds, err := db.GetDataspaceForRelation(ctx, relationName)
+	ks, err := db.GetKeyspaceForRelation(ctx, relationName)
+	if err != nil {
+		return nil, nil, false, err
+	}
 
 	// Simple optimisation
-	if len(ds.ColTypes) > len(shardingEntries) {
-		return nil, nil
+	if len(ks.ColTypes) > len(shardingEntries) {
+		return nil, nil, false, nil
 	}
 
-	for _, v := range ds.Relations[relationName].ColNames {
+	for _, v := range ks.Relations[relationName].ColNames {
 		if _, ok := checkSet[v]; !ok {
-			return nil, nil
+			return nil, nil, false, nil
 		}
 	}
 
-	spqrlog.Zero.Debug().Str("daname", ds.ID).Msg("matching dataspace")
+	spqrlog.Zero.Debug().Str("keyspaceId", ks.ID).Msg("matching keyspace")
 	/* In this rule, we successfully matched all columns */
-	return ds, err
+	return ks, offsets, true, nil
 }

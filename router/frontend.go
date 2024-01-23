@@ -71,7 +71,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 	mp, err := parser.ParseComment(comment)
 
 	if err == nil {
-		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Dataspace())
+		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Keyspace())
 		rst.Client().SetRouteHint(routeHint)
 
 		if val, ok := mp["target-session-attrs"]; ok {
@@ -81,7 +81,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		}
 		if val, ok := mp[session.SPQR_DATASPACE]; ok {
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse dataspace from comment")
-			rst.Client().SetDataspace(val)
+			rst.Client().SetKeyspace(val)
 		}
 		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse default route behaviour from comment")
@@ -155,7 +155,7 @@ func procQuery(rst relay.RelayStateMgr, query string, msg pgproto3.FrontendMessa
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			switch st.Name {
 			case session.SPQR_DATASPACE:
-				rst.Client().SetDataspace(st.Value)
+				rst.Client().SetKeyspace(st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:

@@ -16,7 +16,7 @@ message Keyspace {
 }
 
 message AddKeyspaceRequest{
-  repeated Keyspace dataspaces = 1;
+  repeated Keyspace keyspaces = 1;
 }
 
 message AddKeyspaceReply{}
@@ -24,7 +24,7 @@ message AddKeyspaceReply{}
 message ListKeyspaceRequest{}
 
 message ListKeyspaceReply{
-  repeated Keyspace dataspaces = 1;
+  repeated Keyspace keyspaces = 1;
 }
 
 message DropKeyspaceRequest{
@@ -45,7 +45,7 @@ message GetKeyspaceRequest{
 }
 
 message GetKeyspaceReply {
-  Keyspace dataspace = 1;
+  Keyspace keyspace = 1;
 }
 
 message GetKeyspaceForRelationRequest {
@@ -54,7 +54,7 @@ message GetKeyspaceForRelationRequest {
 
 
 message GetKeyspaceForRelationReply {
-  Keyspace dataspace = 1;
+  Keyspace keyspace = 1;
 }
 
 service KeyspaceService {

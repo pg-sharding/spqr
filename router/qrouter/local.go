@@ -7,7 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/routingstate"
@@ -72,11 +71,6 @@ func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionPar
 			},
 		},
 	}, nil
-}
-
-func (l *LocalQrouter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	/* Maybe err is local router would be better*/
-	return nil
 }
 
 func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
