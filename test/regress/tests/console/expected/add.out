@@ -28,14 +28,14 @@ ERROR:  sharding rule rule1 already present in qdb.
 ADD SHARDING RULE rule2 COLUMNS id;
 ERROR:  sharding rule rule2 include existing rule rule1.
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
+ Key range ID | Shard ID | Keyspace ID | Lower bound | Upper bound 
 --------------+----------+--------------+-------------+-------------
  krid1        | sh1      | default      | 1           | 10
  krid2        | sh1      | default      | 11          | 20
 (2 rows)
 
 SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
+ Sharding Rule ID | Keyspace ID | Table Name | Columns | Hash Function 
 ------------------+--------------+------------+---------+---------------
  rule1            | default      | *          | id      | x->x
 (1 row)
@@ -61,13 +61,13 @@ ADD SHARDING RULE rule1 COLUMNS id;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
+ Key range ID | Shard ID | Keyspace ID | Lower bound | Upper bound 
 --------------+----------+--------------+-------------+-------------
  krid2        | sh1      | default      | 11          | 20
 (1 row)
 
 SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
+ Sharding Rule ID | Keyspace ID | Table Name | Columns | Hash Function 
 ------------------+--------------+------------+---------+---------------
  rule1            | default      | *          | id      | x->x
 (1 row)
@@ -85,7 +85,7 @@ ADD SHARDING RULE dog TABLE delivery COLUMN order_id;
 (1 row)
 
 SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns  | Hash Function 
+ Sharding Rule ID | Keyspace ID | Table Name | Columns  | Hash Function 
 ------------------+--------------+------------+----------+---------------
  cat              | default      | orders     | iid      | x->x
  dog              | default      | delivery   | order_id | x->x

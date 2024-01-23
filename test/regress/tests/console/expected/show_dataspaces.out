@@ -18,7 +18,7 @@ CREATE DATASPACE ds2;
 (1 row)
 
 SHOW dataspaces;
- Dataspace ID 
+ Keyspace ID 
 --------------
  default
  ds1
