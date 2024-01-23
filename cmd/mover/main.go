@@ -22,6 +22,8 @@ type MoveTableRes struct {
 
 var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
+
+// TODO: deprecate this API, use IDS
 var lb = flag.String("lower-bound", "", "")
 var ub = flag.String("upper-bound", "", "")
 var shkey = flag.String("sharding-key", "", "")
@@ -42,7 +44,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 // TODO : unit tests
-func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
+func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, key *shrule.ShardingRule) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -102,8 +104,17 @@ WHERE column_name=$1;
 			w: w,
 		}
 
-		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s < %s returning *) to stdout", v.TableSchema, v.TableName,
-			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
+		var qry string
+
+		// TODO: support multi-column move in SPQR2
+		if nextKeyRange == nil {
+
+			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s  returning *) to stdout", v.TableSchema, v.TableName,
+				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column)
+		} else {
+			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s < %s returning *) to stdout", v.TableSchema, v.TableName,
+				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)
+		}
 
 		spqrlog.Zero.Debug().
 			Str("query", qry).
@@ -156,18 +167,41 @@ func main() {
 		return
 	}
 
-	//entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
-	//my_rule := shrule.NewShardingRule("r1", "fast", entrys)
-	//db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
-
 	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
+	var keyRange, nextKeyRange *kr.KeyRange
+
+	krs, err := db.ListAllKeyRanges(ctx)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
+	}
+
+	for _, currkr := range krs {
+		if kr.CmpRangesEqual(currkr.LowerBound, []byte(*lb)) {
+			keyRange = kr.KeyRangeFromDB(currkr)
+		}
+	}
+
+	for _, currkr := range krs {
+		if kr.CmpRangesLess(keyRange.LowerBound, currkr.LowerBound) {
+			if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
+				nextKeyRange = kr.KeyRangeFromDB(currkr)
+			}
+		}
+	}
+
+	if keyRange == nil {
+		spqrlog.Zero.Error().Err(err).Msg("failed to resolve key range by its bound")
+		return
+	}
+
 	if err := moveData(ctx,
-		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
+		connFrom, connTo, keyRange, nextKeyRange,
 		shrule.ShardingRuleFromDB(shRule)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}

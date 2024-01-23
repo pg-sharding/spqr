@@ -115,8 +115,22 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		}
 	}(ctx)
 
+	var nextKeyRange *kr.KeyRange
+	moveKeyRange := kr.KeyRangeFromDB(&keyr)
+	if krs, err := db.ListAllKeyRanges(ctx); err != nil {
+		return err
+	} else {
+		for _, currkr := range krs {
+			if kr.CmpRangesLess(moveKeyRange.LowerBound, currkr.LowerBound) {
+				if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
+					nextKeyRange = kr.KeyRangeFromDB(currkr)
+				}
+			}
+		}
+	}
+
 	for _, r := range shr {
-		err = moveData(ctx, *kr.KeyRangeFromDB(&keyr), r, txTo, txFrom)
+		err = moveData(ctx, moveKeyRange, nextKeyRange, r, txTo, txFrom)
 		if err != nil {
 			return err
 		}
@@ -238,7 +252,7 @@ func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 }
 
 // TODO enhance for multi-column sharding rules
-func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
+func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
 	rows, err := txFrom.Query(ctx, `
 SELECT table_schema, table_name
 FROM information_schema.columns
@@ -271,9 +285,15 @@ WHERE column_name=$1;
 		}
 
 		// This code does not work for multi-column key ranges.
-
-		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
-			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
+		var qry string
+		// TODO: refac
+		if nextKeyRange == nil {
+			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
+				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column)
+		} else {
+			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
+				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)
+		}
 
 		go func() {
 			_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
