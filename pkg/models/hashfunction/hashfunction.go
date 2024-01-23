@@ -2,6 +2,7 @@ package hashfunction
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/go-faster/city"
 	"github.com/spaolacci/murmur3"
@@ -26,10 +27,10 @@ func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
 		return inp, nil
 	case HashFunctionMurmur:
 		h := murmur3.Sum32(inp)
-		return []byte(string(h)), nil
+		return []byte(strconv.FormatUint(uint64(h), 10)), nil
 	case HashFunctionCity:
 		h := city.Hash32(inp)
-		return []byte(string(h)), nil
+		return []byte(strconv.FormatUint(uint64(h), 10)), nil
 	default:
 		return nil, errNoSuchHashFunction
 	}
