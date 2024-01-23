@@ -2,7 +2,8 @@ package coord
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"fmt"
+	"github.com/pg-sharding/spqr/pkg/config"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
@@ -31,7 +32,7 @@ func (a *adapter) QDB() qdb.QDB {
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) ShareKeyRange(id string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "shareKeyRange not implemented")
+	return fmt.Errorf("shareKeyRange not implemented")
 }
 
 // TODO : unit tests
@@ -98,7 +99,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 		}
 	}
 
-	return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", krid)
+	return nil, fmt.Errorf("key range with id %s not found", krid)
 }
 
 // TODO : unit tests
@@ -140,7 +141,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", split.Krid)
+	return fmt.Errorf("key range with id %s not found", split.Krid)
 }
 
 // TODO : unit tests
@@ -163,7 +164,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	}
 
 	if left == nil || right == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+		return fmt.Errorf("key range on left or right was not found")
 	}
 
 	var bound []byte
@@ -199,7 +200,7 @@ func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 		}
 	}
 
-	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
+	return fmt.Errorf("key range with id %s not found", move.Krid)
 }
 
 // TODO : unit tests
@@ -330,25 +331,38 @@ func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addDataShard not implemented")
+	return fmt.Errorf("addDataShard not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
+	return fmt.Errorf("addWorldShard not implemented")
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ListShards not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	resp, err := c.ListShards(ctx, &proto.ListShardsRequest{})
+	shards := resp.Shards
+	var ds []*datashards.DataShard
+	for _, shard := range shards {
+		ds = append(ds, &datashards.DataShard{
+			ID:  shard.Id,
+			Cfg: &config.Shard{Hosts: shard.Hosts},
+		})
+	}
+	return ds, err
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetShardInfo not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
+	return &datashards.DataShard{
+		ID:  resp.ShardInfo.Id,
+		Cfg: &config.Shard{Hosts: resp.ShardInfo.Hosts},
+	}, err
 }
 
 // TODO : unit tests
@@ -416,11 +430,11 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemeneted")
+	return fmt.Errorf("UpdateCoordinator not implemeneted")
 }
 
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
-	return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetCoordinator not implemented")
+	return "", fmt.Errorf("GetCoordinator not implemented")
 }
