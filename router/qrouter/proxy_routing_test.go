@@ -29,12 +29,12 @@ func TestMultiShardRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
+		ID:         "id1",
+		TableName:  "",
+		KeyspaceId: keyspace,
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -106,7 +106,7 @@ func TestMultiShardRouting(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -124,35 +124,22 @@ func TestComment(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
+	keyspace := "default"
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		KeyRangeID:  "id2",
-		DataspaceId: dataspace,
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("25"),
+		ShardID:    "sh2",
+		KeyRangeID: "id2",
+		KeyspaceId: keyspace,
+		LowerBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -183,7 +170,7 @@ func TestComment(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -197,7 +184,7 @@ func TestComment(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -215,12 +202,12 @@ func TestSingleShard(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
+		ID:         "id1",
+		TableName:  "",
+		KeyspaceId: keyspace,
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -229,21 +216,21 @@ func TestSingleShard(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("25"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id2",
+		LowerBound: []byte("11"),
+		UpperBound: []byte("25"),
 	})
 
 	assert.NoError(err)
@@ -274,7 +261,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -294,7 +281,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("25"),
 					},
@@ -313,7 +300,7 @@ func TestSingleShard(t *testing.T) {
 					},
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						ID:         "id2",
 						LowerBound: []byte("11"),
 						UpperBound: []byte("25"),
@@ -333,7 +320,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("25"),
 					},
@@ -353,7 +340,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -373,7 +360,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -393,7 +380,7 @@ func TestSingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("25"),
 					},
@@ -407,7 +394,7 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -425,12 +412,12 @@ func TestInsertOffsets(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
+		ID:         "id1",
+		TableName:  "",
+		KeyspaceId: keyspace,
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -439,21 +426,21 @@ func TestInsertOffsets(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		KeyRangeID:  "id1",
-		DataspaceId: dataspace,
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyRangeID: "id1",
+		KeyspaceId: keyspace,
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id2",
+		LowerBound: []byte("11"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -485,7 +472,7 @@ func TestInsertOffsets(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -499,7 +486,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -517,12 +504,12 @@ func TestJoins(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
+		ID:         "id1",
+		TableName:  "",
+		KeyspaceId: keyspace,
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -531,21 +518,21 @@ func TestJoins(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		KeyRangeID:  "id1",
-		DataspaceId: dataspace,
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyRangeID: "id1",
+		KeyspaceId: keyspace,
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		KeyRangeID:  "id2",
-		DataspaceId: dataspace,
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
+		ShardID:    "sh2",
+		KeyRangeID: "id2",
+		KeyspaceId: keyspace,
+		LowerBound: []byte("11"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -574,7 +561,7 @@ func TestJoins(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("21"),
 					},
@@ -614,7 +601,7 @@ func TestJoins(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		if tt.err != nil {
 			assert.Equal(tt.err, err, "query %s", tt.query)
@@ -636,12 +623,12 @@ func TestUnnest(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -650,21 +637,21 @@ func TestUnnest(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		KeyRangeID:  "id1",
-		DataspaceId: dataspace,
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyRangeID: "id1",
+		KeyspaceId: keyspace,
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id2",
+		LowerBound: []byte("11"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -696,7 +683,7 @@ func TestUnnest(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("21"),
 					},
@@ -716,7 +703,7 @@ func TestUnnest(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("11"),
 						UpperBound: []byte("21"),
 					},
@@ -730,7 +717,7 @@ func TestUnnest(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -748,12 +735,12 @@ func TestCopySingleShard(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace := "default"
+	keyspace := "default"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		TableName:   "",
-		DataspaceId: dataspace,
+		ID:         "id1",
+		TableName:  "",
+		KeyspaceId: keyspace,
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -762,21 +749,21 @@ func TestCopySingleShard(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace,
+		KeyRangeID: "id2",
+		LowerBound: []byte("11"),
+		UpperBound: []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -807,7 +794,7 @@ func TestCopySingleShard(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace,
+						Keyspace:   keyspace,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -821,7 +808,7 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -829,23 +816,23 @@ func TestCopySingleShard(t *testing.T) {
 	}
 }
 
-func TestInsertMultiDataspace(t *testing.T) {
+func TestInsertMultiKeyspace(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query     string
-		dataspace string
-		exp       routingstate.RoutingState
-		err       error
+		query    string
+		keyspace string
+		exp      routingstate.RoutingState
+		err      error
 	}
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace1 := "ds1"
-	dataspace2 := "ds2"
+	keyspace1 := "ds1"
+	keyspace2 := "ds2"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace1,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace1,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -854,9 +841,9 @@ func TestInsertMultiDataspace(t *testing.T) {
 	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace2,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace2,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -865,21 +852,21 @@ func TestInsertMultiDataspace(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace1,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace1,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace2,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace2,
+		KeyRangeID: "id2",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -901,8 +888,8 @@ func TestInsertMultiDataspace(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
-			dataspace: dataspace1,
+			query:    "INSERT INTO xxxdst1(i) VALUES(5);",
+			keyspace: keyspace1,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
 					Shkey: kr.ShardKey{
@@ -911,7 +898,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh1",
 						ID:         "id1",
-						Dataspace:  dataspace1,
+						Keyspace:   keyspace1,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -921,8 +908,8 @@ func TestInsertMultiDataspace(t *testing.T) {
 			err: nil,
 		},
 		{
-			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
-			dataspace: dataspace2,
+			query:    "INSERT INTO xxxdst1(i) VALUES(5);",
+			keyspace: keyspace2,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
 					Shkey: kr.ShardKey{
@@ -931,7 +918,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ShardID:    "sh2",
 						ID:         "id2",
-						Dataspace:  dataspace2,
+						Keyspace:   keyspace2,
 						LowerBound: []byte("1"),
 						UpperBound: []byte("11"),
 					},
@@ -945,7 +932,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -957,19 +944,19 @@ func TestSetStmt(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query     string
-		dataspace string
-		exp       routingstate.RoutingState
-		err       error
+		query    string
+		keyspace string
+		exp      routingstate.RoutingState
+		err      error
 	}
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace1 := "ds1"
-	dataspace2 := "ds2"
+	keyspace1 := "ds1"
+	keyspace2 := "ds2"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace1,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace1,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -978,9 +965,9 @@ func TestSetStmt(t *testing.T) {
 	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace2,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace2,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -989,21 +976,21 @@ func TestSetStmt(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace1,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace1,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace2,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace2,
+		KeyRangeID: "id2",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1025,29 +1012,29 @@ func TestSetStmt(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query:     "SET extra_float_digits = 3",
-			dataspace: dataspace1,
-			exp:       routingstate.RandomMatchState{},
-			err:       nil,
+			query:    "SET extra_float_digits = 3",
+			keyspace: keyspace1,
+			exp:      routingstate.RandomMatchState{},
+			err:      nil,
 		},
 		{
-			query:     "SET application_name = 'jiofewjijiojioji';",
-			dataspace: dataspace2,
-			exp:       routingstate.RandomMatchState{},
-			err:       nil,
+			query:    "SET application_name = 'jiofewjijiojioji';",
+			keyspace: keyspace2,
+			exp:      routingstate.RandomMatchState{},
+			err:      nil,
 		},
 		{
-			query:     "SHOW TRANSACTION ISOLATION LEVEL;",
-			dataspace: dataspace1,
-			exp:       routingstate.RandomMatchState{},
-			err:       nil,
+			query:    "SHOW TRANSACTION ISOLATION LEVEL;",
+			keyspace: keyspace1,
+			exp:      routingstate.RandomMatchState{},
+			err:      nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.keyspace))
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1059,19 +1046,19 @@ func TestMiscRouting(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
-		query     string
-		dataspace string
-		exp       routingstate.RoutingState
-		err       error
+		query    string
+		keyspace string
+		exp      routingstate.RoutingState
+		err      error
 	}
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	dataspace1 := "ds1"
-	dataspace2 := "ds2"
+	keyspace1 := "ds1"
+	keyspace2 := "ds2"
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace1,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace1,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -1080,9 +1067,9 @@ func TestMiscRouting(t *testing.T) {
 	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
-		DataspaceId: dataspace2,
-		TableName:   "",
+		ID:         "id1",
+		KeyspaceId: keyspace2,
+		TableName:  "",
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
@@ -1091,21 +1078,21 @@ func TestMiscRouting(t *testing.T) {
 	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh1",
-		DataspaceId: dataspace1,
-		KeyRangeID:  "id1",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh1",
+		KeyspaceId: keyspace1,
+		KeyRangeID: "id1",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
 
 	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:     "sh2",
-		DataspaceId: dataspace2,
-		KeyRangeID:  "id2",
-		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
+		ShardID:    "sh2",
+		KeyspaceId: keyspace2,
+		KeyRangeID: "id2",
+		LowerBound: []byte("1"),
+		UpperBound: []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1127,24 +1114,24 @@ func TestMiscRouting(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query:     "SELECT * FROM information_schema.columns;",
-			dataspace: dataspace1,
-			exp:       routingstate.RandomMatchState{},
-			err:       nil,
+			query:    "SELECT * FROM information_schema.columns;",
+			keyspace: keyspace1,
+			exp:      routingstate.RandomMatchState{},
+			err:      nil,
 		},
 
 		{
-			query:     "SELECT * FROM information_schema.columns JOIN tt ON true",
-			dataspace: dataspace1,
-			exp:       nil,
-			err:       qrouter.InformationSchemaCombinedQuery,
+			query:    "SELECT * FROM information_schema.columns JOIN tt ON true",
+			keyspace: keyspace1,
+			exp:      nil,
+			err:      qrouter.InformationSchemaCombinedQuery,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.dataspace))
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.keyspace))
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
 

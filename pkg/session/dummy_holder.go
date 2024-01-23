@@ -22,8 +22,8 @@ func (t *DummySessionParamHandler) BindParams() [][]byte {
 	return t.b
 }
 
-// Dataspace implements session.SessionParamsHolder.
-func (t *DummySessionParamHandler) Dataspace() string {
+// Keyspace implements session.SessionParamsHolder.
+func (t *DummySessionParamHandler) Keyspace() string {
 	return t.dataspace
 }
 
@@ -42,12 +42,12 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 	t.b = b
 }
 
-// SetDataspace implements session.SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDataspace(d string) {
+// SetKeyspace implements session.SessionParamsHolder.
+func (t *DummySessionParamHandler) SetKeyspace(d string) {
 	t.dataspace = d
 }
 
-func (t *DummySessionParamHandler) DataspaceIsDefault() bool {
+func (t *DummySessionParamHandler) KeyspaceIsDefault() bool {
 	return false
 }
 

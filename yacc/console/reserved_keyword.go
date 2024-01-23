@@ -32,7 +32,7 @@ var reservedWords = map[string]int{
 	"address":    ADDRESS,
 	"host":       HOST,
 	"route":      ROUTE,
-	"dataspace":  DATASPACE,
+	"keysapce":   KEYSPACE,
 	"table":      TABLE,
 	"hash":       HASH,
 	"function":   FUNCTION,
@@ -55,4 +55,7 @@ var reservedWords = map[string]int{
 	"varchar":    VARCHAR,
 	"int":        INT,
 	"integer":    INTEGER,
+	"alter":      ALTER,
+	"relations":  RELATIONS,
+	"in":         IN,
 }

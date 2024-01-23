@@ -24,7 +24,7 @@ ADD SHARDING RULE rule3 COLUMNS idy;
 (1 row)
 
 SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
+ Sharding Rule ID | Keyspace ID | Table Name | Columns | Hash Function 
 ------------------+--------------+------------+---------+---------------
  rule1            | default      | *          | id      | x->x
  rule2            | default      | *          | idx     | x->x

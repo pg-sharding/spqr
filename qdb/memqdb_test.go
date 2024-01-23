@@ -11,7 +11,7 @@ import (
 
 const MemQDBPath = ""
 
-var mockDataspace = &qdb.Dataspace{
+var mockKeyspace = &qdb.Keyspace{
 	ID: "123",
 }
 var mockShard = &qdb.Shard{
@@ -19,8 +19,7 @@ var mockShard = &qdb.Shard{
 	Hosts: []string{"host1", "host2"},
 }
 var mockKeyRange = &qdb.KeyRange{
-	LowerBound: []byte{1, 2},
-	UpperBound: []byte{3, 4},
+	LowerBound: [][]byte{{1, 2}},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }
@@ -58,28 +57,23 @@ func TestMemqdbRacing(t *testing.T) {
 	ctx := context.TODO()
 
 	methods := []func(){
-		func() { _ = memqdb.AddDataspace(ctx, mockDataspace) },
+		func() { _ = memqdb.AddKeyspace(ctx, mockKeyspace) },
 		func() { _ = memqdb.AddKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
-		func() { _ = memqdb.AddShardingRule(ctx, mockShardingRule) },
 		func() {
 			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
 		},
-		func() { _, _ = memqdb.ListDataspaces(ctx) },
+		func() { _, _ = memqdb.ListKeyspaces(ctx) },
 		func() { _, _ = memqdb.ListAllKeyRanges(ctx) },
 		func() { _, _ = memqdb.ListRouters(ctx) },
-		func() { _, _ = memqdb.ListAllShardingRules(ctx) },
 		func() { _, _ = memqdb.ListShards(ctx) },
 		func() { _, _ = memqdb.GetKeyRange(ctx, mockKeyRange.KeyRangeID) },
 		func() { _, _ = memqdb.GetShard(ctx, mockShard.ID) },
-		func() { _, _ = memqdb.GetShardingRule(ctx, mockShardingRule.ID) },
 		func() { _, _ = memqdb.GetTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 		func() { _ = memqdb.ShareKeyRange(mockKeyRange.KeyRangeID) },
 		func() { _ = memqdb.DropKeyRange(ctx, mockKeyRange.KeyRangeID) },
 		func() { _ = memqdb.DropKeyRangeAll(ctx) },
-		func() { _ = memqdb.DropShardingRule(ctx, mockShardingRule.ID) },
-		func() { _, _ = memqdb.DropShardingRuleAll(ctx) },
 		func() { _ = memqdb.RemoveTransferTx(ctx, mockDataTransferTransaction.FromShardId) },
 		func() {
 			_, _ = memqdb.LockKeyRange(ctx, mockKeyRange.KeyRangeID)

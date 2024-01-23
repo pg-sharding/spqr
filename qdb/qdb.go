@@ -45,13 +45,7 @@ type DistributedXactKepper interface {
 * implementation to keep the distributed state in sync.
  */
 type QDB interface {
-	AddShardingRule(ctx context.Context, rule *ShardingRule) error
-	DropShardingRule(ctx context.Context, id string) error
-	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
-	GetShardingRule(ctx context.Context, id string) (*ShardingRule, error)
-	ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error)
-	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
-
+	/* KEY RANGE */
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
@@ -64,18 +58,19 @@ type QDB interface {
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ShareKeyRange(id string) error
 
+	/* SHARDS */
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 
-	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
-
-	AddDataspace(ctx context.Context, ks *Dataspace) error
-	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
-	DropDataspace(ctx context.Context, id string) error
-
-	AttachToDataspace(ctx context.Context, table string, id string) error
-	GetDataspace(ctx context.Context, table string) (*Dataspace, error)
+	/* DATASPACES */
+	AddKeyspace(ctx context.Context, ds *Keyspace) error
+	ListKeyspaces(ctx context.Context) ([]*Keyspace, error)
+	DropKeyspace(ctx context.Context, id string) error
+	/* TBD: alter detach */
+	AlterKeyspaceAttachRelation(ctx context.Context, id string, rels []ShardedRelation) error
+	GetKeyspace(ctx context.Context, id string) (*Keyspace, error)
+	GetKeyspaceForRelation(ctx context.Context, table string) (*Keyspace, error)
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)

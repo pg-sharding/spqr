@@ -7,7 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -85,52 +84,33 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 // TODO : unit tests
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-	for _, rule := range request.Rules {
-		err := l.mgr.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
 
-		if err != nil {
-			return nil, err
-		}
-	}
-
+	// tbd : delete
 	return &protos.AddShardingRuleReply{}, nil
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := l.mgr.ListShardingRules(ctx, request.Dataspace)
-	if err != nil {
-		return nil, err
-	}
 
-	var shardingRules []*protos.ShardingRule
-
-	for _, rule := range rules {
-		shardingRules = append(shardingRules, shrule.ShardingRuleToProto(rule))
-	}
-
-	return &protos.ListShardingRuleReply{
-		Rules: shardingRules,
-	}, nil
+	// tdb : delete
+	return nil, nil
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
-	spqrlog.Zero.Debug().
-		Strs("rules", request.Id).
-		Msg("dropping sharding rules")
-	for _, id := range request.Id {
-		if err := l.mgr.DropShardingRule(ctx, id); err != nil {
-			return nil, err
-		}
-	}
+	// tdb: delete
 
 	return &protos.DropShardingRuleReply{}, nil
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
+	ds, err := l.mgr.GetKeyspace(ctx, request.KeyRangeInfo.KeyspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes))
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +124,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
-	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
+	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Keyspace)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +173,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krs, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
+	krs, err := l.mgr.ListKeyRanges(ctx, request.Keyspace)
 	if err != nil {
 		return nil, err
 	}
@@ -205,14 +185,6 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 		if kr.CmpRangesEqual(keyrange.LowerBound, request.Bound) {
 			krright = keyrange
 			if krleft != nil {
-				break
-			}
-			continue
-		}
-
-		if kr.CmpRangesEqual(keyrange.UpperBound, request.Bound) {
-			krleft = keyrange
-			if krright != nil {
 				break
 			}
 			continue

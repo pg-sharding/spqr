@@ -33,28 +33,31 @@ type Coordinator struct {
 	balancerServiceClient  routerproto.BalancerServiceClient
 	shardServiceClient     routerproto.ShardServiceClient
 	keyRangeServiceClient  routerproto.KeyRangeServiceClient
+	keySpaceServiceClient  routerproto.KeySpaceServiceClient
 	operationServiceClient routerproto.OperationServiceClient
 }
 
 func (c *Coordinator) showKeyRanges() ([]*kr.KeyRange, error) {
-	respList, err := c.keyRangeServiceClient.ListKeyRange(context.Background(), &routerproto.ListKeyRangeRequest{})
-	if err != nil {
-		return nil, err
-	}
+	// respList, err := c.keyRangeServiceClient.ListKeyRange(context.Background(), &routerproto.ListKeyRangeRequest{})
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	res := make([]*kr.KeyRange, 0, len(respList.KeyRangesInfo))
-	for _, keyRangeInfo := range respList.KeyRangesInfo {
-		keyRange := &kr.KeyRange{
-			LowerBound: []byte(keyRangeInfo.GetKeyRange().GetLowerBound()),
-			UpperBound: []byte(keyRangeInfo.GetKeyRange().GetUpperBound()),
-			ShardID:    keyRangeInfo.GetShardId(),
-			ID:         keyRangeInfo.GetKrid(),
-		}
+	// res := make([]*kr.KeyRange, 0, len(respList.KeyRangesInfo))
+	// for _, keyRangeInfo := range respList.KeyRangesInfo {
+	// 	// ds, err := c
+	// 	// keyRange := kr.KeyRangeFromProto(keyRangeInfo, )
+	// 	// keyRange := &kr.KeyRange{
+	// 	// 	LowerBound: keyRangeInfo.GetKeyRange().GetLowerBound(),
+	// 	// 	ShardID:    keyRangeInfo.GetShardId(),
+	// 	// 	ID:         keyRangeInfo.GetKrid(),
+	// 	// }
 
-		res = append(res, keyRange)
-	}
+	// 	res = append(res, keyRange)
+	// }
 
-	return res, nil
+	// return res, nil
+	return nil, nil
 }
 
 func (c *Coordinator) Init(addr string, maxRetriesCount int) error {
@@ -134,7 +137,7 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 		if !ok {
 			res[shard] = []KeyRange{}
 		}
-		res[shard] = append(res[shard], KeyRange{left: kr.KeyRange.LowerBound, right: kr.KeyRange.UpperBound})
+		res[shard] = append(res[shard], KeyRange{left: string(kr.KeyRange.LowerBound[0])})
 	}
 
 	return res, nil
@@ -200,7 +203,7 @@ func (c *Coordinator) mergeKeyRanges(border *string) error {
 
 func (c *Coordinator) moveKeyRange(rng KeyRange, shardTo Shard) error {
 	resp, err := c.keyRangeServiceClient.MoveKeyRange(context.Background(), &routerproto.MoveKeyRangeRequest{
-		KeyRange:  &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{LowerBound: rng.left, UpperBound: rng.right}},
+		KeyRange:  &routerproto.KeyRangeInfo{KeyRange: &routerproto.KeyRange{}},
 		ToShardId: strconv.Itoa(shardTo.id),
 	})
 	if err != nil {

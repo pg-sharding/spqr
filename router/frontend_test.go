@@ -34,7 +34,7 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().Dataspace().AnyTimes().Return("")
+	cl.EXPECT().Keyspace().AnyTimes().Return("")
 	cl.EXPECT().Close().Times(1)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
@@ -70,7 +70,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().Dataspace().AnyTimes().Return("")
+	cl.EXPECT().Keyspace().AnyTimes().Return("")
 
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
@@ -101,7 +101,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Select{
 		TargetList: []lyx.Node{
-			&lyx.AExprConst{Value: "1"},
+			&lyx.AExprIConst{Value: '1'},
 		},
 		Where: &lyx.AExprEmpty{},
 	}, gomock.Any()).Return(routingstate.ShardMatchState{
@@ -186,7 +186,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().Dataspace().AnyTimes().Return("")
+	cl.EXPECT().Keyspace().AnyTimes().Return("")
 
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
@@ -315,7 +315,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
-	cl.EXPECT().Dataspace().AnyTimes().Return("")
+	cl.EXPECT().Keyspace().AnyTimes().Return("")
 
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()

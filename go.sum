@@ -125,6 +125,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/pg-sharding/lyx v0.0.0-20240111083355-38b940962fe3 h1:drqKxg58y9R3niC8T4wW6dqziPZnBosuAGC8X/eXLPc=
 github.com/pg-sharding/lyx v0.0.0-20240111083355-38b940962fe3/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
+github.com/pg-sharding/lyx v0.0.0-20240119072404-3d559dba6aa8 h1:s8f0Vo257gQvwS++K9RMkxKrgxsdVAXTtc5wJkqHvmg=
+github.com/pg-sharding/lyx v0.0.0-20240119072404-3d559dba6aa8/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

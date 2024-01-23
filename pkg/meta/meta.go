@@ -3,7 +3,6 @@ package meta
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -17,17 +16,15 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
 	topology.RouterMgr
 	datashards.ShardsMgr
-	dataspaces.DataspaceMgr
+	dataspaces.KeyspaceMgr
 
 	ShareKeyRange(id string) error
 
@@ -54,70 +51,34 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
-	case *spqrparser.ShardingRuleSelector:
-		if stmt.ID == "*" {
-			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
-				return cli.ReportError(err)
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
 
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}())
-			}
-		} else {
-			spqrlog.Zero.Debug().Str("rule", stmt.ID).Msg("parsed drop")
-			err := mngr.DropShardingRule(ctx, stmt.ID)
-			if err != nil {
-				return cli.ReportError(err)
-			}
-			return cli.DropShardingRule(ctx, stmt.ID)
-		}
-	case *spqrparser.DataspaceSelector:
-		srs, err := mngr.ListShardingRules(ctx, stmt.ID)
-		if err != nil {
-			return err
-		}
+	case *spqrparser.KeyspaceSelector:
 
 		krs, err := mngr.ListKeyRanges(ctx, stmt.ID)
 		if err != nil {
 			return err
 		}
 
-		if stmt.ID == "*" {
-			srs, err = mngr.ListAllShardingRules(ctx)
-			if err != nil {
-				return err
-			}
-
-			krs, err = mngr.ListAllKeyRanges(ctx)
-			if err != nil {
-				return err
-			}
+		krs, err = mngr.ListAllKeyRanges(ctx)
+		if err != nil {
+			return err
 		}
 
-		if len(srs)+len(krs) != 0 && !isCascade {
+		if len(krs) != 0 && !isCascade {
 			return fmt.Errorf("cannot drop dataspace %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
+			if stmt.ID == "*" || kr.Keyspace != stmt.ID {
+				continue
+			}
 			err = mngr.DropKeyRange(ctx, kr.ID)
 			if err != nil {
 				return err
 			}
 		}
-		for _, sr := range srs {
-			err = mngr.DropShardingRule(ctx, sr.Id)
-			if err != nil {
-				return err
-			}
-		}
 
-		dss, err := mngr.ListDataspace(ctx)
+		dss, err := mngr.ListKeyspace(ctx)
 		ret := make([]string, 0)
 		if err != nil {
 			return err
@@ -125,17 +86,17 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if (ds.Id == stmt.ID || stmt.ID == "*") && ds.Id != "default" {
 				ret = append(ret, ds.ID())
-				if ds.ID() == cli.GetDataspace() {
-					cli.SetDataspace("default")
+				if ds.ID() == cli.Cl.Keyspace() {
+					cli.Cl.SetKeyspace("default")
 				}
-				err = mngr.DropDataspace(ctx, ds)
+				err = mngr.DropKeyspace(ctx, ds)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		return cli.DropDataspace(ctx, ret)
+		return cli.DropKeyspace(ctx, ret)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -144,10 +105,15 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 // TODO : unit tests
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
-	case *spqrparser.DataspaceDefinition:
-		dataspace := dataspaces.NewDataspace(stmt.ID)
+	case *spqrparser.KeyspaceDefinition:
+		if len(stmt.ColTypes) == 0 {
+			spqrlog.Zero.Debug().Msg("Keyspace should have at least one column type specified")
+			return fmt.Errorf("Keyspace should have at least one column type specified")
+		}
 
-		dataspaces, err := mngr.ListDataspace(ctx)
+		dataspace := dataspaces.KeyspaceFromSQL(stmt)
+
+		dataspaces, err := mngr.ListKeyspace(ctx)
 		if err != nil {
 			return err
 		}
@@ -158,23 +124,18 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			}
 		}
 
-		err = mngr.AddDataspace(ctx, dataspace)
+		err = mngr.AddKeyspace(ctx, dataspace)
 		if err != nil {
 			return err
 		}
-		return cli.AddDataspace(ctx, dataspace)
-	case *spqrparser.ShardingRuleDefinition:
-		entries := make([]shrule.ShardingRuleEntry, 0)
-		for _, el := range stmt.Entries {
-			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
-		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Dataspace)
-		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
-			return err
-		}
-		return cli.AddShardingRule(ctx, shardingRule)
+		return cli.AddKeyspace(ctx, dataspace)
+
 	case *spqrparser.KeyRangeDefinition:
-		req := kr.KeyRangeFromSQL(stmt)
+		ds, err := mngr.GetKeyspace(ctx, stmt.Keyspace)
+		if err != nil {
+			return cli.ReportError(err)
+		}
+		req := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
@@ -193,7 +154,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		if writer == nil {
 			return fmt.Errorf("can not save workload from here")
 		}
-		writer.StartLogging(stmt.All, stmt.Client)
+		writer.StartLogging(stmt.All, uint(stmt.Client))
 		return cli.StartTraceMessages(ctx)
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {
@@ -273,11 +234,18 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.AttachTable:
-		ds := &dataspaces.Dataspace{Id: stmt.Dataspace.ID}
-		if err := mgr.AttachToDataspace(ctx, stmt.Table, ds); err != nil {
+		mp := map[string]dataspaces.ShardedRelation{}
+		mp[stmt.Relation.Name] = dataspaces.ShardedRelation{
+			Name:        stmt.Relation.Name,
+			ColumnNames: stmt.Relation.Columns,
+		}
+		if err := mgr.AlterKeyspaceAttachRelation(ctx, stmt.Keyspace.ID, mp); err != nil {
 			return err
 		}
-		return cli.AttachTable(ctx, stmt.Table, ds)
+		return cli.AttachTable(ctx, stmt.Keyspace.ID, dataspaces.ShardedRelation{
+			Name:        stmt.Relation.Name,
+			ColumnNames: stmt.Relation.Columns,
+		})
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -288,14 +256,14 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process kill")
 	switch stmt.Cmd {
 	case spqrparser.ClientStr:
-		ok, err := pool.Pop(stmt.Target)
+		ok, err := pool.Pop(uint(stmt.Target))
 		if err != nil {
 			return err
 		}
 		if !ok {
 			return fmt.Errorf("No such client %d", stmt.Target)
 		}
-		return cli.KillClient(stmt.Target)
+		return cli.KillClient(uint(stmt.Target))
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -341,13 +309,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Routers(resp)
-	case spqrparser.ShardingRules:
-		resp, err := mngr.ListAllShardingRules(ctx)
-		if err != nil {
-			return err
-		}
 
-		return cli.ShardingRules(ctx, resp)
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
@@ -370,12 +332,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
-	case spqrparser.DataspacesStr:
-		dataspaces, err := mngr.ListDataspace(ctx)
+	case spqrparser.KeyspacesStr:
+		dataspaces, err := mngr.ListKeyspace(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Dataspaces(ctx, dataspaces)
+		return cli.Keyspaces(ctx, dataspaces)
 	default:
 		return unknownCoordinatorCommand
 	}

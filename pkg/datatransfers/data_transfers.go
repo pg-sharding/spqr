@@ -238,7 +238,7 @@ func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 }
 
 // TODO enhance for multi-column sharding rules
-func moveData(ctx context.Context, keyRange kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
+func moveData(ctx context.Context, keyRange kr.KeyRange, nextKeyRange kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
 	rows, err := txFrom.Query(ctx, `
 SELECT table_schema, table_name
 FROM information_schema.columns
@@ -269,8 +269,9 @@ WHERE column_name=$1;
 		pw := ProxyW{
 			w: w,
 		}
-		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s <= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
-			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
+		qry := fmt.Sprintf(
+			`COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT`, v.TableSchema, v.TableName,
+			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound[0])
 
 		go func() {
 			_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)

@@ -5,8 +5,8 @@ package spqrparser
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/binary"
 	"strings"
-	"strconv"
 )
 
 
@@ -26,7 +26,7 @@ func randomHex(n int) (string, error) {
 	strlist                []string
 	byte                   byte
 	bytes                  []byte
-	integer                int
+	integer                int64
 	uinteger               uint
 	bool                   bool
 	empty                  struct{}
@@ -42,10 +42,9 @@ func randomHex(n int) (string, error) {
 	lock                   *Lock
 	unlock                 *Unlock
 
-	ds                     *DataspaceDefinition
+	ds                     *KeyspaceDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
-	sharding_rule          *ShardingRuleDefinition
 
 	register_router        *RegisterRouter
 	unregister_router      *UnregisterRouter
@@ -53,6 +52,7 @@ func randomHex(n int) (string, error) {
 	split                  *SplitKeyRange
 	move                   *MoveKeyRange
 	unite                  *UniteKeyRange
+	krbound                *KeyRangeBound
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -60,16 +60,15 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
-	dataspace              *DataspaceDefinition
+	keyspace              *KeyspaceDefinition
 
 	attach                 *AttachTable
-	
-	entrieslist            []ShardingRuleEntry
-	shruleEntry            ShardingRuleEntry
 
-	sharding_rule_selector *ShardingRuleSelector
+	sharedRelation         *ShardedRelaion
+	sharedRelationList     []*ShardedRelaion
+
 	key_range_selector     *KeyRangeSelector
-	dataspace_selector     *DataspaceSelector
+	keyspace_selector     *KeyspaceSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -98,7 +97,7 @@ func randomHex(n int) (string, error) {
 /* any const */
 %token<str> SCONST
 
-%token<uinteger> ICONST
+%token<integer> ICONST
 
 // ';'
 %token<str> TSEMICOLON
@@ -112,19 +111,24 @@ func randomHex(n int) (string, error) {
 
 %type<str> any_val any_id
 
-%type<uinteger> any_uint
+%type<integer> any_int
 
 // CMDS
 %type <statement> command
+%type<bytes> key_range_bound_elem
+
+%type<krbound>  key_range_bound
 
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
-%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE KEYSPACE
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST RULE COLUMNS VERSION
+%token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR IN
 %token <str> CLIENT
+
+%token<str> RELATIONS ALTER
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -136,10 +140,8 @@ func randomHex(n int) (string, error) {
 /* any operator */
 %token<str> OP
 
-
-%type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
-%type<dataspace_selector> dataspace_select_stmt
+%type<keyspace_selector> keyspace_select_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -148,29 +150,28 @@ func randomHex(n int) (string, error) {
 %type <kill> kill_stmt
 
 %type <drop> drop_stmt
-%type <create> add_stmt create_stmt
+%type <create> create_stmt
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
 
 %type <attach> attach_stmt
 
-%type <ds> dataspace_define_stmt
-%type <sharding_rule> sharding_rule_define_stmt
+%type <ds> keyspace_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
-%type<entrieslist> sharding_rule_argument_list
-%type<shruleEntry> sharding_rule_entry
-
-%type<str> sharding_rule_table_clause
-%type<str> sharding_rule_column_clause
-%type<str> sharding_rule_hash_function_clause
 %type<str> hash_function_name
-%type<str> opt_dataspace
+%type<str> opt_keyspace
 
 %type<strlist> col_types_list opt_col_types
 %type<str> col_types_elem
+
+%type<bool> opt_cascade
+
+%type<strlist> col_list
+%type<sharedRelationList> ds_relations_list opt_ds_relations
+%type<sharedRelation> ds_relations_elem
 
 
 %type <unlock> unlock_stmt
@@ -196,11 +197,7 @@ semicolon_opt:
 
 
 command:
-	add_stmt
-	{
-		setParseTree(yylex, $1)
-	}
-	| create_stmt
+	create_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -265,9 +262,9 @@ command:
 		setParseTree(yylex, $1)
 	}
 
-any_uint:
+any_int:
 	ICONST {
-		$$ = uint($1)
+		$$ = int64($1)
 	}
 
 any_val: SCONST
@@ -277,9 +274,7 @@ any_val: SCONST
 	IDENT
 	{
 		$$ = string($1)
-	} | ICONST {
-		$$ = strconv.Itoa(int($1))
-	}
+	} 
 
 any_id: IDENT
 	{
@@ -347,7 +342,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DataspacesStr, VersionStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ClientsStr, StatusStr, KeyspacesStr, VersionStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -374,58 +369,24 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &KeyRangeSelector{KeyRangeID: `*`}}
 	}
-	| DROP sharding_rule_stmt
+	| DROP KEYSPACE ALL opt_cascade
 	{
-		$$ = &Drop{Element: $2}
+		$$ = &Drop{Element: &KeyspaceSelector{ID: `*`}, CascadeDelete: $4}
 	}
-	| DROP SHARDING RULE ALL
+	| DROP keyspace_select_stmt opt_cascade
 	{
-		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
-	}
-	| DROP dataspace_select_stmt
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: false}
-	}
-	| DROP DATASPACE ALL
-	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: false}
-	}
-	| DROP dataspace_select_stmt CASCADE
-	{
-		$$ = &Drop{Element: $2, CascadeDelete: true}
-	}
-	| DROP DATASPACE ALL CASCADE
-	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: true}
+		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
 
-add_stmt:
-	// TODO: drop
-	ADD dataspace_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	ADD sharding_rule_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	ADD key_range_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	} |
-	ADD shard_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
+opt_cascade:
+	{$$=false} | CASCADE {$$=true}
 
 trace_stmt:
 	START TRACE ALL MESSAGES
 	{
 		$$ = &TraceStmt{All: true}
 	} | 
-	START TRACE CLIENT any_uint {
+	START TRACE CLIENT any_int {
 		$$ = &TraceStmt {
 			Client: $4,
 		}
@@ -439,22 +400,17 @@ stoptrace_stmt:
 
 
 attach_stmt:
-	ATTACH TABLE any_id TO dataspace_select_stmt
+	ALTER keyspace_select_stmt ATTACH TABLE ds_relations_elem
 	{
 		$$ = &AttachTable{
-			Table: $3,
-			Dataspace: $5,
+			Relation: $5,
+			Keyspace: $2,
 		}
 	}
 
 
 create_stmt:
-	CREATE dataspace_define_stmt
-	{
-		$$ = &Create{Element: $2}
-	}
-	|
-	CREATE sharding_rule_define_stmt
+	CREATE keyspace_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -483,13 +439,45 @@ lock_stmt:
 	// or lock someting else
 
 
-dataspace_define_stmt:
-	DATASPACE any_id opt_col_types
+keyspace_define_stmt:
+	KEYSPACE any_id opt_col_types opt_ds_relations
 	{
-		$$ = &DataspaceDefinition{
+		$$ = &KeyspaceDefinition{
 			ID: $2,
 			ColTypes: $3,
+			Relations: $4,
 		}
+	}
+
+opt_ds_relations:
+	/*nothing*/{
+		$$ = nil
+	}
+	| RELATIONS ds_relations_list {
+		$$ = $2
+	}
+
+ds_relations_list:
+	ds_relations_elem {$$ = []*ShardedRelaion{$1}} | 
+	ds_relations_list TCOMMA ds_relations_elem {
+		$$ = append($1, $3)
+	}
+
+ds_relations_elem:
+	// relation name + cols
+	any_id TOPENBR col_list TCLOSEBR {
+		$$ = &ShardedRelaion{
+			Name: $1,
+			Columns: $3,
+		}
+	}
+
+
+col_list: 
+	any_id {
+		$$  = []string{$1}
+	} | col_list TCOMMA any_id {
+		$$  = append($1, $3)
 	}
 
 opt_col_types:
@@ -518,60 +506,6 @@ col_types_list:
 		}
 	}
 
-sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
-	{
-		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Dataspace: $6}
-	}
-	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
-	{
-		str, err := randomHex(6)
-		if err != nil {
-			panic(err)
-		}
-		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Dataspace: $5}
-	}
-
-sharding_rule_argument_list: sharding_rule_entry
-    {
-      $$ = make([]ShardingRuleEntry, 0)
-      $$ = append($$, $1)
-    }
-    |
-    sharding_rule_argument_list sharding_rule_entry
-    {
-      $$ = append($1, $2)
-    }
-
-sharding_rule_entry:
-	sharding_rule_column_clause sharding_rule_hash_function_clause
-	{
-		$$ = ShardingRuleEntry{
-			Column: $1,
-			HashFunction: $2,
-		}
-	}
-
-sharding_rule_table_clause:
-	TABLE any_id
-	{
-       $$ = $2
-    }
-	| /*EMPTY*/	{ $$ = ""; }
-
-sharding_rule_column_clause:
-	COLUMN any_id
-	{
-		$$ = $2
-	}
-	|
-	COLUMNS any_id
-	{
-		$$ = $2
-	}/* to be backward-compatable*/
-
-
 hash_function_name:
 	IDENTITY {
 		$$ = "identity"
@@ -581,44 +515,59 @@ hash_function_name:
 		$$ = "city"
 	}
 
-sharding_rule_hash_function_clause:
-	HASH FUNCTION hash_function_name
-	{
-		$$ = $3
-	}
-	| /*EMPTY*/ { $$ = ""; }
-
-opt_dataspace:
-    FOR DATASPACE any_id{
+opt_keyspace:
+    IN KEYSPACE any_id {
         $$ = $3
     }
     | /* EMPTY */ { $$ = "default" }
 
 
+key_range_bound_elem:
+	any_val {
+		$$ = []byte($1)
+	}
+	| any_int {
+		buf := make([]byte, 8)
+		binary.PutVarint(buf, $1)
+		$$ = buf
+	}
+
+key_range_bound:
+	key_range_bound_elem { 
+		$$ = &KeyRangeBound{
+			Pivots: [][]byte{
+				$1,
+			},
+		}
+	} 
+	| key_range_bound TCOMMA key_range_bound_elem {
+		$$ = &KeyRangeBound{
+			Pivots: append($1.Pivots, $3),
+		}
+	}
+
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	KEY RANGE any_id opt_keyspace FROM key_range_bound ROUTE TO any_id 
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			 KeyRangeID: $3, 
+			 Keyspace: $4,
+			 LowerBound: $6,
+			 ShardID: $9,
+		}
 	}
-	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
-	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
-	}
-	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	| KEY RANGE opt_keyspace FROM key_range_bound ROUTE TO any_id
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
-	}
-	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
-	{
-		str, err := randomHex(6)
-		if err != nil {
-			panic(err)
+		$$ = &KeyRangeDefinition{
+			LowerBound: $5,
+			ShardID: $8,
+			KeyRangeID: "kr"+str,
+			Keyspace: $3,
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
 	}
 
 
@@ -644,22 +593,16 @@ unlock_stmt:
 		$$ = &Unlock{KeyRangeID: $2.KeyRangeID}
 	}
 
-sharding_rule_stmt:
-	SHARDING RULE any_id
-	{
-		$$ =&ShardingRuleSelector{ID: $3}
-	}
-
 key_range_stmt:
 	KEY RANGE any_id
 	{
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
-dataspace_select_stmt:
-	DATASPACE any_id
+keyspace_select_stmt:
+	KEYSPACE any_id
 	{
-		$$ = &DataspaceSelector{ID: $2}
+		$$ = &KeyspaceSelector{ID: $2}
 	}
 
 split_key_range_stmt:
@@ -669,11 +612,11 @@ split_key_range_stmt:
 	}
 
 kill_stmt:
-	KILL kill_statement_type any_uint
+	KILL kill_statement_type any_int
 	{
 		$$ = &Kill{Cmd: $2, Target: $3}
 	}
-	| KILL CLIENT any_uint {
+	| KILL CLIENT any_int {
 		$$ = &Kill{Cmd: "client", Target: $3}
 	}
 
