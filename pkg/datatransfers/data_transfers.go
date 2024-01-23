@@ -269,7 +269,10 @@ WHERE column_name=$1;
 		pw := ProxyW{
 			w: w,
 		}
-		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s <= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
+
+		// This code does not work for multi-column key ranges.
+
+		qry := fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
 		go func() {

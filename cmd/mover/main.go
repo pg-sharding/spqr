@@ -102,7 +102,7 @@ WHERE column_name=$1;
 			w: w,
 		}
 
-		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
+		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s < %s returning *) to stdout", v.TableSchema, v.TableName,
 			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
 
 		spqrlog.Zero.Debug().

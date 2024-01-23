@@ -3,9 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/google/uuid"
 
@@ -548,7 +549,6 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
@@ -699,7 +699,6 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
-		Bytes("upper-bound", krNew.UpperBound).
 		Str("shard-id", krNew.ShardID).
 		Str("id", krNew.ID).
 		Msg("new key range")

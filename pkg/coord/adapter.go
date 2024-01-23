@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
@@ -133,7 +134,6 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 					ShardId: keyRange.ShardID,
 					KeyRange: &proto.KeyRange{
 						LowerBound: string(keyRange.LowerBound),
-						UpperBound: string(keyRange.UpperBound),
 					},
 				},
 			})
@@ -163,21 +163,22 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if left == nil || right == nil {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
+	for _, krcurr := range krs {
+		if krcurr.ID == unite.KeyRangeIDLeft || krcurr.ID == unite.KeyRangeIDRight {
+			continue
+		}
+		if kr.CmpRangesLess(krcurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krcurr.LowerBound) {
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "unvalid unite request")
+		}
 	}
 
-	var bound []byte
-	if kr.CmpRangesEqual(left.UpperBound, right.LowerBound) {
-		bound = left.UpperBound
-	}
-	if kr.CmpRangesEqual(left.LowerBound, right.UpperBound) {
-		bound = left.LowerBound
+	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound) {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
 	}
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		Bound: bound,
+		Bound: right.LowerBound,
 	})
 	return err
 }

@@ -1,7 +1,9 @@
 package ops
 
 import (
+	"bytes"
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -126,7 +128,5 @@ func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
 	//
 	// l0     r0      l1      r1
 	// -------|-------|-------|
-	return kr.CmpRangesLessEqual(l.LowerBound, r.LowerBound) && kr.CmpRangesLess(r.LowerBound, l.UpperBound) ||
-		kr.CmpRangesLess(l.LowerBound, r.UpperBound) && kr.CmpRangesLessEqual(r.UpperBound, l.UpperBound) ||
-		kr.CmpRangesLess(r.LowerBound, l.UpperBound) && kr.CmpRangesLessEqual(l.UpperBound, r.UpperBound)
+	return bytes.Equal(l.LowerBound, r.LowerBound)
 }
