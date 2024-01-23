@@ -854,7 +854,7 @@ func TestInsertMultiDataspace(t *testing.T) {
 	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:          "id1",
+		ID:          "id2",
 		DataspaceId: dataspace2,
 		TableName:   "",
 		Entries: []qdb.ShardingRuleEntry{
@@ -901,6 +901,28 @@ func TestInsertMultiDataspace(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: "SELECT curr_version from schema_version where i=2 and db_name=$1'",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace1,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			dataspace: dataspace1,
+			err:       nil,
+		},
+
+		{
+
 			query:     "INSERT INTO xxxdst1(i) VALUES(5);",
 			dataspace: dataspace1,
 			exp: routingstate.ShardMatchState{
