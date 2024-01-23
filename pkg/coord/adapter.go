@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -340,15 +341,28 @@ func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ListShards not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	resp, err := c.ListShards(ctx, &proto.ListShardsRequest{})
+	shards := resp.Shards
+	var ds []*datashards.DataShard
+	for _, shard := range shards {
+		ds = append(ds, &datashards.DataShard{
+			ID:  shard.Id,
+			Cfg: &config.Shard{Hosts: shard.Hosts},
+		})
+	}
+	return ds, err
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetShardInfo not implemented")
+	c := proto.NewShardServiceClient(a.conn)
+	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
+	return &datashards.DataShard{
+		ID:  resp.ShardInfo.Id,
+		Cfg: &config.Shard{Hosts: resp.ShardInfo.Hosts},
+	}, err
 }
 
 // TODO : unit tests
