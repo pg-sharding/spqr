@@ -5,9 +5,10 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-
+	"github.com/go-ldap/ldap/v3"
 	"github.com/xdg-go/scram"
 	"golang.org/x/crypto/pbkdf2"
 
@@ -284,6 +285,24 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		err = cl.Send(&pgproto3.AuthenticationSASLFinal{Data: []byte(finalMsg)})
 		return err
+	case config.AuthLDAP:
+		if rule.AuthRule.LDAPConfig == nil {
+			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
+		}
+		if rule.AuthRule.LDAPConfig.LdapUrl != "" {
+			l, err := ldap.DialURL(rule.AuthRule.LDAPConfig.LdapUrl)
+			if err != nil {
+				return err
+			}
+			defer l.Close()
+
+			// Reconnect with TLS
+			err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("invalid auth method %v", rule.AuthRule.Method)
 	}
