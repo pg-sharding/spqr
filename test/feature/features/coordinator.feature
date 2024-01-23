@@ -570,3 +570,15 @@ Feature: Coordinator test
     """
     key range krid4 intersects with key range krid3 in QDB
     """
+
+  Scenario: Show data shards
+    When I run SQL on host "coordinator"
+    """
+    SHOW SHARDS
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    datashard with ID sh1
+    datashard with ID sh2
+    """
