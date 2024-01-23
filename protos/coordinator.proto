@@ -12,6 +12,7 @@ service TopologyService {
   rpc GetRouterStatus(GetRouterStatusRequest) returns (GetRouterStatusReply) {}
   rpc CloseRouter(CloseRouterRequest) returns (CloseRouterReply) {}
   rpc UpdateCoordinator(UpdateCoordinatorRequest) returns (UpdateCoordinatorResponse) {}
+  rpc GetCoordinator(GetCoordinatorRequest) returns (GetCoordinatorResponse) {}
 }
 
 message OpenRouterRequest {}
@@ -33,3 +34,9 @@ message UpdateCoordinatorRequest {
 }
 
 message UpdateCoordinatorResponse {}
+
+message GetCoordinatorRequest {}
+
+message GetCoordinatorResponse {
+  string address = 1;
+}

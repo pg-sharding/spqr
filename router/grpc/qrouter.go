@@ -326,6 +326,13 @@ func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.
 	return reply, err
 }
 
+func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.GetCoordinatorRequest) (*protos.GetCoordinatorResponse, error) {
+	reply := &protos.GetCoordinatorResponse{}
+	re, err := l.mgr.GetCoordinator(ctx)
+	reply.Address = re
+	return reply, err
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{

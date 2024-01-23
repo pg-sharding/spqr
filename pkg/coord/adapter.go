@@ -32,7 +32,7 @@ func (a *adapter) QDB() qdb.QDB {
 // TODO : unit tests
 // TODO : implement
 func (a *adapter) ShareKeyRange(id string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "shareKeyRange not implemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
 }
 
 // TODO : unit tests
@@ -428,13 +428,15 @@ func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.D
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator not implemeneted")
+	c := proto.NewTopologyServiceClient(a.conn)
+	_, err := c.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{Address: address})
+	return err
 }
 
 // TODO : unit tests
-// TODO : implement
 func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
-	return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "GetCoordinator not implemented")
+	c := proto.NewTopologyServiceClient(a.conn)
+	resp, err := c.GetCoordinator(ctx, &proto.GetCoordinatorRequest{})
+	return resp.Address, err
 }
