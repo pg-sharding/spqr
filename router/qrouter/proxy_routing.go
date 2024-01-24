@@ -342,6 +342,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
+                // TODO: process this
 		meta.ValuesLists = s.Values
 	}
 
