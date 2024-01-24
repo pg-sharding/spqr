@@ -3,10 +3,11 @@ package qdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"os"
 	"sort"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -705,6 +706,12 @@ func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: delete dataspace")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
+	for t, ds := range q.TableDataspace {
+		if ds == id {
+			ExecuteCommands(q.DumpState, NewDeleteCommand(q.TableDataspace, t))
+		}
+	}
 
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Dataspaces, id))
 }

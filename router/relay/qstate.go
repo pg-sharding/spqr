@@ -116,14 +116,14 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 		}
 		return rst.Client().ReplyCommandComplete(rst.TxStatus(), "BEGIN")
 	case parser.ParseStateTXCommit:
-		if rst.TxStatus() != txstatus.TXACT {
+		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "COMMIT")
 		}
 		return ph.ExecCommit(rst, msg)
 
 	case parser.ParseStateTXRollback:
-		if rst.TxStatus() != txstatus.TXACT {
+		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete(rst.TxStatus(), "ROLLBACK")
 		}
@@ -161,27 +161,121 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 
 		return ph.ExecSet(rst, msg, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
-		param := strings.ToLower(st.Name[8:len(st.Name)])
-
+		param := st.Name
 		// manually create router responce
 		// here we just reply single row with single column value
 
-		_ = rst.Client().Send(
-			&pgproto3.RowDescription{
-				Fields: []pgproto3.FieldDescription{
-					{
-						DataTypeOID: 25,
+		switch param {
+		case session.SPQR_DATASPACE:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("dataspace"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
 					},
 				},
-			},
-		)
-		_ = rst.Client().Send(
-			&pgproto3.DataRow{
-				Values: [][]byte{
-					[]byte(rst.Client().Params()[param]),
+			)
+
+			_ = rst.Client().Send(
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(rst.Client().Dataspace()),
+					},
 				},
-			},
-		)
+			)
+		case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("default route behaviour"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+
+			_ = rst.Client().Send(
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(rst.Client().DefaultRouteBehaviour()),
+					},
+				},
+			)
+		case session.SPQR_SHARDING_KEY:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("sharding key"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+
+			_ = rst.Client().Send(
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("no val"),
+					},
+				},
+			)
+		case session.SPQR_SCATTER_QUERY:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("scatter query"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+
+			_ = rst.Client().Send(
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("no val"),
+					},
+				},
+			)
+		default:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte(param),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+			_ = rst.Client().Send(
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte(rst.Client().Params()[param]),
+					},
+				},
+			)
+		}
 		_ = rst.Client().ReplyCommandComplete(rst.TxStatus(), "SHOW")
 		return nil
 	case parser.ParseStateResetStmt:

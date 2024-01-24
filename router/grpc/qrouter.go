@@ -142,8 +142,6 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
-	spqrlog.Zero.Debug().Msg("listing key ranges")
-
 	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err

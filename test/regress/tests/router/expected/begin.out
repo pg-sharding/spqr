@@ -6,33 +6,22 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-ADD SHARDING RULE t1 COLUMNS id;
+CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 11
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
-          add key range           
-----------------------------------
- created key range from 11 to 101
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;
+          add key range          
+---------------------------------
+ created key range with bound 11
 (1 row)
 
 \c regress
@@ -196,6 +185,8 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
+DROP TABLE test_beg;
+NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
 		SQPR router admin console
@@ -204,8 +195,19 @@ ROLLBACK;
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP DATASPACE ALL CASCADE
+DROP DATASPACE ALL CASCADE;
  drop dataspace 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
 ----------------
 (0 rows)
 
