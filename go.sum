@@ -60,8 +60,8 @@ github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiu
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
-github.com/google/uuid v1.5.0 h1:1p67kYwdtXjb0gL0BPiP1Av9wiZPo5A8z2cWkTZ+eyU=
-github.com/google/uuid v1.5.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/hashicorp/go-immutable-radix v1.3.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.3.1 h1:DKHmCUm2hRBK510BaiZlwvpD40f8bJFeZnpfm2KLowc=
 github.com/hashicorp/go-immutable-radix v1.3.1/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
@@ -123,14 +123,6 @@ github.com/opencontainers/image-spec v1.0.2 h1:9yCKha/T5XdGtO0q9Q9a6T5NUCsTn/DrB
 github.com/opencontainers/image-spec v1.0.2/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/pg-sharding/lyx v0.0.0-20240111083355-38b940962fe3 h1:drqKxg58y9R3niC8T4wW6dqziPZnBosuAGC8X/eXLPc=
-github.com/pg-sharding/lyx v0.0.0-20240111083355-38b940962fe3/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
-github.com/pg-sharding/lyx v0.0.0-20240119072404-3d559dba6aa8 h1:s8f0Vo257gQvwS++K9RMkxKrgxsdVAXTtc5wJkqHvmg=
-github.com/pg-sharding/lyx v0.0.0-20240119072404-3d559dba6aa8/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
-github.com/pg-sharding/lyx v0.0.0-20240123215906-b049786c6ee2 h1:Pja7QaJpBcflHtTUbIEFl/ZGJrk2vOmX6arh1IJwoIU=
-github.com/pg-sharding/lyx v0.0.0-20240123215906-b049786c6ee2/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
-github.com/pg-sharding/lyx v0.0.0-20240123223048-f4c8715e77ed h1:NNv0qFDlAFc9/crthqjFqUmYRW5SjGnvkxSiLx6hOwQ=
-github.com/pg-sharding/lyx v0.0.0-20240123223048-f4c8715e77ed/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pg-sharding/lyx v0.0.0-20240124084632-a9f5aa89a6ac h1:iJcay9e0ibZYH1Bx/2tLHZsHYj5k5I480VOswOpfeGo=
 github.com/pg-sharding/lyx v0.0.0-20240124084632-a9f5aa89a6ac/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
