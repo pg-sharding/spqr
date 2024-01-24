@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -275,6 +276,24 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 							meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", bexpr.Value))
 						}
 					}
+				case *lyx.FuncApplication:
+					// there are several types of queries like DELETE FROM rel WHERE colref = func_applicion
+					// and func_applicion is actually routable statement.
+					// ANY(ARRAY(subselect)) if one type.
+
+					if strings.ToLower(rght.Name) == "any" {
+						if len(rght.Args) > 0 {
+							// maybe we should consider not only first arg.
+							// however, consider only it
+
+							switch argexpr := rght.Args[0].(type) {
+							case *lyx.SubLink:
+
+								// ignore all errors.
+								_ = qr.DeparseSelectStmt(ctx, argexpr.SubSelect, meta)
+							}
+						}
+					}
 
 				default:
 					queue = append(queue, texpr.Left, texpr.Right)
@@ -320,14 +339,12 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 				return nil
 			}
 		}
-	}
 
 	/* SELECT * FROM VALUES() ... */
-	// if list := selectStmt.; len(list) != 0 {
-	// 	// route using first tuple from `VALUES` clause
-	// 	meta.ValuesLists = q.SelectStmt.ValuesLists
-	// 	return nil
-	// }
+	case *lyx.ValueClause:
+                // TODO: process this
+		meta.ValuesLists = s.Values
+	}
 
 	return ComplexQuery
 }
