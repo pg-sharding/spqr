@@ -94,10 +94,15 @@ SHOW sharding_rules;
 
 CREATE KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard;
 ERROR:  unknown shard nonexistentshard.
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
+----------------
+(0 rows)
+
 DROP SHARDING RULE ALL;
-         drop sharding rule          
--------------------------------------
- dropped sharding rule cat,dog,rule1
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
 
 DROP KEY RANGE ALL;

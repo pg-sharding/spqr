@@ -24,6 +24,17 @@ SHOW key_ranges;
  krid2        | sh1      | default      | 11          | deprecated
 (2 rows)
 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
+----------------
+(0 rows)
+
+DROP SHARDING RULE ALL;
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
+(1 row)
+
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

@@ -5,31 +5,66 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+CREATE DATASPACE ds1;
+         add dataspace         
+-------------------------------
+ created dataspace with id ds1
+(1 row)
+
+CREATE DATASPACE ds2;
+         add dataspace         
+-------------------------------
+ created dataspace with id ds2
+(1 row)
+
 CREATE SHARDING RULE rule1 COLUMNS id FOR DATASPACE ds1;
-ERROR:  try to add sharding rule link to a non-existent dataspace.
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 dataspace
+(1 row)
+
 CREATE SHARDING RULE rule2 COLUMNS id FOR DATASPACE ds2;
-ERROR:  try to add sharding rule link to a non-existent dataspace.
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule rule2 for table (*) with columns [id, hash: x->x] in ds2 dataspace
+(1 row)
+
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DATASPACE ds1;
-ERROR:  try to add key range link to a non-existent dataspace.
+         add key range          
+--------------------------------
+ created key range with bound 1
+(1 row)
+
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DATASPACE ds1;
-ERROR:  try to add key range link to a non-existent dataspace.
+          add key range          
+---------------------------------
+ created key range with bound 11
+(1 row)
+
 CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
-ERROR:  try to add key range link to a non-existent dataspace.
-DROP DATASPACE ds1;
- drop dataspace 
-----------------
-(0 rows)
+          add key range          
+---------------------------------
+ created key range with bound 11
+(1 row)
+
+DROP DATASPACE ds1 CASCADE;
+   drop dataspace   
+--------------------
+ drop dataspace ds1
+(1 row)
 
 SHOW dataspaces;
  Dataspace ID 
 --------------
  default
-(1 row)
+ ds2
+(2 rows)
 
 DROP DATASPACE ALL CASCADE;
- drop dataspace 
-----------------
-(0 rows)
+   drop dataspace   
+--------------------
+ drop dataspace ds2
+(1 row)
 
 SHOW dataspaces;
  Dataspace ID 

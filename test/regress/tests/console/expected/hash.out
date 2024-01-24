@@ -29,9 +29,19 @@ CREATE SHARDING RULE hash4 COLUMNS col4 HASH FUNCTION CITY HASH;
  created sharding rule hash4 for table (*) with columns [col4, hash: city] in default dataspace
 (1 row)
 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
+----------------
+(0 rows)
+
 DROP SHARDING RULE ALL;
-              drop sharding rule               
------------------------------------------------
- dropped sharding rule hash1,hash2,hash3,hash4
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
 
