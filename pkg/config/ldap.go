@@ -10,4 +10,6 @@ type LDAPCfg struct {
 	LdapBindPasswd      string `json:"ldapbindpasswd" yaml:"ldapbindpasswd" toml:"ldapbindpasswd"`
 	LdapSearchAttribute string `json:"ldapsearchattribute" yaml:"ldapsearchattribute" toml:"ldapsearchattribute"`
 	LdapSearchFilter    string `json:"ldapsearchfilter" yaml:"ldapsearchfilter" toml:"ldapsearchfilter"`
+	LdapPrefix          string `json:"ldapprefix" yaml:"ldapprefix" toml:"ldapprefix"`
+	LdapSuffix          string `json:"ldapsuffix" yaml:"ldapsuffix" toml:"ldapsuffix"`
 }

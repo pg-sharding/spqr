@@ -289,7 +289,6 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		if rule.AuthRule.LDAPConfig == nil {
 			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
 		}
-		fmt.Println(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort))
 		l, err := ldap.DialURL(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort))
 		if err != nil {
 			return err
@@ -300,6 +299,17 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			if err != nil {
 				return err
 			}
+		}
+		if rule.AuthRule.LDAPConfig.LdapPrefix != "" || rule.AuthRule.LDAPConfig.LdapSuffix != "" {
+			passwd, err := cl.PasswordCT()
+			if err != nil {
+				return err
+			}
+			err = l.Bind(rule.AuthRule.LDAPConfig.LdapPrefix+cl.Usr()+rule.AuthRule.LDAPConfig.LdapSuffix, passwd)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 		if rule.AuthRule.LDAPConfig.LdapBindPasswd != "" || rule.AuthRule.LDAPConfig.LdapBindDn != "" {
 			err = l.Bind(rule.AuthRule.LDAPConfig.LdapBindDn, rule.AuthRule.LDAPConfig.LdapBindPasswd)
