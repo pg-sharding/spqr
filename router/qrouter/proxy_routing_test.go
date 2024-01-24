@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -18,6 +19,41 @@ import (
 )
 
 const MemQDBPath = "memqdb.json"
+
+func TestCheckColumnRls(t *testing.T) {
+	assert := assert.New(t)
+
+	rmc := qrouter.NewRoutingMetadataContext(
+		nil,
+		[]*shrule.ShardingRule{
+			shrule.NewShardingRule(
+				"",
+				"",
+				[]shrule.ShardingRuleEntry{
+					*shrule.NewShardingRuleEntry("col1", ""),
+					*shrule.NewShardingRuleEntry("col2", ""),
+				},
+				"",
+			),
+			shrule.NewShardingRule(
+				"",
+				"",
+				[]shrule.ShardingRuleEntry{
+					*shrule.NewShardingRuleEntry("col3", ""),
+				},
+				"",
+			),
+		},
+		"",
+		nil,
+	)
+
+	assert.True(rmc.CheckColumnRls("col1"), "col1 should be in rls")
+	assert.True(rmc.CheckColumnRls("col2"), "col2 should be in rls")
+	assert.True(rmc.CheckColumnRls("col3"), "col3 should be in rls")
+
+	assert.False(rmc.CheckColumnRls("col4"), "col4 should not be in rls")
+}
 
 func TestMultiShardRouting(t *testing.T) {
 	assert := assert.New(t)
