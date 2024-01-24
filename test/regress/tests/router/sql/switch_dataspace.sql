@@ -1,5 +1,4 @@
 \c spqr-console
-DROP DATASPACE ALL CASCADE;
 
 CREATE DATASPACE ds1;
 CREATE DATASPACE ds2;
@@ -28,7 +27,9 @@ SET __spqr__dataspace = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
 
+SET __spqr__dataspace = "default";
+
 \c spqr-console
-DROP DATASPACE ALL CASCADE
+DROP DATASPACE ALL CASCADE;
 DROP SHARDING RULE ALL;
 DROP KEY RANGE ALL;

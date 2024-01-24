@@ -7,22 +7,22 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that numeric type works
-ADD SHARDING RULE t1 COLUMNS id;
+CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 11
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
-          add key range           
-----------------------------------
- created key range from 11 to 101
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;
+          add key range          
+---------------------------------
+ created key range with bound 11
 (1 row)
 
 \c regress
@@ -150,22 +150,22 @@ DROP SHARDING RULE ALL;
 (1 row)
 
 -- check that uuid type works
-ADD SHARDING RULE t1 COLUMNS id;
+CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 TO 88888888-8888-8888-8888-888888888889 ROUTE TO sh1;
-                                            add key range                                            
------------------------------------------------------------------------------------------------------
- created key range from 00000000-0000-0000-0000-000000000000 to 88888888-8888-8888-8888-888888888889
+CREATE KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1;
+                           add key range                           
+-------------------------------------------------------------------
+ created key range with bound 00000000-0000-0000-0000-000000000000
 (1 row)
 
-ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;
-                                            add key range                                            
------------------------------------------------------------------------------------------------------
- created key range from 88888888-8888-8888-8888-888888888889 to FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF
+CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2;
+                           add key range                           
+-------------------------------------------------------------------
+ created key range with bound 88888888-8888-8888-8888-888888888888
 (1 row)
 
 \c regress
@@ -199,10 +199,12 @@ NOTICE: send query to shard(s) : sh1
 (3 rows)
 
 SELECT * FROM xxmixeduuid WHERE id >= '88888888-8888-8888-8888-888888888888' ORDER BY id;
-NOTICE: send query to shard(s) : sh1
- id 
-----
-(0 rows)
+NOTICE: send query to shard(s) : sh2
+                  id                  
+--------------------------------------
+ fa98123b-0000-0ea0-0fab-ab031389ff09
+ ffffffff-ffff-ffff-ffff-fffffffffffe
+(2 rows)
 
 SELECT * FROM xxmixeduuid WHERE id <= 'FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFE' ORDER BY id;
 NOTICE: send query to shard(s) : sh2
@@ -222,14 +224,19 @@ NOTICE: send query to shard(s) : sh1,sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
 ----------------
 (0 rows)
 
 DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
 
