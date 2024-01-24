@@ -301,6 +301,32 @@ func TestSingleShard(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
+			query: `
+			DELETE 
+				FROM t 
+			WHERE 
+				i = 
+				any(array(select * from t where i <= 2))
+			/* __spqr__default_route_behaviour: BLOCK */  returning *;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:    "sh1",
+						ID:         "id1",
+						Dataspace:  dataspace,
+						LowerBound: []byte("1"),
+						UpperBound: []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+		},
+		{
 			query: "select * from  xx where i = 4;",
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
