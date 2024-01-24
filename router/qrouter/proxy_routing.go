@@ -256,9 +256,8 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				case *lyx.ParamRef:
 					if rght.Number <= len(meta.params) {
 						meta.RecordShardingColumnValue(alias, colname, string(meta.params[rght.Number-1]))
-					} else {
-						// error out?
 					}
+					// else  error out?
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
 					meta.RecordShardingColumnValue(alias, colname, rght.Value)
