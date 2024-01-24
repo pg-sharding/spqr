@@ -27,3 +27,8 @@ SELECT * FROM xx WHERE w_id=5;
 SET __spqr__dataspace = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
+
+\c spqr-console
+DROP DATASPACE ALL CASCADE
+DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

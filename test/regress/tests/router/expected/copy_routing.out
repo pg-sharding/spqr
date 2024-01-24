@@ -6,22 +6,22 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD SHARDING RULE t1 COLUMNS id;
+CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 30 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 30
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 30 TO 4001 ROUTE TO sh2;
-           add key range           
------------------------------------
- created key range from 30 to 4001
+CREATE KEY RANGE krid2 FROM 30 ROUTE TO sh2;
+          add key range          
+---------------------------------
+ created key range with bound 30
 (1 row)
 
 \c regress

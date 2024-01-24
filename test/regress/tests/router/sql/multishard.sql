@@ -1,9 +1,9 @@
 \c spqr-console
 
 -- check that numeric type works
-ADD SHARDING RULE t1 COLUMNS id;
-ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1;
-ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2;
+CREATE SHARDING RULE t1 COLUMNS id;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;
 
 \c regress
 

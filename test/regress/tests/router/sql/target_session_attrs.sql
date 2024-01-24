@@ -21,5 +21,6 @@ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-att
 DROP TABLE tsa_test;
 
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

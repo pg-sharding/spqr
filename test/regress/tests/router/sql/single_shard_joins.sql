@@ -21,6 +21,8 @@ SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;
 
 DROP TABLE sshjt1;
+
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

@@ -28,5 +28,6 @@ SELECT * FROM transactions_test WHERE id = 1;;
 DROP TABLE transactions_test;
 
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;
