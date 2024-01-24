@@ -178,7 +178,6 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 
 // TODO : unit tests
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
-
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number > len(meta.params) {
@@ -249,7 +248,13 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				/* simple key-value pair */
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
-					// ignore
+					if rght.Number > len(meta.params) {
+						return ComplexQuery
+					}
+
+					// will not work not ints
+					meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
+
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
 					meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
