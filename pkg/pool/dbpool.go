@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type InstancePoolImpl struct {
@@ -176,6 +177,13 @@ func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 			Uint("shard", spqrlog.GetPointer(sh)).
 			Int64("sync", sh.Sync()).
 			Msg("discarding unsync connection")
+		return s.pool.Discard(sh)
+	}
+	if sh.TxStatus() != txstatus.TXIDLE {
+		spqrlog.Zero.Error().
+			Uint("shard", spqrlog.GetPointer(sh)).
+			Str("txstatus", sh.TxStatus().String()).
+			Msg("discarding non-idle connection")
 		return s.pool.Discard(sh)
 	}
 	return s.pool.Put(sh)

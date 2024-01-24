@@ -213,6 +213,25 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 	}
 }
 
+func (meta *RoutingMetadataContext) RecordShardingColumnValue(alias, colname, value string) {
+	if !meta.CheckColumnRls(colname) {
+		spqrlog.Zero.Debug().
+			Str("colname", colname).
+			Msg("skip column due no rule mathing")
+		return
+	}
+
+	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+	if err != nil {
+		// failed to relove relation, skip column
+		meta.unparsed_columns[colname] = struct{}{}
+		return
+	}
+
+	// will not work not ints
+	meta.RecordConstExpr(resolvedRelation, colname, value)
+}
+
 // TODO : unit tests
 // deparse sharding column-value pair from query Where clause
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) error {
@@ -232,48 +251,31 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 
 				alias, colname := lft.TableAlias, lft.ColName
 
-				if !meta.CheckColumnRls(colname) {
-					spqrlog.Zero.Debug().
-						Str("colname", colname).
-						Msg("skip column due no rule mathing")
-					continue
-				}
-
-				resolvedRelation, err := meta.ResolveRelationByAlias(alias)
-				if err != nil {
-					// failed to relove relation, skip column
-					meta.unparsed_columns[colname] = struct{}{}
-					continue
-				}
-
 				/* simple key-value pair */
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
-					if rght.Number > len(meta.params) {
-						return ComplexQuery
+					if rght.Number <= len(meta.params) {
+						meta.RecordShardingColumnValue(alias, colname, string(meta.params[rght.Number-1]))
 					}
-
-					// will not work not ints
-					meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
-
+					// else  error out?
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
-					meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
+					meta.RecordShardingColumnValue(alias, colname, rght.Value)
 				case *lyx.AExprIConst:
 					// TBD: postpone routing from here to root of parsing tree
 					// maybe expimely inefficient. Will be fixed in SPQR-2.0
-					meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", rght.Value))
+					meta.RecordShardingColumnValue(alias, colname, fmt.Sprintf("%d", rght.Value))
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
 						case *lyx.AExprSConst:
 							// TBD: postpone routing from here to root of parsing tree
-							meta.RecordConstExpr(resolvedRelation, colname, bexpr.Value)
+							meta.RecordShardingColumnValue(alias, colname, bexpr.Value)
 						case *lyx.AExprIConst:
 							// TBD: postpone routing from here to root of parsing tree
 							// maybe expimely inefficient. Will be fixed in SPQR-2.0
-							meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", bexpr.Value))
+							meta.RecordShardingColumnValue(alias, colname, fmt.Sprintf("%d", bexpr.Value))
 						}
 					}
 				case *lyx.FuncApplication:
@@ -342,8 +344,8 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
-                // TODO: process this
 		meta.ValuesLists = s.Values
+		return nil
 	}
 
 	return ComplexQuery
