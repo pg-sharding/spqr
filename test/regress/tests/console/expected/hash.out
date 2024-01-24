@@ -5,25 +5,25 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD SHARDING RULE hash1 COLUMNS col1 HASH FUNCTION IDENT;
+CREATE SHARDING RULE hash1 COLUMNS col1 HASH FUNCTION IDENT;
                                        add sharding rule                                        
 ------------------------------------------------------------------------------------------------
  created sharding rule hash1 for table (*) with columns [col1, hash: x->x] in default dataspace
 (1 row)
 
-ADD SHARDING RULE hash2 COLUMNS col2 HASH FUNCTION IDENTITY;
+CREATE SHARDING RULE hash2 COLUMNS col2 HASH FUNCTION IDENTITY;
                                        add sharding rule                                        
 ------------------------------------------------------------------------------------------------
  created sharding rule hash2 for table (*) with columns [col2, hash: x->x] in default dataspace
 (1 row)
 
-ADD SHARDING RULE hash3 COLUMNS col3 HASH FUNCTION MURMUR HASH;
+CREATE SHARDING RULE hash3 COLUMNS col3 HASH FUNCTION MURMUR HASH;
                                         add sharding rule                                         
 --------------------------------------------------------------------------------------------------
  created sharding rule hash3 for table (*) with columns [col3, hash: murmur] in default dataspace
 (1 row)
 
-ADD SHARDING RULE hash4 COLUMNS col4 HASH FUNCTION CITY HASH;
+CREATE SHARDING RULE hash4 COLUMNS col4 HASH FUNCTION CITY HASH;
                                        add sharding rule                                        
 ------------------------------------------------------------------------------------------------
  created sharding rule hash4 for table (*) with columns [col4, hash: city] in default dataspace

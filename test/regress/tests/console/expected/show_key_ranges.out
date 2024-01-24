@@ -5,23 +5,23 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 10
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1;
           add key range          
 ---------------------------------
- created key range from 11 to 20
+ created key range with bound 11
 (1 row)
 
 SHOW key_ranges;
  Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
 --------------+----------+--------------+-------------+-------------
- krid1        | sh1      | default      | 1           | 10
- krid2        | sh1      | default      | 11          | 20
+ krid1        | sh1      | default      | 1           | deprecated
+ krid2        | sh1      | default      | 11          | deprecated
 (2 rows)
 
 DROP KEY RANGE ALL;

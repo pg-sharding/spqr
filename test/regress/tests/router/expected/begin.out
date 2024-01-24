@@ -176,14 +176,11 @@ ROLLBACK;
 BEGIN TRANSACTION READ ONLY;
 SELECT * FROM test_beg WHERE id=10;
 NOTICE: send query to shard(s) : sh1
- id | age 
-----+-----
- 10 |  16
- 10 |  16
-(2 rows)
-
+ERROR:  relation "test_beg" does not exist
+LINE 1: SELECT * FROM test_beg WHERE id=10;
+                      ^
 INSERT INTO test_beg(id, age) VALUES (10, 16);
-ERROR:  cannot execute INSERT in a read-only transaction
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
 DROP TABLE test_beg;
 NOTICE: send query to shard(s) : sh1,sh2
