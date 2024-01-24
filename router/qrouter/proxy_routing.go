@@ -178,7 +178,6 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 
 // TODO : unit tests
 func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
-
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number > len(meta.params) {
@@ -229,85 +228,51 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 
 			switch lft := texpr.Left.(type) {
 			case *lyx.ColumnRef:
+
+				alias, colname := lft.TableAlias, lft.ColName
+
+				if !meta.CheckColumnRls(colname) {
+					spqrlog.Zero.Debug().
+						Str("colname", colname).
+						Msg("skip column due no rule mathing")
+					continue
+				}
+
+				resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+				if err != nil {
+					// failed to relove relation, skip column
+					meta.unparsed_columns[colname] = struct{}{}
+					continue
+				}
+
 				/* simple key-value pair */
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
-					// ignore
+					if rght.Number > len(meta.params) {
+						return ComplexQuery
+					}
+
+					// will not work not ints
+					meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
+
 				case *lyx.AExprSConst:
-					alias, colname := lft.TableAlias, lft.ColName
-
-					if !meta.CheckColumnRls(colname) {
-						spqrlog.Zero.Debug().
-							Str("colname", colname).
-							Msg("skip column due no rule mathing")
-						continue
-					}
-
-					resolvedRelation, err := meta.ResolveRelationByAlias(alias)
-					if err == nil {
-						// TBD: postpone routing from here to root of parsing tree
-						meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
-					} else {
-						meta.unparsed_columns[colname] = struct{}{}
-					}
+					// TBD: postpone routing from here to root of parsing tree
+					meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
 				case *lyx.AExprIConst:
-					alias, colname := lft.TableAlias, lft.ColName
-
-					if !meta.CheckColumnRls(colname) {
-						spqrlog.Zero.Debug().
-							Str("colname", colname).
-							Msg("skip column due no rule mathing")
-						continue
-					}
-
-					resolvedRelation, err := meta.ResolveRelationByAlias(alias)
-					if err == nil {
-						// TBD: postpone routing from here to root of parsing tree
-						// maybe expimely inefficient. Will be fixed in SPQR-2.0
-						meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", rght.Value))
-					} else {
-						meta.unparsed_columns[colname] = struct{}{}
-					}
-
+					// TBD: postpone routing from here to root of parsing tree
+					// maybe expimely inefficient. Will be fixed in SPQR-2.0
+					meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", rght.Value))
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
 						case *lyx.AExprSConst:
-							alias, colname := lft.TableAlias, lft.ColName
-
-							if !meta.CheckColumnRls(colname) {
-								spqrlog.Zero.Debug().
-									Str("colname", colname).
-									Msg("skip column due no rule mathing")
-								continue
-							}
-
-							resolvedRelation, err := meta.ResolveRelationByAlias(alias)
-							if err == nil {
-								// TBD: postpone routing from here to root of parsing tree
-								meta.RecordConstExpr(resolvedRelation, colname, bexpr.Value)
-							} else {
-								meta.unparsed_columns[colname] = struct{}{}
-							}
+							// TBD: postpone routing from here to root of parsing tree
+							meta.RecordConstExpr(resolvedRelation, colname, bexpr.Value)
 						case *lyx.AExprIConst:
-							alias, colname := lft.TableAlias, lft.ColName
-
-							if !meta.CheckColumnRls(colname) {
-								spqrlog.Zero.Debug().
-									Str("colname", colname).
-									Msg("skip column due no rule mathing")
-								continue
-							}
-
-							resolvedRelation, err := meta.ResolveRelationByAlias(alias)
-							if err == nil {
-								// TBD: postpone routing from here to root of parsing tree
-								// maybe expimely inefficient. Will be fixed in SPQR-2.0
-								meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", bexpr.Value))
-							} else {
-								meta.unparsed_columns[colname] = struct{}{}
-							}
+							// TBD: postpone routing from here to root of parsing tree
+							// maybe expimely inefficient. Will be fixed in SPQR-2.0
+							meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", bexpr.Value))
 						}
 					}
 
