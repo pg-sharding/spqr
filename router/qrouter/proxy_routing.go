@@ -99,13 +99,13 @@ func NewRoutingMetadataContext(
 }
 
 // TODO : unit tests
-func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr *lyx.AExprConst) {
+func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr string) {
 	meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
 	}
 	delete(meta.unparsed_columns, colname)
-	meta.exprs[resolvedRelation][colname] = expr.Value
+	meta.exprs[resolvedRelation][colname] = expr
 }
 
 // TODO : unit tests
@@ -191,13 +191,22 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number-1])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
-	case *lyx.AExprConst:
+	case *lyx.AExprSConst:
 		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
 		if err != nil {
 			return nil, err
 		}
 
 		spqrlog.Zero.Debug().Str("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
+	case *lyx.AExprIConst:
+		val := fmt.Sprintf("%d", e.Value)
+		hashedKey, err := hashfunction.ApplyHashFunction([]byte(val), hf)
+		if err != nil {
+			return nil, err
+		}
+
+		spqrlog.Zero.Debug().Int("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	default:
 		return nil, ComplexQuery
@@ -224,7 +233,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
 					// ignore
-				case *lyx.AExprConst:
+				case *lyx.AExprSConst:
 					alias, colname := lft.TableAlias, lft.ColName
 
 					if !meta.CheckColumnRls(colname) {
@@ -237,7 +246,25 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 					resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 					if err == nil {
 						// TBD: postpone routing from here to root of parsing tree
-						meta.RecordConstExpr(resolvedRelation, colname, rght)
+						meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
+					} else {
+						meta.unparsed_columns[colname] = struct{}{}
+					}
+				case *lyx.AExprIConst:
+					alias, colname := lft.TableAlias, lft.ColName
+
+					if !meta.CheckColumnRls(colname) {
+						spqrlog.Zero.Debug().
+							Str("colname", colname).
+							Msg("skip column due no rule mathing")
+						continue
+					}
+
+					resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+					if err == nil {
+						// TBD: postpone routing from here to root of parsing tree
+						// maybe expimely inefficient. Will be fixed in SPQR-2.0
+						meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", rght.Value))
 					} else {
 						meta.unparsed_columns[colname] = struct{}{}
 					}
@@ -246,7 +273,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
-						case *lyx.AExprConst:
+						case *lyx.AExprSConst:
 							alias, colname := lft.TableAlias, lft.ColName
 
 							if !meta.CheckColumnRls(colname) {
@@ -259,7 +286,25 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 							resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 							if err == nil {
 								// TBD: postpone routing from here to root of parsing tree
-								meta.RecordConstExpr(resolvedRelation, colname, bexpr)
+								meta.RecordConstExpr(resolvedRelation, colname, bexpr.Value)
+							} else {
+								meta.unparsed_columns[colname] = struct{}{}
+							}
+						case *lyx.AExprIConst:
+							alias, colname := lft.TableAlias, lft.ColName
+
+							if !meta.CheckColumnRls(colname) {
+								spqrlog.Zero.Debug().
+									Str("colname", colname).
+									Msg("skip column due no rule mathing")
+								continue
+							}
+
+							resolvedRelation, err := meta.ResolveRelationByAlias(alias)
+							if err == nil {
+								// TBD: postpone routing from here to root of parsing tree
+								// maybe expimely inefficient. Will be fixed in SPQR-2.0
+								meta.RecordConstExpr(resolvedRelation, colname, fmt.Sprintf("%d", bexpr.Value))
 							} else {
 								meta.unparsed_columns[colname] = struct{}{}
 							}
@@ -279,7 +324,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			}
 		case *lyx.ColumnRef:
 			/* colref = colref case, skip */
-		case *lyx.AExprConst:
+		case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst:
 			/* should not happend */
 		case *lyx.AExprEmpty:
 			/*skip*/
@@ -523,8 +568,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			Strs("statements", cols).
 			Msg("deparsed insert statement columns")
 
-		meta.ValuesLists = stmt.Values
-
 		meta.InsertStmtCols = cols
 		switch q := stmt.TableRef.(type) {
 		case *lyx.RangeVar:
@@ -534,12 +577,17 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		}
 
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
-			spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
-			_ = qr.DeparseSelectStmt(ctx, selectStmt, meta)
-			/* try target list */
-			spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
-			/* this target list for some insert (...) sharding column */
-			meta.TargetList = selectStmt.(*lyx.Select).TargetList
+			switch subS := selectStmt.(type) {
+			case *lyx.Select:
+				spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
+				_ = qr.DeparseSelectStmt(ctx, subS, meta)
+				/* try target list */
+				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
+				/* this target list for some insert (...) sharding column */
+				meta.TargetList = selectStmt.(*lyx.Select).TargetList
+			case *lyx.ValueClause:
+				meta.ValuesLists = subS.Values
+			}
 		}
 
 		return nil
@@ -760,9 +808,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 					if e.Name == "current_schema" {
 						any_routable = true
 					}
-				case *lyx.AExprConst:
+				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
 					// ok
 					any_routable = true
+
 				case *lyx.ColumnRef:
 					/* Step 1.4.8.2 - SELECT current_schema special case */
 					if e.ColName == "current_schema" {

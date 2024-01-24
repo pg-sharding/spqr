@@ -102,7 +102,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Select{
 		TargetList: []lyx.Node{
-			&lyx.AExprConst{Value: "1"},
+			&lyx.AExprIConst{Value: 1},
 		},
 		Where: &lyx.AExprEmpty{},
 	}, gomock.Any()).Return(routingstate.ShardMatchState{
