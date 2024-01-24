@@ -39,7 +39,6 @@ CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2;
 \c regress
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
-ERROR:  relation "xx" already exists
 CREATE TABLE xxerr (i int);
 ERROR:  client proccessing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
@@ -58,11 +57,10 @@ SELECT * FROM xx WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
  w_id 
 ------
-    5
     1
    10
    20
-(4 rows)
+(3 rows)
 
 SELECT * FROM xx WHERE w_id >= 20;
 NOTICE: send query to shard(s) : sh1

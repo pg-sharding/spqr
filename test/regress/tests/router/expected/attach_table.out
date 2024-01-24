@@ -83,6 +83,8 @@ ERROR:  client proccessing error: error processing query 'SELECT * FROM yy WHERE
 SET __spqr__dataspace = ds2;
 SELECT * FROM xx WHERE w_id=5;
 ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yy;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console

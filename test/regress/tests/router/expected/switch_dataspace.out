@@ -67,6 +67,8 @@ SET __spqr__dataspace = ds2;
 SELECT * FROM xx WHERE w_id=5;
 ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
 SET __spqr__dataspace = "default";
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
 		SQPR router admin console

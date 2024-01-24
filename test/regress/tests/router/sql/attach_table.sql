@@ -33,6 +33,7 @@ SET __spqr__dataspace = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
 
+DROP TABLE xx;
 DROP TABLE yy;
 
 \c spqr-console

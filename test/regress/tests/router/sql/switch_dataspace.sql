@@ -29,6 +29,8 @@ SELECT * FROM xx WHERE w_id=5;
 
 SET __spqr__dataspace = "default";
 
+DROP TABLE xx;
+
 \c spqr-console
 DROP DATASPACE ALL CASCADE;
 DROP SHARDING RULE ALL;

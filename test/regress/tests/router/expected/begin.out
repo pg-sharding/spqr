@@ -179,8 +179,7 @@ NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
- 10 |  16
-(2 rows)
+(1 row)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 ERROR:  cannot execute INSERT in a read-only transaction
