@@ -289,7 +289,7 @@ WHERE column_name=$1;
 		// TODO: refac
 		if nextKeyRange == nil {
 			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column)
+				key.Entries()[0].Column, keyRange.LowerBound)
 		} else {
 			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
 				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)

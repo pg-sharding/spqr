@@ -25,7 +25,6 @@ var toShardConnst = flag.String("to-shard-connstring", "", "")
 
 // TODO: deprecate this API, use IDS
 var lb = flag.String("lower-bound", "", "")
-var ub = flag.String("upper-bound", "", "")
 var shkey = flag.String("sharding-key", "", "")
 var etcdAddr = flag.String("etcd-addr", "", "")
 
@@ -109,8 +108,8 @@ WHERE column_name=$1;
 		// TODO: support multi-column move in SPQR2
 		if nextKeyRange == nil {
 
-			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s  returning *) to stdout", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column)
+			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s returning *) to stdout", v.TableSchema, v.TableName,
+				key.Entries()[0].Column, keyRange.LowerBound)
 		} else {
 			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s < %s returning *) to stdout", v.TableSchema, v.TableName,
 				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)

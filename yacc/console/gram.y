@@ -595,30 +595,52 @@ opt_dataspace:
     | /* EMPTY */ { $$ = "default" }
 
 
+opt_to: TO any_val {} | TO any_uint {} | /*nothing*/{}
+
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id opt_dataspace
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			KeyRangeID: $3,
+			LowerBound: []byte($5),
+			ShardID: $9,
+			Dataspace: $10,
+		}
 	}
-	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id opt_dataspace
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			KeyRangeID: $3,
+			LowerBound: []byte(strconv.FormatUint(uint64($5), 10)),
+			ShardID: $9,
+			Dataspace: $10,
+		}
 	}
-	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	| KEY RANGE FROM any_val opt_to ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{
+			LowerBound: []byte($4),
+			Dataspace: $8,
+			ShardID: $9,
+			KeyRangeID: "kr"+str,
+		}
 	}
-	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id opt_dataspace
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{
+			LowerBound: []byte(strconv.FormatUint(uint64($4), 10)),
+			ShardID: $8,
+			KeyRangeID: "kr"+str,
+			Dataspace: $9,
+		}
 	}
 
 
