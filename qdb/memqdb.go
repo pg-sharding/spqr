@@ -709,7 +709,9 @@ func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 
 	for t, ds := range q.TableDataspace {
 		if ds == id {
-			ExecuteCommands(q.DumpState, NewDeleteCommand(q.TableDataspace, t))
+			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.TableDataspace, t)); err != nil {
+				return err
+			}
 		}
 	}
 
