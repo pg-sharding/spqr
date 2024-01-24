@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -158,6 +159,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl := mockcl.NewMockRouterClient(ctrl)
 	srv := mocksrv.NewMockServer(ctrl)
+	sh := mocksh.NewMockShard(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
@@ -169,8 +171,14 @@ func TestFrontendXProto(t *testing.T) {
 
 	beRule := &config.BackendRule{}
 
+	sh.EXPECT().ID().AnyTimes()
+	sh.EXPECT().Send(gomock.Any()).AnyTimes()
+	sh.EXPECT().Receive().AnyTimes()
+
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
-	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
+	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{
+		sh,
+	})
 
 	/* query Router */
 
@@ -258,7 +266,7 @@ func TestFrontendXProto(t *testing.T) {
 		ObjectType: 'S',
 	}).Times(1).Return(nil)
 
-	srv.EXPECT().Send(&pgproto3.Sync{}).Times(1).Return(nil)
+	srv.EXPECT().Send(&pgproto3.Sync{}).Times(2).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{
@@ -278,12 +286,13 @@ func TestFrontendXProto(t *testing.T) {
 			},
 		},
 	}, nil)
-	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
+
+	srv.EXPECT().Receive().Times(2).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
 
 	// receive this 4 msgs
-	cl.EXPECT().Send(gomock.Any()).Times(2).Return(nil)
+	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
