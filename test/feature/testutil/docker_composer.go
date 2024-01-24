@@ -106,7 +106,7 @@ func (dc *DockerComposer) runCompose(args []string, env []string) error {
 }
 
 func (dc *DockerComposer) fillContainers() error {
-	containers, err := dc.api.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	containers, err := dc.api.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return err
 	}
