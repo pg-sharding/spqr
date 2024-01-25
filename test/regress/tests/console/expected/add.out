@@ -20,7 +20,7 @@ CREATE KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
 CREATE SHARDING RULE rule1 COLUMNS id;
                                       add sharding rule                                       
 ----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distrinution
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE rule1 COLUMNS id;
@@ -57,7 +57,7 @@ ERROR:  key range krid2 already present in qdb.
 CREATE SHARDING RULE rule1 COLUMNS id;
                                       add sharding rule                                       
 ----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distrinution
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 SHOW key_ranges;
@@ -75,13 +75,13 @@ SHOW sharding_rules;
 CREATE SHARDING RULE cat TABLE orders COLUMN iid;
                                         add sharding rule                                         
 --------------------------------------------------------------------------------------------------
- created sharding rule cat for table (orders) with columns [iid, hash: x->x] in default distrinution
+ created sharding rule cat for table (orders) with columns [iid, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE dog TABLE delivery COLUMN order_id;
                                             add sharding rule                                            
 ---------------------------------------------------------------------------------------------------------
- created sharding rule dog for table (delivery) with columns [order_id, hash: x->x] in default distrinution
+ created sharding rule dog for table (delivery) with columns [order_id, hash: x->x] in default distribution
 (1 row)
 
 SHOW sharding_rules;
@@ -95,7 +95,7 @@ SHOW sharding_rules;
 CREATE KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard;
 ERROR:  unknown shard nonexistentshard.
 DROP DISTRIBUTION ALL CASCADE;
- drop distrinution 
+ drop distribution 
 ----------------
 (0 rows)
 

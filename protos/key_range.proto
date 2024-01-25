@@ -32,11 +32,11 @@ message KeyRangeInfo {
   KeyRange key_range = 1;
   string krid = 2;
   string shardId = 3;
-  string distrinutionId = 4;
+  string distributionId = 4;
 }
 
 message ListKeyRangeRequest {
-  string distrinution = 1;
+  string distribution = 1;
 }
 
 message AddKeyRangeRequest {
@@ -51,7 +51,7 @@ message SplitKeyRangeRequest {
 
 message MergeKeyRangeRequest {
   bytes bound = 1;
-  string distrinution = 2;
+  string distribution = 2;
 }
 
 message MoveKeyRangeRequest {

@@ -478,7 +478,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	spqrlog.Zero.Debug().
 		Str("user", rst.Cl.Usr()).
 		Str("db", rst.Cl.DB()).
-		Str("distrinution", rst.Cl.Distribution()).
+		Str("distribution", rst.Cl.Distribution()).
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 

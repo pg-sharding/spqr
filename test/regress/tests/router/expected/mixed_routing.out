@@ -10,7 +10,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distrinution
+ created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
@@ -153,7 +153,7 @@ DROP SHARDING RULE ALL;
 CREATE SHARDING RULE t1 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distrinution
+ created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1;
@@ -225,7 +225,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distrinution 
+ drop distribution 
 ----------------
 (0 rows)
 

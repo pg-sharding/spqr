@@ -444,15 +444,15 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distrinution string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx, distrinution)
+func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListShardingRules(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		if rule.DistributionId == distrinution {
+		if rule.DistributionId == distribution {
 			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 		}
 	}
@@ -579,8 +579,8 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distrinution string) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRanges(ctx, distrinution)
+func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListKeyRanges(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}

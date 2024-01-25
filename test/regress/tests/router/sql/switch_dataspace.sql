@@ -13,7 +13,7 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 
 \c regress
 
-SET __spqr__distrinution = ds1;
+SET __spqr__distribution = ds1;
 
 CREATE TABLE xx (w_id int);
 
@@ -23,11 +23,11 @@ INSERT INTO xx(w_id) VALUES(20);
 
 SELECT * FROM xx WHERE w_id=5;
 
-SET __spqr__distrinution = ds2;
+SET __spqr__distribution = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
 
-SET __spqr__distrinution = "default";
+SET __spqr__distribution = "default";
 
 DROP TABLE xx;
 

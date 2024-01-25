@@ -114,7 +114,7 @@ type PsqlClient struct {
 	mu     sync.RWMutex
 	server server.Server
 
-	distrinutionChanged bool
+	distributionChanged bool
 }
 
 // BindParams implements RouterClient.
@@ -138,12 +138,12 @@ func (cl *PsqlClient) Distribution() string {
 // SetDistribution implements RouterClient.
 func (cl *PsqlClient) SetDistribution(d string) {
 	cl.internalParamSet[session.SPQR_DISTRIBUTION] = d
-	cl.distrinutionChanged = true
+	cl.distributionChanged = true
 }
 
 // DistributionIsDefault implements RouterClient.
 func (cl *PsqlClient) DistributionIsDefault() bool {
-	return !cl.distrinutionChanged
+	return !cl.distributionChanged
 }
 
 // SetShardingKey implements RouterClient.

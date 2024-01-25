@@ -4,15 +4,15 @@ import "github.com/pg-sharding/spqr/router/routehint"
 
 type DummySessionParamHandler struct {
 	b            [][]byte
-	distrinution string
+	distribution string
 	behaviour    string
 	key          string
 	rh           routehint.RouteHint
 }
 
-func NewDummyHandler(distrinution string) SessionParamsHolder {
+func NewDummyHandler(distribution string) SessionParamsHolder {
 	return &DummySessionParamHandler{
-		distrinution: distrinution,
+		distribution: distribution,
 		rh:           routehint.EmptyRouteHint{},
 	}
 }
@@ -24,7 +24,7 @@ func (t *DummySessionParamHandler) BindParams() [][]byte {
 
 // Distribution implements session.SessionParamsHolder.
 func (t *DummySessionParamHandler) Distribution() string {
-	return t.distrinution
+	return t.distribution
 }
 
 // DefaultRouteBehaviour implements session.SessionParamsHolder.
@@ -44,7 +44,7 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 
 // SetDistribution implements session.SessionParamsHolder.
 func (t *DummySessionParamHandler) SetDistribution(d string) {
-	t.distrinution = d
+	t.distribution = d
 }
 
 func (t *DummySessionParamHandler) DistributionIsDefault() bool {

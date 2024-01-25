@@ -6,15 +6,15 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
-         add distrinution         
+         add distribution         
 -------------------------------
- created distrinution with id ds1
+ created distribution with id ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
-         add distrinution         
+         add distribution         
 -------------------------------
- created distrinution with id ds2
+ created distribution with id ds2
 (1 row)
 
 SHOW distributions;
@@ -26,10 +26,10 @@ SHOW distributions;
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distrinution   
+   drop distribution   
 --------------------
- drop distrinution ds1
- drop distrinution ds2
+ drop distribution ds1
+ drop distribution ds2
 (2 rows)
 
 DROP SHARDING RULE ALL;

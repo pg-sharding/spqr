@@ -65,8 +65,8 @@ func (pi *PSQLInteractor) GetDistribution() string {
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) SetDistribution(distrinution string) {
-	pi.cl.SetDistribution(distrinution)
+func (pi *PSQLInteractor) SetDistribution(distribution string) {
+	pi.cl.SetDistribution(distribution)
 }
 
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
@@ -552,10 +552,10 @@ func (pi *PSQLInteractor) Distributions(ctx context.Context, distributions []*di
 			return err
 		}
 	}
-	for _, distrinution := range distributions {
+	for _, distribution := range distributions {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
-				[]byte(distrinution.Id),
+				[]byte(distribution.Id),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -764,12 +764,12 @@ func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error 
 
 // TODO : unit tests
 func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions.Distribution) error {
-	if err := pi.WriteHeader("add distrinution"); err != nil {
+	if err := pi.WriteHeader("add distribution"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created distrinution with id %s", ks.ID())); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created distribution with id %s", ks.ID())); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -778,13 +778,13 @@ func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions
 
 // TODO : unit tests
 func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop distrinution"); err != nil {
+	if err := pi.WriteHeader("drop distribution"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("drop distrinution %s", id)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop distribution %s", id)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -801,7 +801,7 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 	}
 
 	for _, r := range ds {
-		if err := pi.WriteDataRow(fmt.Sprintf("attached relation %s to distrinution %s", r.Name, id)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("attached relation %s to distribution %s", r.Name, id)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

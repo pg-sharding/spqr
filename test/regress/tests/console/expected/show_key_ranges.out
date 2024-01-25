@@ -25,7 +25,7 @@ SHOW key_ranges;
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distrinution 
+ drop distribution 
 ----------------
 (0 rows)
 

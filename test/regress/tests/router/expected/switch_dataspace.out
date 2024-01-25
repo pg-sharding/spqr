@@ -7,27 +7,27 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
-         add distrinution         
+         add distribution         
 -------------------------------
- created distrinution with id ds1
+ created distribution with id ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
-         add distrinution         
+         add distribution         
 -------------------------------
- created distrinution with id ds2
+ created distribution with id ds2
 (1 row)
 
 CREATE SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
                                     add sharding rule                                    
 -----------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 distrinution
+ created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 distribution
 (1 row)
 
 CREATE SHARDING RULE r2 COLUMNS w_id FOR DISTRIBUTION ds2;
                                     add sharding rule                                    
 -----------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 distrinution
+ created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 distribution
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
@@ -49,7 +49,7 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 (1 row)
 
 \c regress
-SET __spqr__distrinution = ds1;
+SET __spqr__distribution = ds1;
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx(w_id) VALUES(5);
@@ -63,10 +63,10 @@ NOTICE: send query to shard(s) : sh1
     5
 (1 row)
 
-SET __spqr__distrinution = ds2;
+SET __spqr__distribution = ds2;
 SELECT * FROM xx WHERE w_id=5;
 ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
-SET __spqr__distrinution = "default";
+SET __spqr__distribution = "default";
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
@@ -78,10 +78,10 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distrinution   
+   drop distribution   
 --------------------
- drop distrinution ds1
- drop distrinution ds2
+ drop distribution ds1
+ drop distribution ds2
 (2 rows)
 
 DROP SHARDING RULE ALL;

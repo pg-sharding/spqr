@@ -29,7 +29,7 @@ CREATE TABLE yy (w_id int);
 
 SELECT * FROM yy WHERE w_id=5;
 
-SET __spqr__distrinution = ds2;
+SET __spqr__distribution = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
 

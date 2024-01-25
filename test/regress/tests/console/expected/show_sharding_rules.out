@@ -8,19 +8,19 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 CREATE SHARDING RULE rule1 COLUMNS id;
                                       add sharding rule                                       
 ----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distrinution
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE rule2 COLUMNS idx;
                                        add sharding rule                                       
 -----------------------------------------------------------------------------------------------
- created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default distrinution
+ created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE rule3 COLUMNS idy;
                                        add sharding rule                                       
 -----------------------------------------------------------------------------------------------
- created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default distrinution
+ created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default distribution
 (1 row)
 
 SHOW sharding_rules;
@@ -32,7 +32,7 @@ SHOW sharding_rules;
 (3 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distrinution 
+ drop distribution 
 ----------------
 (0 rows)
 

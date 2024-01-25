@@ -50,7 +50,7 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 
 const (
 	keyRangesNamespace     = "/keyranges/"
-	distrinutionNamespace  = "/distributions/"
+	distributionNamespace  = "/distributions/"
 	keyRangeMovesNamespace = "/krmoves/"
 	routersNamespace       = "/routers/"
 	shardingRulesNamespace = "/sharding_rules/"
@@ -82,8 +82,8 @@ func shardNodePath(key string) string {
 	return path.Join(shardsNamespace, key)
 }
 
-func distrinutionNodePath(key string) string {
-	return path.Join(distrinutionNamespace, key)
+func distributionNodePath(key string) string {
+	return path.Join(distributionNamespace, key)
 }
 
 func tableNodePath(key string) string {
@@ -188,9 +188,9 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListShardingRules(ctx context.Context, distrinution string) ([]*ShardingRule, error) {
+func (q *EtcdQDB) ListShardingRules(ctx context.Context, distribution string) ([]*ShardingRule, error) {
 	spqrlog.Zero.Debug().
-		Str("distrinution", distrinution).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list sharding rules")
 
 	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
@@ -207,7 +207,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, distrinution string) ([
 		if err := json.Unmarshal(kv.Value, &rule); err != nil {
 			return nil, err
 		}
-		if rule.DistributionId == distrinution {
+		if rule.DistributionId == distribution {
 			rules = append(rules, rule)
 		}
 	}
@@ -218,7 +218,7 @@ func (q *EtcdQDB) ListShardingRules(ctx context.Context, distrinution string) ([
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Str("distrinution", distrinution).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list sharding rules")
 
 	return rules, nil
@@ -265,7 +265,7 @@ func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
 		Str("shard-id", keyRange.ShardID).
-		Str("distrinution-id", keyRange.DistributionId).
+		Str("distribution-id", keyRange.DistributionId).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -327,7 +327,7 @@ func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
 		Str("shard-id", keyRange.ShardID).
-		Str("distrinution-id", keyRange.KeyRangeID).
+		Str("distribution-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -385,9 +385,9 @@ func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[str
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distrinution string) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("distrinution", distrinution).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -403,7 +403,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distrinution string) ([]*Ke
 			return nil, err
 		}
 
-		if distrinution == kr.DistributionId {
+		if distribution == kr.DistributionId {
 			keyRanges = append(keyRanges, kr)
 		}
 	}
@@ -414,7 +414,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distrinution string) ([]*Ke
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Str("distrinution", distrinution).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
 
 	return keyRanges, nil
@@ -1014,19 +1014,19 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) AddDistribution(ctx context.Context, distrinution *Distribution) error {
+func (q *EtcdQDB) AddDistribution(ctx context.Context, distribution *Distribution) error {
 	spqrlog.Zero.Debug().
-		Str("id", distrinution.ID).
-		Msg("etcdqdb: add distrinution")
+		Str("id", distribution.ID).
+		Msg("etcdqdb: add distribution")
 
-	resp, err := q.cli.Put(ctx, distrinutionNodePath(distrinution.ID), distrinution.ID)
+	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), distribution.ID)
 	if err != nil {
 		return err
 	}
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: add distrinution")
+		Msg("etcdqdb: add distribution")
 
 	return nil
 }
@@ -1035,7 +1035,7 @@ func (q *EtcdQDB) AddDistribution(ctx context.Context, distrinution *Distributio
 func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error) {
 	spqrlog.Zero.Debug().Msg("etcdqdb: list distributions")
 
-	resp, err := q.cli.Get(ctx, distrinutionNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, distributionNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -1067,22 +1067,22 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: drop distrinution")
+		Msg("etcdqdb: drop distribution")
 
-	resp, err := q.cli.Get(ctx, distrinutionNodePath(id), clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
 
 	switch len(resp.Kvs) {
 	case 0:
-		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distrinution present in qdb")
+		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distribution present in qdb")
 	case 1:
-		resp, err := q.cli.Delete(ctx, distrinutionNodePath(id))
+		resp, err := q.cli.Delete(ctx, distributionNodePath(id))
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
-			Msg("etcdqdb: drop distrinution")
+			Msg("etcdqdb: drop distribution")
 
 		return err
 	default:
@@ -1095,13 +1095,13 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, table string, id 
 	spqrlog.Zero.Debug().
 		Str("table", table).
 		Str("id", id).
-		Msg("etcdqdb: attach table to distrinution")
+		Msg("etcdqdb: attach table to distribution")
 
 	resp, err := q.cli.Put(ctx, tableNodePath(table), id)
 
 	spqrlog.Zero.Debug().
 		Interface("responce", resp).
-		Msg("etcdqdb: attach table to distrinution")
+		Msg("etcdqdb: attach table to distribution")
 
 	return err
 }
@@ -1110,7 +1110,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, table string, id 
 func (q *EtcdQDB) GetDistribution(ctx context.Context, table string) (*Distribution, error) {
 	spqrlog.Zero.Debug().
 		Str("table", table).
-		Msg("etcdqdb: get distrinution for table")
+		Msg("etcdqdb: get distribution for table")
 
 	resp, err := q.cli.Get(ctx, tableNodePath(table))
 
@@ -1119,10 +1119,10 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, table string) (*Distribut
 	}
 
 	id := string(resp.Kvs[0].Value)
-	resp, err = q.cli.Get(ctx, distrinutionNodePath(id))
+	resp, err = q.cli.Get(ctx, distributionNodePath(id))
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distrinution with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with id \"%s\" not found", id)
 	}
 
 	return &Distribution{ID: id}, err

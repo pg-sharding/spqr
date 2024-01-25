@@ -65,7 +65,7 @@ type RoutingMetadataContext struct {
 
 	rls          []*shrule.ShardingRule
 	krs          []*kr.KeyRange
-	distrinution string
+	distribution string
 
 	params [][]byte
 	// TODO: include client ops and metadata here
@@ -94,7 +94,7 @@ func NewRoutingMetadataContext(
 		unparsed_columns: map[string]struct{}{},
 		krs:              krs,
 		rls:              rls,
-		distrinution:     ds,
+		distribution:     ds,
 		params:           params,
 	}
 }
@@ -669,18 +669,18 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 					queryDistribution = relDistribution.Id
 				}
 			case *RelationList:
-				var distrinution string
+				var distribution string
 				for _, relName := range t.Relations {
 					if relDistribution, err := qr.mgr.GetDistribution(ctx, relName); err != nil {
 						return nil, err
 					} else {
-						if distrinution != "" && distrinution != relDistribution.Id {
-							return nil, fmt.Errorf("mismatching distributions %s and %s", distrinution, relDistribution)
+						if distribution != "" && distribution != relDistribution.Id {
+							return nil, fmt.Errorf("mismatching distributions %s and %s", distribution, relDistribution)
 						}
-						distrinution = relDistribution.Id
+						distribution = relDistribution.Id
 					}
 				}
-				queryDistribution = distrinution
+				queryDistribution = distribution
 			case *AnyRelation:
 				break
 			default:

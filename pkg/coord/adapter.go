@@ -37,10 +37,10 @@ func (a *adapter) ShareKeyRange(id string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) ListKeyRanges(ctx context.Context, distrinution string) ([]*kr.KeyRange, error) {
+func (a *adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
-		Distribution: distrinution,
+		Distribution: distribution,
 	})
 	if err != nil {
 		return nil, err
@@ -255,10 +255,10 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 }
 
 // TODO : unit tests
-func (a *adapter) ListShardingRules(ctx context.Context, distrinution string) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
-		Distribution: distrinution,
+		Distribution: distribution,
 	})
 	if err != nil {
 		return nil, err
@@ -384,11 +384,13 @@ func (a *adapter) ListDistribution(ctx context.Context) ([]*distributions.Distri
 }
 
 // TODO : unit tests
-func (a *adapter) AddDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (a *adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.AddDistribution(ctx, &proto.AddDistributionRequest{
-		Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
+	_, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
+		Distributions: []*proto.Distribution{
+			distributions.DistributionToProto(ds),
+		},
 	})
 	return err
 }
@@ -405,7 +407,7 @@ func (a *adapter) DropDistribution(ctx context.Context, ds *distributions.Distri
 }
 
 // TODO : unit tests
-func (a *adapter) AlterDistributionAttach(ctx context.Context, table string, ds *distributions.Distribution) error {
+func (a *adapter) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelatiton) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 
 	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
@@ -417,10 +419,12 @@ func (a *adapter) AlterDistributionAttach(ctx context.Context, table string, ds 
 }
 
 // TODO : unit tests
-func (a *adapter) GetDistribution(ctx context.Context, table string) (*distributions.Distribution, error) {
+func (a *adapter) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.GetDistribution(ctx, &proto.GetDistributionRequest{Table: table})
+	resp, err := c.GetDistribution(ctx, &proto.GetDistributionRequest{
+		Id: id,
+	})
 	if err != nil {
 		return nil, err
 	}

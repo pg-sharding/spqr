@@ -10,7 +10,7 @@ type KeyRange struct {
 	UpperBound     []byte `json:"to"`
 	ShardID        string `json:"shard_id"`
 	KeyRangeID     string `json:"key_range_id"`
-	DistributionId string `json:"distrinution_id"`
+	DistributionId string `json:"distribution_id"`
 }
 type MoveKeyRangeStatus string
 
@@ -66,7 +66,7 @@ type ShardingRule struct {
 	ID             string              `json:"id"`
 	TableName      string              `json:"table"`
 	Entries        []ShardingRuleEntry `json:"columns"`
-	DistributionId string              `json:"distrinution_id"`
+	DistributionId string              `json:"distribution_id"`
 }
 
 type Shard struct {
@@ -87,7 +87,14 @@ var (
 	ColumnTypeUinteger = "uinteger"
 )
 
+type DistributedRelatiton struct {
+	Name        string   `json:"name"`
+	ColumnNames []string `json:"column_names"`
+}
+
 type Distribution struct {
 	ID       string   `json:"id"`
 	ColTypes []string `json:"col_types,omitempty"`
+
+	Relations map[string]*DistributedRelatiton `json:"relations"`
 }

@@ -23,7 +23,7 @@ message AddShardingRuleRequest {
 message AddShardingRuleReply {}
 
 message ListShardingRuleRequest {
-  string distrinution = 1;
+  string distribution = 1;
 }
 
 message ListShardingRuleReply {

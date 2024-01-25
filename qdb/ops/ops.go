@@ -27,7 +27,7 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		}
 	}
 	if !exists {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add sharding rule link to a non-existent distrinution")
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add sharding rule link to a non-existent distribution")
 	}
 
 	existsRules, err := qdb.ListShardingRules(ctx, rule.Distribution)
@@ -70,7 +70,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		}
 	}
 	if !exists {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a non-existent distrinution")
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a non-existent distribution")
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Distribution)

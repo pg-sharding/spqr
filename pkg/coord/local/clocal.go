@@ -64,11 +64,16 @@ func (lc *LocalCoordinator) AddDistribution(ctx context.Context, ds *distributio
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, table string, ds *distributions.Distribution) error {
+func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []distributions.DistributedRelatiton) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	return lc.qdb.AlterDistributionAttach(ctx, table, ds.Id)
+	dRels := []*qdb.DistributedRelatiton{}
+	for _, r := range rels {
+		dRels = append(dRels, distributions.DistributionToDB(r))
+	}
+
+	return lc.qdb.AlterDistributionAttach(ctx, id, dRels)
 }
 
 // TODO : unit tests
@@ -348,9 +353,9 @@ func (qr *LocalCoordinator) Shards() []string {
 }
 
 // TODO : unit tests
-func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distrinution string) ([]*kr.KeyRange, error) {
+func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx, distrinution); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, distribution); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
@@ -389,8 +394,8 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 }
 
 // TODO : unit tests
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, distrinution string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx, distrinution)
+func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}

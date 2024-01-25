@@ -106,7 +106,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		if len(srs)+len(krs) != 0 && !isCascade {
-			return fmt.Errorf("cannot drop distrinution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
@@ -156,24 +156,24 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.DistributionDefinition:
-		distrinution := distributions.NewDistribution(stmt.ID)
+		distribution := distributions.NewDistribution(stmt.ID)
 
 		distributions, err := mngr.ListDistribution(ctx)
 		if err != nil {
 			return err
 		}
 		for _, ds := range distributions {
-			if ds.Id == distrinution.Id {
-				spqrlog.Zero.Debug().Msg("Attempt to create existing distrinution")
-				return fmt.Errorf("attempt to create existing distrinution")
+			if ds.Id == distribution.Id {
+				spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+				return fmt.Errorf("attempt to create existing distribution")
 			}
 		}
 
-		err = mngr.CreateDistribution(ctx, distrinution)
+		err = mngr.CreateDistribution(ctx, distribution)
 		if err != nil {
 			return err
 		}
-		return cli.AddDistribution(ctx, distrinution)
+		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
 		entries := make([]shrule.ShardingRuleEntry, 0)
 		for _, el := range stmt.Entries {

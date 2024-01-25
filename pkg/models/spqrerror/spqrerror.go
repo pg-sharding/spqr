@@ -34,7 +34,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:      "Keyrange error",
 	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
 	SPQR_TRANSFER_ERROR:      "Transfer error",
-	SPQR_NO_DISTRIBUTION:     "No distrinution",
+	SPQR_NO_DISTRIBUTION:     "No distribution",
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
 }

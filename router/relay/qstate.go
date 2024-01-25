@@ -24,25 +24,25 @@ func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func deparseRouteHint(rst RelayStateMgr, params map[string]string, distrinution string) (routehint.RouteHint, error) {
+func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution string) (routehint.RouteHint, error) {
 	if _, ok := params[session.SPQR_SCATTER_QUERY]; ok {
 		return &routehint.ScatterRouteHint{}, nil
 	}
 	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), distrinution)
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), distribution)
 
 		if err != nil {
 			return nil, err
 		}
 
-		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), distrinution)
+		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), distribution)
 		if err != nil {
 			return nil, err
 		}
 
-		meta := qrouter.NewRoutingMetadataContext(krs, rls, distrinution, nil)
+		meta := qrouter.NewRoutingMetadataContext(krs, rls, distribution, nil)
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 		if err != nil {
 			return nil, err
@@ -83,7 +83,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			rst.Client().SetTsa(val)
 		}
 		if val, ok := mp[session.SPQR_DISTRIBUTION]; ok {
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse distrinution from comment")
+			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse distribution from comment")
 			rst.Client().SetDistribution(val)
 		}
 		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
@@ -172,7 +172,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 				&pgproto3.RowDescription{
 					Fields: []pgproto3.FieldDescription{
 						{
-							Name:         []byte("distrinution"),
+							Name:         []byte("distribution"),
 							DataTypeOID:  25,
 							DataTypeSize: -1,
 							TypeModifier: -1,

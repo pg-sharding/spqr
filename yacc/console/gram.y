@@ -60,7 +60,7 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
-	distrinution              *DistributionDefinition
+	distribution              *DistributionDefinition
 
 	attach                 *AttachTable
 	
@@ -69,7 +69,7 @@ func randomHex(n int) (string, error) {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
-	distrinution_selector     *DistributionSelector
+	distribution_selector     *DistributionSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -139,7 +139,7 @@ func randomHex(n int) (string, error) {
 
 %type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
-%type<distrinution_selector> distrinution_select_stmt
+%type<distribution_selector> distribution_select_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -155,7 +155,7 @@ func randomHex(n int) (string, error) {
 
 %type <attach> attach_stmt
 
-%type <ds> distrinution_define_stmt
+%type <ds> distribution_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
@@ -167,7 +167,7 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_column_clause
 %type<str> sharding_rule_hash_function_clause
 %type<str> hash_function_name
-%type<str> opt_distrinution
+%type<str> opt_distribution
 
 %type<strlist> col_types_list opt_col_types
 %type<str> col_types_elem
@@ -386,7 +386,7 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
-	| DROP distrinution_select_stmt opt_cascade
+	| DROP distribution_select_stmt opt_cascade
 	{
 		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
@@ -397,7 +397,7 @@ drop_stmt:
 
 add_stmt:
 	// TODO: drop
-	ADD distrinution_define_stmt
+	ADD distribution_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -435,7 +435,7 @@ stoptrace_stmt:
 
 
 attach_stmt:
-	ATTACH TABLE any_id TO distrinution_select_stmt
+	ATTACH TABLE any_id TO distribution_select_stmt
 	{
 		$$ = &AttachTable{
 			Table: $3,
@@ -445,7 +445,7 @@ attach_stmt:
 
 
 create_stmt:
-	CREATE distrinution_define_stmt
+	CREATE distribution_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -479,7 +479,7 @@ lock_stmt:
 	// or lock someting else
 
 
-distrinution_define_stmt:
+distribution_define_stmt:
 	DISTRIBUTION any_id opt_col_types
 	{
 		$$ = &DistributionDefinition{
@@ -515,12 +515,12 @@ col_types_list:
 	}
 
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distrinution
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distribution
 	{
 		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Distribution: $6}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distrinution
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distribution
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -584,7 +584,7 @@ sharding_rule_hash_function_clause:
 	}
 	| /*EMPTY*/ { $$ = ""; }
 
-opt_distrinution:
+opt_distribution:
     FOR DISTRIBUTION any_id{
         $$ = $3
     }
@@ -594,7 +594,7 @@ opt_distrinution:
 opt_to: TO any_val {} | TO any_uint {} | /*nothing*/{}
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id opt_distrinution
+	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id opt_distribution
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -603,7 +603,7 @@ key_range_define_stmt:
 			Distribution: $10,
 		}
 	}
-	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id opt_distrinution
+	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id opt_distribution
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -612,7 +612,7 @@ key_range_define_stmt:
 			Distribution: $10,
 		}
 	}
-	| KEY RANGE FROM any_val opt_to ROUTE TO any_id opt_distrinution
+	| KEY RANGE FROM any_val opt_to ROUTE TO any_id opt_distribution
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -625,7 +625,7 @@ key_range_define_stmt:
 			KeyRangeID: "kr"+str,
 		}
 	}
-	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id opt_distrinution
+	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id opt_distribution
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -674,7 +674,7 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
-distrinution_select_stmt:
+distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
 		$$ = &DistributionSelector{ID: $2}

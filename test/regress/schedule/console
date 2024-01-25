@@ -9,4 +9,4 @@ test: drop
 test: add
 test: hash
 test: teardown
-test: delete_distrinution
+test: delete_distribution

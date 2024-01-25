@@ -26,12 +26,12 @@ type ShardingRule struct {
 	Distribution string
 }
 
-func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry, distrinutionId string) *ShardingRule {
+func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry, distributionId string) *ShardingRule {
 	return &ShardingRule{
 		Id:           id,
 		TableName:    tableName,
 		entries:      entries,
-		Distribution: distrinutionId,
+		Distribution: distributionId,
 	}
 }
 
@@ -62,7 +62,7 @@ func (s *ShardingRule) String() string {
 		return ret
 	}()
 
-	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v in %v distrinution", s.Id, tableName, entries, s.Distribution)
+	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v in %v distribution", s.Id, tableName, entries, s.Distribution)
 }
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {

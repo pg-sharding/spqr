@@ -63,7 +63,7 @@ type yySymType struct {
 	trace     *TraceStmt
 	stoptrace *StopTraceStmt
 
-	distrinution *DistributionDefinition
+	distribution *DistributionDefinition
 
 	attach *AttachTable
 
@@ -72,7 +72,7 @@ type yySymType struct {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
-	distrinution_selector  *DistributionSelector
+	distribution_selector  *DistributionSelector
 
 	colref ColumnRef
 	where  WhereClauseNode
@@ -1015,7 +1015,7 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:390
 		{
-			yyVAL.drop = &Drop{Element: yyDollar[2].distrinution_selector, CascadeDelete: yyDollar[3].bool}
+			yyVAL.drop = &Drop{Element: yyDollar[2].distribution_selector, CascadeDelete: yyDollar[3].bool}
 		}
 	case 46:
 		yyDollar = yyS[yypt-4 : yypt+1]
@@ -1073,7 +1073,7 @@ yydefault:
 		{
 			yyVAL.attach = &AttachTable{
 				Table:        yyDollar[3].str,
-				Distribution: yyDollar[5].distrinution_selector,
+				Distribution: yyDollar[5].distribution_selector,
 			}
 		}
 	case 55:
@@ -1375,7 +1375,7 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:679
 		{
-			yyVAL.distrinution_selector = &DistributionSelector{ID: yyDollar[2].str}
+			yyVAL.distribution_selector = &DistributionSelector{ID: yyDollar[2].str}
 		}
 	case 98:
 		yyDollar = yyS[yypt-6 : yypt+1]

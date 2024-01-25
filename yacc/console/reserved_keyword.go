@@ -32,7 +32,7 @@ var reservedWords = map[string]int{
 	"address":      ADDRESS,
 	"host":         HOST,
 	"route":        ROUTE,
-	"distrinution": DISTRIBUTION,
+	"distribution": DISTRIBUTION,
 	"table":        TABLE,
 	"hash":         HASH,
 	"function":     FUNCTION,
