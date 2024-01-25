@@ -153,21 +153,21 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"deprecated"
     },
     {
       "Key range ID":"krid2",
       "Dataspace ID":"default",
       "Lower bound":"11",
       "Shard ID":"sh2",
-      "Upper bound":"31"
+      "Upper bound":"deprecated"
     }]
     """
 
   Scenario: Add key range with the same id fails
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1
+    CREATE KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -177,7 +177,7 @@ Feature: Coordinator test
   Scenario: Add sharding rule with the same id fails
     When I run SQL on host "coordinator"
     """
-    ADD SHARDING RULE r1 COLUMN idx
+    CREATE SHARDING RULE r1 COLUMN idx
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -227,7 +227,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1",
-      "Upper bound":"5"
+      "Upper bound":"deprecated"
     }]
     """
     And SQL result should match json
@@ -237,7 +237,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"5",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"deprecated"
     }]
     """
 
@@ -253,7 +253,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1",
-      "Upper bound":"5"
+      "Upper bound":"deprecated"
     }]
     """
     And SQL result should match json
@@ -263,7 +263,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"5",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"deprecated"
     }]
     """
 
@@ -280,7 +280,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"deprecated"
     }]
     """
 
@@ -296,7 +296,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1",
-      "Upper bound":"11"
+      "Upper bound":"deprecated"
     }]
     """
 
@@ -350,14 +350,14 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"11",
       "Shard ID":"sh2",
-      "Upper bound":"40"
+      "Upper bound":"deprecated"
     }]
     """
 
   Scenario: Unite key ranges routing different shards fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1;
     UNITE KEY RANGE krid2 WITH krid3
     """
     Then SQL error on host "coordinator" should match regexp
@@ -431,7 +431,7 @@ Feature: Coordinator test
     #
     Given I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1
     """
 
     Given host "router" is started
@@ -449,7 +449,7 @@ Feature: Coordinator test
     Given host "qdb01" is stopped
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE to sh1;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE to sh1;
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -464,7 +464,7 @@ Feature: Coordinator test
     Given host "coordinator2" is stopped
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh1
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1
     """
     Then command return code should be "0"
 
@@ -485,7 +485,7 @@ Feature: Coordinator test
       "Dataspace ID":"default",
       "Lower bound":"31",
       "Shard ID":"sh1",
-      "Upper bound":"40"
+      "Upper bound":"deprecated"
     }]
     """
 
@@ -495,13 +495,13 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
+    CREATE KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
     """
     Then command return code should be "0"
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -510,7 +510,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -519,7 +519,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -528,7 +528,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -537,7 +537,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -546,7 +546,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -555,7 +555,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -564,7 +564,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    ADD KEY RANGE krid4 FROM 100 TO 105 ROUTE TO sh1
+    CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh1
     """
     Then SQL error on host "coordinator" should match regexp
     """
