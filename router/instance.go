@@ -114,7 +114,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
 
 	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(lc, rr, stchan, writ)
+	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
 		return nil, err
