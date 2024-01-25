@@ -334,7 +334,7 @@ Feature: Coordinator test
   Scenario: Unite in reverse order works
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 TO 40 ROUTE TO sh2;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2;
     UNITE KEY RANGE krid3 WITH krid2
     """
     Then command return code should be "0"
