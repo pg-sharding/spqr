@@ -6,9 +6,10 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -113,7 +114,7 @@ type PsqlClient struct {
 	mu     sync.RWMutex
 	server server.Server
 
-	dataspaceChanged bool
+	distrinutionChanged bool
 }
 
 // BindParams implements RouterClient.
@@ -126,23 +127,23 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// Dataspace implements RouterClient.
-func (cl *PsqlClient) Dataspace() string {
-	if val, ok := cl.internalParamSet[session.SPQR_DATASPACE]; ok {
+// Distribution implements RouterClient.
+func (cl *PsqlClient) Distribution() string {
+	if val, ok := cl.internalParamSet[session.SPQR_DISTRIBUTION]; ok {
 		return val
 	}
 	return DefaultDS
 }
 
-// SetDataspace implements RouterClient.
-func (cl *PsqlClient) SetDataspace(d string) {
-	cl.internalParamSet[session.SPQR_DATASPACE] = d
-	cl.dataspaceChanged = true
+// SetDistribution implements RouterClient.
+func (cl *PsqlClient) SetDistribution(d string) {
+	cl.internalParamSet[session.SPQR_DISTRIBUTION] = d
+	cl.distrinutionChanged = true
 }
 
-// DataspaceIsDefault implements RouterClient.
-func (cl *PsqlClient) DataspaceIsDefault() bool {
-	return !cl.dataspaceChanged
+// DistributionIsDefault implements RouterClient.
+func (cl *PsqlClient) DistributionIsDefault() bool {
+	return !cl.distrinutionChanged
 }
 
 // SetShardingKey implements RouterClient.
@@ -194,7 +195,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
 		internalParamSet: map[string]string{
-			session.SPQR_DATASPACE:               "default",
+			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
 		conn:       pgconn,
@@ -721,7 +722,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("ds", cl.Dataspace()).
+		Str("ds", cl.Distribution()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -1011,11 +1012,11 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) Dataspace() string {
+func (f FakeClient) Distribution() string {
 	return DefaultDS
 }
 
-func (f FakeClient) DataspaceIsDefault() bool {
+func (f FakeClient) DistributionIsDefault() bool {
 	return true
 }
 
@@ -1076,11 +1077,11 @@ func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c NoopClient) Dataspace() string {
+func (c NoopClient) Distribution() string {
 	return c.dsname
 }
 
-func (c NoopClient) DataspaceIsDefault() bool {
+func (c NoopClient) DistributionIsDefault() bool {
 	return true
 }
 

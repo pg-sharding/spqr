@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.32.0
 // 	protoc        v3.21.12
-// source: protos/dataspace.proto
+// source: protos/distrinution.proto
 
 package proto
 
@@ -20,7 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Dataspace struct {
+type Distribution struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -28,23 +28,23 @@ type Dataspace struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 }
 
-func (x *Dataspace) Reset() {
-	*x = Dataspace{}
+func (x *Distribution) Reset() {
+	*x = Distribution{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[0]
+		mi := &file_protos_distrinution_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *Dataspace) String() string {
+func (x *Distribution) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Dataspace) ProtoMessage() {}
+func (*Distribution) ProtoMessage() {}
 
-func (x *Dataspace) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[0]
+func (x *Distribution) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,43 +55,43 @@ func (x *Dataspace) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Dataspace.ProtoReflect.Descriptor instead.
-func (*Dataspace) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use Distribution.ProtoReflect.Descriptor instead.
+func (*Distribution) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Dataspace) GetId() string {
+func (x *Distribution) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-type AddDataspaceRequest struct {
+type AddDistributionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dataspaces []*Dataspace `protobuf:"bytes,1,rep,name=dataspaces,proto3" json:"dataspaces,omitempty"`
+	Distributions []*Distribution `protobuf:"bytes,1,rep,name=distributions,proto3" json:"distributions,omitempty"`
 }
 
-func (x *AddDataspaceRequest) Reset() {
-	*x = AddDataspaceRequest{}
+func (x *AddDistributionRequest) Reset() {
+	*x = AddDistributionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[1]
+		mi := &file_protos_distrinution_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *AddDataspaceRequest) String() string {
+func (x *AddDistributionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AddDataspaceRequest) ProtoMessage() {}
+func (*AddDistributionRequest) ProtoMessage() {}
 
-func (x *AddDataspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[1]
+func (x *AddDistributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,41 +102,41 @@ func (x *AddDataspaceRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AddDataspaceRequest.ProtoReflect.Descriptor instead.
-func (*AddDataspaceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use AddDistributionRequest.ProtoReflect.Descriptor instead.
+func (*AddDistributionRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AddDataspaceRequest) GetDataspaces() []*Dataspace {
+func (x *AddDistributionRequest) GetDistributions() []*Distribution {
 	if x != nil {
-		return x.Dataspaces
+		return x.Distributions
 	}
 	return nil
 }
 
-type AddDataspaceReply struct {
+type AddDistributionReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *AddDataspaceReply) Reset() {
-	*x = AddDataspaceReply{}
+func (x *AddDistributionReply) Reset() {
+	*x = AddDistributionReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[2]
+		mi := &file_protos_distrinution_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *AddDataspaceReply) String() string {
+func (x *AddDistributionReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AddDataspaceReply) ProtoMessage() {}
+func (*AddDistributionReply) ProtoMessage() {}
 
-func (x *AddDataspaceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[2]
+func (x *AddDistributionReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -147,34 +147,34 @@ func (x *AddDataspaceReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AddDataspaceReply.ProtoReflect.Descriptor instead.
-func (*AddDataspaceReply) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use AddDistributionReply.ProtoReflect.Descriptor instead.
+func (*AddDistributionReply) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{2}
 }
 
-type ListDataspaceRequest struct {
+type ListDistributionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *ListDataspaceRequest) Reset() {
-	*x = ListDataspaceRequest{}
+func (x *ListDistributionRequest) Reset() {
+	*x = ListDistributionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[3]
+		mi := &file_protos_distrinution_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *ListDataspaceRequest) String() string {
+func (x *ListDistributionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListDataspaceRequest) ProtoMessage() {}
+func (*ListDistributionRequest) ProtoMessage() {}
 
-func (x *ListDataspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[3]
+func (x *ListDistributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,36 +185,36 @@ func (x *ListDataspaceRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListDataspaceRequest.ProtoReflect.Descriptor instead.
-func (*ListDataspaceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{3}
+// Deprecated: Use ListDistributionRequest.ProtoReflect.Descriptor instead.
+func (*ListDistributionRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{3}
 }
 
-type ListDataspaceReply struct {
+type ListDistributionReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dataspaces []*Dataspace `protobuf:"bytes,1,rep,name=dataspaces,proto3" json:"dataspaces,omitempty"`
+	Distributions []*Distribution `protobuf:"bytes,1,rep,name=distributions,proto3" json:"distributions,omitempty"`
 }
 
-func (x *ListDataspaceReply) Reset() {
-	*x = ListDataspaceReply{}
+func (x *ListDistributionReply) Reset() {
+	*x = ListDistributionReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[4]
+		mi := &file_protos_distrinution_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *ListDataspaceReply) String() string {
+func (x *ListDistributionReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ListDataspaceReply) ProtoMessage() {}
+func (*ListDistributionReply) ProtoMessage() {}
 
-func (x *ListDataspaceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[4]
+func (x *ListDistributionReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -225,19 +225,19 @@ func (x *ListDataspaceReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ListDataspaceReply.ProtoReflect.Descriptor instead.
-func (*ListDataspaceReply) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use ListDistributionReply.ProtoReflect.Descriptor instead.
+func (*ListDistributionReply) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ListDataspaceReply) GetDataspaces() []*Dataspace {
+func (x *ListDistributionReply) GetDistributions() []*Distribution {
 	if x != nil {
-		return x.Dataspaces
+		return x.Distributions
 	}
 	return nil
 }
 
-type DropDataspaceRequest struct {
+type DropDistributionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -245,23 +245,23 @@ type DropDataspaceRequest struct {
 	Ids []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
 }
 
-func (x *DropDataspaceRequest) Reset() {
-	*x = DropDataspaceRequest{}
+func (x *DropDistributionRequest) Reset() {
+	*x = DropDistributionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[5]
+		mi := &file_protos_distrinution_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *DropDataspaceRequest) String() string {
+func (x *DropDistributionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DropDataspaceRequest) ProtoMessage() {}
+func (*DropDistributionRequest) ProtoMessage() {}
 
-func (x *DropDataspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[5]
+func (x *DropDistributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -272,41 +272,41 @@ func (x *DropDataspaceRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DropDataspaceRequest.ProtoReflect.Descriptor instead.
-func (*DropDataspaceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use DropDistributionRequest.ProtoReflect.Descriptor instead.
+func (*DropDistributionRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *DropDataspaceRequest) GetIds() []string {
+func (x *DropDistributionRequest) GetIds() []string {
 	if x != nil {
 		return x.Ids
 	}
 	return nil
 }
 
-type DropDataspaceReply struct {
+type DropDistributionReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *DropDataspaceReply) Reset() {
-	*x = DropDataspaceReply{}
+func (x *DropDistributionReply) Reset() {
+	*x = DropDistributionReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[6]
+		mi := &file_protos_distrinution_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *DropDataspaceReply) String() string {
+func (x *DropDistributionReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DropDataspaceReply) ProtoMessage() {}
+func (*DropDistributionReply) ProtoMessage() {}
 
-func (x *DropDataspaceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[6]
+func (x *DropDistributionReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,37 +317,37 @@ func (x *DropDataspaceReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DropDataspaceReply.ProtoReflect.Descriptor instead.
-func (*DropDataspaceReply) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use DropDistributionReply.ProtoReflect.Descriptor instead.
+func (*DropDistributionReply) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{6}
 }
 
-type AttachToDataspaceRequest struct {
+type AlterDistributionAttachRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	Table     string     `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
-	Dataspace *Dataspace `protobuf:"bytes,2,opt,name=dataspace,proto3" json:"dataspace,omitempty"`
+	Distribution *Distribution `protobuf:"bytes,2,opt,name=distrinution,proto3" json:"distrinution,omitempty"`
 }
 
-func (x *AttachToDataspaceRequest) Reset() {
-	*x = AttachToDataspaceRequest{}
+func (x *AlterDistributionAttachRequest) Reset() {
+	*x = AlterDistributionAttachRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[7]
+		mi := &file_protos_distrinution_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *AttachToDataspaceRequest) String() string {
+func (x *AlterDistributionAttachRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AttachToDataspaceRequest) ProtoMessage() {}
+func (*AlterDistributionAttachRequest) ProtoMessage() {}
 
-func (x *AttachToDataspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[7]
+func (x *AlterDistributionAttachRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -358,48 +358,48 @@ func (x *AttachToDataspaceRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AttachToDataspaceRequest.ProtoReflect.Descriptor instead.
-func (*AttachToDataspaceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{7}
+// Deprecated: Use AlterDistributionAttachRequest.ProtoReflect.Descriptor instead.
+func (*AlterDistributionAttachRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *AttachToDataspaceRequest) GetTable() string {
+func (x *AlterDistributionAttachRequest) GetTable() string {
 	if x != nil {
 		return x.Table
 	}
 	return ""
 }
 
-func (x *AttachToDataspaceRequest) GetDataspace() *Dataspace {
+func (x *AlterDistributionAttachRequest) GetDistribution() *Distribution {
 	if x != nil {
-		return x.Dataspace
+		return x.Distribution
 	}
 	return nil
 }
 
-type AttachToDataspaceReply struct {
+type AlterDistributionAttachReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *AttachToDataspaceReply) Reset() {
-	*x = AttachToDataspaceReply{}
+func (x *AlterDistributionAttachReply) Reset() {
+	*x = AlterDistributionAttachReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[8]
+		mi := &file_protos_distrinution_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *AttachToDataspaceReply) String() string {
+func (x *AlterDistributionAttachReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AttachToDataspaceReply) ProtoMessage() {}
+func (*AlterDistributionAttachReply) ProtoMessage() {}
 
-func (x *AttachToDataspaceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[8]
+func (x *AlterDistributionAttachReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -410,12 +410,12 @@ func (x *AttachToDataspaceReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AttachToDataspaceReply.ProtoReflect.Descriptor instead.
-func (*AttachToDataspaceReply) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{8}
+// Deprecated: Use AlterDistributionAttachReply.ProtoReflect.Descriptor instead.
+func (*AlterDistributionAttachReply) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{8}
 }
 
-type GetDataspaceRequest struct {
+type GetDistributionRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -423,23 +423,23 @@ type GetDataspaceRequest struct {
 	Table string `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
 }
 
-func (x *GetDataspaceRequest) Reset() {
-	*x = GetDataspaceRequest{}
+func (x *GetDistributionRequest) Reset() {
+	*x = GetDistributionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[9]
+		mi := &file_protos_distrinution_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *GetDataspaceRequest) String() string {
+func (x *GetDistributionRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetDataspaceRequest) ProtoMessage() {}
+func (*GetDistributionRequest) ProtoMessage() {}
 
-func (x *GetDataspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[9]
+func (x *GetDistributionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,43 +450,43 @@ func (x *GetDataspaceRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetDataspaceRequest.ProtoReflect.Descriptor instead.
-func (*GetDataspaceRequest) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{9}
+// Deprecated: Use GetDistributionRequest.ProtoReflect.Descriptor instead.
+func (*GetDistributionRequest) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *GetDataspaceRequest) GetTable() string {
+func (x *GetDistributionRequest) GetTable() string {
 	if x != nil {
 		return x.Table
 	}
 	return ""
 }
 
-type GetDataspaceReply struct {
+type GetDistributionReply struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dataspace *Dataspace `protobuf:"bytes,1,opt,name=dataspace,proto3" json:"dataspace,omitempty"`
+	Distribution *Distribution `protobuf:"bytes,1,opt,name=distrinution,proto3" json:"distrinution,omitempty"`
 }
 
-func (x *GetDataspaceReply) Reset() {
-	*x = GetDataspaceReply{}
+func (x *GetDistributionReply) Reset() {
+	*x = GetDistributionReply{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_protos_dataspace_proto_msgTypes[10]
+		mi := &file_protos_distrinution_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *GetDataspaceReply) String() string {
+func (x *GetDistributionReply) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetDataspaceReply) ProtoMessage() {}
+func (*GetDistributionReply) ProtoMessage() {}
 
-func (x *GetDataspaceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_protos_dataspace_proto_msgTypes[10]
+func (x *GetDistributionReply) ProtoReflect() protoreflect.Message {
+	mi := &file_protos_distrinution_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -497,21 +497,21 @@ func (x *GetDataspaceReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetDataspaceReply.ProtoReflect.Descriptor instead.
-func (*GetDataspaceReply) Descriptor() ([]byte, []int) {
-	return file_protos_dataspace_proto_rawDescGZIP(), []int{10}
+// Deprecated: Use GetDistributionReply.ProtoReflect.Descriptor instead.
+func (*GetDistributionReply) Descriptor() ([]byte, []int) {
+	return file_protos_distrinution_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *GetDataspaceReply) GetDataspace() *Dataspace {
+func (x *GetDistributionReply) GetDistribution() *Distribution {
 	if x != nil {
-		return x.Dataspace
+		return x.Distribution
 	}
 	return nil
 }
 
-var File_protos_dataspace_proto protoreflect.FileDescriptor
+var File_protos_distrinution_proto protoreflect.FileDescriptor
 
-var file_protos_dataspace_proto_rawDesc = []byte{
+var file_protos_distrinution_proto_rawDesc = []byte{
 	0x0a, 0x16, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2f, 0x64, 0x61, 0x74, 0x61, 0x73, 0x70, 0x61,
 	0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x04, 0x73, 0x70, 0x71, 0x72, 0x22, 0x1b,
 	0x0a, 0x09, 0x44, 0x61, 0x74, 0x61, 0x73, 0x70, 0x61, 0x63, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69,
@@ -576,46 +576,46 @@ var file_protos_dataspace_proto_rawDesc = []byte{
 }
 
 var (
-	file_protos_dataspace_proto_rawDescOnce sync.Once
-	file_protos_dataspace_proto_rawDescData = file_protos_dataspace_proto_rawDesc
+	file_protos_distrinution_proto_rawDescOnce sync.Once
+	file_protos_distrinution_proto_rawDescData = file_protos_distrinution_proto_rawDesc
 )
 
-func file_protos_dataspace_proto_rawDescGZIP() []byte {
-	file_protos_dataspace_proto_rawDescOnce.Do(func() {
-		file_protos_dataspace_proto_rawDescData = protoimpl.X.CompressGZIP(file_protos_dataspace_proto_rawDescData)
+func file_protos_distrinution_proto_rawDescGZIP() []byte {
+	file_protos_distrinution_proto_rawDescOnce.Do(func() {
+		file_protos_distrinution_proto_rawDescData = protoimpl.X.CompressGZIP(file_protos_distrinution_proto_rawDescData)
 	})
-	return file_protos_dataspace_proto_rawDescData
+	return file_protos_distrinution_proto_rawDescData
 }
 
-var file_protos_dataspace_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
-var file_protos_dataspace_proto_goTypes = []interface{}{
-	(*Dataspace)(nil),                // 0: spqr.Dataspace
-	(*AddDataspaceRequest)(nil),      // 1: spqr.AddDataspaceRequest
-	(*AddDataspaceReply)(nil),        // 2: spqr.AddDataspaceReply
-	(*ListDataspaceRequest)(nil),     // 3: spqr.ListDataspaceRequest
-	(*ListDataspaceReply)(nil),       // 4: spqr.ListDataspaceReply
-	(*DropDataspaceRequest)(nil),     // 5: spqr.DropDataspaceRequest
-	(*DropDataspaceReply)(nil),       // 6: spqr.DropDataspaceReply
-	(*AttachToDataspaceRequest)(nil), // 7: spqr.AttachToDataspaceRequest
-	(*AttachToDataspaceReply)(nil),   // 8: spqr.AttachToDataspaceReply
-	(*GetDataspaceRequest)(nil),      // 9: spqr.GetDataspaceRequest
-	(*GetDataspaceReply)(nil),        // 10: spqr.GetDataspaceReply
+var file_protos_distrinution_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_protos_distrinution_proto_goTypes = []interface{}{
+	(*Distribution)(nil),                // 0: spqr.Distribution
+	(*AddDistributionRequest)(nil),      // 1: spqr.AddDistributionRequest
+	(*AddDistributionReply)(nil),        // 2: spqr.AddDistributionReply
+	(*ListDistributionRequest)(nil),     // 3: spqr.ListDistributionRequest
+	(*ListDistributionReply)(nil),       // 4: spqr.ListDistributionReply
+	(*DropDistributionRequest)(nil),     // 5: spqr.DropDistributionRequest
+	(*DropDistributionReply)(nil),       // 6: spqr.DropDistributionReply
+	(*AlterDistributionAttachRequest)(nil), // 7: spqr.AlterDistributionAttachRequest
+	(*AlterDistributionAttachReply)(nil),   // 8: spqr.AlterDistributionAttachReply
+	(*GetDistributionRequest)(nil),      // 9: spqr.GetDistributionRequest
+	(*GetDistributionReply)(nil),        // 10: spqr.GetDistributionReply
 }
-var file_protos_dataspace_proto_depIdxs = []int32{
-	0,  // 0: spqr.AddDataspaceRequest.dataspaces:type_name -> spqr.Dataspace
-	0,  // 1: spqr.ListDataspaceReply.dataspaces:type_name -> spqr.Dataspace
-	0,  // 2: spqr.AttachToDataspaceRequest.dataspace:type_name -> spqr.Dataspace
-	0,  // 3: spqr.GetDataspaceReply.dataspace:type_name -> spqr.Dataspace
-	1,  // 4: spqr.DataspaceService.AddDataspace:input_type -> spqr.AddDataspaceRequest
-	5,  // 5: spqr.DataspaceService.DropDataspace:input_type -> spqr.DropDataspaceRequest
-	3,  // 6: spqr.DataspaceService.ListDataspace:input_type -> spqr.ListDataspaceRequest
-	7,  // 7: spqr.DataspaceService.AttachToDataspace:input_type -> spqr.AttachToDataspaceRequest
-	9,  // 8: spqr.DataspaceService.GetDataspace:input_type -> spqr.GetDataspaceRequest
-	2,  // 9: spqr.DataspaceService.AddDataspace:output_type -> spqr.AddDataspaceReply
-	6,  // 10: spqr.DataspaceService.DropDataspace:output_type -> spqr.DropDataspaceReply
-	4,  // 11: spqr.DataspaceService.ListDataspace:output_type -> spqr.ListDataspaceReply
-	8,  // 12: spqr.DataspaceService.AttachToDataspace:output_type -> spqr.AttachToDataspaceReply
-	10, // 13: spqr.DataspaceService.GetDataspace:output_type -> spqr.GetDataspaceReply
+var file_protos_distrinution_proto_depIdxs = []int32{
+	0,  // 0: spqr.AddDistributionRequest.distributions:type_name -> spqr.Distribution
+	0,  // 1: spqr.ListDistributionReply.distributions:type_name -> spqr.Distribution
+	0,  // 2: spqr.AlterDistributionAttachRequest.distrinution:type_name -> spqr.Distribution
+	0,  // 3: spqr.GetDistributionReply.distrinution:type_name -> spqr.Distribution
+	1,  // 4: spqr.DistributionService.AddDistribution:input_type -> spqr.AddDistributionRequest
+	5,  // 5: spqr.DistributionService.DropDistribution:input_type -> spqr.DropDistributionRequest
+	3,  // 6: spqr.DistributionService.ListDistribution:input_type -> spqr.ListDistributionRequest
+	7,  // 7: spqr.DistributionService.AlterDistributionAttach:input_type -> spqr.AlterDistributionAttachRequest
+	9,  // 8: spqr.DistributionService.GetDistribution:input_type -> spqr.GetDistributionRequest
+	2,  // 9: spqr.DistributionService.AddDistribution:output_type -> spqr.AddDistributionReply
+	6,  // 10: spqr.DistributionService.DropDistribution:output_type -> spqr.DropDistributionReply
+	4,  // 11: spqr.DistributionService.ListDistribution:output_type -> spqr.ListDistributionReply
+	8,  // 12: spqr.DistributionService.AlterDistributionAttach:output_type -> spqr.AlterDistributionAttachReply
+	10, // 13: spqr.DistributionService.GetDistribution:output_type -> spqr.GetDistributionReply
 	9,  // [9:14] is the sub-list for method output_type
 	4,  // [4:9] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
@@ -623,14 +623,14 @@ var file_protos_dataspace_proto_depIdxs = []int32{
 	0,  // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_protos_dataspace_proto_init() }
-func file_protos_dataspace_proto_init() {
-	if File_protos_dataspace_proto != nil {
+func init() { file_protos_distrinution_proto_init() }
+func file_protos_distrinution_proto_init() {
+	if File_protos_distrinution_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_protos_dataspace_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Dataspace); i {
+		file_protos_distrinution_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Distribution); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -641,8 +641,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddDataspaceRequest); i {
+		file_protos_distrinution_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddDistributionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -653,8 +653,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddDataspaceReply); i {
+		file_protos_distrinution_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AddDistributionReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -665,8 +665,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListDataspaceRequest); i {
+		file_protos_distrinution_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListDistributionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -677,8 +677,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListDataspaceReply); i {
+		file_protos_distrinution_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ListDistributionReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -689,8 +689,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DropDataspaceRequest); i {
+		file_protos_distrinution_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DropDistributionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -701,8 +701,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DropDataspaceReply); i {
+		file_protos_distrinution_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DropDistributionReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -713,8 +713,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttachToDataspaceRequest); i {
+		file_protos_distrinution_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AlterDistributionAttachRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -725,8 +725,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttachToDataspaceReply); i {
+		file_protos_distrinution_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*AlterDistributionAttachReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -737,8 +737,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetDataspaceRequest); i {
+		file_protos_distrinution_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetDistributionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -749,8 +749,8 @@ func file_protos_dataspace_proto_init() {
 				return nil
 			}
 		}
-		file_protos_dataspace_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetDataspaceReply); i {
+		file_protos_distrinution_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetDistributionReply); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -766,18 +766,18 @@ func file_protos_dataspace_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_protos_dataspace_proto_rawDesc,
+			RawDescriptor: file_protos_distrinution_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_protos_dataspace_proto_goTypes,
-		DependencyIndexes: file_protos_dataspace_proto_depIdxs,
-		MessageInfos:      file_protos_dataspace_proto_msgTypes,
+		GoTypes:           file_protos_distrinution_proto_goTypes,
+		DependencyIndexes: file_protos_distrinution_proto_depIdxs,
+		MessageInfos:      file_protos_distrinution_proto_msgTypes,
 	}.Build()
-	File_protos_dataspace_proto = out.File
-	file_protos_dataspace_proto_rawDesc = nil
-	file_protos_dataspace_proto_goTypes = nil
-	file_protos_dataspace_proto_depIdxs = nil
+	File_protos_distrinution_proto = out.File
+	file_protos_distrinution_proto_rawDesc = nil
+	file_protos_distrinution_proto_goTypes = nil
+	file_protos_distrinution_proto_depIdxs = nil
 }

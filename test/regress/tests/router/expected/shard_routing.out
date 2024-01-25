@@ -9,13 +9,13 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 CREATE SHARDING RULE r1 COLUMNS w_id;
                                       add sharding rule                                      
 ---------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in default dataspace
+ created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in default distrinution
 (1 row)
 
 CREATE SHARDING RULE r2 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [id, hash: x->x] in default dataspace
+ created sharding rule r2 for table (*) with columns [id, hash: x->x] in default distrinution
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
@@ -278,8 +278,8 @@ ERROR:  table "xxerr" does not exist
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP DATASPACE ALL CASCADE;
- drop dataspace 
+DROP DISTRIBUTION ALL CASCADE;
+ drop distrinution 
 ----------------
 (0 rows)
 

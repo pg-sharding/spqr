@@ -16,7 +16,7 @@ const (
 	SPQR_KEYRANGE_ERROR      = "SPQRK"
 	SPQR_SHARDING_RULE_ERROR = "SPQRH"
 	SPQR_TRANSFER_ERROR      = "SPQRT"
-	SPQR_NO_DATASPACE        = "SPQRN"
+	SPQR_NO_DISTRIBUTION     = "SPQRN"
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
 )
@@ -34,7 +34,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:      "Keyrange error",
 	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
 	SPQR_TRANSFER_ERROR:      "Transfer error",
-	SPQR_NO_DATASPACE:        "No dataspace",
+	SPQR_NO_DISTRIBUTION:     "No distrinution",
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
 }

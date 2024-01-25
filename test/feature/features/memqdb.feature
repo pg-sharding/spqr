@@ -36,21 +36,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -109,21 +109,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -147,21 +147,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -193,13 +193,13 @@ Feature: MemQDB save state into a file
     [
       {
         "Key range ID": "krid1",
-        "Dataspace ID":"default",
+        "Distribution ID":"default",
         "Lower bound": "1",
         "Shard ID": "sh1"
       },
       {
         "Key range ID": "krid2",
-        "Dataspace ID":"default",
+        "Distribution ID":"default",
         "Lower bound": "11",
         "Shard ID": "sh1"
       }
@@ -232,14 +232,14 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"idx",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -270,14 +270,14 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"idx",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Dataspace ID":"default",
+          "Distribution ID":"default",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"

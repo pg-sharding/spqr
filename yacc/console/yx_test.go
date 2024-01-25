@@ -216,10 +216,10 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:    "sh1",
-					KeyRangeID: "krid1",
-					Dataspace:  "default",
-					LowerBound: []byte("1"),
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "default",
+					LowerBound:   []byte("1"),
 				},
 			},
 			err: nil,
@@ -229,10 +229,10 @@ func TestKeyRange(t *testing.T) {
 			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
-					ShardID:    "sh2",
-					KeyRangeID: "krid2",
-					Dataspace:  "default",
-					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
+					ShardID:      "sh2",
+					KeyRangeID:   "krid2",
+					Distribution: "default",
+					LowerBound:   []byte("88888888-8888-8888-8888-888888888889"),
 				},
 			},
 			err: nil,
@@ -262,9 +262,9 @@ func TestShardingRule(t *testing.T) {
 			query: "CREATE SHARDING RULE rule1 COLUMNS id;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardingRuleDefinition{
-					ID:        "rule1",
-					TableName: "",
-					Dataspace: "default",
+					ID:           "rule1",
+					TableName:    "",
+					Distribution: "default",
 					Entries: []spqrparser.ShardingRuleEntry{
 						{
 							Column: "id",
@@ -326,10 +326,10 @@ func TestAttachTable(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ATTACH TABLE t TO DATASPACE ds1;",
+			query: "ATTACH TABLE t TO DISTRIBUTION ds1;",
 			exp: &spqrparser.AttachTable{
-				Table:     "t",
-				Dataspace: &spqrparser.DataspaceSelector{ID: "ds1"},
+				Table:        "t",
+				Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 			},
 			err: nil,
 		},
@@ -343,7 +343,7 @@ func TestAttachTable(t *testing.T) {
 	}
 }
 
-func TestDataspace(t *testing.T) {
+func TestDistribution(t *testing.T) {
 
 	assert := assert.New(t)
 
@@ -355,9 +355,9 @@ func TestDataspace(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES integer;",
+			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES integer;",
 			exp: &spqrparser.Create{
-				Element: &spqrparser.DataspaceDefinition{
+				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
 					ColTypes: []string{
 						"integer",
@@ -367,9 +367,9 @@ func TestDataspace(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar;",
+			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar;",
 			exp: &spqrparser.Create{
-				Element: &spqrparser.DataspaceDefinition{
+				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
 					ColTypes: []string{
 						"varchar",

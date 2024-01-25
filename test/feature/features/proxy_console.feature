@@ -47,7 +47,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1"
         }]
@@ -60,7 +60,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"r1",
             "Table Name":"*"
@@ -78,7 +78,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1"
         }]
@@ -91,7 +91,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"r1",
             "Table Name":"*"
@@ -155,13 +155,13 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1"
         },
         {
             "Key range ID":"new_krid",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"5",
             "Shard ID":"sh1"
         }]
@@ -181,7 +181,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"krid1",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh1"
         }]
@@ -242,7 +242,7 @@ Feature: Proxy console
         """
         [{
             "Key range ID":"old_krid",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Lower bound":"0",
             "Shard ID":"sh2"
         }]
@@ -256,7 +256,7 @@ Feature: Proxy console
         """
         [{
             "Columns":"id",
-            "Dataspace ID":"default",
+            "Distribution ID":"default",
             "Hash Function":"x->x",
             "Sharding Rule ID":"old_rule",
             "Table Name":"*"

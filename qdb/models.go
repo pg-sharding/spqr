@@ -6,11 +6,11 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound  []byte `json:"from"`
-	UpperBound  []byte `json:"to"`
-	ShardID     string `json:"shard_id"`
-	KeyRangeID  string `json:"key_range_id"`
-	DataspaceId string `json:"dataspace_id"`
+	LowerBound     []byte `json:"from"`
+	UpperBound     []byte `json:"to"`
+	ShardID        string `json:"shard_id"`
+	KeyRangeID     string `json:"key_range_id"`
+	DistributionId string `json:"distrinution_id"`
 }
 type MoveKeyRangeStatus string
 
@@ -63,10 +63,10 @@ type ShardingRuleEntry struct {
 }
 
 type ShardingRule struct {
-	ID          string              `json:"id"`
-	TableName   string              `json:"table"`
-	Entries     []ShardingRuleEntry `json:"columns"`
-	DataspaceId string              `json:"dataspace_id"`
+	ID             string              `json:"id"`
+	TableName      string              `json:"table"`
+	Entries        []ShardingRuleEntry `json:"columns"`
+	DistributionId string              `json:"distrinution_id"`
 }
 
 type Shard struct {
@@ -81,14 +81,13 @@ func NewShard(ID string, hosts []string) *Shard {
 	}
 }
 
-type ShardinColumnType string
-
 var (
-	ColumnTypeVarchar = ShardinColumnType("varchar")
-	ColumnTypeInteger = ShardinColumnType("integer")
+	ColumnTypeVarchar  = "varchar"
+	ColumnTypeInteger  = "integer"
+	ColumnTypeUinteger = "uinteger"
 )
 
-type Dataspace struct {
-	ID       string              `json:"id"`
-	ColTypes []ShardinColumnType `json:"col_types,omitempty"`
+type Distribution struct {
+	ID       string   `json:"id"`
+	ColTypes []string `json:"col_types,omitempty"`
 }

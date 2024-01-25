@@ -49,7 +49,7 @@ type QDB interface {
 	DropShardingRule(ctx context.Context, id string) error
 	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
 	GetShardingRule(ctx context.Context, id string) (*ShardingRule, error)
-	ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error)
+	ListShardingRules(ctx context.Context, distrinution string) ([]*ShardingRule, error)
 	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
 
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
@@ -70,12 +70,12 @@ type QDB interface {
 
 	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
 
-	AddDataspace(ctx context.Context, ks *Dataspace) error
-	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
-	DropDataspace(ctx context.Context, id string) error
+	AddDistribution(ctx context.Context, ks *Distribution) error
+	ListDistributions(ctx context.Context) ([]*Distribution, error)
+	DropDistribution(ctx context.Context, id string) error
 
-	AttachToDataspace(ctx context.Context, table string, id string) error
-	GetDataspace(ctx context.Context, table string) (*Dataspace, error)
+	AlterDistributionAttach(ctx context.Context, table string, id string) error
+	GetDistribution(ctx context.Context, table string) (*Distribution, error)
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)

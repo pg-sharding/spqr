@@ -5,31 +5,31 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DATASPACE ds1;
-         add dataspace         
+CREATE DISTRIBUTION ds1;
+         add distrinution         
 -------------------------------
- created dataspace with id ds1
+ created distrinution with id ds1
 (1 row)
 
-CREATE DATASPACE ds2;
-         add dataspace         
+CREATE DISTRIBUTION ds2;
+         add distrinution         
 -------------------------------
- created dataspace with id ds2
+ created distrinution with id ds2
 (1 row)
 
-SHOW dataspaces;
- Dataspace ID 
+SHOW distributions;
+ Distribution ID 
 --------------
  default
  ds1
  ds2
 (3 rows)
 
-DROP DATASPACE ALL CASCADE;
-   drop dataspace   
+DROP DISTRIBUTION ALL CASCADE;
+   drop distrinution   
 --------------------
- drop dataspace ds1
- drop dataspace ds2
+ drop distrinution ds1
+ drop distrinution ds2
 (2 rows)
 
 DROP SHARDING RULE ALL;

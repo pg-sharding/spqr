@@ -18,14 +18,14 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound 
+ Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+--------------+-------------
  krid1        | sh1      | default      | 1
  krid2        | sh1      | default      | 11
 (2 rows)
 
-DROP DATASPACE ALL CASCADE;
- drop dataspace 
+DROP DISTRIBUTION ALL CASCADE;
+ drop distrinution 
 ----------------
 (0 rows)
 

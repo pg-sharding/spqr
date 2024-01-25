@@ -7,7 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -37,10 +37,10 @@ func (a *adapter) ShareKeyRange(id string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+func (a *adapter) ListKeyRanges(ctx context.Context, distrinution string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
-		Dataspace: dataspace,
+		Distribution: distrinution,
 	})
 	if err != nil {
 		return nil, err
@@ -255,10 +255,10 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 }
 
 // TODO : unit tests
-func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+func (a *adapter) ListShardingRules(ctx context.Context, distrinution string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
-		Dataspace: dataspace,
+		Distribution: distrinution,
 	})
 	if err != nil {
 		return nil, err
@@ -367,37 +367,37 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 // TODO : unit tests
-func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) ListDistribution(ctx context.Context) ([]*distributions.Distribution, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
+	resp, err := c.ListDistribution(ctx, &proto.ListDistributionRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	dss := make([]*dataspaces.Dataspace, len(resp.Dataspaces))
-	for i, ds := range resp.Dataspaces {
-		dss[i] = dataspaces.DataspaceFromProto(ds)
+	dss := make([]*distributions.Distribution, len(resp.Distributions))
+	for i, ds := range resp.Distributions {
+		dss[i] = distributions.DistributionFromProto(ds)
 	}
 
 	return dss, nil
 }
 
 // TODO : unit tests
-func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) AddDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
-		Dataspaces: []*proto.Dataspace{dataspaces.DataspaceToProto(ds)},
+	_, err := c.AddDistribution(ctx, &proto.AddDistributionRequest{
+		Distributions: []*proto.Distribution{distributions.DistributionToProto(ds)},
 	})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) DropDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
+	_, err := c.DropDistribution(ctx, &proto.DropDistributionRequest{
 		Ids: []string{ds.Id},
 	})
 
@@ -405,27 +405,27 @@ func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) e
 }
 
 // TODO : unit tests
-func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) AlterDistributionAttach(ctx context.Context, table string, ds *distributions.Distribution) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.AttachToDataspace(ctx, &proto.AttachToDataspaceRequest{
-		Table:     table,
-		Dataspace: dataspaces.DataspaceToProto(ds),
+	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
+		Table:        table,
+		Distribution: distributions.DistributionToProto(ds),
 	})
 
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *adapter) GetDistribution(ctx context.Context, table string) (*distributions.Distribution, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.GetDataspace(ctx, &proto.GetDataspaceRequest{Table: table})
+	resp, err := c.GetDistribution(ctx, &proto.GetDistributionRequest{Table: table})
 	if err != nil {
 		return nil, err
 	}
 
-	return dataspaces.DataspaceFromProto(resp.Dataspace), nil
+	return distributions.DistributionFromProto(resp.Distribution), nil
 }
 
 // TODO : unit tests

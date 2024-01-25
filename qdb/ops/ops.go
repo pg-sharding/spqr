@@ -15,22 +15,22 @@ func AddShardingRuleWithChecks(ctx context.Context, qdb qdb.QDB, rule *shrule.Sh
 		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v already present in qdb", rule.Id)
 	}
 
-	existDataspace, err := qdb.ListDataspaces(ctx)
+	existDistribution, err := qdb.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
 	exists := false
-	for _, ds := range existDataspace {
-		exists = ds.ID == rule.Dataspace
+	for _, ds := range existDistribution {
+		exists = ds.ID == rule.Distribution
 		if exists {
 			break
 		}
 	}
 	if !exists {
-		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "try to add sharding rule link to a non-existent dataspace")
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add sharding rule link to a non-existent distrinution")
 	}
 
-	existsRules, err := qdb.ListShardingRules(ctx, rule.Dataspace)
+	existsRules, err := qdb.ListShardingRules(ctx, rule.Distribution)
 	if err != nil {
 		return err
 	}
@@ -58,22 +58,22 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", keyRange.ID)
 	}
 
-	existDataspace, err := qdb.ListDataspaces(ctx)
+	existDistribution, err := qdb.ListDistributions(ctx)
 	if err != nil {
 		return err
 	}
 	exists := false
-	for _, ds := range existDataspace {
-		exists = ds.ID == keyRange.Dataspace
+	for _, ds := range existDistribution {
+		exists = ds.ID == keyRange.Distribution
 		if exists {
 			break
 		}
 	}
 	if !exists {
-		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "try to add key range link to a non-existent dataspace")
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a non-existent distrinution")
 	}
 
-	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
+	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 		return err
 	}
 
-	krids, err := qdb.ListKeyRanges(ctx, keyRange.Dataspace)
+	krids, err := qdb.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
 		return err
 	}

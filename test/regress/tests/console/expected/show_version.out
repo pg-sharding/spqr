@@ -6,8 +6,8 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW version;
- SPQR version 
---------------
- devel-devel
+ SPQR version  
+---------------
+ 1.1.0-c135d45
 (1 row)
 

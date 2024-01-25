@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.21.12
-// source: protos/dataspace.proto
+// source: protos/distrinution.proto
 
 package proto
 
@@ -19,239 +19,239 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	DataspaceService_AddDataspace_FullMethodName      = "/spqr.DataspaceService/AddDataspace"
-	DataspaceService_DropDataspace_FullMethodName     = "/spqr.DataspaceService/DropDataspace"
-	DataspaceService_ListDataspace_FullMethodName     = "/spqr.DataspaceService/ListDataspace"
-	DataspaceService_AttachToDataspace_FullMethodName = "/spqr.DataspaceService/AttachToDataspace"
-	DataspaceService_GetDataspace_FullMethodName      = "/spqr.DataspaceService/GetDataspace"
+	DistributionService_AddDistribution_FullMethodName      = "/spqr.DistributionService/AddDistribution"
+	DistributionService_DropDistribution_FullMethodName     = "/spqr.DistributionService/DropDistribution"
+	DistributionService_ListDistribution_FullMethodName     = "/spqr.DistributionService/ListDistribution"
+	DistributionService_AlterDistributionAttach_FullMethodName = "/spqr.DistributionService/AlterDistributionAttach"
+	DistributionService_GetDistribution_FullMethodName      = "/spqr.DistributionService/GetDistribution"
 )
 
-// DataspaceServiceClient is the client API for DataspaceService service.
+// DistributionServiceClient is the client API for DistributionService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type DataspaceServiceClient interface {
-	AddDataspace(ctx context.Context, in *AddDataspaceRequest, opts ...grpc.CallOption) (*AddDataspaceReply, error)
-	DropDataspace(ctx context.Context, in *DropDataspaceRequest, opts ...grpc.CallOption) (*DropDataspaceReply, error)
-	ListDataspace(ctx context.Context, in *ListDataspaceRequest, opts ...grpc.CallOption) (*ListDataspaceReply, error)
-	AttachToDataspace(ctx context.Context, in *AttachToDataspaceRequest, opts ...grpc.CallOption) (*AttachToDataspaceReply, error)
-	GetDataspace(ctx context.Context, in *GetDataspaceRequest, opts ...grpc.CallOption) (*GetDataspaceReply, error)
+type DistributionServiceClient interface {
+	AddDistribution(ctx context.Context, in *AddDistributionRequest, opts ...grpc.CallOption) (*AddDistributionReply, error)
+	DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*DropDistributionReply, error)
+	ListDistribution(ctx context.Context, in *ListDistributionRequest, opts ...grpc.CallOption) (*ListDistributionReply, error)
+	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*AlterDistributionAttachReply, error)
+	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 }
 
-type dataspaceServiceClient struct {
+type distributionserviceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewDataspaceServiceClient(cc grpc.ClientConnInterface) DataspaceServiceClient {
-	return &dataspaceServiceClient{cc}
+func NewDistributionServiceClient(cc grpc.ClientConnInterface) DistributionServiceClient {
+	return &distributionserviceClient{cc}
 }
 
-func (c *dataspaceServiceClient) AddDataspace(ctx context.Context, in *AddDataspaceRequest, opts ...grpc.CallOption) (*AddDataspaceReply, error) {
-	out := new(AddDataspaceReply)
-	err := c.cc.Invoke(ctx, DataspaceService_AddDataspace_FullMethodName, in, out, opts...)
+func (c *distributionserviceClient) AddDistribution(ctx context.Context, in *AddDistributionRequest, opts ...grpc.CallOption) (*AddDistributionReply, error) {
+	out := new(AddDistributionReply)
+	err := c.cc.Invoke(ctx, DistributionService_AddDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dataspaceServiceClient) DropDataspace(ctx context.Context, in *DropDataspaceRequest, opts ...grpc.CallOption) (*DropDataspaceReply, error) {
-	out := new(DropDataspaceReply)
-	err := c.cc.Invoke(ctx, DataspaceService_DropDataspace_FullMethodName, in, out, opts...)
+func (c *distributionserviceClient) DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*DropDistributionReply, error) {
+	out := new(DropDistributionReply)
+	err := c.cc.Invoke(ctx, DistributionService_DropDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dataspaceServiceClient) ListDataspace(ctx context.Context, in *ListDataspaceRequest, opts ...grpc.CallOption) (*ListDataspaceReply, error) {
-	out := new(ListDataspaceReply)
-	err := c.cc.Invoke(ctx, DataspaceService_ListDataspace_FullMethodName, in, out, opts...)
+func (c *distributionserviceClient) ListDistribution(ctx context.Context, in *ListDistributionRequest, opts ...grpc.CallOption) (*ListDistributionReply, error) {
+	out := new(ListDistributionReply)
+	err := c.cc.Invoke(ctx, DistributionService_ListDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dataspaceServiceClient) AttachToDataspace(ctx context.Context, in *AttachToDataspaceRequest, opts ...grpc.CallOption) (*AttachToDataspaceReply, error) {
-	out := new(AttachToDataspaceReply)
-	err := c.cc.Invoke(ctx, DataspaceService_AttachToDataspace_FullMethodName, in, out, opts...)
+func (c *distributionserviceClient) AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*AlterDistributionAttachReply, error) {
+	out := new(AlterDistributionAttachReply)
+	err := c.cc.Invoke(ctx, DistributionService_AlterDistributionAttach_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dataspaceServiceClient) GetDataspace(ctx context.Context, in *GetDataspaceRequest, opts ...grpc.CallOption) (*GetDataspaceReply, error) {
-	out := new(GetDataspaceReply)
-	err := c.cc.Invoke(ctx, DataspaceService_GetDataspace_FullMethodName, in, out, opts...)
+func (c *distributionserviceClient) GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error) {
+	out := new(GetDistributionReply)
+	err := c.cc.Invoke(ctx, DistributionService_GetDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// DataspaceServiceServer is the server API for DataspaceService service.
-// All implementations must embed UnimplementedDataspaceServiceServer
+// DistributionServiceServer is the server API for DistributionService service.
+// All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility
-type DataspaceServiceServer interface {
-	AddDataspace(context.Context, *AddDataspaceRequest) (*AddDataspaceReply, error)
-	DropDataspace(context.Context, *DropDataspaceRequest) (*DropDataspaceReply, error)
-	ListDataspace(context.Context, *ListDataspaceRequest) (*ListDataspaceReply, error)
-	AttachToDataspace(context.Context, *AttachToDataspaceRequest) (*AttachToDataspaceReply, error)
-	GetDataspace(context.Context, *GetDataspaceRequest) (*GetDataspaceReply, error)
-	mustEmbedUnimplementedDataspaceServiceServer()
+type DistributionServiceServer interface {
+	AddDistribution(context.Context, *AddDistributionRequest) (*AddDistributionReply, error)
+	DropDistribution(context.Context, *DropDistributionRequest) (*DropDistributionReply, error)
+	ListDistribution(context.Context, *ListDistributionRequest) (*ListDistributionReply, error)
+	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error)
+	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
+	mustEmbedUnimplementedDistributionServiceServer()
 }
 
-// UnimplementedDataspaceServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedDataspaceServiceServer struct {
+// UnimplementedDistributionServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedDistributionServiceServer struct {
 }
 
-func (UnimplementedDataspaceServiceServer) AddDataspace(context.Context, *AddDataspaceRequest) (*AddDataspaceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddDataspace not implemented")
+func (UnimplementedDistributionServiceServer) AddDistribution(context.Context, *AddDistributionRequest) (*AddDistributionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddDistribution not implemented")
 }
-func (UnimplementedDataspaceServiceServer) DropDataspace(context.Context, *DropDataspaceRequest) (*DropDataspaceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DropDataspace not implemented")
+func (UnimplementedDistributionServiceServer) DropDistribution(context.Context, *DropDistributionRequest) (*DropDistributionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropDistribution not implemented")
 }
-func (UnimplementedDataspaceServiceServer) ListDataspace(context.Context, *ListDataspaceRequest) (*ListDataspaceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListDataspace not implemented")
+func (UnimplementedDistributionServiceServer) ListDistribution(context.Context, *ListDistributionRequest) (*ListDistributionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListDistribution not implemented")
 }
-func (UnimplementedDataspaceServiceServer) AttachToDataspace(context.Context, *AttachToDataspaceRequest) (*AttachToDataspaceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AttachToDataspace not implemented")
+func (UnimplementedDistributionServiceServer) AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributionAttach not implemented")
 }
-func (UnimplementedDataspaceServiceServer) GetDataspace(context.Context, *GetDataspaceRequest) (*GetDataspaceReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDataspace not implemented")
+func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDistribution not implemented")
 }
-func (UnimplementedDataspaceServiceServer) mustEmbedUnimplementedDataspaceServiceServer() {}
+func (UnimplementedDistributionServiceServer) mustEmbedUnimplementedDistributionServiceServer() {}
 
-// UnsafeDataspaceServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to DataspaceServiceServer will
+// UnsafeDistributionServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DistributionServiceServer will
 // result in compilation errors.
-type UnsafeDataspaceServiceServer interface {
-	mustEmbedUnimplementedDataspaceServiceServer()
+type UnsafeDistributionServiceServer interface {
+	mustEmbedUnimplementedDistributionServiceServer()
 }
 
-func RegisterDataspaceServiceServer(s grpc.ServiceRegistrar, srv DataspaceServiceServer) {
-	s.RegisterService(&DataspaceService_ServiceDesc, srv)
+func RegisterDistributionServiceServer(s grpc.ServiceRegistrar, srv DistributionServiceServer) {
+	s.RegisterService(&DistributionService_ServiceDesc, srv)
 }
 
-func _DataspaceService_AddDataspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddDataspaceRequest)
+func _DistributionService_AddDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddDistributionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).AddDataspace(ctx, in)
+		return srv.(DistributionServiceServer).AddDistribution(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataspaceService_AddDataspace_FullMethodName,
+		FullMethod: DistributionService_AddDistribution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).AddDataspace(ctx, req.(*AddDataspaceRequest))
+		return srv.(DistributionServiceServer).AddDistribution(ctx, req.(*AddDistributionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DataspaceService_DropDataspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DropDataspaceRequest)
+func _DistributionService_DropDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DropDistributionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).DropDataspace(ctx, in)
+		return srv.(DistributionServiceServer).DropDistribution(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataspaceService_DropDataspace_FullMethodName,
+		FullMethod: DistributionService_DropDistribution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).DropDataspace(ctx, req.(*DropDataspaceRequest))
+		return srv.(DistributionServiceServer).DropDistribution(ctx, req.(*DropDistributionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DataspaceService_ListDataspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListDataspaceRequest)
+func _DistributionService_ListDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDistributionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).ListDataspace(ctx, in)
+		return srv.(DistributionServiceServer).ListDistribution(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataspaceService_ListDataspace_FullMethodName,
+		FullMethod: DistributionService_ListDistribution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).ListDataspace(ctx, req.(*ListDataspaceRequest))
+		return srv.(DistributionServiceServer).ListDistribution(ctx, req.(*ListDistributionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DataspaceService_AttachToDataspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AttachToDataspaceRequest)
+func _DistributionService_AlterDistributionAttach_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDistributionAttachRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).AttachToDataspace(ctx, in)
+		return srv.(DistributionServiceServer).AlterDistributionAttach(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataspaceService_AttachToDataspace_FullMethodName,
+		FullMethod: DistributionService_AlterDistributionAttach_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).AttachToDataspace(ctx, req.(*AttachToDataspaceRequest))
+		return srv.(DistributionServiceServer).AlterDistributionAttach(ctx, req.(*AlterDistributionAttachRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DataspaceService_GetDataspace_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDataspaceRequest)
+func _DistributionService_GetDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDistributionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DataspaceServiceServer).GetDataspace(ctx, in)
+		return srv.(DistributionServiceServer).GetDistribution(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: DataspaceService_GetDataspace_FullMethodName,
+		FullMethod: DistributionService_GetDistribution_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DataspaceServiceServer).GetDataspace(ctx, req.(*GetDataspaceRequest))
+		return srv.(DistributionServiceServer).GetDistribution(ctx, req.(*GetDistributionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// DataspaceService_ServiceDesc is the grpc.ServiceDesc for DataspaceService service.
+// DistributionService_ServiceDesc is the grpc.ServiceDesc for DistributionService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var DataspaceService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "spqr.DataspaceService",
-	HandlerType: (*DataspaceServiceServer)(nil),
+var DistributionService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "spqr.DistributionService",
+	HandlerType: (*DistributionServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "AddDataspace",
-			Handler:    _DataspaceService_AddDataspace_Handler,
+			MethodName: "AddDistribution",
+			Handler:    _DistributionService_AddDistribution_Handler,
 		},
 		{
-			MethodName: "DropDataspace",
-			Handler:    _DataspaceService_DropDataspace_Handler,
+			MethodName: "DropDistribution",
+			Handler:    _DistributionService_DropDistribution_Handler,
 		},
 		{
-			MethodName: "ListDataspace",
-			Handler:    _DataspaceService_ListDataspace_Handler,
+			MethodName: "ListDistribution",
+			Handler:    _DistributionService_ListDistribution_Handler,
 		},
 		{
-			MethodName: "AttachToDataspace",
-			Handler:    _DataspaceService_AttachToDataspace_Handler,
+			MethodName: "AlterDistributionAttach",
+			Handler:    _DistributionService_AlterDistributionAttach_Handler,
 		},
 		{
-			MethodName: "GetDataspace",
-			Handler:    _DataspaceService_GetDataspace_Handler,
+			MethodName: "GetDistribution",
+			Handler:    _DistributionService_GetDistribution_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/dataspace.proto",
+	Metadata: "protos/distrinution.proto",
 }

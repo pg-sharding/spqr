@@ -4,47 +4,47 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-message Dataspace{
+message Distribution{
   string id = 1;
 }
 
-message AddDataspaceRequest{
-  repeated Dataspace dataspaces = 1;
+message AddDistributionRequest{
+  repeated Distribution distributions = 1;
 }
 
-message AddDataspaceReply{}
+message AddDistributionReply{}
 
-message ListDataspaceRequest{}
+message ListDistributionRequest{}
 
-message ListDataspaceReply{
-  repeated Dataspace dataspaces = 1;
+message ListDistributionReply{
+  repeated Distribution distributions = 1;
 }
 
-message DropDataspaceRequest{
+message DropDistributionRequest{
   repeated string ids = 1;
 }
 
-message DropDataspaceReply{}
+message DropDistributionReply{}
 
-message AttachToDataspaceRequest{
+message AlterDistributionAttachRequest{
   string table = 1;
-  Dataspace dataspace = 2;
+  Distribution distrinution = 2;
 }
 
-message AttachToDataspaceReply{}
+message AlterDistributionAttachReply{}
 
-message GetDataspaceRequest{
+message GetDistributionRequest{
   string table = 1;
 }
 
-message GetDataspaceReply {
-  Dataspace dataspace = 1;
+message GetDistributionReply {
+  Distribution distrinution = 1;
 }
 
-service DataspaceService {
-  rpc AddDataspace(AddDataspaceRequest) returns (AddDataspaceReply) {}
-  rpc DropDataspace(DropDataspaceRequest) returns (DropDataspaceReply) {}
-  rpc ListDataspace(ListDataspaceRequest) returns (ListDataspaceReply) {}
-  rpc AttachToDataspace(AttachToDataspaceRequest) returns (AttachToDataspaceReply) {}
-  rpc GetDataspace(GetDataspaceRequest) returns (GetDataspaceReply) {}
+service DistributionService {
+  rpc AddDistribution(AddDistributionRequest) returns (AddDistributionReply) {}
+  rpc DropDistribution(DropDistributionRequest) returns (DropDistributionReply) {}
+  rpc ListDistribution(ListDistributionRequest) returns (ListDistributionReply) {}
+  rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (AlterDistributionAttachReply) {}
+  rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 }

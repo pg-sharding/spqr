@@ -228,7 +228,7 @@ type ListShardingRuleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dataspace string `protobuf:"bytes,1,opt,name=dataspace,proto3" json:"dataspace,omitempty"`
+	Distribution string `protobuf:"bytes,1,opt,name=distrinution,proto3" json:"distrinution,omitempty"`
 }
 
 func (x *ListShardingRuleRequest) Reset() {
@@ -263,9 +263,9 @@ func (*ListShardingRuleRequest) Descriptor() ([]byte, []int) {
 	return file_protos_sharding_rules_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ListShardingRuleRequest) GetDataspace() string {
+func (x *ListShardingRuleRequest) GetDistribution() string {
 	if x != nil {
-		return x.Dataspace
+		return x.Distribution
 	}
 	return ""
 }

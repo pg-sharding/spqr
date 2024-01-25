@@ -5,90 +5,90 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DATASPACE ds1;
-         add dataspace         
+CREATE DISTRIBUTION ds1;
+         add distrinution         
 -------------------------------
- created dataspace with id ds1
+ created distrinution with id ds1
 (1 row)
 
-CREATE DATASPACE ds2;
-         add dataspace         
+CREATE DISTRIBUTION ds2;
+         add distrinution         
 -------------------------------
- created dataspace with id ds2
+ created distrinution with id ds2
 (1 row)
 
-CREATE SHARDING RULE rule1 COLUMNS id FOR DATASPACE ds1;
+CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
                                     add sharding rule                                     
 ------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 dataspace
+ created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 distrinution
 (1 row)
 
-CREATE SHARDING RULE rule2 COLUMNS id FOR DATASPACE ds2;
+CREATE SHARDING RULE rule2 COLUMNS id FOR DISTRIBUTION ds2;
                                     add sharding rule                                     
 ------------------------------------------------------------------------------------------
- created sharding rule rule2 for table (*) with columns [id, hash: x->x] in ds2 dataspace
+ created sharding rule rule2 for table (*) with columns [id, hash: x->x] in ds2 distrinution
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DATASPACE ds1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DATASPACE ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
  created key range with bound 11
 (1 row)
 
-CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
+CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
           add key range          
 ---------------------------------
  created key range with bound 11
 (1 row)
 
 -- drop non-existing one
-DROP DATASPACE ds23223;
- drop dataspace 
+DROP DISTRIBUTION ds23223;
+ drop distrinution 
 ----------------
 (0 rows)
 
 -- non-cascade drop
-DROP DATASPACE ds1;
-ERROR:  cannot drop dataspace ds1 because other objects depend on it
+DROP DISTRIBUTION ds1;
+ERROR:  cannot drop distrinution ds1 because other objects depend on it
 HINT: Use DROP ... CASCADE to drop the dependent objects too.
-DROP DATASPACE ds1 CASCADE;
-   drop dataspace   
+DROP DISTRIBUTION ds1 CASCADE;
+   drop distrinution   
 --------------------
- drop dataspace ds1
+ drop distrinution ds1
 (1 row)
 
-SHOW dataspaces;
- Dataspace ID 
+SHOW distributions;
+ Distribution ID 
 --------------
  default
  ds2
 (2 rows)
 
-DROP DATASPACE ALL CASCADE;
-   drop dataspace   
+DROP DISTRIBUTION ALL CASCADE;
+   drop distrinution   
 --------------------
- drop dataspace ds2
+ drop distrinution ds2
 (1 row)
 
-SHOW dataspaces;
- Dataspace ID 
+SHOW distributions;
+ Distribution ID 
 --------------
  default
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound 
+ Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+--------------+-------------
 (0 rows)
 
 SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
+ Sharding Rule ID | Distribution ID | Table Name | Columns | Hash Function 
 ------------------+--------------+------------+---------+---------------
 (0 rows)
 

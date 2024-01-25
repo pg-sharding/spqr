@@ -130,7 +130,7 @@ type KeyRangeInfo struct {
 	KeyRange    *KeyRange `protobuf:"bytes,1,opt,name=key_range,json=keyRange,proto3" json:"key_range,omitempty"`
 	Krid        string    `protobuf:"bytes,2,opt,name=krid,proto3" json:"krid,omitempty"`
 	ShardId     string    `protobuf:"bytes,3,opt,name=shardId,proto3" json:"shardId,omitempty"`
-	DataspaceId string    `protobuf:"bytes,4,opt,name=dataspaceId,proto3" json:"dataspaceId,omitempty"`
+	DistributionId string    `protobuf:"bytes,4,opt,name=distrinutionId,proto3" json:"distrinutionId,omitempty"`
 }
 
 func (x *KeyRangeInfo) Reset() {
@@ -186,9 +186,9 @@ func (x *KeyRangeInfo) GetShardId() string {
 	return ""
 }
 
-func (x *KeyRangeInfo) GetDataspaceId() string {
+func (x *KeyRangeInfo) GetDistributionId() string {
 	if x != nil {
-		return x.DataspaceId
+		return x.DistributionId
 	}
 	return ""
 }
@@ -198,7 +198,7 @@ type ListKeyRangeRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Dataspace string `protobuf:"bytes,1,opt,name=dataspace,proto3" json:"dataspace,omitempty"`
+	Distribution string `protobuf:"bytes,1,opt,name=distrinution,proto3" json:"distrinution,omitempty"`
 }
 
 func (x *ListKeyRangeRequest) Reset() {
@@ -233,9 +233,9 @@ func (*ListKeyRangeRequest) Descriptor() ([]byte, []int) {
 	return file_protos_key_range_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ListKeyRangeRequest) GetDataspace() string {
+func (x *ListKeyRangeRequest) GetDistribution() string {
 	if x != nil {
-		return x.Dataspace
+		return x.Distribution
 	}
 	return ""
 }
@@ -356,7 +356,7 @@ type MergeKeyRangeRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	Bound     []byte `protobuf:"bytes,1,opt,name=bound,proto3" json:"bound,omitempty"`
-	Dataspace string `protobuf:"bytes,2,opt,name=dataspace,proto3" json:"dataspace,omitempty"`
+	Distribution string `protobuf:"bytes,2,opt,name=distrinution,proto3" json:"distrinution,omitempty"`
 }
 
 func (x *MergeKeyRangeRequest) Reset() {
@@ -398,9 +398,9 @@ func (x *MergeKeyRangeRequest) GetBound() []byte {
 	return nil
 }
 
-func (x *MergeKeyRangeRequest) GetDataspace() string {
+func (x *MergeKeyRangeRequest) GetDistribution() string {
 	if x != nil {
-		return x.Dataspace
+		return x.Distribution
 	}
 	return ""
 }

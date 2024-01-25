@@ -243,32 +243,32 @@ func (mr *MockRouterClientMockRecorder) DB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockRouterClient)(nil).DB))
 }
 
-// Dataspace mocks base method.
-func (m *MockRouterClient) Dataspace() string {
+// Distribution mocks base method.
+func (m *MockRouterClient) Distribution() string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Dataspace")
+	ret := m.ctrl.Call(m, "Distribution")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// Dataspace indicates an expected call of Dataspace.
-func (mr *MockRouterClientMockRecorder) Dataspace() *gomock.Call {
+// Distribution indicates an expected call of Distribution.
+func (mr *MockRouterClientMockRecorder) Distribution() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dataspace", reflect.TypeOf((*MockRouterClient)(nil).Dataspace))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockRouterClient)(nil).Distribution))
 }
 
-// DataspaceIsDefault mocks base method.
-func (m *MockRouterClient) DataspaceIsDefault() bool {
+// DistributionIsDefault mocks base method.
+func (m *MockRouterClient) DistributionIsDefault() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataspaceIsDefault")
+	ret := m.ctrl.Call(m, "DistributionIsDefault")
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// DataspaceIsDefault indicates an expected call of DataspaceIsDefault.
-func (mr *MockRouterClientMockRecorder) DataspaceIsDefault() *gomock.Call {
+// DistributionIsDefault indicates an expected call of DistributionIsDefault.
+func (mr *MockRouterClientMockRecorder) DistributionIsDefault() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataspaceIsDefault", reflect.TypeOf((*MockRouterClient)(nil).DataspaceIsDefault))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionIsDefault", reflect.TypeOf((*MockRouterClient)(nil).DistributionIsDefault))
 }
 
 // DefaultReply mocks base method.
@@ -867,16 +867,16 @@ func (mr *MockRouterClientMockRecorder) SetBindParams(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBindParams", reflect.TypeOf((*MockRouterClient)(nil).SetBindParams), arg0)
 }
 
-// SetDataspace mocks base method.
-func (m *MockRouterClient) SetDataspace(arg0 string) {
+// SetDistribution mocks base method.
+func (m *MockRouterClient) SetDistribution(arg0 string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDataspace", arg0)
+	m.ctrl.Call(m, "SetDistribution", arg0)
 }
 
-// SetDataspace indicates an expected call of SetDataspace.
-func (mr *MockRouterClientMockRecorder) SetDataspace(arg0 interface{}) *gomock.Call {
+// SetDistribution indicates an expected call of SetDistribution.
+func (mr *MockRouterClientMockRecorder) SetDistribution(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDataspace", reflect.TypeOf((*MockRouterClient)(nil).SetDataspace), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), arg0)
 }
 
 // SetDefaultRouteBehaviour mocks base method.

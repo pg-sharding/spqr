@@ -9,7 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -36,18 +36,18 @@ type LocalCoordinator struct {
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
+func (lc *LocalCoordinator) ListDistribution(ctx context.Context) ([]*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	resp, err := lc.qdb.ListDataspaces(ctx)
+	resp, err := lc.qdb.ListDistributions(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var retDsp []*dataspaces.Dataspace
+	var retDsp []*distributions.Distribution
 
 	for _, dsp := range resp {
-		retDsp = append(retDsp, &dataspaces.Dataspace{
+		retDsp = append(retDsp, &distributions.Distribution{
 			Id: dsp.ID,
 		})
 	}
@@ -55,32 +55,32 @@ func (lc *LocalCoordinator) ListDataspace(ctx context.Context) ([]*dataspaces.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) AddDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.AddDataspace(ctx, &qdb.Dataspace{
+	return lc.qdb.AddDistribution(ctx, &qdb.Distribution{
 		ID: ds.Id,
 	})
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, table string, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	return lc.qdb.AttachToDataspace(ctx, table, ds.Id)
+	return lc.qdb.AlterDistributionAttach(ctx, table, ds.Id)
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
+func (lc *LocalCoordinator) GetDistribution(ctx context.Context, table string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	ret, err := lc.qdb.GetDataspace(ctx, table)
+	ret, err := lc.qdb.GetDistribution(ctx, table)
 	if err != nil {
 		return nil, err
 	}
-	return dataspaces.NewDataspace(ret.ID), nil
+	return distributions.NewDistribution(ret.ID), nil
 }
 
 // TODO : unit tests
@@ -96,10 +96,10 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
+func (lc *LocalCoordinator) DropDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.DropDataspace(ctx, ds.Id)
+	return lc.qdb.DropDistribution(ctx, ds.Id)
 }
 
 // TODO : unit tests
@@ -249,10 +249,10 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	}
 
 	united := &kr.KeyRange{
-		LowerBound: krleft.LowerBound,
-		ShardID:    krleft.ShardID,
-		Dataspace:  krleft.DataspaceId,
-		ID:         krleft.KeyRangeID,
+		LowerBound:   krleft.LowerBound,
+		ShardID:      krleft.ShardID,
+		Distribution: krleft.DistributionId,
+		ID:           krleft.KeyRangeID,
 	}
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)
@@ -281,11 +281,11 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound:  req.Bound,
-			UpperBound:  krOld.UpperBound,
-			KeyRangeID:  req.Krid,
-			ShardID:     krOld.ShardID,
-			DataspaceId: krOld.DataspaceId,
+			LowerBound:     req.Bound,
+			UpperBound:     krOld.UpperBound,
+			KeyRangeID:     req.Krid,
+			ShardID:        krOld.ShardID,
+			DistributionId: krOld.DistributionId,
 		},
 	)
 
@@ -348,9 +348,9 @@ func (qr *LocalCoordinator) Shards() []string {
 }
 
 // TODO : unit tests
-func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distrinution string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
-	if krs, err := qr.qdb.ListKeyRanges(ctx, dataspace); err != nil {
+	if krs, err := qr.qdb.ListKeyRanges(ctx, distrinution); err != nil {
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
@@ -389,8 +389,8 @@ func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.Sh
 }
 
 // TODO : unit tests
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx, dataspace)
+func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, distrinution string) ([]*shrule.ShardingRule, error) {
+	rules, err := qr.qdb.ListShardingRules(ctx, distrinution)
 	if err != nil {
 		return nil, err
 	}

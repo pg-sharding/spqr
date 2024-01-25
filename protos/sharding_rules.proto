@@ -23,7 +23,7 @@ message AddShardingRuleRequest {
 message AddShardingRuleReply {}
 
 message ListShardingRuleRequest {
-  string dataspace = 1;
+  string distrinution = 1;
 }
 
 message ListShardingRuleReply {

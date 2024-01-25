@@ -70,16 +70,16 @@ type DropStmt interface {
 	iDrop()
 }
 
-type DataspaceDefinition struct {
+type DistributionDefinition struct {
 	ID       string
 	ColTypes []string
 }
 
 type ShardingRuleDefinition struct {
-	ID        string
-	TableName string
-	Entries   []ShardingRuleEntry
-	Dataspace string
+	ID           string
+	TableName    string
+	Entries      []ShardingRuleEntry
+	Distribution string
 }
 
 type ShardingRuleEntry struct {
@@ -88,11 +88,10 @@ type ShardingRuleEntry struct {
 }
 
 type KeyRangeDefinition struct {
-	LowerBound []byte
-	UpperBound []byte
-	ShardID    string
-	KeyRangeID string
-	Dataspace  string
+	LowerBound   []byte
+	ShardID      string
+	KeyRangeID   string
+	Distribution string
 }
 
 type ShardDefinition struct {
@@ -102,7 +101,7 @@ type ShardDefinition struct {
 
 func (*KeyRangeDefinition) iCreate()     {}
 func (*ShardDefinition) iCreate()        {}
-func (*DataspaceDefinition) iCreate()    {}
+func (*DistributionDefinition) iCreate() {}
 func (*ShardingRuleDefinition) iCreate() {}
 
 type SplitKeyRange struct {
@@ -129,7 +128,7 @@ type ShardingRuleSelector struct {
 	ID string
 }
 
-type DataspaceSelector struct {
+type DistributionSelector struct {
 	ID string
 }
 
@@ -139,7 +138,7 @@ func (*DropRoutersAll) iStatement() {}
 
 func (*KeyRangeSelector) iDrop()     {}
 func (*ShardingRuleSelector) iDrop() {}
-func (*DataspaceSelector) iDrop()    {}
+func (*DistributionSelector) iDrop() {}
 
 const (
 	EntityRouters      = "ROUTERS"
@@ -177,14 +176,14 @@ type UnregisterRouter struct {
 }
 
 type AttachTable struct {
-	Table     string
-	Dataspace *DataspaceSelector
+	Table        string
+	Distribution *DistributionSelector
 }
 
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
-	DataspacesStr         = "dataspaces"
+	DistributionsStr      = "distributions"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	ShardingRules         = "sharding_rules"
@@ -210,7 +209,7 @@ func (*Show) iStatement()                   {}
 func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
-func (*DataspaceSelector) iStatement()      {}
+func (*DistributionSelector) iStatement()   {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
@@ -218,7 +217,7 @@ func (*Listen) iStatement()                 {}
 func (*MoveKeyRange) iStatement()           {}
 func (*SplitKeyRange) iStatement()          {}
 func (*UniteKeyRange) iStatement()          {}
-func (*DataspaceDefinition) iStatement()    {}
+func (*DistributionDefinition) iStatement() {}
 func (*ShardingRuleDefinition) iStatement() {}
 func (*KeyRangeDefinition) iStatement()     {}
 func (*ShardDefinition) iStatement()        {}

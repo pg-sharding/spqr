@@ -135,7 +135,7 @@ Feature: Coordinator test
     """
     [{
       "Columns":"id",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Hash Function":"x->x",
       "Sharding Rule ID":"r1",
       "Table Name":"*"
@@ -150,13 +150,13 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1"
     },
     {
       "Key range ID":"krid2",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"11",
       "Shard ID":"sh2"
     }]
@@ -222,7 +222,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -231,7 +231,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"5",
       "Shard ID":"sh1"
     }]
@@ -246,7 +246,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -255,7 +255,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"5",
       "Shard ID":"sh1"
     }]
@@ -271,7 +271,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -286,7 +286,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -339,7 +339,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid2",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"11",
       "Shard ID":"sh2"
     }]
@@ -473,7 +473,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Dataspace ID":"default",
+      "Distribution ID":"default",
       "Lower bound":"31",
       "Shard ID":"sh1"
     }]
