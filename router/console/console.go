@@ -2,7 +2,6 @@ package console
 
 import (
 	"context"
-	"crypto/tls"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/client"
@@ -30,7 +29,6 @@ type Console interface {
 }
 
 type Local struct {
-	cfg     *tls.Config
 	Coord   meta.EntityMgr
 	RRouter rulerouter.RuleRouter
 	qlogger qlog.Qlog
@@ -45,12 +43,11 @@ func (l *Local) Shutdown() error {
 	return nil
 }
 
-func NewConsole(cfg *tls.Config, coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (*Local, error) { // add writer class
+func NewConsole(coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (*Local, error) { // add writer class
 	return &Local{
 		Coord:   coord,
 		RRouter: rrouter,
 		qlogger: qlogprovider.NewLocalQlog(),
-		cfg:     cfg,
 		stchan:  stchan,
 		writer:  writer,
 	}, nil
