@@ -675,7 +675,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 						return nil, err
 					} else {
 						if distribution != "" && distribution != relDistribution.Id {
-							return nil, fmt.Errorf("mismatching distributions %s and %s", distribution, relDistribution)
+							return nil, fmt.Errorf("mismatching distributions %s and %s", distribution, relDistribution.Id)
 						}
 						distribution = relDistribution.Id
 					}
