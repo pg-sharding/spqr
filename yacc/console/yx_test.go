@@ -213,28 +213,26 @@ func TestKeyRange(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
+			query: "CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh1",
 					KeyRangeID: "krid1",
 					Dataspace:  "default",
 					LowerBound: []byte("1"),
-					UpperBound: []byte("10"),
 				},
 			},
 			err: nil,
 		},
 
 		{
-			query: "ADD KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
+			query: "CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888889 TO FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF ROUTE TO sh2;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.KeyRangeDefinition{
 					ShardID:    "sh2",
 					KeyRangeID: "krid2",
 					Dataspace:  "default",
 					LowerBound: []byte("88888888-8888-8888-8888-888888888889"),
-					UpperBound: []byte("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"),
 				},
 			},
 			err: nil,
@@ -261,7 +259,7 @@ func TestShardingRule(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ADD SHARDING RULE rule1 COLUMNS id;",
+			query: "CREATE SHARDING RULE rule1 COLUMNS id;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.ShardingRuleDefinition{
 					ID:        "rule1",

@@ -12,16 +12,16 @@ CREATE SHARDING RULE r1 COLUMN i;
  created sharding rule r1 for table (*) with columns [i, hash: x->x] in default dataspace
 (1 row)
 
-CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;
+CREATE KEY RANGE kridi1 from 0 route to sh1;
          add key range          
 --------------------------------
- created key range from 0 to 11
+ created key range with bound 0
 (1 row)
 
-CREATE KEY RANGE kridi2 from 11 to 21 route to sh2;
+CREATE KEY RANGE kridi2 from 11 route to sh2;
           add key range          
 ---------------------------------
- created key range from 11 to 21
+ created key range with bound 11
 (1 row)
 
 \c regress
@@ -77,14 +77,19 @@ NOTICE: send query to shard(s) : sh1,sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
 ----------------
 (0 rows)
 
 DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule r1
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
 

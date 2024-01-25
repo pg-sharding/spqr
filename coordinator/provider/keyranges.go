@@ -1,8 +1,8 @@
 package provider
 
 import (
-	"bytes"
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -22,7 +22,6 @@ type CoordinatorService struct {
 func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
 		LowerBound: []byte(request.KeyRangeInfo.KeyRange.LowerBound),
-		UpperBound: []byte(request.KeyRangeInfo.KeyRange.UpperBound),
 		ID:         request.KeyRangeInfo.Krid,
 		ShardID:    request.KeyRangeInfo.ShardId,
 		Dataspace:  "default",
@@ -53,24 +52,6 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 		}
 	}
 	return &protos.ModifyReply{}, nil
-}
-
-// TODO : unit tests
-func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange, dataspace string) (string, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx, dataspace)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: choose a key range without matching to exact bounds.
-	for _, krqb := range krsqb {
-		if string(krqb.LowerBound) == keyRange.GetLowerBound() &&
-			string(krqb.UpperBound) == keyRange.GetUpperBound() {
-			return krqb.ID, nil
-		}
-	}
-
-	return "", spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range not found")
 }
 
 // TODO : unit tests
@@ -129,23 +110,18 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	bound := request.GetBound()
 	uniteKeyRange := &kr.UniteKeyRange{}
 
-	for _, krqb := range krsqb {
-		if bytes.Equal(krqb.LowerBound, bound) {
-			uniteKeyRange.KeyRangeIDRight = krqb.ID
+	var matched_low *kr.KeyRange = nil
 
-			if uniteKeyRange.KeyRangeIDLeft != "" {
-				break
-			}
-			continue
+	for _, krqb := range krsqb {
+		if kr.CmpRangesEqual(krqb.LowerBound, bound) {
+			uniteKeyRange.KeyRangeIDRight = krqb.ID
 		}
 
-		if bytes.Equal(krqb.UpperBound, bound) {
-			uniteKeyRange.KeyRangeIDLeft = krqb.ID
-
-			if uniteKeyRange.KeyRangeIDRight != "" {
-				break
+		if kr.CmpRangesLess(krqb.LowerBound, bound) {
+			if matched_low == nil || kr.CmpRangesLess(matched_low.LowerBound, krqb.LowerBound) {
+				uniteKeyRange.KeyRangeIDLeft = krqb.ID
+				matched_low = krqb
 			}
-			continue
 		}
 	}
 

@@ -2,8 +2,8 @@
 \c spqr-console
 CREATE SHARDING RULE r1 COLUMN id;
 CREATE SHARDING RULE r2 COLUMN w_id;
-CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;
-CREATE KEY RANGE kridi2 from 11 to 31 route to sh2;
+CREATE KEY RANGE kridi1 from 0 route to sh1;
+CREATE KEY RANGE kridi2 from 11 route to sh2;
 
 \c regress
 
@@ -30,5 +30,6 @@ DROP TABLE xjoin;
 DROP TABLE yjoin;
 
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE;
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

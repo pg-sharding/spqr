@@ -178,7 +178,6 @@ func TestComment(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -188,7 +187,6 @@ func TestComment(t *testing.T) {
 		KeyRangeID:  "id2",
 		DataspaceId: dataspace,
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("25"),
 	})
 
 	assert.NoError(err)
@@ -221,7 +219,6 @@ func TestComment(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -269,7 +266,6 @@ func TestSingleShard(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -279,7 +275,6 @@ func TestSingleShard(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("25"),
 	})
 
 	assert.NoError(err)
@@ -321,7 +316,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -348,7 +342,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -366,7 +359,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -386,7 +378,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -406,7 +397,6 @@ func TestSingleShard(t *testing.T) {
 						Dataspace:  dataspace,
 						ID:         "id2",
 						LowerBound: []byte("11"),
-						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -425,7 +415,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -445,7 +434,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -465,7 +453,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -485,7 +472,6 @@ func TestSingleShard(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("25"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -533,7 +519,6 @@ func TestInsertOffsets(t *testing.T) {
 		KeyRangeID:  "id1",
 		DataspaceId: dataspace,
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -543,7 +528,6 @@ func TestInsertOffsets(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -577,7 +561,6 @@ func TestInsertOffsets(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -625,7 +608,6 @@ func TestJoins(t *testing.T) {
 		KeyRangeID:  "id1",
 		DataspaceId: dataspace,
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -635,7 +617,6 @@ func TestJoins(t *testing.T) {
 		KeyRangeID:  "id2",
 		DataspaceId: dataspace,
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -666,7 +647,6 @@ func TestJoins(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -692,7 +672,6 @@ func TestJoins(t *testing.T) {
 						ShardID:    "sh2",
 						ID:         "id2",
 						LowerBound: []byte("11"),
-						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -744,7 +723,6 @@ func TestUnnest(t *testing.T) {
 		KeyRangeID:  "id1",
 		DataspaceId: dataspace,
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -754,7 +732,6 @@ func TestUnnest(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -788,7 +765,6 @@ func TestUnnest(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -808,7 +784,6 @@ func TestUnnest(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace,
 						LowerBound: []byte("11"),
-						UpperBound: []byte("21"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -856,7 +831,6 @@ func TestCopySingleShard(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -866,7 +840,6 @@ func TestCopySingleShard(t *testing.T) {
 		DataspaceId: dataspace,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("11"),
-		UpperBound:  []byte("21"),
 	})
 
 	assert.NoError(err)
@@ -899,7 +872,6 @@ func TestCopySingleShard(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -959,7 +931,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 		DataspaceId: dataspace1,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -969,7 +940,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 		DataspaceId: dataspace2,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1002,7 +972,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace1,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -1025,7 +994,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 						ID:         "id1",
 						Dataspace:  dataspace1,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -1045,7 +1013,6 @@ func TestInsertMultiDataspace(t *testing.T) {
 						ID:         "id2",
 						Dataspace:  dataspace2,
 						LowerBound: []byte("1"),
-						UpperBound: []byte("11"),
 					},
 				},
 				TargetSessionAttrs: "any",
@@ -1105,7 +1072,6 @@ func TestSetStmt(t *testing.T) {
 		DataspaceId: dataspace1,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1115,7 +1081,6 @@ func TestSetStmt(t *testing.T) {
 		DataspaceId: dataspace2,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1207,7 +1172,6 @@ func TestMiscRouting(t *testing.T) {
 		DataspaceId: dataspace1,
 		KeyRangeID:  "id1",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)
@@ -1217,7 +1181,6 @@ func TestMiscRouting(t *testing.T) {
 		DataspaceId: dataspace2,
 		KeyRangeID:  "id2",
 		LowerBound:  []byte("1"),
-		UpperBound:  []byte("11"),
 	})
 
 	assert.NoError(err)

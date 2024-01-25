@@ -3,8 +3,9 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"strconv"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 

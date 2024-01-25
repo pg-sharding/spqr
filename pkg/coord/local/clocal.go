@@ -250,7 +250,6 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 
 	united := &kr.KeyRange{
 		LowerBound: krleft.LowerBound,
-		UpperBound: krright.UpperBound,
 		ShardID:    krleft.ShardID,
 		Dataspace:  krleft.DataspaceId,
 		ID:         krleft.KeyRangeID,
@@ -292,7 +291,6 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
-		Bytes("upper-bound", krNew.UpperBound).
 		Str("shard-id", krNew.ShardID).
 		Str("id", krNew.ID).
 		Msg("new key range")

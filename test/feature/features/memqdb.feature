@@ -195,15 +195,13 @@ Feature: MemQDB save state into a file
         "Key range ID": "krid1",
         "Dataspace ID":"default",
         "Lower bound": "1",
-        "Shard ID": "sh1",
-        "Upper bound": "10"
+        "Shard ID": "sh1"
       },
       {
         "Key range ID": "krid2",
         "Dataspace ID":"default",
         "Lower bound": "11",
-        "Shard ID": "sh1",
-        "Upper bound": "20"
+        "Shard ID": "sh1"
       }
     ]
     """

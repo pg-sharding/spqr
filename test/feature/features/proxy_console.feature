@@ -31,8 +31,8 @@ Feature: Proxy console
     Scenario: Add key_range/sharding_rule is executed in coordinator
         When I run SQL on host "router-admin"
         """
-        ADD KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
-        ADD SHARDING RULE r1 COLUMN id;
+        CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
+        CREATE SHARDING RULE r1 COLUMN id;
         """
         Then command return code should be "0"
 
@@ -49,8 +49,7 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"10"
+            "Shard ID":"sh1"
         }]
         """
         When I run SQL on host "router-admin"
@@ -81,8 +80,7 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"10"
+            "Shard ID":"sh1"
         }]
         """
         When I run SQL on host "router2-admin"
@@ -103,8 +101,8 @@ Feature: Proxy console
     Scenario: Lock/Unlock key_range are executed in coordinator
         When I run SQL on host "router-admin"
         """
-        ADD KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
-        ADD SHARDING RULE r1 COLUMN id;
+        CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1;
+        CREATE SHARDING RULE r1 COLUMN id;
         """
         Then command return code should be "0"
 
@@ -144,7 +142,7 @@ Feature: Proxy console
     Scenario: Split/Unite key_range are executed in coordinator
         When I run SQL on host "router-admin"
         """
-        ADD KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1;
+        CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1;
         SPLIT KEY RANGE new_krid FROM krid1 BY 5;
         """
         Then command return code should be "0"
@@ -159,15 +157,13 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"5"
+            "Shard ID":"sh1"
         },
         {
             "Key range ID":"new_krid",
             "Dataspace ID":"default",
             "Lower bound":"5",
-            "Shard ID":"sh1",
-            "Upper bound":"10"
+            "Shard ID":"sh1"
         }]
         """
 
@@ -187,16 +183,15 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"10"
+            "Shard ID":"sh1"
         }]
         """
 
     Scenario: Move is executed in coordinator
         When I run SQL on host "router-admin"
         """
-        ADD SHARDING RULE r1 COLUMN id;
-        ADD KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1
+        CREATE SHARDING RULE r1 COLUMN id;
+        CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1
         """
         Then command return code should be "0"
 
@@ -231,11 +226,11 @@ Feature: Proxy console
     Scenario: Show key_ranges/sharding_rules is executed in router
         When I run SQL on host "router-admin"
         """
-        ADD KEY RANGE old_krid FROM 0 TO 10 ROUTE TO sh2;
-        ADD SHARDING RULE old_rule COLUMN id;
+        CREATE KEY RANGE old_krid FROM 0 ROUTE TO sh2;
+        CREATE SHARDING RULE old_rule COLUMN id;
         UNREGISTER ROUTER r1;
-        ADD KEY RANGE new_krid FROM 100 TO 101 ROUTE TO sh1;
-        ADD SHARDING RULE new_rule COLUMN xid;
+        CREATE KEY RANGE new_krid FROM 100 ROUTE TO sh1;
+        CREATE SHARDING RULE new_rule COLUMN xid;
         """
         Then command return code should be "0"
 
@@ -249,8 +244,7 @@ Feature: Proxy console
             "Key range ID":"old_krid",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh2",
-            "Upper bound":"10"
+            "Shard ID":"sh2"
         }]
         """
 

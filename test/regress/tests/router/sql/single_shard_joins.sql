@@ -1,7 +1,7 @@
 \c spqr-console
 CREATE SHARDING RULE r1 COLUMN i;
-CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;
-CREATE KEY RANGE kridi2 from 11 to 21 route to sh2;
+CREATE KEY RANGE kridi1 from 0 route to sh1;
+CREATE KEY RANGE kridi2 from 11 route to sh2;
 
 \c regress
 
@@ -21,6 +21,8 @@ SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;
 
 DROP TABLE sshjt1;
+
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE;
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

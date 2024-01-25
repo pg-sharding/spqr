@@ -6,11 +6,6 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP DATASPACE ALL CASCADE;
- drop dataspace 
-----------------
-(0 rows)
-
 CREATE DATASPACE ds1;
          add dataspace         
 -------------------------------
@@ -23,34 +18,34 @@ CREATE DATASPACE ds2;
  created dataspace with id ds2
 (1 row)
 
-ADD SHARDING RULE r1 COLUMNS w_id FOR DATASPACE ds1;
+CREATE SHARDING RULE r1 COLUMNS w_id FOR DATASPACE ds1;
                                     add sharding rule                                    
 -----------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 dataspace
 (1 row)
 
-ADD SHARDING RULE r2 COLUMNS w_id FOR DATASPACE ds2;
+CREATE SHARDING RULE r2 COLUMNS w_id FOR DATASPACE ds2;
                                     add sharding rule                                    
 -----------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1 FOR DATASPACE ds1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DATASPACE ds1;
          add key range          
 --------------------------------
- created key range from 1 to 11
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DATASPACE ds1;
           add key range          
 ---------------------------------
- created key range from 11 to 31
+ created key range with bound 11
 (1 row)
 
-ADD KEY RANGE krid3 FROM 11 TO 31 ROUTE TO sh2 FOR DATASPACE ds2;
+CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
           add key range          
 ---------------------------------
- created key range from 11 to 31
+ created key range with bound 11
 (1 row)
 
 \c regress
@@ -71,3 +66,32 @@ NOTICE: send query to shard(s) : sh1
 SET __spqr__dataspace = ds2;
 SELECT * FROM xx WHERE w_id=5;
 ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
+SET __spqr__dataspace = "default";
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SQPR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DATASPACE ALL CASCADE;
+   drop dataspace   
+--------------------
+ drop dataspace ds1
+ drop dataspace ds2
+(2 rows)
+
+DROP SHARDING RULE ALL;
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

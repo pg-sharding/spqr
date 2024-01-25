@@ -44,14 +44,7 @@ func (c *Coordinator) showKeyRanges() ([]*kr.KeyRange, error) {
 
 	res := make([]*kr.KeyRange, 0, len(respList.KeyRangesInfo))
 	for _, keyRangeInfo := range respList.KeyRangesInfo {
-		keyRange := &kr.KeyRange{
-			LowerBound: []byte(keyRangeInfo.GetKeyRange().GetLowerBound()),
-			UpperBound: []byte(keyRangeInfo.GetKeyRange().GetUpperBound()),
-			ShardID:    keyRangeInfo.GetShardId(),
-			ID:         keyRangeInfo.GetKrid(),
-		}
-
-		res = append(res, keyRange)
+		res = append(res, kr.KeyRangeFromProto(keyRangeInfo))
 	}
 
 	return res, nil

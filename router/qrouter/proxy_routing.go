@@ -158,20 +158,24 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(ctx context.Context, key st
 		Int("key-ranges-count", len(meta.krs)).
 		Msg("checking key with key ranges")
 
+	var matched_krkey *kr.KeyRange = nil
+
 	for _, krkey := range meta.krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, []byte(key)) &&
-			kr.CmpRangesLess([]byte(key), krkey.UpperBound) {
-			if err := qr.mgr.ShareKeyRange(krkey.ID); err != nil {
-				return nil, err
-			}
-
-			return &routingstate.DataShardRoute{
-				Shkey:     kr.ShardKey{Name: krkey.ShardID},
-				Matchedkr: krkey,
-			}, nil
+			(matched_krkey == nil || kr.CmpRangesLessEqual(matched_krkey.LowerBound, krkey.LowerBound)) {
+			matched_krkey = krkey
 		}
 	}
 
+	if matched_krkey != nil {
+		if err := qr.mgr.ShareKeyRange(matched_krkey.ID); err != nil {
+			return nil, err
+		}
+		return &routingstate.DataShardRoute{
+			Shkey:     kr.ShardKey{Name: matched_krkey.ShardID},
+			Matchedkr: matched_krkey,
+		}, nil
+	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
 	return nil, FailedToFindKeyRange

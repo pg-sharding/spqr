@@ -20,7 +20,6 @@ var mockShard = &qdb.Shard{
 }
 var mockKeyRange = &qdb.KeyRange{
 	LowerBound: []byte{1, 2},
-	UpperBound: []byte{3, 4},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }

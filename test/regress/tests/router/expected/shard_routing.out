@@ -6,34 +6,34 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD SHARDING RULE r1 COLUMNS w_id;
+CREATE SHARDING RULE r1 COLUMNS w_id;
                                       add sharding rule                                      
 ---------------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in default dataspace
 (1 row)
 
-ADD SHARDING RULE r2 COLUMNS id;
+CREATE SHARDING RULE r2 COLUMNS id;
                                      add sharding rule                                     
 -------------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
          add key range          
 --------------------------------
- created key range from 1 to 11
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 21 ROUTE TO sh1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1;
           add key range          
 ---------------------------------
- created key range from 11 to 21
+ created key range with bound 11
 (1 row)
 
-ADD KEY RANGE krid3 FROM 21 TO 31 ROUTE TO sh2;
+CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2;
           add key range          
 ---------------------------------
- created key range from 21 to 31
+ created key range with bound 21
 (1 row)
 
 \c regress
@@ -278,14 +278,19 @@ ERROR:  table "xxerr" does not exist
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
 ----------------
 (0 rows)
 
 DROP SHARDING RULE ALL;
-     drop sharding rule      
------------------------------
- dropped sharding rule r1,r2
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
 

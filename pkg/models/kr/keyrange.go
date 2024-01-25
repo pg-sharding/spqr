@@ -14,8 +14,7 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound []byte
-	UpperBound []byte
+	LowerBound KeyRangeBound
 	ShardID    string
 	ID         string
 	Dataspace  string
@@ -52,7 +51,6 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound: kr.LowerBound,
-		UpperBound: kr.UpperBound,
 		ShardID:    kr.ShardID,
 		ID:         kr.KeyRangeID,
 		Dataspace:  kr.DataspaceId,
@@ -66,7 +64,6 @@ func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	}
 	return &KeyRange{
 		LowerBound: kr.LowerBound,
-		UpperBound: kr.UpperBound,
 		ShardID:    kr.ShardID,
 		ID:         kr.KeyRangeID,
 		Dataspace:  kr.Dataspace,
@@ -79,8 +76,7 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: []byte(kr.KeyRange.LowerBound),
-		UpperBound: []byte(kr.KeyRange.UpperBound),
+		LowerBound: KeyRangeBound(kr.KeyRange.LowerBound),
 		ShardID:    kr.ShardId,
 		ID:         kr.Krid,
 		Dataspace:  kr.DataspaceId,
@@ -91,7 +87,6 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		LowerBound:  kr.LowerBound,
-		UpperBound:  kr.UpperBound,
 		ShardID:     kr.ShardID,
 		KeyRangeID:  kr.ID,
 		DataspaceId: kr.Dataspace,
@@ -103,7 +98,6 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 	return &proto.KeyRangeInfo{
 		KeyRange: &proto.KeyRange{
 			LowerBound: string(kr.LowerBound),
-			UpperBound: string(kr.UpperBound),
 		},
 		ShardId:     kr.ShardID,
 		Krid:        kr.ID,

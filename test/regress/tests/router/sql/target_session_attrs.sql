@@ -1,8 +1,8 @@
 \c spqr-console
 
-ADD SHARDING RULE t1 COLUMNS id;
-ADD KEY RANGE krid1 FROM 1 TO 101 ROUTE TO sh1;
-ADD KEY RANGE krid2 FROM 101 TO 201 ROUTE TO sh2;
+CREATE SHARDING RULE t1 COLUMNS id;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
+CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2;
 
 \c regress
 CREATE TABLE tsa_test (id int);
@@ -21,5 +21,6 @@ SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-att
 DROP TABLE tsa_test;
 
 \c spqr-console
-DROP KEY RANGE ALL;
+DROP DATASPACE ALL CASCADE;
 DROP SHARDING RULE ALL;
+DROP KEY RANGE ALL;

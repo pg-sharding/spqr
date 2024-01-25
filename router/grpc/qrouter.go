@@ -142,8 +142,6 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
 
-	spqrlog.Zero.Debug().Msg("listing key ranges")
-
 	krsqdb, err := l.mgr.ListKeyRanges(ctx, request.Dataspace)
 	if err != nil {
 		return nil, err
@@ -200,22 +198,18 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 
 	var krright *kr.KeyRange
 	var krleft *kr.KeyRange
+	var kr_match *kr.KeyRange
 
 	for _, keyrange := range krs {
 		if kr.CmpRangesEqual(keyrange.LowerBound, request.Bound) {
 			krright = keyrange
-			if krleft != nil {
-				break
-			}
-			continue
 		}
 
-		if kr.CmpRangesEqual(keyrange.UpperBound, request.Bound) {
-			krleft = keyrange
-			if krright != nil {
-				break
+		if kr.CmpRangesLess(keyrange.LowerBound, request.Bound) {
+			if kr_match == nil || kr.CmpRangesLess(kr_match.LowerBound, keyrange.LowerBound) {
+				krleft = keyrange
+				kr_match = keyrange
 			}
-			continue
 		}
 	}
 

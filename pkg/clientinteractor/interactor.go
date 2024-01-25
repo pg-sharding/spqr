@@ -3,10 +3,11 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
@@ -207,7 +208,6 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			TextOidFD("Shard ID"),
 			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
-			TextOidFD("Upper bound"),
 		},
 		},
 	} {
@@ -224,7 +224,6 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 				[]byte(keyRange.ShardID),
 				[]byte(keyRange.Dataspace),
 				keyRange.LowerBound,
-				keyRange.UpperBound,
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -242,7 +241,7 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %s to %s", keyRange.LowerBound, keyRange.UpperBound))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range with bound %s", keyRange.LowerBound))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")

@@ -5,19 +5,19 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD SHARDING RULE rule1 COLUMNS id;
+CREATE SHARDING RULE rule1 COLUMNS id;
                                       add sharding rule                                       
 ----------------------------------------------------------------------------------------------
  created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default dataspace
 (1 row)
 
-ADD SHARDING RULE rule2 COLUMNS idx;
+CREATE SHARDING RULE rule2 COLUMNS idx;
                                        add sharding rule                                       
 -----------------------------------------------------------------------------------------------
  created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default dataspace
 (1 row)
 
-ADD SHARDING RULE rule3 COLUMNS idy;
+CREATE SHARDING RULE rule3 COLUMNS idy;
                                        add sharding rule                                       
 -----------------------------------------------------------------------------------------------
  created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default dataspace
@@ -31,9 +31,19 @@ SHOW sharding_rules;
  rule3            | default      | *          | idy     | x->x
 (3 rows)
 
+DROP DATASPACE ALL CASCADE;
+ drop dataspace 
+----------------
+(0 rows)
+
 DROP SHARDING RULE ALL;
-           drop sharding rule            
------------------------------------------
- dropped sharding rule rule1,rule2,rule3
+   drop sharding rule   
+------------------------
+ dropped sharding rule 
 (1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
 
