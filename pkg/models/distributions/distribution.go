@@ -17,14 +17,14 @@ func DistributedRelatitonFromDB(distr *qdb.DistributedRelatiton) *DistributedRel
 	}
 }
 
-func DistributedRelatitonToDB(distr DistributedRelatiton) *qdb.DistributedRelatiton {
+func DistributedRelatitonToDB(distr *DistributedRelatiton) *qdb.DistributedRelatiton {
 	return &qdb.DistributedRelatiton{
 		Name:        distr.Name,
 		ColumnNames: distr.ColumnNames,
 	}
 }
 
-func DistributedRelatitonToProto(distr DistributedRelatiton) *proto.DistributedRelation {
+func DistributedRelatitonToProto(distr *DistributedRelatiton) *proto.DistributedRelation {
 	return &proto.DistributedRelation{
 		Name:    distr.Name,
 		Columns: distr.ColumnNames,

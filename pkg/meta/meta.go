@@ -284,7 +284,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.AttachTable:
-		distr := []distributions.DistributedRelatiton{
+		distr := []*distributions.DistributedRelatiton{
 			{
 				Name: stmt.Table,
 			},

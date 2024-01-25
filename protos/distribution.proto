@@ -23,11 +23,11 @@ message CreateDistributionReply{}
 
 message ListDistributionRequest{}
 
-message ListDistributionReply{
+message ListDistributionReply {
   repeated Distribution distributions = 1;
 }
 
-message DropDistributionRequest{
+message DropDistributionRequest {
   repeated string ids = 1;
 }
 

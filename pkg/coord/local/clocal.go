@@ -58,13 +58,11 @@ func (lc *LocalCoordinator) ListDistribution(ctx context.Context) ([]*distributi
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.CreateDistribution(ctx, &qdb.Distribution{
-		ID: ds.Id,
-	})
+	return lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []distributions.DistributedRelatiton) error {
+func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelatiton) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -77,15 +75,26 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) GetDistribution(ctx context.Context, table string) (*distributions.Distribution, error) {
+func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	ret, err := lc.qdb.GetDistribution(ctx, table)
+	ret, err := lc.qdb.GetDistribution(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return distributions.NewDistribution(ret.ID), nil
+	return distributions.DistributionFromDB(ret), nil
+}
+
+func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	ret, err := lc.qdb.GetRelationDistribution(ctx, relation)
+	if err != nil {
+		return nil, err
+	}
+	return distributions.DistributionFromDB(ret), nil
 }
 
 // TODO : unit tests
@@ -101,10 +110,10 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) DropDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.DropDistribution(ctx, ds.Id)
+	return lc.qdb.DropDistribution(ctx, id)
 }
 
 // TODO : unit tests

@@ -794,7 +794,7 @@ func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) er
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string, ds []distributions.DistributedRelatiton) error {
+func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string, ds []*distributions.DistributedRelatiton) error {
 	if err := pi.WriteHeader("attach table"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
