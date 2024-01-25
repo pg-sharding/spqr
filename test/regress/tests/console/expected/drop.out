@@ -36,10 +36,10 @@ CREATE SHARDING RULE rule3 COLUMNS idy;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
---------------+----------+--------------+-------------+-------------
- krid1        | sh1      | default      | 1           | deprecated
- krid2        | sh1      | default      | 11          | deprecated
+ Key range ID | Shard ID | Dataspace ID | Lower bound 
+--------------+----------+--------------+-------------
+ krid1        | sh1      | default      | 1
+ krid2        | sh1      | default      | 11
 (2 rows)
 
 SHOW sharding_rules;
@@ -68,8 +68,8 @@ DROP SHARDING RULE ALL;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
---------------+----------+--------------+-------------+-------------
+ Key range ID | Shard ID | Dataspace ID | Lower bound 
+--------------+----------+--------------+-------------
 (0 rows)
 
 SHOW sharding_rules;

@@ -208,7 +208,6 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			TextOidFD("Shard ID"),
 			TextOidFD("Dataspace ID"),
 			TextOidFD("Lower bound"),
-			TextOidFD("Upper bound"),
 		},
 		},
 	} {
@@ -225,7 +224,6 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 				[]byte(keyRange.ShardID),
 				[]byte(keyRange.Dataspace),
 				keyRange.LowerBound,
-				[]byte("deprecated"),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")

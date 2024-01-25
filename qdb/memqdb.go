@@ -707,6 +707,10 @@ func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if _, ok := q.Dataspaces[id]; !ok {
+		return spqrerror.New(spqrerror.SPQR_NO_DATASPACE, "no such dataspace")
+	}
+
 	for t, ds := range q.TableDataspace {
 		if ds == id {
 			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.TableDataspace, t)); err != nil {

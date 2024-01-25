@@ -9,6 +9,12 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DATASPACE ds1;
 
 CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
 
+-- drop non-existing one
+DROP DATASPACE ds23223;
+
+-- non-cascade drop
+DROP DATASPACE ds1;
+
 DROP DATASPACE ds1 CASCADE;
 
 SHOW dataspaces;

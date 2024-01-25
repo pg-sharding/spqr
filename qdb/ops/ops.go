@@ -1,7 +1,6 @@
 package ops
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -80,7 +79,7 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 	}
 
 	for _, v := range existsKrids {
-		if doIntersect(keyRange, v) {
+		if kr.CmpRangesEqual(keyRange.LowerBound, v.LowerBound) {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
@@ -109,24 +108,10 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			// update req
 			continue
 		}
-		if doIntersect(keyRange, v) {
+		if kr.CmpRangesEqual(keyRange.LowerBound, v.LowerBound) {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
 
 	return qdb.UpdateKeyRange(ctx, keyRange.ToDB())
-}
-
-// TODO : unit tests
-// This method checks if two key ranges intersect
-func doIntersect(l *kr.KeyRange, r *qdb.KeyRange) bool {
-	// l0     r0      l1      r1
-	// |------|-------|--------
-	//
-	// r0     l0      r1      l1
-	// -------|-------|-------|
-	//
-	// l0     r0      l1      r1
-	// -------|-------|-------|
-	return bytes.Equal(l.LowerBound, r.LowerBound)
 }

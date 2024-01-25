@@ -49,8 +49,7 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh1"
         }]
         """
         When I run SQL on host "router-admin"
@@ -81,8 +80,7 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh1"
         }]
         """
         When I run SQL on host "router2-admin"
@@ -159,15 +157,13 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh1"
         },
         {
             "Key range ID":"new_krid",
             "Dataspace ID":"default",
             "Lower bound":"5",
-            "Shard ID":"sh1",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh1"
         }]
         """
 
@@ -187,8 +183,7 @@ Feature: Proxy console
             "Key range ID":"krid1",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh1",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh1"
         }]
         """
 
@@ -249,8 +244,7 @@ Feature: Proxy console
             "Key range ID":"old_krid",
             "Dataspace ID":"default",
             "Lower bound":"0",
-            "Shard ID":"sh2",
-            "Upper bound":"deprecated"
+            "Shard ID":"sh2"
         }]
         """
 

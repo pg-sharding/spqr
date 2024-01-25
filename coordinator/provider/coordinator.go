@@ -680,10 +680,10 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
-	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) || kr.CmpRangesEqual(req.Bound, krOld.UpperBound) {
-		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower or upper bound of the key range")
+	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
 	}
-	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) || !kr.CmpRangesLess(req.Bound, krOld.UpperBound) {
+	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
 	}
 

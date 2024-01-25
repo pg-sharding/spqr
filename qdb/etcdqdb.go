@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"path"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
@@ -170,7 +171,7 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v already present in qdb", id)
+		return nil, spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such sharding rule present in qdb")
 	case 1:
 		var rule ShardingRule
 		if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
@@ -184,7 +185,6 @@ func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule
 	default:
 		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much sharding rules matched: %d", len(resp.Kvs))
 	}
-
 }
 
 // TODO : unit tests
@@ -264,7 +264,6 @@ func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, er
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
 		Str("dataspace-id", keyRange.DataspaceId).
 		Str("key-range-id", keyRange.KeyRangeID).
@@ -327,7 +326,6 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
 		Str("dataspace-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
@@ -1071,13 +1069,25 @@ func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
 		Str("id", id).
 		Msg("etcdqdb: drop dataspace")
 
-	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+	resp, err := q.cli.Get(ctx, dataspaceNodePath(id), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
 
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: drop dataspace")
+	switch len(resp.Kvs) {
+	case 0:
+		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such dataspace present in qdb")
+	case 1:
+		resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
 
-	return err
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: drop dataspace")
+
+		return err
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much dataspaces rules matched: %d", len(resp.Kvs))
+	}
 }
 
 // TODO : unit tests

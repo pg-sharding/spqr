@@ -152,15 +152,13 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Dataspace ID":"default",
       "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     },
     {
       "Key range ID":"krid2",
       "Dataspace ID":"default",
       "Lower bound":"11",
-      "Shard ID":"sh2",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh2"
     }]
     """
 
@@ -226,8 +224,7 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Dataspace ID":"default",
       "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
     And SQL result should match json
@@ -236,8 +233,7 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Dataspace ID":"default",
       "Lower bound":"5",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
 
@@ -252,8 +248,7 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Dataspace ID":"default",
       "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
     And SQL result should match json
@@ -262,8 +257,7 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Dataspace ID":"default",
       "Lower bound":"5",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
 
@@ -279,8 +273,7 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Dataspace ID":"default",
       "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
 
@@ -295,8 +288,7 @@ Feature: Coordinator test
       "Key range ID":"krid1",
       "Dataspace ID":"default",
       "Lower bound":"0",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
 
@@ -349,8 +341,7 @@ Feature: Coordinator test
       "Key range ID":"krid2",
       "Dataspace ID":"default",
       "Lower bound":"11",
-      "Shard ID":"sh2",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh2"
     }]
     """
 
@@ -391,7 +382,7 @@ Feature: Coordinator test
     """
 
     #
-    # Check we cannot split by lower or upper bound
+    # Check we cannot split by lower
     #
     When I run SQL on host "coordinator"
     """
@@ -399,7 +390,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    failed to split because bound equals lower or upper bound of the key range
+    failed to split because bound equals lower of the key range
     """
 
     When I run SQL on host "coordinator"
@@ -408,7 +399,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    failed to split because bound equals lower or upper bound of the key range
+    failed to split because bound equals lower of the key range
     """
 
   Scenario: Router is down
@@ -484,8 +475,7 @@ Feature: Coordinator test
       "Key range ID":"krid3",
       "Dataspace ID":"default",
       "Lower bound":"31",
-      "Shard ID":"sh1",
-      "Upper bound":"deprecated"
+      "Shard ID":"sh1"
     }]
     """
 

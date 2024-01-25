@@ -47,6 +47,16 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
  created key range with bound 11
 (1 row)
 
+-- drop non-existing one
+DROP DATASPACE ds23223;
+ drop dataspace 
+----------------
+(0 rows)
+
+-- non-cascade drop
+DROP DATASPACE ds1;
+ERROR:  cannot drop dataspace ds1 because other objects depend on it
+HINT: Use DROP ... CASCADE to drop the dependent objects too.
 DROP DATASPACE ds1 CASCADE;
    drop dataspace   
 --------------------
@@ -73,8 +83,8 @@ SHOW dataspaces;
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
---------------+----------+--------------+-------------+-------------
+ Key range ID | Shard ID | Dataspace ID | Lower bound 
+--------------+----------+--------------+-------------
 (0 rows)
 
 SHOW sharding_rules;
