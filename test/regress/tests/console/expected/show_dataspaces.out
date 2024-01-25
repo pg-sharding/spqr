@@ -7,19 +7,19 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds2
 (1 row)
 
 SHOW distributions;
  Distribution ID 
---------------
+-----------------
  default
  ds1
  ds2
@@ -27,7 +27,7 @@ SHOW distributions;
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
---------------------
+-----------------------
  drop distribution ds1
  drop distribution ds2
 (2 rows)

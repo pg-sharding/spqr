@@ -8,8 +8,8 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that numeric type works
 CREATE SHARDING RULE t1 COLUMNS id;
-                                     add sharding rule                                     
--------------------------------------------------------------------------------------------
+                                      add sharding rule                                       
+----------------------------------------------------------------------------------------------
  created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distribution
 (1 row)
 
@@ -86,7 +86,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
  drop distribution 
-----------------
+-------------------
 (0 rows)
 
 DROP SHARDING RULE ALL;

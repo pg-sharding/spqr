@@ -8,25 +8,25 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds2
 (1 row)
 
 CREATE SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
-                                    add sharding rule                                    
------------------------------------------------------------------------------------------
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
  created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 distribution
 (1 row)
 
 CREATE SHARDING RULE r2 COLUMNS w_id FOR DISTRIBUTION ds2;
-                                    add sharding rule                                    
------------------------------------------------------------------------------------------
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
  created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 distribution
 (1 row)
 
@@ -79,7 +79,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
---------------------
+-----------------------
  drop distribution ds1
  drop distribution ds2
 (2 rows)

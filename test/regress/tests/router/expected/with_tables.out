@@ -7,14 +7,14 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE SHARDING RULE t1 TABLE orders COLUMN id;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
+                                         add sharding rule                                         
+---------------------------------------------------------------------------------------------------
  created sharding rule t1 for table (orders) with columns [id, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE t2 TABLE delivery COLUMN order_id;
-                                           add sharding rule                                            
---------------------------------------------------------------------------------------------------------
+                                             add sharding rule                                             
+-----------------------------------------------------------------------------------------------------------
  created sharding rule t2 for table (delivery) with columns [order_id, hash: x->x] in default distribution
 (1 row)
 
@@ -73,7 +73,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
  drop distribution 
-----------------
+-------------------
 (0 rows)
 
 DROP SHARDING RULE ALL;

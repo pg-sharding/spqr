@@ -7,25 +7,25 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
          add distribution         
--------------------------------
+----------------------------------
  created distribution with id ds2
 (1 row)
 
 CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
-                                    add sharding rule                                     
-------------------------------------------------------------------------------------------
+                                      add sharding rule                                      
+---------------------------------------------------------------------------------------------
  created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 distribution
 (1 row)
 
 CREATE SHARDING RULE rule2 COLUMNS id FOR DISTRIBUTION ds2;
-                                    add sharding rule                                     
-------------------------------------------------------------------------------------------
+                                      add sharding rule                                      
+---------------------------------------------------------------------------------------------
  created sharding rule rule2 for table (*) with columns [id, hash: x->x] in ds2 distribution
 (1 row)
 
@@ -49,46 +49,43 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 
 -- drop non-existing one
 DROP DISTRIBUTION ds23223;
- drop distribution 
-----------------
-(0 rows)
-
+ERROR:  no such distribution.
 -- non-cascade drop
 DROP DISTRIBUTION ds1;
 ERROR:  cannot drop distribution ds1 because other objects depend on it
 HINT: Use DROP ... CASCADE to drop the dependent objects too.
 DROP DISTRIBUTION ds1 CASCADE;
    drop distribution   
---------------------
+-----------------------
  drop distribution ds1
 (1 row)
 
 SHOW distributions;
  Distribution ID 
---------------
+-----------------
  default
  ds2
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
---------------------
+-----------------------
  drop distribution ds2
 (1 row)
 
 SHOW distributions;
  Distribution ID 
---------------
+-----------------
  default
 (1 row)
 
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+--------------+-------------
+--------------+----------+-----------------+-------------
 (0 rows)
 
 SHOW sharding_rules;
  Sharding Rule ID | Distribution ID | Table Name | Columns | Hash Function 
-------------------+--------------+------------+---------+---------------
+------------------+-----------------+------------+---------+---------------
 (0 rows)
 
