@@ -411,8 +411,8 @@ func (a *adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 	c := proto.NewDistributionServiceClient(a.conn)
 
 	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
-		Table:        table,
-		Distribution: distributions.DistributionToProto(ds),
+		Id:        id,
+		Relations: rels,
 	})
 
 	return err

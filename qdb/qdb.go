@@ -70,7 +70,7 @@ type QDB interface {
 
 	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
 
-	AddDistribution(ctx context.Context, ks *Distribution) error
+	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
 

@@ -35,7 +35,8 @@ message DropDistributionReply{}
 
 message AlterDistributionAttachRequest{
   string id = 1;
-  Distribution distribution = 2;
+  repeated string ColumnNames = 2;
+  repeated DistributedRelation relations = 3;
 }
 
 message AlterDistributionAttachReply{}

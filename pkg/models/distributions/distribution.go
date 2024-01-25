@@ -10,10 +10,24 @@ type DistributedRelatiton struct {
 	ColumnNames []string
 }
 
-func DistributedRelatitonFromDB(rule *qdb.DistributedRelatiton) *DistributedRelatiton {
+func DistributedRelatitonFromDB(distr *qdb.DistributedRelatiton) *DistributedRelatiton {
 	return &DistributedRelatiton{
-		Name:        rule.Name,
-		ColumnNames: rule.ColumnNames,
+		Name:        distr.Name,
+		ColumnNames: distr.ColumnNames,
+	}
+}
+
+func DistributedRelatitonToDB(distr DistributedRelatiton) *qdb.DistributedRelatiton {
+	return &qdb.DistributedRelatiton{
+		Name:        distr.Name,
+		ColumnNames: distr.ColumnNames,
+	}
+}
+
+func DistributedRelatitonToProto(distr DistributedRelatiton) *proto.DistributedRelation {
+	return &proto.DistributedRelation{
+		Name:    distr.Name,
+		Columns: distr.ColumnNames,
 	}
 }
 
@@ -24,7 +38,7 @@ type Distribution struct {
 	Relations map[string]*DistributedRelatiton
 }
 
-// local table sharding rule -> route to world
+// local table sharding distr -> route to world
 
 func NewDistribution(id string) *Distribution {
 	return &Distribution{
@@ -36,16 +50,16 @@ func (s *Distribution) ID() string {
 	return s.Id
 }
 
-func DistributionFromDB(rule *qdb.Distribution) *Distribution {
-	distr := &Distribution{
-		Id:       rule.ID,
-		ColTypes: rule.ColTypes,
+func DistributionFromDB(distr *qdb.Distribution) *Distribution {
+	ret := &Distribution{
+		Id:       distr.ID,
+		ColTypes: distr.ColTypes,
 	}
-	for name, val := range rule.Relations {
-		distr.Relations[name] = DistributedRelatitonFromDB(val)
+	for name, val := range distr.Relations {
+		ret.Relations[name] = DistributedRelatitonFromDB(val)
 	}
 
-	return distr
+	return ret
 }
 
 func DistributionFromProto(ds *proto.Distribution) *Distribution {

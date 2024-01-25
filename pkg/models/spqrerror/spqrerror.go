@@ -19,6 +19,7 @@ const (
 	SPQR_NO_DISTRIBUTION     = "SPQRN"
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
+	SPQR_METADATA_CORRUPTION = "SPQRZ"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -37,6 +38,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_NO_DISTRIBUTION:     "No distribution",
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
+	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",
 }
 
 func GetMessageByCode(errorCode string) string {
@@ -62,6 +64,15 @@ func New(errorCode string, errorMsg string) *SpqrError {
 	}
 	return err
 }
+
+func NewByCode(errorCode string) *SpqrError {
+	err := &SpqrError{
+		Err:       fmt.Errorf(GetMessageByCode(errorCode)),
+		ErrorCode: errorCode,
+	}
+	return err
+}
+
 func Newf(errorCode string, format string, a ...any) *SpqrError {
 	err := &SpqrError{
 		Err:       fmt.Errorf(format, a...),

@@ -57,7 +57,7 @@ func TestMemqdbRacing(t *testing.T) {
 	ctx := context.TODO()
 
 	methods := []func(){
-		func() { _ = memqdb.AddDistribution(ctx, mockDistribution) },
+		func() { _ = memqdb.CreateDistribution(ctx, mockDistribution) },
 		func() { _ = memqdb.AddKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },

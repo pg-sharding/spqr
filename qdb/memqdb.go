@@ -675,7 +675,7 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) AddDistribution(ctx context.Context, distribution *Distribution) error {
+func (q *MemQDB) CreateDistribution(ctx context.Context, distribution *Distribution) error {
 	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()

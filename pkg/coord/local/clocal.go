@@ -55,10 +55,10 @@ func (lc *LocalCoordinator) ListDistribution(ctx context.Context) ([]*distributi
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AddDistribution(ctx context.Context, ds *distributions.Distribution) error {
+func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	return lc.qdb.AddDistribution(ctx, &qdb.Distribution{
+	return lc.qdb.CreateDistribution(ctx, &qdb.Distribution{
 		ID: ds.Id,
 	})
 }
@@ -70,7 +70,7 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 
 	dRels := []*qdb.DistributedRelatiton{}
 	for _, r := range rels {
-		dRels = append(dRels, distributions.DistributionToDB(r))
+		dRels = append(dRels, distributions.DistributedRelatitonToDB(r))
 	}
 
 	return lc.qdb.AlterDistributionAttach(ctx, id, dRels)
