@@ -1086,7 +1086,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 
 		return err
 	default:
-		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions rules matched: %d", len(resp.Kvs))
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
 	}
 }
 
