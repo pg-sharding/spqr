@@ -271,6 +271,9 @@ func TestAuthFrontend(t *testing.T) {
 	cl := mockcl.NewMockRouterClient(ctrl)
 	cl.EXPECT().Usr().AnyTimes().Return("gauss")
 	cl.EXPECT().PasswordCT().AnyTimes().Return("password", nil)
+
+	// Testing on external open ldap server
+	// Test search+bind mode
 	ldapConfig := config.LDAPCfg{
 		LdapServer:     "ldap.forumsys.com",
 		LdapPort:       389,
@@ -281,5 +284,16 @@ func TestAuthFrontend(t *testing.T) {
 	}
 	authRule := MockFrontendRule("ldap", &ldapConfig)
 	err := auth.AuthFrontend(cl, authRule)
+	assert.NoError(err)
+
+	// Test simple-bind mode
+	ldapConfig = config.LDAPCfg{
+		LdapServer: "ldap.forumsys.com",
+		LdapPort:   389,
+		LdapScheme: "ldap",
+		LdapSuffix: ",dc=example,dc=com",
+		LdapPrefix: "uid=",
+	}
+	err = auth.AuthFrontend(cl, authRule)
 	assert.NoError(err)
 }
