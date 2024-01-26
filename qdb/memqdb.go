@@ -3,6 +3,7 @@ package qdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sort"
 	"sync"
@@ -131,6 +132,12 @@ func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error 
 	spqrlog.Zero.Debug().Interface("rule", rule).Msg("memqdb: add sharding rule")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
+	if len(rule.DistributionId) > 0 && rule.DistributionId != "default" {
+		if _, ok := q.Distributions[rule.DistributionId]; !ok {
+			return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, fmt.Sprintf("no such distribution %s", rule.DistributionId))
+		}
+	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shrules, rule.ID, rule))
 }
@@ -723,16 +730,16 @@ func (q *MemQDB) DropDistribution(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelatiton) error {
+func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if ds, ok := q.Distributions[id]; ok {
+	if ds, ok := q.Distributions[id]; !ok {
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
 	} else {
 		for _, r := range rels {
-			ds.Relations[r.Name] = &DistributedRelatiton{
+			ds.Relations[r.Name] = &DistributedRelation{
 				Name:        r.Name,
 				ColumnNames: r.ColumnNames,
 			}

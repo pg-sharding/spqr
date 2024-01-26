@@ -100,3 +100,44 @@ func TestMemqdbRacing(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDistributions(t *testing.T) {
+
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+
+	assert.NoError(err)
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+
+	assert.NoError(err)
+
+	assert.NoError(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "ds1",
+	}))
+
+	assert.Error(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "dserr",
+	}))
+
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
+		{
+			Name: "r1",
+			ColumnNames: []string{
+				"c1",
+			},
+		},
+	}))
+}

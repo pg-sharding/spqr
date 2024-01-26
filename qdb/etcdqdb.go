@@ -1091,7 +1091,7 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelatiton) error {
+func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
 		Msg("etcdqdb: attach table to distribution")

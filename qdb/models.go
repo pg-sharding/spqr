@@ -87,7 +87,7 @@ var (
 	ColumnTypeUinteger = "uinteger"
 )
 
-type DistributedRelatiton struct {
+type DistributedRelation struct {
 	Name        string   `json:"name"`
 	ColumnNames []string `json:"column_names"`
 }
@@ -96,5 +96,15 @@ type Distribution struct {
 	ID       string   `json:"id"`
 	ColTypes []string `json:"col_types,omitempty"`
 
-	Relations map[string]*DistributedRelatiton `json:"relations"`
+	Relations map[string]*DistributedRelation `json:"relations"`
+}
+
+func NewDistribution(id string, coltypes []string) *Distribution {
+	distr := &Distribution{
+		ID:        id,
+		ColTypes:  coltypes,
+		Relations: map[string]*DistributedRelation{},
+	}
+
+	return distr
 }

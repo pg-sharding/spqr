@@ -410,7 +410,7 @@ func (a *Adapter) DropDistribution(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelatiton) error {
+func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	c := proto.NewDistributionServiceClient(a.conn)
 
 	dRels := []*proto.DistributedRelation{}

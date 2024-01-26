@@ -62,11 +62,11 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelatiton) error {
+func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	dRels := []*qdb.DistributedRelatiton{}
+	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
 		dRels = append(dRels, distributions.DistributedRelatitonToDB(r))
 	}

@@ -156,7 +156,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.DistributionDefinition:
-		distribution := distributions.NewDistribution(stmt.ID)
+		distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
 
 		distributions, err := mngr.ListDistribution(ctx)
 		if err != nil {
@@ -284,7 +284,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.AttachTable:
-		distr := []*distributions.DistributedRelatiton{
+		distr := []*distributions.DistributedRelation{
 			{
 				Name: stmt.Table,
 			},
