@@ -433,7 +433,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
 			}
-			db, err := tctx.connectCoordinatorWithCredentials(consoleName, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
+			db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
 				continue
@@ -551,7 +551,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}
-		db, err := tctx.connectCoordinatorWithCredentials(consoleName, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 		if err != nil {
 			return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
 		}
