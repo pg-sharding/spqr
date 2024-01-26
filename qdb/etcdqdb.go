@@ -1117,7 +1117,7 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
 	}
 
 	var distrib *Distribution
