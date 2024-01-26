@@ -241,6 +241,12 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
+		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
+			return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+		}
+	}
+
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
 		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
 		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
@@ -738,6 +744,11 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	if ds, ok := q.Distributions[id]; !ok {
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
 	} else {
+		for _, r := range rels {
+			if _, ok := ds.Relations[r.Name]; ok {
+				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "relation %s already attached ", r.Name)
+			}
+		}
 		for _, r := range rels {
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:        r.Name,
