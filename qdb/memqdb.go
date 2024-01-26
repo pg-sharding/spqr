@@ -758,7 +758,7 @@ func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution,
 
 	if ds, ok := q.RelationDistribution[id]; !ok {
 		// DEPRECATE this
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
 
 	} else {
 		// if there is no distr by key ds
