@@ -722,7 +722,7 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("ds", cl.Distribution()).
+		Str("distribution", cl.Distribution()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
