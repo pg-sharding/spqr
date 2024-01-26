@@ -904,7 +904,10 @@ func TestInsertMultiDistribution(t *testing.T) {
 	distribution1 := "ds1"
 	distribution2 := "ds2"
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
+
+	assert.NoError(db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
 		DistributionId: distribution1,
 		TableName:      "",
@@ -913,9 +916,9 @@ func TestInsertMultiDistribution(t *testing.T) {
 				Column: "i",
 			},
 		},
-	})
+	}))
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+	assert.NoError(db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id2",
 		DistributionId: distribution2,
 		TableName:      "",
@@ -924,25 +927,21 @@ func TestInsertMultiDistribution(t *testing.T) {
 				Column: "i",
 			},
 		},
-	})
+	}))
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	assert.NoError(db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
 		KeyRangeID:     "id1",
 		LowerBound:     []byte("1"),
-	})
+	}))
 
-	assert.NoError(err)
-
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	assert.NoError(db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution2,
 		KeyRangeID:     "id2",
 		LowerBound:     []byte("1"),
-	})
-
-	assert.NoError(err)
+	}))
 
 	lc := local.NewLocalCoordinator(db)
 
