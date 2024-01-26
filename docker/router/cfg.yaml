@@ -12,20 +12,13 @@ frontend_tls:
   cert_file: /etc/odyssey/ssl/server.crt
   sslmode: disable
 frontend_rules:
-  - usr: gauss
+  - usr: user1
     db: db1
     pool_default: true
     pool_mode: TRANSACTION
     pool_prepared_statement: false
     auth_rule:
-      auth_method: ldap
-      ldap_config:
-        ldapserver: ldap.forumsys.com
-        ldapport: 389
-        ldapscheme: ldap
-        ldapbasedn: dc=example,dc=com
-        ldapbinddn: cn=read-only-admin,dc=example,dc=com
-        ldapbindpasswd: password
+      auth_method: ok
 world_shard_fallback: true
 shards:
   sh1:
@@ -34,7 +27,7 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    usr: gauss
+    usr: user1
     pwd: 12345678
     type: DATA
     hosts:
@@ -45,7 +38,7 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    usr: gauss
+    usr: user1
     pwd: 12345678
     type: DATA
     hosts:
@@ -56,13 +49,13 @@ shards:
       sslmode: disable
       cert_file: /etc/odyssey/ssl/server.crt
     db: db1
-    usr: gauss
+    usr: user1
     pwd: 12345678
     type: WORLD
     hosts:
       - 'spqr_world:6432'
 backend_rules:
-  - usr: gauss
+  - usr: user1
     db: db1
     pool_discard: true
     pool_rollback: true

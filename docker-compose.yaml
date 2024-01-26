@@ -14,7 +14,7 @@ services:
     shard1:
         image: spqr-shard-image
         environment:
-            - POSTGRES_USER=gauss
+            - POSTGRES_USER=user1
             - POSTGRES_DB=db1
         ports:
             - "7432:6432"
@@ -23,7 +23,7 @@ services:
     shard2:
         image: spqr-shard-image
         environment:
-            - POSTGRES_USER=gauss
+            - POSTGRES_USER=user1
             - POSTGRES_DB=db1
         ports:
             - "7433:6432"
