@@ -1090,7 +1090,7 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 	}
 
 	if cl.DB() != "spqr-console" || cl.Usr() != "spqr-console" {
-		return cl, fmt.Errorf("TODO")
+		return cl, fmt.Errorf("wrong db and user, skipping")
 	}
 
 	spqrlog.Zero.Info().
@@ -1098,11 +1098,14 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 		Str("db", cl.DB()).
 		Msg("initialized client connection")
 
-	authRule := &config.AuthCfg{
-		Method: config.AuthOK,
-	}
+	var authRule *config.AuthCfg
 	if config.CoordinatorConfig().Auth != nil {
 		authRule = config.CoordinatorConfig().Auth
+	} else {
+		spqrlog.Zero.Warn().Msg("ATTENTION! Skipping auth checking!")
+		authRule = &config.AuthCfg{
+			Method: config.AuthOK,
+		}
 	}
 
 	if err := cl.AssignRule(&config.FrontendRule{
