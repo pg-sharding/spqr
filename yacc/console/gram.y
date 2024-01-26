@@ -60,7 +60,7 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
-	distribution              *DistributionDefinition
+	distribution           *DistributionDefinition
 
 	attach                 *AttachTable
 	
@@ -69,7 +69,7 @@ func randomHex(n int) (string, error) {
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
-	distribution_selector     *DistributionSelector
+	distribution_selector  *DistributionSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode

@@ -25,7 +25,7 @@ type MemQDB struct {
 	Shards               map[string]*Shard                   `json:"shards"`
 	Shrules              map[string]*ShardingRule            `json:"shrules"`
 	Distributions        map[string]*Distribution            `json:"distributions"`
-	RelationDistribution map[string]string                   `json:"table_distribution"`
+	RelationDistribution map[string]string                   `json:"relation_distribution"`
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
