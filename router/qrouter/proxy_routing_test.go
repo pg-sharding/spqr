@@ -1044,6 +1044,9 @@ func TestSetStmt(t *testing.T) {
 	distribution1 := "ds1"
 	distribution2 := "ds2"
 
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
+
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
 		DistributionId: distribution1,
@@ -1143,6 +1146,9 @@ func TestMiscRouting(t *testing.T) {
 	db, _ := qdb.NewMemQDB(MemQDBPath)
 	distribution1 := "ds1"
 	distribution2 := "ds2"
+
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
+	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",

@@ -68,7 +68,7 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 
 	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
-		dRels = append(dRels, distributions.DistributedRelatitonToDB(r))
+		dRels = append(dRels, distributions.DistributedRelationToDB(r))
 	}
 
 	return lc.qdb.AlterDistributionAttach(ctx, id, dRels)
