@@ -30,10 +30,10 @@ type Console interface {
 }
 
 type LocalInstanceConsole struct {
-	Coord   meta.EntityMgr
-	RRouter rulerouter.RuleRouter
-	qlogger qlog.Qlog
-	writer  workloadlog.WorkloadLog
+	InstanceMgr meta.EntityMgr
+	RRouter     rulerouter.RuleRouter
+	qlogger     qlog.Qlog
+	writer      workloadlog.WorkloadLog
 
 	stchan chan struct{}
 }
@@ -44,13 +44,13 @@ func (l *LocalInstanceConsole) Shutdown() error {
 	return nil
 }
 
-func NewLocalInstanceConsole(coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
+func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		Coord:   coord,
-		RRouter: rrouter,
-		qlogger: qlogprovider.NewLocalQlog(),
-		stchan:  stchan,
-		writer:  writer,
+		InstanceMgr: mgr,
+		RRouter:     rrouter,
+		qlogger:     qlogprovider.NewLocalQlog(),
+		stchan:      stchan,
+		writer:      writer,
 	}, nil
 }
 
