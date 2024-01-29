@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
@@ -16,31 +17,33 @@ import (
 	"google.golang.org/grpc"
 )
 
-type adapter struct {
+type Adapter struct {
 	conn *grpc.ClientConn
 }
 
-func NewAdapter(conn *grpc.ClientConn) *adapter {
-	return &adapter{
+var _ meta.EntityMgr = &Adapter{}
+
+func NewAdapter(conn *grpc.ClientConn) *Adapter {
+	return &Adapter{
 		conn: conn,
 	}
 }
 
-func (a *adapter) QDB() qdb.QDB {
+func (a *Adapter) QDB() qdb.QDB {
 	return nil
 }
 
 // TODO : unit tests
 // TODO : implement
-func (a *adapter) ShareKeyRange(id string) error {
+func (a *Adapter) ShareKeyRange(id string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
 }
 
 // TODO : unit tests
-func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
+func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{
-		Dataspace: dataspace,
+		Distribution: distribution,
 	})
 	if err != nil {
 		return nil, err
@@ -55,7 +58,7 @@ func (a *adapter) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.Ke
 }
 
 // TODO : unit tests
-func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
+func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
 	if err != nil {
@@ -71,7 +74,7 @@ func (a *adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 }
 
 // TODO : unit tests
-func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (a *Adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
 		KeyRangeInfo: kr.ToProto(),
@@ -80,7 +83,7 @@ func (a *adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 }
 
 // TODO : unit tests
-func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
+func (a *Adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.LockKeyRange(ctx, &proto.LockKeyRangeRequest{
 		Id: []string{krid},
@@ -104,7 +107,7 @@ func (a *adapter) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, 
 }
 
 // TODO : unit tests
-func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
+func (a *Adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.UnlockKeyRange(ctx, &proto.UnlockKeyRangeRequest{
 		Id: []string{krid},
@@ -117,7 +120,7 @@ func (a *adapter) UnlockKeyRange(ctx context.Context, krid string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
+func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
@@ -145,7 +148,7 @@ func (a *adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 }
 
 // TODO : unit tests
-func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
+func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
@@ -184,7 +187,7 @@ func (a *adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 }
 
 // TODO : unit tests
-func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
+func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	krs, err := a.ListAllKeyRanges(ctx)
 	if err != nil {
 		return err
@@ -205,7 +208,7 @@ func (a *adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 }
 
 // TODO : unit tests
-func (a *adapter) DropKeyRange(ctx context.Context, krid string) error {
+func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropKeyRange(ctx, &proto.DropKeyRangeRequest{
 		Id: []string{krid},
@@ -214,14 +217,14 @@ func (a *adapter) DropKeyRange(ctx context.Context, krid string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) DropKeyRangeAll(ctx context.Context) error {
+func (a *Adapter) DropKeyRangeAll(ctx context.Context) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropAllKeyRanges(ctx, &proto.DropAllKeyRangesRequest{})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
+func (a *Adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	_, err := c.AddShardingRules(ctx, &proto.AddShardingRuleRequest{
 		Rules: []*proto.ShardingRule{shrule.ShardingRuleToProto(rule)},
@@ -230,7 +233,7 @@ func (a *adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule
 }
 
 // TODO : unit tests
-func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
+func (a *Adapter) DropShardingRule(ctx context.Context, id string) error {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	_, err := c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{
 		Id: []string{id},
@@ -239,7 +242,7 @@ func (a *adapter) DropShardingRule(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (a *Adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	rules, err := a.ListAllShardingRules(ctx)
 	if err != nil {
 		return nil, err
@@ -255,10 +258,10 @@ func (a *adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRu
 }
 
 // TODO : unit tests
-func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
+func (a *Adapter) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
-		Dataspace: dataspace,
+		Distribution: distribution,
 	})
 	if err != nil {
 		return nil, err
@@ -273,7 +276,7 @@ func (a *adapter) ListShardingRules(ctx context.Context, dataspace string) ([]*s
 }
 
 // TODO : unit tests
-func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
+func (a *Adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
 	c := proto.NewShardingRulesServiceClient(a.conn)
 	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
 	if err != nil {
@@ -289,7 +292,7 @@ func (a *adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingR
 }
 
 // TODO : unit tests
-func (a *adapter) RegisterRouter(ctx context.Context, r *topology.Router) error {
+func (a *Adapter) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.AddRouter(ctx, &proto.AddRouterRequest{
 		Router: topology.RouterToProto(r),
@@ -298,7 +301,7 @@ func (a *adapter) RegisterRouter(ctx context.Context, r *topology.Router) error 
 }
 
 // TODO : unit tests
-func (a *adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
+func (a *Adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	c := proto.NewRouterServiceClient(a.conn)
 	resp, err := c.ListRouters(ctx, &proto.ListRoutersRequest{})
 	if err != nil {
@@ -312,7 +315,7 @@ func (a *adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 }
 
 // TODO : unit tests
-func (a *adapter) UnregisterRouter(ctx context.Context, id string) error {
+func (a *Adapter) UnregisterRouter(ctx context.Context, id string) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.RemoveRouter(ctx, &proto.RemoveRouterRequest{
 		Id: id,
@@ -321,7 +324,7 @@ func (a *adapter) UnregisterRouter(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
+func (a *Adapter) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	c := proto.NewRouterServiceClient(a.conn)
 	_, err := c.SyncMetadata(ctx, &proto.SyncMetadataRequest{
 		Router: topology.RouterToProto(router),
@@ -331,18 +334,18 @@ func (a *adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 
 // TODO : unit tests
 // TODO : implement
-func (a *adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addDataShard not implemented")
 }
 
 // TODO : unit tests
 // TODO : implement
-func (a *adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
+func (a *Adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
 }
 
 // TODO : unit tests
-func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.ListShards(ctx, &proto.ListShardsRequest{})
 	shards := resp.Shards
@@ -357,7 +360,7 @@ func (a *adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 }
 
 // TODO : unit tests
-func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (a *Adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
 	return &datashards.DataShard{
@@ -367,76 +370,98 @@ func (a *adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 // TODO : unit tests
-func (a *adapter) ListDataspace(ctx context.Context) ([]*dataspaces.Dataspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *Adapter) ListDistribution(ctx context.Context) ([]*distributions.Distribution, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.ListDataspace(ctx, &proto.ListDataspaceRequest{})
+	resp, err := c.ListDistribution(ctx, &proto.ListDistributionRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	dss := make([]*dataspaces.Dataspace, len(resp.Dataspaces))
-	for i, ds := range resp.Dataspaces {
-		dss[i] = dataspaces.DataspaceFromProto(ds)
+	dss := make([]*distributions.Distribution, len(resp.Distributions))
+	for i, ds := range resp.Distributions {
+		dss[i] = distributions.DistributionFromProto(ds)
 	}
 
 	return dss, nil
 }
 
 // TODO : unit tests
-func (a *adapter) AddDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *Adapter) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.AddDataspace(ctx, &proto.AddDataspaceRequest{
-		Dataspaces: []*proto.Dataspace{dataspaces.DataspaceToProto(ds)},
+	_, err := c.CreateDistribution(ctx, &proto.CreateDistributionRequest{
+		Distributions: []*proto.Distribution{
+			distributions.DistributionToProto(ds),
+		},
 	})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) DropDataspace(ctx context.Context, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *Adapter) DropDistribution(ctx context.Context, id string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	_, err := c.DropDataspace(ctx, &proto.DropDataspaceRequest{
-		Ids: []string{ds.Id},
-	})
-
-	return err
-}
-
-// TODO : unit tests
-func (a *adapter) AttachToDataspace(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
-	c := proto.NewDataspaceServiceClient(a.conn)
-
-	_, err := c.AttachToDataspace(ctx, &proto.AttachToDataspaceRequest{
-		Table:     table,
-		Dataspace: dataspaces.DataspaceToProto(ds),
+	_, err := c.DropDistribution(ctx, &proto.DropDistributionRequest{
+		Ids: []string{id},
 	})
 
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) GetDataspace(ctx context.Context, table string) (*dataspaces.Dataspace, error) {
-	c := proto.NewDataspaceServiceClient(a.conn)
+func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.GetDataspace(ctx, &proto.GetDataspaceRequest{Table: table})
+	dRels := []*proto.DistributedRelation{}
+	for _, r := range rels {
+		dRels = append(dRels, distributions.DistributedRelatitonToProto(r))
+	}
+
+	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{
+		Id:        id,
+		Relations: dRels,
+	})
+
+	return err
+}
+
+// TODO : unit tests
+func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+
+	resp, err := c.GetDistribution(ctx, &proto.GetDistributionRequest{
+		Id: id,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return dataspaces.DataspaceFromProto(resp.Dataspace), nil
+	return distributions.DistributionFromProto(resp.Distribution), nil
+}
+
+func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+	c := proto.NewDistributionServiceClient(a.conn)
+
+	resp, err := c.GetRelationDistribution(ctx, &proto.GetRelationDistributionRequest{
+		Id: id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return distributions.DistributionFromProto(resp.Distribution), nil
 }
 
 // TODO : unit tests
-func (a *adapter) UpdateCoordinator(ctx context.Context, address string) error {
+func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 	c := proto.NewTopologyServiceClient(a.conn)
 	_, err := c.UpdateCoordinator(ctx, &proto.UpdateCoordinatorRequest{Address: address})
 	return err
 }
 
 // TODO : unit tests
-func (a *adapter) GetCoordinator(ctx context.Context) (string, error) {
+func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
 	resp, err := c.GetCoordinator(ctx, &proto.GetCoordinatorRequest{})
 	return resp.Address, err

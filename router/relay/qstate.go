@@ -24,25 +24,25 @@ func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func deparseRouteHint(rst RelayStateMgr, params map[string]string, dataspace string) (routehint.RouteHint, error) {
+func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution string) (routehint.RouteHint, error) {
 	if _, ok := params[session.SPQR_SCATTER_QUERY]; ok {
 		return &routehint.ScatterRouteHint{}, nil
 	}
 	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), dataspace)
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), distribution)
 
 		if err != nil {
 			return nil, err
 		}
 
-		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), dataspace)
+		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), distribution)
 		if err != nil {
 			return nil, err
 		}
 
-		meta := qrouter.NewRoutingMetadataContext(krs, rls, dataspace, nil)
+		meta := qrouter.NewRoutingMetadataContext(krs, rls, distribution, nil)
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
 		if err != nil {
 			return nil, err
@@ -74,7 +74,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 	mp, err := parser.ParseComment(comment)
 
 	if err == nil {
-		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Dataspace())
+		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Distribution())
 		rst.Client().SetRouteHint(routeHint)
 
 		if val, ok := mp["target-session-attrs"]; ok {
@@ -82,9 +82,9 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
 			rst.Client().SetTsa(val)
 		}
-		if val, ok := mp[session.SPQR_DATASPACE]; ok {
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse dataspace from comment")
-			rst.Client().SetDataspace(val)
+		if val, ok := mp[session.SPQR_DISTRIBUTION]; ok {
+			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse distribution from comment")
+			rst.Client().SetDistribution(val)
 		}
 		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse default route behaviour from comment")
@@ -145,8 +145,8 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			switch st.Name {
-			case session.SPQR_DATASPACE:
-				rst.Client().SetDataspace(st.Value)
+			case session.SPQR_DISTRIBUTION:
+				rst.Client().SetDistribution(st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:
@@ -166,13 +166,13 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 		// here we just reply single row with single column value
 
 		switch param {
-		case session.SPQR_DATASPACE:
+		case session.SPQR_DISTRIBUTION:
 
 			_ = rst.Client().Send(
 				&pgproto3.RowDescription{
 					Fields: []pgproto3.FieldDescription{
 						{
-							Name:         []byte("dataspace"),
+							Name:         []byte("distribution"),
 							DataTypeOID:  25,
 							DataTypeSize: -1,
 							TypeModifier: -1,
@@ -184,7 +184,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			_ = rst.Client().Send(
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						[]byte(rst.Client().Dataspace()),
+						[]byte(rst.Client().Distribution()),
 					},
 				},
 			)

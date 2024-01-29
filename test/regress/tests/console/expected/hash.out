@@ -6,32 +6,32 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE SHARDING RULE hash1 COLUMNS col1 HASH FUNCTION IDENT;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule hash1 for table (*) with columns [col1, hash: x->x] in default dataspace
+                                         add sharding rule                                         
+---------------------------------------------------------------------------------------------------
+ created sharding rule hash1 for table (*) with columns [col1, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE hash2 COLUMNS col2 HASH FUNCTION IDENTITY;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule hash2 for table (*) with columns [col2, hash: x->x] in default dataspace
+                                         add sharding rule                                         
+---------------------------------------------------------------------------------------------------
+ created sharding rule hash2 for table (*) with columns [col2, hash: x->x] in default distribution
 (1 row)
 
 CREATE SHARDING RULE hash3 COLUMNS col3 HASH FUNCTION MURMUR HASH;
-                                        add sharding rule                                         
---------------------------------------------------------------------------------------------------
- created sharding rule hash3 for table (*) with columns [col3, hash: murmur] in default dataspace
+                                          add sharding rule                                          
+-----------------------------------------------------------------------------------------------------
+ created sharding rule hash3 for table (*) with columns [col3, hash: murmur] in default distribution
 (1 row)
 
 CREATE SHARDING RULE hash4 COLUMNS col4 HASH FUNCTION CITY HASH;
-                                       add sharding rule                                        
-------------------------------------------------------------------------------------------------
- created sharding rule hash4 for table (*) with columns [col4, hash: city] in default dataspace
+                                         add sharding rule                                         
+---------------------------------------------------------------------------------------------------
+ created sharding rule hash4 for table (*) with columns [col4, hash: city] in default distribution
 (1 row)
 
-DROP DATASPACE ALL CASCADE;
- drop dataspace 
-----------------
+DROP DISTRIBUTION ALL CASCADE;
+ drop distribution 
+-------------------
 (0 rows)
 
 DROP SHARDING RULE ALL;

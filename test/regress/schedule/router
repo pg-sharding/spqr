@@ -11,5 +11,5 @@ test: multishard
 test: error
 test: routing_hint
 test: begin
-test: switch_dataspace
+test: switch_distribution
 test: attach_table

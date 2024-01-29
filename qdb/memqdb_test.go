@@ -11,7 +11,7 @@ import (
 
 const MemQDBPath = ""
 
-var mockDataspace = &qdb.Dataspace{
+var mockDistribution = &qdb.Distribution{
 	ID: "123",
 }
 var mockShard = &qdb.Shard{
@@ -57,7 +57,7 @@ func TestMemqdbRacing(t *testing.T) {
 	ctx := context.TODO()
 
 	methods := []func(){
-		func() { _ = memqdb.AddDataspace(ctx, mockDataspace) },
+		func() { _ = memqdb.CreateDistribution(ctx, mockDistribution) },
 		func() { _ = memqdb.AddKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
@@ -65,7 +65,7 @@ func TestMemqdbRacing(t *testing.T) {
 		func() {
 			_ = memqdb.RecordTransferTx(ctx, mockDataTransferTransaction.FromShardId, mockDataTransferTransaction)
 		},
-		func() { _, _ = memqdb.ListDataspaces(ctx) },
+		func() { _, _ = memqdb.ListDistributions(ctx) },
 		func() { _, _ = memqdb.ListAllKeyRanges(ctx) },
 		func() { _, _ = memqdb.ListRouters(ctx) },
 		func() { _, _ = memqdb.ListAllShardingRules(ctx) },
@@ -99,4 +99,101 @@ func TestMemqdbRacing(t *testing.T) {
 
 	}
 	wg.Wait()
+}
+
+func TestDistributions(t *testing.T) {
+
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+
+	assert.NoError(err)
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+
+	assert.NoError(err)
+
+	assert.NoError(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "ds1",
+	}))
+
+	assert.Error(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "dserr",
+	}))
+
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
+		{
+			Name: "r1",
+			ColumnNames: []string{
+				"c1",
+			},
+		},
+	}))
+
+	assert.Error(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
+		{
+			Name: "r1",
+			ColumnNames: []string{
+				"c1",
+			},
+		},
+	}))
+}
+
+func TestKeyRanges(t *testing.T) {
+
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+
+	assert.NoError(err)
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+
+	assert.NoError(err)
+
+	assert.NoError(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "ds1",
+	}))
+
+	assert.Error(memqdb.AddShardingRule(ctx, &qdb.ShardingRule{
+		ID:             "id1",
+		TableName:      "*",
+		Entries:        []qdb.ShardingRuleEntry{{Column: "c1"}},
+		DistributionId: "dserr",
+	}))
+
+	assert.NoError(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
+		LowerBound:     []byte("1111"),
+		ShardID:        "sh1",
+		KeyRangeID:     "krid1",
+		DistributionId: "ds1",
+	}))
+
+	assert.Error(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
+		LowerBound:     []byte("1111"),
+		ShardID:        "sh1",
+		KeyRangeID:     "krid2",
+		DistributionId: "dserr",
+	}))
+
 }

@@ -14,10 +14,10 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound KeyRangeBound
-	ShardID    string
-	ID         string
-	Dataspace  string
+	LowerBound   KeyRangeBound
+	ShardID      string
+	ID           string
+	Distribution string
 }
 
 // TODO : unit tests
@@ -50,10 +50,10 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 // TODO : unit tests
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
-		LowerBound: kr.LowerBound,
-		ShardID:    kr.ShardID,
-		ID:         kr.KeyRangeID,
-		Dataspace:  kr.DataspaceId,
+		LowerBound:   kr.LowerBound,
+		ShardID:      kr.ShardID,
+		ID:           kr.KeyRangeID,
+		Distribution: kr.DistributionId,
 	}
 }
 
@@ -63,10 +63,10 @@ func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: kr.LowerBound,
-		ShardID:    kr.ShardID,
-		ID:         kr.KeyRangeID,
-		Dataspace:  kr.Dataspace,
+		LowerBound:   kr.LowerBound,
+		ShardID:      kr.ShardID,
+		ID:           kr.KeyRangeID,
+		Distribution: kr.Distribution,
 	}
 }
 
@@ -76,20 +76,20 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 		return nil
 	}
 	return &KeyRange{
-		LowerBound: KeyRangeBound(kr.KeyRange.LowerBound),
-		ShardID:    kr.ShardId,
-		ID:         kr.Krid,
-		Dataspace:  kr.DataspaceId,
+		LowerBound:   KeyRangeBound(kr.KeyRange.LowerBound),
+		ShardID:      kr.ShardId,
+		ID:           kr.Krid,
+		Distribution: kr.DistributionId,
 	}
 }
 
 // TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
-		LowerBound:  kr.LowerBound,
-		ShardID:     kr.ShardID,
-		KeyRangeID:  kr.ID,
-		DataspaceId: kr.Dataspace,
+		LowerBound:     kr.LowerBound,
+		ShardID:        kr.ShardID,
+		KeyRangeID:     kr.ID,
+		DistributionId: kr.Distribution,
 	}
 }
 
@@ -99,8 +99,8 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 		KeyRange: &proto.KeyRange{
 			LowerBound: string(kr.LowerBound),
 		},
-		ShardId:     kr.ShardID,
-		Krid:        kr.ID,
-		DataspaceId: kr.Dataspace,
+		ShardId:        kr.ShardID,
+		Krid:           kr.ID,
+		DistributionId: kr.Distribution,
 	}
 }

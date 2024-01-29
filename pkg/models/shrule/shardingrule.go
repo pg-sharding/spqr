@@ -20,18 +20,18 @@ func NewShardingRuleEntry(column string, hashFunction string) *ShardingRuleEntry
 }
 
 type ShardingRule struct {
-	Id        string
-	TableName string
-	entries   []ShardingRuleEntry
-	Dataspace string
+	Id           string
+	TableName    string
+	entries      []ShardingRuleEntry
+	Distribution string
 }
 
-func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry, dataspaceId string) *ShardingRule {
+func NewShardingRule(id string, tableName string, entries []ShardingRuleEntry, distributionId string) *ShardingRule {
 	return &ShardingRule{
-		Id:        id,
-		TableName: tableName,
-		entries:   entries,
-		Dataspace: dataspaceId,
+		Id:           id,
+		TableName:    tableName,
+		entries:      entries,
+		Distribution: distributionId,
 	}
 }
 
@@ -62,14 +62,14 @@ func (s *ShardingRule) String() string {
 		return ret
 	}()
 
-	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v in %v dataspace", s.Id, tableName, entries, s.Dataspace)
+	return fmt.Sprintf("sharding rule %v for table (%v) with columns %+v in %v distribution", s.Id, tableName, entries, s.Distribution)
 }
 
 func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
-		Id:        rule.ID,
-		TableName: rule.TableName,
-		Dataspace: rule.DataspaceId,
+		Id:           rule.ID,
+		TableName:    rule.TableName,
+		Distribution: rule.DistributionId,
 	}
 	for _, el := range rule.Entries {
 		ret.entries = append(ret.entries, ShardingRuleEntry{
@@ -83,9 +83,9 @@ func ShardingRuleFromDB(rule *qdb.ShardingRule) *ShardingRule {
 
 func ShardingRuleToDB(rule *ShardingRule) *qdb.ShardingRule {
 	ret := &qdb.ShardingRule{
-		ID:          rule.Id,
-		TableName:   rule.TableName,
-		DataspaceId: rule.Dataspace,
+		ID:             rule.Id,
+		TableName:      rule.TableName,
+		DistributionId: rule.Distribution,
 	}
 	for _, el := range rule.entries {
 		ret.Entries = append(ret.Entries, qdb.ShardingRuleEntry{
@@ -114,9 +114,9 @@ func ShardingRuleToProto(rule *ShardingRule) *proto.ShardingRule {
 
 func ShardingRuleFromProto(rule *proto.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
-		Id:        rule.Id,
-		TableName: rule.TableName,
-		Dataspace: "default",
+		Id:           rule.Id,
+		TableName:    rule.TableName,
+		Distribution: "default",
 	}
 	for _, el := range rule.ShardingRuleEntry {
 		ret.entries = append(ret.entries, ShardingRuleEntry{

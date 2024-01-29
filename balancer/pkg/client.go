@@ -30,11 +30,11 @@ func (c BalancerClient) DB() string {
 	return "DefaultDB"
 }
 
-func (c BalancerClient) Dataspace() string {
+func (c BalancerClient) Distribution() string {
 	return "default"
 }
 
-func (c BalancerClient) DataspaceIsDefault() bool {
+func (c BalancerClient) DistributionIsDefault() bool {
 	return true
 }
 

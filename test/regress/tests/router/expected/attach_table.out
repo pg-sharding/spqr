@@ -6,58 +6,64 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DATASPACE ds1;
-         add dataspace         
--------------------------------
- created dataspace with id ds1
+CREATE DISTRIBUTION ds1;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-CREATE DATASPACE ds2;
-         add dataspace         
--------------------------------
- created dataspace with id ds2
+CREATE DISTRIBUTION ds2;
+         add distribution         
+----------------------------------
+ created distribution with id ds2
 (1 row)
 
-CREATE SHARDING RULE r1 COLUMNS w_id FOR DATASPACE ds1;
-                                    add sharding rule                                    
------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 dataspace
+CREATE SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 distribution
 (1 row)
 
-CREATE SHARDING RULE r2 COLUMNS w_id FOR DATASPACE ds2;
-                                    add sharding rule                                    
------------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 dataspace
+CREATE SHARDING RULE r2 COLUMNS w_id FOR DISTRIBUTION ds2;
+                                     add sharding rule                                      
+--------------------------------------------------------------------------------------------
+ created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 distribution
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DATASPACE ds1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DATASPACE ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
  created key range with bound 11
 (1 row)
 
-CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DATASPACE ds2;
+CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
           add key range          
 ---------------------------------
  created key range with bound 11
 (1 row)
 
-ATTACH TABLE xx TO DATASPACE ds1;
-            attach table            
-------------------------------------
- attached table xx to dataspace ds1
+CREATE KEY RANGE FROM 1 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+         add key range          
+--------------------------------
+ created key range with bound 1
 (1 row)
 
-ATTACH TABLE yy TO DATASPACE ds2;
-            attach table            
-------------------------------------
- attached table yy to dataspace ds2
+ATTACH TABLE xx TO DISTRIBUTION ds1;
+               attach table               
+------------------------------------------
+ attached relation xx to distribution ds1
+(1 row)
+
+ATTACH TABLE yy TO DISTRIBUTION ds2;
+               attach table               
+------------------------------------------
+ attached relation yy to distribution ds2
 (1 row)
 
 \c regress
@@ -79,10 +85,18 @@ NOTICE: send query to shard(s) : sh1
 CREATE TABLE yy (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 SELECT * FROM yy WHERE w_id=5;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM yy WHERE w_id=5;': failed to match key with ranges, tx status IDLE
-SET __spqr__dataspace = ds2;
+NOTICE: send query to shard(s) : sh2
+ w_id 
+------
+(0 rows)
+
+SET __spqr__distribution = ds2;
 SELECT * FROM xx WHERE w_id=5;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM xx WHERE w_id=5;': failed to match key with ranges, tx status IDLE
+NOTICE: send query to shard(s) : sh2
+ w_id 
+------
+(0 rows)
+
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yy;
@@ -95,11 +109,11 @@ NOTICE: send query to shard(s) : sh1,sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP DATASPACE ALL CASCADE;
-   drop dataspace   
---------------------
- drop dataspace ds1
- drop dataspace ds2
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution   
+-----------------------
+ drop distribution ds1
+ drop distribution ds2
 (2 rows)
 
 DROP SHARDING RULE ALL;

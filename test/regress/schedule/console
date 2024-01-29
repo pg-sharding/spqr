@@ -3,10 +3,10 @@ test: show_shards
 test: show_routers
 test: show_key_ranges
 test: show_sharding_rules
-test: show_dataspaces
+test: show_distributions
 test: show_version
 test: drop
 test: add
 test: hash
 test: teardown
-test: delete_dataspace
+test: delete_distribution

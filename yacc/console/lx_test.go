@@ -75,21 +75,21 @@ func TestSimpleLex(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ATTACH TABLE t TO DATASPACE ds1;",
+			query: "ATTACH TABLE t TO DISTRIBUTION ds1;",
 			exp: []int{
 				spqrparser.ATTACH,
 				spqrparser.TABLE,
 				spqrparser.IDENT,
 				spqrparser.TO,
-				spqrparser.DATASPACE,
+				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
 			},
 		},
 		{
-			query: "CREATE DATASPACE db1 SHARDING COLUMN TYPES varchar, varchar",
+			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar",
 			exp: []int{
 				spqrparser.CREATE,
-				spqrparser.DATASPACE,
+				spqrparser.DISTRIBUTION,
 				spqrparser.IDENT,
 				spqrparser.SHARDING,
 				spqrparser.COLUMN,

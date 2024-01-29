@@ -25,31 +25,32 @@ import (
 type Console interface {
 	Serve(ctx context.Context, cl client.Client) error
 	ProcessQuery(ctx context.Context, q string, cl client.Client) error
+	Qlog() qlog.Qlog
 	Shutdown() error
 }
 
-type Local struct {
-	Coord   meta.EntityMgr
-	RRouter rulerouter.RuleRouter
-	qlogger qlog.Qlog
-	writer  workloadlog.WorkloadLog
+type LocalInstanceConsole struct {
+	InstanceMgr meta.EntityMgr
+	RRouter     rulerouter.RuleRouter
+	qlogger     qlog.Qlog
+	writer      workloadlog.WorkloadLog
 
 	stchan chan struct{}
 }
 
-var _ Console = &Local{}
+var _ Console = &LocalInstanceConsole{}
 
-func (l *Local) Shutdown() error {
+func (l *LocalInstanceConsole) Shutdown() error {
 	return nil
 }
 
-func NewConsole(coord meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (*Local, error) { // add writer class
-	return &Local{
-		Coord:   coord,
-		RRouter: rrouter,
-		qlogger: qlogprovider.NewLocalQlog(),
-		stchan:  stchan,
-		writer:  writer,
+func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
+	return &LocalInstanceConsole{
+		InstanceMgr: mgr,
+		RRouter:     rrouter,
+		qlogger:     qlogprovider.NewLocalQlog(),
+		stchan:      stchan,
+		writer:      writer,
 	}, nil
 }
 
@@ -60,7 +61,7 @@ type TopoCntl interface {
 }
 
 // TODO : unit tests
-func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
+func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -76,8 +77,8 @@ func (l *Local) processQueryInternal(ctx context.Context, cli *clientinteractor.
 }
 
 // TODO : unit tests
-func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr = l.Coord
+func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
+	var mgr = l.InstanceMgr
 
 	if !config.RouterConfig().WithCoordinator {
 		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
@@ -87,7 +88,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			coordAddr, err := l.Coord.GetCoordinator(ctx)
+			coordAddr, err := l.InstanceMgr.GetCoordinator(ctx)
 			if err != nil {
 				return err
 			}
@@ -99,7 +100,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		coordAddr, err := l.Coord.GetCoordinator(ctx)
+		coordAddr, err := l.InstanceMgr.GetCoordinator(ctx)
 		if err != nil {
 			return err
 		}
@@ -115,7 +116,7 @@ func (l *Local) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *
 	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
 }
 
-func (l *Local) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
 	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
 }
 
@@ -128,7 +129,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 // TODO : unit tests
-func (l *Local) Serve(ctx context.Context, cl client.Client) error {
+func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) error {
 	msgs := []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
 	}
@@ -185,6 +186,6 @@ func (l *Local) Serve(ctx context.Context, cl client.Client) error {
 	}
 }
 
-func (l *Local) Qlog() qlog.Qlog {
+func (l *LocalInstanceConsole) Qlog() qlog.Qlog {
 	return l.qlogger
 }

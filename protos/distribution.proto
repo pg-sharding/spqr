@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+message DistributedRelation {
+  string name = 1;
+  repeated string columns = 2;
+}
+
+message Distribution{
+  string id = 1;
+  repeated string ColumnTypes = 2;
+  repeated DistributedRelation relations = 3;
+}
+
+message CreateDistributionRequest{
+  repeated Distribution distributions = 1;
+}
+
+message CreateDistributionReply{}
+
+message ListDistributionRequest{}
+
+message ListDistributionReply {
+  repeated Distribution distributions = 1;
+}
+
+message DropDistributionRequest {
+  repeated string ids = 1;
+}
+
+message DropDistributionReply{}
+
+message AlterDistributionAttachRequest{
+  string id = 1;
+  repeated string ColumnNames = 2;
+  repeated DistributedRelation relations = 3;
+}
+
+message AlterDistributionAttachReply{}
+
+message GetDistributionRequest{
+  string id = 1;
+}
+
+message GetDistributionReply {
+  Distribution distribution = 1;
+}
+
+message GetRelationDistributionRequest {
+  string id = 1;
+}
+
+message GetRelationDistributionReply {
+  Distribution distribution = 1;
+}
+
+service DistributionService {
+  rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
+  rpc DropDistribution(DropDistributionRequest) returns (DropDistributionReply) {}
+  rpc ListDistribution(ListDistributionRequest) returns (ListDistributionReply) {}
+
+  rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (AlterDistributionAttachReply) {}
+
+  rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
+
+  rpc GetRelationDistribution(GetRelationDistributionRequest) returns (GetRelationDistributionReply) {}
+}

@@ -444,15 +444,15 @@ func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrul
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, dataspace string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx, dataspace)
+func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
+	rulesList, err := qc.db.ListShardingRules(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}
 
 	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
 	for _, rule := range rulesList {
-		if rule.DataspaceId == dataspace {
+		if rule.DistributionId == distribution {
 			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
 		}
 	}
@@ -579,8 +579,8 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, dataspace string) ([]*kr.KeyRange, error) {
-	keyRanges, err := qc.db.ListKeyRanges(ctx, dataspace)
+func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
+	keyRanges, err := qc.db.ListKeyRanges(ctx, distribution)
 	if err != nil {
 		return nil, err
 	}
@@ -692,11 +692,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	krNew := kr.KeyRangeFromDB(
 		&qdb.KeyRange{
-			LowerBound:  req.Bound,
-			UpperBound:  krOld.UpperBound,
-			KeyRangeID:  req.Krid,
-			ShardID:     krOld.ShardID,
-			DataspaceId: krOld.DataspaceId,
+			LowerBound:     req.Bound,
+			UpperBound:     krOld.UpperBound,
+			KeyRangeID:     req.Krid,
+			ShardID:        krOld.ShardID,
+			DistributionId: krOld.DistributionId,
 		},
 	)
 
@@ -844,8 +844,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound:     krRight.LowerBound,
-			Dataspace: krRight.DataspaceId,
+			Bound:        krRight.LowerBound,
+			Distribution: krRight.DistributionId,
 		})
 
 		spqrlog.Zero.Debug().

@@ -63,9 +63,9 @@ type RoutingMetadataContext struct {
 	// INSERT INTO x (...) SELECT 7
 	TargetList []lyx.Node
 
-	rls       []*shrule.ShardingRule
-	krs       []*kr.KeyRange
-	dataspace string
+	rls          []*shrule.ShardingRule
+	krs          []*kr.KeyRange
+	distribution string
 
 	params [][]byte
 	// TODO: include client ops and metadata here
@@ -94,7 +94,7 @@ func NewRoutingMetadataContext(
 		unparsed_columns: map[string]struct{}{},
 		krs:              krs,
 		rls:              rls,
-		dataspace:        ds,
+		distribution:     ds,
 		params:           params,
 	}
 }
@@ -657,30 +657,30 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
 
-	queryDataspace := ""
-	if sph.DataspaceIsDefault() {
+	queryDistribution := ""
+	if sph.DistributionIsDefault() {
 		rel, err := qr.getRelations(stmt)
 		if err == nil && rel != nil {
 			switch t := rel.(type) {
 			case *SpecificRelation:
-				if relDataspace, err := qr.mgr.GetDataspace(ctx, t.Name); err != nil {
+				if relDistribution, err := qr.mgr.GetDistribution(ctx, t.Name); err != nil {
 					return nil, err
 				} else {
-					queryDataspace = relDataspace.Id
+					queryDistribution = relDistribution.Id
 				}
 			case *RelationList:
-				var dataspace string
+				var distribution string
 				for _, relName := range t.Relations {
-					if relDataspace, err := qr.mgr.GetDataspace(ctx, relName); err != nil {
+					if relDistribution, err := qr.mgr.GetDistribution(ctx, relName); err != nil {
 						return nil, err
 					} else {
-						if dataspace != "" && dataspace != relDataspace.Id {
-							return nil, fmt.Errorf("mismatching dataspaces %s and %s", dataspace, relDataspace)
+						if distribution != "" && distribution != relDistribution.Id {
+							return nil, fmt.Errorf("mismatching distributions %s and %s", distribution, relDistribution.Id)
 						}
-						dataspace = relDataspace.Id
+						distribution = relDistribution.Id
 					}
 				}
-				queryDataspace = dataspace
+				queryDistribution = distribution
 			case *AnyRelation:
 				break
 			default:
@@ -688,20 +688,20 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			}
 		}
 	} else {
-		queryDataspace = sph.Dataspace()
+		queryDistribution = sph.Distribution()
 	}
 
-	krs, err := qr.mgr.ListKeyRanges(ctx, queryDataspace)
+	krs, err := qr.mgr.ListKeyRanges(ctx, queryDistribution)
 	if err != nil {
 		return nil, err
 	}
 
-	rls, err := qr.mgr.ListShardingRules(ctx, queryDataspace)
+	rls, err := qr.mgr.ListShardingRules(ctx, queryDistribution)
 	if err != nil {
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls, queryDataspace, sph.BindParams())
+	meta := NewRoutingMetadataContext(krs, rls, queryDistribution, sph.BindParams())
 
 	tsa := config.TargetSessionAttrsAny
 
