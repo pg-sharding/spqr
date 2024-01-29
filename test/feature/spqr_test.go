@@ -41,6 +41,7 @@ const (
 	qdbPort                         = 2379
 	shardUser                       = "regress"
 	shardPassword                   = ""
+	coordinatorPassword             = "password"
 	dbName                          = "regress"
 	consoleName                     = "spqr-console"
 	postgresqlConnectTimeout        = 30 * time.Second
@@ -195,6 +196,9 @@ func (tctx *testContext) cleanup() {
 func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
 		return tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, timeout)
+	}
+	if strings.Contains(addr, strconv.Itoa(spqrCoordinatorPort)) {
+		return tctx.connectRouterConsoleWithCredentials(shardUser, coordinatorPassword, addr, timeout)
 	}
 	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
 }
@@ -429,7 +433,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
 			}
-			db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+			db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 			if err != nil {
 				log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
 				continue
@@ -547,7 +551,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}
-		db, err := tctx.connectCoordinatorWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 		if err != nil {
 			return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
 		}

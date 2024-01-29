@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"time"
@@ -193,6 +194,7 @@ type CoordinatorClient interface {
 }
 
 type qdbCoordinator struct {
+	tlsconfig *tls.Config
 	coordinator.Coordinator
 	db qdb.XQDB
 }
@@ -271,9 +273,10 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
-func NewCoordinator(db qdb.XQDB) *qdbCoordinator {
+func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) *qdbCoordinator {
 	return &qdbCoordinator{
-		db: db,
+		db:        db,
+		tlsconfig: tlsconfig,
 	}
 }
 
@@ -1078,7 +1081,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType, "")
 
-	if err := cl.Init(nil); err != nil {
+	if err := cl.Init(qc.tlsconfig); err != nil {
 		return nil, err
 	}
 
@@ -1091,10 +1094,18 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 		Str("db", cl.DB()).
 		Msg("initialized client connection")
 
-	if err := cl.AssignRule(&config.FrontendRule{
-		AuthRule: &config.AuthCfg{
+	var authRule *config.AuthCfg
+	if config.CoordinatorConfig().Auth != nil {
+		authRule = config.CoordinatorConfig().Auth
+	} else {
+		spqrlog.Zero.Warn().Msg("ATTENTION! Skipping auth checking!")
+		authRule = &config.AuthCfg{
 			Method: config.AuthOK,
-		},
+		}
+	}
+
+	if err := cl.AssignRule(&config.FrontendRule{
+		AuthRule: authRule,
 	}); err != nil {
 		return nil, err
 	}
