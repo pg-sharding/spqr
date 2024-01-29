@@ -11,11 +11,14 @@ type SimpleProtoStateHandler struct {
 	cmngr poolmgr.PoolMgr
 }
 
-func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
+// query in commit query. maybe commit or commit `name`
+func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
 	if !s.cmngr.ConnectionActive(rst) {
 		return fmt.Errorf("client relay has no connection to shards")
 	}
-	rst.AddQuery(msg)
+	rst.AddQuery(&pgproto3.Query{
+		String: query,
+	})
 	ok, err := rst.ProcessMessageBuf(true, true, s.cmngr)
 	if ok {
 		rst.Client().CommitActiveSet()
@@ -23,8 +26,10 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, msg pgproto3.Fro
 	return err
 }
 
-func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	rst.AddQuery(msg)
+func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) error {
+	rst.AddQuery(&pgproto3.Query{
+		String: query,
+	})
 	ok, err := rst.ProcessMessageBuf(true, true, s.cmngr)
 	if ok {
 		rst.Client().Rollback()

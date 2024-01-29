@@ -10,8 +10,16 @@ type XProtoStateHandler struct {
 }
 
 // ExecCommit implements ProtoStateHandler.
-func (*XProtoStateHandler) ExecCommit(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	panic("unimplemented")
+func (x *XProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
+
+	rst.AddQuery(&pgproto3.Query{
+		String: query,
+	})
+	ok, err := rst.ProcessMessageBuf(true, true, x.cmngr)
+	if ok {
+		rst.Client().Rollback()
+	}
+	return err
 }
 
 // ExecReset implements ProtoStateHandler.
@@ -25,8 +33,16 @@ func (*XProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, msg pgproto3.Fro
 }
 
 // ExecRollback implements ProtoStateHandler.
-func (*XProtoStateHandler) ExecRollback(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	panic("unimplemented")
+func (x *XProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) error {
+
+	rst.AddQuery(&pgproto3.Query{
+		String: query,
+	})
+	ok, err := rst.ProcessMessageBuf(true, true, x.cmngr)
+	if ok {
+		rst.Client().Rollback()
+	}
+	return err
 }
 
 // ExecSet implements ProtoStateHandler.

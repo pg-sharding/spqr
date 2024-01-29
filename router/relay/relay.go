@@ -704,6 +704,11 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 				}
 			}
 			ok = false
+		// never resend this msgs
+		case *pgproto3.ParseComplete:
+			unreplied = append(unreplied, msg)
+		case *pgproto3.BindComplete:
+			unreplied = append(unreplied, msg)
 		default:
 			spqrlog.Zero.Debug().
 				Str("server", server.Name()).
@@ -777,10 +782,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 
 	if txst, err = flusher(buf, waitForResp, replyCl); err != nil {
 		return txst, false, err
-	}
-
-	if err := rst.CompleteRelay(replyCl); err != nil {
-		return txstatus.TXERR, false, err
 	}
 
 	spqrlog.Zero.Debug().
@@ -1021,7 +1022,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			// tdb: fix this
 			rst.plainQ = q.Query
 
-			_ = rst.Client().ReplyParseComplete()
+			if err := rst.Client().ReplyParseComplete(); err != nil {
+				return err
+			}
 		case *pgproto3.Bind:
 			spqrlog.Zero.Debug().
 				Str("name", q.PreparedStatement).
@@ -1034,11 +1037,18 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			phx := NewXProtoStateHandler(rst.manager)
 
+			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
+
+			// by doing we implicitly assume that there is always execute anfter bind for same portal.
+			// hovewer, postgresql protocol allows some more cases.
+			if err := rst.Client().ReplyBindComplete(); err != nil {
+				return err
+			}
+
 			if err := ProcQueryAvdanced(rst, rst.lastBindQuery, q, phx, func(msg pgproto3.FrontendMessage) error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-				rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
 				rst.lastBindName = q.PreparedStatement
 				hash := murmur3.Sum64([]byte(rst.lastBindQuery))
 
@@ -1057,12 +1067,30 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				if err != nil {
 					return err
 				}
+
+				/* Case when no decribe stmt was issued before Execute+Sync*/
+				if rst.saveBind != nil {
+					rst.AddSilentQuery(rst.saveBind)
+					// do not send saved bind twice
+				}
+
+				rst.AddQuery(&pgproto3.Execute{})
+
+				rst.AddQuery(&pgproto3.Sync{})
+				if _, _, err := rst.RelayFlush(true, true); err != nil {
+					return err
+				}
+
+				// do not complete relay here yet
+
+				rst.saveBind = nil
+				rst.bindRoute = nil
+
 				return nil
 			}); err != nil {
 				return err
 			}
 
-			return nil
 		case *pgproto3.Describe:
 			if q.ObjectType == 'P' {
 				spqrlog.Zero.Debug().
@@ -1138,16 +1166,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
-
-			/* Case when no decribe stmt was issued before Execute+Sync*/
-			if rst.saveBind != nil {
-				rst.AddSilentQuery(rst.saveBind)
-				// do not send saved bind twice
-			}
-
-			rst.AddQuery(q)
-			rst.saveBind = nil
-			rst.bindRoute = nil
+			/* actually done on bind */
 		case *pgproto3.Close:
 			//
 		default:
@@ -1165,6 +1184,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 	} else {
 		rst.AddQuery(&pgproto3.Sync{})
 		if _, _, err := rst.RelayFlush(true, true); err != nil {
+			return err
+		}
+
+		if err := rst.CompleteRelay(true); err != nil {
 			return err
 		}
 	}
@@ -1309,6 +1332,9 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr po
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
 	} else {
+		if err := rst.CompleteRelay(replyCl); err != nil {
+			return false, err
+		}
 		return ok, nil
 	}
 }
@@ -1329,6 +1355,10 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 
 	if _, _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		/* Relay flush completes relay */
+		return err
+	}
+
+	if err := rst.CompleteRelay(replyCl); err != nil {
 		return err
 	}
 

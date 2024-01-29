@@ -688,7 +688,7 @@ func TestPrepStmtAdvadsedParsing(t *testing.T) {
 		}
 		_ = frontend.Flush()
 		backendFinished := false
-		for _, msg := range msgroup.Response {
+		for ind, msg := range msgroup.Response {
 			if backendFinished {
 				break
 			}
@@ -710,7 +710,7 @@ func TestPrepStmtAdvadsedParsing(t *testing.T) {
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg)
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("index %d: %s", ind, retMsg))
 		}
 	}
 }

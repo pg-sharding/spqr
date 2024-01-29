@@ -65,7 +65,8 @@ type RouterClient interface {
 	CancelMsg() *pgproto3.CancelRequest
 
 	ReplyParseComplete() error
-	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
+	ReplyBindComplete() error
+	ReplyCommandComplete(commandTag string) error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -240,7 +241,6 @@ func copymap(params map[string]string) map[string]string {
 }
 
 func (cl *PsqlClient) StartTx() {
-	spqrlog.Zero.Debug().Msg("start new params set")
 	cl.beginTxParamSet = copymap(cl.activeParamSet)
 	cl.savepointParamSet = nil
 	cl.savepointParamTxCnt = nil
@@ -416,12 +416,13 @@ func (cl *PsqlClient) Reply(msg string) error {
 	return nil
 }
 
-func (cl *PsqlClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error {
+func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
+	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
+}
+
+func (cl *PsqlClient) ReplyParseComplete() error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte(commandTag)},
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(st),
-		},
+		&pgproto3.ParseComplete{},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
@@ -431,9 +432,9 @@ func (cl *PsqlClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag stri
 	return nil
 }
 
-func (cl *PsqlClient) ReplyParseComplete() error {
+func (cl *PsqlClient) ReplyBindComplete() error {
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ParseComplete{},
+		&pgproto3.BindComplete{},
 	} {
 		if err := cl.Send(msg); err != nil {
 			return err
