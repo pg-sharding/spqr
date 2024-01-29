@@ -7,20 +7,6 @@ import (
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
-// Execute requered command via
-// some protoc-specofoc logic
-type ProtoStateHandler interface {
-	ExecCommit(rst RelayStateMgr, msg pgproto3.FrontendMessage) error
-	ExecRollback(rst RelayStateMgr, msg pgproto3.FrontendMessage) error
-
-	ExecSet(rst RelayStateMgr, msg pgproto3.FrontendMessage, name, value string) error
-	ExecSetLocal(rst RelayStateMgr, msg pgproto3.FrontendMessage) error
-	ExecReset(rst RelayStateMgr, msg pgproto3.FrontendMessage) error
-	ExecResetMetadata(rst RelayStateMgr, msg pgproto3.FrontendMessage, setting string) error
-
-	ExecQuery(rst RelayStateMgr, msg pgproto3.FrontendMessage) error
-}
-
 type SimpleProtoStateHandler struct {
 	cmngr poolmgr.PoolMgr
 }
@@ -88,12 +74,6 @@ func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, msg pgproto3.F
 		return err
 	}
 	return nil
-}
-
-func (s *SimpleProtoStateHandler) ExecQuery(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	rst.AddQuery(msg)
-	_, err := rst.ProcessMessageBuf(true, true, s.cmngr)
-	return err
 }
 
 var _ ProtoStateHandler = &SimpleProtoStateHandler{}

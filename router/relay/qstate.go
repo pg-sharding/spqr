@@ -62,7 +62,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution 
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
-func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMessage, ph ProtoStateHandler) error {
+func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMessage, ph ProtoStateHandler, executor func(msg pgproto3.FrontendMessage) error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
@@ -315,7 +315,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			return nil
 		} else {
 			// process like regular query
-			return ph.ExecQuery(rst, msg)
+			return executor(msg)
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
@@ -324,12 +324,12 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			return nil
 		} else {
 			// process like regular query
-			return ph.ExecQuery(rst, msg)
+			return executor(msg)
 		}
 	case parser.ParseStateExplain:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
 		return nil
 	default:
-		return ph.ExecQuery(rst, msg)
+		return executor(msg)
 	}
 }

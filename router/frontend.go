@@ -40,7 +40,11 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAvdanced(rst, q.Query, q, ph)
+			return relay.ProcQueryAvdanced(rst, q.Query, q, ph, func(msg pgproto3.FrontendMessage) error {
+				rst.AddQuery(msg)
+				_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+				return err
+			})
 		case *pgproto3.Execute:
 			// copy interface
 			cpQ := *q
@@ -60,7 +64,11 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return relay.ProcQueryAvdanced(rst, q.String, q, ph)
+			return relay.ProcQueryAvdanced(rst, q.String, q, ph, func(msg pgproto3.FrontendMessage) error {
+				rst.AddQuery(msg)
+				_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+				return err
+			})
 		default:
 			return nil
 		}
@@ -118,7 +126,11 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		return relay.ProcQueryAvdanced(rst, q.String, q, ph)
+		return relay.ProcQueryAvdanced(rst, q.String, q, ph, func(msg pgproto3.FrontendMessage) error {
+			rst.AddQuery(msg)
+			_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+			return err
+		})
 	default:
 		return nil
 	}

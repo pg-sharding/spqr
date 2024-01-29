@@ -951,10 +951,10 @@ func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 	return cl.ReplyErrMsg(clerrmsg, code)
 }
 
-func (cl *PsqlClient) ReplyRFQ() error {
+func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXIDLE),
+			TxStatus: byte(txstatus),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {

@@ -643,17 +643,17 @@ func TestPrepStmtAdvadsedParsing(t *testing.T) {
 				&pgproto3.ParseComplete{},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 73,
+					TxStatus: byte(txstatus.TXIDLE),
 				},
 
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
-					TxStatus: 73,
+					TxStatus: byte(txstatus.TXIDLE),
 				},
 
 				&pgproto3.ParseComplete{},
 				&pgproto3.ReadyForQuery{
-					TxStatus: 73,
+					TxStatus: byte(txstatus.TXIDLE),
 				},
 
 				&pgproto3.BindComplete{},
@@ -678,7 +678,7 @@ func TestPrepStmtAdvadsedParsing(t *testing.T) {
 				},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 73,
+					TxStatus: byte(txstatus.TXIDLE),
 				},
 			},
 		},

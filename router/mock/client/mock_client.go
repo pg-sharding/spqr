@@ -613,17 +613,17 @@ func (mr *MockRouterClientMockRecorder) ReplyParseComplete() *gomock.Call {
 }
 
 // ReplyRFQ mocks base method.
-func (m *MockRouterClient) ReplyRFQ() error {
+func (m *MockRouterClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyRFQ")
+	ret := m.ctrl.Call(m, "ReplyRFQ", txstatus)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyRFQ indicates an expected call of ReplyRFQ.
-func (mr *MockRouterClientMockRecorder) ReplyRFQ() *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyRFQ(txstatus interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyRFQ", reflect.TypeOf((*MockRouterClient)(nil).ReplyRFQ))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyRFQ", reflect.TypeOf((*MockRouterClient)(nil).ReplyRFQ), txstatus)
 }
 
 // ReplyWarningMsg mocks base method.

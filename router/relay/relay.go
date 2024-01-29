@@ -35,6 +35,8 @@ type RelayStateMgr interface {
 	StartTrace()
 	Flush()
 
+	ConnMgr() poolmgr.PoolMgr
+
 	ShouldRetry(err error) bool
 	Parse(query string) (parser.ParseState, string, error)
 
@@ -991,8 +993,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		Int("xBuf", len(rst.xBuf)).
 		Msg("process extended buffer")
 
-	unprocessed := 0
-
 	defer func() {
 		// cleanup
 		rst.xBuf = nil
@@ -1028,37 +1028,41 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Binding prepared statement")
 
-			rst.saveBind = &pgproto3.Bind{}
-			rst.saveBind.DestinationPortal = q.DestinationPortal
+			// Here we about to actually route query to execution shard.
+			// However, for begin-rollbacks etc we need to wait for next query
+			// or process locally (set statement)
 
-			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
-			rst.lastBindName = q.PreparedStatement
-			hash := murmur3.Sum64([]byte(rst.lastBindQuery))
+			phx := NewXProtoStateHandler(rst.manager)
 
-			rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
-			rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
-			rst.Client().SetBindParams(q.Parameters)
-			rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
-			rst.saveBind.Parameters = q.Parameters
+			if err := ProcQueryAvdanced(rst, rst.lastBindQuery, q, phx, func(msg pgproto3.FrontendMessage) error {
+				rst.saveBind = &pgproto3.Bind{}
+				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-			// Do not respond here with bind complete, as relay step should do itself
+				rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
+				rst.lastBindName = q.PreparedStatement
+				hash := murmur3.Sum64([]byte(rst.lastBindQuery))
 
-			_, _, err := rst.Parse(rst.lastBindQuery)
-			if err != nil {
+				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
+				rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
+				rst.Client().SetBindParams(q.Parameters)
+				rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
+				rst.saveBind.Parameters = q.Parameters
+
+				// Do not respond here with bind complete, as relay step should do itself
+				if err := rst.PrepareRelayStep(cmngr); err != nil {
+					return err
+				}
+
+				_, err := rst.DeployPrepStmt(q.PreparedStatement)
+				if err != nil {
+					return err
+				}
+				return nil
+			}); err != nil {
 				return err
 			}
 
-			if err := rst.PrepareRelayStep(cmngr); err != nil {
-				return err
-			}
-
-			unprocessed++
-
-			_, err = rst.DeployPrepStmt(q.PreparedStatement)
-			if err != nil {
-				return err
-			}
-
+			return nil
 		case *pgproto3.Describe:
 			if q.ObjectType == 'P' {
 				spqrlog.Zero.Debug().
@@ -1080,12 +1084,34 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				rst.saveBind = nil
 				rst.AddQuery(q)
 
-				if _, _, err := rst.RelayStep(&pgproto3.Sync{}, true, true); err != nil {
+				_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+				if err != nil {
 					return err
 				}
-				defer func() {
-					_ = fin()
-				}()
+
+				for _, msg := range unreplied {
+					// https://www.postgresql.org/docs/current/protocol-flow.html
+					switch qq := msg.(type) {
+					case *pgproto3.RowDescription:
+						// send to client
+						if err := rst.Client().Send(qq); err != nil {
+							return err
+						}
+					case *pgproto3.NoData:
+						// send to client
+						if err := rst.Client().Send(qq); err != nil {
+							return err
+						}
+					default:
+						// error out? panic? protoc violation?
+						// no, just chill
+					}
+				}
+
+				if err := fin(); err != nil {
+					return err
+				}
+
 			} else {
 				fin, err := rst.PrepareRelayStepOnAnyRoute(cmngr)
 				if err != nil {
@@ -1104,11 +1130,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				unprocessed++
-
-				defer func() {
-					_ = fin()
-				}()
+				if err := fin(); err != nil {
+					return err
+				}
 			}
 		case *pgproto3.Execute:
 			spqrlog.Zero.Debug().
@@ -1124,7 +1148,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			rst.AddQuery(q)
 			rst.saveBind = nil
 			rst.bindRoute = nil
-			unprocessed++
 		case *pgproto3.Close:
 			//
 		default:
@@ -1134,7 +1157,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
-	if unprocessed > 0 {
+	// no backend connection.
+	// for example, parse + sync will cause so.
+	// just reply rfq
+	if rst.Client().Server() == nil {
+		return rst.Client().ReplyRFQ(rst.TxStatus())
+	} else {
 		rst.AddQuery(&pgproto3.Sync{})
 		if _, _, err := rst.RelayFlush(true, true); err != nil {
 			return err
@@ -1293,7 +1321,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 
 	// if we have no active connections, we have noting to sync
 	if !cmngr.ConnectionActive(rst) {
-		return rst.Client().ReplyRFQ()
+		return rst.Client().ReplyRFQ(rst.TxStatus())
 	}
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
@@ -1331,4 +1359,8 @@ func (rst *RelayStateImpl) ProcessMessage(
 	}
 
 	return rst.CompleteRelay(replyCl)
+}
+
+func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
+	return rst.manager
 }
