@@ -1089,20 +1089,14 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 		return cl, nil
 	}
 
-	coordCfg := config.CoordinatorConfig()
-
-	if cl.DB() != coordCfg.Dbname || cl.Usr() != coordCfg.Username {
-		return cl, fmt.Errorf("try to connect to '%s' db, skipping", cl.DB())
-	}
-
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Msg("initialized client connection")
 
 	var authRule *config.AuthCfg
-	if coordCfg.Auth != nil {
-		authRule = coordCfg.Auth
+	if config.CoordinatorConfig().Auth != nil {
+		authRule = config.CoordinatorConfig().Auth
 	} else {
 		spqrlog.Zero.Warn().Msg("ATTENTION! Skipping auth checking!")
 		authRule = &config.AuthCfg{

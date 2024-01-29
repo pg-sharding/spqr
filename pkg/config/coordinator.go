@@ -19,8 +19,6 @@ type Coordinator struct {
 	CoordinatorPort string     `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
 	GrpcApiPort     string     `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
 	Host            string     `json:"host" toml:"host" yaml:"host"`
-	Dbname          string     `json:"dbname" toml:"dbname" yaml:"dbname"`
-	Username        string     `json:"username" toml:"username" yaml:"username"`
 	Auth            *AuthCfg   `json:"auth" toml:"auth" yaml:"auth"`
 	FrontendTLS     *TLSConfig `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
 	ShardDataCfg    string     `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
