@@ -1118,7 +1118,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					// https://www.postgresql.org/docs/current/protocol-flow.html
 					switch qq := msg.(type) {
 					case *pgproto3.RowDescription:
-						// send to client
+						// send to the client
 						if err := rst.Client().Send(qq); err != nil {
 							return err
 						}
