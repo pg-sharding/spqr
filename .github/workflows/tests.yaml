@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v2
+       uses: actions/checkout@v4
 
      - name: unit tests
        run: make unittest
@@ -30,7 +30,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: stress tests
         run: make stress
@@ -40,7 +40,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: regress tests
         run: |
@@ -55,7 +55,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         run: make gorm_regress
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         run: make xproto_regress
@@ -81,7 +81,7 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - id: step1
         run: |
           make split_feature_test
@@ -135,7 +135,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update env
         run: |

@@ -14,7 +14,7 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
@@ -30,7 +30,7 @@ jobs:
     name: goimports check
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: goimports check
         uses: DarthBenro008/goimports-check-action@v0.1.0
         with:
