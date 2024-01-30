@@ -1054,7 +1054,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
 				rst.saveBind.Parameters = q.Parameters
 
-				// Do not respond here with bind complete, as relay step should do itself
+				// Do not respond with BindComplete, as the relay step should take care of itself.
+
 				if err := rst.PrepareRelayStep(cmngr); err != nil {
 					return err
 				}
