@@ -48,7 +48,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 				return err
 			}
 
-			return rst.Client().ReplyRFQ(rst.TxStatus())
+			return rst.CompleteRelay(true)
 		case *pgproto3.Execute:
 			// copy interface
 			cpQ := *q
@@ -77,7 +77,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 				return err
 			}
 
-			return rst.Client().ReplyRFQ(rst.TxStatus())
+			return rst.CompleteRelay(true)
 		default:
 			return nil
 		}
@@ -144,7 +144,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			return err
 		}
 
-		return rst.Client().ReplyRFQ(rst.TxStatus())
+		return rst.CompleteRelay(true)
 	default:
 		return nil
 	}

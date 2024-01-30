@@ -139,9 +139,8 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
 		}
-		return rst.Client().Send(&pgproto3.ReadyForQuery{
-			TxStatus: byte(rst.TxStatus()),
-		})
+		// do not complete relay  here
+		return nil
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
 		spqrlog.Zero.Debug().

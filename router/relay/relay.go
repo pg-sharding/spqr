@@ -784,10 +784,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 		return txst, false, err
 	}
 
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("flushing message buffer: relay compeleted")
-
 	return txst, ok, nil
 }
 
