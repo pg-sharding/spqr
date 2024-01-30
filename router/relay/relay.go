@@ -1035,7 +1035,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
 
-			// by doing we implicitly assume that there is always execute anfter bind for same portal.
+			// We implicitly assume that there is always Execute after Bind for the same portal.
 			// hovewer, postgresql protocol allows some more cases.
 			if err := rst.Client().ReplyBindComplete(); err != nil {
 				return err
