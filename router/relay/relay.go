@@ -1027,7 +1027,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Binding prepared statement")
 
-			// Here we about to actually route query to execution shard.
+			// Here we are going to actually redirect the query to the execution shard. 
 			// However, to execute commit, rollbacks, etc., we need to wait for the next query
 			// or process locally (set statement)
 
