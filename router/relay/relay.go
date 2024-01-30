@@ -1029,7 +1029,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			// Here we are going to actually redirect the query to the execution shard. 
 			// However, to execute commit, rollbacks, etc., we need to wait for the next query
-			// or process locally (set statement)
+			// or process it locally (set statement)
 
 			phx := NewXProtoStateHandler(rst.manager)
 
