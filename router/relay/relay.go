@@ -1123,7 +1123,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 							return err
 						}
 					case *pgproto3.NoData:
-						// send to client
+						// send to the client
 						if err := rst.Client().Send(qq); err != nil {
 							return err
 						}
