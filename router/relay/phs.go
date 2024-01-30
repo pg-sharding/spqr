@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
@@ -38,6 +39,15 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 }
 
 func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name, value string) error {
+	if len(name) == 0 {
+		// some session charactericctic, ignore
+		return rst.Client().ReplyCommandComplete("SET")
+	}
+	if !s.cmngr.ConnectionActive(rst) {
+		rst.Client().SetParam(name, value)
+		return rst.Client().ReplyCommandComplete("SET")
+	}
+	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
 	rst.AddQuery(&pgproto3.Query{String: query})
 	if ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr); err != nil {
 		return err
