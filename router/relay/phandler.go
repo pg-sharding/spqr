@@ -1,7 +1,7 @@
 package relay
 
 // Execute requered command via
-// some protoc-specofoc logic
+// some protoc-specific logic
 type ProtoStateHandler interface {
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error
