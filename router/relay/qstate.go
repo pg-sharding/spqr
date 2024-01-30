@@ -63,7 +63,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution 
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMessage, ph ProtoStateHandler, executor func(msg pgproto3.FrontendMessage) error) error {
+func ProcQueryAvdanced(rst RelayStateMgr, query string, ph ProtoStateHandler, executor func() error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
@@ -163,7 +163,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			return rst.Client().ReplyCommandComplete("SET")
 		}
 
-		return ph.ExecSet(rst, msg, st.Name, st.Value)
+		return ph.ExecSet(rst, query, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
 		param := st.Name
 		// manually create router responce
@@ -284,13 +284,13 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 
-		if err := ph.ExecReset(rst, msg); err != nil {
+		if err := ph.ExecReset(rst, query, st.Name); err != nil {
 			return err
 		}
 
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateResetMetadataStmt:
-		if err := ph.ExecResetMetadata(rst, msg, st.Setting); err != nil {
+		if err := ph.ExecResetMetadata(rst, query, st.Setting); err != nil {
 			return err
 		}
 
@@ -305,7 +305,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateSetLocalStmt:
-		if err := ph.ExecSetLocal(rst, msg); err != nil {
+		if err := ph.ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
 			return err
 		}
 
@@ -318,7 +318,7 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			return nil
 		} else {
 			// process like regular query
-			return executor(msg)
+			return executor()
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
@@ -327,12 +327,12 @@ func ProcQueryAvdanced(rst RelayStateMgr, query string, msg pgproto3.FrontendMes
 			return nil
 		} else {
 			// process like regular query
-			return executor(msg)
+			return executor()
 		}
 	case parser.ParseStateExplain:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
 		return nil
 	default:
-		return executor(msg)
+		return executor()
 	}
 }

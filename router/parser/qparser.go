@@ -64,6 +64,8 @@ type ParseStateSetStmt struct {
 
 type ParseStateSetLocalStmt struct {
 	ParseState
+	Name  string
+	Value string
 }
 
 type ParseStateResetStmt struct {
@@ -198,7 +200,10 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			Msg("parsed set stmt")
 		// XXX: TODO: support
 		if q.IsLocal {
-			qp.state = ParseStateSetLocalStmt{}
+			qp.state = ParseStateSetLocalStmt{
+				Name:  q.Name,
+				Value: q.Value[0],
+			}
 			return qp.state, comment, nil
 		}
 

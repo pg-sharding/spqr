@@ -421,27 +421,11 @@ func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
 }
 
 func (cl *PsqlClient) ReplyParseComplete() error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ParseComplete{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return cl.Send(&pgproto3.ParseComplete{})
 }
 
 func (cl *PsqlClient) ReplyBindComplete() error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.BindComplete{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return cl.Send(&pgproto3.BindComplete{})
 }
 
 func (cl *PsqlClient) Reset() error {
