@@ -42,7 +42,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			q = &cpQ
 			if err := relay.ProcQueryAvdanced(rst, q.Query, q, ph, func(msg pgproto3.FrontendMessage) error {
 				rst.AddQuery(msg)
-				_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 				return err
 			}); err != nil {
 				return err
@@ -70,7 +70,8 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			q = &cpQ
 			if err := relay.ProcQueryAvdanced(rst, q.String, q, ph, func(msg pgproto3.FrontendMessage) error {
 				rst.AddQuery(msg)
-				_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+
+				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 				return err
 			}); err != nil {
 				return err
@@ -136,7 +137,8 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		q = &cpQ
 		if err := relay.ProcQueryAvdanced(rst, q.String, q, ph, func(msg pgproto3.FrontendMessage) error {
 			rst.AddQuery(msg)
-			_, err := rst.ProcessMessageBuf(true, true, rst.ConnMgr())
+			// this call compeletes relay, sends RFQ
+			_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 			return err
 		}); err != nil {
 			return err

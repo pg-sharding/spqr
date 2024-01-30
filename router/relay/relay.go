@@ -59,7 +59,7 @@ type RelayStateMgr interface {
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
 	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error)
 
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error)
+	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
@@ -1322,7 +1322,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error) {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error) {
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
@@ -1332,8 +1332,10 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr po
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
 	} else {
-		if err := rst.CompleteRelay(replyCl); err != nil {
-			return false, err
+		if completeRelay {
+			if err := rst.CompleteRelay(replyCl); err != nil {
+				return false, err
+			}
 		}
 		return ok, nil
 	}

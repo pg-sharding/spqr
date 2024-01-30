@@ -15,7 +15,7 @@ func (x *XProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, x.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, true, x.cmngr)
 	if ok {
 		rst.Client().Rollback()
 	}
@@ -38,7 +38,7 @@ func (x *XProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) error
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, x.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, true, x.cmngr)
 	if ok {
 		rst.Client().Rollback()
 	}

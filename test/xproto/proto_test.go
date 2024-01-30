@@ -342,7 +342,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 84,
+					TxStatus: byte(txstatus.TXACT),
 				},
 
 				// select response
@@ -368,7 +368,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 84,
+					TxStatus: byte(txstatus.TXACT),
 				},
 
 				// set
@@ -377,7 +377,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 84,
+					TxStatus: byte(txstatus.TXACT),
 				},
 
 				// show response
@@ -437,7 +437,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.ReadyForQuery{
-					TxStatus: 73,
+					TxStatus: byte(txstatus.TXIDLE),
 				},
 			},
 		},
@@ -447,7 +447,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 		}
 		_ = frontend.Flush()
 		backendFinished := false
-		for _, msg := range msgroup.Response {
+		for ind, msg := range msgroup.Response {
 			if backendFinished {
 				break
 			}
@@ -469,7 +469,7 @@ func TestSimpleAdvadsedSETParsing(t *testing.T) {
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg)
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("fail on index %d", ind))
 		}
 	}
 }

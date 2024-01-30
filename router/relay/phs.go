@@ -19,7 +19,7 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, s.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
 	if ok {
 		rst.Client().CommitActiveSet()
 	}
@@ -30,7 +30,7 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, s.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
 	if ok {
 		rst.Client().Rollback()
 	}
@@ -39,7 +39,7 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 
 func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, msg pgproto3.FrontendMessage, name, value string) error {
 	rst.AddQuery(msg)
-	if ok, err := rst.ProcessMessageBuf(true, true, s.cmngr); err != nil {
+	if ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr); err != nil {
 		return err
 	} else if ok {
 		rst.Client().SetParam(name, value)
@@ -60,7 +60,7 @@ func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, msg pgpro
 		return nil
 	}
 	rst.AddQuery(msg)
-	_, err := rst.ProcessMessageBuf(true, true, s.cmngr)
+	_, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, msg pgpro
 func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	if s.cmngr.ConnectionActive(rst) {
 		rst.AddQuery(msg)
-		_, err := rst.ProcessMessageBuf(true, true, s.cmngr)
+		_, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
 		return err
 	}
 	return nil
