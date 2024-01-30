@@ -1028,7 +1028,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Msg("Binding prepared statement")
 
 			// Here we about to actually route query to execution shard.
-			// However, for begin-rollbacks etc we need to wait for next query
+			// However, to execute commit, rollbacks, etc., we need to wait for the next query
 			// or process locally (set statement)
 
 			phx := NewXProtoStateHandler(rst.manager)
