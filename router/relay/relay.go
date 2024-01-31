@@ -35,6 +35,8 @@ type RelayStateMgr interface {
 	StartTrace()
 	Flush()
 
+	ConnMgr() poolmgr.PoolMgr
+
 	ShouldRetry(err error) bool
 	Parse(query string) (parser.ParseState, string, error)
 
@@ -57,7 +59,7 @@ type RelayStateMgr interface {
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
 	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) (func() error, error)
 
-	ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error)
+	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
@@ -702,6 +704,11 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 				}
 			}
 			ok = false
+		// never resend this msgs
+		case *pgproto3.ParseComplete:
+			unreplied = append(unreplied, msg)
+		case *pgproto3.BindComplete:
+			unreplied = append(unreplied, msg)
 		default:
 			spqrlog.Zero.Debug().
 				Str("server", server.Name()).
@@ -776,14 +783,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 	if txst, err = flusher(buf, waitForResp, replyCl); err != nil {
 		return txst, false, err
 	}
-
-	if err := rst.CompleteRelay(replyCl); err != nil {
-		return txstatus.TXERR, false, err
-	}
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("flushing message buffer: relay compeleted")
 
 	return txst, ok, nil
 }
@@ -991,8 +990,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		Int("xBuf", len(rst.xBuf)).
 		Msg("process extended buffer")
 
-	unprocessed := 0
-
 	defer func() {
 		// cleanup
 		rst.xBuf = nil
@@ -1021,41 +1018,73 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			// tdb: fix this
 			rst.plainQ = q.Query
 
-			_ = rst.Client().ReplyParseComplete()
+			if err := rst.Client().ReplyParseComplete(); err != nil {
+				return err
+			}
 		case *pgproto3.Bind:
 			spqrlog.Zero.Debug().
 				Str("name", q.PreparedStatement).
 				Uint("client", rst.Client().ID()).
 				Msg("Binding prepared statement")
 
-			rst.saveBind = &pgproto3.Bind{}
-			rst.saveBind.DestinationPortal = q.DestinationPortal
+			// Here we are going to actually redirect the query to the execution shard. 
+			// However, to execute commit, rollbacks, etc., we need to wait for the next query
+			// or process it locally (set statement)
+
+			phx := NewSimpleProtoStateHandler(rst.manager)
 
 			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
-			rst.lastBindName = q.PreparedStatement
-			hash := murmur3.Sum64([]byte(rst.lastBindQuery))
 
-			rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
-			rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
-			rst.Client().SetBindParams(q.Parameters)
-			rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
-			rst.saveBind.Parameters = q.Parameters
-
-			// Do not respond here with bind complete, as relay step should do itself
-
-			_, _, err := rst.Parse(rst.lastBindQuery)
-			if err != nil {
+			// We implicitly assume that there is always Execute after Bind for the same portal.
+			// hovewer, postgresql protocol allows some more cases.
+			if err := rst.Client().ReplyBindComplete(); err != nil {
 				return err
 			}
 
-			if err := rst.PrepareRelayStep(cmngr); err != nil {
-				return err
-			}
+			if err := ProcQueryAvdanced(rst, rst.lastBindQuery, phx, func() error {
+				rst.saveBind = &pgproto3.Bind{}
+				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-			unprocessed++
+				rst.lastBindName = q.PreparedStatement
+				hash := murmur3.Sum64([]byte(rst.lastBindQuery))
 
-			_, err = rst.DeployPrepStmt(q.PreparedStatement)
-			if err != nil {
+				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
+				rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
+				rst.Client().SetBindParams(q.Parameters)
+				rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
+				rst.saveBind.Parameters = q.Parameters
+
+				// Do not respond with BindComplete, as the relay step should take care of itself.
+
+				if err := rst.PrepareRelayStep(cmngr); err != nil {
+					return err
+				}
+
+				_, err := rst.DeployPrepStmt(q.PreparedStatement)
+				if err != nil {
+					return err
+				}
+
+				/* Case when no decribe stmt was issued before Execute+Sync*/
+				if rst.saveBind != nil {
+					rst.AddSilentQuery(rst.saveBind)
+					// do not send saved bind twice
+				}
+
+				rst.AddQuery(&pgproto3.Execute{})
+
+				rst.AddQuery(&pgproto3.Sync{})
+				if _, _, err := rst.RelayFlush(true, true); err != nil {
+					return err
+				}
+
+				// do not complete relay here yet
+
+				rst.saveBind = nil
+				rst.bindRoute = nil
+
+				return nil
+			}); err != nil {
 				return err
 			}
 
@@ -1080,12 +1109,34 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				rst.saveBind = nil
 				rst.AddQuery(q)
 
-				if _, _, err := rst.RelayStep(&pgproto3.Sync{}, true, true); err != nil {
+				_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+				if err != nil {
 					return err
 				}
-				defer func() {
-					_ = fin()
-				}()
+
+				for _, msg := range unreplied {
+					// https://www.postgresql.org/docs/current/protocol-flow.html
+					switch qq := msg.(type) {
+					case *pgproto3.RowDescription:
+						// send to the client
+						if err := rst.Client().Send(qq); err != nil {
+							return err
+						}
+					case *pgproto3.NoData:
+						// send to the client
+						if err := rst.Client().Send(qq); err != nil {
+							return err
+						}
+					default:
+						// error out? panic? protoc violation?
+						// no, just chill
+					}
+				}
+
+				if err := fin(); err != nil {
+					return err
+				}
+
 			} else {
 				fin, err := rst.PrepareRelayStepOnAnyRoute(cmngr)
 				if err != nil {
@@ -1104,27 +1155,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				unprocessed++
-
-				defer func() {
-					_ = fin()
-				}()
+				if err := fin(); err != nil {
+					return err
+				}
 			}
 		case *pgproto3.Execute:
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
-
-			/* Case when no decribe stmt was issued before Execute+Sync*/
-			if rst.saveBind != nil {
-				rst.AddSilentQuery(rst.saveBind)
-				// do not send saved bind twice
-			}
-
-			rst.AddQuery(q)
-			rst.saveBind = nil
-			rst.bindRoute = nil
-			unprocessed++
+			/* actually done on bind */
 		case *pgproto3.Close:
 			//
 		default:
@@ -1134,9 +1173,18 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
-	if unprocessed > 0 {
+	// no backend connection.
+	// for example, parse + sync will cause so.
+	// just reply rfq
+	if rst.Client().Server() == nil {
+		return rst.Client().ReplyRFQ(rst.TxStatus())
+	} else {
 		rst.AddQuery(&pgproto3.Sync{})
 		if _, _, err := rst.RelayFlush(true, true); err != nil {
+			return err
+		}
+
+		if err := rst.CompleteRelay(true); err != nil {
 			return err
 		}
 	}
@@ -1271,7 +1319,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) (bool, error) {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error) {
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return false, err
 	}
@@ -1281,6 +1329,11 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool, cmngr po
 	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		return false, err
 	} else {
+		if completeRelay {
+			if err := rst.CompleteRelay(replyCl); err != nil {
+				return false, err
+			}
+		}
 		return ok, nil
 	}
 }
@@ -1293,7 +1346,7 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 
 	// if we have no active connections, we have noting to sync
 	if !cmngr.ConnectionActive(rst) {
-		return rst.Client().ReplyRFQ()
+		return rst.Client().ReplyRFQ(rst.TxStatus())
 	}
 	if err := rst.PrepareRelayStep(cmngr); err != nil {
 		return err
@@ -1301,6 +1354,10 @@ func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr
 
 	if _, _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
 		/* Relay flush completes relay */
+		return err
+	}
+
+	if err := rst.CompleteRelay(replyCl); err != nil {
 		return err
 	}
 
@@ -1331,4 +1388,8 @@ func (rst *RelayStateImpl) ProcessMessage(
 	}
 
 	return rst.CompleteRelay(replyCl)
+}
+
+func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
+	return rst.manager
 }

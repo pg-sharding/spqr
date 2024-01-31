@@ -358,7 +358,7 @@ Feature: Coordinator test
 
   Scenario: Split key range by bound out of range fails
     #
-    # Check we cannot split by bound greater than upper bound
+    # Check we cannot split by bound greater than next key range bound
     #
     When I run SQL on host "coordinator"
     """
