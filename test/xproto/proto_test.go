@@ -294,7 +294,7 @@ func TestSimpleQuery(t *testing.T) {
 	}
 }
 
-func TestSimpleAdvadsedParsing(t *testing.T) {
+func TestSimpleAdvancedParsing(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -412,7 +412,7 @@ func TestSimpleAdvadsedParsing(t *testing.T) {
 	}
 }
 
-func TestSimpleAdvadsedSETParsing(t *testing.T) {
+func TestSimpleAdvancedSETParsing(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
