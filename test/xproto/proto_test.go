@@ -1219,11 +1219,8 @@ func TestPrepStmt(t *testing.T) {
 				&pgproto3.Bind{
 					PreparedStatement: "pstmt1",
 					Parameters: [][]byte{
-						[]byte("client_encoding"),
-						// we need to set client encoding
-						// to non-default param, to recieve a param status
-						// message
-						[]byte("KOI8R"),
+						[]byte("log_statement_stats"),
+						[]byte("off"),
 						[]byte("false"),
 					},
 				},
@@ -1294,15 +1291,10 @@ func TestPrepStmt(t *testing.T) {
 				},
 
 				&pgproto3.DataRow{Values: [][]byte{
-					[]byte("KOI8R"),
+					[]byte("off"),
 				}},
 
 				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-
-				&pgproto3.ParameterStatus{
-					Name:  "client_encoding",
-					Value: "KOI8R",
-				},
 
 				&pgproto3.ReadyForQuery{
 					TxStatus: 73,
