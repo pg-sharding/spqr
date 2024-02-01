@@ -384,6 +384,16 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return err
 		}
 		return nil
+	case config.AuthGSS:
+		connClose, gssUser, err := getGssUser(cl)
+		if connClose != nil {
+			defer connClose()
+		}
+		if err != nil {
+			return err
+		}
+		fmt.Println(gssUser)
+		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
 	}

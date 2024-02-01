@@ -13,6 +13,7 @@ const (
 	AuthMD5       = AuthMethod("md5")
 	AuthSCRAM     = AuthMethod("scram")
 	AuthLDAP      = AuthMethod("ldap")
+	AuthGSS       = AuthMethod("gss")
 )
 
 type AuthCfg struct {
