@@ -57,13 +57,13 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution 
 	return &routehint.EmptyRouteHint{}, nil
 }
 
-// Process query, with router relay state
+// ProcQueryAdvanced processes query, with router relay state
 // There are several types of query that we want to process in non-passthrough way.
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAvdanced(rst RelayStateMgr, query string, ph ProtoStateHandler, executor func() error) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, executor func() error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")

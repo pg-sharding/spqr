@@ -40,7 +40,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAvdanced(rst, q.Query, ph, func() error {
+			if err := relay.ProcQueryAdvanced(rst, q.Query, ph, func() error {
 				rst.AddQuery(q)
 				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 				return err
@@ -68,7 +68,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAvdanced(rst, q.String, ph, func() error {
+			if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 				rst.AddQuery(q)
 
 				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
@@ -135,7 +135,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		if err := relay.ProcQueryAvdanced(rst, q.String, ph, func() error {
+		if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 			rst.AddQuery(q)
 			// this call compeletes relay, sends RFQ
 			_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
