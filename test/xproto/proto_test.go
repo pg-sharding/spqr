@@ -1293,16 +1293,16 @@ func TestPrepStmt(t *testing.T) {
 					},
 				},
 
+				&pgproto3.ParameterStatus{
+					Name:  "client_encoding",
+					Value: "KOI8R",
+				},
+
 				&pgproto3.DataRow{Values: [][]byte{
 					[]byte("KOI8R"),
 				}},
 
 				&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
-
-				&pgproto3.ParameterStatus{
-					Name:  "client_encoding",
-					Value: "KOI8R",
-				},
 
 				&pgproto3.ReadyForQuery{
 					TxStatus: 73,
