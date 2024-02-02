@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/caio/go-tdigest v3.1.0+incompatible
-	github.com/cucumber/godog v0.13.0
+	github.com/cucumber/godog v0.14.0
 	github.com/docker/docker v25.0.1+incompatible
 	github.com/go-faster/city v1.0.1
 	github.com/gofrs/uuid v4.4.0+incompatible
