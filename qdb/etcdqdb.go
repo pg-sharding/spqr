@@ -1140,7 +1140,7 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relation string) 
 	}
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with for relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relation)
 
 	case 1:
 		id := string(resp.Kvs[0].Value)
