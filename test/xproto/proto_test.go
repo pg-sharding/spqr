@@ -101,15 +101,15 @@ func SetupSharding() {
 
 	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r1 COLUMNS id;")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s", err)
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s", err)
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s", err)
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 }
 
@@ -147,11 +147,11 @@ func CreateTables() {
 
 	_, err = conn.Exec(context.Background(), "CREATE TABLE t (id int)")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s", err)
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE TABLE text_table (id text)")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s", err)
+		_, _ = fmt.Fprintf(os.Stderr, "could not create table: %s\n", err)
 	}
 }
 
