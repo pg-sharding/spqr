@@ -6,12 +6,12 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/cucumber/godog v0.14.0
-	github.com/docker/docker v25.0.1+incompatible
+	github.com/docker/docker v25.0.2+incompatible
 	github.com/go-faster/city v1.0.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.5.2
+	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/juju/errors v1.0.0
 	github.com/lib/pq v1.10.9
@@ -19,7 +19,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pg-sharding/lyx v0.0.0-20240124154818-9ae64786af39
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
+	github.com/rs/zerolog v1.32.0
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/spf13/cobra v1.8.0

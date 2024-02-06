@@ -489,20 +489,11 @@ distribution_define_stmt:
 	}
 
 opt_col_types:
-	SHARDING COLUMN TYPES col_types_list {
-		$$ = $4
+	COLUMN TYPES col_types_list {
+		$$ = $3
 	} | { 
 		/* empty column types should be prohibited */
 		$$ = nil 
-	}
-
-col_types_elem:
-	VARCHAR {
-		$$ = "varchar"
-	} | INTEGER {
-		$$ = "integer"
-	} | INT {
-		$$ = "integer"
 	}
 
 col_types_list:
@@ -512,6 +503,15 @@ col_types_list:
 		$$ = []string {
 			$1,
 		}
+	}
+
+col_types_elem:
+	VARCHAR {
+		$$ = "varchar"
+	} | INTEGER {
+		$$ = "integer"
+	} | INT {
+		$$ = "integer"
 	}
 
 sharding_rule_define_stmt:

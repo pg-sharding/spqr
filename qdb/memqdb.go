@@ -35,7 +35,7 @@ type MemQDB struct {
 	/* caches */
 }
 
-var _ QDB = &MemQDB{}
+var _ XQDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
@@ -745,14 +745,20 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
 	} else {
 		for _, r := range rels {
-			if _, ok := ds.Relations[r.Name]; ok {
-				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "relation %s already attached ", r.Name)
-			}
-		}
-		for _, r := range rels {
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:        r.Name,
 				ColumnNames: r.ColumnNames,
+			}
+			// TODO: implement relation detaching & forbid re-attaching
+			if curDsId, ok := q.RelationDistribution[r.Name]; ok {
+				if curDs, ok := q.Distributions[curDsId]; !ok {
+					return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" attached to absent distribution \"%s\"", r.Name, curDsId)
+				} else {
+					delete(curDs.Relations, r.Name)
+					if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, curDsId, curDs)); err != nil {
+						return err
+					}
+				}
 			}
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {

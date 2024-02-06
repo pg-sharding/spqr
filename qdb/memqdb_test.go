@@ -132,23 +132,35 @@ func TestDistributions(t *testing.T) {
 		DistributionId: "dserr",
 	}))
 
-	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
-		{
-			Name: "r1",
-			ColumnNames: []string{
-				"c1",
-			},
+	relation := &qdb.DistributedRelation{
+		Name: "r1",
+		ColumnNames: []string{
+			"c1",
 		},
+	}
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
+		relation,
 	}))
 
-	assert.Error(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{
-		{
-			Name: "r1",
-			ColumnNames: []string{
-				"c1",
-			},
-		},
+	ds, err := memqdb.GetDistribution(ctx, relation.Name)
+	assert.NoError(err)
+	assert.Equal(ds.ID, "ds1")
+	assert.Contains(ds.Relations, relation.Name)
+	assert.Equal(ds.Relations[relation.Name], relation)
+
+	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds2", []*qdb.DistributedRelation{
+		relation,
 	}))
+
+	ds, err = memqdb.GetDistribution(ctx, relation.Name)
+	assert.NoError(err)
+	assert.Equal(ds.ID, "ds2")
+	assert.Contains(ds.Relations, relation.Name)
+	assert.Equal(ds.Relations[relation.Name], relation)
+
+	oldDs, err := memqdb.GetDistribution(ctx, "ds1")
+	assert.NoError(err)
+	assert.NotContains(oldDs.Relations, relation.Name)
 }
 
 func TestKeyRanges(t *testing.T) {
