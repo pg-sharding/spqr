@@ -355,7 +355,7 @@ func TestDistribution(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES integer;",
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES integer;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
@@ -367,7 +367,7 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE DISTRIBUTION db1 SHARDING COLUMN TYPES varchar, varchar;",
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar, varchar;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
 					ID: "db1",
