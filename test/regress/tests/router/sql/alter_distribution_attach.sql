@@ -32,6 +32,14 @@ CREATE TABLE yy (w_id int);
 
 SELECT * FROM yy WHERE w_id=5;
 
+\c spqr-console
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION yy COLUMNS w_id;
+
+\c regress
+
+SELECT * FROM yy WHERE w_id=5;
+
 SET __spqr__distribution = ds2;
 
 SELECT * FROM xx WHERE w_id=5;
