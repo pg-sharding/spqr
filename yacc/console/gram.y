@@ -65,8 +65,8 @@ func randomHex(n int) (string, error) {
 	attach                 *AttachTable
 
 	alter                  *Alter
-	alterDistribution      *AlterDistribution
-	ditributed_relation    *DistributedRelation
+	alter_distribution     *AlterDistribution
+	distributed_relation    *DistributedRelation
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -465,9 +465,11 @@ alter_stmt:
 distribution_alter_stmt:
 	distribution_select_stmt relation_attach_stmt
 	{
-		$$ = &AttachRelation{
-			Distribution: $1,
-			Relation:     $2,
+		$$ = &AlterDistribution{
+			Element: &AttachRelation{
+				Distribution: $1,
+				Relation:     $2,
+			},
 		}
 	}
 

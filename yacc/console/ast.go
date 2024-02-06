@@ -190,10 +190,18 @@ type Alter struct {
 
 func (*Alter) iStatement() {}
 
-type AlterDistribution interface {
+type DistributionAlterStatement interface {
 	AlterStmt
 	iAlterDistribution()
 }
+
+type AlterDistribution struct {
+	Element Statement
+}
+
+func (*AlterDistribution) iStatement()         {}
+func (*AlterDistribution) iAlter()             {}
+func (*AlterDistribution) iAlterDistribution() {}
 
 type DistributedRelation struct {
 	Name    string
@@ -205,6 +213,7 @@ type AttachRelation struct {
 	Relation     *DistributedRelation
 }
 
+func (*AttachRelation) iStatement()         {}
 func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
 

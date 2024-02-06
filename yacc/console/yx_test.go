@@ -355,14 +355,16 @@ func TestAlter(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS 'id'",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id;",
 			exp: &spqrparser.Alter{
-				Element: &spqrparser.AttachRelation{
-					Relation: &spqrparser.DistributedRelation{
-						Name:    "t",
-						Columns: []string{"id"},
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relation: &spqrparser.DistributedRelation{
+							Name:    "t",
+							Columns: []string{"id"},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
-					Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 				},
 			},
 			err: nil,
