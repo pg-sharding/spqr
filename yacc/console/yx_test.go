@@ -369,6 +369,21 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id1, id2;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relation: &spqrparser.DistributedRelation{
+							Name:    "t",
+							Columns: []string{"id1", "id2"},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

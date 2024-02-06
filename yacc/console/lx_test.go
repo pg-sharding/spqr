@@ -112,6 +112,21 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id1, id2",
+			exp: []int{
+				spqrparser.ALTER,
+				spqrparser.DISTRIBUTION,
+				spqrparser.IDENT,
+				spqrparser.ATTACH,
+				spqrparser.RELATION,
+				spqrparser.IDENT,
+				spqrparser.COLUMNS,
+				spqrparser.IDENT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
