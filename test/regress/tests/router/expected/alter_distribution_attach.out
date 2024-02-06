@@ -54,18 +54,20 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh2 FOR DISTRIBUTION ds2;
  created key range with bound 1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xx;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx COLUMNS w_id;
                attach table               
 ------------------------------------------
  attached relation xx to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds2 ATTACH RELATION yy;
+ALTER DISTRIBUTION ds2 ATTACH RELATION yy COLUMNS w_id;
                attach table               
 ------------------------------------------
  attached relation yy to distribution ds2
 (1 row)
 
+ALTER DISTRIBUTION ds3 ATTACH RELATION xx COLUMNS w_id;
+ERROR:  no such distribution.
 \c regress
 DROP TABLE IF EXISTS xx;
 NOTICE: send query to shard(s) : sh1,sh2
