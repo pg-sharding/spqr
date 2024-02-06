@@ -20,7 +20,6 @@ const (
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
 	SPQR_METADATA_CORRUPTION = "SPQRZ"
-	SPQR_NO_RELATION_DATA    = "SPQRA"
 )
 
 var existingErrorCodeMap = map[string]string{

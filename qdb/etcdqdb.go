@@ -56,7 +56,6 @@ const (
 	shardingRulesNamespace   = "/sharding_rules/"
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
-	relationsNamespace       = "/relations/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -89,10 +88,6 @@ func distributionNodePath(key string) string {
 
 func relationMappingNodePath(key string) string {
 	return path.Join(relationMappingNamespace, key)
-}
-
-func relationNodePath(key string) string {
-	return path.Join(relationsNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
@@ -1112,10 +1107,6 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 	for _, rel := range rels {
 		distribution.Relations[rel.Name] = rel
-		relJson, err := json.Marshal(rel)
-		if err != nil {
-			return err
-		}
 
 		curDistribution, err := q.GetRelationDistribution(ctx, rel.Name)
 		switch e := err.(type) {
@@ -1132,19 +1123,8 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 				return err
 			}
 		}
-		if curDistribution != nil {
-			_, err := q.cli.Delete(ctx, relationNodePath(rel.Name))
-			if err != nil {
-				return err
-			}
-		}
 
-		resp, err := q.cli.Put(ctx, relationNodePath(rel.Name), string(relJson))
-		if err != nil {
-			return err
-		}
-
-		resp, err = q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
+		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
 		spqrlog.Zero.Debug().
 			Interface("responce", resp).
 			Msg("etcdqdb: attach table to distribution")
@@ -1200,30 +1180,6 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 		return q.GetDistribution(ctx, id)
 	default:
 		// metadata corruption
-		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
-	}
-}
-
-// TODO: unit tests
-func (q *EtcdQDB) GetRelation(ctx context.Context, relName string) (*DistributedRelation, error) {
-	spqrlog.Zero.Debug().
-		Str("relation", relName).
-		Msg("etcdqdb: get distribution for relation")
-
-	resp, err := q.cli.Get(ctx, relationNodePath(relName))
-	if err != nil {
-		return nil, err
-	}
-	switch len(resp.Kvs) {
-	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_RELATION_DATA, "relation \"%s\" not found", relName)
-	case 1:
-		var rel *DistributedRelation
-		if err = json.Unmarshal(resp.Kvs[0].Value, rel); err != nil {
-			return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
-		}
-		return rel, nil
-	default:
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 	}
 }
