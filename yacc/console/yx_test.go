@@ -343,6 +343,57 @@ func TestAttachTable(t *testing.T) {
 	}
 }
 
+func TestAlter(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relation: &spqrparser.DistributedRelation{
+							Name:    "t",
+							Columns: []string{"id"},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id1, id2;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relation: &spqrparser.DistributedRelation{
+							Name:    "t",
+							Columns: []string{"id1", "id2"},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestDistribution(t *testing.T) {
 
 	assert := assert.New(t)

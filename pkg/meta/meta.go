@@ -196,6 +196,32 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	}
 }
 
+func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterDistribution:
+		return processAlterDistribution(ctx, stmt.Element, mngr, cli)
+	default:
+		return unknownCoordinatorCommand
+	}
+}
+
+func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AttachRelation:
+		rels := []*distributions.DistributedRelation{{
+			Name:        stmt.Relation.Name,
+			ColumnNames: stmt.Relation.Columns,
+		},
+		}
+		if err := mngr.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels); err != nil {
+			return err
+		}
+		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels)
+	default:
+		return unknownCoordinatorCommand
+	}
+}
+
 // TODO : unit tests
 func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
@@ -293,6 +319,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, distr)
+	case *spqrparser.Alter:
+		return processAlter(ctx, stmt.Element, mgr, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
