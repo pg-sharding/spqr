@@ -212,6 +212,15 @@ func (*AttachRelation) iStatement()         {}
 func (*AttachRelation) iAlter()             {}
 func (*AttachRelation) iAlterDistribution() {}
 
+type DetachRelation struct {
+	Distribution *DistributionSelector
+	RelationName string
+}
+
+func (*DetachRelation) iStatement()         {}
+func (*DetachRelation) iAlter()             {}
+func (*DetachRelation) iAlterDistribution() {}
+
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
