@@ -1140,7 +1140,20 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 // TODO: unit tests
 func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	panic("not implemented")
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: detach table from distribution")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	delete(distribution.Relations, relName)
+	q.CreateDistribution(ctx, distribution)
+
+	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName))
+	return err
 }
 
 // TODO : unit tests
