@@ -62,8 +62,6 @@ func randomHex(n int) (string, error) {
 
 	distribution           *DistributionDefinition
 
-	attach                 *AttachTable
-
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
 	distributed_relation    *DistributedRelation
@@ -156,8 +154,6 @@ func randomHex(n int) (string, error) {
 
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
-
-%type <attach> attach_stmt
 
 %type <ds> distribution_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
@@ -267,10 +263,6 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| unregister_router_stmt
-	{
-		setParseTree(yylex, $1)
-	}
-	| attach_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -444,16 +436,6 @@ stoptrace_stmt:
 	STOP TRACE MESSAGES
 	{
 		$$ = &StopTraceStmt{}
-	}
-
-
-attach_stmt:
-	ATTACH TABLE any_id TO distribution_select_stmt
-	{
-		$$ = &AttachTable{
-			Table: $3,
-			Distribution: $5,
-		}
 	}
 
 alter_stmt:

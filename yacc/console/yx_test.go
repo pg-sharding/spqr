@@ -318,29 +318,9 @@ func TestAttachTable(t *testing.T) {
 
 	assert := assert.New(t)
 
-	type tcase struct {
-		query string
-		exp   spqrparser.Statement
-		err   error
-	}
-
-	for _, tt := range []tcase{
-		{
-			query: "ATTACH TABLE t TO DISTRIBUTION ds1;",
-			exp: &spqrparser.AttachTable{
-				Table:        "t",
-				Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
-			},
-			err: nil,
-		},
-	} {
-
-		tmp, err := spqrparser.Parse(tt.query)
-
-		assert.NoError(err, "query %s", tt.query)
-
-		assert.Equal(tt.exp, tmp, "query %s", tt.query)
-	}
+	tmp, err := spqrparser.Parse("ATTACH TABLE t TO DISTRIBUTION ds1;")
+	assert.Error(err)
+	assert.Equal(nil, tmp, "query %s", "ATTACH TABLE t TO DISTRIBUTION ds1;")
 }
 
 func TestAlter(t *testing.T) {
