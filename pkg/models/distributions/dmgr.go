@@ -13,4 +13,5 @@ type DistributionMgr interface {
 	GetRelationDistribution(ctx context.Context, relation_name string) (*Distribution, error)
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
+	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 }
