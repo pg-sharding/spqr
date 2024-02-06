@@ -745,11 +745,6 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
 	} else {
 		for _, r := range rels {
-			if _, ok := ds.Relations[r.Name]; ok {
-				return spqrerror.Newf(spqrerror.SPQR_UNEXPECTED, "relation %s already attached ", r.Name)
-			}
-		}
-		for _, r := range rels {
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:        r.Name,
 				ColumnNames: r.ColumnNames,
