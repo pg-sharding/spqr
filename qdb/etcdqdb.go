@@ -25,7 +25,7 @@ type EtcdQDB struct {
 	mu  sync.Mutex
 }
 
-var _ QDB = &EtcdQDB{}
+var _ XQDB = &EtcdQDB{}
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{

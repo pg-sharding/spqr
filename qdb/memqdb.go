@@ -35,7 +35,7 @@ type MemQDB struct {
 	/* caches */
 }
 
-var _ QDB = &MemQDB{}
+var _ XQDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
