@@ -124,7 +124,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -469,6 +469,15 @@ distribution_alter_stmt:
 			Element: &AttachRelation{
 				Distribution: $1,
 				Relation:     $2,
+			},
+		}
+	} |
+	distribution_select_stmt DETACH RELATION any_id
+	{
+		$$ = &AlterDistribution{
+			Element: &DetachRelation{
+				Distribution: $1,
+				RelationName: $4,
 			},
 		}
 	}
