@@ -148,6 +148,18 @@ func TestDistributions(t *testing.T) {
 	assert.Contains(ds.Relations, relation.Name)
 	assert.Equal(ds.Relations[relation.Name], relation)
 
+	assert.Error(memqdb.AlterDistributionAttach(ctx, "ds2", []*qdb.DistributedRelation{
+		relation,
+	}))
+
+	assert.NoError(memqdb.AlterDistributionDetach(ctx, "ds1", "r1"))
+	_, err = memqdb.GetRelationDistribution(ctx, relation.Name)
+	assert.Error(err)
+
+	ds, err = memqdb.GetDistribution(ctx, "ds1")
+	assert.NoError(err)
+	assert.NotContains(ds.Relations, relation.Name)
+
 	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds2", []*qdb.DistributedRelation{
 		relation,
 	}))
