@@ -20,6 +20,7 @@ const (
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
 	SPQR_METADATA_CORRUPTION = "SPQRZ"
+	SPQR_INVALID_REQUEST     = "SPQRJ"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -39,6 +40,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
 	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",
+	SPQR_INVALID_REQUEST:     "Invalid Request",
 }
 
 func GetMessageByCode(errorCode string) string {
