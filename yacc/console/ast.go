@@ -190,6 +190,11 @@ type Alter struct {
 
 func (*Alter) iStatement() {}
 
+type AlterDistribution interface {
+	AlterStmt
+	iAlterDistribution()
+}
+
 type DistributedRelation struct {
 	Name    string
 	Columns []string
@@ -200,7 +205,8 @@ type AttachRelation struct {
 	Relation     *DistributedRelation
 }
 
-func (*AttachRelation) iAlter() {}
+func (*AttachRelation) iAlter()             {}
+func (*AttachRelation) iAlterDistribution() {}
 
 // The frollowing constants represent SHOW statements.
 const (

@@ -63,6 +63,10 @@ func randomHex(n int) (string, error) {
 	distribution           *DistributionDefinition
 
 	attach                 *AttachTable
+
+	alter                  *Alter
+	alterDistribution      *AlterDistribution
+	ditributed_relation    *DistributedRelation
 	
 	entrieslist            []ShardingRuleEntry
 	shruleEntry            ShardingRuleEntry
@@ -120,8 +124,8 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -169,7 +173,12 @@ func randomHex(n int) (string, error) {
 %type<str> hash_function_name
 %type<str> opt_distribution
 
-%type<strlist> col_types_list opt_col_types
+%type<alter> alter_stmt
+%type<alter_distribution> distribution_alter_stmt
+
+%type<distributed_relation> relation_attach_stmt
+
+%type<strlist> col_types_list opt_col_types col_list
 %type<str> col_types_elem
 %type<bool> opt_cascade
 
@@ -262,6 +271,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| attach_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| alter_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -440,6 +453,39 @@ attach_stmt:
 		$$ = &AttachTable{
 			Table: $3,
 			Distribution: $5,
+		}
+	}
+
+alter_stmt:
+	ALTER distribution_alter_stmt
+	{
+		$$ = &Alter{Element: $2}
+	}
+
+distribution_alter_stmt:
+	distribution_select_stmt relation_attach_stmt
+	{
+		$$ = &AttachRelation{
+			Distribution: $1,
+			Relation:     $2,
+		}
+	}
+
+relation_attach_stmt:
+	ATTACH RELATION any_id COLUMNS col_list
+	{
+		$$ = &DistributedRelation{
+			Name: 	 $3,
+			Columns: $5,
+		}
+	}
+
+col_list:
+	col_list TCOMMA any_id {
+		$$ = append($1, $3)
+	} | any_id {
+		$$ = []string {
+			$1,
 		}
 	}
 
