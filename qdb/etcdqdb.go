@@ -1019,7 +1019,11 @@ func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribu
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
 
-	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), distribution.ID)
+	distrJson, err := json.Marshal(distribution)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), string(distrJson))
 	if err != nil {
 		return err
 	}
