@@ -426,6 +426,17 @@ func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 	return err
 }
 
+func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	c := proto.NewDistributionServiceClient(a.conn)
+
+	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
+		Id:      id,
+		RelName: relName,
+	})
+
+	return err
+}
+
 // TODO : unit tests
 func (a *Adapter) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)

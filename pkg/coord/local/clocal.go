@@ -75,6 +75,14 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 }
 
 // TODO : unit tests
+func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	return lc.qdb.AlterDistributionDetach(ctx, id, relName)
+}
+
+// TODO : unit tests
 func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
