@@ -180,6 +180,28 @@ type AttachTable struct {
 	Distribution *DistributionSelector
 }
 
+type AlterStmt interface {
+	iAlter()
+}
+
+type Alter struct {
+	Element Statement
+}
+
+func (*Alter) iStatement() {}
+
+type DistributedRelation struct {
+	Name    string
+	Columns []string
+}
+
+type AttachRelation struct {
+	Distribution *DistributionSelector
+	Relation     *DistributedRelation
+}
+
+func (*AttachRelation) iAlter() {}
+
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
