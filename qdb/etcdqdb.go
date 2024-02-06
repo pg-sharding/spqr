@@ -30,8 +30,8 @@ var _ QDB = &EtcdQDB{}
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: []string{addr},
-		DialOptions: []grpc.DialOption{ // TODO remove WithInsecure
-			grpc.WithInsecure(), //nolint:all
+		DialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
 	})
 	if err != nil {
