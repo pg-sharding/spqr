@@ -771,8 +771,22 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 }
 
 // TODO: unit tests
-func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	panic("not implemented")
+func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[id]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+	}
+	delete(ds.Relations, relName)
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
+		return err
+	}
+
+	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName))
+	return err
 }
 
 // TODO : unit tests
