@@ -749,6 +749,17 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 				Name:        r.Name,
 				ColumnNames: r.ColumnNames,
 			}
+			// TODO: implement relation detaching & forbid re-attaching
+			if curDsId, ok := q.RelationDistribution[r.Name]; ok {
+				if curDs, ok := q.Distributions[curDsId]; !ok {
+					return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" attached to absent distribution \"%s\"", r.Name, curDsId)
+				} else {
+					delete(curDs.Relations, r.Name)
+					if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, curDsId, curDs)); err != nil {
+						return err
+					}
+				}
+			}
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
 				return err
