@@ -25,7 +25,7 @@ type EtcdQDB struct {
 	mu  sync.Mutex
 }
 
-var _ QDB = &EtcdQDB{}
+var _ XQDB = &EtcdQDB{}
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
@@ -49,13 +49,13 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace     = "/keyranges/"
-	distributionNamespace  = "/distributions/"
-	keyRangeMovesNamespace = "/krmoves/"
-	routersNamespace       = "/routers/"
-	shardingRulesNamespace = "/sharding_rules/"
-	shardsNamespace        = "/shards/"
-	relationNamespace      = "/relation_mappings/"
+	keyRangesNamespace       = "/keyranges/"
+	distributionNamespace    = "/distributions/"
+	keyRangeMovesNamespace   = "/krmoves/"
+	routersNamespace         = "/routers/"
+	shardingRulesNamespace   = "/sharding_rules/"
+	shardsNamespace          = "/shards/"
+	relationMappingNamespace = "/relation_mappings/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -86,8 +86,8 @@ func distributionNodePath(key string) string {
 	return path.Join(distributionNamespace, key)
 }
 
-func relationNodePath(key string) string {
-	return path.Join(relationNamespace, key)
+func relationMappingNodePath(key string) string {
+	return path.Join(relationMappingNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
@@ -1019,7 +1019,11 @@ func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribu
 		Str("id", distribution.ID).
 		Msg("etcdqdb: add distribution")
 
-	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), distribution.ID)
+	distrJson, err := json.Marshal(distribution)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), string(distrJson))
 	if err != nil {
 		return err
 	}
@@ -1096,11 +1100,40 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 		Str("id", id).
 		Msg("etcdqdb: attach table to distribution")
 
-	resp, err := q.cli.Put(ctx, relationNodePath(id), id)
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
 
-	spqrlog.Zero.Debug().
-		Interface("responce", resp).
-		Msg("etcdqdb: attach table to distribution")
+	for _, rel := range rels {
+		distribution.Relations[rel.Name] = rel
+
+		curDistribution, err := q.GetRelationDistribution(ctx, rel.Name)
+		switch e := err.(type) {
+		case *spqrerror.SpqrError:
+			if e.ErrorCode != spqrerror.SPQR_NO_DISTRIBUTION {
+				return err
+			}
+		default:
+			return err
+		}
+		if curDistribution != nil && curDistribution.ID != id {
+			delete(curDistribution.Relations, rel.Name)
+			if err = q.CreateDistribution(ctx, curDistribution); err != nil {
+				return err
+			}
+		}
+
+		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
+		spqrlog.Zero.Debug().
+			Interface("responce", resp).
+			Msg("etcdqdb: attach table to distribution")
+		if err != nil {
+			return err
+		}
+	}
+
+	err = q.CreateDistribution(ctx, distribution)
 
 	return err
 }
@@ -1129,18 +1162,18 @@ func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error) {
+func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (*Distribution, error) {
 	spqrlog.Zero.Debug().
-		Str("relation", relation).
+		Str("relation", relName).
 		Msg("etcdqdb: get distribution for relation")
 
-	resp, err := q.cli.Get(ctx, relationNodePath(relation))
+	resp, err := q.cli.Get(ctx, relationMappingNodePath(relName))
 	if err != nil {
 		return nil, err
 	}
 	switch len(resp.Kvs) {
 	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with for relation \"%s\" not found", relation)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution with for relation \"%s\" not found", relName)
 
 	case 1:
 		id := string(resp.Kvs[0].Value)
