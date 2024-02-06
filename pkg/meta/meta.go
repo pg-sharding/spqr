@@ -309,16 +309,6 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
-	case *spqrparser.AttachTable:
-		distr := []*distributions.DistributedRelation{
-			{
-				Name: stmt.Table,
-			},
-		}
-		if err := mgr.AlterDistributionAttach(ctx, stmt.Distribution.ID, distr); err != nil {
-			return err
-		}
-		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, distr)
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr, cli)
 	default:
