@@ -1138,6 +1138,11 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	return err
 }
 
+// TODO: unit tests
+func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	panic("not implemented")
+}
+
 // TODO : unit tests
 func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().

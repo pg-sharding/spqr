@@ -75,6 +75,7 @@ type QDB interface {
 	DropDistribution(ctx context.Context, id string) error
 
 	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
+	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
 	GetRelationDistribution(ctx context.Context, id string) (*Distribution, error)

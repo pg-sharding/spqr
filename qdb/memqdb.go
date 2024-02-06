@@ -770,6 +770,11 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 	}
 }
 
+// TODO: unit tests
+func (q *MemQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	panic("not implemented")
+}
+
 // TODO : unit tests
 func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get distribution")
