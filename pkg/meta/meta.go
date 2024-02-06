@@ -217,6 +217,11 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			return err
 		}
 		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels)
+	case *spqrparser.DetachRelation:
+		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
+			return err
+		}
+		return cli.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName)
 	default:
 		return unknownCoordinatorCommand
 	}
