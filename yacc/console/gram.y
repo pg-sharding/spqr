@@ -167,7 +167,7 @@ func randomHex(n int) (string, error) {
 %type<str> sharding_rule_column_clause
 %type<str> sharding_rule_hash_function_clause
 %type<str> hash_function_name
-%type<str> opt_distribution
+%type<str> distribution_membership
 
 %type<alter> alter_stmt
 %type<alter_distribution> distribution_alter_stmt
@@ -554,12 +554,12 @@ col_types_elem:
 	}
 
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_distribution
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list distribution_membership
 	{
 		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Distribution: $6}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_distribution
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -623,17 +623,16 @@ sharding_rule_hash_function_clause:
 	}
 	| /*EMPTY*/ { $$ = ""; }
 
-opt_distribution:
+distribution_membership:
     FOR DISTRIBUTION any_id{
         $$ = $3
     }
-    | /* EMPTY */ { $$ = "default" }
 
 
 opt_to: TO any_val {} | TO any_uint {} | /*nothing*/{}
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id opt_distribution
+	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -642,7 +641,7 @@ key_range_define_stmt:
 			Distribution: $10,
 		}
 	}
-	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id opt_distribution
+	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
@@ -651,7 +650,7 @@ key_range_define_stmt:
 			Distribution: $10,
 		}
 	}
-	| KEY RANGE FROM any_val opt_to ROUTE TO any_id opt_distribution
+	| KEY RANGE FROM any_val opt_to ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -664,7 +663,7 @@ key_range_define_stmt:
 			KeyRangeID: "kr"+str,
 		}
 	}
-	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id opt_distribution
+	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
