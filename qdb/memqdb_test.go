@@ -152,7 +152,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	ds, err = memqdb.GetDistribution(ctx, relation.Name)
+	ds, err = memqdb.GetRelationDistribution(ctx, relation.Name)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds2")
 	assert.Contains(ds.Relations, relation.Name)
