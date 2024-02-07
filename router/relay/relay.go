@@ -1122,7 +1122,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				// rst.AddSilentQuery()
 				// do not send saved bind twice
 				if rst.saveBind == nil {
 					// wtf?
