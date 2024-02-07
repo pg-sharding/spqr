@@ -212,14 +212,19 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		return shard.PreparedStatementDescriptor{}, err
 	}
 
-	rd := shard.PreparedStatementDescriptor{}
+	rd := shard.PreparedStatementDescriptor{
+		NoData: false,
+	}
 
 	for _, msg := range unreplied {
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied pgproto message")
 		switch q := msg.(type) {
 		case *pgproto3.ParseComplete:
 			// skip
 		case *pgproto3.ErrorResponse:
 			return rd, fmt.Errorf(q.Message)
+		case *pgproto3.NoData:
+			rd.NoData = true
 		case *pgproto3.ParameterDescription:
 			// copy
 			rd.ParamDesc = *q
@@ -227,7 +232,6 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 			// copy
 			rd.RowDesc = *q
 		default:
-			spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied pgproto message")
 		}
 	}
 
@@ -1151,8 +1155,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				if err := rst.Client().Send(&rd.ParamDesc); err != nil {
 					return err
 				}
-				if err := rst.Client().Send(&rd.RowDesc); err != nil {
-					return err
+
+				if rd.NoData {
+					if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+						return err
+					}
+				} else {
+					if err := rst.Client().Send(&rd.RowDesc); err != nil {
+						return err
+					}
 				}
 
 				if err := fin(); err != nil {
