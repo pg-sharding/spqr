@@ -430,8 +430,8 @@ func (a *Adapter) AlterDistributionDetach(ctx context.Context, id string, relNam
 	c := proto.NewDistributionServiceClient(a.conn)
 
 	_, err := c.AlterDistributionDetach(ctx, &proto.AlterDistributionDetachRequest{
-		Id:      id,
-		RelName: relName,
+		Id:       id,
+		RelNames: []string{relName},
 	})
 
 	return err

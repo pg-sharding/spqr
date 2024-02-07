@@ -43,7 +43,7 @@ message AlterDistributionAttachReply{}
 
 message AlterDistributionDetachRequest{
   string id = 1;
-  string relName = 2;
+  repeated string relNames = 2;
 }
 
 message AlterDistributionDetachReply{}
