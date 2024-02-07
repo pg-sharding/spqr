@@ -1207,7 +1207,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
-			/* actually done on bind */
 			err := rst.execute()
 			rst.execute = nil
 			rst.bindRoute = nil
