@@ -189,6 +189,18 @@ func TestMemQDB_GetNotAttachedRelationDistribution(t *testing.T) {
 	assert.Error(err)
 }
 
+func TestMemQDB_GetAbsentDistribution(t *testing.T) {
+	assert := assert.New(t)
+
+	memQDB, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	_, err = memQDB.GetDistribution(ctx, "absent")
+	assert.Error(err)
+}
+
 func TestKeyRanges(t *testing.T) {
 
 	assert := assert.New(t)
