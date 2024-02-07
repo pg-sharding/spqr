@@ -6,28 +6,46 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE SHARDING RULE t1 TABLE orders COLUMN id;
-                                         add sharding rule                                         
----------------------------------------------------------------------------------------------------
- created sharding rule t1 for table (orders) with columns [id, hash: x->x] in default distribution
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-CREATE SHARDING RULE t2 TABLE delivery COLUMN order_id;
-                                             add sharding rule                                             
------------------------------------------------------------------------------------------------------------
- created sharding rule t2 for table (delivery) with columns [order_id, hash: x->x] in default distribution
+CREATE SHARDING RULE t1 TABLE orders COLUMN id FOR DISTRIBUTION ds1;
+                                       add sharding rule                                       
+-----------------------------------------------------------------------------------------------
+ created sharding rule t1 for table (orders) with columns [id, hash: x->x] in ds1 distribution
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
+CREATE SHARDING RULE t2 TABLE delivery COLUMN order_id FOR DISTRIBUTION ds1;
+                                           add sharding rule                                           
+-------------------------------------------------------------------------------------------------------
+ created sharding rule t2 for table (delivery) with columns [order_id, hash: x->x] in ds1 distribution
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2;
+CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
           add key range           
 ----------------------------------
  created key range with bound 101
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders COLUMNS id;
+                 attach table                 
+----------------------------------------------
+ attached relation orders to distribution ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION delivery COLUMNS order_id;
+                  attach table                  
+------------------------------------------------
+ attached relation delivery to distribution ds1
 (1 row)
 
 \c regress
@@ -72,9 +90,10 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distribution 
--------------------
-(0 rows)
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
 
 DROP SHARDING RULE ALL;
    drop sharding rule   
