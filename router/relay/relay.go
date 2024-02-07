@@ -1048,6 +1048,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return err
 			}
 
+			rst.execute = func() error {
+				return nil
+			}
+
 			if err := ProcQueryAdvanced(rst, rst.lastBindQuery, phx, func() error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
@@ -1077,21 +1081,29 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					rst.AddSilentQuery(rst.saveBind)
 					// do not send saved bind twice
 				}
+
+				rst.execute = func() error {
+					fin, err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
+					if err != nil {
+						_ = fin()
+						return err
+					}
+
+					rst.AddQuery(&pgproto3.Execute{})
+
+					rst.AddQuery(&pgproto3.Sync{})
+					if _, _, err := rst.RelayFlush(true, true); err != nil {
+						_ = fin()
+						return err
+					}
+
+					// do not complete relay here yet
+					return fin()
+				}
+
 				return nil
 			}); err != nil {
 				return err
-			}
-			rst.execute = func() error {
-				rst.AddQuery(&pgproto3.Execute{})
-
-				rst.AddQuery(&pgproto3.Sync{})
-				if _, _, err := rst.RelayFlush(true, true); err != nil {
-					return err
-				}
-
-				// do not complete relay here yet
-
-				return nil
 			}
 
 		case *pgproto3.Describe:
@@ -1196,20 +1208,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
 			/* actually done on bind */
-
-			fin, err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
-			if err != nil {
-				return err
-			}
-
-			err = rst.execute()
+			err := rst.execute()
 			rst.execute = nil
 			rst.bindRoute = nil
 			if err != nil {
-				_ = fin()
 				return err
-			} else {
-				_ = fin()
 			}
 		case *pgproto3.Close:
 			//
