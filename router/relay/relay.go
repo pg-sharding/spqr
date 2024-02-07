@@ -135,6 +135,8 @@ type RelayStateImpl struct {
 	lastBindQuery string
 	lastBindName  string
 
+	execute func() error
+
 	saveBind *pgproto3.Bind
 
 	// buffer of messages to process on Sync request
@@ -154,6 +156,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		routerMode:         config.RouterMode(rcfg.RouterMode),
 		maintain_params:    rcfg.MaintainParams,
 		pgprotoDebug:       rcfg.PgprotoDebug,
+		execute:            nil,
 	}
 }
 
@@ -217,7 +220,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	}
 
 	for _, msg := range unreplied {
-		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied pgproto message")
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
 		switch q := msg.(type) {
 		case *pgproto3.ParseComplete:
 			// skip
@@ -636,7 +639,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 	spqrlog.Zero.Debug().
 		Uints("shards", shard.ShardIDs(server.Datashards())).
 		Type("query-type", query).
-		Msg("client process query")
+		Msg("relay process query")
 
 	if err := server.Send(query); err != nil {
 		return txstatus.TXERR, nil, false, err
@@ -1074,7 +1077,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					rst.AddSilentQuery(rst.saveBind)
 					// do not send saved bind twice
 				}
-
+				return nil
+			}); err != nil {
+				return err
+			}
+			rst.execute = func() error {
 				rst.AddQuery(&pgproto3.Execute{})
 
 				rst.AddQuery(&pgproto3.Sync{})
@@ -1084,12 +1091,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 				// do not complete relay here yet
 
-				rst.saveBind = nil
-				rst.bindRoute = nil
-
 				return nil
-			}); err != nil {
-				return err
 			}
 
 		case *pgproto3.Describe:
@@ -1108,10 +1110,28 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				rst.AddSilentQuery(rst.saveBind)
+				// rst.AddSilentQuery()
 				// do not send saved bind twice
-				rst.saveBind = nil
-				rst.AddQuery(q)
+				if rst.saveBind == nil {
+					// wtf?
+
+				}
+				_, _, err = rst.RelayStep(rst.saveBind, false, false)
+				if err != nil {
+					return err
+				}
+
+				_, _, err = rst.RelayStep(q, false, false)
+				if err != nil {
+					return err
+				}
+
+				_, _, err = rst.RelayStep(&pgproto3.Close{
+					ObjectType: 'P',
+				}, false, false)
+				if err != nil {
+					return err
+				}
 
 				_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
 				if err != nil {
@@ -1119,6 +1139,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 				for _, msg := range unreplied {
+					spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe protal unperl message")
 					// https://www.postgresql.org/docs/current/protocol-flow.html
 					switch qq := msg.(type) {
 					case *pgproto3.RowDescription:
@@ -1175,6 +1196,21 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Execute prepared statement, reset saved bind")
 			/* actually done on bind */
+
+			fin, err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
+			if err != nil {
+				return err
+			}
+
+			err = rst.execute()
+			rst.execute = nil
+			rst.bindRoute = nil
+			if err != nil {
+				_ = fin()
+				return err
+			} else {
+				_ = fin()
+			}
 		case *pgproto3.Close:
 			//
 		default:
