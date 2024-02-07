@@ -57,4 +57,5 @@ var reservedWords = map[string]int{
 	"integer":      INTEGER,
 	"alter":        ALTER,
 	"relation":     RELATION,
+	"detach":       DETACH,
 }

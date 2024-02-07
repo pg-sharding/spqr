@@ -811,6 +811,21 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 }
 
 // TODO : unit tests
+func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+	if err := pi.WriteHeader("detach relation"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("detached relation %s from distribution %s", relName, id)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// TODO : unit tests
 func (pi *PSQLInteractor) ReportStmtRoutedToAllShards(ctx context.Context) error {
 	if err := pi.WriteHeader("explain query"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

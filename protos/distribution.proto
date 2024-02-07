@@ -41,6 +41,13 @@ message AlterDistributionAttachRequest{
 
 message AlterDistributionAttachReply{}
 
+message AlterDistributionDetachRequest{
+  string id = 1;
+  repeated string relNames = 2;
+}
+
+message AlterDistributionDetachReply{}
+
 message GetDistributionRequest{
   string id = 1;
 }
@@ -63,6 +70,7 @@ service DistributionService {
   rpc ListDistribution(ListDistributionRequest) returns (ListDistributionReply) {}
 
   rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (AlterDistributionAttachReply) {}
+  rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (AlterDistributionDetachReply) {}
 
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 

@@ -1106,22 +1106,19 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 	}
 
 	for _, rel := range rels {
+		if _, ok := distribution.Relations[rel.Name]; ok {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+		}
 		distribution.Relations[rel.Name] = rel
 
-		curDistribution, err := q.GetRelationDistribution(ctx, rel.Name)
+		_, err := q.GetRelationDistribution(ctx, rel.Name)
 		switch e := err.(type) {
 		case *spqrerror.SpqrError:
 			if e.ErrorCode != spqrerror.SPQR_NO_DISTRIBUTION {
-				return err
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
 			}
 		default:
-			return err
-		}
-		if curDistribution != nil && curDistribution.ID != id {
-			delete(curDistribution.Relations, rel.Name)
-			if err = q.CreateDistribution(ctx, curDistribution); err != nil {
-				return err
-			}
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
 		}
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
@@ -1135,6 +1132,26 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 	err = q.CreateDistribution(ctx, distribution)
 
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: detach table from distribution")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	delete(distribution.Relations, relName)
+	if err = q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	}
+
+	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName))
 	return err
 }
 

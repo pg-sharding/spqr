@@ -736,7 +736,7 @@ func (q *MemQDB) DropDistribution(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
+func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -745,20 +745,13 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
 	} else {
 		for _, r := range rels {
+			if _, ok := q.RelationDistribution[r.Name]; ok {
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
+			}
+
 			ds.Relations[r.Name] = &DistributedRelation{
 				Name:        r.Name,
 				ColumnNames: r.ColumnNames,
-			}
-			// TODO: implement relation detaching & forbid re-attaching
-			if curDsId, ok := q.RelationDistribution[r.Name]; ok {
-				if curDs, ok := q.Distributions[curDsId]; !ok {
-					return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" attached to absent distribution \"%s\"", r.Name, curDsId)
-				} else {
-					delete(curDs.Relations, r.Name)
-					if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, curDsId, curDs)); err != nil {
-						return err
-					}
-				}
 			}
 			q.RelationDistribution[r.Name] = id
 			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
@@ -768,6 +761,25 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 
 		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
 	}
+}
+
+// TODO: unit tests
+func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[id]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+	}
+	delete(ds.Relations, relName)
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
+		return err
+	}
+
+	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName))
+	return err
 }
 
 // TODO : unit tests

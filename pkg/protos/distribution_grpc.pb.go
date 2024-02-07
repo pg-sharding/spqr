@@ -23,6 +23,7 @@ const (
 	DistributionService_DropDistribution_FullMethodName        = "/spqr.DistributionService/DropDistribution"
 	DistributionService_ListDistribution_FullMethodName        = "/spqr.DistributionService/ListDistribution"
 	DistributionService_AlterDistributionAttach_FullMethodName = "/spqr.DistributionService/AlterDistributionAttach"
+	DistributionService_AlterDistributionDetach_FullMethodName = "/spqr.DistributionService/AlterDistributionDetach"
 	DistributionService_GetDistribution_FullMethodName         = "/spqr.DistributionService/GetDistribution"
 	DistributionService_GetRelationDistribution_FullMethodName = "/spqr.DistributionService/GetRelationDistribution"
 )
@@ -35,6 +36,7 @@ type DistributionServiceClient interface {
 	DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*DropDistributionReply, error)
 	ListDistribution(ctx context.Context, in *ListDistributionRequest, opts ...grpc.CallOption) (*ListDistributionReply, error)
 	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*AlterDistributionAttachReply, error)
+	AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*AlterDistributionDetachReply, error)
 	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
 }
@@ -83,6 +85,15 @@ func (c *distributionServiceClient) AlterDistributionAttach(ctx context.Context,
 	return out, nil
 }
 
+func (c *distributionServiceClient) AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*AlterDistributionDetachReply, error) {
+	out := new(AlterDistributionDetachReply)
+	err := c.cc.Invoke(ctx, DistributionService_AlterDistributionDetach_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *distributionServiceClient) GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error) {
 	out := new(GetDistributionReply)
 	err := c.cc.Invoke(ctx, DistributionService_GetDistribution_FullMethodName, in, out, opts...)
@@ -109,6 +120,7 @@ type DistributionServiceServer interface {
 	DropDistribution(context.Context, *DropDistributionRequest) (*DropDistributionReply, error)
 	ListDistribution(context.Context, *ListDistributionRequest) (*ListDistributionReply, error)
 	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error)
+	AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*AlterDistributionDetachReply, error)
 	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
 	mustEmbedUnimplementedDistributionServiceServer()
@@ -129,6 +141,9 @@ func (UnimplementedDistributionServiceServer) ListDistribution(context.Context, 
 }
 func (UnimplementedDistributionServiceServer) AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributionAttach not implemented")
+}
+func (UnimplementedDistributionServiceServer) AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*AlterDistributionDetachReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributionDetach not implemented")
 }
 func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDistribution not implemented")
@@ -221,6 +236,24 @@ func _DistributionService_AlterDistributionAttach_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DistributionService_AlterDistributionDetach_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDistributionDetachRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DistributionServiceServer).AlterDistributionDetach(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DistributionService_AlterDistributionDetach_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DistributionServiceServer).AlterDistributionDetach(ctx, req.(*AlterDistributionDetachRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DistributionService_GetDistribution_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDistributionRequest)
 	if err := dec(in); err != nil {
@@ -279,6 +312,10 @@ var DistributionService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AlterDistributionAttach",
 			Handler:    _DistributionService_AlterDistributionAttach_Handler,
+		},
+		{
+			MethodName: "AlterDistributionDetach",
+			Handler:    _DistributionService_AlterDistributionDetach_Handler,
 		},
 		{
 			MethodName: "GetDistribution",

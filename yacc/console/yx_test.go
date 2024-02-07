@@ -364,6 +364,18 @@ func TestAlter(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "ALTER DISTRIBUTION ds1 DETACH RELATION t;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.DetachRelation{
+						RelationName: "t",
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
