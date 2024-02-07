@@ -1147,7 +1147,9 @@ func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relNam
 	}
 
 	delete(distribution.Relations, relName)
-	q.CreateDistribution(ctx, distribution)
+	if err = q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	}
 
 	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName))
 	return err
