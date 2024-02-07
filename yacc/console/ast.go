@@ -175,11 +175,6 @@ type UnregisterRouter struct {
 	ID string
 }
 
-type AttachTable struct {
-	Table        string
-	Distribution *DistributionSelector
-}
-
 type AlterStmt interface {
 	iAlter()
 }
@@ -265,5 +260,3 @@ func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
-
-func (*AttachTable) iStatement() {}
