@@ -1151,7 +1151,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 				for _, msg := range unreplied {
-					spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe protal unperl message")
+					spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
 					// https://www.postgresql.org/docs/current/protocol-flow.html
 					switch qq := msg.(type) {
 					case *pgproto3.RowDescription:
