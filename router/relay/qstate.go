@@ -63,7 +63,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution 
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, executor func() error) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binder func() error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
@@ -318,7 +318,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, ex
 			return nil
 		} else {
 			// process like regular query
-			return executor()
+			return binder()
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
@@ -327,12 +327,12 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, ex
 			return nil
 		} else {
 			// process like regular query
-			return executor()
+			return binder()
 		}
 	case parser.ParseStateExplain:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
 		return nil
 	default:
-		return executor()
+		return binder()
 	}
 }
