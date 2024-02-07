@@ -6,22 +6,34 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE SHARDING RULE r1 COLUMN i;
-                                      add sharding rule                                      
----------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [i, hash: x->x] in default distribution
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-CREATE KEY RANGE kridi1 from 0 route to sh1;
+CREATE SHARDING RULE r1 COLUMN i FOR DISTRIBUTION ds1;
+                                    add sharding rule                                    
+-----------------------------------------------------------------------------------------
+ created sharding rule r1 for table (*) with columns [i, hash: x->x] in ds1 distribution
+(1 row)
+
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 0
 (1 row)
 
-CREATE KEY RANGE kridi2 from 11 route to sh2;
+CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
  created key range with bound 11
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 COLUMNS i;
+                 attach table                 
+----------------------------------------------
+ attached relation sshjt1 to distribution ds1
 (1 row)
 
 \c regress
@@ -78,9 +90,10 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distribution 
--------------------
-(0 rows)
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
 
 DROP SHARDING RULE ALL;
    drop sharding rule   
