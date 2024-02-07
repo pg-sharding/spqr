@@ -108,6 +108,12 @@ ALTER DISTRIBUTION ds2 DETACH RELATION yy;
  detached relation yy from distribution ds2
 (1 row)
 
+ALTER DISTRIBUTION ds2 DETACH RELATION yy;
+              detach relation
+--------------------------------------------
+ detached relation yy from distribution ds2
+(1 row)
+
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy COLUMNS w_id;
                attach table               
 ------------------------------------------
