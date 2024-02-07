@@ -663,7 +663,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		if err == nil && rel != nil {
 			switch t := rel.(type) {
 			case *SpecificRelation:
-				if relDistribution, err := qr.mgr.GetDistribution(ctx, t.Name); err != nil {
+				if relDistribution, err := qr.mgr.GetRelationDistribution(ctx, t.Name); err != nil {
 					return nil, err
 				} else {
 					queryDistribution = relDistribution.Id
@@ -671,7 +671,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			case *RelationList:
 				var distribution string
 				for _, relName := range t.Relations {
-					if relDistribution, err := qr.mgr.GetDistribution(ctx, relName); err != nil {
+					if relDistribution, err := qr.mgr.GetRelationDistribution(ctx, relName); err != nil {
 						return nil, err
 					} else {
 						if distribution != "" && distribution != relDistribution.Id {

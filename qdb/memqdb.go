@@ -772,22 +772,15 @@ func (q *MemQDB) AlterDistributionAttach(ctx context.Context, id string, rels []
 
 // TODO : unit tests
 func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get distribution for table")
+	spqrlog.Zero.Debug().Msg("memqdb: get distribution")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if _, ok := q.RelationDistribution[id]; !ok {
-		return &Distribution{ID: "default"}, nil
-	}
-
-	if ds, ok := q.RelationDistribution[id]; !ok {
+	if ds, ok := q.Distributions[id]; !ok {
 		// DEPRECATE this
 		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
-
 	} else {
-		// if there is no distr by key ds
-		// then we have corruption
-		return q.Distributions[ds], nil
+		return ds, nil
 	}
 }
 

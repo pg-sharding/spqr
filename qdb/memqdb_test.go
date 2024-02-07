@@ -142,7 +142,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	ds, err := memqdb.GetDistribution(ctx, relation.Name)
+	ds, err := memqdb.GetRelationDistribution(ctx, relation.Name)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds1")
 	assert.Contains(ds.Relations, relation.Name)
@@ -152,7 +152,7 @@ func TestDistributions(t *testing.T) {
 		relation,
 	}))
 
-	ds, err = memqdb.GetDistribution(ctx, relation.Name)
+	ds, err = memqdb.GetRelationDistribution(ctx, relation.Name)
 	assert.NoError(err)
 	assert.Equal(ds.ID, "ds2")
 	assert.Contains(ds.Relations, relation.Name)
@@ -161,6 +161,18 @@ func TestDistributions(t *testing.T) {
 	oldDs, err := memqdb.GetDistribution(ctx, "ds1")
 	assert.NoError(err)
 	assert.NotContains(oldDs.Relations, relation.Name)
+}
+
+func TestGetIncorrectDistribution(t *testing.T) {
+	assert := assert.New(t)
+
+	memQDB, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	_, err = memQDB.GetDistribution(ctx, "not_exist")
+	assert.Error(err)
 }
 
 func TestKeyRanges(t *testing.T) {
