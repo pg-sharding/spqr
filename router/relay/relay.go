@@ -1126,8 +1126,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				// do not send saved bind twice
 				if rst.saveBind == nil {
 					// wtf?
-
+					return fmt.Errorf("failed to describe statement, stmt was never binded")
 				}
+
 				_, _, err = rst.RelayStep(rst.saveBind, false, false)
 				if err != nil {
 					return err
