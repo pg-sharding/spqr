@@ -43,6 +43,7 @@ type CoordShardinfo interface {
 }
 
 type PreparedStatementDescriptor struct {
+	NoData    bool
 	ParamDesc pgproto3.ParameterDescription
 	RowDesc   pgproto3.RowDescription
 }

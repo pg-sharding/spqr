@@ -705,6 +705,281 @@ func TestPrepStmtSimple(t *testing.T) {
 	}
 }
 
+func TestPrepStmtDescribeAndBind(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmtcache_dab_1",
+					Query: "select 'Hello, world!';",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_dab_1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_dab_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("?column?"),
+							TableOID:             0,
+							TableAttributeNumber: 0,
+							DataTypeOID:          25, /* textoid */
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("Hello, world!"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmtcache_dab_2_1",
+					Query: "BEGIN",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_dab_2_1",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_dab_2_2",
+					Query: "ROLLBACK",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_dab_2_2",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_dab_2_3",
+					Query: "SELECT * FROM t WHERE id = 1",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_dab_2_3",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "stmtcache_dab_2_4",
+					Query: "INSERT INTO t (id) values (1)",
+				},
+				&pgproto3.Describe{
+					Name:       "stmtcache_dab_2_4",
+					ObjectType: 'S',
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_dab_2_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_dab_2_4",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_dab_2_3",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_dab_2_2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.NoData{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.NoData{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("id"),
+							TableOID:             0,
+							TableAttributeNumber: 1,
+							DataTypeOID:          23, /*  */
+							DataTypeSize:         4,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParameterDescription{
+					ParameterOIDs: []uint32{},
+				},
+				&pgproto3.NoData{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("1"),
+					},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
+		}
+	}
+}
+
 func TestPrepStmtAdvadsedParsing(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
