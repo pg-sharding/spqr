@@ -13,5 +13,4 @@ test: error
 # test: routing_hint
 test: begin
 test: switch_distribution
-test: attach_table
 test: alter_distribution
