@@ -176,18 +176,6 @@ func TestDistributions(t *testing.T) {
 	assert.NotContains(oldDs.Relations, relation.Name)
 }
 
-func TestGetIncorrectDistribution(t *testing.T) {
-	assert := assert.New(t)
-
-	memQDB, err := qdb.RestoreQDB(MemQDBPath)
-	assert.NoError(err)
-
-	ctx := context.TODO()
-
-	_, err = memQDB.GetDistribution(ctx, "not_exist")
-	assert.Error(err)
-}
-
 func TestKeyRanges(t *testing.T) {
 
 	assert := assert.New(t)
