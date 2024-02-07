@@ -208,9 +208,10 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distribution 
--------------------
-(0 rows)
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
 
 DROP SHARDING RULE ALL;
    drop sharding rule   
