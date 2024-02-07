@@ -10,7 +10,7 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
          add distribution         
 ----------------------------------
  created distribution with id ds1
- (1 row)
+(1 row)
 
 CREATE SHARDING RULE t1 COLUMNS id FOR DISTRIBUTION ds1;
                                     add sharding rule                                     
