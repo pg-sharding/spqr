@@ -796,14 +796,13 @@ func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution,
 	}
 }
 
-func (q *MemQDB) GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error) {
+func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*Distribution, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get distribution for table")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
 	if ds, ok := q.RelationDistribution[relation]; !ok {
-		// DEPRECATE this
-		return &Distribution{ID: "default"}, nil
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relation)
 	} else {
 		// if there is no distr by key ds
 		// then we have corruption
