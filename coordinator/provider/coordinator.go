@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"net"
 	"time"
 
@@ -195,8 +196,65 @@ type CoordinatorClient interface {
 
 type qdbCoordinator struct {
 	tlsconfig *tls.Config
-	coordinator.Coordinator
-	db qdb.XQDB
+	db        qdb.XQDB
+}
+
+func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
+	distrs, err := qc.db.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*distributions.Distribution, 0)
+	for _, ds := range distrs {
+		res = append(res, distributions.DistributionFromDB(ds))
+	}
+	return res, nil
+}
+
+func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	return qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds))
+}
+
+func (qc *qdbCoordinator) DropDistribution(ctx context.Context, id string) error {
+	return qc.db.DropDistribution(ctx, id)
+}
+
+func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+	ds, err := qc.db.GetDistribution(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return distributions.DistributionFromDB(ds), nil
+}
+
+func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
+	ds, err := qc.db.GetRelationDistribution(ctx, relName)
+	if err != nil {
+		return nil, err
+	}
+	return distributions.DistributionFromDB(ds), nil
+}
+
+func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+	return qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
+		qdbRels := make([]*qdb.DistributedRelation, len(rels))
+		for i, rel := range rels {
+			qdbRels[i] = distributions.DistributedRelationToDB(rel)
+		}
+		return qdbRels
+	}())
+}
+
+func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	return qc.db.AlterDistributionDetach(ctx, id, relName)
+}
+
+func (qc *qdbCoordinator) ShareKeyRange(id string) error {
+	return qc.db.ShareKeyRange(id)
+}
+
+func (qc *qdbCoordinator) QDB() qdb.QDB {
+	return qc.db
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}
@@ -281,7 +339,7 @@ func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) *qdbCoordinator {
 }
 
 // TODO : unit tests
-func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) bool {
+func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter bool) bool {
 	registerRouter := func() bool {
 		if !initialRouter {
 			return true
@@ -291,25 +349,25 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 			Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
 			State:   qdb.OPENED,
 		}
-		if err := cc.RegisterRouter(ctx, router); err != nil {
+		if err := qc.RegisterRouter(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
 		}
-		if err := cc.SyncRouterMetadata(ctx, router); err != nil {
+		if err := qc.SyncRouterMetadata(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
 		}
-		if err := cc.UpdateCoordinator(ctx, config.CoordinatorConfig().Host); err != nil {
+		if err := qc.UpdateCoordinator(ctx, config.CoordinatorConfig().Host); err != nil {
 			return false
 		}
 		return true
 	}
 
-	if cc.db.TryCoordinatorLock(context.TODO()) != nil {
+	if qc.db.TryCoordinatorLock(context.TODO()) != nil {
 		for {
 			select {
 			case <-ctx.Done():
 				return false
 			case <-time.After(time.Second):
-				if err := cc.db.TryCoordinatorLock(context.TODO()); err == nil {
+				if err := qc.db.TryCoordinatorLock(context.TODO()); err == nil {
 					return registerRouter()
 				} else {
 					spqrlog.Zero.Error().Err(err).Msg("qdb already taken, waiting for connection")
@@ -324,12 +382,12 @@ func (cc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 // TODO : unit tests
 // RunCoordinator side effect: it runs an asynchronous goroutine
 // that checks the availability of the SPQR router
-func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
-	if !cc.lockCoordinator(ctx, initialRouter) {
+func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
+	if !qc.lockCoordinator(ctx, initialRouter) {
 		return
 	}
 
-	ranges, err := cc.db.ListAllKeyRanges(context.TODO())
+	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
@@ -337,7 +395,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 	}
 
 	for _, r := range ranges {
-		tx, err := cc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
+		tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			continue
 		}
@@ -347,7 +405,7 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 				ShardId: tx.ToShardId,
 				Krid:    r.KeyRangeID,
 			}
-			err = cc.Move(context.TODO(), &tem)
+			err = qc.Move(context.TODO(), &tem)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
 			}
@@ -356,13 +414,13 @@ func (cc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
 
-		err = cc.db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
+		err = qc.db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
 		}
 	}
 
-	go cc.watchRouters(context.TODO())
+	go qc.watchRouters(context.TODO())
 }
 
 // TODO : unit tests
