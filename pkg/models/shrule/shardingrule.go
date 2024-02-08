@@ -99,8 +99,9 @@ func ShardingRuleToDB(rule *ShardingRule) *qdb.ShardingRule {
 
 func ShardingRuleToProto(rule *ShardingRule) *proto.ShardingRule {
 	ret := &proto.ShardingRule{
-		Id:        rule.Id,
-		TableName: rule.TableName,
+		Id:             rule.Id,
+		TableName:      rule.TableName,
+		DistributionId: rule.Distribution,
 	}
 	for _, el := range rule.entries {
 		ret.ShardingRuleEntry = append(ret.ShardingRuleEntry, &proto.ShardingRuleEntry{
@@ -116,7 +117,7 @@ func ShardingRuleFromProto(rule *proto.ShardingRule) *ShardingRule {
 	ret := &ShardingRule{
 		Id:           rule.Id,
 		TableName:    rule.TableName,
-		Distribution: "default",
+		Distribution: rule.DistributionId,
 	}
 	for _, el := range rule.ShardingRuleEntry {
 		ret.entries = append(ret.entries, ShardingRuleEntry{
