@@ -36,7 +36,7 @@ type LocalCoordinator struct {
 }
 
 // TODO : unit tests
-func (lc *LocalCoordinator) ListDistribution(ctx context.Context) ([]*distributions.Distribution, error) {
+func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 

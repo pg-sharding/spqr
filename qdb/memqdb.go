@@ -702,7 +702,7 @@ func (q *MemQDB) ListDistributions(ctx context.Context) ([]*Distribution, error)
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 	var ret []*Distribution
-	ret = append(ret, &Distribution{ID: "default"})
+	ret = append(ret)
 	for _, v := range q.Distributions {
 		ret = append(ret, v)
 	}

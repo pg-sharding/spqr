@@ -1044,8 +1044,8 @@ func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error
 		return nil, err
 	}
 
-	rules := make([]*Distribution, 0, len(resp.Kvs)+1)
-	rules = append(rules, &Distribution{ID: "default"})
+	rules := make([]*Distribution, 0, len(resp.Kvs))
+	rules = append(rules)
 
 	for _, kv := range resp.Kvs {
 		var rule *Distribution
