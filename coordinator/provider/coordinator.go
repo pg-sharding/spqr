@@ -199,56 +199,6 @@ type qdbCoordinator struct {
 	db        qdb.XQDB
 }
 
-func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
-	distrs, err := qc.db.ListDistributions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res := make([]*distributions.Distribution, 0)
-	for _, ds := range distrs {
-		res = append(res, distributions.DistributionFromDB(ds))
-	}
-	return res, nil
-}
-
-func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
-	return qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds))
-}
-
-func (qc *qdbCoordinator) DropDistribution(ctx context.Context, id string) error {
-	return qc.db.DropDistribution(ctx, id)
-}
-
-func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
-	ds, err := qc.db.GetDistribution(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return distributions.DistributionFromDB(ds), nil
-}
-
-func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
-	ds, err := qc.db.GetRelationDistribution(ctx, relName)
-	if err != nil {
-		return nil, err
-	}
-	return distributions.DistributionFromDB(ds), nil
-}
-
-func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
-	return qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
-		qdbRels := make([]*qdb.DistributedRelation, len(rels))
-		for i, rel := range rels {
-			qdbRels[i] = distributions.DistributedRelationToDB(rel)
-		}
-		return qdbRels
-	}())
-}
-
-func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
-	return qc.db.AlterDistributionDetach(ctx, id, relName)
-}
-
 func (qc *qdbCoordinator) ShareKeyRange(id string) error {
 	return qc.db.ShareKeyRange(id)
 }
@@ -1279,6 +1229,146 @@ func (qc *qdbCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 
 	spqrlog.Zero.Debug().Str("address", addr).Msg("resp qdb coordinator: get coordinator")
 	return addr, err
+}
+
+// ListDistributions returns all distributions from QDB
+// TODO: unit tests
+func (qc *qdbCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
+	distrs, err := qc.db.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*distributions.Distribution, 0)
+	for _, ds := range distrs {
+		res = append(res, distributions.DistributionFromDB(ds))
+	}
+	return res, nil
+}
+
+// CreateDistribution creates distribution in QDB
+// TODO: unit tests
+func (qc *qdbCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
+	if err := qc.db.CreateDistribution(ctx, distributions.DistributionToDB(ds)); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.CreateDistribution(context.TODO(), &routerproto.CreateDistributionRequest{
+			Distributions: []*routerproto.Distribution{distributions.DistributionToProto(ds)},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("create distribution response")
+		return nil
+	})
+}
+
+// DropDistribution deletes distribution from QDB
+// TODO: unit tests
+func (qc *qdbCoordinator) DropDistribution(ctx context.Context, id string) error {
+	if err := qc.db.DropDistribution(ctx, id); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.DropDistribution(context.TODO(), &routerproto.DropDistributionRequest{
+			Ids: []string{id},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("drop distribution response")
+		return nil
+	})
+}
+
+// GetDistribution retrieves info about distribution from QDB
+// TODO: unit tests
+func (qc *qdbCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
+	ds, err := qc.db.GetDistribution(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return distributions.DistributionFromDB(ds), nil
+}
+
+// GetRelationDistribution retrieves info about distribution attached to relation from QDB
+// TODO: unit tests
+func (qc *qdbCoordinator) GetRelationDistribution(ctx context.Context, relName string) (*distributions.Distribution, error) {
+	ds, err := qc.db.GetRelationDistribution(ctx, relName)
+	if err != nil {
+		return nil, err
+	}
+	return distributions.DistributionFromDB(ds), nil
+}
+
+// AlterDistributionAttach attaches relation to distribution
+// TODO: unit tests
+func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
+	if err := qc.db.AlterDistributionAttach(ctx, id, func() []*qdb.DistributedRelation {
+		qdbRels := make([]*qdb.DistributedRelation, len(rels))
+		for i, rel := range rels {
+			qdbRels[i] = distributions.DistributedRelationToDB(rel)
+		}
+		return qdbRels
+	}()); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributionAttach(context.TODO(), &routerproto.AlterDistributionAttachRequest{
+			Id: id,
+			Relations: func() []*routerproto.DistributedRelation {
+				res := make([]*routerproto.DistributedRelation, len(rels))
+				for i, rel := range rels {
+					res[i] = distributions.DistributedRelatitonToProto(rel)
+				}
+				return res
+			}(),
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("attach relation response")
+		return nil
+	})
+}
+
+// AlterDistributionDetach detaches relation from distribution
+// TODO: unit tests
+func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
+	if err := qc.db.AlterDistributionDetach(ctx, id, relName); err != nil {
+		return err
+	}
+
+	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewDistributionServiceClient(cc)
+		resp, err := cl.AlterDistributionDetach(context.TODO(), &routerproto.AlterDistributionDetachRequest{
+			Id:       id,
+			RelNames: []string{relName},
+		})
+		if err != nil {
+			return err
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("detach relation response")
+		return nil
+	})
 }
 
 func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {

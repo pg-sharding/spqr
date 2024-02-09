@@ -31,6 +31,13 @@ func DistributedRelatitonToProto(distr *DistributedRelation) *proto.DistributedR
 	}
 }
 
+func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
+	return &DistributedRelation{
+		Name:        rel.Name,
+		ColumnNames: rel.Columns,
+	}
+}
+
 type Distribution struct {
 	Id string
 	// column types to be used
