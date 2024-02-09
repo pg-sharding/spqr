@@ -832,14 +832,39 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if krLeft.ShardID != krRight.ShardID {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
 	}
-	if !kr.CmpRangesEqual(krLeft.UpperBound, krRight.LowerBound) {
-		if !kr.CmpRangesEqual(krLeft.LowerBound, krRight.UpperBound) {
-			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
-		}
+	if krLeft.DistributionId != krRight.DistributionId {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
+	}
+	ds, err := qc.db.GetDistribution(ctx, krLeft.DistributionId)
+	if err != nil {
+		return err
+	}
+	// TODO: check all types when composite keys are supported
+	if c, err := kr.CmpBounds(krLeft.LowerBound, krRight.LowerBound, ds.ColTypes[0]); err != nil {
+		return err
+	} else if c > 0 {
 		krLeft, krRight = krRight, krLeft
 	}
 
-	krLeft.UpperBound = krRight.UpperBound
+	krs, err := qc.db.ListKeyRanges(ctx, ds.ID)
+	if err != nil {
+		return err
+	}
+	for _, kRange := range krs {
+		if kRange.KeyRangeID != krLeft.KeyRangeID && kRange.KeyRangeID != krRight.KeyRangeID {
+			cl, err := kr.CmpBounds(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes[0])
+			if err != nil {
+				return err
+			}
+			cr, err := kr.CmpBounds(kRange.LowerBound, krRight.LowerBound, ds.ColTypes[0])
+			if err != nil {
+				return err
+			}
+			if cl <= 0 && cr <= 0 {
+				return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
+			}
+		}
+	}
 
 	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())

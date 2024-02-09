@@ -1,9 +1,12 @@
 package kr
 
 import (
+	"encoding/binary"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"strconv"
 )
 
 type KeyRangeBound []byte
@@ -45,6 +48,49 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 	}
 
 	return false
+}
+
+// CmpBounds compares two key range bounds dependent on their type
+// TODO: unit tests
+// TODO: compare composite key bounds
+func CmpBounds(l, r []byte, t string) (int, error) {
+	switch t {
+	case "integer":
+		leftBound, err := strconv.Atoi(string(l))
+		if err != nil {
+			return 0, err
+		}
+		rightBound, err := strconv.Atoi(string(r))
+		if err != nil {
+			return 0, err
+		}
+		if leftBound < rightBound {
+			return -1, nil
+		} else if leftBound == rightBound {
+			return 0, nil
+		}
+		return 1, nil
+	case "uniteger":
+		leftBound := binary.BigEndian.Uint64(l)
+		rightBound := binary.BigEndian.Uint64(r)
+		if leftBound < rightBound {
+			return -1, nil
+		} else if leftBound == rightBound {
+			return 0, nil
+		}
+		return 1, nil
+	case "varchar":
+		leftBound := string(l)
+		rightBound := string(r)
+		if leftBound < rightBound {
+			return -1, nil
+		} else if leftBound == rightBound {
+			return 0, nil
+		}
+		return 1, nil
+	default:
+		return 0, spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "incorrect column type \"%s\"", t)
+	}
 }
 
 // TODO : unit tests
