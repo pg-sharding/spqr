@@ -19,9 +19,10 @@ Feature: MemQDB save state into a file
   
     When I execute SQL on host "router-admin"
     """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule2 TABLE test COLUMNS idx FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule3 COLUMNS idy FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
     When host "router" is stopped
@@ -36,21 +37,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -75,9 +76,10 @@ Feature: MemQDB save state into a file
     """
     When I execute SQL on host "router-admin"
     """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule2 TABLE test COLUMNS idx FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule3 COLUMNS idy FOR DISTRIBUTION ds1;
     DROP SHARDING RULE ALL;
     """
     Then command return code should be "0"
@@ -109,21 +111,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -147,21 +149,21 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"id",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule1",
           "Table Name":"*"
       },
       {
           "Columns":"idx",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -177,8 +179,9 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I execute SQL on host "router-admin"
     """
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
     When host "router" is stopped
@@ -193,13 +196,13 @@ Feature: MemQDB save state into a file
     [
       {
         "Key range ID": "krid1",
-        "Distribution ID":"default",
+        "Distribution ID":"ds1",
         "Lower bound": "1",
         "Shard ID": "sh1"
       },
       {
         "Key range ID": "krid2",
-        "Distribution ID":"default",
+        "Distribution ID":"ds1",
         "Lower bound": "11",
         "Shard ID": "sh1"
       }
@@ -214,9 +217,10 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I execute SQL on host "router-admin"
     """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule2 TABLE test COLUMNS idx FOR DISTRIBUTION ds1;
+    ADD SHARDING RULE rule3 COLUMNS idy FOR DISTRIBUTION ds1;
     DROP SHARDING RULE rule1;
     """
     Then command return code should be "0"
@@ -232,14 +236,14 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"idx",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -270,14 +274,14 @@ Feature: MemQDB save state into a file
     [
       {
           "Columns":"idx",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule2",
           "Table Name":"test"
       },
       {
           "Columns":"idy",
-          "Distribution ID":"default",
+          "Distribution ID":"ds1",
           "Hash Function":"x->x",
           "Sharding Rule ID":"rule3",
           "Table Name":"*"
@@ -293,8 +297,9 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I run SQL on host "router-admin"
     """
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid1;
     """
     Then command return code should be "0"
