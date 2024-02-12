@@ -460,7 +460,7 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.Query{
-					String: "COMMIT",
+					String: "ROLLBACK",
 				},
 
 				&pgproto3.Query{
@@ -538,7 +538,7 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 				},
 
 				&pgproto3.CommandComplete{
-					CommandTag: []byte("COMMIT"),
+					CommandTag: []byte("ROLLBACK"),
 				},
 
 				&pgproto3.ReadyForQuery{
@@ -559,7 +559,7 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						{'l', 'o', 'l'},
+						[]byte(`"$user", public`),
 					},
 				},
 

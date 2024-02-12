@@ -792,8 +792,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			for _, expr := range node.TargetList {
 				switch e := expr.(type) {
 				case *lyx.FuncApplication:
-					/* Step 1.4.8.1 - SELECT current_schema() special case */
+					/* case 1.4.8.1 - SELECT current_schema() special case */
 					if e.Name == "current_schema" {
+						any_routable = true
+						/* case 1.4.8.2 - SELECT set_config(...) special case */
+					} else if e.Name == "set_config" {
+						any_routable = true
+						/* case 1.4.8.3 - SELECT pg_is_in_recovery special case */
+					} else if e.Name == "pg_is_in_recovery" {
 						any_routable = true
 					}
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
@@ -801,7 +807,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 					any_routable = true
 
 				case *lyx.ColumnRef:
-					/* Step 1.4.8.2 - SELECT current_schema special case */
+					/* Step 1.4.8.4 - SELECT current_schema special case */
 					if e.ColName == "current_schema" {
 						any_routable = true
 					}
