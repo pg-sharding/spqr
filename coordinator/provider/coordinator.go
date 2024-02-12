@@ -691,11 +691,23 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}()
 
-	if kr.CmpRangesEqual(req.Bound, krOld.LowerBound) {
+	ds, err := qc.db.GetDistribution(ctx, krOld.DistributionId)
+	if err != nil {
+		return err
+	}
+
+	if kr.CmpRangesEqual(krOld.LowerBound, req.Bound) {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound equals lower of the key range")
 	}
 	if kr.CmpRangesLess(req.Bound, krOld.LowerBound) {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound is out of key range")
+	}
+
+	krs, err := qc.db.ListKeyRanges(ctx, ds.ID)
+	for _, kRange := range krs {
+		if kr.CmpRangesLess(krOld.LowerBound, kRange.LowerBound) && kr.CmpRangesLessEqual(kRange.LowerBound, req.Bound) {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to split because bound intersects with \"%s\" key range", kRange.KeyRangeID)
+		}
 	}
 
 	krNew := kr.KeyRangeFromDB(
@@ -840,9 +852,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		return err
 	}
 	// TODO: check all types when composite keys are supported
-	if c, err := kr.CmpBounds(krLeft.LowerBound, krRight.LowerBound, ds.ColTypes[0]); err != nil {
-		return err
-	} else if c > 0 {
+	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound) {
 		krLeft, krRight = krRight, krLeft
 	}
 
@@ -851,18 +861,11 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		return err
 	}
 	for _, kRange := range krs {
-		if kRange.KeyRangeID != krLeft.KeyRangeID && kRange.KeyRangeID != krRight.KeyRangeID {
-			cl, err := kr.CmpBounds(krLeft.LowerBound, kRange.LowerBound, ds.ColTypes[0])
-			if err != nil {
-				return err
-			}
-			cr, err := kr.CmpBounds(kRange.LowerBound, krRight.LowerBound, ds.ColTypes[0])
-			if err != nil {
-				return err
-			}
-			if cl <= 0 && cr <= 0 {
-				return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
-			}
+		if kRange.KeyRangeID != krLeft.KeyRangeID &&
+			kRange.KeyRangeID != krRight.KeyRangeID &&
+			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound) &&
+			kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound) {
+			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
 	}
 
