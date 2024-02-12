@@ -6,9 +6,11 @@ Feature: Move recover test
 
     When I execute SQL on host "coordinator"
     """
-    ADD SHARDING RULE r1 COLUMNS w_id;
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
+    ADD SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove COLUMNS w_id;
     """
     Then command return code should be "0"
 
