@@ -421,8 +421,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
-			service = fmt.Sprintf("%s-admin", service)
-			tctx.dbs[service] = db
+			tctx.dbs[fmt.Sprintf("%s-admin", service)] = db
 		}
 	}
 
