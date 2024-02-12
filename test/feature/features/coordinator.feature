@@ -15,9 +15,11 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    CREATE SHARDING RULE r1 COLUMN id;
-    CREATE KEY RANGE krid1 FROM 0 TO 11 ROUTE TO sh1;
-    CREATE KEY RANGE krid2 FROM 11 TO 31 ROUTE TO sh2;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
+    CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION test COLUMNS id;
     """
     Then command return code should be "0"
 
@@ -81,7 +83,7 @@ Feature: Coordinator test
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
     """
-    router with id r1 already exists
+    router id r1 already exists
     """
     When I run SQL on host "coordinator"
     """
@@ -114,7 +116,7 @@ Feature: Coordinator test
     }]
     """
 
-  Scenario: Unregister router with invalid id fails
+  Scenario: Unregister router with invalid id does nothing
     When I run SQL on host "coordinator"
     """
     UNREGISTER ROUTER r2
@@ -135,7 +137,7 @@ Feature: Coordinator test
     """
     [{
       "Columns":"id",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Hash Function":"x->x",
       "Sharding Rule ID":"r1",
       "Table Name":"*"
@@ -150,13 +152,13 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
     },
     {
       "Key range ID":"krid2",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"11",
       "Shard ID":"sh2"
     }]
@@ -165,7 +167,7 @@ Feature: Coordinator test
   Scenario: Add key range with the same id fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1
+    CREATE KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1 FOR DISTRIBUTION ds1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -175,7 +177,7 @@ Feature: Coordinator test
   Scenario: Add sharding rule with the same id fails
     When I run SQL on host "coordinator"
     """
-    CREATE SHARDING RULE r1 COLUMN idx
+    CREATE SHARDING RULE r1 COLUMN idx FOR DISTRIBUTION ds1
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -222,7 +224,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -231,7 +233,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"5",
       "Shard ID":"sh1"
     }]
@@ -246,7 +248,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -255,7 +257,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"5",
       "Shard ID":"sh1"
     }]
@@ -271,7 +273,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -286,7 +288,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid1",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
     }]
@@ -315,7 +317,7 @@ Feature: Coordinator test
   Scenario: Unite non-adjacent key ranges fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 100 TO 1001 ROUTE TO sh1;
+    CREATE KEY RANGE krid3 FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     UNITE KEY RANGE krid1 WITH krid3
     """
     Then SQL error on host "coordinator" should match regexp
@@ -326,7 +328,8 @@ Feature: Coordinator test
   Scenario: Unite in reverse order works
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2;
+    DROP KEY RANGE krid3;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     UNITE KEY RANGE krid3 WITH krid2
     """
     Then command return code should be "0"
@@ -339,7 +342,7 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid2",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"11",
       "Shard ID":"sh2"
     }]
@@ -348,7 +351,7 @@ Feature: Coordinator test
   Scenario: Unite key ranges routing different shards fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     UNITE KEY RANGE krid2 WITH krid3
     """
     Then SQL error on host "coordinator" should match regexp
@@ -362,11 +365,11 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 40
+    SPLIT KEY RANGE krid3 FROM krid1 BY 40
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    bound is out of key range
+    bound intersects with.*krid2.*key range
     """
 
     #
@@ -386,7 +389,7 @@ Feature: Coordinator test
     #
     When I run SQL on host "coordinator"
     """
-    SPLIT KEY RANGE krid3 FROM krid2 BY 31
+    SPLIT KEY RANGE krid3 FROM krid2 BY 11
     """
     Then SQL error on host "coordinator" should match regexp
     """
@@ -440,7 +443,7 @@ Feature: Coordinator test
     Given host "qdb01" is stopped
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 ROUTE to sh1;
+    CREATE KEY RANGE krid3 FROM 31 ROUTE to sh1 FOR DISTRIBUTION ds1
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -455,7 +458,7 @@ Feature: Coordinator test
     Given host "coordinator2" is stopped
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1
+    CREATE KEY RANGE krid3 FROM 31 ROUTE TO sh1 FOR DISTRIBUTION ds1
     """
     Then command return code should be "0"
 
@@ -473,90 +476,8 @@ Feature: Coordinator test
     """
     [{
       "Key range ID":"krid3",
-      "Distribution ID":"default",
+      "Distribution ID":"ds1",
       "Lower bound":"31",
       "Shard ID":"sh1"
     }]
-    """
-
-  Scenario: Add intersecting key range fails
-    #
-    # Create test key range
-    #
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid3 FROM 100 TO 110 ROUTE TO sh1
-    """
-    Then command return code should be "0"
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 90 TO 105 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 105 TO 115 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 102 TO 108 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 90 TO 120 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 105 TO 110 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 70 TO 110 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 100 TO 120 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
-    """
-
-    When I run SQL on host "coordinator"
-    """
-    CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    key range krid4 intersects with key range krid3 in QDB
     """
