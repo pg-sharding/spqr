@@ -67,7 +67,8 @@ type RoutingMetadataContext struct {
 	krs          []*kr.KeyRange
 	distribution string
 
-	params [][]byte
+	params            [][]byte
+	paramsFormatCodes []int16
 	// TODO: include client ops and metadata here
 }
 
@@ -188,6 +189,9 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 		if e.Number > len(meta.params) {
 			return nil, ComplexQuery
 		}
+
+		// switch parameter format code here
+
 		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number-1], hf)
 		if err != nil {
 			return nil, err

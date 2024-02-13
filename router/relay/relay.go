@@ -1107,6 +1107,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			}
 
 		case *pgproto3.Describe:
+			// save txstatus because it may be overwrtten when do backend connection
+			saveTxStat := rst.TxStatus()
+
 			if q.ObjectType == 'P' {
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
@@ -1175,6 +1178,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 			} else {
+				spqrlog.Zero.Debug().
+					Uint("client", rst.Client().ID()).
+					Str("stmt-name", q.Name).
+					Msg("Describe prep statement")
+
 				fin, err := rst.PrepareRelayStepOnAnyRoute(cmngr)
 				if err != nil {
 					return err
@@ -1203,6 +1211,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 			}
+
+			rst.SetTxStatus(saveTxStat)
+
 		case *pgproto3.Execute:
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
