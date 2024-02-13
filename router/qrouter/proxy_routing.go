@@ -617,6 +617,12 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		entries = append(entries, elt.ColName)
 	}
 
+	// XXX: TBD: check also all columns
+	if _, err := qr.Mgr().QDB().GetRelationDistribution(ctx, node.TableName); err != nil {
+		return fmt.Errorf("create table stmt ignored: no distributions for this relation found")
+	}
+
+	// TODO: drop this with migration from sharding rule to distributions
 	if _, err := MatchShardingRule(ctx, node.TableName, entries, qr.mgr.QDB()); err == ErrRuleIntersect {
 		return nil
 	}
