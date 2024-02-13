@@ -144,8 +144,6 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 		}
 
-		cli.SetDistribution("default")
-
 		return cli.DropDistribution(ctx, ret)
 	default:
 		return fmt.Errorf("unknown drop statement")
