@@ -20,10 +20,9 @@ CREATE DISTRIBUTION ds2;
 SHOW distributions;
  Distribution ID 
 -----------------
- default
  ds1
  ds2
-(3 rows)
+(2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
