@@ -89,7 +89,7 @@ regress_local: proxy_2sh_run
 	./script/regress_local.sh
 
 regress: build_images
-	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml build && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
+	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
@@ -98,7 +98,7 @@ jdbc_regress: build_images
 	docker compose -f test/drivers/jdbc-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
 
 gorm_regress: build_images
-	docker compose -f test/drivers/gorm-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/drivers/gorm-regress/docker-compose.yaml down && docker compose -f test/drivers/gorm-regress/docker-compose.yaml run --remove-orphans --build regress
 
 xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
