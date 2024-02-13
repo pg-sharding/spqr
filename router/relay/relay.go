@@ -1107,7 +1107,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			}
 
 		case *pgproto3.Describe:
-			// save txstatus because it may be overwrtten when do backend connection
+			// save txstatus because it may be overwritten if we have no backend connection
 			saveTxStat := rst.TxStatus()
 
 			if q.ObjectType == 'P' {
