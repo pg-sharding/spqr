@@ -101,7 +101,7 @@ gorm_regress: build_images
 	docker compose -f test/drivers/gorm-regress/docker-compose.yaml down && docker compose -f test/drivers/gorm-regress/docker-compose.yaml run --remove-orphans --build regress
 
 xproto_regress: build_images
-	docker compose -f test/xproto/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
+	docker compose -f test/xproto/docker-compose.yaml down && docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build regress
 
 e2e: build_images
 	docker compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client

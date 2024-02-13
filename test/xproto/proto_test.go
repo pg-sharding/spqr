@@ -98,15 +98,43 @@ func SetupSharding() {
 		_ = conn.Close(context.Background())
 	}()
 
-	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r1 COLUMNS id;")
+	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds1 COLUMN TYPES integer;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;")
+	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r1 COLUMNS id FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;")
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r2 COLUMNS id FOR DISTRIBUTION ds2;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid3 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds2;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid4 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;")
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
+	}
+	_, err = conn.Exec(context.Background(), "ALTER DISTRIBUTION ds2 ATTACH RELATION text_table COLUMNS id;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
