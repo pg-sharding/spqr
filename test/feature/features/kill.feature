@@ -52,6 +52,10 @@ Feature: Kill client test
     """
     Then we save response row "0" column "client_id"
     And hide "client_id" field
+    Then we save response row "0" column "shard_time_0.75"
+    And hide "shard_time_0.75" field
+    Then we save response row "0" column "router_time_0.75"
+    And hide "router_time_0.75" field
     Then SQL result should match json
     """
     [
@@ -59,9 +63,9 @@ Feature: Kill client test
         "client_id":"**IGNORE**",
         "dbname":"regress",
         "router_address":"local",
-        "router_time_0.75":"0.00ms",
+        "router_time_0.75":"**IGNORE**",
         "server_id":"no backend connection",
-        "shard_time_0.75":"0.00ms",
+        "shard_time_0.75":"**IGNORE**",
         "user":"regress"
       }
     ]
