@@ -21,9 +21,9 @@ message CreateDistributionRequest{
 
 message CreateDistributionReply{}
 
-message ListDistributionRequest{}
+message ListDistributionsRequest{}
 
-message ListDistributionReply {
+message ListDistributionsReply {
   repeated Distribution distributions = 1;
 }
 
@@ -67,7 +67,7 @@ message GetRelationDistributionReply {
 service DistributionService {
   rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
   rpc DropDistribution(DropDistributionRequest) returns (DropDistributionReply) {}
-  rpc ListDistribution(ListDistributionRequest) returns (ListDistributionReply) {}
+  rpc ListDistributions(ListDistributionsRequest) returns (ListDistributionsReply) {}
 
   rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (AlterDistributionAttachReply) {}
   rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (AlterDistributionDetachReply) {}

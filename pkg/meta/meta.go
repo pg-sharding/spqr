@@ -129,7 +129,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropDistribution(ctx, []string{stmt.ID})
 		}
 
-		dss, err := mngr.ListDistribution(ctx)
+		dss, err := mngr.ListDistributions(ctx)
 		ret := make([]string, 0)
 		if err != nil {
 			return err
@@ -144,8 +144,6 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 		}
 
-		cli.SetDistribution("default")
-
 		return cli.DropDistribution(ctx, ret)
 	default:
 		return fmt.Errorf("unknown drop statement")
@@ -158,7 +156,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.DistributionDefinition:
 		distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
 
-		distributions, err := mngr.ListDistribution(ctx)
+		distributions, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return err
 		}
@@ -409,7 +407,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.DistributionsStr:
-		distributions, err := mngr.ListDistribution(ctx)
+		distributions, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return err
 		}

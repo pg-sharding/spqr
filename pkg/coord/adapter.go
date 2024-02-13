@@ -370,10 +370,10 @@ func (a *Adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards
 }
 
 // TODO : unit tests
-func (a *Adapter) ListDistribution(ctx context.Context) ([]*distributions.Distribution, error) {
+func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.ListDistribution(ctx, &proto.ListDistributionRequest{})
+	resp, err := c.ListDistributions(ctx, &proto.ListDistributionsRequest{})
 	if err != nil {
 		return nil, err
 	}

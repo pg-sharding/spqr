@@ -7,22 +7,34 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that numeric type works
-CREATE SHARDING RULE t1 COLUMNS id;
-                                      add sharding rule                                       
-----------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distribution
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
+CREATE SHARDING RULE t1 COLUMNS id FOR DISTRIBUTION ds1;
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule t1 for table (*) with columns [id, hash: x->x] in ds1 distribution
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
  created key range with bound 11
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed COLUMNS id;
+                 attach table                  
+-----------------------------------------------
+ attached relation xxmixed to distribution ds1
 (1 row)
 
 \c regress
@@ -138,34 +150,35 @@ NOTICE: send query to shard(s) : sh1,sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
-(1 row)
-
 -- check that uuid type works
-CREATE SHARDING RULE t1 COLUMNS id;
-                                      add sharding rule                                       
-----------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] in default distribution
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+         add distribution         
+----------------------------------
+ created distribution with id ds2
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1;
+CREATE SHARDING RULE t2 COLUMNS id FOR DISTRIBUTION ds2;
+                                    add sharding rule                                     
+------------------------------------------------------------------------------------------
+ created sharding rule t2 for table (*) with columns [id, hash: x->x] in ds2 distribution
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds2;
                            add key range                           
 -------------------------------------------------------------------
  created key range with bound 00000000-0000-0000-0000-000000000000
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2;
+CREATE KEY RANGE krid4 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2 FOR DISTRIBUTION ds2;
                            add key range                           
 -------------------------------------------------------------------
  created key range with bound 88888888-8888-8888-8888-888888888888
+(1 row)
+
+ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid COLUMNS id;
+                   attach table                    
+---------------------------------------------------
+ attached relation xxmixeduuid to distribution ds2
 (1 row)
 
 \c regress
@@ -225,9 +238,11 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
- drop distribution 
--------------------
-(0 rows)
+   drop distribution   
+-----------------------
+ drop distribution ds1
+ drop distribution ds2
+(2 rows)
 
 DROP SHARDING RULE ALL;
    drop sharding rule   

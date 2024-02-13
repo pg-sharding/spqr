@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -25,9 +26,97 @@ type LocalQrouterServer struct {
 	protos.UnimplementedClientInfoServiceServer
 	protos.UnimplementedBackendConnectionsServiceServer
 	protos.UnimplementedPoolServiceServer
+	protos.UnimplementedDistributionServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
+}
+
+// CreateDistribution creates distribution in QDB
+// TODO: unit tests
+func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+	for _, ds := range request.GetDistributions() {
+		if err := l.mgr.CreateDistribution(ctx, distributions.DistributionFromProto(ds)); err != nil {
+			return nil, err
+		}
+	}
+	return &protos.CreateDistributionReply{}, nil
+}
+
+// DropDistribution deletes distribution from QDB
+// TODO: unit tests
+func (l *LocalQrouterServer) DropDistribution(ctx context.Context, request *protos.DropDistributionRequest) (*protos.DropDistributionReply, error) {
+	for _, id := range request.GetIds() {
+		if err := l.mgr.DropDistribution(ctx, id); err != nil {
+			return nil, err
+		}
+	}
+	return &protos.DropDistributionReply{}, nil
+}
+
+// ListDistributions returns all distributions from QDB
+// TODO: unit tests
+func (l *LocalQrouterServer) ListDistributions(ctx context.Context, _ *protos.ListDistributionsRequest) (*protos.ListDistributionsReply, error) {
+	distrs, err := l.mgr.ListDistributions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListDistributionsReply{
+		Distributions: func() []*protos.Distribution {
+			res := make([]*protos.Distribution, len(distrs))
+			for i, ds := range distrs {
+				res[i] = distributions.DistributionToProto(ds)
+			}
+			return res
+		}(),
+	}, nil
+}
+
+// AlterDistributionAttach attaches relation to distribution
+// TODO: unit tests
+func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, request *protos.AlterDistributionAttachRequest) (*protos.AlterDistributionAttachReply, error) {
+	return &protos.AlterDistributionAttachReply{}, l.mgr.AlterDistributionAttach(
+		ctx,
+		request.GetId(),
+		func() []*distributions.DistributedRelation {
+			res := make([]*distributions.DistributedRelation, len(request.GetRelations()))
+			for i, rel := range request.GetRelations() {
+				res[i] = distributions.DistributedRelationFromProto(rel)
+			}
+			return res
+		}(),
+	)
+}
+
+// AlterDistributionDetach detaches relation from distribution
+// TODO: unit tests
+func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*protos.AlterDistributionDetachReply, error) {
+	for _, relName := range request.GetRelNames() {
+		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), relName); err != nil {
+			return nil, err
+		}
+	}
+	return &protos.AlterDistributionDetachReply{}, nil
+}
+
+// GetDistribution retrieves info about distribution from QDB
+// TODO: unit tests
+func (l *LocalQrouterServer) GetDistribution(ctx context.Context, request *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {
+	ds, err := l.mgr.GetDistribution(ctx, request.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetDistributionReply{Distribution: distributions.DistributionToProto(ds)}, err
+}
+
+// GetRelationDistribution retrieves info about distribution attached to relation from QDB
+// TODO: unit tests
+func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, request *protos.GetRelationDistributionRequest) (*protos.GetRelationDistributionReply, error) {
+	ds, err := l.mgr.GetRelationDistribution(ctx, request.GetId())
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetRelationDistributionReply{Distribution: distributions.DistributionToProto(ds)}, err
 }
 
 // TODO : unit tests
@@ -344,6 +433,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterClientInfoServiceServer(server, lqr)
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 	protos.RegisterPoolServiceServer(server, lqr)
+	protos.RegisterDistributionServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -352,3 +442,4 @@ var _ protos.RouterServiceServer = &LocalQrouterServer{}
 var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
+var _ protos.DistributionServiceServer = &LocalQrouterServer{}
