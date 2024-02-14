@@ -726,10 +726,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	}
 
 	/* TODO: delay this until step 2. */
-	krs, err := qr.mgr.ListKeyRanges(ctx, queryDistribution)
-	if err != nil {
-		return nil, err
-	}
 
 	meta := NewRoutingMetadataContext(queryDistribution, sph.BindParams(), sph.BindParamFormatCodes())
 
@@ -982,7 +978,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			if err != nil {
 				return nil, err
 			}
-			krs, err = qr.mgr.ListKeyRanges(ctx, ds.Id)
+			krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
 			if err != nil {
 				return nil, err
 			}
