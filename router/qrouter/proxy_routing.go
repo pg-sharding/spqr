@@ -559,6 +559,9 @@ func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationL
 		Msg("getting relation name out of from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
+		if q.SchemaName == "information_schema" {
+			return &RelationList{Relations: nil}, nil
+		}
 		return &RelationList{Relations: []string{q.RelationName}}, nil
 	case *lyx.JoinExpr:
 		var rRel, lRel *RelationList

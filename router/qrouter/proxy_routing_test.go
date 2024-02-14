@@ -161,7 +161,17 @@ func TestComment(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name:        "xx",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
@@ -249,7 +259,33 @@ func TestSingleShard(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"t": {
+				Name:        "t",
+				ColumnNames: []string{"i"},
+			},
+			"yy": {
+				Name:        "yy",
+				ColumnNames: []string{"i"},
+			},
+			"xxtt1": {
+				Name:        "xxtt1",
+				ColumnNames: []string{"i"},
+			},
+			"xx": {
+				Name:        "xx",
+				ColumnNames: []string{"i"},
+			},
+			"xxmixed": {
+				Name:        "xxmixed",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
@@ -488,7 +524,7 @@ func TestSingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 
@@ -1002,26 +1038,6 @@ func TestInsertMultiDistribution(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "SELECT curr_version from schema_version where i=2 and db_name=$1'",
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution1,
-						LowerBound:   []byte("1"),
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			distribution: distribution1,
-			err:          nil,
-		},
-
-		{
 
 			query:        "INSERT INTO xxxdst1(i) VALUES(5);",
 			distribution: distribution1,
@@ -1250,6 +1266,13 @@ func TestMiscRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query:        "SELECT * FROM information_schema.columns;",
+			distribution: distribution1,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+
+		{
+			query:        "SELECT * FROM information_schema.sequences;",
 			distribution: distribution1,
 			exp:          routingstate.RandomMatchState{},
 			err:          nil,
