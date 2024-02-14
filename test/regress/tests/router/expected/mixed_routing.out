@@ -31,7 +31,7 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
                  attach table                  
 -----------------------------------------------
  attached relation xxmixed to distribution ds1
@@ -175,7 +175,7 @@ CREATE KEY RANGE krid4 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2 FO
  created key range with bound 88888888-8888-8888-8888-888888888888
 (1 row)
 
-ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid COLUMNS id;
+ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid DISTRIBUTION KEY id;
                    attach table                    
 ---------------------------------------------------
  attached relation xxmixeduuid to distribution ds2

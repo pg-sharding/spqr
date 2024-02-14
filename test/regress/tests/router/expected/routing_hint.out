@@ -30,7 +30,7 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION test COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
                 attach table                
 --------------------------------------------
  attached relation test to distribution ds1

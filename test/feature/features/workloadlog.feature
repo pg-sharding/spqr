@@ -30,7 +30,7 @@ Feature: Check WorkloadLog working
         ADD SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
         ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
         ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove COLUMNS w_id;
+        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
         START TRACE ALL MESSAGES;
         """ 
         Then command return code should be "0"
@@ -59,7 +59,7 @@ Feature: Check WorkloadLog working
         ADD SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
         ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
         ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove COLUMNS w_id;
+        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
         START TRACE ALL MESSAGES
         """ 
         Then command return code should be "0"

@@ -172,7 +172,7 @@ func randomHex(n int) (string, error) {
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
-%type<str> hash_function_clause
+%type<str> opt_hash_function_clause
 %type<str> hash_function_name
 %type<str> distribution_membership
 
@@ -472,23 +472,22 @@ distribution_alter_stmt:
 	}
 
 
-distribution_key_argument_list: distribution_key_entry
+distribution_key_argument_list: 
+    distribution_key_argument_list TCOMMA distribution_key_entry
     {
-      $$ = make([]DistributionKeyEntry, 0)
-      $$ = append($$, $1)
-    }
-    |
-    distribution_key_argument_list distribution_key_entry
-    {
-      $$ = append($1, $2)
-    }
+      $$ = append($1, $3)
+    } | distribution_key_entry {
+      $$ = []DistributionKeyEntry {
+		  $1,
+	  }
+    } 
 
 
 
 distribution_key_entry:
-	any_id hash_function_clause
+	any_id opt_hash_function_clause
 	{
-		$$ = DistributionKeyEntry{
+		$$ = DistributionKeyEntry {
 			Column: $1,
 			HashFunction: $2,
 		}
@@ -601,7 +600,7 @@ sharding_rule_argument_list: sharding_rule_entry
     }
 
 sharding_rule_entry:
-	sharding_rule_column_clause hash_function_clause
+	sharding_rule_column_clause opt_hash_function_clause
 	{
 		$$ = ShardingRuleEntry{
 			Column: $1,
@@ -631,18 +630,19 @@ sharding_rule_column_clause:
 hash_function_name:
 	IDENTITY {
 		$$ = "identity"
-	} | MURMUR HASH {
+	} | MURMUR {
 		$$ = "murmur"
-	} | CITY HASH {
+	} | CITY {
 		$$ = "city"
 	}
 
-hash_function_clause:
+opt_hash_function_clause:
 	HASH FUNCTION hash_function_name
 	{
 		$$ = $3
+	} | /* EMPTY */ {
+		$$ = ""
 	}
-	| /*EMPTY*/ { $$ = ""; }
 
 distribution_membership:
     FOR DISTRIBUTION any_id{

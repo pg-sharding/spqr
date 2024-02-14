@@ -36,13 +36,13 @@ CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
                 attach table                 
 ---------------------------------------------
  attached relation xjoin to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin COLUMNS w_id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
                 attach table                 
 ---------------------------------------------
  attached relation yjoin to distribution ds1

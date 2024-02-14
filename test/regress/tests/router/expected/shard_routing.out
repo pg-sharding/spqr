@@ -42,19 +42,19 @@ CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  created key range with bound 21
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xx COLUMNS w_id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
                attach table               
 ------------------------------------------
  attached relation xx to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
                 attach table                 
 ---------------------------------------------
  attached relation xxerr to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 COLUMNS w_id, id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id, id;
                 attach table                 
 ---------------------------------------------
  attached relation xxtt1 to distribution ds1

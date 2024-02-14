@@ -30,7 +30,7 @@ CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION x COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;
               attach table               
 -----------------------------------------
  attached relation x to distribution ds1

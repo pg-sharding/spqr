@@ -36,13 +36,13 @@ CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  created key range with bound 101
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION orders COLUMNS id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
                  attach table                 
 ----------------------------------------------
  attached relation orders to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION delivery COLUMNS order_id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY order_id;
                   attach table                  
 ------------------------------------------------
  attached relation delivery to distribution ds1
