@@ -46,6 +46,7 @@ func TestCheckColumnRls(t *testing.T) {
 		},
 		"",
 		nil,
+		nil,
 	)
 
 	assert.True(rmc.CheckColumnRls("col1"), "col1 should be in rls")

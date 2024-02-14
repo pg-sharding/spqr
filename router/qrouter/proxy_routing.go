@@ -14,6 +14,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
+	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -87,8 +88,9 @@ func NewRoutingMetadataContext(
 	krs []*kr.KeyRange,
 	rls []*shrule.ShardingRule,
 	ds string,
-	params [][]byte) *RoutingMetadataContext {
-	return &RoutingMetadataContext{
+	params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
+
+	meta := &RoutingMetadataContext{
 		rels:             map[RelationFQN][]string{},
 		tableAliases:     map[string]RelationFQN{},
 		exprs:            map[RelationFQN]map[string]string{},
@@ -98,6 +100,26 @@ func NewRoutingMetadataContext(
 		distribution:     ds,
 		params:           params,
 	}
+	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
+	if len(paramsFormatCodes) > 1 {
+		meta.paramsFormatCodes = paramsFormatCodes
+	} else if len(paramsFormatCodes) == 1 {
+
+		/* single format specified, use for all columns */
+		meta.paramsFormatCodes = make([]int16, len(meta.params))
+
+		for i := 0; i < len(meta.params); i++ {
+			meta.paramsFormatCodes[i] = paramsFormatCodes[0]
+		}
+	} else {
+		/* use default format for all columns */
+		meta.paramsFormatCodes = make([]int16, len(meta.params))
+		for i := 0; i < len(meta.params); i++ {
+			meta.paramsFormatCodes[i] = xproto.FormatCodeText
+		}
+	}
+
+	return meta
 }
 
 // TODO : unit tests
@@ -190,13 +212,26 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 			return nil, ComplexQuery
 		}
 
-		// switch parameter format code here
+		// switch parameter format code and convert into proper representation
 
-		hashedKey, err := hashfunction.ApplyHashFunction(meta.params[e.Number-1], hf)
+		var routeParam []byte
+		fc := meta.paramsFormatCodes[e.Number-1]
+
+		switch fc {
+		case xproto.FormatCodeBinary:
+			// here we need to invoke out function for convertion
+			// actually, we need to convert everything to binary format - TODO
+		case xproto.FormatCodeText:
+			routeParam = meta.params[e.Number-1]
+		default:
+			// ??? protoc violation
+		}
+
+		hashedKey, err := hashfunction.ApplyHashFunction(routeParam, hf)
 		if err != nil {
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Str("key", string(meta.params[e.Number-1])).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		spqrlog.Zero.Debug().Str("key", string(routeParam)).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
 
 		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
 	case *lyx.AExprSConst:
@@ -705,7 +740,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		return nil, err
 	}
 
-	meta := NewRoutingMetadataContext(krs, rls, queryDistribution, sph.BindParams())
+	// todo: learn format codes from bind
+	meta := NewRoutingMetadataContext(krs, rls, queryDistribution, sph.BindParams(), nil)
 
 	tsa := config.TargetSessionAttrsAny
 

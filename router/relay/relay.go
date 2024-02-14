@@ -1062,6 +1062,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
 				rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
 				rst.Client().SetBindParams(q.Parameters)
+				rst.Client().SetParamFormatCodes(q.ParameterFormatCodes)
 				rst.saveBind.ResultFormatCodes = q.ResultFormatCodes
 				rst.saveBind.Parameters = q.Parameters
 
