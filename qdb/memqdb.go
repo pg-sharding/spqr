@@ -695,7 +695,7 @@ func (q *MemQDB) CreateDistribution(ctx context.Context, distribution *Distribut
 
 	for _, r := range distribution.Relations {
 		q.RelationDistribution[r.Name] = distribution.ID
-		ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, distribution.ID))
+		_ = ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, distribution.ID))
 	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, distribution.ID, distribution))
