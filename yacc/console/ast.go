@@ -198,9 +198,14 @@ func (*AlterDistribution) iStatement()         {}
 func (*AlterDistribution) iAlter()             {}
 func (*AlterDistribution) iAlterDistribution() {}
 
+type DistributionKeyEntry struct {
+	Column       string
+	HashFunction string
+}
+
 type DistributedRelation struct {
-	Name    string
-	Columns []string
+	Name            string
+	DistributionKey []DistributionKeyEntry
 }
 
 type AttachRelation struct {

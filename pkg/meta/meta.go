@@ -206,10 +206,8 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
-		rels := []*distributions.DistributedRelation{{
-			Name:        stmt.Relation.Name,
-			ColumnNames: stmt.Relation.Columns,
-		},
+		rels := []*distributions.DistributedRelation{
+			distributions.DistributedRelationFromSQL(stmt.Relation),
 		}
 		if err := mngr.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels); err != nil {
 			return err

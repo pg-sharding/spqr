@@ -64,10 +64,14 @@ func randomHex(n int) (string, error) {
 
 	alter                  *Alter
 	alter_distribution     *AlterDistribution
-	distributed_relation    *DistributedRelation
+	distributed_relation   *DistributedRelation
 	
 	entrieslist            []ShardingRuleEntry
+	dEntrieslist 		   []DistributionKeyEntry
+
 	shruleEntry            ShardingRuleEntry
+
+	distrKeyEntry          DistributionKeyEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
@@ -161,11 +165,14 @@ func randomHex(n int) (string, error) {
 %type <shard> shard_define_stmt
 
 %type<entrieslist> sharding_rule_argument_list
+%type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
+
+%type<distrKeyEntry> distribution_key_entry
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
-%type<str> sharding_rule_hash_function_clause
+%type<str> hash_function_clause
 %type<str> hash_function_name
 %type<str> distribution_membership
 
@@ -174,7 +181,7 @@ func randomHex(n int) (string, error) {
 
 %type<distributed_relation> relation_attach_stmt
 
-%type<strlist> col_types_list opt_col_types col_list
+%type<strlist> col_types_list opt_col_types
 %type<str> col_types_elem
 %type<bool> opt_cascade
 
@@ -464,21 +471,35 @@ distribution_alter_stmt:
 		}
 	}
 
-relation_attach_stmt:
-	ATTACH RELATION any_id COLUMNS col_list
+
+distribution_key_argument_list: distribution_key_entry
+    {
+      $$ = make([]DistributionKeyEntry, 0)
+      $$ = append($$, $1)
+    }
+    |
+    distribution_key_argument_list distribution_key_entry
+    {
+      $$ = append($1, $2)
+    }
+
+
+
+distribution_key_entry:
+	any_id hash_function_clause
 	{
-		$$ = &DistributedRelation{
-			Name: 	 $3,
-			Columns: $5,
+		$$ = DistributionKeyEntry{
+			Column: $1,
+			HashFunction: $2,
 		}
 	}
 
-col_list:
-	col_list TCOMMA any_id {
-		$$ = append($1, $3)
-	} | any_id {
-		$$ = []string {
-			$1,
+relation_attach_stmt:
+	ATTACH RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+	{
+		$$ = &DistributedRelation{
+			Name: 	 $3,
+			DistributionKey: $6,
 		}
 	}
 
@@ -580,7 +601,7 @@ sharding_rule_argument_list: sharding_rule_entry
     }
 
 sharding_rule_entry:
-	sharding_rule_column_clause sharding_rule_hash_function_clause
+	sharding_rule_column_clause hash_function_clause
 	{
 		$$ = ShardingRuleEntry{
 			Column: $1,
@@ -616,7 +637,7 @@ hash_function_name:
 		$$ = "city"
 	}
 
-sharding_rule_hash_function_clause:
+hash_function_clause:
 	HASH FUNCTION hash_function_name
 	{
 		$$ = $3
