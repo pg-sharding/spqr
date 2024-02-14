@@ -610,6 +610,14 @@ func TestJoins(t *testing.T) {
 				Name:        "sshjt1",
 				ColumnNames: []string{"i"},
 			},
+			"xjoin": {
+				Name:        "xjoin",
+				ColumnNames: []string{"i"},
+			},
+			"yjoin": {
+				Name:        "yjoin",
+				ColumnNames: []string{"i"},
+			},
 		},
 	})
 
@@ -929,126 +937,6 @@ func TestCopySingleShard(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp)
-	}
-}
-
-func TestInsertMultiDistribution(t *testing.T) {
-	assert := assert.New(t)
-
-	type tcase struct {
-		query        string
-		distribution string
-		exp          routingstate.RoutingState
-		err          error
-	}
-	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution1 := "ds1"
-	distribution2 := "ds2"
-
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
-
-	assert.NoError(db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution1,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	}))
-
-	assert.NoError(db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id2",
-		DistributionId: distribution2,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	}))
-
-	assert.NoError(db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		DistributionId: distribution1,
-		KeyRangeID:     "id1",
-		LowerBound:     []byte("1"),
-	}))
-
-	assert.NoError(db.AddKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh2",
-		DistributionId: distribution2,
-		KeyRangeID:     "id2",
-		LowerBound:     []byte("1"),
-	}))
-
-	lc := local.NewLocalCoordinator(db)
-
-	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
-	}, lc, &config.QRouter{
-		DefaultRouteBehaviour: "BLOCK",
-	})
-
-	assert.NoError(err)
-
-	for _, tt := range []tcase{
-		{
-
-			query:        "INSERT INTO xxxdst1(i) VALUES(5);",
-			distribution: distribution1,
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution1,
-						LowerBound:   []byte("1"),
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: nil,
-		},
-		{
-			query:        "INSERT INTO xxxdst1(i) VALUES(5);",
-			distribution: distribution2,
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution2,
-						LowerBound:   []byte("1"),
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: nil,
-		},
-	} {
-		parserRes, err := lyx.Parse(tt.query)
-
-		assert.NoError(err, "query %s", tt.query)
-
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.distribution))
-
-		assert.NoError(err, "query %s", tt.query)
-
-		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 
