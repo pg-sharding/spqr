@@ -21,6 +21,9 @@ type SessionParamsHolder interface {
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
+	BindParamFormatCodes() []int16
+	SetParamFormatCodes([]int16)
+
 	RouteHint() routehint.RouteHint
 	SetRouteHint(routehint.RouteHint)
 }

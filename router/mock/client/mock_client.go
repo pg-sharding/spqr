@@ -147,6 +147,20 @@ func (mr *MockRouterClientMockRecorder) Auth(rt interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Auth", reflect.TypeOf((*MockRouterClient)(nil).Auth), rt)
 }
 
+// BindParamFormatCodes mocks base method.
+func (m *MockRouterClient) BindParamFormatCodes() []int16 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BindParamFormatCodes")
+	ret0, _ := ret[0].([]int16)
+	return ret0
+}
+
+// BindParamFormatCodes indicates an expected call of BindParamFormatCodes.
+func (mr *MockRouterClientMockRecorder) BindParamFormatCodes() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).BindParamFormatCodes))
+}
+
 // BindParams mocks base method.
 func (m *MockRouterClient) BindParams() [][]byte {
 	m.ctrl.T.Helper()
@@ -915,6 +929,18 @@ func (m *MockRouterClient) SetParam(arg0, arg1 string) {
 func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1)
+}
+
+// SetParamFormatCodes mocks base method.
+func (m *MockRouterClient) SetParamFormatCodes(arg0 []int16) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetParamFormatCodes", arg0)
+}
+
+// SetParamFormatCodes indicates an expected call of SetParamFormatCodes.
+func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
 }
 
 // SetRouteHint mocks base method.

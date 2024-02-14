@@ -4,10 +4,21 @@ import "github.com/pg-sharding/spqr/router/routehint"
 
 type DummySessionParamHandler struct {
 	b            [][]byte
+	f            []int16
 	distribution string
 	behaviour    string
 	key          string
 	rh           routehint.RouteHint
+}
+
+// BindParamFormatCodes implements SessionParamsHolder.
+func (t *DummySessionParamHandler) BindParamFormatCodes() []int16 {
+	return t.f
+}
+
+// SetParamFormatCodes implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetParamFormatCodes(f []int16) {
+	t.f = f
 }
 
 func NewDummyHandler(distribution string) SessionParamsHolder {

@@ -109,6 +109,8 @@ type PsqlClient struct {
 
 	bindParams [][]byte
 
+	paramCodes []int16
+
 	rh routehint.RouteHint
 
 	/* protects server */
@@ -116,6 +118,16 @@ type PsqlClient struct {
 	server server.Server
 
 	distributionChanged bool
+}
+
+// BindParamFormatCodes implements RouterClient.
+func (cl *PsqlClient) BindParamFormatCodes() []int16 {
+	return cl.paramCodes
+}
+
+// SetParamFormatCodes implements RouterClient.
+func (cl *PsqlClient) SetParamFormatCodes(paramCodes []int16) {
+	cl.paramCodes = paramCodes
 }
 
 // BindParams implements RouterClient.
