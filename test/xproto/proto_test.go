@@ -692,9 +692,9 @@ func TestPrepStmtSimpleParametrizedQuery(t *testing.T) {
 				&pgproto3.Bind{
 					PreparedStatement: "stmtcache_sr_2",
 					Parameters: [][]byte{
-						[]byte{0, 0, 0, 1},
+						[]byte("1"),
 					},
-					ParameterFormatCodes: []int16{1},
+					ParameterFormatCodes: []int16{0},
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
