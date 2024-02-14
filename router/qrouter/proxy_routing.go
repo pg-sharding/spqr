@@ -740,8 +740,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		return nil, err
 	}
 
-	// todo: learn format codes from bind
-	meta := NewRoutingMetadataContext(krs, rls, queryDistribution, sph.BindParams(), nil)
+	meta := NewRoutingMetadataContext(krs, rls, queryDistribution, sph.BindParams(), sph.BindParamFormatCodes())
 
 	tsa := config.TargetSessionAttrsAny
 
