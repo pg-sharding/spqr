@@ -19,7 +19,8 @@ var mockShard = &qdb.Shard{
 	Hosts: []string{"host1", "host2"},
 }
 var mockKeyRange = &qdb.KeyRange{
-	LowerBound: []byte{1, 2},
+	LowerBound: [][]byte{
+		[]byte{}, []byte{}},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }
@@ -236,14 +237,14 @@ func TestKeyRanges(t *testing.T) {
 	}))
 
 	assert.NoError(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte("1111"),
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
 	}))
 
 	assert.Error(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte("1111"),
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
 		DistributionId: "dserr",
