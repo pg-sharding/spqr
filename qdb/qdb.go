@@ -78,7 +78,7 @@ type QDB interface {
 	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 
 	GetDistribution(ctx context.Context, id string) (*Distribution, error)
-	// XXX: fix this by passing FQRN (fully qualified relation name (+schema))
+	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
 	UpdateCoordinator(ctx context.Context, address string) error
