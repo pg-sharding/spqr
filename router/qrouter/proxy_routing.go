@@ -907,56 +907,54 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	}
 
 	/*
-	 * Step 2: match all deparsed rules to sharding rules.
+	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
 	var route routingstate.RoutingState
 	route = nil
-	if meta.exprs != nil {
-		// traverse each deparsed relation from query
-		var route_err error
-		for rfqn, cols := range meta.rels {
-			if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
-				for _, col := range cols {
-					// TODO: multi-column hash functions
-					hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-						continue
-					}
-
-					hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
-
-					spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-
-					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-						continue
-					}
-
-					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
-					if err != nil {
-						route_err = err
-						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
-						continue
-					}
-
-					spqrlog.Zero.Debug().
-						Interface("currroute", currroute).
-						Str("table", rfqn.RelationName).
-						Strs("columns", cols).
-						Msg("calculated route for table/cols")
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
+	// traverse each deparsed relation from query
+	var route_err error
+	for rfqn, cols := range meta.rels {
+		if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
+			for _, col := range cols {
+				// TODO: multi-column hash functions
+				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+					continue
 				}
+
+				hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
+
+				spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					continue
+				}
+
+				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
+				if err != nil {
+					route_err = err
+					spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+					continue
+				}
+
+				spqrlog.Zero.Debug().
+					Interface("currroute", currroute).
+					Str("table", rfqn.RelationName).
+					Strs("columns", cols).
+					Msg("calculated route for table/cols")
+
+				route = routingstate.Combine(route, routingstate.ShardMatchState{
+					Route:              currroute,
+					TargetSessionAttrs: tsa,
+				})
 			}
 		}
-		if route == nil && route_err != nil {
-			return nil, route_err
-		}
+	}
+	if route == nil && route_err != nil {
+		return nil, route_err
 	}
 
 	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists)
