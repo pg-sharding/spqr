@@ -322,10 +322,10 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: `
-			DELETE 
-				FROM t 
-			WHERE 
-				j = 
+			DELETE
+				FROM t
+			WHERE
+				j =
 				any(array(select * from t where i <= 2))
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
@@ -348,10 +348,10 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: `
-			DELETE 
-				FROM t 
-			WHERE 
-				i = 
+			DELETE
+				FROM t
+			WHERE
+				i =
 				any(array(select * from t where i <= 2))
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
@@ -465,8 +465,11 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 
+		/* TODO: same query but without alias should work:
+		* Insert into xx (i) select * from yy where i = 8
+		 */
 		{
-			query: "Insert into xx (i) select * from yy where i = 8",
+			query: "Insert into xx (i) select * from yy a where a.i = 8",
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
 					Shkey: kr.ShardKey{
