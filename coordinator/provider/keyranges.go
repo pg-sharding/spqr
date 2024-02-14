@@ -20,12 +20,7 @@ type CoordinatorService struct {
 
 // TODO : unit tests
 func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
-		LowerBound:   []byte(request.KeyRangeInfo.KeyRange.LowerBound),
-		ID:           request.KeyRangeInfo.Krid,
-		ShardID:      request.KeyRangeInfo.ShardId,
-		Distribution: "default",
-	})
+	err := c.impl.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
 		return nil, err
 	}

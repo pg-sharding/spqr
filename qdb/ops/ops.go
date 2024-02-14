@@ -58,18 +58,8 @@ func AddKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.KeyRan
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v already present in qdb", keyRange.ID)
 	}
 
-	existDistribution, err := qdb.ListDistributions(ctx)
+	_, err := qdb.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
-		return err
-	}
-	exists := false
-	for _, ds := range existDistribution {
-		exists = ds.ID == keyRange.Distribution
-		if exists {
-			break
-		}
-	}
-	if !exists {
 		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a non-existent distribution")
 	}
 

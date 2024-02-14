@@ -33,7 +33,7 @@ Feature: Proxy console
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        CREATE SHARDING RULE r1 COLUMN id;
+        CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
         """
         Then command return code should be "0"
 
@@ -147,7 +147,7 @@ Feature: Proxy console
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        SPLIT KEY RANGE new_krid FROM krid1 BY 5 FOR DISTRIBUTION ds1;
+        SPLIT KEY RANGE new_krid FROM krid1 BY 5;
         """
         Then command return code should be "0"
 
