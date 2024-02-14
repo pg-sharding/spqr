@@ -266,7 +266,7 @@ func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, 
 	}
 
 	/* do not process non-distributed relations or columns not from relation distribution key */
-	if ds, err := qr.Mgr().QDB().GetRelationDistribution(context.TODO(), resolvedRelation.RelationName); err != nil {
+	if ds, err := qr.Mgr().GetRelationDistribution(context.TODO(), resolvedRelation.RelationName); err != nil {
 		return
 	} else {
 		// TODO: optimize
