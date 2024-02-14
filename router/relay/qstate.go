@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/parser"
-	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -31,19 +30,18 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution 
 	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
 		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(context.TODO(), distribution)
+		dsId := ""
+		if dsId, ok = params[session.SPQR_DISTRIBUTION]; !ok {
+			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "got sharding key in comment without distribution")
+		}
 
+		ctx := context.TODO()
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(ctx, dsId)
 		if err != nil {
 			return nil, err
 		}
 
-		rls, err := rst.QueryRouter().Mgr().ListShardingRules(context.TODO(), distribution)
-		if err != nil {
-			return nil, err
-		}
-
-		meta := qrouter.NewRoutingMetadataContext(krs, rls, distribution, nil, nil)
-		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, meta)
+		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, krs)
 		if err != nil {
 			return nil, err
 		}
