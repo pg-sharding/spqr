@@ -219,8 +219,8 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 
 		switch fc {
 		case xproto.FormatCodeBinary:
-			// here we need to invoke out function for convertion
-			// actually, we need to convert everything to binary format - TODO
+			// TODO: here we need to invoke out function for convertion
+			// actually, we need to convert everything to binary format
 		case xproto.FormatCodeText:
 			routeParam = meta.params[e.Number-1]
 		default:
