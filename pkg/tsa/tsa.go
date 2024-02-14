@@ -79,6 +79,7 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 				Msg("shard recieved error during check rw")
 			return false, reason, err
 		}
+
 		spqrlog.Zero.Debug().
 			Uint("shard", sh.ID()).
 			Interface("message", msg).

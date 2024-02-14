@@ -256,19 +256,31 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 	}
 }
 
-func (meta *RoutingMetadataContext) RecordShardingColumnValue(alias, colname, value string) {
-	if !meta.CheckColumnRls(colname) {
-		spqrlog.Zero.Debug().
-			Str("colname", colname).
-			Msg("skip column due no rule mathing")
-		return
-	}
+func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, alias, colname, value string) {
 
 	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 	if err != nil {
 		// failed to relove relation, skip column
 		meta.unparsed_columns[colname] = struct{}{}
 		return
+	}
+
+	/* do not process non-distributed relations or columns not from relation distribution key */
+	if ds, err := qr.Mgr().GetRelationDistribution(context.TODO(), resolvedRelation.RelationName); err != nil {
+		return
+	} else {
+		// TODO: optimize
+		ok := false
+		for _, c := range ds.Relations[resolvedRelation.RelationName].ColumnNames {
+			if c == colname {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			// some junk column
+			return
+		}
 	}
 
 	// will not work not ints
@@ -298,27 +310,27 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
 					if rght.Number <= len(meta.params) {
-						meta.RecordShardingColumnValue(alias, colname, string(meta.params[rght.Number-1]))
+						qr.RecordShardingColumnValue(meta, alias, colname, string(meta.params[rght.Number-1]))
 					}
 					// else  error out?
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
-					meta.RecordShardingColumnValue(alias, colname, rght.Value)
+					qr.RecordShardingColumnValue(meta, alias, colname, rght.Value)
 				case *lyx.AExprIConst:
 					// TBD: postpone routing from here to root of parsing tree
 					// maybe expimely inefficient. Will be fixed in SPQR-2.0
-					meta.RecordShardingColumnValue(alias, colname, fmt.Sprintf("%d", rght.Value))
+					qr.RecordShardingColumnValue(meta, alias, colname, fmt.Sprintf("%d", rght.Value))
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
 						case *lyx.AExprSConst:
 							// TBD: postpone routing from here to root of parsing tree
-							meta.RecordShardingColumnValue(alias, colname, bexpr.Value)
+							qr.RecordShardingColumnValue(meta, alias, colname, bexpr.Value)
 						case *lyx.AExprIConst:
 							// TBD: postpone routing from here to root of parsing tree
 							// maybe expimely inefficient. Will be fixed in SPQR-2.0
-							meta.RecordShardingColumnValue(alias, colname, fmt.Sprintf("%d", bexpr.Value))
+							qr.RecordShardingColumnValue(meta, alias, colname, fmt.Sprintf("%d", bexpr.Value))
 						}
 					}
 				case *lyx.FuncApplication:
@@ -547,6 +559,9 @@ func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationL
 		Msg("getting relation name out of from node")
 	switch q := node.(type) {
 	case *lyx.RangeVar:
+		if q.SchemaName == "information_schema" {
+			return &RelationList{Relations: nil}, nil
+		}
 		return &RelationList{Relations: []string{q.RelationName}}, nil
 	case *lyx.JoinExpr:
 		var rRel, lRel *RelationList
@@ -730,6 +745,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		queryDistribution = sph.Distribution()
 	}
 
+	/* TODO: delay this until step 2. */
 	krs, err := qr.mgr.ListKeyRanges(ctx, queryDistribution)
 	if err != nil {
 		return nil, err
@@ -907,56 +923,58 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	}
 
 	/*
-	 * Step 2: match all deparsed rules to sharding rules.
+	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
 	var route routingstate.RoutingState
 	route = nil
-	if meta.exprs != nil {
-		// traverse each deparsed relation from query
-		var route_err error
-		for rfqn, cols := range meta.rels {
-			if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
-				for _, col := range cols {
-					// TODO: multi-column hash functions
-					hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-						continue
-					}
+	var route_err error
+	for rfqn, cols := range meta.rels {
 
-					hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
+		/*
+		*
+		 */
 
-					spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-
-					if err != nil {
-						spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-						continue
-					}
-
-					currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
-					if err != nil {
-						route_err = err
-						spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
-						continue
-					}
-
-					spqrlog.Zero.Debug().
-						Interface("currroute", currroute).
-						Str("table", rfqn.RelationName).
-						Strs("columns", cols).
-						Msg("calculated route for table/cols")
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
+		if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
+			for _, col := range cols {
+				// TODO: multi-column hash functions
+				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+					continue
 				}
+
+				hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
+
+				spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+					continue
+				}
+
+				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), meta)
+				if err != nil {
+					route_err = err
+					spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+					continue
+				}
+
+				spqrlog.Zero.Debug().
+					Interface("currroute", currroute).
+					Str("table", rfqn.RelationName).
+					Strs("columns", cols).
+					Msg("calculated route for table/cols")
+
+				route = routingstate.Combine(route, routingstate.ShardMatchState{
+					Route:              currroute,
+					TargetSessionAttrs: tsa,
+				})
 			}
 		}
-		if route == nil && route_err != nil {
-			return nil, route_err
-		}
+	}
+	if route == nil && route_err != nil {
+		return nil, route_err
 	}
 
 	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists)
