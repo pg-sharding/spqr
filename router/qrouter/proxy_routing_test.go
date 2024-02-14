@@ -502,7 +502,17 @@ func TestInsertOffsets(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name:        "xx",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
@@ -591,7 +601,18 @@ func TestJoins(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeVarchar},
+		Relations: map[string]*qdb.DistributedRelation{
+			"sshjt1": {
+				Name:        "sshjt1",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
@@ -706,7 +727,17 @@ func TestUnnest(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"xxtt1": {
+				Name:        "xxtt1",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",
@@ -814,7 +845,17 @@ func TestCopySingleShard(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name:        "xx",
+				ColumnNames: []string{"i"},
+			},
+		},
+	})
 
 	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
 		ID:             "id1",

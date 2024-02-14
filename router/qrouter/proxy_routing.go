@@ -271,7 +271,7 @@ func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, 
 	} else {
 		// TODO: optimize
 		ok := false
-		for _, c := range ds.ColTypes {
+		for _, c := range ds.Relations[resolvedRelation.RelationName].ColumnNames {
 			if c == colname {
 				ok = true
 				break
@@ -742,6 +742,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		queryDistribution = sph.Distribution()
 	}
 
+	/* TODO: delay this until step 2. */
 	krs, err := qr.mgr.ListKeyRanges(ctx, queryDistribution)
 	if err != nil {
 		return nil, err
