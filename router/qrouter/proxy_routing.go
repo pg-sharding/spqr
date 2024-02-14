@@ -278,7 +278,7 @@ func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, 
 			}
 		}
 		if !ok {
-			// some junk colum
+			// some junk column
 			return
 		}
 	}
