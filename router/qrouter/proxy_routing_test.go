@@ -643,12 +643,20 @@ func TestJoins(t *testing.T) {
 				},
 			},
 			"xjoin": {
-				Name:        "xjoin",
-				ColumnNames: []string{"i"},
+				Name: "xjoin",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"yjoin": {
-				Name:        "yjoin",
-				ColumnNames: []string{"i"},
+				Name: "yjoin",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
