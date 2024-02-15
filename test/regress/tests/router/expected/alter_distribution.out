@@ -100,7 +100,7 @@ NOTICE: send query to shard(s) : sh2
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION yy COLUMNS w_id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 ERROR:  relation "yy" is already attached.
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
               detach relation               
@@ -114,7 +114,7 @@ ALTER DISTRIBUTION ds2 DETACH RELATION yy;
  detached relation yy from distribution ds2
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION yy COLUMNS w_id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
                attach table               
 ------------------------------------------
  attached relation yy to distribution ds1
