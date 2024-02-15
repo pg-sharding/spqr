@@ -629,7 +629,7 @@ func TestInsertOffsets(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
-			query: `INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;`,
+			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
 					Shkey: kr.ShardKey{
