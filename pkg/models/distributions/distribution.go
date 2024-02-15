@@ -3,39 +3,92 @@ package distributions
 import (
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+type DistributionKeyEntry struct {
+	Column       string
+	HashFunction string
+}
+
 type DistributedRelation struct {
-	Name        string
-	ColumnNames []string
+	Name            string
+	DistributionKey []DistributionKeyEntry
 }
 
-func DistributedRelationFromDB(distr *qdb.DistributedRelation) *DistributedRelation {
-	return &DistributedRelation{
-		Name:        distr.Name,
-		ColumnNames: distr.ColumnNames,
+func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelation {
+	rdistr := &DistributedRelation{
+		Name: rel.Name,
 	}
+
+	for _, e := range rel.DistributionKey {
+		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+		})
+	}
+
+	return rdistr
 }
 
-func DistributedRelationToDB(distr *DistributedRelation) *qdb.DistributedRelation {
-	return &qdb.DistributedRelation{
-		Name:        distr.Name,
-		ColumnNames: distr.ColumnNames,
+func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation {
+	rdistr := &qdb.DistributedRelation{
+		Name: rel.Name,
 	}
+
+	for _, e := range rel.DistributionKey {
+		rdistr.DistributionKey = append(rdistr.DistributionKey, qdb.DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+		})
+	}
+
+	return rdistr
 }
 
-func DistributedRelatitonToProto(distr *DistributedRelation) *proto.DistributedRelation {
-	return &proto.DistributedRelation{
-		Name:    distr.Name,
-		Columns: distr.ColumnNames,
+func DistributedRelatitonToProto(rel *DistributedRelation) *proto.DistributedRelation {
+	rdistr := &proto.DistributedRelation{
+		Name: rel.Name,
 	}
+
+	for _, e := range rel.DistributionKey {
+		rdistr.DistributionKey = append(rdistr.DistributionKey, &proto.DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+		})
+	}
+
+	return rdistr
 }
 
 func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRelation {
-	return &DistributedRelation{
-		Name:        rel.Name,
-		ColumnNames: rel.Columns,
+	rdistr := &DistributedRelation{
+		Name: rel.Name,
 	}
+
+	for _, e := range rel.DistributionKey {
+		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+		})
+	}
+
+	return rdistr
+}
+
+func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *DistributedRelation {
+	rdistr := &DistributedRelation{
+		Name: rel.Name,
+	}
+
+	for _, e := range rel.DistributionKey {
+		rdistr.DistributionKey = append(rdistr.DistributionKey, DistributionKeyEntry{
+			Column:       e.Column,
+			HashFunction: e.HashFunction,
+		})
+	}
+
+	return rdistr
 }
 
 type Distribution struct {
@@ -77,10 +130,7 @@ func DistributionFromProto(ds *proto.Distribution) *Distribution {
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
-		drels = append(drels, &proto.DistributedRelation{
-			Name:    r.Name,
-			Columns: r.ColumnNames,
-		})
+		drels = append(drels, DistributedRelatitonToProto(r))
 	}
 	return &proto.Distribution{
 		Id:          ds.Id,

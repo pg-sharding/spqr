@@ -251,8 +251,8 @@ func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, 
 	} else {
 		// TODO: optimize
 		ok := false
-		for _, c := range ds.Relations[resolvedRelation.RelationName].ColumnNames {
-			if c == colname {
+		for _, de := range ds.Relations[resolvedRelation.RelationName].DistributionKey {
+			if de.Column == colname {
 				ok = true
 				break
 			}

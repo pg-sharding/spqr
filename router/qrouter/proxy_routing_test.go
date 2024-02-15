@@ -130,8 +130,12 @@ func TestComment(t *testing.T) {
 		ID: distribution,
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
-				Name:        "xx",
-				ColumnNames: []string{"i"},
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -228,24 +232,44 @@ func TestSingleShard(t *testing.T) {
 		ID: distribution,
 		Relations: map[string]*qdb.DistributedRelation{
 			"t": {
-				Name:        "t",
-				ColumnNames: []string{"i"},
+				Name: "t",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"yy": {
-				Name:        "yy",
-				ColumnNames: []string{"i"},
+				Name: "yy",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"xxtt1": {
-				Name:        "xxtt1",
-				ColumnNames: []string{"i"},
+				Name: "xxtt1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"xx": {
-				Name:        "xx",
-				ColumnNames: []string{"i"},
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"xxmixed": {
-				Name:        "xxmixed",
-				ColumnNames: []string{"i"},
+				Name: "xxmixed",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -507,8 +531,12 @@ func TestInsertOffsets(t *testing.T) {
 		ID: distribution,
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
-				Name:        "xx",
-				ColumnNames: []string{"i"},
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -607,16 +635,28 @@ func TestJoins(t *testing.T) {
 		ColTypes: []string{qdb.ColumnTypeVarchar},
 		Relations: map[string]*qdb.DistributedRelation{
 			"sshjt1": {
-				Name:        "sshjt1",
-				ColumnNames: []string{"i"},
+				Name: "sshjt1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"xjoin": {
-				Name:        "xjoin",
-				ColumnNames: []string{"i"},
+				Name: "xjoin",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 			"yjoin": {
-				Name:        "yjoin",
-				ColumnNames: []string{"i"},
+				Name: "yjoin",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -740,8 +780,12 @@ func TestUnnest(t *testing.T) {
 		ID: distribution,
 		Relations: map[string]*qdb.DistributedRelation{
 			"xxtt1": {
-				Name:        "xxtt1",
-				ColumnNames: []string{"i"},
+				Name: "xxtt1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -858,8 +902,12 @@ func TestCopySingleShard(t *testing.T) {
 		ID: distribution,
 		Relations: map[string]*qdb.DistributedRelation{
 			"xx": {
-				Name:        "xx",
-				ColumnNames: []string{"i"},
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})

@@ -87,9 +87,14 @@ var (
 	ColumnTypeUinteger = "uinteger"
 )
 
+type DistributionKeyEntry struct {
+	Column       string `json:"column"`
+	HashFunction string `json:"hash"`
+}
+
 type DistributedRelation struct {
-	Name        string   `json:"name"`
-	ColumnNames []string `json:"column_names"`
+	Name            string                 `json:"name"`
+	DistributionKey []DistributionKeyEntry `json:"column_names"`
 }
 
 type Distribution struct {

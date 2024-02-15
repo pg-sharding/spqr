@@ -134,8 +134,11 @@ func TestDistributions(t *testing.T) {
 
 	relation := &qdb.DistributedRelation{
 		Name: "r1",
-		ColumnNames: []string{
-			"c1",
+		DistributionKey: []qdb.DistributionKeyEntry{
+			{
+				Column:       "c1",
+				HashFunction: "",
+			},
 		},
 	}
 	assert.NoError(memqdb.AlterDistributionAttach(ctx, "ds1", []*qdb.DistributedRelation{

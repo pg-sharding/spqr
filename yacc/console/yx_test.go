@@ -335,13 +335,17 @@ func TestAlter(t *testing.T) {
 
 	for _, tt := range []tcase{
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Relation: &spqrparser.DistributedRelation{
-							Name:    "t",
-							Columns: []string{"id"},
+							Name: "t",
+							DistributionKey: []spqrparser.DistributionKeyEntry{
+								{
+									Column: "id",
+								},
+							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
@@ -350,13 +354,43 @@ func TestAlter(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t COLUMNS id1, id2;",
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Relation: &spqrparser.DistributedRelation{
-							Name:    "t",
-							Columns: []string{"id1", "id2"},
+							Name: "t",
+							DistributionKey: []spqrparser.DistributionKeyEntry{
+								{
+									Column: "id1",
+								},
+								{
+									Column: "id2",
+								},
+							},
+						},
+						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "ALTER DISTRIBUTION ds1 ATTACH RELATION t DISTRIBUTION KEY id1, id2 HASH FUNCTION murmur;",
+			exp: &spqrparser.Alter{
+				Element: &spqrparser.AlterDistribution{
+					Element: &spqrparser.AttachRelation{
+						Relation: &spqrparser.DistributedRelation{
+							Name: "t",
+							DistributionKey: []spqrparser.DistributionKeyEntry{
+								{
+									Column: "id1",
+								},
+								{
+									Column:       "id2",
+									HashFunction: "murmur",
+								},
+							},
 						},
 						Distribution: &spqrparser.DistributionSelector{ID: "ds1"},
 					},
