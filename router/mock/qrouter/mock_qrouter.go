@@ -6,6 +6,7 @@ package mock
 
 import (
 	context "context"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -21,6 +22,8 @@ type MockQueryRouter struct {
 	ctrl     *gomock.Controller
 	recorder *MockQueryRouterMockRecorder
 }
+
+var _ qrouter.QueryRouter = &MockQueryRouter{}
 
 // MockQueryRouterMockRecorder is the mock recorder for MockQueryRouter.
 type MockQueryRouterMockRecorder struct {
@@ -54,18 +57,18 @@ func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 }
 
 // DeparseKeyWithRangesInternal mocks base method.
-func (m *MockQueryRouter) DeparseKeyWithRangesInternal(ctx context.Context, key string, meta *qrouter.RoutingMetadataContext) (*routingstate.DataShardRoute, error) {
+func (m *MockQueryRouter) DeparseKeyWithRangesInternal(ctx context.Context, key string, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeparseKeyWithRangesInternal", ctx, key, meta)
+	ret := m.ctrl.Call(m, "DeparseKeyWithRangesInternal", ctx, key, krs)
 	ret0, _ := ret[0].(*routingstate.DataShardRoute)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeparseKeyWithRangesInternal indicates an expected call of DeparseKeyWithRangesInternal.
-func (mr *MockQueryRouterMockRecorder) DeparseKeyWithRangesInternal(ctx, key, meta interface{}) *gomock.Call {
+func (mr *MockQueryRouterMockRecorder) DeparseKeyWithRangesInternal(ctx, key, krs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeparseKeyWithRangesInternal", reflect.TypeOf((*MockQueryRouter)(nil).DeparseKeyWithRangesInternal), ctx, key, meta)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeparseKeyWithRangesInternal", reflect.TypeOf((*MockQueryRouter)(nil).DeparseKeyWithRangesInternal), ctx, key, krs)
 }
 
 // Initialize mocks base method.
