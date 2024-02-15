@@ -67,7 +67,7 @@ func randomHex(n int) (string, error) {
 	distributed_relation   *DistributedRelation
 	
 	entrieslist            []ShardingRuleEntry
-	dEntrieslist 	[]DistributionKeyEntry
+	dEntrieslist 	       []DistributionKeyEntry
 
 	shruleEntry            ShardingRuleEntry
 
