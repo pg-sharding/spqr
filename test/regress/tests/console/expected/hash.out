@@ -11,38 +11,35 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  created distribution with id ds1
 (1 row)
 
-CREATE SHARDING RULE hash1 DISTRIBUTED KEY col1 HASH FUNCTION IDENT FOR DISTRIBUTION ds1;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule hash1 for table (*) with columns [col1, hash: x->x] in ds1 distribution
+ALTER DISTRIBUTION ds1 ATTACH RELATION r1 DISTRIBUTION KEY col1 HASH FUNCTION IDENT;
+               attach table               
+------------------------------------------
+ attached relation r1 to distribution ds1
 (1 row)
 
-CREATE SHARDING RULE hash2 DISTRIBUTED KEY col2 HASH FUNCTION IDENTITY FOR DISTRIBUTION ds1;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule hash2 for table (*) with columns [col2, hash: x->x] in ds1 distribution
+ALTER DISTRIBUTION ds1 ATTACH RELATION r2 DISTRIBUTION KEY col1 HASH FUNCTION IDENTITY;
+               attach table               
+------------------------------------------
+ attached relation r2 to distribution ds1
 (1 row)
 
-CREATE SHARDING RULE hash3 DISTRIBUTED KEY col3 HASH FUNCTION MURMUR HASH FOR DISTRIBUTION ds1;
-                                        add sharding rule                                        
--------------------------------------------------------------------------------------------------
- created sharding rule hash3 for table (*) with columns [col3, hash: murmur] in ds1 distribution
+ALTER DISTRIBUTION ds1 ATTACH RELATION r3 DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
+               attach table               
+------------------------------------------
+ attached relation r3 to distribution ds1
 (1 row)
 
-CREATE SHARDING RULE hash4 DISTRIBUTED KEY col4 HASH FUNCTION CITY HASH FOR DISTRIBUTION ds1;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule hash4 for table (*) with columns [col4, hash: city] in ds1 distribution
+ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CITY;
+               attach table               
+------------------------------------------
+ attached relation r4 to distribution ds1
 (1 row)
 
-SHOW sharding_rules;
- Sharding Rule ID | Distribution ID | Table Name | Columns | Hash Function 
-------------------+-----------------+------------+---------+---------------
- hash1            | ds1             | *          | col1    | identity
- hash2            | ds1             | *          | col2    | identity
- hash3            | ds1             | *          | col3    | murmur
- hash4            | ds1             | *          | col4    | city
-(4 rows)
+SHOW DISTRIBUTIONS;
+ Distribution ID 
+-----------------
+ ds1
+(1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
