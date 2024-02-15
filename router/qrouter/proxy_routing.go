@@ -423,6 +423,55 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
+func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert) ([]int, RelationFQN, bool, error) {
+	insertCols := stmt.Columns
+
+	spqrlog.Zero.Debug().
+		Strs("insert columns", insertCols).
+		Msg("deparsed insert statement columns")
+
+	// compute matched sharding rule offsets
+	offsets := make([]int, 0)
+	var rfqn RelationFQN
+
+	switch q := stmt.TableRef.(type) {
+	case *lyx.RangeVar:
+		rfqn = RelationFQNFromRangeRangeVar(q)
+
+		var ds *qdb.Distribution
+		var err error
+
+		if ds, err = qr.Mgr().QDB().GetRelationDistribution(ctx, rfqn.RelationName); err != nil {
+			return nil, RelationFQN{}, false, err
+		}
+
+		insertColsPos := map[string]int{}
+		for i, c := range insertCols {
+			insertColsPos[c] = i
+		}
+
+		distributionKey := ds.Relations[rfqn.RelationName].DistributionKey
+		// TODO: check mapping by rules with multiple columns
+		for _, col := range distributionKey {
+			if val, ok := insertColsPos[col.Column]; !ok {
+				/* Do not return err here.
+				* This particulat insert stmt is un-routable, but still, give it a try
+				* and continue parsing.
+				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+				* we have no insert cols specified, but still able to route on select
+				 */
+				return nil, RelationFQN{}, false, nil
+			} else {
+				offsets = append(offsets, val)
+			}
+		}
+
+		return offsets, rfqn, true, nil
+	default:
+		return nil, RelationFQN{}, false, ComplexQuery
+	}
+}
+
 // TODO : unit tests
 func (qr *ProxyQrouter) deparseShardingMapping(
 	ctx context.Context,
@@ -445,47 +494,10 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		return qr.routeByClause(ctx, clause, meta)
 
 	case *lyx.Insert:
-		insertCols := stmt.Columns
-
-		spqrlog.Zero.Debug().
-			Strs("insert columns", insertCols).
-			Msg("deparsed insert statement columns")
-
-		// compute matched sharding rule offsets
-		offsets := make([]int, 0)
-		var rfqn RelationFQN
-
-		switch q := stmt.TableRef.(type) {
-		case *lyx.RangeVar:
-			rfqn = RelationFQNFromRangeRangeVar(q)
-
-			var ds *qdb.Distribution
-			var err error
-
-			if ds, err = qr.Mgr().QDB().GetRelationDistribution(ctx, rfqn.RelationName); err != nil {
-				return err
-			}
-
-			insertColsPos := map[string]int{}
-			for i, c := range insertCols {
-				insertColsPos[c] = i
-			}
-
-			distributionKey := ds.Relations[rfqn.RelationName].DistributionKey
-			// TODO: check mapping by rules with multiple columns
-			for _, col := range distributionKey {
-				if val, ok := insertColsPos[col.Column]; !ok {
-					return ComplexQuery
-				} else {
-					offsets = append(offsets, val)
-				}
-			}
-
-		default:
-			return ComplexQuery
-		}
-
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
+
+			insertCols := stmt.Columns
+
 			switch subS := selectStmt.(type) {
 			case *lyx.Select:
 				spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
@@ -493,6 +505,15 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				/* try target list */
 				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
 				/* this target list for some insert (...) sharding column */
+
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				if err != nil {
+					return err
+				}
+				if !success {
+					break
+				}
+
 				targetList := subS.TargetList
 				/* record all values from tl */
 
@@ -519,6 +540,13 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			case *lyx.ValueClause:
 				valList := subS.Values
 				/* record all values from values scan */
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				if err != nil {
+					return err
+				}
+				if !success {
+					break
+				}
 
 				vlUsable := true
 				for i := range offsets {

@@ -629,6 +629,25 @@ func TestInsertOffsets(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: `INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;`,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						ID:           "id2",
+						Distribution: distribution,
+						LowerBound:   []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
 			query: `
 			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, '21');
 			`,

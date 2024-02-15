@@ -54,7 +54,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
  attached relation xxerr to distribution ds1
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id, id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
                 attach table                 
 ---------------------------------------------
  attached relation xxtt1 to distribution ds1
