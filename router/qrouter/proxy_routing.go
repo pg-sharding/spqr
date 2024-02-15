@@ -40,7 +40,7 @@ type RoutingMetadataContext struct {
 	// and
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
-	rels  map[RelationFQN][]string
+	rels  map[RelationFQN]struct{}
 	exprs map[RelationFQN]map[string]string
 
 	unparsed_columns map[string]struct{}
@@ -57,7 +57,7 @@ type RoutingMetadataContext struct {
 
 func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
 	meta := &RoutingMetadataContext{
-		rels:             map[RelationFQN][]string{},
+		rels:             map[RelationFQN]struct{}{},
 		tableAliases:     map[string]RelationFQN{},
 		exprs:            map[RelationFQN]map[string]string{},
 		unparsed_columns: map[string]struct{}{},
@@ -87,7 +87,7 @@ func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *Rout
 
 // TODO : unit tests
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr string) {
-	meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
+	meta.rels[resolvedRelation] = struct{}{}
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
 	}
@@ -369,7 +369,7 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 	case *lyx.RangeVar:
 		rqdn := RelationFQNFromRangeRangeVar(q)
 		if _, ok := meta.rels[rqdn]; !ok {
-			meta.rels[rqdn] = nil
+			meta.rels[rqdn] = struct{}{}
 		}
 		if q.Alias != "" {
 			/* remember table alias */
@@ -481,7 +481,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				}
 			}
 
-			meta.rels[rfqn] = insertCols
 		default:
 			return ComplexQuery
 		}
@@ -531,7 +530,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 				if vlUsable {
 					for i := range offsets {
-						_ = qr.RecordDistributionKeyExprOnRFQN(meta, rfqn, insertCols[i], valList[offsets[i]])
+						_ = qr.RecordDistributionKeyExprOnRFQN(meta, rfqn, insertCols[offsets[i]], valList[offsets[i]])
 					}
 				}
 
@@ -792,8 +791,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	var route routingstate.RoutingState
 	route = nil
 	var route_err error
-	for rfqn, cols := range meta.rels {
-
+	for rfqn := range meta.rels {
 		// TODO: check by whole RFQN
 		ds, err := qr.mgr.GetRelationDistribution(ctx, rfqn.RelationName)
 		if err != nil {
@@ -805,43 +803,62 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 
-		if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
-			for _, col := range cols {
-				// TODO: multi-column hash functions
-				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-					continue
-				}
+		distrKey := ds.Relations[rfqn.RelationName].DistributionKey
 
-				hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
+		ok := true
 
-				spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		var hashedKey []byte
 
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-					continue
-				}
+		// TODO: multi-column routing. Thisworks only for one-dim routing
+		for i := 0; i < len(distrKey); i++ {
+			hf, err := hashfunction.HashFunctionByName(distrKey[i].HashFunction)
+			if err != nil {
+				ok = false
+				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+				break
+			}
 
-				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
-				if err != nil {
-					route_err = err
-					spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
-					continue
-				}
+			col := distrKey[i].Column
 
-				spqrlog.Zero.Debug().
-					Interface("currroute", currroute).
-					Str("table", rfqn.RelationName).
-					Strs("columns", cols).
-					Msg("calculated route for table/cols")
+			val, valOk := meta.exprs[rfqn][col]
+			if !valOk {
+				ok = false
+				break
+			}
 
-				route = routingstate.Combine(route, routingstate.ShardMatchState{
-					Route:              currroute,
-					TargetSessionAttrs: tsa,
-				})
+			hashedKey, err = hashfunction.ApplyHashFunction([]byte(val), hf)
+
+			spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				ok = false
+				break
 			}
 		}
+
+		if !ok {
+			// skip this relation
+			continue
+		}
+
+		currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
+		if err != nil {
+			route_err = err
+			spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+			continue
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("currroute", currroute).
+			Str("table", rfqn.RelationName).
+			Msg("calculated route for table/cols")
+
+		route = routingstate.Combine(route, routingstate.ShardMatchState{
+			Route:              currroute,
+			TargetSessionAttrs: tsa,
+		})
+
 	}
 	if route == nil && route_err != nil {
 		return nil, route_err

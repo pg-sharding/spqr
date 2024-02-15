@@ -541,6 +541,22 @@ func TestInsertOffsets(t *testing.T) {
 					},
 				},
 			},
+			"people": {
+				Name: "people",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+			"xxtt1": {
+				Name: "xxtt1",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "w_id",
+					},
+				},
+			},
 		},
 	})
 
@@ -551,6 +567,28 @@ func TestInsertOffsets(t *testing.T) {
 		Entries: []qdb.ShardingRuleEntry{
 			{
 				Column: "i",
+			},
+		},
+	})
+
+	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+		ID:             "id2",
+		TableName:      "",
+		DistributionId: distribution,
+		Entries: []qdb.ShardingRuleEntry{
+			{
+				Column: "w_id",
+			},
+		},
+	})
+
+	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
+		ID:             "id3",
+		TableName:      "",
+		DistributionId: distribution,
+		Entries: []qdb.ShardingRuleEntry{
+			{
+				Column: "id",
 			},
 		},
 	})
@@ -589,6 +627,45 @@ func TestInsertOffsets(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+		{
+			query: `
+			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','','1') RETURNING "id"`,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+		{
+			query: `
+			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
+			`,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						ID:           "id2",
+						Distribution: distribution,
+						LowerBound:   []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
@@ -617,7 +694,7 @@ func TestInsertOffsets(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+		assert.Equal(tt.exp, tmp, tt.query)
 	}
 }
 
