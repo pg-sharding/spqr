@@ -938,10 +938,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	shardingRules, err := qc.getAllListShardingRules(ctx)
-	if err != nil {
-		return err
-	}
 
 	// no need to move data to the same shard
 	if keyRange.ShardID == req.ShardId {
@@ -979,7 +975,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}()
 
 	/* physical changes on shards */
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, qc.db)
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, qc.db)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 		return err

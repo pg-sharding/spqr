@@ -13,7 +13,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -86,7 +85,7 @@ Steps:
   - create sql copy and delete queries to move data tuples.
   - prepare and commit distributed move transaction
 */
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
+func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qdb.XQDB) error {
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
