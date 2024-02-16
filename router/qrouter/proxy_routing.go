@@ -613,8 +613,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	if _, err := qr.Mgr().QDB().GetRelationDistribution(ctx, node.TableName); err != nil {
 		return fmt.Errorf("create table stmt ignored: no distributions for this relation found")
 	}
-
-	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
+	return nil
 }
 
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
