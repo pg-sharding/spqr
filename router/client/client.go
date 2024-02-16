@@ -116,8 +116,6 @@ type PsqlClient struct {
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
-
-	distributionChanged bool
 }
 
 // BindParamFormatCodes implements RouterClient.
