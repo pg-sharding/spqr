@@ -30,14 +30,6 @@ func (c BalancerClient) DB() string {
 	return "DefaultDB"
 }
 
-func (c BalancerClient) Distribution() string {
-	return "default"
-}
-
-func (c BalancerClient) DistributionIsDefault() bool {
-	return true
-}
-
 func (c BalancerClient) ID() uint {
 	return 0x123456789
 }

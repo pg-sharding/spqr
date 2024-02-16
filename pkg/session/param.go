@@ -5,10 +5,6 @@ import (
 )
 
 type SessionParamsHolder interface {
-	// get current session distribution
-	Distribution() string
-	SetDistribution(string)
-	DistributionIsDefault() bool
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string

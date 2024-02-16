@@ -140,25 +140,6 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 	cl.bindParams = p
 }
 
-// Distribution implements RouterClient.
-func (cl *PsqlClient) Distribution() string {
-	if val, ok := cl.internalParamSet[session.SPQR_DISTRIBUTION]; ok {
-		return val
-	}
-	return DefaultDS
-}
-
-// SetDistribution implements RouterClient.
-func (cl *PsqlClient) SetDistribution(d string) {
-	cl.internalParamSet[session.SPQR_DISTRIBUTION] = d
-	cl.distributionChanged = true
-}
-
-// DistributionIsDefault implements RouterClient.
-func (cl *PsqlClient) DistributionIsDefault() bool {
-	return !cl.distributionChanged
-}
-
 // SetShardingKey implements RouterClient.
 func (cl *PsqlClient) SetShardingKey(k string) {
 	cl.internalParamSet[session.SPQR_SHARDING_KEY] = k
@@ -719,7 +700,6 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("distribution", cl.Distribution()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -1009,14 +989,6 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) Distribution() string {
-	return DefaultDS
-}
-
-func (f FakeClient) DistributionIsDefault() bool {
-	return true
-}
-
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
@@ -1070,14 +1042,6 @@ func (c NoopClient) Usr() string {
 
 func (c NoopClient) DB() string {
 	return c.dbname
-}
-
-func (c NoopClient) Distribution() string {
-	return c.dsname
-}
-
-func (c NoopClient) DistributionIsDefault() bool {
-	return true
 }
 
 func (c NoopClient) RAddr() string {
