@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -56,7 +55,6 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 
 type TopoCntl interface {
 	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
 	datashards.ShardsMgr
 }
 
