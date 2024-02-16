@@ -38,8 +38,6 @@ func (c BalancerClient) DistributionIsDefault() bool {
 	return true
 }
 
-func (c BalancerClient) SetDS(_ string) {}
-
 func (c BalancerClient) ID() uint {
 	return 0x123456789
 }
