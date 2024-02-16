@@ -210,7 +210,7 @@ type DistributedRelation struct {
 
 type AttachRelation struct {
 	Distribution *DistributionSelector
-	Relation     *DistributedRelation
+	Relations    []*DistributedRelation
 }
 
 func (*AttachRelation) iStatement()         {}

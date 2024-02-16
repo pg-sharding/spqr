@@ -66,6 +66,7 @@ func randomHex(n int) (string, error) {
 	alter_distribution     *AlterDistribution
 	distributed_relation   *DistributedRelation
 	
+	relations              []*DistributedRelation
 	entrieslist            []ShardingRuleEntry
 	dEntrieslist 	       []DistributionKeyEntry
 
@@ -179,7 +180,10 @@ func randomHex(n int) (string, error) {
 %type<alter> alter_stmt
 %type<alter_distribution> distribution_alter_stmt
 
-%type<distributed_relation> relation_attach_stmt
+%type<relations> relation_attach_stmt
+%type<relations> distributed_relation_list_def
+
+%type<distributed_relation> distributed_relation_def
 
 %type<strlist> col_types_list opt_col_types
 %type<str> col_types_elem
@@ -457,7 +461,7 @@ distribution_alter_stmt:
 		$$ = &AlterDistribution{
 			Element: &AttachRelation{
 				Distribution: $1,
-				Relation:     $2,
+				Relations:     $2,
 			},
 		}
 	} |
@@ -493,15 +497,27 @@ distribution_key_entry:
 		}
 	}
 
-relation_attach_stmt:
-	ATTACH RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+distributed_relation_def:
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
 	{
 		$$ = &DistributedRelation{
-			Name: 	 $3,
-			DistributionKey: $6,
+			Name: 	 $2,
+			DistributionKey: $5,
 		}
 	}
 
+
+distributed_relation_list_def:
+	distributed_relation_def {
+		$$ = []*DistributedRelation{$1}
+	} | distributed_relation_list_def distributed_relation_def {
+		$$  = append($1, $2)
+	}
+
+relation_attach_stmt:
+	ATTACH distributed_relation_list_def {
+		$$ = $2
+	}
 
 create_stmt:
 	CREATE distribution_define_stmt
