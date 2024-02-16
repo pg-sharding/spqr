@@ -437,21 +437,6 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListShardingRules(ctx, distribution)
 	if err != nil {

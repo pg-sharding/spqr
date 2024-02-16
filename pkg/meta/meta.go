@@ -3,12 +3,11 @@ package meta
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -17,14 +16,12 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
 	topology.RouterMgr
 	datashards.ShardsMgr
 	distributions.DistributionMgr
@@ -55,49 +52,18 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
 	case *spqrparser.ShardingRuleSelector:
-		if stmt.ID == "*" {
-			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
-				return cli.ReportError(err)
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
-
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}())
-			}
-		} else {
-			spqrlog.Zero.Debug().Str("rule", stmt.ID).Msg("parsed drop")
-			err := mngr.DropShardingRule(ctx, stmt.ID)
-			if err != nil {
-				return cli.ReportError(err)
-			}
-			return cli.DropShardingRule(ctx, stmt.ID)
-		}
+		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
 	case *spqrparser.DistributionSelector:
-
-		var srs []*shrule.ShardingRule
 		var krs []*kr.KeyRange
 		var err error
 
 		if stmt.ID == "*" {
-			srs, err = mngr.ListAllShardingRules(ctx)
-			if err != nil {
-				return err
-			}
 
 			krs, err = mngr.ListAllKeyRanges(ctx)
 			if err != nil {
 				return err
 			}
 		} else {
-			srs, err = mngr.ListShardingRules(ctx, stmt.ID)
-			if err != nil {
-				return err
-			}
 
 			krs, err = mngr.ListKeyRanges(ctx, stmt.ID)
 			if err != nil {
@@ -105,18 +71,12 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			}
 		}
 
-		if len(srs)+len(krs) != 0 && !isCascade {
+		if len(krs) != 0 && !isCascade {
 			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
 			err = mngr.DropKeyRange(ctx, kr.ID)
-			if err != nil {
-				return err
-			}
-		}
-		for _, sr := range srs {
-			err = mngr.DropShardingRule(ctx, sr.Id)
 			if err != nil {
 				return err
 			}
@@ -173,15 +133,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
-		entries := make([]shrule.ShardingRuleEntry, 0)
-		for _, el := range stmt.Entries {
-			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
-		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Distribution)
-		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
-			return err
-		}
-		return cli.AddShardingRule(ctx, shardingRule)
+		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
@@ -376,12 +328,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListAllShardingRules(ctx)
-		if err != nil {
-			return err
-		}
-
-		return cli.ShardingRules(ctx, resp)
+		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
