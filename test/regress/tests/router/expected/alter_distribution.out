@@ -127,13 +127,6 @@ NOTICE: send query to shard(s) : sh1
 ------
 (0 rows)
 
-SET __spqr__distribution = ds2;
-SELECT * FROM xx WHERE w_id=5;
-NOTICE: send query to shard(s) : sh2
- w_id 
-------
-(0 rows)
-
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yy;

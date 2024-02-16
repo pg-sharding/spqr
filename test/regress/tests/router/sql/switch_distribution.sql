@@ -1,35 +1,5 @@
-\c spqr-console
-
-CREATE DISTRIBUTION ds1;
-CREATE DISTRIBUTION ds2;
-
-CREATE SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
-CREATE SHARDING RULE r2 COLUMNS w_id FOR DISTRIBUTION ds2;
-
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-
-CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
-
 \c regress
-
 SET __spqr__distribution = ds1;
-
-CREATE TABLE xx (w_id int);
-
-INSERT INTO xx(w_id) VALUES(5);
-
-INSERT INTO xx(w_id) VALUES(20);
-
-SELECT * FROM xx WHERE w_id=5;
-
-SET __spqr__distribution = ds2;
-
-SELECT * FROM xx WHERE w_id=5;
-
-SET __spqr__distribution = "default";
-
-DROP TABLE xx;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;

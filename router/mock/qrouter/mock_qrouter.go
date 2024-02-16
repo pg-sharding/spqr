@@ -6,14 +6,13 @@ package mock
 
 import (
 	context "context"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
 	lyx "github.com/pg-sharding/lyx/lyx"
 	meta "github.com/pg-sharding/spqr/pkg/meta"
+	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	session "github.com/pg-sharding/spqr/pkg/session"
-	qrouter "github.com/pg-sharding/spqr/router/qrouter"
 	routingstate "github.com/pg-sharding/spqr/router/routingstate"
 )
 
@@ -22,8 +21,6 @@ type MockQueryRouter struct {
 	ctrl     *gomock.Controller
 	recorder *MockQueryRouterMockRecorder
 }
-
-var _ qrouter.QueryRouter = &MockQueryRouter{}
 
 // MockQueryRouterMockRecorder is the mock recorder for MockQueryRouter.
 type MockQueryRouterMockRecorder struct {

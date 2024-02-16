@@ -23,7 +23,7 @@ func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
-func deparseRouteHint(rst RelayStateMgr, params map[string]string, distribution string) (routehint.RouteHint, error) {
+func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.RouteHint, error) {
 	if _, ok := params[session.SPQR_SCATTER_QUERY]; ok {
 		return &routehint.ScatterRouteHint{}, nil
 	}
@@ -73,17 +73,13 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 	mp, err := parser.ParseComment(comment)
 
 	if err == nil {
-		routeHint, _ := deparseRouteHint(rst, mp, rst.Client().Distribution())
+		routeHint, _ := deparseRouteHint(rst, mp)
 		rst.Client().SetRouteHint(routeHint)
 
 		if val, ok := mp["target-session-attrs"]; ok {
 			// TBD: validate
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
 			rst.Client().SetTsa(val)
-		}
-		if val, ok := mp[session.SPQR_DISTRIBUTION]; ok {
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse distribution from comment")
-			rst.Client().SetDistribution(val)
 		}
 		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
 			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse default route behaviour from comment")
@@ -149,7 +145,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			switch st.Name {
 			case session.SPQR_DISTRIBUTION:
-				rst.Client().SetDistribution(st.Value)
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "setting \"%s\" is forbidden", session.SPQR_DISTRIBUTION)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:
@@ -169,27 +165,9 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 
 		switch param {
 		case session.SPQR_DISTRIBUTION:
-
-			_ = rst.Client().Send(
-				&pgproto3.RowDescription{
-					Fields: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("distribution"),
-							DataTypeOID:  25,
-							DataTypeSize: -1,
-							TypeModifier: -1,
-						},
-					},
-				},
-			)
-
-			_ = rst.Client().Send(
-				&pgproto3.DataRow{
-					Values: [][]byte{
-						[]byte(rst.Client().Distribution()),
-					},
-				},
-			)
+			_ = rst.Client().Send(&pgproto3.ErrorResponse{
+				Message: fmt.Sprintf("parameter \"%s\" isn't user accessible", session.SPQR_DISTRIBUTION),
+			})
 		case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 
 			_ = rst.Client().Send(

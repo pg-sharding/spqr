@@ -59,16 +59,6 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	return nil
 }
 
-// TODO : unit tests
-func (pi *PSQLInteractor) GetDistribution() string {
-	return pi.cl.Distribution()
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) SetDistribution(distribution string) {
-	pi.cl.SetDistribution(distribution)
-}
-
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
 
