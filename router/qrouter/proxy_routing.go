@@ -622,10 +622,6 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		return fmt.Errorf("create table stmt ignored: no distributions for this relation found")
 	}
 
-	// TODO: drop this with migration from sharding rule to distributions
-	if _, err := MatchShardingRule(ctx, node.TableName, entries, qr.mgr.QDB()); err == ErrRuleIntersect {
-		return nil
-	}
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
@@ -810,14 +806,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
 	}
 
-	/* Step 1.5: check if query contains any unparsed columns that are sharding rule column.
-	Reject query if so */
-	for colname := range meta.unparsed_columns {
-		if _, err := MatchShardingRule(ctx, "", []string{colname}, qr.mgr.QDB()); err == ErrRuleIntersect {
-			return nil, ComplexQuery
-		}
-	}
-
 	/*
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
@@ -927,54 +915,4 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		}
 	}
 	return routingstate.SkipRoutingState{}, nil
-}
-
-// TODO : unit tests
-func MatchShardingRule(ctx context.Context, relationName string, shardingEntries []string, db qdb.QDB) (*qdb.ShardingRule, error) {
-	/*
-	* Create set to search column names in `shardingEntries`
-	 */
-	checkSet := make(map[string]struct{}, len(shardingEntries))
-
-	for _, k := range shardingEntries {
-		checkSet[k] = struct{}{}
-	}
-
-	var mrule *qdb.ShardingRule
-
-	mrule = nil
-
-	err := db.MatchShardingRules(ctx, func(rules map[string]*qdb.ShardingRule) error {
-		for _, rule := range rules {
-			// Simple optimisation
-			if len(rule.Entries) > len(shardingEntries) {
-				continue
-			}
-
-			if rule.TableName != "" && rule.TableName != relationName {
-				continue
-			}
-
-			allColumnsMatched := true
-
-			for _, v := range rule.Entries {
-				if _, ok := checkSet[v.Column]; !ok {
-					allColumnsMatched = false
-					break
-				}
-			}
-
-			spqrlog.Zero.Debug().Str("rname", rule.ID).Bool("matched", allColumnsMatched).Msg("matching rule")
-
-			/* In this rule, we successfully matched all columns */
-			if allColumnsMatched {
-				mrule = rule
-				return ErrRuleIntersect
-			}
-		}
-
-		return nil
-	})
-
-	return mrule, err
 }
