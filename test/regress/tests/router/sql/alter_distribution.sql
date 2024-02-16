@@ -43,10 +43,6 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 
 SELECT * FROM yy WHERE w_id=5;
 
-SET __spqr__distribution = ds2;
-
-SELECT * FROM xx WHERE w_id=5;
-
 DROP TABLE xx;
 DROP TABLE yy;
 
