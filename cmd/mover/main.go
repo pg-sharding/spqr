@@ -4,13 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"io"
 	"os"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -23,7 +23,7 @@ type MoveTableRes struct {
 var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
 
-// TODO: deprecate this API, use IDS
+var krId = flag.String("key-range", "", "ID of key range to move")
 var lb = flag.String("lower-bound", "", "")
 var shkey = flag.String("sharding-key", "", "")
 var etcdAddr = flag.String("etcd-addr", "", "")
@@ -43,7 +43,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 // TODO : unit tests
-func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, key *shrule.ShardingRule) error {
+func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -66,32 +66,9 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *k
 		}
 	}(txFrom)
 
-	rows, err := txFrom.Query(ctx, `
-SELECT table_schema, table_name
-FROM information_schema.columns
-WHERE column_name=$1;
-`, key.Entries()[0].Column)
-	if err != nil {
-		return err
-	}
-	var ress []MoveTableRes
-
-	for rows.Next() {
-		var curres MoveTableRes
-		err = rows.Scan(&curres.TableSchema, &curres.TableName)
-		if err != nil {
-			return err
-		}
-
-		ress = append(ress, curres)
-	}
-
-	rows.Close()
-
-	for _, v := range ress {
+	for _, rel := range rels {
 		spqrlog.Zero.Debug().
-			Str("schema", v.TableSchema).
-			Str("table", v.TableName).
+			Str("relation", rel.Name).
 			Msg("moving table")
 
 		r, w, err := os.Pipe()
@@ -108,11 +85,11 @@ WHERE column_name=$1;
 		// TODO: support multi-column move in SPQR2
 		if nextKeyRange == nil {
 
-			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s returning *) to stdout", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound)
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound)
 		} else {
-			qry = fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s < %s returning *) to stdout", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s and %s < %s returning *) to stdout", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
 		}
 
 		spqrlog.Zero.Debug().
@@ -129,7 +106,7 @@ WHERE column_name=$1;
 		}
 
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
-			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
+			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
 		if err != nil {
 			spqrlog.Zero.Debug().Msg("copy in failed")
 			return err
@@ -145,6 +122,11 @@ WHERE column_name=$1;
 
 func main() {
 	flag.Parse()
+
+	if *lb != "" {
+		spqrlog.Zero.Error().Msg("using lower-bound is discontinued, use key-range-id instead")
+		return
+	}
 
 	ctx := context.Background()
 
@@ -166,25 +148,20 @@ func main() {
 		return
 	}
 
-	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+	qdbKr, err := db.GetKeyRange(ctx, *krId)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
+	}
+	keyRange := kr.KeyRangeFromDB(qdbKr)
+
+	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
-	var keyRange, nextKeyRange *kr.KeyRange
-
-	krs, err := db.ListAllKeyRanges(ctx)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return
-	}
-
-	for _, currkr := range krs {
-		if kr.CmpRangesEqual(currkr.LowerBound, []byte(*lb)) {
-			keyRange = kr.KeyRangeFromDB(currkr)
-		}
-	}
+	var nextKeyRange *kr.KeyRange
 
 	for _, currkr := range krs {
 		if kr.CmpRangesLess(keyRange.LowerBound, currkr.LowerBound) {
@@ -194,14 +171,15 @@ func main() {
 		}
 	}
 
-	if keyRange == nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to resolve key range by its bound")
+	dbDs, err := db.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	if err := moveData(ctx,
 		connFrom, connTo, keyRange, nextKeyRange,
-		shrule.ShardingRuleFromDB(shRule)); err != nil {
+		distributions.DistributionFromDB(dbDs).Relations); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

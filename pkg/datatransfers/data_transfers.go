@@ -3,6 +3,7 @@ package datatransfers
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"io"
 	"os"
 	"strings"
@@ -77,13 +78,13 @@ func LoadConfig(path string) error {
 }
 
 /*
-Performs physical key-range move from one datashard to another.
-It is assumed that passed key range is already locked on every online sqpr-router.
+MoveKeys performs physical key-range move from one datashard to another.
+It is assumed that passed key range is already locked on every online spqr-router.
 
 Steps:
   - traverse pg_class to resolve all relations that matches given sharding rules
   - create sql copy and delete queries to move data tuples.
-  - prepare and commit distributed move transation
+  - prepare and commit distributed move transaction
 */
 func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr []*shrule.ShardingRule, db qdb.XQDB) error {
 	if shards == nil {
@@ -117,7 +118,13 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 
 	var nextKeyRange *kr.KeyRange
 	moveKeyRange := kr.KeyRangeFromDB(&keyr)
-	if krs, err := db.ListAllKeyRanges(ctx); err != nil {
+	qdbDs, err := db.GetDistribution(ctx, keyr.DistributionId)
+	if err != nil {
+		return err
+	}
+	ds := distributions.DistributionFromDB(qdbDs)
+
+	if krs, err := db.ListKeyRanges(ctx, moveKeyRange.Distribution); err != nil {
 		return err
 	} else {
 		for _, currkr := range krs {
@@ -129,11 +136,9 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, shr [
 		}
 	}
 
-	for _, r := range shr {
-		err = moveData(ctx, moveKeyRange, nextKeyRange, r, txTo, txFrom)
-		if err != nil {
-			return err
-		}
+	err = moveData(ctx, moveKeyRange, nextKeyRange, ds.Relations, txTo, txFrom)
+	if err != nil {
+		return err
 	}
 
 	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txTo, txFrom, db)
@@ -252,29 +257,8 @@ func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 }
 
 // TODO enhance for multi-column sharding rules
-func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, key *shrule.ShardingRule, txTo, txFrom pgx.Tx) error {
-	rows, err := txFrom.Query(ctx, `
-SELECT table_schema, table_name
-FROM information_schema.columns
-WHERE column_name=$1;
-`, key.Entries()[0].Column)
-	if err != nil {
-		return err
-	}
-	var ress []MoveTableRes
-	for rows.Next() {
-		var curres MoveTableRes
-		err = rows.Scan(&curres.TableSchema, &curres.TableName)
-		if err != nil {
-			return err
-		}
-
-		ress = append(ress, curres)
-	}
-
-	rows.Close()
-
-	for _, v := range ress {
+func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation, txTo, txFrom pgx.Tx) error {
+	for _, rel := range rels {
 		r, w, err := os.Pipe()
 		if err != nil {
 			return err
@@ -286,13 +270,12 @@ WHERE column_name=$1;
 
 		// This code does not work for multi-column key ranges.
 		var qry string
-		// TODO: refac
 		if nextKeyRange == nil {
-			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound)
+			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s RETURNING *) TO STDOUT", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound)
 		} else {
-			qry = fmt.Sprintf("COPY (DELETE FROM %s.%s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", v.TableSchema, v.TableName,
-				key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, nextKeyRange.LowerBound)
+			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
 		}
 
 		go func() {
@@ -306,7 +289,7 @@ WHERE column_name=$1;
 			}
 		}()
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
-			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
+			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("copy in failed")
 			return err
