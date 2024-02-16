@@ -609,20 +609,11 @@ var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 // TODO : unit tests
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable, meta *RoutingMetadataContext) error {
-
-	var entries []string
-	/* Collect sharding rule entries list from create statement */
-	for _, elt := range node.TableElts {
-		// hashing function name unneeded for sharding rules matching purpose
-		entries = append(entries, elt.ColName)
-	}
-
 	// XXX: TBD: check also all columns
 	if _, err := qr.Mgr().QDB().GetRelationDistribution(ctx, node.TableName); err != nil {
 		return fmt.Errorf("create table stmt ignored: no distributions for this relation found")
 	}
-
-	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
+	return nil
 }
 
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
