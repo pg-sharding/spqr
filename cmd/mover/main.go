@@ -128,6 +128,10 @@ func main() {
 		return
 	}
 
+	if *shkey != "" {
+		spqrlog.Zero.Warn().Msg("setting sharding-rule has no effect")
+	}
+
 	ctx := context.Background()
 
 	connFrom, err := pgx.Connect(ctx, *fromShardConnst)
