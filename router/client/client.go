@@ -1017,8 +1017,6 @@ func (f FakeClient) DistributionIsDefault() bool {
 	return true
 }
 
-func (c FakeClient) SetDS(_ string) {}
-
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
@@ -1081,8 +1079,6 @@ func (c NoopClient) Distribution() string {
 func (c NoopClient) DistributionIsDefault() bool {
 	return true
 }
-
-func (c NoopClient) SetDS(_ string) {}
 
 func (c NoopClient) RAddr() string {
 	return c.rAddr
