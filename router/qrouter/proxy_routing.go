@@ -40,44 +40,27 @@ type RoutingMetadataContext struct {
 	// and
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
-	rels  map[RelationFQN][]string
+	rels  map[RelationFQN]struct{}
 	exprs map[RelationFQN]map[string]string
 
 	unparsed_columns map[string]struct{}
-
-	offsets []int
 
 	// needed to parse
 	// SELECT * FROM t1 a where a.i = 1
 	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
 	tableAliases map[string]RelationFQN
 
-	// For
-	// INSERT INTO x VALUES(**)
-	// routing
-	ValuesLists    []lyx.Node
-	InsertStmtCols []string
-	InsertStmtRel  string
-
-	// For
-	// INSERT INTO x (...) SELECT 7
-	TargetList []lyx.Node
-
-	distribution string
-
 	params            [][]byte
 	paramsFormatCodes []int16
 	// TODO: include client ops and metadata here
 }
 
-func NewRoutingMetadataContext(ds string, params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
-
+func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
 	meta := &RoutingMetadataContext{
-		rels:             map[RelationFQN][]string{},
+		rels:             map[RelationFQN]struct{}{},
 		tableAliases:     map[string]RelationFQN{},
 		exprs:            map[RelationFQN]map[string]string{},
 		unparsed_columns: map[string]struct{}{},
-		distribution:     ds,
 		params:           params,
 	}
 	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
@@ -104,7 +87,7 @@ func NewRoutingMetadataContext(ds string, params [][]byte, paramsFormatCodes []i
 
 // TODO : unit tests
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr string) {
-	meta.rels[resolvedRelation] = append(meta.rels[resolvedRelation], colname)
+	meta.rels[resolvedRelation] = struct{}{}
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
 	}
@@ -184,12 +167,36 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key stri
 	return nil, FailedToFindKeyRange
 }
 
+func (qr *ProxyQrouter) RecordDistributionKeyColumnValueOnRFQN(meta *RoutingMetadataContext, resolvedRelation RelationFQN, colname, value string) {
+
+	/* do not process non-distributed relations or columns not from relation distribution key */
+	if ds, err := qr.Mgr().GetRelationDistribution(context.TODO(), resolvedRelation.RelationName); err != nil {
+		return
+	} else {
+		// TODO: optimize
+		ok := false
+		for _, c := range ds.Relations[resolvedRelation.RelationName].DistributionKey {
+			if c.Column == colname {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			// some junk column
+			return
+		}
+	}
+
+	// will not work not ints
+	meta.RecordConstExpr(resolvedRelation, colname, value)
+}
+
 // TODO : unit tests
-func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext, krs []*kr.KeyRange, hf hashfunction.HashFunctionType) (*routingstate.DataShardRoute, error) {
+func (qr *ProxyQrouter) RecordDistributionKeyExprOnRFQN(meta *RoutingMetadataContext, resolvedRelation RelationFQN, colname string, expr lyx.Node) error {
 	switch e := expr.(type) {
 	case *lyx.ParamRef:
 		if e.Number > len(meta.params) {
-			return nil, ComplexQuery
+			return ComplexQuery
 		}
 
 		// switch parameter format code and convert into proper representation
@@ -207,36 +214,21 @@ func (qr *ProxyQrouter) RouteKeyWithRanges(ctx context.Context, expr lyx.Node, m
 			// ??? protoc violation
 		}
 
-		hashedKey, err := hashfunction.ApplyHashFunction(routeParam, hf)
-		if err != nil {
-			return nil, err
-		}
-		spqrlog.Zero.Debug().Str("key", string(routeParam)).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-
-		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
+		qr.RecordDistributionKeyColumnValueOnRFQN(meta, resolvedRelation, colname, string(routeParam))
+		return nil
 	case *lyx.AExprSConst:
-		hashedKey, err := hashfunction.ApplyHashFunction([]byte(e.Value), hf)
-		if err != nil {
-			return nil, err
-		}
-
-		spqrlog.Zero.Debug().Str("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
+		qr.RecordDistributionKeyColumnValueOnRFQN(meta, resolvedRelation, colname, string(e.Value))
+		return nil
 	case *lyx.AExprIConst:
 		val := fmt.Sprintf("%d", e.Value)
-		hashedKey, err := hashfunction.ApplyHashFunction([]byte(val), hf)
-		if err != nil {
-			return nil, err
-		}
-
-		spqrlog.Zero.Debug().Int("key", e.Value).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
-		return qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
+		qr.RecordDistributionKeyColumnValueOnRFQN(meta, resolvedRelation, colname, string(val))
+		return nil
 	default:
-		return nil, ComplexQuery
+		return ComplexQuery
 	}
 }
 
-func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, alias, colname, value string) {
+func (qr *ProxyQrouter) RecordDistributionKeyColumnValue(meta *RoutingMetadataContext, alias, colname, value string) {
 
 	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 	if err != nil {
@@ -245,26 +237,7 @@ func (qr *ProxyQrouter) RecordShardingColumnValue(meta *RoutingMetadataContext, 
 		return
 	}
 
-	/* do not process non-distributed relations or columns not from relation distribution key */
-	if ds, err := qr.Mgr().GetRelationDistribution(context.TODO(), resolvedRelation.RelationName); err != nil {
-		return
-	} else {
-		// TODO: optimize
-		ok := false
-		for _, de := range ds.Relations[resolvedRelation.RelationName].DistributionKey {
-			if de.Column == colname {
-				ok = true
-				break
-			}
-		}
-		if !ok {
-			// some junk column
-			return
-		}
-	}
-
-	// will not work not ints
-	meta.RecordConstExpr(resolvedRelation, colname, value)
+	qr.RecordDistributionKeyColumnValueOnRFQN(meta, resolvedRelation, colname, value)
 }
 
 // TODO : unit tests
@@ -290,27 +263,27 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
 					if rght.Number <= len(meta.params) {
-						qr.RecordShardingColumnValue(meta, alias, colname, string(meta.params[rght.Number-1]))
+						qr.RecordDistributionKeyColumnValue(meta, alias, colname, string(meta.params[rght.Number-1]))
 					}
 					// else  error out?
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
-					qr.RecordShardingColumnValue(meta, alias, colname, rght.Value)
+					qr.RecordDistributionKeyColumnValue(meta, alias, colname, rght.Value)
 				case *lyx.AExprIConst:
 					// TBD: postpone routing from here to root of parsing tree
 					// maybe expimely inefficient. Will be fixed in SPQR-2.0
-					qr.RecordShardingColumnValue(meta, alias, colname, fmt.Sprintf("%d", rght.Value))
+					qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", rght.Value))
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
 						case *lyx.AExprSConst:
 							// TBD: postpone routing from here to root of parsing tree
-							qr.RecordShardingColumnValue(meta, alias, colname, bexpr.Value)
+							qr.RecordDistributionKeyColumnValue(meta, alias, colname, bexpr.Value)
 						case *lyx.AExprIConst:
 							// TBD: postpone routing from here to root of parsing tree
 							// maybe expimely inefficient. Will be fixed in SPQR-2.0
-							qr.RecordShardingColumnValue(meta, alias, colname, fmt.Sprintf("%d", bexpr.Value))
+							qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", bexpr.Value))
 						}
 					}
 				case *lyx.FuncApplication:
@@ -379,7 +352,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
-		meta.ValuesLists = s.Values
+		/* random route */
 		return nil
 	}
 
@@ -396,7 +369,7 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 	case *lyx.RangeVar:
 		rqdn := RelationFQNFromRangeRangeVar(q)
 		if _, ok := meta.rels[rqdn]; !ok {
-			meta.rels[rqdn] = nil
+			meta.rels[rqdn] = struct{}{}
 		}
 		if q.Alias != "" {
 			/* remember table alias */
@@ -450,116 +423,53 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
-// TODO : unit tests
-func (qr *ProxyQrouter) getRelations(qstmt lyx.Node) (StatementRelation, error) {
-	switch stmt := qstmt.(type) {
+func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert) ([]int, RelationFQN, bool, error) {
+	insertCols := stmt.Columns
 
-	/* TDB: comments? */
-
-	case *lyx.VariableSetStmt:
-		/* TBD: maybe skip all set stmts? */
-		/*
-		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
-		 */
-		return &AnyRelation{}, nil
-
-	case *lyx.VariableShowStmt:
-		/*
-		 if we want to reroute to execute this stmt, route to random shard
-		 XXX: support intelegent show support, without direct query dispatch
-		*/
-		return &AnyRelation{}, nil
-
-	// XXX: need alter table which renames sharding column to non-sharding column check
-	case *lyx.CreateTable:
-		/*
-		 * Disallow to create table which does not contain any sharding column
-		 */
-		return &AnyRelation{}, nil
-	case *lyx.Vacuum:
-		/* Send vacuum to each shard */
-		return &AnyRelation{}, nil
-	case *lyx.Analyze:
-		/* Send vacuum to each shard */
-		return &AnyRelation{}, nil
-	case *lyx.Cluster:
-		/* Send vacuum to each shard */
-		return &AnyRelation{}, nil
-	case *lyx.Index:
-		/*
-		 * Disallow to index on table which does not contain any sharding column
-		 */
-		// XXX: doit
-		return &AnyRelation{}, nil
-
-	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
-		// support simple ddl commands, route them to every chard
-		// this is not fully ACID (not atomic at least)
-		return &AnyRelation{}, nil
-		/*
-			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
-				 // forbid under separate setting
-				 return MultiMatchState{}, nil
-		*/
-	case *lyx.CreateRole, *lyx.CreateDatabase:
-		// forbid under separate setting
-		return &AnyRelation{}, nil
-	case *lyx.Insert:
-		switch q := stmt.TableRef.(type) {
-		case *lyx.RangeVar:
-
-			return &SpecificRelation{Name: q.RelationName}, nil
-		default:
-			return &AnyRelation{}, ComplexQuery
-		}
-	case *lyx.Select:
-		if stmt.FromClause == nil || len(stmt.FromClause) == 0 {
-			return &AnyRelation{}, nil
-		}
-
-		// Get relation names out of FROM clause
-		return qr.getRelationFromNode(stmt.FromClause[0])
-	case *lyx.Delete:
-		return qr.getRelationFromNode(stmt.TableRef)
-	case *lyx.Update:
-		return qr.getRelationFromNode(stmt.TableRef)
-	case *lyx.Copy:
-		return qr.getRelationFromNode(stmt.TableRef)
-	default:
-		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
-	}
-	return nil, nil
-}
-
-// TODO : unit tests
-// get all relations out of FROM clause
-func (qr *ProxyQrouter) getRelationFromNode(node lyx.FromClauseNode) (*RelationList, error) {
 	spqrlog.Zero.Debug().
-		Type("node-type", node).
-		Msg("getting relation name out of from node")
-	switch q := node.(type) {
-	case *lyx.RangeVar:
-		if q.SchemaName == "information_schema" {
-			return &RelationList{Relations: nil}, nil
-		}
-		return &RelationList{Relations: []string{q.RelationName}}, nil
-	case *lyx.JoinExpr:
-		var rRel, lRel *RelationList
-		var err error
-		if rRel, err = qr.getRelationFromNode(q.Rarg); err != nil {
-			return nil, err
-		}
-		if lRel, err = qr.getRelationFromNode(q.Larg); err != nil {
-			return nil, err
-		}
-		lRel.Relations = append(lRel.Relations, rRel.Relations...)
-		return lRel, nil
-	default:
-		// other cases to consider
-		// lateral join, natual, etc
-	}
+		Strs("insert columns", insertCols).
+		Msg("deparsed insert statement columns")
 
-	return nil, nil
+	// compute matched sharding rule offsets
+	offsets := make([]int, 0)
+	var rfqn RelationFQN
+
+	switch q := stmt.TableRef.(type) {
+	case *lyx.RangeVar:
+		rfqn = RelationFQNFromRangeRangeVar(q)
+
+		var ds *qdb.Distribution
+		var err error
+
+		if ds, err = qr.Mgr().QDB().GetRelationDistribution(ctx, rfqn.RelationName); err != nil {
+			return nil, RelationFQN{}, false, err
+		}
+
+		insertColsPos := map[string]int{}
+		for i, c := range insertCols {
+			insertColsPos[c] = i
+		}
+
+		distributionKey := ds.Relations[rfqn.RelationName].DistributionKey
+		// TODO: check mapping by rules with multiple columns
+		for _, col := range distributionKey {
+			if val, ok := insertColsPos[col.Column]; !ok {
+				/* Do not return err here.
+				* This particulat insert stmt is un-routable, but still, give it a try
+				* and continue parsing.
+				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
+				* we have no insert cols specified, but still able to route on select
+				 */
+				return nil, RelationFQN{}, false, nil
+			} else {
+				offsets = append(offsets, val)
+			}
+		}
+
+		return offsets, rfqn, true, nil
+	default:
+		return nil, RelationFQN{}, false, ComplexQuery
+	}
 }
 
 // TODO : unit tests
@@ -584,21 +494,10 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		return qr.routeByClause(ctx, clause, meta)
 
 	case *lyx.Insert:
-		cols := stmt.Columns
-
-		spqrlog.Zero.Debug().
-			Strs("statements", cols).
-			Msg("deparsed insert statement columns")
-
-		meta.InsertStmtCols = cols
-		switch q := stmt.TableRef.(type) {
-		case *lyx.RangeVar:
-			meta.InsertStmtRel = q.RelationName
-		default:
-			return ComplexQuery
-		}
-
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
+
+			insertCols := stmt.Columns
+
 			switch subS := selectStmt.(type) {
 			case *lyx.Select:
 				spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
@@ -606,9 +505,63 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				/* try target list */
 				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
 				/* this target list for some insert (...) sharding column */
-				meta.TargetList = selectStmt.(*lyx.Select).TargetList
+
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				if err != nil {
+					return err
+				}
+				if !success {
+					break
+				}
+
+				targetList := subS.TargetList
+				/* record all values from tl */
+
+				tlUsable := true
+				for i := range offsets {
+					if offsets[i] >= len(targetList) {
+						tlUsable = false
+						break
+					} else {
+						switch targetList[offsets[i]].(type) {
+						case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+						default:
+							tlUsable = false
+						}
+					}
+				}
+
+				if tlUsable {
+					for i := range offsets {
+						_ = qr.RecordDistributionKeyExprOnRFQN(meta, rfqn, insertCols[offsets[i]], targetList[offsets[i]])
+					}
+				}
+
 			case *lyx.ValueClause:
-				meta.ValuesLists = subS.Values
+				valList := subS.Values
+				/* record all values from values scan */
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				if err != nil {
+					return err
+				}
+				if !success {
+					break
+				}
+
+				vlUsable := true
+				for i := range offsets {
+					if offsets[i] >= len(valList) {
+						vlUsable = false
+						break
+					}
+				}
+
+				if vlUsable {
+					for i := range offsets {
+						_ = qr.RecordDistributionKeyExprOnRFQN(meta, rfqn, insertCols[offsets[i]], valList[offsets[i]])
+					}
+				}
+
 			}
 		}
 
@@ -691,43 +644,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	* Currently, deparse only first query from multi-statement query msg (Enhance)
 	 */
 
-	queryDistribution := ""
-	if sph.DistributionIsDefault() {
-		rel, err := qr.getRelations(stmt)
-		if err == nil && rel != nil {
-			switch t := rel.(type) {
-			case *SpecificRelation:
-				if relDistribution, err := qr.mgr.GetRelationDistribution(ctx, t.Name); err != nil {
-					return nil, err
-				} else {
-					queryDistribution = relDistribution.Id
-				}
-			case *RelationList:
-				var distribution string
-				for _, relName := range t.Relations {
-					if relDistribution, err := qr.mgr.GetRelationDistribution(ctx, relName); err != nil {
-						return nil, err
-					} else {
-						if distribution != "" && distribution != relDistribution.Id {
-							return nil, fmt.Errorf("mismatching distributions %s and %s", distribution, relDistribution.Id)
-						}
-						distribution = relDistribution.Id
-					}
-				}
-				queryDistribution = distribution
-			case *AnyRelation:
-				break
-			default:
-				return nil, fmt.Errorf("unknown statement relation type %T", rel)
-			}
-		}
-	} else {
-		queryDistribution = sph.Distribution()
-	}
-
 	/* TODO: delay this until step 2. */
 
-	meta := NewRoutingMetadataContext(queryDistribution, sph.BindParams(), sph.BindParamFormatCodes())
+	meta := NewRoutingMetadataContext(sph.BindParams(), sph.BindParamFormatCodes())
 
 	tsa := config.TargetSessionAttrsAny
 
@@ -900,8 +819,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	var route routingstate.RoutingState
 	route = nil
 	var route_err error
-	for rfqn, cols := range meta.rels {
-
+	for rfqn := range meta.rels {
 		// TODO: check by whole RFQN
 		ds, err := qr.mgr.GetRelationDistribution(ctx, rfqn.RelationName)
 		if err != nil {
@@ -913,117 +831,67 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 
-		if rule, err := MatchShardingRule(ctx, rfqn.RelationName, cols, qr.mgr.QDB()); err != nil {
-			for _, col := range cols {
-				// TODO: multi-column hash functions
-				hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
-					continue
-				}
+		distrKey := ds.Relations[rfqn.RelationName].DistributionKey
 
-				hashedKey, err := hashfunction.ApplyHashFunction([]byte(meta.exprs[rfqn][col]), hf)
+		ok := true
 
-				spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+		var hashedKey []byte
 
-				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-					continue
-				}
+		// TODO: multi-column routing. Thisworks only for one-dim routing
+		for i := 0; i < len(distrKey); i++ {
+			hf, err := hashfunction.HashFunctionByName(distrKey[i].HashFunction)
+			if err != nil {
+				ok = false
+				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
+				break
+			}
 
-				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
-				if err != nil {
-					route_err = err
-					spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
-					continue
-				}
+			col := distrKey[i].Column
 
-				spqrlog.Zero.Debug().
-					Interface("currroute", currroute).
-					Str("table", rfqn.RelationName).
-					Strs("columns", cols).
-					Msg("calculated route for table/cols")
+			val, valOk := meta.exprs[rfqn][col]
+			if !valOk {
+				ok = false
+				break
+			}
 
-				route = routingstate.Combine(route, routingstate.ShardMatchState{
-					Route:              currroute,
-					TargetSessionAttrs: tsa,
-				})
+			hashedKey, err = hashfunction.ApplyHashFunction([]byte(val), hf)
+
+			spqrlog.Zero.Debug().Str("key", meta.exprs[rfqn][col]).Str("hashed key", string(hashedKey)).Msg("applying hash function on key")
+
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
+				ok = false
+				break
 			}
 		}
+
+		if !ok {
+			// skip this relation
+			continue
+		}
+
+		currroute, err := qr.DeparseKeyWithRangesInternal(ctx, string(hashedKey), krs)
+		if err != nil {
+			route_err = err
+			spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+			continue
+		}
+
+		spqrlog.Zero.Debug().
+			Interface("currroute", currroute).
+			Str("table", rfqn.RelationName).
+			Msg("calculated route for table/cols")
+
+		route = routingstate.Combine(route, routingstate.ShardMatchState{
+			Route:              currroute,
+			TargetSessionAttrs: tsa,
+		})
+
 	}
 	if route == nil && route_err != nil {
 		return nil, route_err
 	}
 
-	spqrlog.Zero.Debug().Interface("deparsed-values-list", meta.ValuesLists)
-	spqrlog.Zero.Debug().Interface("insertStmtCols", meta.InsertStmtCols)
-
-	if len(meta.InsertStmtCols) != 0 {
-		if rule, err := MatchShardingRule(ctx, meta.InsertStmtRel, meta.InsertStmtCols, qr.mgr.QDB()); err != nil {
-			// compute matched sharding rule offsets
-			offsets := make([]int, 0)
-			j := 0
-			// TODO: check mapping by rules with multiple columns
-			for i, s := range meta.InsertStmtCols {
-				if j == len(rule.Entries) {
-					break
-				}
-				if s == rule.Entries[j].Column {
-					offsets = append(offsets, i)
-					j++
-				}
-			}
-
-			ds, err := qr.mgr.GetRelationDistribution(ctx, meta.InsertStmtRel)
-			if err != nil {
-				return nil, err
-			}
-			krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
-			if err != nil {
-				return nil, err
-			}
-
-			hf, err := hashfunction.HashFunctionByName(rule.Entries[0].HashFunction)
-			if err != nil {
-				/* failed to resolve hash function */
-				return nil, err
-			}
-
-			meta.offsets = offsets
-			routed := false
-			if len(meta.offsets) != 0 && len(meta.TargetList) > meta.offsets[0] {
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.TargetList[meta.offsets[0]], meta, krs, hf)
-				if err == nil {
-					/* else failed, ignore */
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
-					routed = true
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
-				}
-			}
-
-			if len(meta.offsets) != 0 && len(meta.ValuesLists) > meta.offsets[0] && !routed && meta.ValuesLists != nil {
-				// only first value from value list
-
-				currroute, err := qr.RouteKeyWithRanges(ctx, meta.ValuesLists[meta.offsets[0]], meta, krs, hf)
-				if err == nil { /* else failed, ignore */
-					spqrlog.Zero.Debug().
-						Interface("current-route", currroute).
-						Msg("deparsed route from current route")
-
-					route = routingstate.Combine(route, routingstate.ShardMatchState{
-						Route:              currroute,
-						TargetSessionAttrs: tsa,
-					})
-				}
-			}
-		}
-	}
 	// set up this varibale if not yet
 	if route == nil {
 		route = routingstate.MultiMatchState{}
