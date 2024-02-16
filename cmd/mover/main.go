@@ -15,11 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type MoveTableRes struct {
-	TableSchema string `db:"table_schema"`
-	TableName   string `db:"table_name"`
-}
-
 var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
 
