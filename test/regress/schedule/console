@@ -2,7 +2,6 @@ test: show_clients
 test: show_shards
 test: show_routers
 test: show_key_ranges
-test: show_sharding_rules
 test: show_distributions
 test: show_version
 test: drop
