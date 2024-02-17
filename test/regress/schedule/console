@@ -10,3 +10,4 @@ test: add
 test: hash
 test: teardown
 test: delete_distribution
+test: sharding_rules
