@@ -16,7 +16,6 @@ Feature: Coordinator test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
-    CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
@@ -131,21 +130,6 @@ Feature: Coordinator test
     """
     When I run SQL on host "router-admin"
     """
-    SHOW sharding_rules
-    """
-    Then SQL result should match json_exactly
-    """
-    [{
-      "Columns":"id",
-      "Distribution ID":"ds1",
-      "Hash Function":"x->x",
-      "Sharding Rule ID":"r1",
-      "Table Name":"*"
-    }]
-    """
-
-    When I run SQL on host "router-admin"
-    """
     SHOW key_ranges
     """
     Then SQL result should match json_exactly
@@ -172,16 +156,6 @@ Feature: Coordinator test
     Then SQL error on host "coordinator" should match regexp
     """
     key range krid1 already present in qdb
-    """
-
-  Scenario: Add sharding rule with the same id fails
-    When I run SQL on host "coordinator"
-    """
-    CREATE SHARDING RULE r1 COLUMN idx FOR DISTRIBUTION ds1
-    """
-    Then SQL error on host "coordinator" should match regexp
-    """
-    sharding rule r1 already present in qdb
     """
 
   Scenario: Lock/Unlock key range works

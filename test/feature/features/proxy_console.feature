@@ -28,12 +28,12 @@ Feature: Proxy console
         """
         Then command return code should be "0"
 
+# TODO: check distributions in this test
     Scenario: Add key_range/sharding_rule is executed in coordinator
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
         """
         Then command return code should be "0"
 
@@ -53,20 +53,6 @@ Feature: Proxy console
             "Shard ID":"sh1"
         }]
         """
-        When I run SQL on host "router-admin"
-        """
-        SHOW sharding_rules
-        """
-        Then SQL result should match json_exactly
-        """
-        [{
-            "Columns":"id",
-            "Distribution ID":"ds1",
-            "Hash Function":"x->x",
-            "Sharding Rule ID":"r1",
-            "Table Name":"*"
-        }]
-        """
 
         #
         # Check on second router
@@ -84,27 +70,12 @@ Feature: Proxy console
             "Shard ID":"sh1"
         }]
         """
-        When I run SQL on host "router2-admin"
-        """
-        SHOW sharding_rules
-        """
-        Then SQL result should match json_exactly
-        """
-        [{
-            "Columns":"id",
-            "Distribution ID":"ds1",
-            "Hash Function":"x->x",
-            "Sharding Rule ID":"r1",
-            "Table Name":"*"
-        }]
-        """
 
     Scenario: Lock/Unlock key_range are executed in coordinator
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
         ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
         """
         Then command return code should be "0"
@@ -195,7 +166,6 @@ Feature: Proxy console
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
         CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1  FOR DISTRIBUTION ds1;
         ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
         """
@@ -234,10 +204,8 @@ Feature: Proxy console
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE old_krid FROM 0 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-        CREATE SHARDING RULE old_rule COLUMN id FOR DISTRIBUTION ds1;
         UNREGISTER ROUTER r1;
         CREATE KEY RANGE new_krid FROM 100 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        CREATE SHARDING RULE new_rule COLUMN xid FOR DISTRIBUTION ds1;
         """
         Then command return code should be "0"
 
@@ -252,21 +220,6 @@ Feature: Proxy console
             "Distribution ID":"ds1",
             "Lower bound":"0",
             "Shard ID":"sh2"
-        }]
-        """
-
-        When I run SQL on host "router-admin"
-        """
-        SHOW sharding_rules
-        """
-        Then SQL result should match json_exactly
-        """
-        [{
-            "Columns":"id",
-            "Distribution ID":"ds1",
-            "Hash Function":"x->x",
-            "Sharding Rule ID":"old_rule",
-            "Table Name":"*"
         }]
         """
 
