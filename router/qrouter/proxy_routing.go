@@ -98,6 +98,9 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN
 
 // TODO : unit tests
 func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (RelationFQN, error) {
+	if _, ok := meta.rels[RelationFQN{RelationName: alias}]; ok {
+		return RelationFQN{RelationName: alias}, nil
+	}
 	if resolvedRelation, ok := meta.tableAliases[alias]; ok {
 		// TBD: postpone routing from here to root of parsing tree
 		return resolvedRelation, nil

@@ -1002,34 +1002,8 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	}
 	defer cc.Close()
 
-	// Configure sharding rules.
-	spqrlog.Zero.Debug().Msg("qdb coordinator: configure sharding rules")
-	shardingRules, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return err
-	}
-
-	var protoShardingRules []*routerproto.ShardingRule
-	shClient := routerproto.NewShardingRulesServiceClient(cc)
-	krClient := routerproto.NewKeyRangeServiceClient(cc)
-	for _, shRule := range shardingRules {
-		protoShardingRules = append(protoShardingRules,
-			shrule.ShardingRuleToProto(shrule.ShardingRuleFromDB(shRule)))
-	}
-
-	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
-		Rules: protoShardingRules,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("add sharding rules response")
-
 	// Configure key ranges.
+	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {

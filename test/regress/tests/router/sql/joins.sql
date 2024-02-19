@@ -25,6 +25,7 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 
 DROP TABLE xjoin;
