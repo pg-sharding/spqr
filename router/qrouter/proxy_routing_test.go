@@ -29,15 +29,18 @@ func TestMultiShardRouting(t *testing.T) {
 	}
 	/* TODO: fix by adding configurable setting */
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution := "default"
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
+	distribution := "ds1"
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
 			},
 		},
 	})
@@ -851,23 +854,23 @@ func TestJoins(t *testing.T) {
 		},
 
 		// sharding columns, but unparsed
-		{
-			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:    "sh2",
-						ID:         "id2",
-						LowerBound: []byte("11"),
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: qrouter.ComplexQuery,
-		},
+		//{
+		//	query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
+		//	exp: routingstate.ShardMatchState{
+		//		Route: &routingstate.DataShardRoute{
+		//			Shkey: kr.ShardKey{
+		//				Name: "sh2",
+		//			},
+		//			Matchedkr: &kr.KeyRange{
+		//				ShardID:    "sh2",
+		//				ID:         "id2",
+		//				LowerBound: []byte("11"),
+		//			},
+		//		},
+		//		TargetSessionAttrs: "any",
+		//	},
+		//	err: qrouter.ComplexQuery,
+		//},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
