@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -606,20 +607,36 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 var ParseError = fmt.Errorf("parsing stmt error")
 var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
-// TODO : unit tests
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
+// TODO : unit tests
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable, meta *RoutingMetadataContext) error {
+	ds, err := qr.mgr.GetRelationDistribution(ctx, node.TableName)
+	if err != nil {
+		return err
+	}
 
-	var entries []string
+	entries := make(map[string]struct{})
 	/* Collect sharding rule entries list from create statement */
 	for _, elt := range node.TableElts {
 		// hashing function name unneeded for sharding rules matching purpose
-		entries = append(entries, elt.ColName)
+		entries[elt.ColName] = struct{}{}
 	}
 
-	if _, err := MatchShardingRule(ctx, node.TableName, entries, qr.mgr.QDB()); err == ErrRuleIntersect {
+	rel, ok := ds.Relations[node.TableName]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", node.TableName, ds.Id)
+	}
+	check := true
+	for _, entry := range rel.DistributionKey {
+		if _, ok = entries[entry.Column]; !ok {
+			check = false
+			break
+		}
+	}
+	if check {
 		return nil
 	}
+
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
