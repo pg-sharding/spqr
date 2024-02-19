@@ -379,12 +379,6 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-// TODO : implement
-func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
-	return nil
-}
-
-// TODO : unit tests
 func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
 		Str("distribution", distribution).
