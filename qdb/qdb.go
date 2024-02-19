@@ -68,8 +68,6 @@ type QDB interface {
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
 
-	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
-
 	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)
 	DropDistribution(ctx context.Context, id string) error
