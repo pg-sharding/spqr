@@ -244,8 +244,8 @@ func (qr *ProxyQrouter) RecordDistributionKeyColumnValue(meta *RoutingMetadataCo
 	qr.RecordDistributionKeyColumnValueOnRFQN(meta, resolvedRelation, colname, value)
 }
 
+// routeByClause de-parses sharding column-value pair from Where clause of the query
 // TODO : unit tests
-// deparse sharding column-value pair from query Where clause
 func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *RoutingMetadataContext) error {
 
 	queue := make([]lyx.Node, 0)
@@ -849,7 +849,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 		var hashedKey []byte
 
-		// TODO: multi-column routing. Thisworks only for one-dim routing
+		// TODO: multi-column routing. This works only for one-dim routing
 		for i := 0; i < len(distrKey); i++ {
 			hf, err := hashfunction.HashFunctionByName(distrKey[i].HashFunction)
 			if err != nil {
@@ -904,7 +904,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		return nil, route_err
 	}
 
-	// set up this varibale if not yet
+	// set up this variable if not yet
 	if route == nil {
 		route = routingstate.MultiMatchState{}
 	}
