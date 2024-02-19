@@ -75,6 +75,7 @@ NOTICE: send query to shard(s) : sh2
 ----+------
  15 |   15
 (1 row)
+
 -- TODO: complex query | figure a way to route this to specific shard
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2
@@ -82,6 +83,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 ----+------
  15 |   15
 (1 row)
+
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yjoin;
