@@ -257,7 +257,31 @@ func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 
 // TODO enhance for multi-column sharding rules
 func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation, txTo, txFrom pgx.Tx) error {
+	// TODO: use whole RFQN
+	rows, err := txFrom.Query(ctx, `
+SELECT table_name
+FROM information_schema.tables;
+`)
+	if err != nil {
+		return err
+	}
+	res := make(map[string]struct{})
+	for rows.Next() {
+		var tableName string
+		err = rows.Scan(&tableName)
+		if err != nil {
+			return err
+		}
+
+		res[tableName] = struct{}{}
+	}
+
+	rows.Close()
+
 	for _, rel := range rels {
+		if _, ok := res[strings.ToLower(rel.Name)]; !ok {
+			continue
+		}
 		r, w, err := os.Pipe()
 		if err != nil {
 			return err
