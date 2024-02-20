@@ -1,0 +1,82 @@
+# Syntax
+
+Before the start, you need to configure the rules by which the router will decide which of the shards to send each request to.
+
+For this purpose, SPQR has an administrative console. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
+
+```
+➜  psql "host=localhost sslmode=disable user=news dbname=news port=7432"
+
+SQPR Router Administrator Console
+Here you can set up your own routing rules
+------------------------------------------------
+You can find the documentation here
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+psql (14.5 (Homebrew), server console)
+Type "help" to get help.
+
+news=> SHOW segments;
+list of data segments
+---------------------------
+data card with the shard01 identifier data card
+with the shard02 identifier
+(2 rows)
+```
+
+To make all things work, the router needs to know the following:
+
+- What tables are you query
+- Which columns in each table should the router look
+- The type of these columns
+- Mapping from [range of values] to [shard number]
+
+Let's create a distribution first:
+```
+➜ psql "host=localhost sslmode=disable user=news dbname=news port=7432"
+demo=> CREATE A ds1 DISTRIBUTION OF integer COLUMN TYPES;
+add a distribution kit
+----------------------------------
+created distribution with the ds1 identifier
+(1 line)
+```
+
+The next step is to specify a list of tables and columns. TODO how to make it smaller
+
+```
+demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
+               attach table               
+------------------------------------------
+ attached relation xx to distribution ds1
+(1 row)
+
+demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
+                attach table                 
+---------------------------------------------
+ attached relation xxerr to distribution ds1
+(1 row)
+```
+
+And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
+
+```
+CREATE A krid1 KEY RANGE FROM ROUTE 1 TO sh1 FOR ds1 ALLOCATION;
+add a range of keys
+--------------------------------
+a key range has been created with a binding of 1
+(1 line)
+
+CREATE A krid2 KEY RANGE FROM ROUTE 11 TO sh1 FOR ds1 ALLOCATION;
+add a range of keys
+---------------------------------
+a key range has been created with a binding of 11
+(1 row)
+
+CREATE A krid3 KEY RANGE FROM ROUTE 21 TO sh2 FOR ds1 ALLOCATION;
+add a range of keys
+---------------------------------
+a range of keys has been created with a binding of 21
+(1 line)
+``
+
+Here we go!
