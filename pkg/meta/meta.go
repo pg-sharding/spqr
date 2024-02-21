@@ -83,6 +83,12 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		if stmt.ID != "*" {
+			if ds, err := mngr.GetDistribution(ctx, stmt.ID); err != nil {
+				return err
+			} else if len(ds.Relations) != 0 && !isCascade {
+				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations autoimatically", stmt.ID)
+			}
+
 			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
 				return cli.ReportError(err)
 			}
@@ -90,12 +96,18 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		dss, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return err
+		}
 		ret := make([]string, 0)
 		if err != nil {
 			return err
 		}
 		for _, ds := range dss {
-			if stmt.ID == "*" && ds.Id != "default" {
+			if ds.Id != "default" {
+				if len(ds.Relations) != 0 && !isCascade {
+					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations autoimatically", ds.Id)
+				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
 				if err != nil {
