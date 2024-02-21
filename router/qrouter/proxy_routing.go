@@ -236,7 +236,7 @@ func (qr *ProxyQrouter) RecordDistributionKeyColumnValue(meta *RoutingMetadataCo
 
 	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 	if err != nil {
-		// failed to relove relation, skip column
+		// failed to resolve relation, skip column
 		meta.unparsed_columns[colname] = struct{}{}
 		return
 	}
