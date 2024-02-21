@@ -26,7 +26,6 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 
 SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
--- TODO: complex query | figure a way to route this to specific shard
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 
 DROP TABLE xjoin;
