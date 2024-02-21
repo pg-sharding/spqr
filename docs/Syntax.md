@@ -60,11 +60,11 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
 ```
-CREATE A krid1 KEY RANGE FROM ROUTE 1 TO sh1 FOR ds1 ALLOCATION;
-add a range of keys
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+         add key range          
 --------------------------------
-a key range has been created with a binding of 1
-(1 line)
+ created key range with bound 1
+(1 row)
 
 CREATE A krid2 KEY RANGE FROM ROUTE 11 TO sh1 FOR ds1 ALLOCATION;
 add a range of keys
