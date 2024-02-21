@@ -5,23 +5,23 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DISTRIBUTION ds1;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
          add distribution         
 ----------------------------------
  created distribution with id ds1
 (1 row)
 
-CREATE DISTRIBUTION ds2;
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
          add distribution         
 ----------------------------------
  created distribution with id ds2
 (1 row)
 
 SHOW distributions;
- Distribution ID 
------------------
- ds1
- ds2
+ Distribution ID |  Column types   
+-----------------+-----------------
+ ds1             | integer
+ ds2             | varchar,integer
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
