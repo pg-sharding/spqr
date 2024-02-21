@@ -1,6 +1,5 @@
 Feature: MemQDB save state into a file
-  
-# TODO: Add tests for distributions instead of sharding rules
+
   Scenario: Distributions restored
     Given cluster environment is
     """
@@ -30,10 +29,10 @@ Feature: MemQDB save state into a file
     """
     [
       {
-        "Distribution ID": "ds1",
+        "Distribution ID": "ds1"
       },
       {
-        "Distribution ID": "ds2",
+        "Distribution ID": "ds2"
       }
     ]
     """
