@@ -37,7 +37,7 @@ CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 
 -- drop non-existing one
 DROP DISTRIBUTION ds23223;
-ERROR:  no such distribution.
+ERROR:  distribution "ds23223" not found.
 -- non-cascade drop
 DROP DISTRIBUTION ds1;
 ERROR:  cannot drop distribution ds1 because other objects depend on it
