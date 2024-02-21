@@ -174,17 +174,17 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 
 // TODO : unit tests
 func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR")
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR")
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 // TODO : unit tests
 func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR")
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 // TODO : unit tests

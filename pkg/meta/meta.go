@@ -52,7 +52,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
 	case *spqrparser.ShardingRuleSelector:
-		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case *spqrparser.DistributionSelector:
 		var krs []*kr.KeyRange
 		var err error
@@ -145,7 +145,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
-		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
@@ -340,7 +340,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		return cli.ReportError(spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR"))
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
