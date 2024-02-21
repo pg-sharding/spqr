@@ -20,8 +20,6 @@ var fromShardConnst = flag.String("from-shard-connstring", "", "")
 var toShardConnst = flag.String("to-shard-connstring", "", "")
 
 var krId = flag.String("key-range", "", "ID of key range to move")
-var lb = flag.String("lower-bound", "", "")
-var shkey = flag.String("sharding-key", "", "")
 var etcdAddr = flag.String("etcd-addr", "", "")
 
 // TODO: use schema
@@ -142,15 +140,6 @@ FROM information_schema.tables;
 
 func main() {
 	flag.Parse()
-
-	if *lb != "" {
-		spqrlog.Zero.Error().Msg("using lower-bound is discontinued, use key-range-id instead")
-		return
-	}
-
-	if *shkey != "" {
-		spqrlog.Zero.Warn().Msg("setting sharding-rule has no effect")
-	}
 
 	ctx := context.Background()
 
