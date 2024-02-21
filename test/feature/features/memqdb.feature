@@ -1,6 +1,42 @@
 Feature: MemQDB save state into a file
   
 # TODO: Add tests for distributions instead of sharding rules
+  Scenario: Distributions restored
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
+    """
+    Given cluster is up and running
+    When I execute SQL on host "router-admin"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid3 FROM a ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
+    """
+    Then command return code should be "0"
+    When host "router" is stopped
+    And host "router" is started
+    When I run SQL on host "router-admin"
+    """
+    SHOW distributions;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "Distribution ID": "ds1",
+      },
+      {
+        "Distribution ID": "ds2",
+      }
+    ]
+    """
 
   Scenario: Key ranges restored
     Given cluster environment is
