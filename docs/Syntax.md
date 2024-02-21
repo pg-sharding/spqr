@@ -34,11 +34,11 @@ Let's create a distribution first:
 
 ```
 ➜ psql "host=localhost sslmode=disable user=news dbname=news port=7432"
-demo=> CREATE A ds1 DISTRIBUTION OF integer COLUMN TYPES;
-add a distribution kit
+demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
 ----------------------------------
-created distribution with the ds1 identifier
-(1 line)
+ created distribution with id ds1
+(1 row)
 ```
 
 The next step is to specify a list of tables and columns.
