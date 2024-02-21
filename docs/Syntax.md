@@ -5,8 +5,7 @@ Before the start, you need to configure the rules by which the router will decid
 For this purpose, SPQR has an administrative console. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
 
 ```
-➜  psql "host=localhost sslmode=disable user=news dbname=news port=7432"
-
+➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
 SQPR Router Administrator Console
 Here you can set up your own routing rules
 ------------------------------------------------
@@ -16,11 +15,11 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 psql (14.5 (Homebrew), server console)
 Type "help" to get help.
 
-news=> SHOW segments;
-list of data segments
----------------------------
-data card with the shard01 identifier data card
-with the shard02 identifier
+demo=> SHOW shards;
+  listing data shards  
+-----------------------
+ datashard with ID sh1
+ datashard with ID sh2
 (2 rows)
 ```
 
@@ -32,6 +31,7 @@ To make all things work, the router needs to know the following:
 - Mapping from [range of values] to [shard number]
 
 Let's create a distribution first:
+
 ```
 ➜ psql "host=localhost sslmode=disable user=news dbname=news port=7432"
 demo=> CREATE A ds1 DISTRIBUTION OF integer COLUMN TYPES;
@@ -41,7 +41,7 @@ created distribution with the ds1 identifier
 (1 line)
 ```
 
-The next step is to specify a list of tables and columns. TODO how to make it smaller
+The next step is to specify a list of tables and columns.
 
 ```
 demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
