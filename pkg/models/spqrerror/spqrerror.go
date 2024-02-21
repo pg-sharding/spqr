@@ -43,6 +43,8 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_INVALID_REQUEST:     "Invalid Request",
 }
 
+var ShardingKeysRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
+
 func GetMessageByCode(errorCode string) string {
 	rep, ok := existingErrorCodeMap[errorCode]
 	if ok {

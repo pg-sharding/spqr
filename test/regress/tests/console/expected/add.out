@@ -23,34 +23,12 @@ CREATE KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
-                                      add sharding rule                                      
----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 distribution
-(1 row)
-
-CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
-ERROR:  sharding rule rule1 already present in qdb.
-CREATE SHARDING RULE rule2 COLUMNS id FOR DISTRIBUTION ds1;
-ERROR:  sharding rule rule2 include existing rule rule1.
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+-----------------+-------------
  krid1        | sh1      | ds1             | 1
  krid2        | sh1      | ds1             | 11
 (2 rows)
-
-SHOW sharding_rules;
- Sharding Rule ID | Distribution ID | Table Name | Columns | Hash Function 
-------------------+-----------------+------------+---------+---------------
- rule1            | ds1             | *          | id      | x->x
-(1 row)
-
-DROP SHARDING RULE rule1;
-     drop sharding rule      
------------------------------
- dropped sharding rule rule1
-(1 row)
 
 DROP KEY RANGE krid1;
     drop key range    
@@ -60,43 +38,11 @@ DROP KEY RANGE krid1;
 
 CREATE KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 ERROR:  key range krid2 already present in qdb.
-CREATE SHARDING RULE rule1 COLUMNS id FOR DISTRIBUTION ds1;
-                                      add sharding rule                                      
----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in ds1 distribution
-(1 row)
-
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
 --------------+----------+-----------------+-------------
  krid2        | sh1      | ds1             | 11
 (1 row)
-
-SHOW sharding_rules;
- Sharding Rule ID | Distribution ID | Table Name | Columns | Hash Function 
-------------------+-----------------+------------+---------+---------------
- rule1            | ds1             | *          | id      | x->x
-(1 row)
-
-CREATE SHARDING RULE cat TABLE orders COLUMN iid FOR DISTRIBUTION ds1;
-                                        add sharding rule                                        
--------------------------------------------------------------------------------------------------
- created sharding rule cat for table (orders) with columns [iid, hash: x->x] in ds1 distribution
-(1 row)
-
-CREATE SHARDING RULE dog TABLE delivery COLUMN order_id FOR DISTRIBUTION ds1;
-                                           add sharding rule                                            
---------------------------------------------------------------------------------------------------------
- created sharding rule dog for table (delivery) with columns [order_id, hash: x->x] in ds1 distribution
-(1 row)
-
-SHOW sharding_rules;
- Sharding Rule ID | Distribution ID | Table Name | Columns  | Hash Function 
-------------------+-----------------+------------+----------+---------------
- cat              | ds1             | orders     | iid      | x->x
- dog              | ds1             | delivery   | order_id | x->x
- rule1            | ds1             | *          | id       | x->x
-(3 rows)
 
 CREATE KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
 ERROR:  unknown shard nonexistentshard.
@@ -104,12 +50,6 @@ DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
 -----------------------
  drop distribution ds1
-(1 row)
-
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
 (1 row)
 
 DROP KEY RANGE ALL;

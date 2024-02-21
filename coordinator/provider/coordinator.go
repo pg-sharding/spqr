@@ -437,21 +437,6 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) getAllListShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
 func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
 	rulesList, err := qc.db.ListShardingRules(ctx, distribution)
 	if err != nil {
@@ -938,10 +923,6 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err != nil {
 		return err
 	}
-	shardingRules, err := qc.getAllListShardingRules(ctx)
-	if err != nil {
-		return err
-	}
 
 	// no need to move data to the same shard
 	if keyRange.ShardID == req.ShardId {
@@ -979,7 +960,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}()
 
 	/* physical changes on shards */
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, shardingRules, qc.db)
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, qc.db)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 		return err
@@ -1021,34 +1002,8 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	}
 	defer cc.Close()
 
-	// Configure sharding rules.
-	spqrlog.Zero.Debug().Msg("qdb coordinator: configure sharding rules")
-	shardingRules, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return err
-	}
-
-	var protoShardingRules []*routerproto.ShardingRule
-	shClient := routerproto.NewShardingRulesServiceClient(cc)
-	krClient := routerproto.NewKeyRangeServiceClient(cc)
-	for _, shRule := range shardingRules {
-		protoShardingRules = append(protoShardingRules,
-			shrule.ShardingRuleToProto(shrule.ShardingRuleFromDB(shRule)))
-	}
-
-	resp, err := shClient.AddShardingRules(ctx, &routerproto.AddShardingRuleRequest{
-		Rules: protoShardingRules,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("add sharding rules response")
-
 	// Configure key ranges.
+	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
 	if err != nil {

@@ -18,18 +18,6 @@ CREATE DISTRIBUTION ds2;
  created distribution with id ds2
 (1 row)
 
-CREATE SHARDING RULE r1 COLUMNS w_id FOR DISTRIBUTION ds1;
-                                     add sharding rule                                      
---------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [w_id, hash: x->x] in ds1 distribution
-(1 row)
-
-CREATE SHARDING RULE r2 COLUMNS w_id FOR DISTRIBUTION ds2;
-                                     add sharding rule                                      
---------------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds2 distribution
-(1 row)
-
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
@@ -145,12 +133,6 @@ DROP DISTRIBUTION ALL CASCADE;
  drop distribution ds1
  drop distribution ds2
 (2 rows)
-
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
-(1 row)
 
 DROP KEY RANGE ALL;
  drop key range 

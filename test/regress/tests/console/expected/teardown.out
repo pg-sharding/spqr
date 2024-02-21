@@ -10,9 +10,3 @@ DROP KEY RANGE ALL;
 ----------------
 (0 rows)
 
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
-(1 row)
-

@@ -31,12 +31,6 @@ DROP DISTRIBUTION ALL CASCADE;
  drop distribution ds2
 (2 rows)
 
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
-(1 row)
-
 DROP KEY RANGE ALL;
  drop key range 
 ----------------

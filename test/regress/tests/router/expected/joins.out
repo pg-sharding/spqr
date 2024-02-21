@@ -12,18 +12,6 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  created distribution with id ds1
 (1 row)
 
-CREATE SHARDING RULE r1 COLUMN id FOR DISTRIBUTION ds1;
-                                    add sharding rule                                     
-------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [id, hash: x->x] in ds1 distribution
-(1 row)
-
-CREATE SHARDING RULE r2 COLUMN w_id FOR DISTRIBUTION ds1;
-                                     add sharding rule                                      
---------------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in ds1 distribution
-(1 row)
-
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
@@ -81,8 +69,20 @@ NOTICE: send query to shard(s) : sh1,sh2
 
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
+NOTICE: send query to shard(s) : sh2
+ id | w_id 
+----+------
+ 15 |   15
+(1 row)
+
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;': too complex query to parse, tx status IDLE
+NOTICE: send query to shard(s) : sh1,sh2
+ id | w_id 
+----+------
+ 15 |   15
+(1 row)
+
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yjoin;
@@ -99,12 +99,6 @@ DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
 -----------------------
  drop distribution ds1
-(1 row)
-
-DROP SHARDING RULE ALL;
-   drop sharding rule   
-------------------------
- dropped sharding rule 
 (1 row)
 
 DROP KEY RANGE ALL;
