@@ -531,10 +531,11 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) Distributions(ctx context.Context, distributions []*distributions.Distribution) error {
+func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Distribution ID"),
+			TextOidFD("Column types"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -546,6 +547,7 @@ func (pi *PSQLInteractor) Distributions(ctx context.Context, distributions []*di
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(distribution.Id),
+				[]byte(strings.Join(distribution.ColTypes, ",")),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
