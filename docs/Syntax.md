@@ -25,7 +25,7 @@ demo=> SHOW shards;
 
 To make all things work, the router needs to know the following:
 
-- What tables are you query
+- What tables do you query
 - Which columns in each table should the router look
 - The type of these columns
 - Mapping from [range of values] to [shard number]
