@@ -47,9 +47,7 @@ func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distribut
 	var retDsp []*distributions.Distribution
 
 	for _, dsp := range resp {
-		retDsp = append(retDsp, &distributions.Distribution{
-			Id: dsp.ID,
-		})
+		retDsp = append(retDsp, distributions.DistributionFromDB(dsp))
 	}
 	return retDsp, nil
 }

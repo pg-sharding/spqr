@@ -36,9 +36,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CI
 (1 row)
 
 SHOW DISTRIBUTIONS;
- Distribution ID 
------------------
- ds1
+ Distribution ID | Column types 
+-----------------+--------------
+ ds1             | integer
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;

@@ -49,9 +49,9 @@ DROP DISTRIBUTION ds1 CASCADE;
 (1 row)
 
 SHOW distributions;
- Distribution ID 
------------------
- ds2
+ Distribution ID | Column types 
+-----------------+--------------
+ ds2             | 
 (1 row)
 
 DROP DISTRIBUTION ALL CASCADE;
@@ -61,8 +61,8 @@ DROP DISTRIBUTION ALL CASCADE;
 (1 row)
 
 SHOW distributions;
- Distribution ID 
------------------
+ Distribution ID | Column types 
+-----------------+--------------
 (0 rows)
 
 SHOW key_ranges;

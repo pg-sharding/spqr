@@ -29,10 +29,12 @@ Feature: MemQDB save state into a file
     """
     [
       {
-        "Distribution ID": "ds1"
+        "Distribution ID": "ds1",
+        "Column types": "integer"
       },
       {
-        "Distribution ID": "ds2"
+        "Distribution ID": "ds2",
+        "Column types": "varchar"
       }
     ]
     """
