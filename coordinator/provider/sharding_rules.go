@@ -15,12 +15,12 @@ type ShardingRulesService struct {
 
 // TODO : unit tests
 func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR")
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 // TODO : unit tests
 func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR")
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 func NewShardingRulesServer(impl coordinator.Coordinator) *ShardingRulesService {
