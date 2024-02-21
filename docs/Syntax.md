@@ -72,11 +72,11 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  created key range with bound 11
 (1 row)
 
-CREATE A krid3 KEY RANGE FROM ROUTE 21 TO sh2 FOR ds1 ALLOCATION;
-add a range of keys
+CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+          add key range          
 ---------------------------------
-a range of keys has been created with a binding of 21
-(1 line)
+ created key range with bound 21
+(1 row)
 ``
 
 Here we go!
