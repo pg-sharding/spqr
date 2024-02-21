@@ -848,29 +848,36 @@ func TestJoins(t *testing.T) {
 		},
 
 		{
+			query: "SELECT * FROM sshjt1 join sshjt1 ON TRUE WHERE sshjt1.i = 12 AND sshjt1.j = sshjt1.j;",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						ID:           "id2",
+						Distribution: distribution,
+						LowerBound:   []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
 			exp:   routingstate.MultiMatchState{},
 			err:   nil,
 		},
 
 		// sharding columns, but unparsed
-		//{
-		//	query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-		//	exp: routingstate.ShardMatchState{
-		//		Route: &routingstate.DataShardRoute{
-		//			Shkey: kr.ShardKey{
-		//				Name: "sh2",
-		//			},
-		//			Matchedkr: &kr.KeyRange{
-		//				ShardID:    "sh2",
-		//				ID:         "id2",
-		//				LowerBound: []byte("11"),
-		//			},
-		//		},
-		//		TargetSessionAttrs: "any",
-		//	},
-		//	err: qrouter.ComplexQuery,
-		//},
+		{
+			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
+			exp:   routingstate.MultiMatchState{},
+			err:   nil,
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
