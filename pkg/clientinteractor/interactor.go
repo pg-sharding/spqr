@@ -870,7 +870,7 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 }
 
 // Relations sends information about attached relations that satisfy conditions in WHERE-clause
-// TODO: unit tests
+// TODO unit tests
 func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
 	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 		TextOidFD("Relation Name"),
