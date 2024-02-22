@@ -29,7 +29,7 @@ Feature: Proxy console
         Then command return code should be "0"
 
 # TODO: check distributions in this test
-    Scenario: Add key_range/sharding_rule is executed in coordinator
+    Scenario: Add key_range is executed in coordinator
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
@@ -199,7 +199,7 @@ Feature: Proxy console
         }]
         """
 
-    Scenario: Show key_ranges/sharding_rules is executed in router
+    Scenario: Show key_ranges is executed in router
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;

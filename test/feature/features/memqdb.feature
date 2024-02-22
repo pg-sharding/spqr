@@ -107,7 +107,7 @@ Feature: MemQDB save state into a file
     unlocked key range with id krid1
     """
 
-  Scenario: Sharding rules not initialized if init.sql file doesn't exists
+  Scenario: Sharding is not initialized if init.sql file doesn't exists
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_fake_initsql_and_backup.yaml

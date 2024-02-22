@@ -11,14 +11,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type ProxyQrouter struct {
 	mu sync.Mutex
-
-	Rules []*shrule.ShardingRule
 
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}

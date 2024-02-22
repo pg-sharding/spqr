@@ -25,7 +25,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 )
 
 type Interactor interface {
@@ -480,57 +479,6 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("Sharding Rule ID"),
-			TextOidFD("Distribution ID"),
-			TextOidFD("Table Name"),
-			TextOidFD("Columns"),
-			TextOidFD("Hash Function"),
-		}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	for _, rule := range rules {
-		var entries strings.Builder
-		var hashFunctions strings.Builder
-		for _, entry := range rule.Entries() {
-			entries.WriteString(entry.Column)
-
-			if entry.HashFunction == "" {
-				hashFunctions.WriteString("x->x")
-			} else {
-				hashFunctions.WriteString(entry.HashFunction)
-			}
-		}
-		tableName := "*"
-		if rule.TableName != "" {
-			tableName = rule.TableName
-		}
-
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(rule.Id),
-				[]byte(rule.Distribution),
-				[]byte(tableName),
-				[]byte(entries.String()),
-				[]byte(hashFunctions.String()),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
 func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -586,20 +534,6 @@ func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, id string) error
 	}
 
 	if err := pi.WriteDataRow(fmt.Sprintf("dropped sharding rule %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if err := pi.WriteHeader("add sharding rule"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("created %s", rule.String())); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}

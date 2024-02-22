@@ -57,18 +57,6 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-type ShardingRuleEntry struct {
-	Column       string `json:"column"`
-	HashFunction string `json:"hash"`
-}
-
-type ShardingRule struct {
-	ID             string              `json:"id"`
-	TableName      string              `json:"table"`
-	Entries        []ShardingRuleEntry `json:"columns"`
-	DistributionId string              `json:"distribution_id"`
-}
-
 type Shard struct {
 	ID    string   `json:"id"`
 	Hosts []string `json:"hosts"`
