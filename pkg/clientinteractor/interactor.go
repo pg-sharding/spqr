@@ -868,3 +868,78 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 
 	return pi.CompleteMsg(len(shs))
 }
+
+// matchDistribution determines if distribution matches the WHERE-clause
+func (pi *PSQLInteractor) matchDistribution(ds string, condition spqrparser.WhereClauseNode) (bool, error) {
+	switch c := condition.(type) {
+	case spqrparser.WhereClauseEmpty:
+		return true, nil
+	case spqrparser.WhereClauseLeaf:
+		if c.ColRef.TableAlias != "distribution_id" || c.ColRef.ColName != "" {
+			return false, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "unknown parameter \"%s\", expected \"distribution_id\"", c.ColRef)
+		}
+		switch c.Op {
+		case "=":
+			return ds == c.Value, nil
+		default:
+			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported logic operation: %s", c.Op)
+		}
+	case spqrparser.WhereClauseOp:
+		l, err := pi.matchDistribution(ds, c.Left)
+		if err != nil {
+			return false, err
+		}
+		r, err := pi.matchDistribution(ds, c.Right)
+		if err != nil {
+			return false, err
+		}
+		switch c.Op {
+		case "and":
+			return l && r, nil
+		case "or":
+			return l || r, nil
+		default:
+			return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "not supported logic operation: %s", c.Op)
+		}
+	default:
+		return false, nil
+	}
+}
+
+// Relations sends information about attached relations that satisfy conditions in WHERE-clause
+// TODO: unit tests
+func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
+	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+		TextOidFD("Relation Name"),
+		TextOidFD("Distribution ID"),
+		TextOidFD("Distribution key"),
+	}}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for ds, rels := range dsToRels {
+		if ok, err := pi.matchDistribution(ds, condition); err != nil {
+			return err
+		} else if !ok {
+			continue
+		}
+		for _, rel := range rels {
+			dsKey := make([]string, len(rel.DistributionKey))
+			for i, e := range rel.DistributionKey {
+				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, e.HashFunction)
+			}
+			if err := pi.cl.Send(&pgproto3.DataRow{
+				Values: [][]byte{
+					[]byte(rel.Name),
+					[]byte(ds),
+					[]byte(strings.Join(dsKey, ",")),
+				},
+			}); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+		}
+	}
+	return nil
+}
