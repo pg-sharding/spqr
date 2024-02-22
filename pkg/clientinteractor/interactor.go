@@ -885,7 +885,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 
 	dss := make([]string, len(dsToRels))
 	i := 0
-	for ds, _ := range dsToRels {
+	for ds := range dsToRels {
 		dss[i] = ds
 		i++
 	}
