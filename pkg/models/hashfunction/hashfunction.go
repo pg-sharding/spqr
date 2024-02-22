@@ -48,3 +48,14 @@ func HashFunctionByName(hfn string) (HashFunctionType, error) {
 		return 0, errNoSuchHashFunction
 	}
 }
+func ToString(hf HashFunctionType) string {
+	switch hf {
+	case HashFunctionIdent:
+		return "identity"
+	case HashFunctionMurmur:
+		return "murmur"
+	case HashFunctionCity:
+		return "city"
+	}
+	return ""
+}

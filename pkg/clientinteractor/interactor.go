@@ -3,6 +3,7 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"net"
 	"strconv"
 	"strings"
@@ -881,6 +882,7 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		return err
 	}
 
+	c := 0
 	index := map[string]int{"distribution_id": 0}
 	for ds, rels := range dsToRels {
 		if ok, err := MatchRow([]string{ds}, index, condition); err != nil {
@@ -891,7 +893,11 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		for _, rel := range rels {
 			dsKey := make([]string, len(rel.DistributionKey))
 			for i, e := range rel.DistributionKey {
-				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, e.HashFunction)
+				t, err := hashfunction.HashFunctionByName(e.HashFunction)
+				if err != nil {
+					return err
+				}
+				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
 			}
 			if err := pi.cl.Send(&pgproto3.DataRow{
 				Values: [][]byte{
@@ -903,7 +909,8 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 				spqrlog.Zero.Error().Err(err).Msg("")
 				return err
 			}
+			c++
 		}
 	}
-	return nil
+	return pi.CompleteMsg(c)
 }
