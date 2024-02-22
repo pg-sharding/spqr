@@ -37,15 +37,15 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION I
 (1 row)
 
 SHOW relations;
- Relation Name | Distribution ID |           Distribution key            
+ Relation name | Distribution ID |           Distribution key            
 ---------------+-----------------+---------------------------------------
- c             | ds2             | ("c_id_1", identity),("c_id_2", city)
- b             | ds1             | ("b_id", murmur)
  a             | ds1             | ("a_id", identity)
+ b             | ds1             | ("b_id", murmur)
+ c             | ds2             | ("c_id_1", identity),("c_id_2", city)
 (3 rows)
 
 SHOW relations WHERE distribution_id = 'ds1';
- Relation Name | Distribution ID |  Distribution key  
+ Relation name | Distribution ID |  Distribution key  
 ---------------+-----------------+--------------------
  a             | ds1             | ("a_id", identity)
  b             | ds1             | ("b_id", murmur)
@@ -53,11 +53,6 @@ SHOW relations WHERE distribution_id = 'ds1';
 
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param not exists.
-SHOW key_ranges;
- Key range ID | Shard ID | Distribution ID | Lower bound 
---------------+----------+-----------------+-------------
-(0 rows)
-
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
 -----------------------

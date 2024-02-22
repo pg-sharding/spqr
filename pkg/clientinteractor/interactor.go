@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -874,7 +875,7 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 // TODO unit tests
 func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
 	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-		TextOidFD("Relation Name"),
+		TextOidFD("Relation name"),
 		TextOidFD("Distribution ID"),
 		TextOidFD("Distribution key"),
 	}}); err != nil {
@@ -882,9 +883,21 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		return err
 	}
 
+	dss := make([]string, len(dsToRels))
+	i := 0
+	for ds, _ := range dsToRels {
+		dss[i] = ds
+		i++
+	}
+	sort.Strings(dss)
+
 	c := 0
 	index := map[string]int{"distribution_id": 0}
-	for ds, rels := range dsToRels {
+	for _, ds := range dss {
+		rels := dsToRels[ds]
+		sort.Slice(rels, func(i, j int) bool {
+			return rels[i].Name < rels[j].Name
+		})
 		if ok, err := MatchRow([]string{ds}, index, condition); err != nil {
 			return err
 		} else if !ok {
