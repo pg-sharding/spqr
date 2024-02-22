@@ -18,8 +18,8 @@ Type "help" to get help.
 demo=> SHOW shards;
   listing data shards  
 -----------------------
- datashard with ID sh1
- datashard with ID sh2
+ datashard with ID shard1
+ datashard with ID shard2
 (2 rows)
 ```
 
@@ -33,7 +33,7 @@ To make all things work, the router needs to know the following:
 Let's create a distribution first:
 
 ```
-➜ psql "host=localhost sslmode=disable user=news dbname=news port=7432"
+➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
 demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
          add distribution         
 ----------------------------------
@@ -44,38 +44,32 @@ demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 The next step is to specify a list of tables and columns.
 
 ```
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-               attach table               
-------------------------------------------
- attached relation xx to distribution ds1
+demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
+                 attach table               
+--------------------------------------------
+ attached relation orders to distribution ds1
 (1 row)
 
-demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
-                attach table                 
+demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION item DISTRIBUTION KEY order_id;
+                 attach table                 
 ---------------------------------------------
- attached relation xxerr to distribution ds1
+ attached relation item to distribution ds1
 (1 row)
 ```
 
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
 ```
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 11
-(1 row)
-
-CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 21
+CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
+            add key range          
+-----------------------------------
+ created key range with bound 1000
 (1 row)
 ``
 
