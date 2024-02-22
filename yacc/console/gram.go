@@ -979,7 +979,7 @@ yydefault:
 //line gram.y:365
 		{
 			switch v := strings.ToLower(string(yyDollar[1].str)); v {
-			case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr:
+			case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr:
 				yyVAL.str = v
 			default:
 				yyVAL.str = UnsupportedStr
