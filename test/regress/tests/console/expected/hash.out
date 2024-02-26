@@ -41,6 +41,15 @@ SHOW DISTRIBUTIONS;
  ds1             | integer
 (1 row)
 
+SHOW RELATIONS;
+ Relation name | Distribution ID |  Distribution key  
+---------------+-----------------+--------------------
+ r1            | ds1             | ("col1", identity)
+ r2            | ds1             | ("col1", identity)
+ r3            | ds1             | ("col1", murmur)
+ r4            | ds1             | ("col1", city)
+(4 rows)
+
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
 -----------------------

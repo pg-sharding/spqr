@@ -3,7 +3,9 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -370,7 +372,7 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 		case "=":
 			i, ok := nameToIndex[where.ColRef.ColName]
 			if !ok {
-				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s not exists", where.ColRef.ColName)
+				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", where.ColRef.ColName)
 			}
 			return row[i] == where.Value, nil
 		default:
@@ -867,4 +869,61 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 	}
 
 	return pi.CompleteMsg(len(shs))
+}
+
+// Relations sends information about attached relations that satisfy conditions in WHERE-clause
+// TODO unit tests
+func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
+	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+		TextOidFD("Relation name"),
+		TextOidFD("Distribution ID"),
+		TextOidFD("Distribution key"),
+	}}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	dss := make([]string, len(dsToRels))
+	i := 0
+	for ds := range dsToRels {
+		dss[i] = ds
+		i++
+	}
+	sort.Strings(dss)
+
+	c := 0
+	index := map[string]int{"distribution_id": 0}
+	for _, ds := range dss {
+		rels := dsToRels[ds]
+		sort.Slice(rels, func(i, j int) bool {
+			return rels[i].Name < rels[j].Name
+		})
+		if ok, err := MatchRow([]string{ds}, index, condition); err != nil {
+			return err
+		} else if !ok {
+			continue
+		}
+		for _, rel := range rels {
+			dsKey := make([]string, len(rel.DistributionKey))
+			for i, e := range rel.DistributionKey {
+				t, err := hashfunction.HashFunctionByName(e.HashFunction)
+				if err != nil {
+					return err
+				}
+				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
+			}
+			if err := pi.cl.Send(&pgproto3.DataRow{
+				Values: [][]byte{
+					[]byte(rel.Name),
+					[]byte(ds),
+					[]byte(strings.Join(dsKey, ",")),
+				},
+			}); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+			c++
+		}
+	}
+	return pi.CompleteMsg(c)
 }

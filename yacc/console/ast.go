@@ -239,6 +239,7 @@ const (
 	BackendConnectionsStr = "backend_connections"
 	StatusStr             = "status"
 	VersionStr            = "version"
+	RelationsStr          = "relations"
 	UnsupportedStr        = "unsupported"
 )
 

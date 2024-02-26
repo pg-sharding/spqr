@@ -367,11 +367,28 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.DistributionsStr:
-		distributions, err := mngr.ListDistributions(ctx)
+		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Distributions(ctx, distributions)
+		return cli.Distributions(ctx, dss)
+	case spqrparser.RelationsStr:
+		dss, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return err
+		}
+		dsToRels := make(map[string][]*distributions.DistributedRelation)
+		for _, ds := range dss {
+			if _, ok := dsToRels[ds.Id]; ok {
+				return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
+			}
+			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
+			for _, rel := range ds.Relations {
+				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
+			}
+		}
+
+		return cli.Relations(dsToRels, stmt.Where)
 	default:
 		return unknownCoordinatorCommand
 	}
