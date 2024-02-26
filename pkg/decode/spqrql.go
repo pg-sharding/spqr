@@ -12,7 +12,7 @@ import (
 func KeyRange(krg *protos.KeyRangeInfo) string {
 	/* TODO: composite key support */
 
-	return fmt.Sprintf("CREATE KEY RANGE %s FROM %s ROUTE TO %s FOR DSITRIBUTION %s;", krg.Krid, krg.KeyRange.LowerBound, krg.ShardId, krg.DistributionId)
+	return fmt.Sprintf("CREATE KEY RANGE %s FROM %s ROUTE TO %s FOR DISTRIBUTION %s;", krg.Krid, krg.KeyRange.LowerBound, krg.ShardId, krg.DistributionId)
 }
 
 // Distribution returns query to create given distribution
@@ -28,5 +28,5 @@ func DistributedRelation(rel *protos.DistributedRelation, ds string) string {
 	for j, el := range rel.DistributionKey {
 		elems[j] = fmt.Sprintf("%s HASH FUNCTION %s", el.Column, el.HashFunction)
 	}
-	return fmt.Sprintf("ALTER DISTRIBUTION %s ATTACH RELATTION %s DISTRIBUTION KEY %s;", ds, rel.Name, strings.Join(elems, ", "))
+	return fmt.Sprintf("ALTER DISTRIBUTION %s ATTACH RELATION %s DISTRIBUTION KEY %s;", ds, rel.Name, strings.Join(elems, ", "))
 }
