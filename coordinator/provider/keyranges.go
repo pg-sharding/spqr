@@ -67,7 +67,7 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
-	krsqb, err := c.impl.ListAllKeyRanges(ctx)
+	krsqb, err := c.impl.ListKeyRanges(ctx, request.Distribution)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +81,21 @@ func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.L
 	return &protos.KeyRangeReply{
 		KeyRangesInfo: krs,
 	}, nil
+}
+
+func (c *CoordinatorService) ListAllKeyRanges(ctx context.Context, _ *protos.ListAllKeyRangesRequest) (*protos.KeyRangeReply, error) {
+	krsDb, err := c.impl.ListAllKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	krs := make([]*protos.KeyRangeInfo, len(krsDb))
+
+	for i, krg := range krsDb {
+		krs[i] = krg.ToProto()
+	}
+
+	return &protos.KeyRangeReply{KeyRangesInfo: krs}, nil
 }
 
 // TODO : unit tests
