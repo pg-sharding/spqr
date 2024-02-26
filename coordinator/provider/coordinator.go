@@ -724,7 +724,6 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		if kRange.KeyRangeID != krLeft.KeyRangeID &&
 			kRange.KeyRangeID != krRight.KeyRangeID &&
 			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound) &&
-			kr.CmpRangesLessEqual(krLeft.LowerBound, kRange.LowerBound) &&
 			kr.CmpRangesLessEqual(kRange.LowerBound, krRight.LowerBound) {
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite non-adjacent key ranges")
 		}
