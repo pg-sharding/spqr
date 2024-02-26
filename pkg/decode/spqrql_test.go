@@ -72,6 +72,14 @@ func TestDistributedRelation(t *testing.T) {
 		}, "ds1"),
 	)
 
+	// missing hash func
+	assert.Equal("ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id;",
+		DistributedRelation(&protos.DistributedRelation{
+			Name:            "rel",
+			DistributionKey: []*protos.DistributionKeyEntry{{Column: "id"}},
+		}, "ds1"),
+	)
+
 	// multiple columns
 	assert.Equal("ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id HASH FUNCTION identity, "+
 		"id2 HASH FUNCTION city;",

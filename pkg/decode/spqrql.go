@@ -22,7 +22,12 @@ func Distribution(ds *protos.Distribution) string {
 func DistributedRelation(rel *protos.DistributedRelation, ds string) string {
 	elems := make([]string, len(rel.DistributionKey))
 	for j, el := range rel.DistributionKey {
-		elems[j] = fmt.Sprintf("%s HASH FUNCTION %s", el.Column, el.HashFunction)
+		if el.HashFunction != "" {
+			elems[j] = fmt.Sprintf("%s HASH FUNCTION %s", el.Column, el.HashFunction)
+		} else {
+			elems[j] = el.Column
+		}
+
 	}
 	return fmt.Sprintf("ALTER DISTRIBUTION %s ATTACH RELATION %s DISTRIBUTION KEY %s;", ds, rel.Name, strings.Join(elems, ", "))
 }
