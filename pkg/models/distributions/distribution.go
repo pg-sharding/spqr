@@ -123,7 +123,15 @@ func DistributionFromDB(distr *qdb.Distribution) *Distribution {
 
 func DistributionFromProto(ds *proto.Distribution) *Distribution {
 	return &Distribution{
-		Id: ds.Id,
+		Id:       ds.Id,
+		ColTypes: ds.ColumnTypes,
+		Relations: func() map[string]*DistributedRelation {
+			res := make(map[string]*DistributedRelation)
+			for _, rel := range ds.Relations {
+				res[rel.Name] = DistributedRelationFromProto(rel)
+			}
+			return res
+		}(),
 	}
 }
 
