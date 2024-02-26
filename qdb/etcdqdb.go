@@ -801,7 +801,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
@@ -854,7 +854,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
