@@ -4,8 +4,8 @@
 
 Consist of 3 parts:
 - Router - an app that works by PostgreSQL protocol. It receives a SQL query, parses it, and decides to which shard it should be sent. Then returns the query response.
-- Admin Console - an app that works by PostgreSQL protocol. There you can see available shards with `SHOW SHARDS` and manage sharding rules with `CREATE SHARDING RULE` and `ADD KEY RANGE` commands.
-- GRPC API - an app that works by GRPC protocol. It will also be used for managing sharding rules, WIP.
+- Admin Console - an app that works by PostgreSQL protocol. There you can manage sharding, see [Syntax.md](./Syntax.md).
+- GRPC API - an app that works by GRPC protocol. It is also used to manage sharding.
 
 ## Query Path
 

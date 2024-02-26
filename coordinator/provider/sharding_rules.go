@@ -13,12 +13,10 @@ type ShardingRulesService struct {
 	impl coordinator.Coordinator
 }
 
-// TODO : unit tests
 func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
 	return nil, spqrerror.ShardingKeysRemoved
 }
 
-// TODO : unit tests
 func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
 	return nil, spqrerror.ShardingKeysRemoved
 }

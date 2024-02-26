@@ -527,20 +527,6 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, id string) error {
-	if err := pi.WriteHeader("drop sharding rule"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("dropped sharding rule %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
 func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{

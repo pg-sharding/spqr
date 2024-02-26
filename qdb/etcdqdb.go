@@ -53,7 +53,6 @@ const (
 	distributionNamespace    = "/distributions/"
 	keyRangeMovesNamespace   = "/krmoves/"
 	routersNamespace         = "/routers/"
-	shardingRulesNamespace   = "/sharding_rules/"
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
 
@@ -1088,7 +1087,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
-		Msg("etcdqdb: get sharding rule")
+		Msg("etcdqdb: update key range")
 
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
 	if err != nil {

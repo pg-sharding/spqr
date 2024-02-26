@@ -10,7 +10,6 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY order_id;
 
 \c regress
 
--- check that sharding rule with tables works
 CREATE TABLE orders(id INT PRIMARY KEY);
 
 CREATE TABLE delivery(id INT PRIMARY KEY, order_id INT, FOREIGN KEY(order_id) REFERENCES orders(id));
