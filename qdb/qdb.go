@@ -45,13 +45,6 @@ type DistributedXactKepper interface {
 * implementation to keep the distributed state in sync.
  */
 type QDB interface {
-	AddShardingRule(ctx context.Context, rule *ShardingRule) error
-	DropShardingRule(ctx context.Context, id string) error
-	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
-	GetShardingRule(ctx context.Context, id string) (*ShardingRule, error)
-	ListShardingRules(ctx context.Context, distribution string) ([]*ShardingRule, error)
-	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
-
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
@@ -83,7 +76,7 @@ type QDB interface {
 	GetCoordinator(ctx context.Context) (string, error)
 }
 
-// Extended QDB
+// XQDB means extended QDB
 // The coordinator should use an etcd-based implementation to keep the distributed state in sync.
 type XQDB interface {
 	// routing schema

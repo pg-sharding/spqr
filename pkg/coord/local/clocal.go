@@ -11,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -21,8 +20,6 @@ import (
 
 type LocalCoordinator struct {
 	mu sync.Mutex
-
-	Rules []*shrule.ShardingRule
 
 	ColumnMapping map[string]struct{}
 	LocalTables   map[string]struct{}
@@ -404,44 +401,6 @@ func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 	}}, nil
 }
 
-func (qr *LocalCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	return ops.AddShardingRuleWithChecks(ctx, qr.qdb, rule)
-}
-
-// TODO : unit tests
-func (qr *LocalCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListShardingRules(ctx, distribution)
-	if err != nil {
-		return nil, err
-	}
-	var resp []*shrule.ShardingRule
-	for _, v := range rules {
-		resp = append(resp, shrule.ShardingRuleFromDB(v))
-
-	}
-
-	return resp, nil
-}
-
-// TODO : unit tests
-func (qr *LocalCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var resp []*shrule.ShardingRule
-	for _, v := range rules {
-		resp = append(resp, shrule.ShardingRuleFromDB(v))
-
-	}
-
-	return resp, nil
-}
-
-func (qr *LocalCoordinator) DropShardingRule(ctx context.Context, id string) error {
-	return qr.qdb.DropShardingRule(ctx, id)
-}
-
 func (qr *LocalCoordinator) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
@@ -451,21 +410,6 @@ func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) e
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")
-
-// TODO : unit tests
-func (qr *LocalCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := qr.qdb.DropShardingRuleAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var retRules []*shrule.ShardingRule
-
-	for _, r := range rules {
-		retRules = append(retRules, shrule.ShardingRuleFromDB(r))
-	}
-
-	return retRules, nil
-}
 
 func (qr *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator

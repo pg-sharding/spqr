@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -221,74 +220,6 @@ func (a *Adapter) DropKeyRangeAll(ctx context.Context) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.DropAllKeyRanges(ctx, &proto.DropAllKeyRangesRequest{})
 	return err
-}
-
-// TODO : unit tests
-func (a *Adapter) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	c := proto.NewShardingRulesServiceClient(a.conn)
-	_, err := c.AddShardingRules(ctx, &proto.AddShardingRuleRequest{
-		Rules: []*proto.ShardingRule{shrule.ShardingRuleToProto(rule)},
-	})
-	return err
-}
-
-// TODO : unit tests
-func (a *Adapter) DropShardingRule(ctx context.Context, id string) error {
-	c := proto.NewShardingRulesServiceClient(a.conn)
-	_, err := c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{
-		Id: []string{id},
-	})
-	return err
-}
-
-// TODO : unit tests
-func (a *Adapter) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rules, err := a.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]string, len(rules))
-	for i, rule := range rules {
-		ids[i] = rule.Id
-	}
-
-	c := proto.NewShardingRulesServiceClient(a.conn)
-	_, err = c.DropShardingRules(ctx, &proto.DropShardingRuleRequest{Id: ids})
-	return rules, err
-}
-
-// TODO : unit tests
-func (a *Adapter) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
-	c := proto.NewShardingRulesServiceClient(a.conn)
-	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{
-		Distribution: distribution,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	shrules := make([]*shrule.ShardingRule, len(reply.Rules))
-	for i, sh := range reply.Rules {
-		shrules[i] = shrule.ShardingRuleFromProto(sh)
-	}
-
-	return shrules, nil
-}
-
-// TODO : unit tests
-func (a *Adapter) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	c := proto.NewShardingRulesServiceClient(a.conn)
-	reply, err := c.ListShardingRules(ctx, &proto.ListShardingRuleRequest{})
-	if err != nil {
-		return nil, err
-	}
-
-	shrules := make([]*shrule.ShardingRule, len(reply.Rules))
-	for i, sh := range reply.Rules {
-		shrules[i] = shrule.ShardingRuleFromProto(sh)
-	}
-
-	return shrules, nil
 }
 
 // TODO : unit tests

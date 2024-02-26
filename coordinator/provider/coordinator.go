@@ -32,7 +32,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -437,110 +436,6 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListShardingRules(ctx context.Context, distribution string) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListShardingRules(ctx, distribution)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		if rule.DistributionId == distribution {
-			shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-		}
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) ListAllShardingRules(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	rulesList, err := qc.db.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	shRules := make([]*shrule.ShardingRule, 0, len(rulesList))
-	for _, rule := range rulesList {
-		shRules = append(shRules, shrule.ShardingRuleFromDB(rule))
-	}
-
-	return shRules, nil
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	// Store sharding rule to metadb.
-	if err := ops.AddShardingRuleWithChecks(ctx, qc.db, rule); err != nil {
-		return err
-	}
-
-	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewShardingRulesServiceClient(cc)
-		resp, err := cl.AddShardingRules(context.TODO(), &routerproto.AddShardingRuleRequest{
-			Rules: []*routerproto.ShardingRule{shrule.ShardingRuleToProto(rule)},
-		})
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("add sharding rules response")
-		return nil
-	})
-}
-
-// TODO : unit tests
-func (qc *qdbCoordinator) DropShardingRuleAll(ctx context.Context) ([]*shrule.ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
-
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewShardingRulesServiceClient(cc)
-		// TODO: support drop sharding rules all in grpc somehow
-		listResp, err := cl.ListShardingRules(context.TODO(), &routerproto.ListShardingRuleRequest{})
-		if err != nil {
-			return err
-		}
-
-		var ids []string
-		for _, v := range listResp.Rules {
-			ids = append(ids, v.Id)
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("response", listResp).
-			Msg("list sharding rules response")
-
-		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
-			Id: ids,
-		})
-
-		spqrlog.Zero.Debug().
-			Interface("response", dropResp).
-			Msg("drop sharding rules response")
-
-		return err
-	}); err != nil {
-		return nil, err
-	}
-
-	// Drop sharding rules from qdb.
-	rules, err := qc.db.DropShardingRuleAll(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []*shrule.ShardingRule
-
-	for _, v := range rules {
-		ret = append(ret, shrule.ShardingRuleFromDB(v))
-	}
-
-	return ret, nil
-}
-
-// TODO : unit tests
 func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
@@ -783,29 +678,6 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) DropShardingRule(ctx context.Context, id string) error {
-	// TODO: exclusive lock all routers
-	spqrlog.Zero.Debug().Msg("qdb coordinator dropping all sharding keys")
-
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewShardingRulesServiceClient(cc)
-		dropResp, err := cl.DropShardingRules(ctx, &routerproto.DropShardingRuleRequest{
-			Id: []string{id},
-		})
-
-		spqrlog.Zero.Debug().
-			Interface("response", dropResp).
-			Msg("drop sharding rules response")
-		return err
-	}); err != nil {
-		return err
-	}
-
-	// Drop key range from qdb.
-	return qc.db.DropShardingRule(ctx, id)
-}
-
-// TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
 	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft)
 	if err != nil {
@@ -874,7 +746,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
-			Msg("lock sharding rules response")
+			Msg("merge key range response")
 		return err
 	}); err != nil {
 		return err

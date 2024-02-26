@@ -143,17 +143,6 @@ func TestComment(t *testing.T) {
 		},
 	})
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution,
@@ -273,17 +262,6 @@ func TestSingleShard(t *testing.T) {
 						Column: "i",
 					},
 				},
-			},
-		},
-	})
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
 			},
 		},
 	})
@@ -563,39 +541,6 @@ func TestInsertOffsets(t *testing.T) {
 		},
 	})
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id2",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "w_id",
-			},
-		},
-	})
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id3",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "id",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
@@ -785,17 +730,6 @@ func TestJoins(t *testing.T) {
 		},
 	})
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
@@ -921,17 +855,6 @@ func TestUnnest(t *testing.T) {
 		},
 	})
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
@@ -1043,17 +966,6 @@ func TestCopySingleShard(t *testing.T) {
 		},
 	})
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		TableName:      "",
-		DistributionId: distribution,
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution,
@@ -1135,28 +1047,6 @@ func TestSetStmt(t *testing.T) {
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
 
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution1,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution2,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
@@ -1237,28 +1127,6 @@ func TestMiscRouting(t *testing.T) {
 
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution1,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
-
-	_ = db.AddShardingRule(context.TODO(), &qdb.ShardingRule{
-		ID:             "id1",
-		DistributionId: distribution2,
-		TableName:      "",
-		Entries: []qdb.ShardingRuleEntry{
-			{
-				Column: "i",
-			},
-		},
-	})
 
 	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
