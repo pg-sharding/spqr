@@ -52,7 +52,7 @@ SHOW relations WHERE distribution_id = 'ds1';
 (2 rows)
 
 SHOW relations WHERE unknown_param = 'ds1';
-ERROR:  column unknown_param not exists.
+ERROR:  column unknown_param does not exist.
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
 -----------------------

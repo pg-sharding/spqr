@@ -372,7 +372,7 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 		case "=":
 			i, ok := nameToIndex[where.ColRef.ColName]
 			if !ok {
-				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s not exists", where.ColRef.ColName)
+				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", where.ColRef.ColName)
 			}
 			return row[i] == where.Value, nil
 		default:
