@@ -256,7 +256,9 @@ var dump = &cobra.Command{
 	Use:   "dump",
 	Short: "dump current sharding configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		spqrlog.UpdateZeroLogLevel(logLevel)
+		if err := spqrlog.UpdateZeroLogLevel(logLevel); err != nil {
+			return err
+		}
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
 			Msg("dialing spqrdump on")
