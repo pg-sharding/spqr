@@ -16,11 +16,11 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-var fromShardConnst = flag.String("from-shard-connstring", "", "")
-var toShardConnst = flag.String("to-shard-connstring", "", "")
+var fromShardConnst = flag.String("from-shard-connstring", "", "Connection string to shard to move data from")
+var toShardConnst = flag.String("to-shard-connstring", "", "Connection string to shard to move data to")
 
 var krId = flag.String("key-range", "", "ID of key range to move")
-var etcdAddr = flag.String("etcd-addr", "", "")
+var etcdAddr = flag.String("etcd-addr", "", "ETCD address")
 
 // TODO: use schema
 // var schema = flag.String("shema", "", "")
