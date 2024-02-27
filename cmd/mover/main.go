@@ -102,7 +102,6 @@ FROM information_schema.tables;
 
 		// TODO: support multi-column move in SPQR2
 		if nextKeyRange == nil {
-
 			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Name,
 				rel.DistributionKey[0].Column, keyRange.LowerBound)
 		} else {
