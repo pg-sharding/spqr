@@ -25,7 +25,7 @@ enum KeyRangeStatus {
 
 message KeyRange {
   string lower_bound = 1;
-  string upper_bound = 2;
+  string upper_bound = 2 [deprecated = true];
 }
 
 // key range info is mapped to shard
