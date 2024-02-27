@@ -59,7 +59,7 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 // TODO : unit tests
 func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	reply, err := c.ListKeyRange(ctx, &proto.ListKeyRangeRequest{})
+	reply, err := c.ListAllKeyRanges(ctx, &proto.ListAllKeyRangesRequest{})
 	if err != nil {
 		return nil, err
 	}
