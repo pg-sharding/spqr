@@ -1,6 +1,6 @@
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
@@ -284,7 +284,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 ERROR:  table "xxerr" does not exist
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
