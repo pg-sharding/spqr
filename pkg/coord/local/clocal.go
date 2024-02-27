@@ -409,7 +409,7 @@ func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) e
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
-var ErrNotCoordinator = fmt.Errorf("request is unprocessable in route")
+var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
 
 func (qr *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator
