@@ -119,7 +119,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cl cl
 }
 
 const greeting = `
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 

@@ -6,7 +6,7 @@ For this purpose, SPQR has an administrative console. This is an app that works 
 
 ```
 ➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
-SQPR Router Administrator Console
+SPQR router admin console
 Here you can set up your own routing rules
 ------------------------------------------------
 You can find the documentation here

@@ -21,7 +21,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "spqr-coordinator run --config `path-to-config`",
-	Short: "sqpr-coordinator",
+	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-	
+
 		// frontend
 		frTLS, err := config.CoordinatorConfig().FrontendTLS.Init(config.CoordinatorConfig().Host)
 		if err != nil {
