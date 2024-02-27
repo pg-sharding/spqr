@@ -28,6 +28,40 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
+  Scenario: Registering router after sharding setup works
+    When I run SQL on host "coordinator"
+    """
+    -- TODO: remove this line after #528 is fixed
+    ALTER DISTRIBUTION ds1 DETACH RELATION test;
+    DROP DISTRIBUTION ds1 CASCADE;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    UNREGISTER ROUTER r1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
+    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    REGISTER ROUTER r1 ADDRESS regress_router::7000
+    """
+    Then command return code should be "0"
+    
+    When I run SQL on host "router"
+    """
+    CREATE TABLE test(id int, name text)
+    """
+    Then command return code should be "0"
+
   Scenario: Add/Remove router works
     When I run SQL on host "coordinator"
     """
