@@ -25,7 +25,7 @@ func Dial(addr string) (*grpc.ClientConn, error) {
 }
 
 var rootCmd = &cobra.Command{
-	Use: "spqr-dumper -e localhost:7003",
+	Use: "spqrdump -e localhost:7003",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

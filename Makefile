@@ -42,7 +42,7 @@ build_workloadreplay:
 	go build -pgo=auto -o spqr-workloadreplay ./cmd/workloadreplay
 
 build_dumper:
-	go build -pgo=auto -o spqr-dumper ./cmd/spqrdump
+	go build -pgo=auto -o spqrdump ./cmd/spqrdump
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_dumper
 

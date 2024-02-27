@@ -25,7 +25,7 @@ Feature: Dumper test
     
     When I run command on host "router"
     """
-    /spqr/spqr-dumper dump -e regress_router:7000
+    /spqr/spqrdump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp
@@ -48,7 +48,7 @@ Feature: Dumper test
 
     When I run command on host "router"
     """
-    /spqr/spqr-dumper dump -e regress_router:7000
+    /spqr/spqrdump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp
@@ -71,7 +71,7 @@ Feature: Dumper test
 
     When I run command on host "router"
     """
-    /spqr/spqr-dumper dump -e regress_router:7000
+    /spqr/spqrdump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp
