@@ -25,7 +25,7 @@ func Dial(addr string) (*grpc.ClientConn, error) {
 }
 
 var rootCmd = &cobra.Command{
-	Use: "coorctl -e localhost:7003",
+	Use: "spqr-dumper -e localhost:7003",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -36,6 +36,7 @@ var rootCmd = &cobra.Command{
 var endpoint string
 var proto string
 var passwd string
+var logLevel string
 
 // TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
@@ -171,7 +172,7 @@ func DumpKeyRanges() error {
 	}
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
-	if keys, err := rCl.ListKeyRange(context.Background(), &protos.ListKeyRangeRequest{}); err != nil {
+	if keys, err := rCl.ListAllKeyRanges(context.Background(), &protos.ListAllKeyRangesRequest{}); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint rules")
@@ -253,29 +254,30 @@ func DumpRelationsPsql() error {
 
 var dump = &cobra.Command{
 	Use:   "dump",
-	Short: "list running routers in current topology",
+	Short: "dump current sharding configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		spqrlog.UpdateZeroLogLevel(logLevel)
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
 			Msg("dialing spqrdump on")
 
 		switch proto {
 		case "grpc":
-			if err := DumpKeyRanges(); err != nil {
+			if err := DumpDistributions(); err != nil {
 				return err
 			}
-			if err := DumpDistributions(); err != nil {
+			if err := DumpKeyRanges(); err != nil {
 				return err
 			}
 			return nil
 		case "psql":
-			if err := DumpKeyRangesPsql(); err != nil {
-				return err
-			}
 			if err := DumpDistributionsPsql(); err != nil {
 				return err
 			}
 			if err := DumpRelationsPsql(); err != nil {
+				return err
+			}
+			if err := DumpKeyRangesPsql(); err != nil {
 				return err
 			}
 			return nil
@@ -288,11 +290,13 @@ var dump = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7003", "endpoint for dump metadata")
+	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7000", "endpoint for dump metadata")
 
 	rootCmd.PersistentFlags().StringVarP(&proto, "proto", "t", "grpc", "protocol to use for communication")
 
 	rootCmd.PersistentFlags().StringVarP(&passwd, "passwd", "p", "", "password to use for communication")
+
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "error", "log level")
 
 	rootCmd.AddCommand(dump)
 }
