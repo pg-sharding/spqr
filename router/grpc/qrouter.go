@@ -216,6 +216,22 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 }
 
 // TODO : unit tests
+func (l *LocalQrouterServer) ListAllKeyRanges(ctx context.Context, request *protos.ListAllKeyRangesRequest) (*protos.KeyRangeReply, error) {
+	krsDb, err := l.mgr.ListAllKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	krs := make([]*protos.KeyRangeInfo, len(krsDb))
+
+	for i, krg := range krsDb {
+		krs[i] = krg.ToProto()
+	}
+
+	return &protos.KeyRangeReply{KeyRangesInfo: krs}, nil
+}
+
+// TODO : unit tests
 func (l *LocalQrouterServer) LockKeyRange(ctx context.Context, request *protos.LockKeyRangeRequest) (*protos.ModifyReply, error) {
 	for _, id := range request.Id {
 		if _, err := l.mgr.LockKeyRange(ctx, id); err != nil {

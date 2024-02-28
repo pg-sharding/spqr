@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 const defaultDockerTimeout = 30 * time.Second
@@ -222,7 +224,12 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	if err != nil {
 		return 0, "", err
 	}
-	output, err := io.ReadAll(attachResp.Reader)
+	var outBuf, errBuf bytes.Buffer
+	_, err = stdcopy.StdCopy(&outBuf, &errBuf, attachResp.Reader)
+	if err != nil {
+		return 0, "", fmt.Errorf("failed demultiplexing exec output")
+	}
+	output, err := io.ReadAll(&outBuf)
 	attachResp.Close()
 	if err != nil {
 		return 0, "", err

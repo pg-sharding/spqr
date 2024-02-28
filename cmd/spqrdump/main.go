@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/spf13/cobra"
@@ -24,7 +25,7 @@ func Dial(addr string) (*grpc.ClientConn, error) {
 }
 
 var rootCmd = &cobra.Command{
-	Use: "coorctl -e localhost:7003",
+	Use: "spqrdump -e localhost:7003",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -35,27 +36,7 @@ var rootCmd = &cobra.Command{
 var endpoint string
 var proto string
 var passwd string
-
-// TODO : unit tests
-func DumpRules() error {
-	cc, err := Dial(endpoint)
-	if err != nil {
-		return err
-	}
-
-	rCl := protos.NewShardingRulesServiceClient(cc)
-	if rules, err := rCl.ListShardingRules(context.Background(), &protos.ListShardingRuleRequest{}); err != nil {
-		spqrlog.Zero.Error().
-			Err(err).
-			Msg("failed to dump endpoint rules")
-	} else {
-		for _, rule := range rules.Rules {
-			fmt.Printf("%s;\n", decode.DecodeRule(rule))
-		}
-	}
-
-	return nil
-}
+var logLevel string
 
 // TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
@@ -133,57 +114,27 @@ func getconn() (*pgproto3.Frontend, error) {
 }
 
 // TODO : unit tests
-func DumpRulesPSQL() error {
+func DumpKeyRangesPsql() error {
+	return dumpPsql("SHOW key_ranges;", func(v *pgproto3.DataRow) (string, error) {
+		l := string(v.Values[2])
+		r := string(v.Values[3])
+		id := string(v.Values[0])
+		shard := string(v.Values[1])
 
-	frontend, err := getconn()
-	if err != nil {
-		return err
-	}
-	frontend.Send(&pgproto3.Query{
-		String: "SHOW key_ranges;",
+		return decode.KeyRange(
+			&protos.KeyRangeInfo{
+				KeyRange: &protos.KeyRange{LowerBound: l, UpperBound: r},
+				ShardId:  shard, Krid: id}), nil
 	})
-	if err := frontend.Flush(); err != nil {
-		return err
-	}
-
-	for {
-		if msg, err := frontend.Receive(); err != nil {
-			return err
-		} else {
-			spqrlog.Zero.Debug().
-				Interface("message", msg).
-				Msg("received message")
-
-			switch v := msg.(type) {
-			case *pgproto3.DataRow:
-				l := string(v.Values[2])
-				r := string(v.Values[3])
-				id := string(v.Values[0])
-				shard := string(v.Values[1])
-
-				fmt.Printf("%s;\n",
-					decode.DecodeKeyRange(
-						&protos.KeyRangeInfo{
-							KeyRange: &protos.KeyRange{LowerBound: l, UpperBound: r},
-							ShardId:  shard, Krid: id}))
-			case *pgproto3.ErrorResponse:
-				return fmt.Errorf("failed to wait for RQF: %s", v.Message)
-			case *pgproto3.ReadyForQuery:
-				return nil
-			}
-		}
-	}
 }
 
-// TODO : unit tests
-func DumpKeyRangesPSQL() error {
-
+func dumpPsql(query string, rowToStr func(v *pgproto3.DataRow) (string, error)) error {
 	frontend, err := getconn()
 	if err != nil {
 		return err
 	}
 	frontend.Send(&pgproto3.Query{
-		String: "SHOW sharding_rules;",
+		String: query,
 	})
 	if err := frontend.Flush(); err != nil {
 		return err
@@ -196,24 +147,14 @@ func DumpKeyRangesPSQL() error {
 			spqrlog.Zero.Debug().
 				Interface("message", msg).
 				Msg("received message")
+
 			switch v := msg.(type) {
 			case *pgproto3.DataRow:
-				col := string(v.Values[2])
-				id := string(v.Values[0])
-				tablename := string(v.Values[1])
-
-				fmt.Printf("%s;\n",
-					decode.DecodeRule(
-						&protos.ShardingRule{
-							Id:        id,
-							TableName: tablename,
-							ShardingRuleEntry: []*protos.ShardingRuleEntry{
-								{
-									Column: col,
-								},
-							},
-						}),
-				)
+				s, err := rowToStr(v)
+				if err != nil {
+					return err
+				}
+				fmt.Println(s)
 			case *pgproto3.ErrorResponse:
 				return fmt.Errorf("failed to wait for RQF: %s", v.Message)
 			case *pgproto3.ReadyForQuery:
@@ -231,30 +172,100 @@ func DumpKeyRanges() error {
 	}
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
-	if keys, err := rCl.ListKeyRange(context.Background(), &protos.ListKeyRangeRequest{}); err != nil {
+	if keys, err := rCl.ListAllKeyRanges(context.Background(), &protos.ListAllKeyRangesRequest{}); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint rules")
 	} else {
 		for _, krg := range keys.KeyRangesInfo {
-			fmt.Printf("%s;\n", decode.DecodeKeyRange(krg))
+			fmt.Println(decode.KeyRange(krg))
 		}
 	}
 
 	return nil
 }
 
+// DumpDistributions dump info about distributions & attached relations via GRPC
+// TODO : unit tests
+func DumpDistributions() error {
+	cc, err := Dial(endpoint)
+	if err != nil {
+		return err
+	}
+
+	rCl := protos.NewDistributionServiceClient(cc)
+	if dss, err := rCl.ListDistributions(context.Background(), &protos.ListDistributionsRequest{}); err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("failed to dump endpoint distributions")
+	} else {
+		for _, ds := range dss.Distributions {
+			fmt.Println(decode.Distribution(ds))
+			for _, rel := range ds.Relations {
+				fmt.Println(decode.DistributedRelation(rel, ds.Id))
+			}
+		}
+	}
+
+	return nil
+}
+
+// DumpDistributionsPsql dump info about distributions via psql
+// TODO : unit tests
+func DumpDistributionsPsql() error {
+	return dumpPsql("SHOW distributions;", func(v *pgproto3.DataRow) (string, error) {
+		id := string(v.Values[0])
+		types := string(v.Values[1])
+
+		return decode.Distribution(
+			&protos.Distribution{
+				Id:          id,
+				ColumnTypes: strings.Split(types, ","),
+			}), nil
+	})
+}
+
+// DumpRelationsPsql dump info about distributed relations via psql
+// TODO : unit tests
+func DumpRelationsPsql() error {
+	return dumpPsql("SHOW relations;", func(v *pgproto3.DataRow) (string, error) {
+		name := string(v.Values[0])
+		ds := string(v.Values[1])
+		dsKeyStr := strings.Split(string(v.Values[2]), ",")
+		dsKey := make([]*protos.DistributionKeyEntry, len(dsKeyStr))
+		for i, elem := range dsKeyStr {
+			elems := strings.Split(strings.Trim(elem, "()"), ",")
+			if len(elems) != 2 {
+				return "", fmt.Errorf("incorrect distribution key entry: \"%s\"", elem)
+			}
+			dsKey[i] = &protos.DistributionKeyEntry{
+				Column:       strings.Trim(elems[0], "\""),
+				HashFunction: elems[1],
+			}
+		}
+
+		return decode.DistributedRelation(
+			&protos.DistributedRelation{
+				Name:            name,
+				DistributionKey: dsKey,
+			}, ds), nil
+	})
+}
+
 var dump = &cobra.Command{
 	Use:   "dump",
-	Short: "list running routers in current topology",
+	Short: "dump current sharding configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := spqrlog.UpdateZeroLogLevel(logLevel); err != nil {
+			return err
+		}
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
 			Msg("dialing spqrdump on")
 
 		switch proto {
 		case "grpc":
-			if err := DumpRules(); err != nil {
+			if err := DumpDistributions(); err != nil {
 				return err
 			}
 			if err := DumpKeyRanges(); err != nil {
@@ -262,10 +273,13 @@ var dump = &cobra.Command{
 			}
 			return nil
 		case "psql":
-			if err := DumpRulesPSQL(); err != nil {
+			if err := DumpDistributionsPsql(); err != nil {
 				return err
 			}
-			if err := DumpKeyRangesPSQL(); err != nil {
+			if err := DumpRelationsPsql(); err != nil {
+				return err
+			}
+			if err := DumpKeyRangesPsql(); err != nil {
 				return err
 			}
 			return nil
@@ -278,11 +292,13 @@ var dump = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7003", "endpoint for dump metadata")
+	rootCmd.PersistentFlags().StringVarP(&endpoint, "endpoint", "e", "localhost:7000", "endpoint for dump metadata")
 
 	rootCmd.PersistentFlags().StringVarP(&proto, "proto", "t", "grpc", "protocol to use for communication")
 
 	rootCmd.PersistentFlags().StringVarP(&passwd, "passwd", "p", "", "password to use for communication")
+
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "error", "log level")
 
 	rootCmd.AddCommand(dump)
 }

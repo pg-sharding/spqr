@@ -6,6 +6,7 @@ option go_package = "spqr/proto";
   
 service KeyRangeService {
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
+  rpc ListAllKeyRanges (ListAllKeyRangesRequest) returns (KeyRangeReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
   rpc AddKeyRange(AddKeyRangeRequest) returns (ModifyReply) {}
   rpc DropKeyRange(DropKeyRangeRequest) returns (ModifyReply) {}
@@ -38,6 +39,8 @@ message KeyRangeInfo {
 message ListKeyRangeRequest {
   string distribution = 1;
 }
+
+message ListAllKeyRangesRequest { }
 
 message AddKeyRangeRequest {
   KeyRangeInfo key_range_info = 1;
