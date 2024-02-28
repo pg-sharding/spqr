@@ -6,10 +6,17 @@ CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 
 CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 
+ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id;
+
 -- drop non-existing one
 DROP DISTRIBUTION ds23223;
 
--- non-cascade drop
+-- non-cascade drop with dependent key ranges
+DROP DISTRIBUTION ds1;
+    
+-- non-cascade drop with attached relations
+DROP KEY RANGE krid1;
+DROP KEY RANGE krid2;
 DROP DISTRIBUTION ds1;
 
 DROP DISTRIBUTION ds1 CASCADE;
@@ -20,3 +27,4 @@ DROP DISTRIBUTION ALL CASCADE;
 
 SHOW distributions;
 SHOW key_ranges;
+SHOW relations;
