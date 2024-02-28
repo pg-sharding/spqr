@@ -127,7 +127,7 @@ func (c *Coordinator) initKeyRanges() (map[Shard][]KeyRange, error) {
 		if !ok {
 			res[shard] = []KeyRange{}
 		}
-		res[shard] = append(res[shard], KeyRange{left: kr.KeyRange.LowerBound, right: kr.KeyRange.UpperBound})
+		res[shard] = append(res[shard], KeyRange{left: kr.KeyRange.LowerBound})
 	}
 
 	return res, nil
