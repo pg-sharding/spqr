@@ -1,4 +1,4 @@
-Feature: Dumper test
+Feature: spqrdump test
   Background:
     #
     # Make host "coordinator" take control
