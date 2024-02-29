@@ -24,6 +24,7 @@ type Balancer struct {
 
 	TLS TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 
+	// TODO set default values (probably the type needs to be de-exported)
 	CpuThreshold   float64 `json:"cpu_threshold" yaml:"cpu_threshold" toml:"cpu_threshold"`
 	SpaceThreshold float64 `json:"space_threshold" yaml:"space_threshold" toml:"space_threshold"`
 }
