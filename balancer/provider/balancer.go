@@ -11,14 +11,9 @@ import (
 	"sort"
 )
 
-const metricsCount = 2
-
 type BalancerImpl struct {
 	coordinatorConn *grpc.ClientConn
-	thresholds      []float64
-}
-
-type action struct {
+	threshold       []float64
 }
 
 func NewBalancer() (*BalancerImpl, error) {
@@ -36,14 +31,14 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 	panic("not implemented")
 }
 
-func (b *BalancerImpl) runIteration(ctx context.Context) error {
+func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 	shardsServiceClient := protos.NewShardServiceClient(b.coordinatorConn)
 	r, err := shardsServiceClient.ListShards(ctx, &protos.ListShardsRequest{})
 	if err != nil {
 		return err
 	}
-	shardToState := make(map[string]*shardState)
-	shardStates := make([]*shardState, 0)
+	shardToState := make(map[string]*ShardMetrics)
+	shardStates := make([]*ShardMetrics, 0)
 	for _, shard := range r.Shards {
 		state, err := b.getShardCurrentState(shard)
 		if err != nil {
@@ -55,7 +50,7 @@ func (b *BalancerImpl) runIteration(ctx context.Context) error {
 
 	maxMetric, criterion := b.getCriterion(shardStates)
 	sort.Slice(shardStates, func(i, j int) bool {
-		return shardStates[i].metrics[criterion] > shardStates[j].metrics[criterion]
+		return shardStates[i].MetricsTotal.metrics[criterion] > shardStates[j].MetricsTotal.metrics[criterion]
 	})
 
 	spqrlog.Zero.Debug().Float64("metric", maxMetric).Int("criterion", criterion).Msg("Max metric")
@@ -65,37 +60,31 @@ func (b *BalancerImpl) runIteration(ctx context.Context) error {
 		return nil
 	}
 
-	shardFrom := shardStates[0]
-	shardFromTopKeys := b.getTopKeysByCriterion(shardFrom, criterion)
-
+	return nil
 }
 
-type shardState struct {
-	shardId string
-	metrics []float64
-}
-
-func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*shardState, error) {
+func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
 	// TODO implement
 	panic("not implemented")
 }
 
-func (b *BalancerImpl) getCriterion(shards []*shardState) (value float64, t int) {
+// getStatsByKeyRange gets detailed statistics by key range & updates ShardMetrics
+func (b *BalancerImpl) getStatsByKeyRange(shards []*ShardMetrics) error {
+	// TODO implement
+	panic("implement me")
+}
+
+func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind int) {
 	value = -1
-	t = -1
+	kind = -1
 	for _, state := range shards {
-		for metricType, metric := range state.metrics {
-			v := metric / b.thresholds[metricType%metricsCount]
+		for metricType, metric := range state.MetricsTotal.metrics {
+			v := metric / b.threshold[metricType%metricsCount]
 			if v > value {
 				value = v
-				t = metricType
+				kind = metricType
 			}
 		}
 	}
-	return value, t
-}
-
-func (b *BalancerImpl) getTopKeysByCriterion(shard *shardState, criterion int) map[string]float64 {
-	// TODO implement
-	panic("not implemented")
+	return
 }
