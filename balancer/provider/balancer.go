@@ -79,6 +79,12 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 	keyCount := int(((shardFrom.MetricsTotal.metrics[criterion] - b.threshold[criterion]) * float64(shardFrom.KeyCountKR[krId])) / kRLoad)
 
 	// determine where to move keys to
+	shId, err := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
+
+	if err != nil {
+		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
+	}
+
 }
 
 func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
@@ -111,6 +117,20 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 	return "", fmt.Errorf("could not get shard to move keys to")
 }
 
+// moveMaxPossible determines where most keys can be sent
+// TODO unit tests
+func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
+	maxKeyCount = -1
+	for i := len(shardMetrics) - 1; i >= 0; i-- {
+		keyCount := b.maxFitOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], shardMetrics[i])
+		if keyCount > maxKeyCount {
+			maxKeyCount = keyCount
+			shardId = shardMetrics[i].ShardId
+		}
+	}
+	return
+}
+
 // fitsOnShard
 // TODO unit tests
 func (b *BalancerImpl) fitsOnShard(krMetrics *Metrics, keyCount int, shard *ShardMetrics) bool {
@@ -121,6 +141,20 @@ func (b *BalancerImpl) fitsOnShard(krMetrics *Metrics, keyCount int, shard *Shar
 		}
 	}
 	return true
+}
+
+// fitsOnShard
+// TODO unit tests
+func (b *BalancerImpl) maxFitOnShard(krMetrics *Metrics, shard *ShardMetrics) (maxCount int) {
+	maxCount = -1
+	for kind, metric := range shard.MetricsTotal.metrics {
+		// TODO move const to config
+		count := int(0.8 * ((b.threshold[kind] - metric) / krMetrics.metrics[kind]))
+		if count > maxCount {
+			maxCount = count
+		}
+	}
+	return
 }
 
 func (b *BalancerImpl) getAdjacentShards(krId string) []string {
@@ -162,4 +196,9 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 		}
 	}
 	return
+}
+
+func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount string) []*Task {
+	// TODO implement
+	panic("implement me")
 }
