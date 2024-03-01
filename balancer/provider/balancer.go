@@ -32,8 +32,13 @@ func NewBalancer() (*BalancerImpl, error) {
 var _ balancer.Balancer = &BalancerImpl{}
 
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
-	// TODO implement
-	panic("not implemented")
+	// TODO check for unfinished tasks before planning new
+	if err := b.generateTasks(ctx); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error planning tasks")
+	}
+	if err := b.executeTasks(ctx); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("error executing tasks")
+	}
 }
 
 func (b *BalancerImpl) generateTasks(ctx context.Context) error {
@@ -210,6 +215,11 @@ func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount int) ([]
 
 // planTasks adds tasks to QDB
 func (b *BalancerImpl) planTasks(tasks []*Task) error {
+	// TODO implement
+	panic("implement me")
+}
+
+func (b *BalancerImpl) executeTasks(ctx context.Context) error {
 	// TODO implement
 	panic("implement me")
 }
