@@ -75,9 +75,11 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 		return []*Task{}, nil
 	}
 
-	// TODO update b.keyRanges & b.krIdx here
+	if err = b.updateKeyRanges(ctx); err != nil {
+		return nil, err
+	}
 
-	if err := b.getStatsByKeyRange(shardStates); err != nil {
+	if err = b.getStatsByKeyRange(shardStates); err != nil {
 		return nil, err
 	}
 
@@ -277,4 +279,26 @@ func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
 func (b *BalancerImpl) executeTasks(ctx context.Context) error {
 	// TODO implement
 	panic("implement me")
+}
+
+func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
+	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
+	keyRangesProto, err := keyRangeService.ListAllKeyRanges(ctx, &protos.ListAllKeyRangesRequest{})
+	if err != nil {
+		return err
+	}
+	keyRanges := make([]*kr.KeyRange, len(keyRangesProto.KeyRangesInfo))
+	for i, krg := range keyRangesProto.KeyRangesInfo {
+		keyRanges[i] = kr.KeyRangeFromProto(krg)
+	}
+	sort.Slice(keyRanges, func(i, j int) bool {
+		return kr.CmpRangesLess(keyRanges[i].LowerBound, keyRanges[j].LowerBound)
+	})
+	b.keyRanges = keyRanges
+	b.krIdx = make(map[string]int)
+	for i, krg := range b.keyRanges {
+		b.krIdx[krg.ID] = i
+	}
+
+	return nil
 }
