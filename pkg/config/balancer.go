@@ -28,6 +28,8 @@ type Balancer struct {
 	CpuThreshold   float64 `json:"cpu_threshold" yaml:"cpu_threshold" toml:"cpu_threshold"`
 	SpaceThreshold float64 `json:"space_threshold" yaml:"space_threshold" toml:"space_threshold"`
 
+	StatIntervalSec int `json:"stat_interval_sec" yaml:"stat_interval_sec" toml:"stat_interval_sec"`
+
 	MaxMoveCount int `json:"max_move_count" yaml:"max_move_count" toml:"max_move_count"`
 	KeysPerMove  int `json:"keys_per_move" yaml:"keys_per_move" toml:"keys_per_move"`
 }

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -54,7 +55,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
 	for _, shard := range r.Shards {
-		state, err := b.getShardCurrentState(shard)
+		state, err := b.getShardCurrentState(ctx, shard)
 		if err != nil {
 			return nil, err
 		}
@@ -97,12 +98,12 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 	return b.getTasks(krId, shId, keyCount)
 }
 
-func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
+func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.Shard) (*ShardMetrics, error) {
 	hosts := shard.Hosts
-	res := &ShardMetrics{}
+	res := NewShardMetrics()
 	replicaMetrics := NewHostMetrics()
 	for _, host := range hosts {
-		hostsMetrics, isMaster, err := b.getHostStatus(host)
+		hostsMetrics, isMaster, err := b.getHostStatus(ctx, host)
 		if err != nil {
 			return nil, err
 		}
@@ -121,9 +122,40 @@ func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics,
 	return res, nil
 }
 
-func (b *BalancerImpl) getHostStatus(dsn string) (metrics HostMetrics, isMaster bool, err error) {
-	// TODO implement
-	panic("implement me")
+func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics HostMetrics, isMaster bool, err error) {
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		return nil, false, err
+	}
+	metrics = NewHostMetrics()
+
+	row := conn.QueryRow(ctx, "SELECT pg_is_in_recovery() as is_replica;")
+	res := ""
+	if err = row.Scan(&res); err != nil {
+		return nil, false, err
+	}
+	isMaster = res == "f"
+
+	query := fmt.Sprintf(`
+	SELECT coalesce(SUM((user_time + system_time)), 0) AS cpu_total
+	FROM pgcs_get_stats_time_interval(now() - interval %ds, now())
+`, config.BalancerConfig().StatIntervalSec)
+	row = conn.QueryRow(ctx, query)
+	if err = row.Scan(&metrics[cpuMetric]); err != nil {
+		return nil, isMaster, err
+	}
+
+	query = `SELECT SUM(pg_database_size(datname)) as total_size 
+			 FROM pg_database 
+				WHERE datname != 'template0' 
+				  AND datname != 'template1' 
+				  AND datname != 'postgres';`
+	row = conn.QueryRow(ctx, query)
+	if err = row.Scan(&metrics[spaceMetric]); err != nil {
+		return nil, isMaster, err
+	}
+
+	return
 }
 
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
