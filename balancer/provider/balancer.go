@@ -270,13 +270,13 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 
 func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krId string) {
 	value = -1
-	for kr := range shard.MetricsKR {
-		metric := shard.MetricsKR[kr][kind]
-		count := shard.KeyCountKR[kr]
+	for krg := range shard.MetricsKR {
+		metric := shard.MetricsKR[krg][kind]
+		count := shard.KeyCountKR[krg]
 		totalKRMetric := metric * float64(count)
 		if totalKRMetric > value {
 			value = totalKRMetric
-			krId = kr
+			krId = krg
 		}
 	}
 	return
