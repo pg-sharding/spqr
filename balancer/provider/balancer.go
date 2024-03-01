@@ -64,7 +64,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 
 	maxMetric, criterion := b.getCriterion(shardStates)
 	sort.Slice(shardStates, func(i, j int) bool {
-		return shardStates[i].MetricsTotal.metrics[criterion] > shardStates[j].MetricsTotal.metrics[criterion]
+		return shardStates[i].MetricsTotal[criterion] > shardStates[j].MetricsTotal[criterion]
 	})
 
 	spqrlog.Zero.Debug().Float64("metric", maxMetric).Int("criterion", criterion).Msg("Max metric")
@@ -85,7 +85,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 
 	kRLoad, krId := b.getMostLoadedKR(shardFrom, criterion)
 
-	keyCount := int(((shardFrom.MetricsTotal.metrics[criterion] - b.threshold[criterion]) * float64(shardFrom.KeyCountKR[krId])) / kRLoad)
+	keyCount := int(((shardFrom.MetricsTotal[criterion] - b.threshold[criterion]) * float64(shardFrom.KeyCountKR[krId])) / kRLoad)
 
 	// determine where to move keys to
 	shId, err := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
@@ -98,8 +98,32 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 }
 
 func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
+	hosts := shard.Hosts
+	res := &ShardMetrics{}
+	replicaMetrics := NewHostMetrics()
+	for _, host := range hosts {
+		hostsMetrics, isMaster, err := b.getHostStatus(host)
+		if err != nil {
+			return nil, err
+		}
+		if isMaster {
+			res.SetMasterMetrics(hostsMetrics)
+			res.Master = host
+			continue
+		}
+		replicaThreshold := b.threshold[metricsCount:]
+		if replicaMetrics.MaxRelative(replicaThreshold) < hostsMetrics.MaxRelative(replicaThreshold) {
+			replicaMetrics = hostsMetrics
+			res.TargetReplica = host
+		}
+	}
+	res.SetReplicaMetrics(replicaMetrics)
+	return res, nil
+}
+
+func (b *BalancerImpl) getHostStatus(dsn string) (metrics HostMetrics, isMaster bool, err error) {
 	// TODO implement
-	panic("not implemented")
+	panic("implement me")
 }
 
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
@@ -143,9 +167,9 @@ func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMe
 
 // fitsOnShard
 // TODO unit tests
-func (b *BalancerImpl) fitsOnShard(krMetrics *Metrics, keyCount int, shard *ShardMetrics) bool {
-	for kind, metric := range shard.MetricsTotal.metrics {
-		loadExpectation := krMetrics.metrics[kind]*float64(keyCount) + metric
+func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCount int, shard *ShardMetrics) bool {
+	for kind, metric := range shard.MetricsTotal {
+		loadExpectation := krMetrics[kind]*float64(keyCount) + metric
 		if b.threshold[kind] > loadExpectation {
 			return false
 		}
@@ -155,11 +179,11 @@ func (b *BalancerImpl) fitsOnShard(krMetrics *Metrics, keyCount int, shard *Shar
 
 // fitsOnShard
 // TODO unit tests
-func (b *BalancerImpl) maxFitOnShard(krMetrics *Metrics, shard *ShardMetrics) (maxCount int) {
+func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, shard *ShardMetrics) (maxCount int) {
 	maxCount = -1
-	for kind, metric := range shard.MetricsTotal.metrics {
+	for kind, metric := range shard.MetricsTotal {
 		// TODO move const to config
-		count := int(0.8 * ((b.threshold[kind] - metric) / krMetrics.metrics[kind]))
+		count := int(0.8 * ((b.threshold[kind] - metric) / krMetrics[kind]))
 		if count > maxCount {
 			maxCount = count
 		}
@@ -183,7 +207,7 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 	value = -1
 	kind = -1
 	for _, state := range shards {
-		for metricType, metric := range state.MetricsTotal.metrics {
+		for metricType, metric := range state.MetricsTotal {
 			v := metric / b.threshold[metricType%metricsCount]
 			if v > value {
 				value = v
@@ -197,7 +221,7 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krId string) {
 	value = -1
 	for kr := range shard.MetricsKR {
-		metric := shard.MetricsKR[kr].metrics[kind]
+		metric := shard.MetricsKR[kr][kind]
 		count := shard.KeyCountKR[kr]
 		totalKRMetric := metric * float64(count)
 		if totalKRMetric > value {
