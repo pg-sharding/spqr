@@ -2,8 +2,10 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
@@ -14,6 +16,9 @@ import (
 type BalancerImpl struct {
 	coordinatorConn *grpc.ClientConn
 	threshold       []float64
+
+	keyRanges []*kr.KeyRange
+	krIdx     map[string]int
 }
 
 func NewBalancer() (*BalancerImpl, error) {
@@ -60,7 +65,20 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 		return nil
 	}
 
-	return nil
+	// TODO update b.keyRanges & b.krIdx here
+
+	if err := b.getStatsByKeyRange(shardStates); err != nil {
+		return err
+	}
+
+	// determine most loaded key range
+	shardFrom := shardStates[0]
+
+	kRLoad, krId := b.getMostLoadedKR(shardFrom, criterion)
+
+	keyCount := int(((shardFrom.MetricsTotal.metrics[criterion] - b.threshold[criterion]) * float64(shardFrom.KeyCountKR[krId])) / kRLoad)
+
+	// determine where to move keys to
 }
 
 func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
@@ -68,10 +86,53 @@ func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics,
 	panic("not implemented")
 }
 
-// getStatsByKeyRange gets detailed statistics by key range & updates ShardMetrics
+// getStatsByKeyRange gets statistics by key range & updates ShardMetrics
 func (b *BalancerImpl) getStatsByKeyRange(shards []*ShardMetrics) error {
 	// TODO implement
 	panic("implement me")
+}
+
+// getShardToMoveTo determines where to send keys from specified key range
+// TODO unit tests
+func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCount int) (string, error) {
+	// try fitting on shards with adjacent key ranges
+	adjShards := b.getAdjacentShards(krId)
+	for _, adjShard := range adjShards {
+		if b.fitsOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], keyCount, shardIdToMetrics[adjShard]) {
+			return adjShard, nil
+		}
+	}
+	// try fitting on other shards ordered by criterion load ascending
+	for i := len(shardMetrics) - 1; i >= 0; i-- {
+		if b.fitsOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], keyCount, shardMetrics[i]) {
+			return shardMetrics[i].ShardId, nil
+		}
+	}
+	return "", fmt.Errorf("could not get shard to move keys to")
+}
+
+// fitsOnShard
+// TODO unit tests
+func (b *BalancerImpl) fitsOnShard(krMetrics *Metrics, keyCount int, shard *ShardMetrics) bool {
+	for kind, metric := range shard.MetricsTotal.metrics {
+		loadExpectation := krMetrics.metrics[kind]*float64(keyCount) + metric
+		if b.threshold[kind] > loadExpectation {
+			return false
+		}
+	}
+	return true
+}
+
+func (b *BalancerImpl) getAdjacentShards(krId string) []string {
+	res := make([]string, 0)
+	krIdx := b.krIdx[krId]
+	if krIdx != 0 {
+		res = append(res, b.keyRanges[krIdx-1].ShardID)
+	}
+	if krIdx < len(b.keyRanges)-1 && (len(res) == 0 || b.keyRanges[krIdx+1].ShardID != res[0]) {
+		res = append(res, b.keyRanges[krIdx+1].ShardID)
+	}
+	return res
 }
 
 func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind int) {
@@ -84,6 +145,20 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 				value = v
 				kind = metricType
 			}
+		}
+	}
+	return
+}
+
+func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krId string) {
+	value = -1
+	for kr := range shard.MetricsKR {
+		metric := shard.MetricsKR[kr].metrics[kind]
+		count := shard.KeyCountKR[kr]
+		totalKRMetric := metric * float64(count)
+		if totalKRMetric > value {
+			value = totalKRMetric
+			krId = kr
 		}
 	}
 	return

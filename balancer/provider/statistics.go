@@ -8,9 +8,9 @@ const (
 
 type ShardMetrics struct {
 	ShardId      string
-	MetricsTotal Metrics
-	MetricsKR    map[string]Metrics
-	KeyCount     map[string]int64
+	MetricsTotal *Metrics
+	MetricsKR    map[string]*Metrics // mean value for object by key range
+	KeyCountKR   map[string]int64
 }
 
 type Metrics struct {
