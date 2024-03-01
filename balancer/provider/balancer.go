@@ -79,7 +79,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 		return nil, err
 	}
 
-	if err = b.getStatsByKeyRange(shardStates); err != nil {
+	if err = b.getStatsByKeyRange(ctx, shardStates); err != nil {
 		return nil, err
 	}
 
@@ -161,9 +161,32 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 }
 
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
-func (b *BalancerImpl) getStatsByKeyRange(shards []*ShardMetrics) error {
-	// TODO implement
-	panic("implement me")
+func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMetrics) error {
+	for _, shard := range shards {
+		conn, err := pgx.Connect(ctx, shard.Master)
+		if err != nil {
+			return err
+		}
+		query := `
+		SELECT
+		    comment_keys->>'key_range_id' AS key_range_id,
+			SUM(user_time + system_time) AS cpu
+		FROM pgcs_get_stats_time_interval(now() - interval %ds, now())
+		GROUP BY key_range_id;
+`
+		rows, err := conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			krId := ""
+			cpu := 0.0
+			if err = rows.Scan(&krId, &cpu); err != nil {
+				return err
+			}
+			shard.MetricsKR[krId][cpuMetric] = cpu
+		}
+	}
 }
 
 func (b *BalancerImpl) getKeyRange(val []byte) string {
