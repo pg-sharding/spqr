@@ -85,6 +85,11 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
 	}
 
+	tasks, err := b.getTasks(krId, shId, keyCount)
+	if err != nil {
+		return err
+	}
+	return b.planTasks(tasks)
 }
 
 func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
@@ -198,7 +203,13 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	return
 }
 
-func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount string) []*Task {
+func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount int) ([]*Task, error) {
+	// TODO implement
+	panic("implement me")
+}
+
+// planTasks adds tasks to QDB
+func (b *BalancerImpl) planTasks(tasks []*Task) error {
 	// TODO implement
 	panic("implement me")
 }
