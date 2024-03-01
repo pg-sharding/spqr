@@ -33,26 +33,30 @@ var _ balancer.Balancer = &BalancerImpl{}
 
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 	// TODO check for unfinished tasks before planning new
-	if err := b.generateTasks(ctx); err != nil {
+	tasks, err := b.generateTasks(ctx)
+	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error planning tasks")
+	}
+	if len(tasks) == 0 {
+		return
 	}
 	if err := b.executeTasks(ctx); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error executing tasks")
 	}
 }
 
-func (b *BalancerImpl) generateTasks(ctx context.Context) error {
+func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 	shardsServiceClient := protos.NewShardServiceClient(b.coordinatorConn)
 	r, err := shardsServiceClient.ListShards(ctx, &protos.ListShardsRequest{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
 	for _, shard := range r.Shards {
 		state, err := b.getShardCurrentState(shard)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		shardToState[shard.Id] = state
 		shardStates = append(shardStates, state)
@@ -67,13 +71,13 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 
 	if maxMetric <= 1 {
 		spqrlog.Zero.Debug().Msg("Metrics below the threshold, exiting")
-		return nil
+		return []*Task{}, nil
 	}
 
 	// TODO update b.keyRanges & b.krIdx here
 
 	if err := b.getStatsByKeyRange(shardStates); err != nil {
-		return err
+		return nil, err
 	}
 
 	// determine most loaded key range
@@ -90,11 +94,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) error {
 		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
 	}
 
-	tasks, err := b.getTasks(krId, shId, keyCount)
-	if err != nil {
-		return err
-	}
-	return b.planTasks(tasks)
+	return b.getTasks(krId, shId, keyCount)
 }
 
 func (b *BalancerImpl) getShardCurrentState(shard *protos.Shard) (*ShardMetrics, error) {
@@ -213,8 +213,7 @@ func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount int) ([]
 	panic("implement me")
 }
 
-// planTasks adds tasks to QDB
-func (b *BalancerImpl) planTasks(tasks []*Task) error {
+func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
 	// TODO implement
 	panic("implement me")
 }
