@@ -131,13 +131,7 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
 				Bound:    split.Bound,
 				SourceId: split.SourceID,
-				KeyRangeInfo: &proto.KeyRangeInfo{
-					Krid:    split.Krid,
-					ShardId: keyRange.ShardID,
-					KeyRange: &proto.KeyRange{
-						LowerBound: string(keyRange.LowerBound),
-					},
-				},
+				NewId:    split.Krid,
 			})
 			return err
 		}
@@ -180,7 +174,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		Bound: right.LowerBound,
+		BaseId:      unite.KeyRangeIDLeft,
+		AppendageId: unite.KeyRangeIDRight,
 	})
 	return err
 }
@@ -196,7 +191,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 		if keyRange.ID == move.Krid {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-				KeyRange:  keyRange.ToProto(),
+				Id:        keyRange.ID,
 				ToShardId: move.ShardId,
 			})
 			return err

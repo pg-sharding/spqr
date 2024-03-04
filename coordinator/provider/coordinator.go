@@ -621,9 +621,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
-			Bound:        req.Bound,
-			SourceId:     req.SourceID,
-			KeyRangeInfo: krNew.ToProto(),
+			Bound:    req.Bound,
+			SourceId: req.SourceID,
+			NewId:    krNew.ID,
 		})
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
@@ -740,8 +740,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound:        krRight.LowerBound,
-			Distribution: krRight.DistributionId,
+			BaseId:      krLeft.KeyRangeID,
+			AppendageId: krRight.KeyRangeID,
 		})
 
 		spqrlog.Zero.Debug().
@@ -849,7 +849,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
-			KeyRange:  krmv.ToProto(),
+			Id:        krmv.ID,
 			ToShardId: krmv.ShardID,
 		})
 		spqrlog.Zero.Debug().
