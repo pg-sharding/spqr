@@ -7,3 +7,16 @@ type Task struct {
 	krIdTo      string
 	bound       []byte
 }
+
+const (
+	unificationLeft = iota
+	unificationRight
+	unificationNone
+)
+
+type unificationType int
+
+type TaskGroup struct {
+	tasks []*Task
+	uType unificationType
+}

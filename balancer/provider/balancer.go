@@ -37,19 +37,19 @@ var _ balancer.Balancer = &BalancerImpl{}
 
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 	// TODO check for unfinished tasks before planning new
-	tasks, err := b.generateTasks(ctx)
+	taskGroup, err := b.generateTasks(ctx)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error planning tasks")
 	}
-	if len(tasks) == 0 {
+	if len(taskGroup.tasks) == 0 {
 		return
 	}
-	if err := b.executeTasks(ctx); err != nil {
+	if err := b.executeTasks(ctx, taskGroup); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error executing tasks")
 	}
 }
 
-func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
+func (b *BalancerImpl) generateTasks(ctx context.Context) (*TaskGroup, error) {
 	shardsServiceClient := protos.NewShardServiceClient(b.coordinatorConn)
 	r, err := shardsServiceClient.ListShards(ctx, &protos.ListShardsRequest{})
 	if err != nil {
@@ -75,7 +75,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 
 	if maxMetric <= 1 {
 		spqrlog.Zero.Debug().Msg("Metrics below the threshold, exiting")
-		return []*Task{}, nil
+		return &TaskGroup{}, nil
 	}
 
 	if err = b.updateKeyRanges(ctx); err != nil {
@@ -397,16 +397,19 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	return
 }
 
-func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) ([]*Task, error) {
+func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*TaskGroup, error) {
 	// Move from beginning or the end of key range
 
 	krInd := b.krIdx[krId]
 	beginning := b.keyRanges[krInd+1].ShardID == shardToId
 	krIdTo := ""
+	var unification unificationType = unificationNone
 	if b.keyRanges[krInd+1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd+1].ID
+		unification = unificationRight
 	} else if b.keyRanges[krInd-1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd-1].ID
+		unification = unificationLeft
 	}
 
 	conn, err := pgx.Connect(ctx, shardFrom.TargetReplica)
@@ -473,7 +476,8 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			bound:       []byte(idx),
 		}
 	}
-	return tasks, nil
+
+	return &TaskGroup{tasks: tasks, uType: unification}, nil
 }
 
 func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
@@ -481,9 +485,11 @@ func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
 	panic("implement me")
 }
 
-func (b *BalancerImpl) executeTasks(ctx context.Context) error {
-	// TODO implement
-	panic("implement me")
+func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error {
+	if err := b.insertTasksToQDB(group.tasks); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
