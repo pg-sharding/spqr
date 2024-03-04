@@ -679,24 +679,24 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft)
+	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
 
-	krRight, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight)
+	krRight, err := qc.db.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
@@ -740,8 +740,8 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			BaseId:      krLeft.KeyRangeID,
-			AppendageId: krRight.KeyRangeID,
+			BaseId:      uniteKeyRange.BaseKeyRangeId,
+			AppendageId: uniteKeyRange.AppendageKeyRangeId,
 		})
 
 		spqrlog.Zero.Debug().
@@ -778,10 +778,10 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	return m.MoveId, nil
 }
 
-// TODO : unit tests
 // Move key range from one logical shard to another
 // This function reshards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
+// TODO : unit tests
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.

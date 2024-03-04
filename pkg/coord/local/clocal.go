@@ -251,11 +251,11 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 
 // TODO : unit tests
 func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
-	var krleft *qdb.KeyRange
-	var krright *qdb.KeyRange
+	var krBase *qdb.KeyRange
+	var krAppendage *qdb.KeyRange
 	var err error
 
-	if krleft, err = qr.qdb.LockKeyRange(ctx, req.KeyRangeIDLeft); err != nil { //nolint:all TODO
+	if krBase, err = qr.qdb.LockKeyRange(ctx, req.BaseKeyRangeId); err != nil { //nolint:all TODO
 		return err
 	}
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
@@ -264,22 +264,27 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return
 		}
-	}(qr.qdb, ctx, req.KeyRangeIDLeft)
+	}(qr.qdb, ctx, req.BaseKeyRangeId)
 
 	// TODO: krRight seems to be empty.
-	if krright, err = qr.qdb.GetKeyRange(ctx, req.KeyRangeIDRight); err != nil {
+	if krAppendage, err = qr.qdb.GetKeyRange(ctx, req.AppendageKeyRangeId); err != nil {
 		return err
 	}
 
-	if err = qr.qdb.DropKeyRange(ctx, krright.KeyRangeID); err != nil {
+	if err = qr.qdb.DropKeyRange(ctx, krAppendage.KeyRangeID); err != nil {
 		return err
+	}
+
+	newBound := krBase.LowerBound
+	if kr.CmpRangesLess(krAppendage.LowerBound, krBase.LowerBound) {
+		newBound = krAppendage.LowerBound
 	}
 
 	united := &kr.KeyRange{
-		LowerBound:   krleft.LowerBound,
-		ShardID:      krleft.ShardID,
-		Distribution: krleft.DistributionId,
-		ID:           krleft.KeyRangeID,
+		LowerBound:   newBound,
+		ShardID:      krBase.ShardID,
+		Distribution: krBase.DistributionId,
+		ID:           krBase.KeyRangeID,
 	}
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)

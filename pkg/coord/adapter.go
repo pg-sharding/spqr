@@ -150,20 +150,25 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	var left *kr.KeyRange
 	var right *kr.KeyRange
 
+	// Check for in-between key ranges
 	for _, kr := range krs {
-		if kr.ID == unite.KeyRangeIDLeft {
+		if kr.ID == unite.BaseKeyRangeId {
 			left = kr
 		}
-		if kr.ID == unite.KeyRangeIDRight {
+		if kr.ID == unite.AppendageKeyRangeId {
 			right = kr
 		}
 	}
 
-	for _, krcurr := range krs {
-		if krcurr.ID == unite.KeyRangeIDLeft || krcurr.ID == unite.KeyRangeIDRight {
+	if kr.CmpRangesLess(right.LowerBound, left.LowerBound) {
+		left, right = right, left
+	}
+
+	for _, krCurr := range krs {
+		if krCurr.ID == unite.BaseKeyRangeId || krCurr.ID == unite.AppendageKeyRangeId {
 			continue
 		}
-		if kr.CmpRangesLess(krcurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krcurr.LowerBound) {
+		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound) {
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "unvalid unite request")
 		}
 	}
@@ -174,8 +179,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		BaseId:      unite.KeyRangeIDLeft,
-		AppendageId: unite.KeyRangeIDRight,
+		BaseId:      unite.BaseKeyRangeId,
+		AppendageId: unite.AppendageKeyRangeId,
 	})
 	return err
 }

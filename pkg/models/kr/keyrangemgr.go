@@ -14,8 +14,8 @@ type MoveKeyRange struct {
 }
 
 type UniteKeyRange struct {
-	KeyRangeIDLeft  string
-	KeyRangeIDRight string
+	BaseKeyRangeId      string
+	AppendageKeyRangeId string
 }
 
 type KeyRangeMgr interface {
