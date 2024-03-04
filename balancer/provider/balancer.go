@@ -6,12 +6,15 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"sort"
+	"strings"
 )
 
 type BalancerImpl struct {
@@ -163,30 +166,114 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
 func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMetrics) error {
 	for _, shard := range shards {
-		conn, err := pgx.Connect(ctx, shard.Master)
-		if err != nil {
-			return err
-		}
-		query := `
+		for _, params := range []struct {
+			Host            string
+			MetricsStartInd int
+		}{
+			{Host: shard.Master, MetricsStartInd: 0},
+			{Host: shard.TargetReplica, MetricsStartInd: metricsCount},
+		} {
+			conn, err := pgx.Connect(ctx, params.Host)
+			if err != nil {
+				return err
+			}
+			query := `
 		SELECT
 		    comment_keys->>'key_range_id' AS key_range_id,
 			SUM(user_time + system_time) AS cpu
 		FROM pgcs_get_stats_time_interval(now() - interval %ds, now())
 		GROUP BY key_range_id;
 `
-		rows, err := conn.Query(ctx, query)
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
-			krId := ""
-			cpu := 0.0
-			if err = rows.Scan(&krId, &cpu); err != nil {
+			rows, err := conn.Query(ctx, query)
+			if err != nil {
 				return err
 			}
-			shard.MetricsKR[krId][cpuMetric] = cpu
+			for rows.Next() {
+				krId := ""
+				cpu := 0.0
+				if err = rows.Scan(&krId, &cpu); err != nil {
+					return err
+				}
+				if _, ok := shard.MetricsKR[krId]; !ok {
+					shard.MetricsKR[krId] = make([]float64, 2*metricsCount)
+				}
+				shard.MetricsKR[krId][params.MetricsStartInd+cpuMetric] = cpu
+			}
+
+			for i, krg := range b.keyRanges {
+				if krg.ShardID != shard.ShardId {
+					continue
+				}
+				rels, err := b.getKRRelations(ctx, krg)
+				if err != nil {
+					return err
+				}
+
+				for _, rel := range rels {
+					// TODO check units in other queries (mB/KB possible)
+					queryRaw := `
+				SELECT sum(pg_column_size(t.*)) as filesize, count(*) as filerow 
+				FROM %s as t
+				WHERE %s;
+`
+					condition, err := b.getKRCondition(rel, krg, b.keyRanges[i+1], "t")
+					if err != nil {
+						return err
+					}
+					query = fmt.Sprintf(queryRaw, rel.Name, condition)
+
+					row := conn.QueryRow(ctx, query)
+					var size, count int64
+					if err := row.Scan(&size, &count); err != nil {
+						return err
+					}
+					if _, ok := shard.MetricsKR[krg.ID]; !ok {
+						shard.MetricsKR[krg.ID] = make([]float64, 2*metricsCount)
+					}
+					shard.MetricsKR[krg.ID][params.MetricsStartInd+spaceMetric] += float64(size)
+					shard.KeyCountKR[krg.ID] += count
+				}
+			}
 		}
 	}
+	return nil
+}
+
+func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) ([]*distributions.DistributedRelation, error) {
+	distributionService := protos.NewDistributionServiceClient(b.coordinatorConn)
+	res, err := distributionService.GetDistribution(ctx, &protos.GetDistributionRequest{Id: kRange.Distribution})
+	if err != nil {
+		return nil, err
+	}
+	rels := make([]*distributions.DistributedRelation, len(res.Distribution.Relations))
+	for i, relProto := range res.Distribution.Relations {
+		rels[i] = distributions.DistributedRelationFromProto(relProto)
+	}
+	return rels, nil
+}
+
+// getKRCondition returns SQL condition for elements of distributed relation between two key ranges
+// TODO support multidimensional key ranges
+func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange, nextKR *kr.KeyRange, prefix string) (string, error) {
+	buf := make([]string, len(rel.DistributionKey))
+	for i, entry := range rel.DistributionKey {
+		// TODO remove after multidimensional key range support
+		if i > 0 {
+			break
+		}
+		f, err := hashfunction.HashFunctionByName(entry.HashFunction)
+		if err != nil {
+			return "", err
+		}
+		hashedCol := ""
+		if prefix != "" {
+			hashedCol = fmt.Sprintf("%s.%s(%s)", prefix, hashfunction.ToString(f), entry.Column)
+		} else {
+			hashedCol = fmt.Sprintf("%s(%s)", hashfunction.ToString(f), entry.Column)
+		}
+		buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
+	}
+	return strings.Join(buf, " AND "), nil
 }
 
 func (b *BalancerImpl) getKeyRange(val []byte) string {

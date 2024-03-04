@@ -24,6 +24,8 @@ func NewHostMetrics() HostMetrics {
 func NewShardMetrics() *ShardMetrics {
 	return &ShardMetrics{
 		MetricsTotal: make([]float64, 2*metricsCount),
+		MetricsKR:    make(map[string][]float64),
+		KeyCountKR:   make(map[string]int64),
 	}
 }
 
