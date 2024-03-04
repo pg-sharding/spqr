@@ -11,6 +11,7 @@ type ShardMetrics struct {
 	MetricsTotal  []float64
 	MetricsKR     map[string][]float64 // mean value for object by key range
 	KeyCountKR    map[string]int64
+	KeyCountRelKR map[string]map[string]int64
 	Master        string
 	TargetReplica string
 }
@@ -23,9 +24,10 @@ func NewHostMetrics() HostMetrics {
 
 func NewShardMetrics() *ShardMetrics {
 	return &ShardMetrics{
-		MetricsTotal: make([]float64, 2*metricsCount),
-		MetricsKR:    make(map[string][]float64),
-		KeyCountKR:   make(map[string]int64),
+		MetricsTotal:  make([]float64, 2*metricsCount),
+		MetricsKR:     make(map[string][]float64),
+		KeyCountKR:    make(map[string]int64),
+		KeyCountRelKR: make(map[string]map[string]int64),
 	}
 }
 

@@ -3,7 +3,7 @@ package provider
 type Task struct {
 	shardFromId string
 	shardToId   string
-	krIdForm    string
+	krIdFrom    string
 	krIdTo      string
 	bound       []byte
 }

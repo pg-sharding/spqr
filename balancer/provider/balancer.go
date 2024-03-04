@@ -100,7 +100,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) ([]*Task, error) {
 		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
 	}
 
-	return b.getTasks(krId, shId, keyCount)
+	return b.getTasks(ctx, shardFrom, krId, shId, keyCount)
 }
 
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.Shard) (*ShardMetrics, error) {
@@ -231,7 +231,12 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMe
 						shard.MetricsKR[krg.ID] = make([]float64, 2*metricsCount)
 					}
 					shard.MetricsKR[krg.ID][params.MetricsStartInd+spaceMetric] += float64(size)
+					// TODO remove duplicate count on master & replica
 					shard.KeyCountKR[krg.ID] += count
+					if _, ok := shard.KeyCountRelKR[krg.ID]; !ok {
+						shard.KeyCountRelKR[krg.ID] = make(map[string]int64)
+					}
+					shard.KeyCountRelKR[krg.ID][rel.Name] = count
 				}
 			}
 		}
@@ -392,9 +397,83 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	return
 }
 
-func (b *BalancerImpl) getTasks(krId string, shardToId string, keyCount int) ([]*Task, error) {
-	// TODO implement
-	panic("implement me")
+func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) ([]*Task, error) {
+	// Move from beginning or the end of key range
+
+	krInd := b.krIdx[krId]
+	beginning := b.keyRanges[krInd+1].ShardID == shardToId
+	krIdTo := ""
+	if b.keyRanges[krInd+1].ShardID == shardToId {
+		krIdTo = b.keyRanges[krInd+1].ID
+	} else if b.keyRanges[krInd-1].ShardID == shardToId {
+		krIdTo = b.keyRanges[krInd-1].ID
+	}
+
+	conn, err := pgx.Connect(ctx, shardFrom.TargetReplica)
+	if err != nil {
+		return nil, err
+	}
+
+	var maxCount int64 = -1
+	relName := ""
+	for r, count := range shardFrom.KeyCountRelKR[krId] {
+		if count > maxCount {
+			relName = r
+			maxCount = count
+		}
+	}
+	if _, ok := b.krIdx[krId]; !ok {
+		return nil, fmt.Errorf("unknown key range id \"%s\"", krId)
+	}
+	var rel *distributions.DistributedRelation = nil
+	allRels, err := b.getKRRelations(ctx, b.keyRanges[b.krIdx[krId]])
+	for _, r := range allRels {
+		if r.Name == relName {
+			rel = r
+			break
+		}
+	}
+	if rel == nil {
+		return nil, fmt.Errorf("relation \"%s\" not found", relName)
+	}
+
+	moveCount := min(keyCount/config.BalancerConfig().KeysPerMove, config.BalancerConfig().MaxMoveCount)
+	counts := make([]int, moveCount)
+	for i := 0; i < len(counts)-1; i++ {
+		counts[i] = config.BalancerConfig().KeysPerMove
+	}
+	counts[len(counts)-1] = min(keyCount-(moveCount-1)*config.BalancerConfig().KeysPerMove, config.BalancerConfig().KeysPerMove)
+	tasks := make([]*Task, moveCount)
+	cumCount := 0
+	// TODO multidimensional key ranges
+	for i, count := range counts {
+		query := fmt.Sprintf(`
+		SELECT "%s" as idx
+		FROM "%s"
+		ORDER BY idx %s
+		LIMIT 1
+		OFFSET %d
+		`, rel.DistributionKey[0].Column, rel.Name, func() string {
+			if !beginning {
+				return "DESC"
+			}
+			return ""
+		}(), cumCount+count-1)
+		row := conn.QueryRow(ctx, query)
+		// TODO typed key ranges
+		var idx string
+		if err := row.Scan(&idx); err != nil {
+			return nil, err
+		}
+		tasks[i] = &Task{
+			shardFromId: shardFrom.ShardId,
+			shardToId:   shardToId,
+			krIdFrom:    krId,
+			krIdTo:      krIdTo,
+			bound:       []byte(idx),
+		}
+	}
+	return tasks, nil
 }
 
 func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
