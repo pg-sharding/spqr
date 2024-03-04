@@ -47,18 +47,18 @@ message AddKeyRangeRequest {
 }
 
 message SplitKeyRangeRequest {
-  KeyRangeInfo key_range_info = 1;
+  string new_id = 1;
   bytes bound = 2;
   string source_id = 3;
 }
 
 message MergeKeyRangeRequest {
-  bytes bound = 1;
-  string distribution = 2;
+  string base_id= 1;
+  string appendage_id = 2;
 }
 
 message MoveKeyRangeRequest {
-  KeyRangeInfo key_range = 1;
+  string id = 1;
   string toShardId = 2;
 }
 
