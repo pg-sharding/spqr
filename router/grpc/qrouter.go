@@ -266,8 +266,8 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
-		KeyRangeIDLeft:  request.GetBaseId(),
-		KeyRangeIDRight: request.GetAppendageId(),
+		BaseKeyRangeId:      request.GetBaseId(),
+		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
 		return nil, err
 	}

@@ -562,7 +562,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.KeyRangeIDLeft, unite.KeyRangeIDRight))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId))}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {

@@ -111,8 +111,8 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 // TODO : unit tests
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Unite(ctx, &kr.UniteKeyRange{
-		KeyRangeIDLeft:  request.GetBaseId(),
-		KeyRangeIDRight: request.GetAppendageId(),
+		BaseKeyRangeId:      request.GetBaseId(),
+		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
 	}
