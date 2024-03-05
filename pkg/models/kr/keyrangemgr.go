@@ -3,9 +3,10 @@ package kr
 import "context"
 
 type SplitKeyRange struct {
-	Bound    KeyRangeBound
-	SourceID string
-	Krid     string
+	Bound      KeyRangeBound
+	SourceID   string
+	Krid       string
+	SplitRight bool
 }
 
 type MoveKeyRange struct {
