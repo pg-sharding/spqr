@@ -497,6 +497,9 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 func (b *BalancerImpl) getCurrentTaskGroupFromQDB(ctx context.Context) (group *tasks.TaskGroup, err error) {
 	tasksService := protos.NewTasksServiceClient(b.coordinatorConn)
 	resp, err := tasksService.GetTaskGroup(ctx, &protos.GetTaskGroupRequest{})
+	if err != nil {
+		return nil, err
+	}
 	return tasks.TaskGroupFromProto(resp.TaskGroup), nil
 }
 
