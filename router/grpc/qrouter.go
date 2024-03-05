@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -372,19 +373,22 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.Get
 	return reply, err
 }
 
-func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, request *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
-	//TODO implement me
-	panic("implement me")
+func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
+	group, err := l.mgr.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetTaskGroupReply{
+		TaskGroup: tasks.TaskGroupToProto(group),
+	}, nil
 }
 
 func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*protos.WriteTaskGroupReply, error) {
-	//TODO implement me
-	panic("implement me")
+	return &protos.WriteTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
-func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, request *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
-	//TODO implement me
-	panic("implement me")
+func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
+	return &protos.RemoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {

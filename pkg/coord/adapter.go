@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -400,6 +401,21 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 	}
 
 	return distributions.DistributionFromProto(resp.Distribution), nil
+}
+
+func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 // TODO : unit tests

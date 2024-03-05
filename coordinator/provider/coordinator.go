@@ -33,6 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -985,6 +986,21 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 		Str("router", rID).
 		Msg("unregister router")
 	return qc.db.DeleteRouter(ctx, rID)
+}
+
+func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 // TODO : unit tests

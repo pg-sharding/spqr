@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"math/rand"
 	"sync"
 
@@ -30,6 +31,21 @@ type LocalCoordinator struct {
 
 	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
+}
+
+func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 // TODO : unit tests
