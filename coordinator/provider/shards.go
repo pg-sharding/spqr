@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -31,9 +30,7 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, datashards.NewDataShard(newShard.Id, &config.Shard{
-		Hosts: newShard.Hosts,
-	})); err != nil {
+	if err := s.impl.AddDataShard(ctx, datashards.DataShardFromProto(newShard)); err != nil {
 		return nil, err
 	}
 
@@ -65,16 +62,13 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 
 // TODO : unit tests
 func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardReply, error) {
-	shardInfo, err := s.impl.GetShard(ctx, shardRequest.Id)
+	sh, err := s.impl.GetShard(ctx, shardRequest.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	return &protos.ShardReply{
-		Shard: &protos.Shard{
-			Hosts: shardInfo.Cfg.Hosts,
-			Id:    shardInfo.ID,
-		},
+		Shard: datashards.DataShardToProto(sh),
 	}, nil
 }
 

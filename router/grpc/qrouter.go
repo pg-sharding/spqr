@@ -52,8 +52,10 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *protos.ListShard
 }
 
 func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
-	//TODO implement me
-	panic("implement me")
+	if err := l.mgr.AddDataShard(ctx, datashards.DataShardFromProto(request.GetShard())); err != nil {
+		return nil, err
+	}
+	return &protos.AddShardReply{}, nil
 }
 
 func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
@@ -62,8 +64,13 @@ func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.
 }
 
 func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.ShardRequest) (*protos.ShardReply, error) {
-	//TODO implement me
-	panic("implement me")
+	sh, err := l.mgr.GetShard(ctx, request.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ShardReply{
+		Shard: datashards.DataShardToProto(sh),
+	}, nil
 }
 
 // CreateDistribution creates distribution in QDB

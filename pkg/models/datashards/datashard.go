@@ -23,3 +23,10 @@ func DataShardToProto(shard *DataShard) *proto.Shard {
 		Id:    shard.ID,
 	}
 }
+
+func DataShardFromProto(shard *proto.Shard) *DataShard {
+	return NewDataShard(shard.Id, &config.Shard{
+		Hosts: shard.Hosts,
+		Type:  config.DataShard,
+	})
+}
