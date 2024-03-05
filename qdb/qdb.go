@@ -3,8 +3,6 @@ package qdb
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
@@ -74,8 +72,8 @@ type QDB interface {
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
-	GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error)
-	WriteTaskGroup(ctx context.Context, group *tasks.TaskGroup) error
+	GetTaskGroup(ctx context.Context) (*TaskGroup, error)
+	WriteTaskGroup(ctx context.Context, group *TaskGroup) error
 	RemoveTaskGroup(ctx context.Context) error
 
 	UpdateCoordinator(ctx context.Context, address string) error

@@ -713,3 +713,18 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 		return q.Distributions[ds], nil
 	}
 }
+
+func (q *MemQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *MemQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *MemQDB) RemoveTaskGroup(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}

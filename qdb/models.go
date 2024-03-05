@@ -100,3 +100,18 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 
 	return distr
 }
+
+type Task struct {
+	ShardFromId string
+	ShardToId   string
+	KrIdFrom    string
+	KrIdTo      string
+	Bound       []byte
+	KrIdTemp    string
+	State       int
+}
+
+type TaskGroup struct {
+	Tasks    []*Task
+	JoinType int
+}

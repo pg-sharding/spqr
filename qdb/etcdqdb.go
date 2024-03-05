@@ -1056,6 +1056,25 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 }
 
 // ==============================================================================
+//                                    TASKS
+// ==============================================================================
+
+func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (q *EtcdQDB) RemoveTaskGroup(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+// ==============================================================================
 //                              KEY RANGE MOVES
 // ==============================================================================
 
