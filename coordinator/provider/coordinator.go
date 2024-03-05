@@ -874,6 +874,40 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	}
 	defer cc.Close()
 
+	// Configure distributions
+	dsCl := routerproto.NewDistributionServiceClient(cc)
+	spqrlog.Zero.Debug().Msg("qdb coordinator: configure distributions")
+	dss, err := qc.db.ListDistributions(ctx)
+	if err != nil {
+		return err
+	}
+	resp, err := dsCl.ListDistributions(ctx, &routerproto.ListDistributionsRequest{})
+	if err != nil {
+		return err
+	}
+	if _, err = dsCl.DropDistribution(ctx, &routerproto.DropDistributionRequest{
+		Ids: func() []string {
+			res := make([]string, len(resp.Distributions))
+			for i, ds := range resp.Distributions {
+				res[i] = ds.Id
+			}
+			return res
+		}(),
+	}); err != nil {
+		return err
+	}
+	if _, err = dsCl.CreateDistribution(ctx, &routerproto.CreateDistributionRequest{
+		Distributions: func() []*routerproto.Distribution {
+			res := make([]*routerproto.Distribution, len(dss))
+			for i, ds := range dss {
+				res[i] = distributions.DistributionToProto(distributions.DistributionFromDB(ds))
+			}
+			return res
+		}(),
+	}); err != nil {
+		return err
+	}
+
 	// Configure key ranges.
 	krClient := routerproto.NewKeyRangeServiceClient(cc)
 	spqrlog.Zero.Debug().Msg("qdb coordinator: configure key ranges")
