@@ -26,6 +26,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBackendConnectionsServiceServer
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
+	protos.UnimplementedTasksServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -371,6 +372,21 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.Get
 	return reply, err
 }
 
+func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, request *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*protos.WriteTaskGroupReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, request *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -389,6 +405,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 	protos.RegisterPoolServiceServer(server, lqr)
 	protos.RegisterDistributionServiceServer(server, lqr)
+	protos.RegisterTasksServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
