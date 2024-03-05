@@ -183,8 +183,8 @@ func CreateTables() {
 }
 
 func TestMain(m *testing.M) {
-	// SetupSharding()
-	// CreateTables()
+	SetupSharding()
+	CreateTables()
 	code := m.Run()
 	os.Exit(code)
 }
