@@ -6,17 +6,27 @@ type Task struct {
 	krIdFrom    string
 	krIdTo      string
 	bound       []byte
+	tempKRId    string
+	state       taskState
 }
 
+type taskState int
+
 const (
-	unificationLeft = iota
-	unificationRight
-	unificationNone
+	taskPlanned = iota
+	taskSplit
+	taskMoved
 )
 
 type unificationType int
 
+const (
+	unificationNone = iota
+	unificationLeft
+	unificationRight
+)
+
 type TaskGroup struct {
-	tasks []*Task
-	uType unificationType
+	tasks       []*Task
+	unification unificationType
 }

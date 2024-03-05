@@ -1,7 +1,9 @@
 package provider
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
@@ -36,13 +38,24 @@ func NewBalancer() (*BalancerImpl, error) {
 var _ balancer.Balancer = &BalancerImpl{}
 
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
-	// TODO check for unfinished tasks before planning new
-	taskGroup, err := b.generateTasks(ctx)
+	taskGroup, err := b.getCurrentTaskGroupFromQDB()
 	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error planning tasks")
-	}
-	if len(taskGroup.tasks) == 0 {
+		spqrlog.Zero.Error().Err(err).Msg("error getting current tasks")
 		return
+	}
+	if taskGroup == nil {
+		taskGroup, err = b.generateTasks(ctx)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error planning tasks")
+			return
+		}
+		if len(taskGroup.tasks) == 0 {
+			return
+		}
+		if err := b.insertTaskGroupToQDB(taskGroup); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error inserting tasks")
+			return
+		}
 	}
 	if err := b.executeTasks(ctx, taskGroup); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error executing tasks")
@@ -477,19 +490,97 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		}
 	}
 
-	return &TaskGroup{tasks: tasks, uType: unification}, nil
+	return &TaskGroup{tasks: tasks, unification: unification}, nil
 }
 
-func (b *BalancerImpl) insertTasksToQDB(tasks []*Task) error {
+func (b *BalancerImpl) insertTaskGroupToQDB(taskGroup *TaskGroup) error {
+	// TODO implement
+	panic("implement me")
+}
+
+func (b *BalancerImpl) getCurrentTaskGroupFromQDB() (group *TaskGroup, err error) {
+	// TODO implement
+	panic("implement me")
+}
+
+func (b *BalancerImpl) syncTaskGroupWithQDB(group *TaskGroup) error {
+	// TODO implement
+	panic("implement me")
+}
+
+func (b *BalancerImpl) removeTaskGroupFromQDB() error {
 	// TODO implement
 	panic("implement me")
 }
 
 func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error {
-	if err := b.insertTasksToQDB(group.tasks); err != nil {
+
+	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
+
+	var buf bytes.Buffer
+	e := gob.NewEncoder(&buf)
+	if err := e.Encode(group); err != nil {
 		return err
 	}
-	return nil
+	tasksHash := buf.String()
+
+	for len(group.tasks) > 0 {
+		task := group.tasks[0]
+		switch task.state {
+		case taskPlanned:
+			newKeyRange := fmt.Sprintf("kr_%s", tasksHash)
+
+			if _, err := keyRangeService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
+				NewId:    newKeyRange,
+				SourceId: task.krIdFrom,
+				Bound:    task.bound,
+			}); err != nil {
+				return err
+			}
+
+			task.tempKRId = newKeyRange
+			task.state = taskSplit
+			if err := b.syncTaskGroupWithQDB(group); err != nil {
+				// TODO mb retry?
+				return err
+			}
+			continue
+		case taskSplit:
+			// TODO account for unification type
+			if _, err := keyRangeService.MoveKeyRange(ctx, &protos.MoveKeyRangeRequest{
+				Id:        task.tempKRId,
+				ToShardId: task.shardToId,
+			}); err != nil {
+				return err
+			}
+			task.state = taskMoved
+			if err := b.syncTaskGroupWithQDB(group); err != nil {
+				// TODO mb retry?
+				return err
+			}
+			continue
+		case taskMoved:
+			if group.unification != unificationNone {
+				if _, err := keyRangeService.MergeKeyRange(ctx, &protos.MergeKeyRangeRequest{
+					BaseId:      task.krIdTo,
+					AppendageId: task.tempKRId,
+				}); err != nil {
+					return err
+				}
+			}
+			group.tasks = group.tasks[1:]
+			if err := b.syncTaskGroupWithQDB(group); err != nil {
+				// TODO mb retry?
+				return err
+			}
+			continue
+		default:
+			return fmt.Errorf("unknown task state %d", task.state)
+		}
+	}
+
+	// TODO mb retry?
+	return b.removeTaskGroupFromQDB()
 }
 
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
