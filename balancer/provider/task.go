@@ -18,15 +18,15 @@ const (
 	taskMoved
 )
 
-type unificationType int
+type joinType int
 
 const (
-	unificationNone = iota
-	unificationLeft
-	unificationRight
+	joinNone = iota
+	joinLeft
+	joinRight
 )
 
 type TaskGroup struct {
-	tasks       []*Task
-	unification unificationType
+	tasks    []*Task
+	joinType joinType
 }

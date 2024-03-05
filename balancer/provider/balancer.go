@@ -416,13 +416,13 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	krInd := b.krIdx[krId]
 	beginning := b.keyRanges[krInd+1].ShardID == shardToId
 	krIdTo := ""
-	var unification unificationType = unificationNone
+	var join joinType = joinNone
 	if b.keyRanges[krInd+1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd+1].ID
-		unification = unificationRight
+		join = joinRight
 	} else if b.keyRanges[krInd-1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd-1].ID
-		unification = unificationLeft
+		join = joinLeft
 	}
 
 	conn, err := pgx.Connect(ctx, shardFrom.TargetReplica)
@@ -490,7 +490,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		}
 	}
 
-	return &TaskGroup{tasks: tasks, unification: unification}, nil
+	return &TaskGroup{tasks: tasks, joinType: join}, nil
 }
 
 func (b *BalancerImpl) getCurrentTaskGroupFromQDB() (group *TaskGroup, err error) {
@@ -541,7 +541,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error
 			}
 			continue
 		case taskSplit:
-			// TODO account for unification type
+			// TODO account for join type
 			if _, err := keyRangeService.MoveKeyRange(ctx, &protos.MoveKeyRangeRequest{
 				Id:        task.tempKRId,
 				ToShardId: task.shardToId,
@@ -555,7 +555,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error
 			}
 			continue
 		case taskMoved:
-			if group.unification != unificationNone {
+			if group.joinType != joinNone {
 				if _, err := keyRangeService.MergeKeyRange(ctx, &protos.MergeKeyRangeRequest{
 					BaseId:      task.krIdTo,
 					AppendageId: task.tempKRId,
