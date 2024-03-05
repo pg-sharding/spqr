@@ -1,6 +1,9 @@
 package tasks
 
-import protos "github.com/pg-sharding/spqr/pkg/protos"
+import (
+	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
+)
 
 type Task struct {
 	shardFromId string
@@ -132,5 +135,55 @@ func JoinTypeFromProto(t protos.JoinType) JoinType {
 		return joinRight
 	default:
 		panic("incorrect join type")
+	}
+}
+
+func TaskGroupToDb(group *TaskGroup) *qdb.TaskGroup {
+	return &qdb.TaskGroup{
+		Tasks: func() []*qdb.Task {
+			res := make([]*qdb.Task, len(group.tasks))
+			for i, task := range group.tasks {
+				res[i] = TaskToDb(task)
+			}
+			return res
+		}(),
+		JoinType: int(group.joinType),
+	}
+}
+
+func TaskToDb(task *Task) *qdb.Task {
+	return &qdb.Task{
+		ShardFromId: task.shardFromId,
+		ShardToId:   task.shardToId,
+		KrIdFrom:    task.krIdFrom,
+		KrIdTo:      task.krIdTo,
+		KrIdTemp:    task.tempKRId,
+		Bound:       task.bound,
+		State:       int(task.state),
+	}
+}
+
+func TaskGroupFromDb(group *qdb.TaskGroup) *TaskGroup {
+	return &TaskGroup{
+		tasks: func() []*Task {
+			res := make([]*Task, len(group.Tasks))
+			for i, task := range group.Tasks {
+				res[i] = TaskFromDb(task)
+			}
+			return res
+		}(),
+		joinType: JoinType(group.JoinType),
+	}
+}
+
+func TaskFromDb(task *qdb.Task) *Task {
+	return &Task{
+		shardFromId: task.ShardFromId,
+		shardToId:   task.ShardToId,
+		krIdFrom:    task.KrIdFrom,
+		krIdTo:      task.KrIdTo,
+		tempKRId:    task.KrIdTemp,
+		bound:       task.Bound,
+		state:       TaskState(task.State),
 	}
 }
