@@ -253,9 +253,10 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
-		Krid:     request.NewId,
-		SourceID: request.SourceId,
-		Bound:    request.Bound,
+		Krid:       request.NewId,
+		SourceID:   request.SourceId,
+		Bound:      request.Bound,
+		SplitRight: request.SplitRight,
 	}); err != nil {
 		return nil, err
 	}
