@@ -530,9 +530,10 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 			newKeyRange := fmt.Sprintf("kr_%s", tasksHash)
 
 			if _, err := keyRangeService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
-				NewId:    newKeyRange,
-				SourceId: task.KrIdFrom,
-				Bound:    task.Bound,
+				NewId:     newKeyRange,
+				SourceId:  task.KrIdFrom,
+				Bound:     task.Bound,
+				SplitLeft: group.JoinType == tasks.JoinLeft,
 			}); err != nil {
 				return err
 			}
