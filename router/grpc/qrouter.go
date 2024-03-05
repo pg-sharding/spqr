@@ -419,3 +419,4 @@ var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
+var _ protos.TasksServiceServer = &LocalQrouterServer{}
