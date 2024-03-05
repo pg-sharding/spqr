@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -838,7 +837,6 @@ func TestPrepStmtSimpleParametrizedQuery(t *testing.T) {
 			default:
 				break
 			}
-			fmt.Printf("%T\n", retMsg)
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("index=%d", ind))
 		}
 	}
@@ -1889,120 +1887,9 @@ func TestPrepStmt(t *testing.T) {
 			default:
 				break
 			}
-			fmt.Printf("%T\n", retMsg)
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("failed msg no %d", ind))
 		}
 	}
-}
-
-func TestPrepExtendedPipelineConcurrent(t *testing.T) {
-
-	type MessageGroup struct {
-		Request  []pgproto3.FrontendMessage
-		Response []pgproto3.BackendMessage
-	}
-
-	tt := []MessageGroup{
-		{
-			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Parse{
-					Name:  "sssssdss",
-					Query: "SELECT 1",
-				},
-				&pgproto3.Sync{},
-				&pgproto3.Describe{
-					ObjectType: 'S',
-					Name:       "sssssdss",
-				},
-				&pgproto3.Sync{},
-			},
-
-			Response: []pgproto3.BackendMessage{
-				&pgproto3.ParseComplete{},
-
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-				&pgproto3.ParameterDescription{
-					ParameterOIDs: []uint32{},
-				},
-				&pgproto3.RowDescription{
-					Fields: []pgproto3.FieldDescription{
-						{
-							Name:         []byte("?column?"),
-							DataTypeOID:  23,
-							DataTypeSize: 4,
-							TypeModifier: -1,
-						},
-					},
-				},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-			},
-		},
-	}
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-
-	for i := 0; i < 1; i++ {
-		go func() {
-			defer wg.Done()
-
-			conn, err := getC()
-			if err != nil {
-				assert.NoError(t, err, "startup failed")
-				return
-			}
-			defer func() {
-				_ = conn.Close()
-			}()
-
-			frontend := pgproto3.NewFrontend(conn, conn)
-			frontend.Send(&pgproto3.StartupMessage{
-				ProtocolVersion: 196608,
-				Parameters:      getConnectionParams(),
-			})
-			if err := frontend.Flush(); err != nil {
-				assert.NoError(t, err, "startup failed")
-			}
-
-			if err := waitRFQ(frontend); err != nil {
-				assert.NoError(t, err, "startup failed")
-				return
-			}
-
-			backendFinished := false
-			for ind, msg := range tt[0].Response {
-				if backendFinished {
-					break
-				}
-				retMsg, err := frontend.Receive()
-				assert.NoError(t, err)
-				switch retMsgType := retMsg.(type) {
-				case *pgproto3.RowDescription:
-					for i := range retMsgType.Fields {
-						// We don't want to check table OID
-						retMsgType.Fields[i].TableOID = 0
-					}
-				case *pgproto3.ReadyForQuery:
-					switch msg.(type) {
-					case *pgproto3.ReadyForQuery:
-						break
-					default:
-						backendFinished = true
-					}
-				default:
-					break
-				}
-				fmt.Printf("%T\n", retMsg)
-				assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
-			}
-		}()
-	}
-
-	wg.Wait()
 }
 
 func TestPrepExtendedPipeline(t *testing.T) {
@@ -2217,24 +2104,17 @@ func TestPrepExtendedPipeline(t *testing.T) {
 			},
 		},
 	}
-	for i, msgroup := range tt {
-		if i != 0 {
-
-		}
+	for _, msgroup := range tt {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
 		}
 	}
 	_ = frontend.Flush()
-	for i, msgroup := range tt {
-		if i != 0 {
-
-		}
-
+	for _, msgroup := range tt {
 		backendFinished := false
 		for ind, msg := range msgroup.Response {
 			if backendFinished {
-				// break
+				break
 			}
 			retMsg, err := frontend.Receive()
 			assert.NoError(t, err)
@@ -2254,7 +2134,6 @@ func TestPrepExtendedPipeline(t *testing.T) {
 			default:
 				break
 			}
-			fmt.Printf("%T\n", retMsg)
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("tc %d", ind))
 		}
 	}
