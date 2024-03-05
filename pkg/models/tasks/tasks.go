@@ -1,74 +1,73 @@
 package tasks
 
 import (
-	balancer "github.com/pg-sharding/spqr/balancer/provider"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
 type Task struct {
-	shardFromId string
-	shardToId   string
-	krIdFrom    string
-	krIdTo      string
-	bound       []byte
-	tempKRId    string
-	state       TaskState
+	ShardFromId string
+	ShardToId   string
+	KrIdFrom    string
+	KrIdTo      string
+	Bound       []byte
+	KrIdTemp    string
+	State       TaskState
 }
 
 type TaskState int
 
 const (
-	taskPlanned = iota
-	taskSplit
-	taskMoved
+	TaskPlanned = iota
+	TaskSplit
+	TaskMoved
 )
 
 type JoinType int
 
 const (
-	joinNone = iota
-	joinLeft
-	joinRight
+	JoinNone = iota
+	JoinLeft
+	JoinRight
 )
 
 type TaskGroup struct {
-	tasks    []*Task
-	joinType JoinType
+	Tasks    []*Task
+	JoinType JoinType
 }
 
 func TaskGroupToProto(group *TaskGroup) *protos.TaskGroup {
 	return &protos.TaskGroup{
 		Tasks: func() []*protos.Task {
-			res := make([]*protos.Task, len(group.tasks))
-			for i, t := range group.tasks {
+			res := make([]*protos.Task, len(group.Tasks))
+			for i, t := range group.Tasks {
 				res[i] = TaskToProto(t)
 			}
 			return res
 		}(),
-		JoinType: JoinTypeToProto(group.joinType),
+		JoinType: JoinTypeToProto(group.JoinType),
 	}
 }
 
 func TaskToProto(task *Task) *protos.Task {
 	return &protos.Task{
-		ShardIdFrom:    task.shardFromId,
-		ShardIdTo:      task.shardToId,
-		KeyRangeIdFrom: task.krIdFrom,
-		KeyRangeIdTo:   task.krIdTo,
-		KeyRangeIdTemp: task.tempKRId,
-		Bound:          task.bound,
-		Status:         TaskStateToProto(task.state),
+		ShardIdFrom:    task.ShardFromId,
+		ShardIdTo:      task.ShardToId,
+		KeyRangeIdFrom: task.KrIdFrom,
+		KeyRangeIdTo:   task.KrIdTo,
+		KeyRangeIdTemp: task.KrIdTemp,
+		Bound:          task.Bound,
+		Status:         TaskStateToProto(task.State),
 	}
 }
 
 func TaskStateToProto(state TaskState) protos.TaskStatus {
 	switch state {
-	case taskPlanned:
+	case TaskPlanned:
 		return protos.TaskStatus_Planned
-	case taskSplit:
+	case TaskSplit:
 		return protos.TaskStatus_Split
-	case taskMoved:
+	case TaskMoved:
 		return protos.TaskStatus_Moved
 	default:
 		panic("incorrect task state")
@@ -77,11 +76,11 @@ func TaskStateToProto(state TaskState) protos.TaskStatus {
 
 func JoinTypeToProto(t JoinType) protos.JoinType {
 	switch t {
-	case joinNone:
+	case JoinNone:
 		return protos.JoinType_JoinNone
-	case joinLeft:
+	case JoinLeft:
 		return protos.JoinType_JoinLeft
-	case joinRight:
+	case JoinRight:
 		return protos.JoinType_JoinRight
 	default:
 		panic("incorrect join type")
@@ -90,37 +89,37 @@ func JoinTypeToProto(t JoinType) protos.JoinType {
 
 func TaskGroupFromProto(group *protos.TaskGroup) *TaskGroup {
 	return &TaskGroup{
-		tasks: func() []*Task {
+		Tasks: func() []*Task {
 			res := make([]*Task, len(group.Tasks))
 			for i, t := range group.Tasks {
 				res[i] = TaskFromProto(t)
 			}
 			return res
 		}(),
-		joinType: JoinTypeFromProto(group.JoinType),
+		JoinType: JoinTypeFromProto(group.JoinType),
 	}
 }
 
 func TaskFromProto(task *protos.Task) *Task {
 	return &Task{
-		shardFromId: task.ShardIdFrom,
-		shardToId:   task.ShardIdTo,
-		krIdFrom:    task.KeyRangeIdFrom,
-		krIdTo:      task.KeyRangeIdTo,
-		tempKRId:    task.KeyRangeIdTemp,
-		bound:       task.Bound,
-		state:       TaskStateFromProto(task.Status),
+		ShardFromId: task.ShardIdFrom,
+		ShardToId:   task.ShardIdTo,
+		KrIdFrom:    task.KeyRangeIdFrom,
+		KrIdTo:      task.KeyRangeIdTo,
+		KrIdTemp:    task.KeyRangeIdTemp,
+		Bound:       task.Bound,
+		State:       TaskStateFromProto(task.Status),
 	}
 }
 
 func TaskStateFromProto(state protos.TaskStatus) TaskState {
 	switch state {
 	case protos.TaskStatus_Planned:
-		return taskPlanned
+		return TaskPlanned
 	case protos.TaskStatus_Split:
-		return taskSplit
+		return TaskSplit
 	case protos.TaskStatus_Moved:
-		return taskMoved
+		return TaskMoved
 	default:
 		panic("incorrect task state")
 	}
@@ -129,11 +128,11 @@ func TaskStateFromProto(state protos.TaskStatus) TaskState {
 func JoinTypeFromProto(t protos.JoinType) JoinType {
 	switch t {
 	case protos.JoinType_JoinNone:
-		return joinNone
+		return JoinNone
 	case protos.JoinType_JoinLeft:
-		return joinLeft
+		return JoinLeft
 	case protos.JoinType_JoinRight:
-		return joinRight
+		return JoinRight
 	default:
 		panic("incorrect join type")
 	}
@@ -142,99 +141,49 @@ func JoinTypeFromProto(t protos.JoinType) JoinType {
 func TaskGroupToDb(group *TaskGroup) *qdb.TaskGroup {
 	return &qdb.TaskGroup{
 		Tasks: func() []*qdb.Task {
-			res := make([]*qdb.Task, len(group.tasks))
-			for i, task := range group.tasks {
+			res := make([]*qdb.Task, len(group.Tasks))
+			for i, task := range group.Tasks {
 				res[i] = TaskToDb(task)
 			}
 			return res
 		}(),
-		JoinType: int(group.joinType),
+		JoinType: int(group.JoinType),
 	}
 }
 
 func TaskToDb(task *Task) *qdb.Task {
 	return &qdb.Task{
-		ShardFromId: task.shardFromId,
-		ShardToId:   task.shardToId,
-		KrIdFrom:    task.krIdFrom,
-		KrIdTo:      task.krIdTo,
-		KrIdTemp:    task.tempKRId,
-		Bound:       task.bound,
-		State:       int(task.state),
+		ShardFromId: task.ShardFromId,
+		ShardToId:   task.ShardToId,
+		KrIdFrom:    task.KrIdFrom,
+		KrIdTo:      task.KrIdTo,
+		KrIdTemp:    task.KrIdTemp,
+		Bound:       task.Bound,
+		State:       int(task.State),
 	}
 }
 
 func TaskGroupFromDb(group *qdb.TaskGroup) *TaskGroup {
 	return &TaskGroup{
-		tasks: func() []*Task {
+		Tasks: func() []*Task {
 			res := make([]*Task, len(group.Tasks))
 			for i, task := range group.Tasks {
 				res[i] = TaskFromDb(task)
 			}
 			return res
 		}(),
-		joinType: JoinType(group.JoinType),
+		JoinType: JoinType(group.JoinType),
 	}
 }
 
 func TaskFromDb(task *qdb.Task) *Task {
 	return &Task{
-		shardFromId: task.ShardFromId,
-		shardToId:   task.ShardToId,
-		krIdFrom:    task.KrIdFrom,
-		krIdTo:      task.KrIdTo,
-		tempKRId:    task.KrIdTemp,
-		bound:       task.Bound,
-		state:       TaskState(task.State),
-	}
-}
-
-func TaskGroupToBalancer(taskGroup *TaskGroup) *balancer.TaskGroup {
-	return &balancer.TaskGroup{
-		Tasks: func() []*balancer.Task {
-			res := make([]*balancer.Task, len(taskGroup.tasks))
-			for i, task := range taskGroup.tasks {
-				res[i] = TaskToBalancer(task)
-			}
-			return res
-		}(),
-		JoinType: balancer.JoinType(taskGroup.joinType),
-	}
-}
-
-func TaskToBalancer(task *Task) *balancer.Task {
-	return &balancer.Task{
-		ShardFromId: task.shardFromId,
-		ShardToId:   task.shardToId,
-		KrIdFrom:    task.krIdFrom,
-		KrIdTo:      task.krIdTo,
-		KrIdTemp:    task.tempKRId,
-		Bound:       task.bound,
-		State:       balancer.TaskState(task.state),
-	}
-}
-
-func TaskGroupFromBalancer(taskGroup *balancer.TaskGroup) *TaskGroup {
-	return &TaskGroup{
-		tasks: func() []*Task {
-			res := make([]*Task, len(taskGroup.Tasks))
-			for i, task := range taskGroup.Tasks {
-				res[i] = TaskFromBalancer(task)
-			}
-			return res
-		}(),
-		joinType: JoinType(taskGroup.JoinType),
-	}
-}
-
-func TaskFromBalancer(task *balancer.Task) *Task {
-	return &Task{
-		shardFromId: task.ShardFromId,
-		shardToId:   task.ShardToId,
-		krIdFrom:    task.KrIdFrom,
-		krIdTo:      task.KrIdTo,
-		bound:       task.Bound,
-		tempKRId:    task.KrIdTemp,
-		state:       TaskState(task.State),
+		ShardFromId: task.ShardFromId,
+		ShardToId:   task.ShardToId,
+		KrIdFrom:    task.KrIdFrom,
+		KrIdTo:      task.KrIdTo,
+		KrIdTemp:    task.KrIdTemp,
+		Bound:       task.Bound,
+		State:       TaskState(task.State),
 	}
 }

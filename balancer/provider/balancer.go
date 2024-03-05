@@ -63,7 +63,7 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 	}
 }
 
-func (b *BalancerImpl) generateTasks(ctx context.Context) (*TaskGroup, error) {
+func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, error) {
 	shardsServiceClient := protos.NewShardServiceClient(b.coordinatorConn)
 	r, err := shardsServiceClient.ListShards(ctx, &protos.ListShardsRequest{})
 	if err != nil {
@@ -89,7 +89,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*TaskGroup, error) {
 
 	if maxMetric <= 1 {
 		spqrlog.Zero.Debug().Msg("Metrics below the threshold, exiting")
-		return &TaskGroup{}, nil
+		return &tasks.TaskGroup{}, nil
 	}
 
 	if err = b.updateKeyRanges(ctx); err != nil {
@@ -411,19 +411,19 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	return
 }
 
-func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*TaskGroup, error) {
+func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.TaskGroup, error) {
 	// Move from beginning or the end of key range
 
 	krInd := b.krIdx[krId]
 	beginning := b.keyRanges[krInd+1].ShardID == shardToId
 	krIdTo := ""
-	var join JoinType = joinNone
+	var join tasks.JoinType = tasks.JoinNone
 	if b.keyRanges[krInd+1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd+1].ID
-		join = joinRight
+		join = tasks.JoinRight
 	} else if b.keyRanges[krInd-1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd-1].ID
-		join = joinLeft
+		join = tasks.JoinLeft
 	}
 
 	conn, err := pgx.Connect(ctx, shardFrom.TargetReplica)
@@ -460,7 +460,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		counts[i] = config.BalancerConfig().KeysPerMove
 	}
 	counts[len(counts)-1] = min(keyCount-(moveCount-1)*config.BalancerConfig().KeysPerMove, config.BalancerConfig().KeysPerMove)
-	tasks := make([]*Task, moveCount)
+	groupTasks := make([]*tasks.Task, moveCount)
 	cumCount := 0
 	// TODO multidimensional key ranges
 	for i, count := range counts {
@@ -482,7 +482,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		if err := row.Scan(&idx); err != nil {
 			return nil, err
 		}
-		tasks[i] = &Task{
+		groupTasks[i] = &tasks.Task{
 			ShardFromId: shardFrom.ShardId,
 			ShardToId:   shardToId,
 			KrIdFrom:    krId,
@@ -491,18 +491,18 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		}
 	}
 
-	return &TaskGroup{Tasks: tasks, JoinType: join}, nil
+	return &tasks.TaskGroup{Tasks: groupTasks, JoinType: join}, nil
 }
 
-func (b *BalancerImpl) getCurrentTaskGroupFromQDB(ctx context.Context) (group *TaskGroup, err error) {
+func (b *BalancerImpl) getCurrentTaskGroupFromQDB(ctx context.Context) (group *tasks.TaskGroup, err error) {
 	tasksService := protos.NewTasksServiceClient(b.coordinatorConn)
 	resp, err := tasksService.GetTaskGroup(ctx, &protos.GetTaskGroupRequest{})
-	return tasks.TaskGroupToBalancer(tasks.TaskGroupFromProto(resp.TaskGroup)), nil
+	return tasks.TaskGroupFromProto(resp.TaskGroup), nil
 }
 
-func (b *BalancerImpl) syncTaskGroupWithQDB(ctx context.Context, group *TaskGroup) error {
+func (b *BalancerImpl) syncTaskGroupWithQDB(ctx context.Context, group *tasks.TaskGroup) error {
 	tasksService := protos.NewTasksServiceClient(b.coordinatorConn)
-	_, err := tasksService.WriteTaskGroup(ctx, &protos.WriteTaskGroupRequest{TaskGroup: tasks.TaskGroupToProto(tasks.TaskGroupFromBalancer(group))})
+	_, err := tasksService.WriteTaskGroup(ctx, &protos.WriteTaskGroupRequest{TaskGroup: tasks.TaskGroupToProto(group)})
 	return err
 }
 
@@ -512,7 +512,7 @@ func (b *BalancerImpl) removeTaskGroupFromQDB(ctx context.Context) error {
 	return err
 }
 
-func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error {
+func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup) error {
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
 
@@ -526,7 +526,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error
 	for len(group.Tasks) > 0 {
 		task := group.Tasks[0]
 		switch task.State {
-		case taskPlanned:
+		case tasks.TaskPlanned:
 			newKeyRange := fmt.Sprintf("kr_%s", tasksHash)
 
 			if _, err := keyRangeService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
@@ -538,13 +538,13 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error
 			}
 
 			task.KrIdTemp = newKeyRange
-			task.State = taskSplit
+			task.State = tasks.TaskSplit
 			if err := b.syncTaskGroupWithQDB(ctx, group); err != nil {
 				// TODO mb retry?
 				return err
 			}
 			continue
-		case taskSplit:
+		case tasks.TaskSplit:
 			// TODO account for join type
 			if _, err := keyRangeService.MoveKeyRange(ctx, &protos.MoveKeyRangeRequest{
 				Id:        task.KrIdTemp,
@@ -552,14 +552,14 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *TaskGroup) error
 			}); err != nil {
 				return err
 			}
-			task.State = taskMoved
+			task.State = tasks.TaskMoved
 			if err := b.syncTaskGroupWithQDB(ctx, group); err != nil {
 				// TODO mb retry?
 				return err
 			}
 			continue
-		case taskMoved:
-			if group.JoinType != joinNone {
+		case tasks.TaskMoved:
+			if group.JoinType != tasks.JoinNone {
 				if _, err := keyRangeService.MergeKeyRange(ctx, &protos.MergeKeyRangeRequest{
 					BaseId:      task.KrIdTo,
 					AppendageId: task.KrIdTemp,
