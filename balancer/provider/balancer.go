@@ -51,6 +51,7 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 			return
 		}
 		if len(taskGroup.Tasks) == 0 {
+			spqrlog.Zero.Debug().Msg("Nothing to execute")
 			return
 		}
 		if err := b.syncTaskGroupWithQDB(ctx, taskGroup); err != nil {

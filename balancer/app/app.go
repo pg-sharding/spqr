@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"github.com/pg-sharding/spqr/balancer"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
@@ -17,7 +18,8 @@ func NewApp(b balancer.Balancer) *App {
 }
 
 func (app *App) Run() error {
-	spqrlog.Zero.Info().Msg("running coordinator app")
+	spqrlog.UpdateZeroLogLevel(config.BalancerConfig().LogLevel)
+	spqrlog.Zero.Info().Msg("running balancer")
 
 	app.balancer.RunBalancer(context.TODO())
 	return nil
