@@ -311,15 +311,17 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		}
 	}()
 
-	krNew := kr.KeyRangeFromDB(
-		&qdb.KeyRange{
-			LowerBound:     req.Bound,
-			UpperBound:     krOld.UpperBound,
-			KeyRangeID:     req.Krid,
-			ShardID:        krOld.ShardID,
-			DistributionId: krOld.DistributionId,
-		},
-	)
+	krNew := &kr.KeyRange{
+		LowerBound: func() []byte {
+			if req.SplitLeft {
+				return krOld.LowerBound
+			}
+			return req.Bound
+		}(),
+		ID:           req.Krid,
+		ShardID:      krOld.ShardID,
+		Distribution: krOld.DistributionId,
+	}
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
@@ -327,7 +329,11 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		Str("id", krNew.ID).
 		Msg("new key range")
 
-	krOld.UpperBound = req.Bound
+	if req.SplitLeft {
+		krOld.LowerBound = req.Bound
+	} else {
+		krOld.UpperBound = req.Bound
+	}
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}

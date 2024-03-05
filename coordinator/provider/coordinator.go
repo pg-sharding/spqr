@@ -547,8 +547,8 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 	})
 }
 
+// Split splits key range by req.bound
 // TODO : unit tests
-// Split TODO: check bounds and keyRangeID (sourceID)
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
 		Str("krid", req.Krid).
@@ -593,15 +593,17 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}
 
-	krNew := kr.KeyRangeFromDB(
-		&qdb.KeyRange{
-			LowerBound:     req.Bound,
-			UpperBound:     krOld.UpperBound,
-			KeyRangeID:     req.Krid,
-			ShardID:        krOld.ShardID,
-			DistributionId: krOld.DistributionId,
-		},
-	)
+	krNew := &kr.KeyRange{
+		LowerBound: func() []byte {
+			if req.SplitLeft {
+				return krOld.LowerBound
+			}
+			return req.Bound
+		}(),
+		ID:           req.Krid,
+		ShardID:      krOld.ShardID,
+		Distribution: krOld.DistributionId,
+	}
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
@@ -609,7 +611,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Str("id", krNew.ID).
 		Msg("new key range")
 
-	krOld.UpperBound = req.Bound
+	if req.SplitLeft {
+		krOld.LowerBound = req.Bound
+	} else {
+		krOld.UpperBound = req.Bound
+	}
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}
