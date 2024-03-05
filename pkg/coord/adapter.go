@@ -129,9 +129,10 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		if keyRange.ID == split.SourceID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
-				Bound:    split.Bound,
-				SourceId: split.SourceID,
-				NewId:    split.Krid,
+				Bound:     split.Bound,
+				SourceId:  split.SourceID,
+				NewId:     split.Krid,
+				SplitLeft: split.SplitLeft,
 			})
 			return err
 		}

@@ -50,7 +50,7 @@ message SplitKeyRangeRequest {
   string new_id = 1;
   bytes bound = 2;
   string source_id = 3;
-  bool split_right = 4;
+  bool split_left = 4;
 }
 
 message MergeKeyRangeRequest {

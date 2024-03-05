@@ -50,10 +50,10 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	splitKR := &kr.SplitKeyRange{
-		Bound:      request.Bound,
-		Krid:       request.NewId,
-		SourceID:   request.SourceId,
-		SplitRight: request.SplitRight,
+		Bound:     request.Bound,
+		Krid:      request.NewId,
+		SourceID:  request.SourceId,
+		SplitLeft: request.SplitLeft,
 	}
 
 	if err := c.impl.Split(ctx, splitKR); err != nil {
