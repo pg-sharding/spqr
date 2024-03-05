@@ -34,18 +34,19 @@ type LocalCoordinator struct {
 }
 
 func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	//TODO implement me
-	panic("implement me")
+	group, err := lc.qdb.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromDb(group), nil
 }
 
 func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	//TODO implement me
-	panic("implement me")
+	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
 func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	return lc.qdb.RemoveTaskGroup(ctx)
 }
 
 // TODO : unit tests

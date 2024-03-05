@@ -989,18 +989,19 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 }
 
 func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	//TODO implement me
-	panic("implement me")
+	group, err := qc.db.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromDb(group), nil
 }
 
 func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	//TODO implement me
-	panic("implement me")
+	return qc.db.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
 func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	return qc.db.RemoveTaskGroup(ctx)
 }
 
 // TODO : unit tests

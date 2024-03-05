@@ -404,18 +404,26 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 }
 
 func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	//TODO implement me
-	panic("implement me")
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	res, err := tasksService.GetTaskGroup(ctx, &proto.GetTaskGroupRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromProto(res.TaskGroup), nil
 }
 
 func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	//TODO implement me
-	panic("implement me")
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	_, err := tasksService.WriteTaskGroup(ctx, &proto.WriteTaskGroupRequest{
+		TaskGroup: tasks.TaskGroupToProto(taskGroup),
+	})
+	return err
 }
 
 func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	_, err := tasksService.RemoveTaskGroup(ctx, &proto.RemoveTaskGroupRequest{})
+	return err
 }
 
 // TODO : unit tests
