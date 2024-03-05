@@ -1,16 +1,16 @@
 package provider
 
 type Task struct {
-	shardFromId string
-	shardToId   string
-	krIdFrom    string
-	krIdTo      string
-	bound       []byte
-	tempKRId    string
-	state       taskState
+	ShardFromId string
+	ShardToId   string
+	KrIdFrom    string
+	KrIdTo      string
+	Bound       []byte
+	KrIdTemp    string
+	State       TaskState
 }
 
-type taskState int
+type TaskState int
 
 const (
 	taskPlanned = iota
@@ -18,7 +18,7 @@ const (
 	taskMoved
 )
 
-type joinType int
+type JoinType int
 
 const (
 	joinNone = iota
@@ -27,6 +27,6 @@ const (
 )
 
 type TaskGroup struct {
-	tasks    []*Task
-	joinType joinType
+	Tasks    []*Task
+	JoinType JoinType
 }

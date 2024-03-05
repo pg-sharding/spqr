@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	balancer "github.com/pg-sharding/spqr/balancer/provider"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -184,6 +185,56 @@ func TaskFromDb(task *qdb.Task) *Task {
 		krIdTo:      task.KrIdTo,
 		tempKRId:    task.KrIdTemp,
 		bound:       task.Bound,
+		state:       TaskState(task.State),
+	}
+}
+
+func TaskGroupToBalancer(taskGroup *TaskGroup) *balancer.TaskGroup {
+	return &balancer.TaskGroup{
+		Tasks: func() []*balancer.Task {
+			res := make([]*balancer.Task, len(taskGroup.tasks))
+			for i, task := range taskGroup.tasks {
+				res[i] = TaskToBalancer(task)
+			}
+			return res
+		}(),
+		JoinType: balancer.JoinType(taskGroup.joinType),
+	}
+}
+
+func TaskToBalancer(task *Task) *balancer.Task {
+	return &balancer.Task{
+		ShardFromId: task.shardFromId,
+		ShardToId:   task.shardToId,
+		KrIdFrom:    task.krIdFrom,
+		KrIdTo:      task.krIdTo,
+		KrIdTemp:    task.tempKRId,
+		Bound:       task.bound,
+		State:       balancer.TaskState(task.state),
+	}
+}
+
+func TaskGroupFromBalancer(taskGroup *balancer.TaskGroup) *TaskGroup {
+	return &TaskGroup{
+		tasks: func() []*Task {
+			res := make([]*Task, len(taskGroup.Tasks))
+			for i, task := range taskGroup.Tasks {
+				res[i] = TaskFromBalancer(task)
+			}
+			return res
+		}(),
+		joinType: JoinType(taskGroup.JoinType),
+	}
+}
+
+func TaskFromBalancer(task *balancer.Task) *Task {
+	return &Task{
+		shardFromId: task.ShardFromId,
+		shardToId:   task.ShardToId,
+		krIdFrom:    task.KrIdFrom,
+		krIdTo:      task.KrIdTo,
+		bound:       task.Bound,
+		tempKRId:    task.KrIdTemp,
 		state:       TaskState(task.State),
 	}
 }
