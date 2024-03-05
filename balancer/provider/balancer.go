@@ -52,7 +52,7 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 		if len(taskGroup.tasks) == 0 {
 			return
 		}
-		if err := b.insertTaskGroupToQDB(taskGroup); err != nil {
+		if err := b.syncTaskGroupWithQDB(taskGroup); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error inserting tasks")
 			return
 		}
@@ -491,11 +491,6 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	}
 
 	return &TaskGroup{tasks: tasks, unification: unification}, nil
-}
-
-func (b *BalancerImpl) insertTaskGroupToQDB(taskGroup *TaskGroup) error {
-	// TODO implement
-	panic("implement me")
 }
 
 func (b *BalancerImpl) getCurrentTaskGroupFromQDB() (group *TaskGroup, err error) {
