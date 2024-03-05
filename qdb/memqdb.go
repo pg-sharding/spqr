@@ -724,6 +724,11 @@ func (q *MemQDB) GetTaskGroup(_ context.Context) (*TaskGroup, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
+	if q.TaskGroup == nil {
+		return &TaskGroup{
+			Tasks: []*Task{},
+		}, nil
+	}
 	return q.TaskGroup, nil
 }
 

@@ -44,7 +44,7 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 		spqrlog.Zero.Error().Err(err).Msg("error getting current tasks")
 		return
 	}
-	if taskGroup == nil {
+	if taskGroup == nil || len(taskGroup.Tasks) == 0 {
 		taskGroup, err = b.generateTasks(ctx)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error planning tasks")

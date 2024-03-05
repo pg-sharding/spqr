@@ -1070,7 +1070,9 @@ func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return nil, nil
+		return &TaskGroup{
+			Tasks: []*Task{},
+		}, nil
 	}
 
 	var taskGroup *TaskGroup
