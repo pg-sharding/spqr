@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
@@ -28,9 +29,41 @@ type LocalQrouterServer struct {
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
 	protos.UnimplementedTasksServiceServer
+	protos.UnimplementedShardServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
+}
+
+func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
+	shards, err := l.mgr.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListShardsReply{
+		Shards: func() []*protos.Shard {
+			res := make([]*protos.Shard, len(shards))
+			for i, sh := range shards {
+				res[i] = datashards.DataShardToProto(sh)
+			}
+			return res
+		}(),
+	}, nil
+}
+
+func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.ShardRequest) (*protos.ShardReply, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // CreateDistribution creates distribution in QDB
@@ -420,3 +453,4 @@ var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
 var _ protos.TasksServiceServer = &LocalQrouterServer{}
+var _ protos.ShardServiceServer = &LocalQrouterServer{}

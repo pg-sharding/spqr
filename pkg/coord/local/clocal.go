@@ -469,7 +469,7 @@ func (qr *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) 
 	return addr, err
 }
 
-func (qr *LocalCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (qr *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
 

@@ -299,12 +299,12 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 }
 
 // TODO : unit tests
-func (a *Adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (a *Adapter) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
-	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
+	resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID})
 	return &datashards.DataShard{
-		ID:  resp.ShardInfo.Id,
-		Cfg: &config.Shard{Hosts: resp.ShardInfo.Hosts},
+		ID:  resp.Shard.Id,
+		Cfg: &config.Shard{Hosts: resp.Shard.Hosts},
 	}, err
 }
 

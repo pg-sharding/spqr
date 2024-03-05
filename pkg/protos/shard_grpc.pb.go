@@ -22,7 +22,7 @@ const (
 	ShardService_ListShards_FullMethodName    = "/spqr.ShardService/ListShards"
 	ShardService_AddDataShard_FullMethodName  = "/spqr.ShardService/AddDataShard"
 	ShardService_AddWorldShard_FullMethodName = "/spqr.ShardService/AddWorldShard"
-	ShardService_GetShardInfo_FullMethodName  = "/spqr.ShardService/GetShardInfo"
+	ShardService_GetShard_FullMethodName      = "/spqr.ShardService/GetShard"
 )
 
 // ShardServiceClient is the client API for ShardService service.
@@ -32,7 +32,7 @@ type ShardServiceClient interface {
 	ListShards(ctx context.Context, in *ListShardsRequest, opts ...grpc.CallOption) (*ListShardsReply, error)
 	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
 	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
-	GetShardInfo(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardInfoReply, error)
+	GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
 }
 
 type shardServiceClient struct {
@@ -70,9 +70,9 @@ func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShar
 	return out, nil
 }
 
-func (c *shardServiceClient) GetShardInfo(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardInfoReply, error) {
-	out := new(ShardInfoReply)
-	err := c.cc.Invoke(ctx, ShardService_GetShardInfo_FullMethodName, in, out, opts...)
+func (c *shardServiceClient) GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error) {
+	out := new(ShardReply)
+	err := c.cc.Invoke(ctx, ShardService_GetShard_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ type ShardServiceServer interface {
 	ListShards(context.Context, *ListShardsRequest) (*ListShardsReply, error)
 	AddDataShard(context.Context, *AddShardRequest) (*AddShardReply, error)
 	AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error)
-	GetShardInfo(context.Context, *ShardRequest) (*ShardInfoReply, error)
+	GetShard(context.Context, *ShardRequest) (*ShardReply, error)
 	mustEmbedUnimplementedShardServiceServer()
 }
 
@@ -103,8 +103,8 @@ func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRe
 func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddWorldShard not implemented")
 }
-func (UnimplementedShardServiceServer) GetShardInfo(context.Context, *ShardRequest) (*ShardInfoReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetShardInfo not implemented")
+func (UnimplementedShardServiceServer) GetShard(context.Context, *ShardRequest) (*ShardReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetShard not implemented")
 }
 func (UnimplementedShardServiceServer) mustEmbedUnimplementedShardServiceServer() {}
 
@@ -173,20 +173,20 @@ func _ShardService_AddWorldShard_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ShardService_GetShardInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ShardService_GetShard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ShardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ShardServiceServer).GetShardInfo(ctx, in)
+		return srv.(ShardServiceServer).GetShard(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ShardService_GetShardInfo_FullMethodName,
+		FullMethod: ShardService_GetShard_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShardServiceServer).GetShardInfo(ctx, req.(*ShardRequest))
+		return srv.(ShardServiceServer).GetShard(ctx, req.(*ShardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -211,8 +211,8 @@ var ShardService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ShardService_AddWorldShard_Handler,
 		},
 		{
-			MethodName: "GetShardInfo",
-			Handler:    _ShardService_GetShardInfo_Handler,
+			MethodName: "GetShard",
+			Handler:    _ShardService_GetShard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

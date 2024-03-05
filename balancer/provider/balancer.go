@@ -72,6 +72,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 	}
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
+	spqrlog.Zero.Debug().Int("shards count", len(r.Shards)).Msg("got shards from coordinator")
 	for _, shard := range r.Shards {
 		state, err := b.getShardCurrentState(ctx, shard)
 		if err != nil {
@@ -119,6 +120,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 }
 
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.Shard) (*ShardMetrics, error) {
+	spqrlog.Zero.Debug().Str("shard id", shard.Id).Msg("getting shard state")
 	hosts := shard.Hosts
 	res := NewShardMetrics()
 	replicaMetrics := NewHostMetrics()
@@ -143,6 +145,7 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.S
 }
 
 func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics HostMetrics, isMaster bool, err error) {
+	spqrlog.Zero.Debug().Str("host", dsn).Msg("getting host state")
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
 		return nil, false, err
@@ -175,6 +178,11 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 		return nil, isMaster, err
 	}
 
+	spqrlog.Zero.Debug().
+		Float64("cpu-metric", metrics[cpuMetric]).
+		Float64("space-metric", metrics[spaceMetric]).
+		Bool("is master", isMaster).
+		Msg("got host state")
 	return
 }
 

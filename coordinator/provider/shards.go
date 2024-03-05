@@ -54,11 +54,8 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
-	for _, shard := range shardList {
-		protoShards = append(protoShards, &protos.Shard{
-			Hosts: shard.Cfg.Hosts,
-			Id:    shard.ID,
-		})
+	for _, sh := range shardList {
+		protoShards = append(protoShards, datashards.DataShardToProto(sh))
 	}
 
 	return &protos.ListShardsReply{
@@ -67,14 +64,14 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 }
 
 // TODO : unit tests
-func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardInfoReply, error) {
-	shardInfo, err := s.impl.GetShardInfo(ctx, shardRequest.Id)
+func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardReply, error) {
+	shardInfo, err := s.impl.GetShard(ctx, shardRequest.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &protos.ShardInfoReply{
-		ShardInfo: &protos.ShardInfo{
+	return &protos.ShardReply{
+		Shard: &protos.Shard{
 			Hosts: shardInfo.Cfg.Hosts,
 			Id:    shardInfo.ID,
 		},
