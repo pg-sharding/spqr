@@ -125,6 +125,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		return cli.DropDistribution(ctx, ret)
+	case *spqrparser.ShardSelector:
+		if err := mngr.DropShard(ctx, stmt.ID); err != nil {
+			return err
+		}
+		return cli.DropShard(stmt.ID)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
