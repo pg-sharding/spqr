@@ -379,7 +379,7 @@ Feature: Coordinator test
     failed to split because bound equals lower of the key range
     """
 
-  Scenario: Adding shards works
+  Scenario: Adding/dropping shards works
     When I run SQL on host "coordinator"
     """
     ADD SHARD sh1 WITH HOSTS spqr_shard_1::6432;
@@ -397,6 +397,24 @@ Feature: Coordinator test
       {
         "listing data shards": "datashard with ID sh1"
       },
+      {
+        "listing data shards": "datashard with ID sh2"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP SHARD sh1;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW shards;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
       {
         "listing data shards": "datashard with ID sh2"
       }
