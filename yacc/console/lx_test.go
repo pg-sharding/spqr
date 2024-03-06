@@ -164,6 +164,14 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "DROP SHARD sh1",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.SHARD,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

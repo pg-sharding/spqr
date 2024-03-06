@@ -551,6 +551,15 @@ func TestShard(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "DROP SHARD sh1;",
+			exp: &spqrparser.Drop{
+				Element: &spqrparser.ShardSelector{
+					ID: "sh1",
+				},
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)

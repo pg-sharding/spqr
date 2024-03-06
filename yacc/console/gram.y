@@ -410,6 +410,10 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
 	}
+	| DROP SHARD any_id
+	{
+		$$ = &Drop{Element: &ShardSelector{ID: $3}}
+	}
 
 add_stmt:
 	// TODO: drop

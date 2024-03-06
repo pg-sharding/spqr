@@ -132,6 +132,10 @@ type DistributionSelector struct {
 	ID string
 }
 
+type ShardSelector struct {
+	ID string
+}
+
 type DropRoutersAll struct{}
 
 func (*DropRoutersAll) iStatement() {}
@@ -139,6 +143,7 @@ func (*DropRoutersAll) iStatement() {}
 func (*KeyRangeSelector) iDrop()     {}
 func (*ShardingRuleSelector) iDrop() {}
 func (*DistributionSelector) iDrop() {}
+func (*ShardSelector) iDrop()        {}
 
 const (
 	EntityRouters      = "ROUTERS"
@@ -257,6 +262,7 @@ func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
 func (*DistributionSelector) iStatement()   {}
+func (*ShardSelector) iStatement()          {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
