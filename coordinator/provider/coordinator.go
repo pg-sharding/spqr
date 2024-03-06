@@ -1048,6 +1048,10 @@ func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataSha
 	panic("implement me")
 }
 
+func (qc *qdbCoordinator) DropShard(ctx context.Context, shardId string) error {
+	return qc.db.DropShard(ctx, shardId)
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	shardList, err := qc.db.ListShards(ctx)

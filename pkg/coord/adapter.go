@@ -271,6 +271,12 @@ func (a *Adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard)
 
 // TODO : unit tests
 // TODO : implement
+func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DropShard not implemented")
+}
+
+// TODO : unit tests
+// TODO : implement
 func (a *Adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
 }
