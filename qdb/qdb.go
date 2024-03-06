@@ -60,6 +60,7 @@ type QDB interface {
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
+	DropShard(ctx context.Context, shardID string) error
 
 	CreateDistribution(ctx context.Context, distr *Distribution) error
 	ListDistributions(ctx context.Context) ([]*Distribution, error)

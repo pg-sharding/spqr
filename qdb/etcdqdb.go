@@ -836,6 +836,17 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
+// TODO : unit tests
+func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop shard")
+
+	nodePath := shardNodePath(id)
+	_, err := q.cli.Delete(ctx, nodePath)
+	return err
+}
+
 // ==============================================================================
 //                                  DISTRIBUTIONS
 // ==============================================================================
