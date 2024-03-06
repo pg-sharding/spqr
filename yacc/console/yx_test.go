@@ -516,3 +516,47 @@ func TestDistribution(t *testing.T) {
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
 }
+
+func TestShard(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id:    "sh1",
+					Hosts: []string{"localhost:6432"},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432, other_hosts:6432;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ShardDefinition{
+					Id: "sh1",
+					Hosts: []string{
+						"localhost:6432",
+						"other_hosts:6432",
+					},
+				},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}

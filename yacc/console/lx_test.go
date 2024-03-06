@@ -140,6 +140,30 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.SHARD,
+				spqrparser.IDENT,
+				spqrparser.WITH,
+				spqrparser.HOSTS,
+				spqrparser.IDENT,
+			},
+		},
+		{
+			query: "CREATE SHARD sh1 WITH HOSTS localhost:6432, other_host:7432",
+			exp: []int{
+				spqrparser.CREATE,
+				spqrparser.SHARD,
+				spqrparser.IDENT,
+				spqrparser.WITH,
+				spqrparser.HOSTS,
+				spqrparser.IDENT,
+				spqrparser.TCOMMA,
+				spqrparser.IDENT,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

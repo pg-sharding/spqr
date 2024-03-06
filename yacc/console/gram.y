@@ -129,7 +129,7 @@ func randomHex(n int) (string, error) {
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 
@@ -185,7 +185,7 @@ func randomHex(n int) (string, error) {
 
 %type<distributed_relation> distributed_relation_def
 
-%type<strlist> col_types_list opt_col_types
+%type<strlist> col_types_list opt_col_types hosts_list
 %type<str> col_types_elem
 %type<bool> opt_cascade
 
@@ -714,22 +714,31 @@ key_range_define_stmt:
 		}
 	}
 
-
 shard_define_stmt:
-	SHARD any_id WITH HOST any_val
+	SHARD any_id WITH HOSTS hosts_list
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: []string{$5}}
+		$$ = &ShardDefinition{Id: $2, Hosts: $5}
 	}
 	|
-	SHARD WITH HOST any_val
+	SHARD WITH HOSTS hosts_list
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: []string{$4}}
+		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
 	}
 
+hosts_list:
+	any_val
+	{
+		$$ = []string{$1}
+	}
+	|
+	hosts_list TCOMMA any_val
+	{
+		$$ = append($1, $3)
+	} 
 
 unlock_stmt:
 	UNLOCK key_range_stmt
