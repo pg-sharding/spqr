@@ -164,7 +164,10 @@ Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
 ?? bytes - message bytes
 */
 func EncodeMessage(tm TimedMessage) ([]byte, error) {
-	binMsg := tm.Msg.Encode(nil)
+	binMsg, err := tm.Msg.Encode(nil)
+	if err != nil {
+		return nil, err
+	}
 
 	binTime, err := tm.Timestamp.MarshalBinary()
 	if err != nil {
