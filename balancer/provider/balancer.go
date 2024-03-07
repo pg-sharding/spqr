@@ -153,11 +153,9 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 	metrics = NewHostMetrics()
 
 	row := conn.QueryRow(ctx, "SELECT pg_is_in_recovery() as is_replica;")
-	res := ""
-	if err = row.Scan(&res); err != nil {
+	if err = row.Scan(&isMaster); err != nil {
 		return nil, false, err
 	}
-	isMaster = res == "f"
 
 	query := fmt.Sprintf(`
 	SELECT coalesce(SUM((user_time + system_time)), 0) AS cpu_total
