@@ -573,6 +573,16 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
 
+// TODO : unit tests
+func (q *MemQDB) DropShard(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: drop shard")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	delete(q.Shards, id)
+	return nil
+}
+
 // ==============================================================================
 //                                 DISTRIBUTIONS
 // ==============================================================================

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -124,6 +125,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 
 		return cli.DropDistribution(ctx, ret)
+	case *spqrparser.ShardSelector:
+		if err := mngr.DropShard(ctx, stmt.ID); err != nil {
+			return err
+		}
+		return cli.DropShard(stmt.ID)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -160,6 +166,15 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return cli.ReportError(err)
 		}
 		return cli.AddKeyRange(ctx, req)
+	case *spqrparser.ShardDefinition:
+		dataShard := datashards.NewDataShard(stmt.Id, &config.Shard{
+			Hosts: stmt.Hosts,
+			Type:  config.DataShard,
+		})
+		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
+			return err
+		}
+		return cli.AddShard(dataShard)
 	default:
 		return unknownCoordinatorCommand
 	}

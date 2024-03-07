@@ -190,6 +190,25 @@ func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 }
 
 // TODO : unit tests
+func (pi *PSQLInteractor) DropShard(id string) error {
+	if err := pi.WriteHeader("drop shard"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped shard with %s", id))}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// TODO : unit tests
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 

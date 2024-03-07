@@ -150,6 +150,16 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.Da
 	return nil
 }
 
+func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
+
+	delete(lc.DataShardCfgs, shardId)
+	delete(lc.WorldShardCfgs, shardId)
+
+	return lc.qdb.DropShard(ctx, shardId)
+}
+
 // TODO : unit tests
 func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	lc.mu.Lock()
