@@ -1,4 +1,4 @@
-Feature: spqrdump test
+Feature: spqr-dump test
   Background:
     #
     # Make host "coordinator" take control
@@ -25,7 +25,7 @@ Feature: spqrdump test
     
     When I run command on host "router"
     """
-    /spqr/spqrdump dump -e regress_router:7000
+    /spqr/spqr-dump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp
@@ -40,23 +40,23 @@ Feature: spqrdump test
     When I run SQL on host "coordinator"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0,'a' ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11,'b' ROUTE TO sh2 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id, id_2;
     """
     Then command return code should be "0"
 
     When I run command on host "router"
     """
-    /spqr/spqrdump dump -e regress_router:7000
+    /spqr/spqr-dump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer, varchar;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id, id_2;
-    CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid1 FROM 0,'a' ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE krid2 FROM 11,'b' ROUTE TO sh2 FOR DISTRIBUTION ds1;
     """
 
   Scenario: dump via GRPC works with hashed distribution key
@@ -71,7 +71,7 @@ Feature: spqrdump test
 
     When I run command on host "router"
     """
-    /spqr/spqrdump dump -e regress_router:7000
+    /spqr/spqr-dump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp

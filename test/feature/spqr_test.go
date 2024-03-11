@@ -46,7 +46,7 @@ const (
 	coordinatorPassword             = "password"
 	dbName                          = "regress"
 	postgresqlConnectTimeout        = 60 * time.Second
-	postgresqlInitialConnectTimeout = 30 * time.Second
+	postgresqlInitialConnectTimeout = 300 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 )
 
