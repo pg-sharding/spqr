@@ -46,6 +46,7 @@ func NewBalancer() (*BalancerImpl, error) {
 var _ balancer.Balancer = &BalancerImpl{}
 
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
+	// TODO: add command to drop task group to coordinator
 	taskGroup, err := b.getCurrentTaskGroupFromQDB(ctx)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error getting current tasks")
@@ -126,6 +127,9 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 		}
 	}
 
+	if keyCount == 0 {
+		return &tasks.TaskGroup{Tasks: []*tasks.Task{}}, nil
+	}
 	return b.getTasks(ctx, shardFrom, krId, shId, keyCount)
 }
 
@@ -491,7 +495,8 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		return nil, fmt.Errorf("relation \"%s\" not found", relName)
 	}
 
-	moveCount := min(keyCount/config.BalancerConfig().KeysPerMove, config.BalancerConfig().MaxMoveCount)
+	moveCount := min((keyCount+config.BalancerConfig().KeysPerMove-1)/config.BalancerConfig().KeysPerMove, config.BalancerConfig().MaxMoveCount)
+
 	counts := make([]int, moveCount)
 	for i := 0; i < len(counts)-1; i++ {
 		counts[i] = config.BalancerConfig().KeysPerMove
@@ -526,6 +531,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			KrIdTo:      krIdTo,
 			Bound:       []byte(idx),
 		}
+		cumCount += count
 	}
 
 	return &tasks.TaskGroup{Tasks: groupTasks, JoinType: join}, nil
@@ -560,6 +566,11 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 
 	for len(group.Tasks) > 0 {
 		task := group.Tasks[0]
+		spqrlog.Zero.Debug().
+			Str("key_range_from", task.KrIdFrom).
+			Str("key_range_to", task.KrIdTo).
+			Str("bound", string(task.Bound)).
+			Msg("processing task")
 		switch task.State {
 		case tasks.TaskPlanned:
 			newKeyRange := fmt.Sprintf("kr_%s", id.String())
