@@ -25,6 +25,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     sudo postgresql-$POSTGRES_VERSION \
     build-essential \
     cmake \
@@ -36,10 +37,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     vim \
     postgresql-common \
-    postgresql-server-dev-$POSTGRES_VERSION
+    postgresql-server-dev-$POSTGRES_VERSION \
+    postgresql-${POSTGRES_VERSION}-pg-stat-kcache
 
 COPY ./docker/shard/bin/ /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
+
+RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
+    cd pg_comment_stats && \
+    make && make install
 
 ENTRYPOINT /usr/local/bin/entrypoint.sh $POSTGRES_VERSION
