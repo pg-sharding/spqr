@@ -41,7 +41,12 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 			return nil, err
 		}
 
-		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), val, krs)
+		// TODO: fix this
+		compositeKey := []interface{}{
+			val,
+		}
+
+		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), compositeKey, krs)
 		if err != nil {
 			return nil, err
 		}
