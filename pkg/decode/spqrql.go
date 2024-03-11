@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
@@ -15,9 +16,9 @@ import (
 //
 // Returns:
 // - string: the SQL query to create the key range.
-func KeyRange(krg *protos.KeyRangeInfo) string {
+func KeyRange(krg *kr.KeyRange) string {
 	/* TODO: composite key support */
-	return fmt.Sprintf("CREATE KEY RANGE %s FROM %s ROUTE TO %s FOR DISTRIBUTION %s;", krg.Krid, krg.KeyRange.LowerBound, krg.ShardId, krg.DistributionId)
+	return fmt.Sprintf("CREATE KEY RANGE %s FROM %s ROUTE TO %s FOR DISTRIBUTION %s;", krg.ID, strings.Join(krg.SendRaw(), ","), krg.ShardID, krg.Distribution)
 }
 
 // Distribution returns query to create given distribution

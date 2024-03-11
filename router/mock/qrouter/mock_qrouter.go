@@ -54,7 +54,7 @@ func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 }
 
 // DeparseKeyWithRangesInternal mocks base method.
-func (m *MockQueryRouter) DeparseKeyWithRangesInternal(ctx context.Context, key string, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
+func (m *MockQueryRouter) DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeparseKeyWithRangesInternal", ctx, key, krs)
 	ret0, _ := ret[0].(*routingstate.DataShardRoute)

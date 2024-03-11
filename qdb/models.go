@@ -6,10 +6,10 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound     []byte `json:"from"`
-	ShardID        string `json:"shard_id"`
-	KeyRangeID     string `json:"key_range_id"`
-	DistributionId string `json:"distribution_id"`
+	LowerBound     [][]byte `json:"from"`
+	ShardID        string   `json:"shard_id"`
+	KeyRangeID     string   `json:"key_range_id"`
+	DistributionId string   `json:"distribution_id"`
 }
 type MoveKeyRangeStatus string
 
@@ -69,9 +69,10 @@ func NewShard(ID string, hosts []string) *Shard {
 }
 
 var (
-	ColumnTypeVarchar  = "varchar"
-	ColumnTypeInteger  = "integer"
-	ColumnTypeUinteger = "uinteger"
+	ColumnTypeVarchar           = "varchar"
+	ColumnTypeVarcharDeprecated = "_varchar"
+	ColumnTypeInteger           = "integer"
+	ColumnTypeUinteger          = "uinteger"
 )
 
 type DistributionKeyEntry struct {

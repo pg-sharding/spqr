@@ -220,7 +220,11 @@ func TestKeyRange(t *testing.T) {
 					ShardID:      "sh1",
 					KeyRangeID:   "krid1",
 					Distribution: "ds1",
-					LowerBound:   []byte("1"),
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte{2, 0, 0, 0, 0, 0, 0, 0},
+						},
+					},
 				},
 			},
 			err: nil,
@@ -233,7 +237,31 @@ func TestKeyRange(t *testing.T) {
 					ShardID:      "sh2",
 					KeyRangeID:   "krid2",
 					Distribution: "ds1",
-					LowerBound:   []byte("88888888-8888-8888-8888-888888888889"),
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte("88888888-8888-8888-8888-888888888889"),
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+
+		{
+			query: `
+			CREATE KEY RANGE krid1 FROM 0, 'a' ROUTE TO sh1 FOR DISTRIBUTION ds1;`,
+
+			exp: &spqrparser.Create{
+				Element: &spqrparser.KeyRangeDefinition{
+					ShardID:      "sh1",
+					KeyRangeID:   "krid1",
+					Distribution: "ds1",
+					LowerBound: &spqrparser.KeyRangeBound{
+						Pivots: [][]byte{
+							[]byte{0, 0, 0, 0, 0, 0, 0, 0},
+							[]byte("a"),
+						},
+					},
 				},
 			},
 			err: nil,
@@ -309,7 +337,11 @@ func TestSplitKeyRange(t *testing.T) {
 		{
 			query: "SPLIT KEY RANGE krid3 FROM krid1 BY 5;",
 			exp: &spqrparser.SplitKeyRange{
-				Border:         []byte("5"),
+				Border: &spqrparser.KeyRangeBound{
+					Pivots: [][]byte{
+						{10, 0, 0, 0, 0, 0, 0, 0},
+					},
+				},
 				KeyRangeFromID: "krid1",
 				KeyRangeID:     "krid3",
 			},
