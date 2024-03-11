@@ -29,11 +29,20 @@ type BalancerImpl struct {
 }
 
 func NewBalancer() (*BalancerImpl, error) {
+	threshold := make([]float64, 2*metricsCount)
+	threshold[cpuMetric] = config.BalancerConfig().CpuThreshold
+	threshold[metricsCount+cpuMetric] = config.BalancerConfig().CpuThreshold
+	threshold[spaceMetric] = config.BalancerConfig().SpaceThreshold
+	threshold[metricsCount+spaceMetric] = config.BalancerConfig().SpaceThreshold
+
 	conn, err := grpc.Dial(config.BalancerConfig().CoordinatorAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	return &BalancerImpl{coordinatorConn: conn}, nil
+	return &BalancerImpl{
+		coordinatorConn: conn,
+		threshold:       threshold,
+	}, nil
 }
 
 var _ balancer.Balancer = &BalancerImpl{}
@@ -95,11 +104,11 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 	}
 
 	if err = b.updateKeyRanges(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error updating key range info: %s", err)
 	}
 
 	if err = b.getStatsByKeyRange(ctx, shardStates); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error getting detailed stats: %s", err)
 	}
 
 	// determine most loaded key range
@@ -152,15 +161,16 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 	}
 	metrics = NewHostMetrics()
 
-	row := conn.QueryRow(ctx, "SELECT pg_is_in_recovery() as is_replica;")
+	row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
 	if err = row.Scan(&isMaster); err != nil {
 		return nil, false, err
 	}
 
 	query := fmt.Sprintf(`
 	SELECT coalesce(SUM((user_time + system_time)), 0) AS cpu_total
-	FROM pgcs_get_stats_time_interval(now() - interval %ds, now())
+	FROM pgcs_get_stats_time_interval(now() - interval '%ds', now())
 `, config.BalancerConfig().StatIntervalSec)
+	spqrlog.Zero.Debug().Str("query", query).Msg("Getting cpu stats")
 	row = conn.QueryRow(ctx, query)
 	if err = row.Scan(&metrics[cpuMetric]); err != nil {
 		return nil, isMaster, err
@@ -171,6 +181,7 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 				WHERE datname != 'template0' 
 				  AND datname != 'template1' 
 				  AND datname != 'postgres';`
+	spqrlog.Zero.Debug().Str("query", query).Msg("Getting space stats")
 	row = conn.QueryRow(ctx, query)
 	if err = row.Scan(&metrics[spaceMetric]); err != nil {
 		return nil, isMaster, err
@@ -187,6 +198,7 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
 func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMetrics) error {
 	for _, shard := range shards {
+		spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
 		for _, params := range []struct {
 			Host            string
 			MetricsStartInd int
@@ -194,6 +206,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMe
 			{Host: shard.Master, MetricsStartInd: 0},
 			{Host: shard.TargetReplica, MetricsStartInd: metricsCount},
 		} {
+			spqrlog.Zero.Debug().Str("host", params.Host).Msg("getting host detailed state")
 			conn, err := pgx.Connect(ctx, params.Host)
 			if err != nil {
 				return err
