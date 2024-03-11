@@ -919,7 +919,7 @@ func (cl *PsqlClient) ReplyErr(e error) error {
 	case *spqrerror.SpqrError:
 		return cl.ReplyErrMsg(er.Error(), er.ErrorCode)
 	default:
-		return cl.ReplyErrMsg(e.Error(), "SPQRU")
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED)
 	}
 }
 

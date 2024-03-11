@@ -41,7 +41,7 @@ func (e *EtcdMetadataBootstraper) InitializeMetadata(ctx context.Context, r Rout
 		}
 
 		for _, ckr := range krs {
-			if err := r.Console().Mgr().CreateKeyRange(ctx, kr.KeyRangeFromDB(ckr)); err != nil {
+			if err := r.Console().Mgr().CreateKeyRange(ctx, kr.KeyRangeFromDB(ckr, d.ColTypes)); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to initialize instance")
 				return err
 			}

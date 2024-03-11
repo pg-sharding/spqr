@@ -87,8 +87,12 @@ type ShardingRuleEntry struct {
 	HashFunction string
 }
 
+type KeyRangeBound struct {
+	Pivots [][]byte
+}
+
 type KeyRangeDefinition struct {
-	LowerBound   []byte
+	LowerBound   *KeyRangeBound
 	ShardID      string
 	KeyRangeID   string
 	Distribution string
@@ -105,7 +109,7 @@ func (*DistributionDefinition) iCreate() {}
 func (*ShardingRuleDefinition) iCreate() {}
 
 type SplitKeyRange struct {
-	Border         []byte
+	Border         *KeyRangeBound
 	KeyRangeFromID string
 	KeyRangeID     string
 }

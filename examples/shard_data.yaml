@@ -1,0 +1,13 @@
+shards:
+  sh1:
+    db: db1
+    usr: user1
+    pwd: 12345678
+    hosts: 
+    - 'localhost:5550'
+  sh2:
+    db: db1
+    usr: user1
+    pwd: 12345678
+    hosts: 
+    - 'localhost:5551'

@@ -34,7 +34,6 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 }
 
-
 // GetTaskGroup retrieves the task group from the local coordinator's QDB.
 //
 // Parameters:
@@ -113,6 +112,9 @@ func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distribut
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
+	if len(ds.ColTypes) == 0 {
+		return fmt.Errorf("empty distributions are disallowed")
+	}
 	return lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))
 }
 
@@ -131,8 +133,16 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
+	ds, err := lc.qdb.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
 	dRels := []*qdb.DistributedRelation{}
 	for _, r := range rels {
+		if len(r.DistributionKey) != len(ds.ColTypes) {
+			return fmt.Errorf("cannot attach relation %v to this dataspace: number of column mismatch", r.Name)
+		}
 		dRels = append(dRels, distributions.DistributedRelationToDB(r))
 	}
 
@@ -262,7 +272,6 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataS
 	}
 	return retShards, nil
 }
-
 
 // AddWorldShard adds a world shard to the LocalCoordinator.
 //
@@ -419,6 +428,7 @@ func (lc *LocalCoordinator) WorldShards() []string {
 	return ret
 }
 
+// Caller should lock key range
 // TODO : unit tests
 
 // Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
@@ -436,7 +446,12 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 		return err
 	}
 
-	var reqKr = kr.KeyRangeFromDB(krmv)
+	ds, err := qr.qdb.GetDistribution(ctx, krmv.DistributionId)
+	if err != nil {
+		return err
+	}
+
+	var reqKr = kr.KeyRangeFromDB(krmv, ds.ColTypes)
 	reqKr.ShardID = req.ShardId
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, reqKr)
 }
@@ -459,6 +474,7 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	if krBase, err = qr.qdb.LockKeyRange(ctx, req.BaseKeyRangeId); err != nil { //nolint:all TODO
 		return err
 	}
+
 	defer func(qdb qdb.QDB, ctx context.Context, keyRangeID string) {
 		err := qdb.UnlockKeyRange(ctx, keyRangeID)
 		if err != nil {
@@ -466,6 +482,11 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 			return
 		}
 	}(qr.qdb, ctx, req.BaseKeyRangeId)
+
+	ds, err := qr.qdb.GetDistribution(ctx, krBase.DistributionId)
+	if err != nil {
+		return err
+	}
 
 	// TODO: krRight seems to be empty.
 	if krAppendage, err = qr.qdb.GetKeyRange(ctx, req.AppendageKeyRangeId); err != nil {
@@ -477,20 +498,18 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 	}
 
 	newBound := krBase.LowerBound
-	if kr.CmpRangesLess(krAppendage.LowerBound, krBase.LowerBound) {
+	if kr.CmpRangesLess(kr.KeyRangeFromDB(krAppendage, ds.ColTypes).LowerBound, kr.KeyRangeFromDB(krBase, ds.ColTypes).LowerBound, ds.ColTypes) {
 		newBound = krAppendage.LowerBound
 	}
 
-	united := &kr.KeyRange{
-		LowerBound:   newBound,
-		ShardID:      krBase.ShardID,
-		Distribution: krBase.DistributionId,
-		ID:           krBase.KeyRangeID,
-	}
+	krBaseCopy := krBase
+	krBaseCopy.LowerBound = newBound
+	united := kr.KeyRangeFromDB(krBaseCopy, ds.ColTypes)
 
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, united)
 }
 
+// Caller should lock key range
 // TODO : unit tests
 
 // Split splits an existing key range identified by req.SourceID into two new key ranges.
@@ -521,28 +540,37 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		}
 	}()
 
-	krNew := &kr.KeyRange{
-		LowerBound: func() []byte {
-			if req.SplitLeft {
-				return krOld.LowerBound
-			}
-			return req.Bound
-		}(),
-		ID:           req.Krid,
-		ShardID:      krOld.ShardID,
-		Distribution: krOld.DistributionId,
+	ds, err := qr.qdb.GetDistribution(ctx, krOld.DistributionId)
+	if err != nil {
+		return err
 	}
 
+	krNew := kr.KeyRangeFromDB(
+		&qdb.KeyRange{
+			LowerBound: func() [][]byte {
+				if req.SplitLeft {
+					return krOld.LowerBound
+				}
+				return req.Bound // fix multidim case !
+			}(),
+			KeyRangeID:     req.Krid,
+			ShardID:        krOld.ShardID,
+			DistributionId: krOld.DistributionId,
+		},
+		ds.ColTypes,
+	)
+
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", krNew.LowerBound).
+		Bytes("lower-bound", krNew.Raw()[0]).
 		Str("shard-id", krNew.ShardID).
 		Str("id", krNew.ID).
 		Msg("new key range")
 
 	if req.SplitLeft {
-		krOld.LowerBound = req.Bound
+		krOld.LowerBound = req.Bound // TODO: fix
 	}
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld)); err != nil {
+
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld, ds.ColTypes)); err != nil {
 		return err
 	}
 
@@ -570,7 +598,12 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 		return nil, err
 	}
 
-	return kr.KeyRangeFromDB(keyRangeDB), nil
+	ds, err := qr.qdb.GetDistribution(ctx, keyRangeDB.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+
+	return kr.KeyRangeFromDB(keyRangeDB, ds.ColTypes), nil
 }
 
 // TODO : unit tests
@@ -646,7 +679,11 @@ func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.K
 	if err != nil {
 		return nil, err
 	}
-	return kr.KeyRangeFromDB(krDb), nil
+	ds, err := lc.qdb.GetDistribution(ctx, krDb.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	return kr.KeyRangeFromDB(krDb, ds.ColTypes), nil
 }
 
 // TODO : unit tests
@@ -666,8 +703,13 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution stri
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
-			ret = append(ret, kr.KeyRangeFromDB(keyRange))
+			ds, err := qr.qdb.GetDistribution(ctx, keyRange.DistributionId)
 
+			if err != nil {
+				return nil, err
+			}
+
+			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 		}
 	}
 
@@ -690,8 +732,14 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 		return nil, err
 	} else {
 		for _, keyRange := range krs {
-			ret = append(ret, kr.KeyRangeFromDB(keyRange))
 
+			ds, err := qr.qdb.GetDistribution(ctx, keyRange.DistributionId)
+
+			if err != nil {
+				return nil, err
+			}
+
+			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 		}
 	}
 
@@ -799,7 +847,6 @@ func (qr *LocalCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, ro
 func (qr *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
 	return qr.qdb.UpdateCoordinator(ctx, addr)
 }
-
 
 // GetCoordinator retrieves the coordinator address from the local coordinator.
 //
