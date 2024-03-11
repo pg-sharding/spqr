@@ -107,7 +107,7 @@ func transferTxNodePath(key string) string {
 // TODO : unit tests
 func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", keyRange.LowerBound).
+		Bytes("lower-bound", keyRange.LowerBound[0]).
 		Str("shard-id", keyRange.ShardID).
 		Str("distribution-id", keyRange.DistributionId).
 		Str("key-range-id", keyRange.KeyRangeID).
@@ -169,7 +169,7 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 // TODO : unit tests
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
-		Bytes("lower-bound", keyRange.LowerBound).
+		Bytes("lower-bound", keyRange.LowerBound[0]).
 		Str("shard-id", keyRange.ShardID).
 		Str("distribution-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).

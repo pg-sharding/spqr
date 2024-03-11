@@ -3,7 +3,7 @@ package kr
 import "context"
 
 type SplitKeyRange struct {
-	Bound     KeyRangeBound
+	Bound     [][]byte // KeyRangeBound raw
 	SourceID  string
 	Krid      string
 	SplitLeft bool

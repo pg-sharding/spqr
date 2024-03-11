@@ -3,6 +3,7 @@ package qrouter
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -22,7 +23,7 @@ type QueryRouter interface {
 	WorldShardsRoutes() []*routingstate.DataShardRoute
 	DataShardsRoutes() []*routingstate.DataShardRoute
 
-	DeparseKeyWithRangesInternal(ctx context.Context, key string, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error)
+	DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error)
 
 	Initialized() bool
 	Initialize() bool

@@ -47,7 +47,7 @@ func NewAdapter(conn *grpc.ClientConn) *Adapter {
 // Returns:
 // - qdb.QDB: The QDB object.
 func (a *Adapter) QDB() qdb.QDB {
-	return nil
+	panic("implement me?")
 }
 
 // TODO : unit tests
@@ -78,16 +78,26 @@ func (a *Adapter) ShareKeyRange(id string) error {
 // - error: An error if the retrieval was unsuccessful.
 func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
+	dc := proto.NewDistributionServiceClient(a.conn)
 	reply, err := c.GetKeyRange(ctx, &proto.GetKeyRangeRequest{
 		Ids: []string{krId},
 	})
 	if err != nil {
 		return nil, err
 	}
+	// what if len > 1 ?
 	if len(reply.KeyRangesInfo) == 0 {
 		return nil, nil
 	}
-	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0]), nil
+	ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{
+		Id: reply.KeyRangesInfo[0].DistributionId,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0], ds.Distribution.ColumnTypes), nil
 }
 
 // TODO : unit tests
@@ -110,9 +120,15 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 		return nil, err
 	}
 
+	dc := proto.NewDistributionServiceClient(a.conn)
+	ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: distribution})
+	if err != nil {
+		return nil, err
+	}
+
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		krs[i] = kr.KeyRangeFromProto(keyRange)
+		krs[i] = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
 	}
 
 	return krs, nil
@@ -135,9 +151,15 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 		return nil, err
 	}
 
+	dc := proto.NewDistributionServiceClient(a.conn)
+
 	krs := make([]*kr.KeyRange, len(reply.KeyRangesInfo))
 	for i, keyRange := range reply.KeyRangesInfo {
-		krs[i] = kr.KeyRangeFromProto(keyRange)
+		ds, err := dc.GetDistribution(ctx, &proto.GetDistributionRequest{Id: keyRange.DistributionId})
+		if err != nil {
+			return nil, err
+		}
+		krs[i] = kr.KeyRangeFromProto(keyRange, ds.Distribution.ColumnTypes)
 	}
 
 	return krs, nil
@@ -236,8 +258,12 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 	for _, keyRange := range krs {
 		if keyRange.ID == split.SourceID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
+
+			nkr := keyRange.ToProto()
+			nkr.Krid = split.Krid
+
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
-				Bound:     split.Bound,
+				Bound:     split.Bound[0], // fix multidim case
 				SourceId:  split.SourceID,
 				NewId:     split.Krid,
 				SplitLeft: split.SplitLeft,
@@ -278,7 +304,7 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		}
 	}
 
-	if kr.CmpRangesLess(right.LowerBound, left.LowerBound) {
+	if kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
 		left, right = right, left
 	}
 
@@ -286,12 +312,12 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 		if krCurr.ID == unite.BaseKeyRangeId || krCurr.ID == unite.AppendageKeyRangeId {
 			continue
 		}
-		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound) {
+		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound, krCurr.ColumnTypes) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound, krCurr.ColumnTypes) {
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "unvalid unite request")
 		}
 	}
 
-	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound) {
+	if left == nil || right == nil || kr.CmpRangesLess(right.LowerBound, left.LowerBound, right.ColumnTypes) {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range on left or right was not found")
 	}
 
