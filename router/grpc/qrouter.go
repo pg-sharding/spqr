@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -230,7 +231,11 @@ func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *pro
 
 // TODO : unit tests
 func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
+	ds, err := l.mgr.GetDistribution(ctx, request.KeyRangeInfo.DistributionId)
+	if err != nil {
+		return nil, err
+	}
+	err = l.mgr.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo, ds.ColTypes))
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +318,7 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
 		Krid:      request.NewId,
 		SourceID:  request.SourceId,
-		Bound:     request.Bound,
+		Bound:     [][]byte{request.Bound}, // TODO: fix
 		SplitLeft: request.SplitLeft,
 	}); err != nil {
 		return nil, err

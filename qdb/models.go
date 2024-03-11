@@ -69,9 +69,10 @@ func NewShard(ID string, hosts []string) *Shard {
 }
 
 var (
-	ColumnTypeVarchar  = "varchar"
-	ColumnTypeInteger  = "integer"
-	ColumnTypeUinteger = "uinteger"
+	ColumnTypeVarchar           = "varchar"
+	ColumnTypeVarcharDeprecated = "_varchar"
+	ColumnTypeInteger           = "integer"
+	ColumnTypeUinteger          = "uinteger"
 )
 
 type DistributionKeyEntry struct {

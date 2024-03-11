@@ -1,22 +1,36 @@
 package decode
 
 import (
-	protos "github.com/pg-sharding/spqr/pkg/protos"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeyRange(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal("CREATE KEY RANGE kr1 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
-		KeyRange(&protos.KeyRangeInfo{
-			Krid:           "kr1",
-			ShardId:        "sh1",
-			DistributionId: "ds1",
-			KeyRange: &protos.KeyRange{
-				LowerBound: "10",
-			},
+		KeyRange(&kr.KeyRange{
+			ID:           "kr1",
+			ShardID:      "sh1",
+			Distribution: "ds1",
+			LowerBound:   []interface{}{10},
+
+			ColumnTypes: []string{qdb.ColumnTypeInteger},
 		}))
+	// UpperBound is ignored
+	assert.Equal("CREATE KEY RANGE kr1 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
+		KeyRange(
+			&kr.KeyRange{
+				ID:           "kr1",
+				ShardID:      "sh1",
+				Distribution: "ds1",
+				LowerBound:   []interface{}{10},
+
+				ColumnTypes: []string{qdb.ColumnTypeInteger},
+			}))
 }
 
 func TestDistribution(t *testing.T) {

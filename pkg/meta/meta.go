@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -162,7 +163,16 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ShardingRuleDefinition:
 		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case *spqrparser.KeyRangeDefinition:
-		req := kr.KeyRangeFromSQL(stmt)
+		ds, err := mngr.GetDistribution(ctx, stmt.Distribution)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+			return cli.ReportError(err)
+		}
+		req, err := kr.KeyRangeFromSQL(stmt, ds.ColTypes)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
+			return cli.ReportError(err)
+		}
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
@@ -284,7 +294,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return ProcessKill(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.SplitKeyRange:
 		splitKeyRange := &kr.SplitKeyRange{
-			Bound:    stmt.Border,
+			Bound:    stmt.Border.Pivots,
 			SourceID: stmt.KeyRangeFromID,
 			Krid:     stmt.KeyRangeID,
 		}
