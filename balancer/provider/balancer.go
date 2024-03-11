@@ -1,15 +1,13 @@
 package provider
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -107,7 +105,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 		return nil, fmt.Errorf("error updating key range info: %s", err)
 	}
 
-	if err = b.getStatsByKeyRange(ctx, shardStates); err != nil {
+	if err = b.getStatsByKeyRange(ctx, shardStates[0]); err != nil {
 		return nil, fmt.Errorf("error getting detailed stats: %s", err)
 	}
 
@@ -123,6 +121,9 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 
 	if err != nil {
 		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
+		if keyCount < 0 {
+			return nil, fmt.Errorf("could not find shard to move keys to")
+		}
 	}
 
 	return b.getTasks(ctx, shardFrom, krId, shId, keyCount)
@@ -132,6 +133,7 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.S
 	spqrlog.Zero.Debug().Str("shard id", shard.Id).Msg("getting shard state")
 	hosts := shard.Hosts
 	res := NewShardMetrics()
+	res.ShardId = shard.Id
 	replicaMetrics := NewHostMetrics()
 	for _, host := range hosts {
 		hostsMetrics, isMaster, err := b.getHostStatus(ctx, host)
@@ -196,83 +198,91 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 }
 
 // getStatsByKeyRange gets statistics by key range & updates ShardMetrics
-func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shards []*ShardMetrics) error {
-	for _, shard := range shards {
-		spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
-		for _, params := range []struct {
-			Host            string
-			MetricsStartInd int
-		}{
-			{Host: shard.Master, MetricsStartInd: 0},
-			{Host: shard.TargetReplica, MetricsStartInd: metricsCount},
-		} {
-			spqrlog.Zero.Debug().Str("host", params.Host).Msg("getting host detailed state")
-			conn, err := pgx.Connect(ctx, params.Host)
-			if err != nil {
-				return err
-			}
-			query := `
+func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetrics) error {
+	spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
+
+	type paramsStruct struct {
+		Host            string
+		MetricsStartInd int
+	}
+	paramsList := []paramsStruct{
+		{Host: shard.Master, MetricsStartInd: 0},
+	}
+	if shard.TargetReplica != "" {
+		paramsList = append(paramsList, paramsStruct{Host: shard.TargetReplica, MetricsStartInd: metricsCount})
+	}
+	for _, params := range paramsList {
+		spqrlog.Zero.Debug().Str("host", params.Host).Msg("getting host detailed state")
+		conn, err := pgx.Connect(ctx, params.Host)
+		if err != nil {
+			return err
+		}
+		query := fmt.Sprintf(`
 		SELECT
 		    comment_keys->>'key_range_id' AS key_range_id,
 			SUM(user_time + system_time) AS cpu
-		FROM pgcs_get_stats_time_interval(now() - interval %ds, now())
+		FROM pgcs_get_stats_time_interval(now() - interval '%ds', now())
 		GROUP BY key_range_id;
-`
-			rows, err := conn.Query(ctx, query)
-			if err != nil {
+`, config.BalancerConfig().StatIntervalSec)
+		rows, err := conn.Query(ctx, query)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			krId := ""
+			cpu := 0.0
+			if err = rows.Scan(&krId, &cpu); err != nil {
 				return err
 			}
-			for rows.Next() {
-				krId := ""
-				cpu := 0.0
-				if err = rows.Scan(&krId, &cpu); err != nil {
-					return err
-				}
-				if _, ok := shard.MetricsKR[krId]; !ok {
-					shard.MetricsKR[krId] = make([]float64, 2*metricsCount)
-				}
-				shard.MetricsKR[krId][params.MetricsStartInd+cpuMetric] = cpu
+			if _, ok := shard.MetricsKR[krId]; !ok {
+				shard.MetricsKR[krId] = make([]float64, 2*metricsCount)
 			}
+			shard.MetricsKR[krId][params.MetricsStartInd+cpuMetric] = cpu
+		}
+	}
 
-			for i, krg := range b.keyRanges {
-				if krg.ShardID != shard.ShardId {
-					continue
-				}
-				rels, err := b.getKRRelations(ctx, krg)
-				if err != nil {
-					return err
-				}
+	conn, err := pgx.Connect(ctx, shard.Master)
+	if err != nil {
+		return err
+	}
 
-				for _, rel := range rels {
-					// TODO check units in other queries (mB/KB possible)
-					queryRaw := `
+	for i, krg := range b.keyRanges {
+		if krg.ShardID != shard.ShardId {
+			continue
+		}
+		rels, err := b.getKRRelations(ctx, krg)
+		if err != nil {
+			return err
+		}
+
+		for _, rel := range rels {
+			// TODO check units in other queries (mB/KB possible)
+			queryRaw := `
 				SELECT sum(pg_column_size(t.*)) as filesize, count(*) as filerow 
 				FROM %s as t
 				WHERE %s;
 `
-					condition, err := b.getKRCondition(rel, krg, b.keyRanges[i+1], "t")
-					if err != nil {
-						return err
-					}
-					query = fmt.Sprintf(queryRaw, rel.Name, condition)
-
-					row := conn.QueryRow(ctx, query)
-					var size, count int64
-					if err := row.Scan(&size, &count); err != nil {
-						return err
-					}
-					if _, ok := shard.MetricsKR[krg.ID]; !ok {
-						shard.MetricsKR[krg.ID] = make([]float64, 2*metricsCount)
-					}
-					shard.MetricsKR[krg.ID][params.MetricsStartInd+spaceMetric] += float64(size)
-					// TODO remove duplicate count on master & replica
-					shard.KeyCountKR[krg.ID] += count
-					if _, ok := shard.KeyCountRelKR[krg.ID]; !ok {
-						shard.KeyCountRelKR[krg.ID] = make(map[string]int64)
-					}
-					shard.KeyCountRelKR[krg.ID][rel.Name] = count
-				}
+			condition, err := b.getKRCondition(rel, krg, b.keyRanges[i+1], "t")
+			if err != nil {
+				return err
 			}
+			query := fmt.Sprintf(queryRaw, rel.Name, condition)
+			spqrlog.Zero.Debug().Str("query", query).Msg("getting space usage & key count")
+
+			row := conn.QueryRow(ctx, query)
+			var size, count int64
+			if err := row.Scan(&size, &count); err != nil {
+				return err
+			}
+			if _, ok := shard.MetricsKR[krg.ID]; !ok {
+				shard.MetricsKR[krg.ID] = make([]float64, 2*metricsCount)
+			}
+			shard.MetricsKR[krg.ID][spaceMetric] += float64(size)
+			shard.KeyCountKR[krg.ID] += count
+			if _, ok := shard.KeyCountRelKR[krg.ID]; !ok {
+				shard.KeyCountRelKR[krg.ID] = make(map[string]int64)
+			}
+			shard.KeyCountRelKR[krg.ID][rel.Name] = count
 		}
 	}
 	return nil
@@ -300,15 +310,12 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 		if i > 0 {
 			break
 		}
-		f, err := hashfunction.HashFunctionByName(entry.HashFunction)
-		if err != nil {
-			return "", err
-		}
+		// TODO add hash (depends on col type)
 		hashedCol := ""
 		if prefix != "" {
-			hashedCol = fmt.Sprintf("%s.%s(%s)", prefix, hashfunction.ToString(f), entry.Column)
+			hashedCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
 		} else {
-			hashedCol = fmt.Sprintf("%s(%s)", hashfunction.ToString(f), entry.Column)
+			hashedCol = entry.Column
 		}
 		buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
 	}
@@ -355,7 +362,7 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
 	maxKeyCount = -1
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
-		keyCount := b.maxFitOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], shardMetrics[i])
+		keyCount := b.maxFitOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], shardIdToMetrics[krShardId].KeyCountKR[krId], shardMetrics[i])
 		if keyCount > maxKeyCount {
 			maxKeyCount = keyCount
 			shardId = shardMetrics[i].ShardId
@@ -378,11 +385,11 @@ func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCount int, shard *Sha
 
 // fitsOnShard
 // TODO unit tests
-func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, shard *ShardMetrics) (maxCount int) {
+func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shard *ShardMetrics) (maxCount int) {
 	maxCount = -1
 	for kind, metric := range shard.MetricsTotal {
 		// TODO move const to config
-		count := int(0.8 * ((b.threshold[kind] - metric) / krMetrics[kind]))
+		count := int(0.8 * ((b.threshold[kind] - metric) / (krMetrics[kind] / float64(krKeyCount))))
 		if count > maxCount {
 			maxCount = count
 		}
@@ -393,10 +400,11 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, shard *ShardMetrics) (
 func (b *BalancerImpl) getAdjacentShards(krId string) []string {
 	res := make([]string, 0)
 	krIdx := b.krIdx[krId]
-	if krIdx != 0 {
+	curShard := b.keyRanges[krIdx].ShardID
+	if krIdx != 0 && b.keyRanges[krIdx-1].ShardID != curShard {
 		res = append(res, b.keyRanges[krIdx-1].ShardID)
 	}
-	if krIdx < len(b.keyRanges)-1 && (len(res) == 0 || b.keyRanges[krIdx+1].ShardID != res[0]) {
+	if krIdx < len(b.keyRanges)-1 && (len(res) == 0 || b.keyRanges[krIdx+1].ShardID != res[0]) && b.keyRanges[krIdx+1].ShardID != curShard {
 		res = append(res, b.keyRanges[krIdx+1].ShardID)
 	}
 	return res
@@ -432,21 +440,30 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 }
 
 func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.TaskGroup, error) {
+	spqrlog.Zero.Debug().
+		Str("shard_from", shardFrom.ShardId).
+		Str("shard_to", shardToId).
+		Str("key_range", krId).
+		Int("key_count", keyCount).
+		Msg("generating move tasks")
 	// Move from beginning or the end of key range
-
 	krInd := b.krIdx[krId]
-	beginning := b.keyRanges[krInd+1].ShardID == shardToId
+	beginning := krInd > 0 && b.keyRanges[krInd-1].ShardID == shardToId
 	krIdTo := ""
 	var join tasks.JoinType = tasks.JoinNone
-	if b.keyRanges[krInd+1].ShardID == shardToId {
+	if krInd < len(b.keyRanges)-1 && b.keyRanges[krInd+1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd+1].ID
 		join = tasks.JoinRight
-	} else if b.keyRanges[krInd-1].ShardID == shardToId {
+	} else if krInd > 0 && b.keyRanges[krInd-1].ShardID == shardToId {
 		krIdTo = b.keyRanges[krInd-1].ID
 		join = tasks.JoinLeft
 	}
 
-	conn, err := pgx.Connect(ctx, shardFrom.TargetReplica)
+	host := shardFrom.TargetReplica
+	if host == "" {
+		host = shardFrom.Master
+	}
+	conn, err := pgx.Connect(ctx, host)
 	if err != nil {
 		return nil, err
 	}
@@ -539,18 +556,13 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
 
-	var buf bytes.Buffer
-	e := gob.NewEncoder(&buf)
-	if err := e.Encode(group); err != nil {
-		return err
-	}
-	tasksHash := buf.String()
+	id := uuid.New()
 
 	for len(group.Tasks) > 0 {
 		task := group.Tasks[0]
 		switch task.State {
 		case tasks.TaskPlanned:
-			newKeyRange := fmt.Sprintf("kr_%s", tasksHash)
+			newKeyRange := fmt.Sprintf("kr_%s", id.String())
 
 			if _, err := keyRangeService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
 				NewId:     newKeyRange,
