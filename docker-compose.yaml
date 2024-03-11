@@ -59,7 +59,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg.yaml
-            - ROUTER_LOG='router.log'
+            - ROUTER_LOG=/var/log/spqr-router.log 
     router2:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -72,7 +72,7 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg2.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg2.yaml
-            - ROUTER_LOG='router.log'
+            - ROUTER_LOG=/var/log/spqr-router.log 
     slicer:
         build:
             dockerfile: ./docker/slicer/Dockerfile

@@ -2,8 +2,10 @@ package provider
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -15,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -347,10 +350,11 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 		} else {
 			hashedCol = entry.Column
 		}
+		// TODO: fix multidim case
 		if nextKR != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendRaw()[0], hashedCol, nextKR.SendRaw()[0])
 		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, string(kRange.LowerBound))
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendRaw()[0])
 		}
 	}
 	return strings.Join(buf, " AND "), nil
@@ -501,6 +505,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			maxCount = count
 		}
 	}
+
 	var rel *distributions.DistributedRelation = nil
 	allRels, err := b.getKRRelations(ctx, b.dsToKeyRanges[ds][krInd])
 	if err != nil {
@@ -514,6 +519,16 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	}
 	if rel == nil {
 		return nil, fmt.Errorf("relation \"%s\" not found", relName)
+	}
+
+	dsService := protos.NewDistributionServiceClient(b.coordinatorConn)
+
+	dsS, err := dsService.GetDistribution(ctx, &protos.GetDistributionRequest{
+		Id: ds,
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	moveCount := min((keyCount+config.BalancerConfig().KeysPerMove-1)/config.BalancerConfig().KeysPerMove, config.BalancerConfig().MaxMoveCount)
@@ -552,12 +567,38 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		if err := row.Scan(&idx); err != nil {
 			return nil, err
 		}
+
+		var bound []byte
+
+		switch dsS.Distribution.ColumnTypes[0] {
+		case qdb.ColumnTypeVarchar:
+			fallthrough
+		case qdb.ColumnTypeVarcharDeprecated:
+			bound = []byte(idx)
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeInteger:
+			i, err := strconv.ParseInt(idx, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			bound = make([]byte, 8)
+			binary.PutVarint(bound, i)
+		case qdb.ColumnTypeUinteger:
+			i, err := strconv.ParseUint(idx, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			bound = make([]byte, 8)
+			binary.PutUvarint(bound, i)
+		}
+
 		groupTasks[len(groupTasks)-1-i] = &tasks.Task{
 			ShardFromId: shardFrom.ShardId,
 			ShardToId:   shardToId,
 			KrIdFrom:    krId,
 			KrIdTo:      krIdTo,
-			Bound:       []byte(idx),
+			Bound:       bound,
 		}
 		totalCount += count
 	}
@@ -667,6 +708,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
+	distrService := protos.NewDistributionServiceClient(b.coordinatorConn)
 	keyRangesProto, err := keyRangeService.ListAllKeyRanges(ctx, &protos.ListAllKeyRangesRequest{})
 	if err != nil {
 		return err
@@ -676,11 +718,17 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 		if _, ok := keyRanges[krProto.DistributionId]; !ok {
 			keyRanges[krProto.DistributionId] = make([]*kr.KeyRange, 0)
 		}
-		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto))
+		ds, err := distrService.GetDistribution(ctx, &protos.GetDistributionRequest{
+			Id: krProto.DistributionId,
+		})
+		if err != nil {
+			return err
+		}
+		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto, ds.Distribution.ColumnTypes))
 	}
 	for _, krs := range keyRanges {
 		sort.Slice(krs, func(i, j int) bool {
-			return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound)
+			return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound, krs[j].ColumnTypes)
 		})
 	}
 
@@ -688,6 +736,7 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	b.dsToKrIdx = make(map[string]map[string]int)
 	b.shardKr = make(map[string][]string)
 	b.krToDs = make(map[string]string)
+
 	for ds, krs := range b.dsToKeyRanges {
 		for i, krg := range krs {
 			b.krToDs[krg.ID] = ds

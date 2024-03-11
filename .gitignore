@@ -9,7 +9,7 @@ spqr-worldmock
 spqr-balancer
 spqr-mover
 spqr-workloadreplay
-spqrdump
+spqr-dump
 y.output
 *.swp
 *.swo
