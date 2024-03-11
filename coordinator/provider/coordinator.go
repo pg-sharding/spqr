@@ -685,7 +685,7 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
+	krBase, err := qc.db.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
 	}
@@ -696,7 +696,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		}
 	}()
 
-	krRight, err := qc.db.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
+	krAppendage, err := qc.db.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
 	if err != nil {
 		return err
 	}
@@ -707,17 +707,18 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		}
 	}()
 
-	if krLeft.ShardID != krRight.ShardID {
+	if krBase.ShardID != krAppendage.ShardID {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
 	}
-	if krLeft.DistributionId != krRight.DistributionId {
+	if krBase.DistributionId != krAppendage.DistributionId {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
 	}
-	ds, err := qc.db.GetDistribution(ctx, krLeft.DistributionId)
+	ds, err := qc.db.GetDistribution(ctx, krBase.DistributionId)
 	if err != nil {
 		return err
 	}
 	// TODO: check all types when composite keys are supported
+	krLeft, krRight := krBase, krAppendage
 	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound) {
 		krLeft, krRight = krRight, krLeft
 	}
@@ -735,11 +736,15 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		}
 	}
 
-	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
+	if err := qc.db.DropKeyRange(ctx, krAppendage.KeyRangeID); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
 
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
+	if krLeft.KeyRangeID != krBase.KeyRangeID {
+		krBase.LowerBound = krAppendage.LowerBound
+	}
+
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krBase)); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 
