@@ -3,18 +3,20 @@ package datatransfers
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	_ "github.com/lib/pq"
-	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+
+	pgx "github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
+	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -107,9 +109,9 @@ Steps:
 //
 // It is assumed that the passed key range is already locked on every online spqr-router.
 // The function performs the following steps:
-//  - Create a postgres_fdw on the receiving shard.
-//  - Copy data from the sending shard to the receiving shard via fdw.
-//  - Delete data from the sending shard.
+//   - Create a postgres_fdw on the receiving shard.
+//   - Copy data from the sending shard to the receiving shard via fdw.
+//   - Delete data from the sending shard.
 //
 // Parameters:
 //   - ctx (context.Context): The context for the function.
@@ -202,7 +204,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
-
 // resolveNextBound finds the next lower bound key range from the given key range list that is greater than the lower bound of the given key range.
 //
 // Parameters:
@@ -218,9 +219,13 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	if err != nil {
 		return nil, err
 	}
+	ds, err := cr.GetDistribution(ctx, krg.Distribution)
+	if err != nil {
+		return nil, err
+	}
 	var bound kr.KeyRangeBound
 	for _, kRange := range krs {
-		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound)) {
+		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound, ds.ColTypes) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound, ds.ColTypes)) {
 			bound = kRange.LowerBound
 		}
 	}
@@ -231,8 +236,8 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 //
 // It is assumed that the passed key range is already locked on every online spqr-router.
 // The function performs the following steps:
-//  - Create a postgres_fdw on the receiving shard.
-//  - Copy data from the sending shard to the receiving shard via fdw.
+//   - Create a postgres_fdw on the receiving shard.
+//   - Copy data from the sending shard to the receiving shard via fdw.
 //
 // Parameters:
 // - ctx (context.Context): The context for the function.
