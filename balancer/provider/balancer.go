@@ -624,6 +624,12 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 				}); err != nil {
 					return err
 				}
+			} else {
+				for _, otherTask := range group.Tasks[1:] {
+					otherTask.KrIdTo = task.KrIdTemp
+				}
+				group.JoinType = tasks.JoinRight
+				id = uuid.New()
 			}
 			group.Tasks = group.Tasks[1:]
 			if err := b.syncTaskGroupWithQDB(ctx, group); err != nil {
