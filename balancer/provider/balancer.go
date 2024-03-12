@@ -266,7 +266,11 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 				FROM %s as t
 				WHERE %s;
 `
-			condition, err := b.getKRCondition(rel, krg, b.keyRanges[i+1], "t")
+			var nextKR *kr.KeyRange
+			if i < len(b.keyRanges)-1 {
+				nextKR = b.keyRanges[i+1]
+			}
+			condition, err := b.getKRCondition(rel, krg, nextKR, "t")
 			if err != nil {
 				return err
 			}
@@ -321,7 +325,11 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 		} else {
 			hashedCol = entry.Column
 		}
-		buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
+		if nextKR != nil {
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
+		} else {
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, string(kRange.LowerBound))
+		}
 	}
 	return strings.Join(buf, " AND "), nil
 }
@@ -452,7 +460,6 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		Msg("generating move tasks")
 	// Move from beginning or the end of key range
 	krInd := b.krIdx[krId]
-	beginning := krInd > 0 && b.keyRanges[krInd-1].ShardID == shardToId
 	krIdTo := ""
 	var join tasks.JoinType = tasks.JoinNone
 	if krInd < len(b.keyRanges)-1 && b.keyRanges[krInd+1].ShardID == shardToId {
@@ -513,11 +520,14 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		LIMIT 1
 		OFFSET %d
 		`, rel.DistributionKey[0].Column, rel.Name, func() string {
-			if !beginning {
+			if join != tasks.JoinLeft {
 				return "DESC"
 			}
 			return ""
 		}(), cumCount+count-1)
+		spqrlog.Zero.Debug().
+			Str("query", query).
+			Msg("getting split bound")
 		row := conn.QueryRow(ctx, query)
 		// TODO typed key ranges
 		var idx string
@@ -570,6 +580,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 			Str("key_range_from", task.KrIdFrom).
 			Str("key_range_to", task.KrIdTo).
 			Str("bound", string(task.Bound)).
+			Int("state", int(task.State)).
 			Msg("processing task")
 		switch task.State {
 		case tasks.TaskPlanned:
