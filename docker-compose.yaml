@@ -73,12 +73,6 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg2.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg2.yaml
-    balancer:
-        build:
-            dockerfile: ./docker/balancer/Dockerfile
-            context: .
-        hostname: spqr_balancer
-        container_name: spqr_balancer
     slicer:
         build:
             dockerfile: ./docker/slicer/Dockerfile
