@@ -521,8 +521,8 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	// TODO multidimensional key ranges
 	for i, count := range counts {
 		query := fmt.Sprintf(`
-		SELECT "%s" as idx
-		FROM "%s"
+		SELECT %s as idx
+		FROM %s
 		ORDER BY idx %s
 		LIMIT 1
 		OFFSET %d
