@@ -1,6 +1,7 @@
 GIT_REVISION=`git rev-parse --short HEAD`
 SPQR_VERSION=`git describe --tags --abbrev=0`
 LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION}"
+GCFLAGS=-gcflags=all="-N -l"
 
 .PHONY : run
 .DEFAULT_GOAL := deps
@@ -27,7 +28,7 @@ build_coordinator:
 	go build -pgo=auto -o spqr-coordinator ./cmd/coordinator
 
 build_router: 
-	go build -pgo=auto -o spqr-router $(LDFLAGS) ./cmd/router
+	go build -pgo=auto -o spqr-router $(LDFLAGS) $(GCFLAGS) ./cmd/router
 
 build_mover:
 	go build -pgo=auto -o spqr-mover  ./cmd/mover
