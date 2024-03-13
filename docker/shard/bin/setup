@@ -46,7 +46,7 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POST
 }
 
  # Create extension
- sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements; CREATE EXTENSION IF NOT EXISTS pg_stat_kcache; CREATE EXTENSION IF NOT EXISTS pg_comment_stats;" -d db1 >> $SETUP_LOG 2>&1 || {
+ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements; CREATE EXTENSION IF NOT EXISTS pg_stat_kcache; CREATE EXTENSION IF NOT EXISTS pg_comment_stats;" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
      echo "ERROR: users creation failed, examine the log"
      cat "$SETUP_LOG"
      exit 1
