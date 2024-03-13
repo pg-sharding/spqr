@@ -531,7 +531,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 				return "DESC"
 			}
 			return ""
-		}(), cumCount+count-1)
+		}(), cumCount+count)
 		spqrlog.Zero.Debug().
 			Str("query", query).
 			Msg("getting split bound")
