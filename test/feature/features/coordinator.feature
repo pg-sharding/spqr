@@ -315,7 +315,7 @@ Feature: Coordinator test
     Then SQL result should match json
     """
     [{
-      "Key range ID":"krid2",
+      "Key range ID":"krid3",
       "Distribution ID":"ds1",
       "Lower bound":"11",
       "Shard ID":"sh2"

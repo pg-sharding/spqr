@@ -292,8 +292,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return cli.SplitKeyRange(ctx, splitKeyRange)
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
-			KeyRangeIDLeft:  stmt.KeyRangeIDL,
-			KeyRangeIDRight: stmt.KeyRangeIDR,
+			BaseKeyRangeId:      stmt.KeyRangeIDL,
+			AppendageKeyRangeId: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
 			return err

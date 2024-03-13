@@ -12,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	"google.golang.org/grpc/reflection"
@@ -164,7 +163,7 @@ func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.Dro
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.KeyRange.Krid, ShardId: request.ToShardId})
+	err := l.mgr.Move(ctx, &kr.MoveKeyRange{Krid: request.Id, ShardId: request.ToShardId})
 	if err != nil {
 		return nil, err
 	}
@@ -254,9 +253,10 @@ func (l *LocalQrouterServer) UnlockKeyRange(ctx context.Context, request *protos
 // TODO : unit tests
 func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := l.mgr.Split(ctx, &kr.SplitKeyRange{
-		Krid:     request.KeyRangeInfo.Krid,
-		SourceID: request.SourceId,
-		Bound:    request.Bound,
+		Krid:      request.NewId,
+		SourceID:  request.SourceId,
+		Bound:     request.Bound,
+		SplitLeft: request.SplitLeft,
 	}); err != nil {
 		return nil, err
 	}
@@ -266,40 +266,9 @@ func (l *LocalQrouterServer) SplitKeyRange(ctx context.Context, request *protos.
 
 // TODO : unit tests
 func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krs, err := l.mgr.ListKeyRanges(ctx, request.Distribution)
-	if err != nil {
-		return nil, err
-	}
-
-	var krright *kr.KeyRange
-	var krleft *kr.KeyRange
-	var kr_match *kr.KeyRange
-
-	for _, keyrange := range krs {
-		if kr.CmpRangesEqual(keyrange.LowerBound, request.Bound) {
-			krright = keyrange
-		}
-
-		if kr.CmpRangesLess(keyrange.LowerBound, request.Bound) {
-			if kr_match == nil || kr.CmpRangesLess(kr_match.LowerBound, keyrange.LowerBound) {
-				krleft = keyrange
-				kr_match = keyrange
-			}
-		}
-	}
-
-	if krright == nil || krleft == nil {
-		return nil, fmt.Errorf("key range on the left or on the right was not found")
-	}
-
-	spqrlog.Zero.Debug().
-		Str("left krid", krleft.ID).
-		Str("right krid", krright.ID).
-		Msg("listing key ranges")
-
 	if err := l.mgr.Unite(ctx, &kr.UniteKeyRange{
-		KeyRangeIDLeft:  krleft.ID,
-		KeyRangeIDRight: krright.ID,
+		BaseKeyRangeId:      request.GetBaseId(),
+		AppendageKeyRangeId: request.GetAppendageId(),
 	}); err != nil {
 		return nil, err
 	}

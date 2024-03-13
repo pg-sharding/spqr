@@ -129,15 +129,10 @@ func (a *Adapter) Split(ctx context.Context, split *kr.SplitKeyRange) error {
 		if keyRange.ID == split.SourceID {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.SplitKeyRange(ctx, &proto.SplitKeyRangeRequest{
-				Bound:    split.Bound,
-				SourceId: split.SourceID,
-				KeyRangeInfo: &proto.KeyRangeInfo{
-					Krid:    split.Krid,
-					ShardId: keyRange.ShardID,
-					KeyRange: &proto.KeyRange{
-						LowerBound: string(keyRange.LowerBound),
-					},
-				},
+				Bound:     split.Bound,
+				SourceId:  split.SourceID,
+				NewId:     split.Krid,
+				SplitLeft: split.SplitLeft,
 			})
 			return err
 		}
@@ -156,20 +151,25 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 	var left *kr.KeyRange
 	var right *kr.KeyRange
 
+	// Check for in-between key ranges
 	for _, kr := range krs {
-		if kr.ID == unite.KeyRangeIDLeft {
+		if kr.ID == unite.BaseKeyRangeId {
 			left = kr
 		}
-		if kr.ID == unite.KeyRangeIDRight {
+		if kr.ID == unite.AppendageKeyRangeId {
 			right = kr
 		}
 	}
 
-	for _, krcurr := range krs {
-		if krcurr.ID == unite.KeyRangeIDLeft || krcurr.ID == unite.KeyRangeIDRight {
+	if kr.CmpRangesLess(right.LowerBound, left.LowerBound) {
+		left, right = right, left
+	}
+
+	for _, krCurr := range krs {
+		if krCurr.ID == unite.BaseKeyRangeId || krCurr.ID == unite.AppendageKeyRangeId {
 			continue
 		}
-		if kr.CmpRangesLess(krcurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krcurr.LowerBound) {
+		if kr.CmpRangesLess(krCurr.LowerBound, right.LowerBound) && kr.CmpRangesLess(left.LowerBound, krCurr.LowerBound) {
 			return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "unvalid unite request")
 		}
 	}
@@ -180,7 +180,8 @@ func (a *Adapter) Unite(ctx context.Context, unite *kr.UniteKeyRange) error {
 
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err = c.MergeKeyRange(ctx, &proto.MergeKeyRangeRequest{
-		Bound: right.LowerBound,
+		BaseId:      unite.BaseKeyRangeId,
+		AppendageId: unite.AppendageKeyRangeId,
 	})
 	return err
 }
@@ -196,7 +197,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 		if keyRange.ID == move.Krid {
 			c := proto.NewKeyRangeServiceClient(a.conn)
 			_, err := c.MoveKeyRange(ctx, &proto.MoveKeyRangeRequest{
-				KeyRange:  keyRange.ToProto(),
+				Id:        keyRange.ID,
 				ToShardId: move.ShardId,
 			})
 			return err

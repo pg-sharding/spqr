@@ -547,8 +547,8 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 	})
 }
 
+// Split splits key range by req.bound
 // TODO : unit tests
-// Split TODO: check bounds and keyRangeID (sourceID)
 func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	spqrlog.Zero.Debug().
 		Str("krid", req.Krid).
@@ -593,15 +593,17 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		}
 	}
 
-	krNew := kr.KeyRangeFromDB(
-		&qdb.KeyRange{
-			LowerBound:     req.Bound,
-			UpperBound:     krOld.UpperBound,
-			KeyRangeID:     req.Krid,
-			ShardID:        krOld.ShardID,
-			DistributionId: krOld.DistributionId,
-		},
-	)
+	krNew := &kr.KeyRange{
+		LowerBound: func() []byte {
+			if req.SplitLeft {
+				return krOld.LowerBound
+			}
+			return req.Bound
+		}(),
+		ID:           req.Krid,
+		ShardID:      krOld.ShardID,
+		Distribution: krOld.DistributionId,
+	}
 
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", krNew.LowerBound).
@@ -609,7 +611,11 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		Str("id", krNew.ID).
 		Msg("new key range")
 
-	krOld.UpperBound = req.Bound
+	if req.SplitLeft {
+		krOld.LowerBound = req.Bound
+	} else {
+		krOld.UpperBound = req.Bound
+	}
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err
 	}
@@ -621,9 +627,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.SplitKeyRange(ctx, &routerproto.SplitKeyRangeRequest{
-			Bound:        req.Bound,
-			SourceId:     req.SourceID,
-			KeyRangeInfo: krNew.ToProto(),
+			Bound:    req.Bound,
+			SourceId: req.SourceID,
+			NewId:    krNew.ID,
 		})
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
@@ -679,39 +685,40 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyRange) error {
-	krLeft, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft)
+	krBase, err := qc.db.LockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDLeft); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.BaseKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
 
-	krRight, err := qc.db.LockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight)
+	krAppendage, err := qc.db.LockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId)
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.KeyRangeIDRight); err != nil {
+		if err := qc.db.UnlockKeyRange(ctx, uniteKeyRange.AppendageKeyRangeId); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}()
 
-	if krLeft.ShardID != krRight.ShardID {
+	if krBase.ShardID != krAppendage.ShardID {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges routing different shards")
 	}
-	if krLeft.DistributionId != krRight.DistributionId {
+	if krBase.DistributionId != krAppendage.DistributionId {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges of different distributions")
 	}
-	ds, err := qc.db.GetDistribution(ctx, krLeft.DistributionId)
+	ds, err := qc.db.GetDistribution(ctx, krBase.DistributionId)
 	if err != nil {
 		return err
 	}
 	// TODO: check all types when composite keys are supported
+	krLeft, krRight := krBase, krAppendage
 	if kr.CmpRangesLess(krRight.LowerBound, krLeft.LowerBound) {
 		krLeft, krRight = krRight, krLeft
 	}
@@ -729,19 +736,23 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 		}
 	}
 
-	if err := qc.db.DropKeyRange(ctx, krRight.KeyRangeID); err != nil {
+	if err := qc.db.DropKeyRange(ctx, krAppendage.KeyRangeID); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to drop an old key range: %s", err.Error())
 	}
 
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krLeft)); err != nil {
+	if krLeft.KeyRangeID != krBase.KeyRangeID {
+		krBase.LowerBound = krAppendage.LowerBound
+	}
+
+	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krBase)); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update a new key range: %s", err.Error())
 	}
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.MergeKeyRange(ctx, &routerproto.MergeKeyRangeRequest{
-			Bound:        krRight.LowerBound,
-			Distribution: krRight.DistributionId,
+			BaseId:      uniteKeyRange.BaseKeyRangeId,
+			AppendageId: uniteKeyRange.AppendageKeyRangeId,
 		})
 
 		spqrlog.Zero.Debug().
@@ -778,10 +789,10 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	return m.MoveId, nil
 }
 
-// TODO : unit tests
 // Move key range from one logical shard to another
 // This function reshards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
+// TODO : unit tests
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.
@@ -849,7 +860,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
-			KeyRange:  krmv.ToProto(),
+			Id:        krmv.ID,
 			ToShardId: krmv.ShardID,
 		})
 		spqrlog.Zero.Debug().
