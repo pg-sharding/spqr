@@ -14,15 +14,7 @@ import (
 type Balancer struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 
-	Host         string `json:"host" toml:"host" yaml:"host"`
-	BalancerPort string `json:"balancer_port" toml:"balancer_port" yaml:"}"`
-
-	CoordinatorAddress    string `json:"coordinator_address" toml:"coordinator_address" yaml:"coordinator_address"`
-	CoordinatorMaxRetries string `json:"coordinator_max_retries" toml:"coordinator_max_retries" yaml:"coordinator_max_retries"`
-
-	Shards DatatransferConnections `json:"shards" toml:"shards" yaml:"shards"`
-
-	TLS TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	CoordinatorAddress string `json:"coordinator_address" toml:"coordinator_address" yaml:"coordinator_address"`
 
 	// TODO set default values (probably the type needs to be de-exported)
 	CpuThreshold   float64 `json:"cpu_threshold" yaml:"cpu_threshold" toml:"cpu_threshold"`
