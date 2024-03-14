@@ -33,7 +33,7 @@ Feature: Proxy console
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        CREATE KEY RANGE krid1 FROM 0 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
         """
         Then command return code should be "0"
 

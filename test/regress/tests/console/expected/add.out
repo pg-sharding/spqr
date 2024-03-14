@@ -11,13 +11,13 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  created distribution with id ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
  created key range with bound 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
  created key range with bound 11
@@ -36,7 +36,7 @@ DROP KEY RANGE krid1;
  drop key range krid1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 ERROR:  key range krid2 already present in qdb.
 SHOW key_ranges;
  Key range ID | Shard ID | Distribution ID | Lower bound 
@@ -44,7 +44,7 @@ SHOW key_ranges;
  krid2        | sh1      | ds1             | 11
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 33 TO 44 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
+CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
 ERROR:  unknown shard nonexistentshard.
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution   
