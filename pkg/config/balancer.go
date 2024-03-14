@@ -11,6 +11,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const defaultBalancerTimeout = 60
+
 type Balancer struct {
 	LogLevel string `json:"log_level" toml:"log_level" yaml:"log_level"` // TODO usage
 
@@ -24,6 +26,8 @@ type Balancer struct {
 
 	MaxMoveCount int `json:"max_move_count" yaml:"max_move_count" toml:"max_move_count"`
 	KeysPerMove  int `json:"keys_per_move" yaml:"keys_per_move" toml:"keys_per_move"`
+
+	TimeoutSec int `json:"timeout" yaml:"timeout" toml:"timeout"`
 }
 
 var cfgBalancer Balancer
@@ -37,6 +41,10 @@ func LoadBalancerCfg(cfgPath string) error {
 
 	if err := initBalancerConfig(file, cfgPath); err != nil {
 		return err
+	}
+
+	if cfgBalancer.TimeoutSec == 0 {
+		cfgBalancer.TimeoutSec = defaultBalancerTimeout
 	}
 
 	configBytes, err := json.MarshalIndent(cfgBalancer, "", "  ")
