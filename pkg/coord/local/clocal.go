@@ -331,8 +331,6 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 
 	if req.SplitLeft {
 		krOld.LowerBound = req.Bound
-	} else {
-		krOld.UpperBound = req.Bound
 	}
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err

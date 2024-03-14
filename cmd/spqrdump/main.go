@@ -117,13 +117,12 @@ func getconn() (*pgproto3.Frontend, error) {
 func DumpKeyRangesPsql() error {
 	return dumpPsql("SHOW key_ranges;", func(v *pgproto3.DataRow) (string, error) {
 		l := string(v.Values[2])
-		r := string(v.Values[3])
 		id := string(v.Values[0])
 		shard := string(v.Values[1])
 
 		return decode.KeyRange(
 			&protos.KeyRangeInfo{
-				KeyRange: &protos.KeyRange{LowerBound: l, UpperBound: r},
+				KeyRange: &protos.KeyRange{LowerBound: l},
 				ShardId:  shard, Krid: id}), nil
 	})
 }
