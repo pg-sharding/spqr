@@ -520,6 +520,10 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	cumCount := 0
 	// TODO multidimensional key ranges
 	for i, count := range counts {
+		offset := cumCount + count
+		if join != tasks.JoinLeft {
+			offset--
+		}
 		query := fmt.Sprintf(`
 		SELECT %s as idx
 		FROM %s
@@ -531,7 +535,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 				return "DESC"
 			}
 			return ""
-		}(), cumCount+count)
+		}(), offset)
 		spqrlog.Zero.Debug().
 			Str("query", query).
 			Msg("getting split bound")
