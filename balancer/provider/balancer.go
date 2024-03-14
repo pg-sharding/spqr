@@ -341,22 +341,6 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 	return strings.Join(buf, " AND "), nil
 }
 
-func (b *BalancerImpl) getKeyRange(val []byte) string {
-	l := 0
-	r := len(b.keyRanges) + 1
-
-	for r > l+1 {
-		m := (l + r) / 2
-		if kr.CmpRangesLess(b.keyRanges[m].LowerBound, val) {
-			l = m
-		} else {
-			r = m
-		}
-	}
-
-	return b.keyRanges[l].ID
-}
-
 // getShardToMoveTo determines where to send keys from specified key range
 // TODO unit tests
 func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCount int) (string, error) {
@@ -499,6 +483,9 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	}
 	var rel *distributions.DistributedRelation = nil
 	allRels, err := b.getKRRelations(ctx, b.keyRanges[b.krIdx[krId]])
+	if err != nil {
+		return nil, err
+	}
 	for _, r := range allRels {
 		if r.Name == relName {
 			rel = r

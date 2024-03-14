@@ -19,7 +19,9 @@ func NewApp(b balancer.Balancer) *App {
 }
 
 func (app *App) Run() error {
-	spqrlog.UpdateZeroLogLevel(config.BalancerConfig().LogLevel)
+	if err := spqrlog.UpdateZeroLogLevel(config.BalancerConfig().LogLevel); err != nil {
+		return err
+	}
 	spqrlog.Zero.Info().Msg("running balancer")
 
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Duration(config.BalancerConfig().TimeoutSec)*time.Second)
