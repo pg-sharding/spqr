@@ -65,6 +65,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 
 	if cl.Server().TxStatus() != txstatus.TXIDLE {
 		cl.ServerReleaseUse()
+		cl.Server().Reset()
 		return unsyncConnection
 	}
 
