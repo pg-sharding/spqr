@@ -14,7 +14,6 @@ type TxStatusMgr interface {
 	TxStatus() TXStatus
 }
 
-// TODO : unit tests
 func (s TXStatus) String() string {
 	switch s {
 	case TXIDLE:
