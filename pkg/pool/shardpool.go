@@ -29,25 +29,36 @@ type shardPool struct {
 
 	host string
 
-	ConnectionLimit int
+	ConnectionLimit            int
+	ConnectionRetries          int
+	ConnectionRetrySleepSlice  int
+	ConnectionRetryRandomSleep int
 }
 
 var _ Pool = &shardPool{}
 
 func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
+	connRetries := defaultInstanceConnectionRetries
 	if beRule.ConnectionLimit != 0 {
 		connLimit = beRule.ConnectionLimit
 	}
 
+	if beRule.ConnectionRetries != 0 {
+		connRetries = beRule.ConnectionRetries
+	}
+
 	ret := &shardPool{
-		mu:              sync.Mutex{},
-		pool:            nil,
-		active:          make(map[uint]shard.Shard),
-		alloc:           allocFn,
-		beRule:          beRule,
-		host:            host,
-		ConnectionLimit: connLimit,
+		mu:                         sync.Mutex{},
+		pool:                       nil,
+		active:                     make(map[uint]shard.Shard),
+		alloc:                      allocFn,
+		beRule:                     beRule,
+		host:                       host,
+		ConnectionLimit:            connLimit,
+		ConnectionRetries:          connRetries,
+		ConnectionRetrySleepSlice:  50,
+		ConnectionRetryRandomSleep: 10,
 	}
 
 	ret.queue = make(chan struct{}, connLimit)
@@ -109,10 +120,10 @@ func (h *shardPool) Connection(
 	shardKey kr.ShardKey) (shard.Shard, error) {
 
 	if err := func() error {
-		for rep := 0; rep < 10; rep++ {
+		for rep := 0; rep < h.ConnectionRetries; rep++ {
 			select {
 			// TODO: configure waits using backend rule
-			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
+			case <-time.After(time.Duration(h.ConnectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.ConnectionRetryRandomSleep))):
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).

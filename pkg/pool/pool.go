@@ -6,7 +6,10 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
 
-const defaultInstanceConnectionLimit = 50
+const (
+	defaultInstanceConnectionLimit   = 50
+	defaultInstanceConnectionRetries = 10
+)
 
 type ConnectionKepper interface {
 	Put(host shard.Shard) error
