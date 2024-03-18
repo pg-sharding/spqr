@@ -669,29 +669,26 @@ distribution_membership:
         $$ = $3
     }
 
-
-opt_to: TO any_val {} | TO any_uint {} | /*nothing*/{}
-
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val opt_to ROUTE TO any_id distribution_membership
+	KEY RANGE any_id FROM any_val ROUTE TO any_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
 			LowerBound: []byte($5),
-			ShardID: $9,
-			Distribution: $10,
+			ShardID: $8,
+			Distribution: $9,
 		}
 	}
-	| KEY RANGE any_id FROM any_uint opt_to ROUTE TO any_id distribution_membership
+	| KEY RANGE any_id FROM any_uint ROUTE TO any_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
 			LowerBound: []byte(strconv.FormatUint(uint64($5), 10)),
-			ShardID: $9,
-			Distribution: $10,
+			ShardID: $8,
+			Distribution: $9,
 		}
 	}
-	| KEY RANGE FROM any_val opt_to ROUTE TO any_id distribution_membership
+	| KEY RANGE FROM any_val ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -699,12 +696,12 @@ key_range_define_stmt:
 		}
 		$$ = &KeyRangeDefinition{
 			LowerBound: []byte($4),
-			Distribution: $8,
-			ShardID: $9,
+			Distribution: $6,
+			ShardID: $7,
 			KeyRangeID: "kr"+str,
 		}
 	}
-	| KEY RANGE FROM any_uint opt_to ROUTE TO any_id distribution_membership
+	| KEY RANGE FROM any_uint ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
@@ -712,9 +709,9 @@ key_range_define_stmt:
 		}
 		$$ = &KeyRangeDefinition{
 			LowerBound: []byte(strconv.FormatUint(uint64($4), 10)),
-			ShardID: $8,
+			ShardID: $7,
 			KeyRangeID: "kr"+str,
-			Distribution: $9,
+			Distribution: $8,
 		}
 	}
 

@@ -613,8 +613,6 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 
 	if req.SplitLeft {
 		krOld.LowerBound = req.Bound
-	} else {
-		krOld.UpperBound = req.Bound
 	}
 	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, kr.KeyRangeFromDB(krOld)); err != nil {
 		return err

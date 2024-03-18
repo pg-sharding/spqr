@@ -151,7 +151,7 @@ Feature: Coordinator test
   Scenario: Add key range with the same id fails
     When I run SQL on host "coordinator"
     """
-    CREATE KEY RANGE krid1 FROM 50 TO 100 ROUTE TO sh1 FOR DISTRIBUTION ds1
+    CREATE KEY RANGE krid1 FROM 50 ROUTE TO sh1 FOR DISTRIBUTION ds1
     """
     Then SQL error on host "coordinator" should match regexp
     """

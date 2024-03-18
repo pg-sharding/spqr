@@ -17,17 +17,6 @@ func TestKeyRange(t *testing.T) {
 				LowerBound: "10",
 			},
 		}))
-	// UpperBound is ignored
-	assert.Equal("CREATE KEY RANGE kr1 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
-		KeyRange(&protos.KeyRangeInfo{
-			Krid:           "kr1",
-			ShardId:        "sh1",
-			DistributionId: "ds1",
-			KeyRange: &protos.KeyRange{
-				LowerBound: "10",
-				UpperBound: "20",
-			},
-		}))
 }
 
 func TestDistribution(t *testing.T) {
