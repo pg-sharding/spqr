@@ -152,6 +152,8 @@ func (h *shardPool) Connection(
 	var err error
 	sh, err = h.alloc(shardKey, h.host, h.beRule)
 	if err != nil {
+		// return acquired token
+		h.queue <- struct{}{}
 		return nil, err
 	}
 
@@ -176,6 +178,11 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	if _, ok := h.active[sh.ID()]; !ok {
+		// double free
+		return nil
+	}
+
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
 
@@ -197,6 +204,11 @@ func (h *shardPool) Put(sh shard.Shard) error {
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if _, ok := h.active[sh.ID()]; !ok {
+		// double free
+		panic(sh)
+	}
 
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
