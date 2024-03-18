@@ -53,7 +53,7 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	assert.Equal(1, shp.IdleConnectionCount())
 }
 
-func TestShardPoolConnectionAcquireDisacrd(t *testing.T) {
+func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
