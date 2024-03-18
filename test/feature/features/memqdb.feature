@@ -85,8 +85,8 @@ Feature: MemQDB save state into a file
     When I execute SQL on host "router-admin"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
     When host "router" is stopped
@@ -123,8 +123,8 @@ Feature: MemQDB save state into a file
     When I run SQL on host "router-admin"
     """
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid1;
     """
     Then command return code should be "0"

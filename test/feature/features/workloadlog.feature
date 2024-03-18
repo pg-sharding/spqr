@@ -27,8 +27,8 @@ Feature: Check WorkloadLog working
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
         ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
         START TRACE ALL MESSAGES;
         """ 
@@ -55,8 +55,8 @@ Feature: Check WorkloadLog working
         When I run SQL on host "router-admin"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-        ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-        ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
         ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
         START TRACE ALL MESSAGES
         """ 
