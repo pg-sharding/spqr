@@ -3,11 +3,12 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"net"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
@@ -130,7 +131,7 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		"pool db",
 		"pool usr",
 		"pool host",
-		"used connection count",
+		"used connections",
 		"idle connections",
 		"queue residual size"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")

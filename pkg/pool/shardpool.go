@@ -34,7 +34,7 @@ type shardPool struct {
 
 var _ Pool = &shardPool{}
 
-func NewshardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
+func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
 	if beRule.ConnectionLimit != 0 {
 		connLimit = beRule.ConnectionLimit
@@ -111,6 +111,7 @@ func (h *shardPool) Connection(
 	if err := func() error {
 		for rep := 0; rep < 10; rep++ {
 			select {
+			// TODO: configure waits using backend rule
 			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
 				spqrlog.Zero.Info().
 					Uint("client", clid).
@@ -301,7 +302,7 @@ func (c *cPool) List() []shard.Shard {
 func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
-		pool = NewshardPool(c.alloc, host, c.beRule)
+		pool = NewShardPool(c.alloc, host, c.beRule)
 		c.pools.Store(host, pool)
 	} else {
 		pool = val.(Pool)
