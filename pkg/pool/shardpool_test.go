@@ -93,7 +93,7 @@ func TestShardPoolConnectionAcquireDisacrd(t *testing.T) {
 	assert.Equal(0, shp.IdleConnectionCount())
 }
 
-func TestShardPoolAlloceFnError(t *testing.T) {
+func TestShardPoolAllocFnError(t *testing.T) {
 
 	assert := assert.New(t)
 	ctrl := gomock.NewController(t)
