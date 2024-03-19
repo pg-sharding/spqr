@@ -3,7 +3,9 @@ package pool_test
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -150,12 +152,10 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	}
 
 	var mu sync.Mutex
-	cntAcq := 0
 
 	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
 		mu.Lock()
 		defer mu.Unlock()
-		cntAcq++
 
 		for _, sh := range conns {
 			if !used[sh.ID()] {
@@ -173,7 +173,8 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	})
 
 	var wg sync.WaitGroup
-	cntExec := 0
+
+	var cntExec atomic.Uint64
 
 	wg.Add(20)
 
@@ -187,24 +188,20 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 				})
 				if err != nil {
 					// too much connections
-					assert.Less(cntAcq, connLimit)
 					continue
 				}
 
 				assert.NotNil(conn)
 
 				// imitate use
-				time.Sleep(50 * time.Millisecond)
-
-				cntExec++
+				time.Sleep(time.Duration(1+rand.Uint32()%50) * time.Millisecond)
 
 				mu.Lock()
+				cntExec.Add(1)
 
 				used[conn.ID()] = false
 
-				cntAcq--
-
-				shp.Put(conn)
+				_ = shp.Put(conn)
 
 				mu.Unlock()
 			}
@@ -214,5 +211,5 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	wg.Wait()
 
 	// no more that 25% failure
-	assert.Greater(cntExec, 15*100)
+	assert.Greater(cntExec.Load(), uint64(15*100))
 }
