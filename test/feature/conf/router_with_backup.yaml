@@ -5,6 +5,8 @@ grpc_api_port: '7000'
 router_mode: PROXY
 log_level: debug
 memqdb_backup_path: memqdb.backup
+memqdb_persistent: true
+
 time_quantiles:
   - 0.75
 world_shard_fallback: true

@@ -104,6 +104,10 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("Cannot persist metadata setup locally in clustered mode. Abort")
 		}
 
+		if !persist && rcfg.MemqdbPersistent {
+			persist = true
+		}
+
 		if !console && (rcfg.Daemonize || daemonize) {
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
