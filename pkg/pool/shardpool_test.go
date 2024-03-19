@@ -211,5 +211,5 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 	wg.Wait()
 
 	// no more that 25% failure
-	assert.Greater(cntExec.Load(), 15*100)
+	assert.Greater(cntExec.Load(), uint64(15*100))
 }
