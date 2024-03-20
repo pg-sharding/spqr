@@ -129,9 +129,9 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 	keyCount = min(keyCount, int(shardFrom.KeyCountKR[krId]))
 
 	// determine where to move keys to
-	shId, err := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
+	shId, ok := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
 
-	if err != nil {
+	if !ok {
 		shId, keyCount = b.moveMaxPossible(shardStates, shardToState, krId, shardFrom.ShardId)
 		if keyCount < 0 {
 			return nil, fmt.Errorf("could not find shard to move keys to")
@@ -358,7 +358,7 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 
 // getShardToMoveTo determines where to send keys from specified key range
 // TODO unit tests
-func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, error) {
+func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
 	krKeyCount := int(shardIdToMetrics[krShardId].KeyCountKR[krId])
 	shardToMetrics := shardIdToMetrics[krShardId].MetricsKR[krId]
 
@@ -366,16 +366,16 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 	adjShards := b.getAdjacentShards(krId)
 	for _, adjShard := range adjShards {
 		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardIdToMetrics[adjShard]) {
-			return adjShard, nil
+			return adjShard, true
 		}
 	}
 	// try fitting on other shards ordered by criterion load ascending
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
 		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardMetrics[i]) {
-			return shardMetrics[i].ShardId, nil
+			return shardMetrics[i].ShardId, true
 		}
 	}
-	return "", fmt.Errorf("could not get shard to move keys to")
+	return "", false
 }
 
 // moveMaxPossible determines where most keys can be sent
