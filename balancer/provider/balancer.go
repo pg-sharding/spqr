@@ -364,7 +364,7 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 
 	// try fitting on shards with adjacent key ranges
 	adjShards := b.getAdjacentShards(krId)
-	for _, adjShard := range adjShards {
+	for adjShard := range adjShards {
 		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardIdToMetrics[adjShard]) {
 			return adjShard, true
 		}
@@ -420,16 +420,17 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shar
 	return
 }
 
-func (b *BalancerImpl) getAdjacentShards(krId string) []string {
-	res := make([]string, 0)
+func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
+	res := make(map[string]struct{}, 0)
 	krIdx := b.krIdx[krId]
-	curShard := b.keyRanges[krIdx].ShardID
-	if krIdx != 0 && b.keyRanges[krIdx-1].ShardID != curShard {
-		res = append(res, b.keyRanges[krIdx-1].ShardID)
+	if krIdx != 0 {
+		res[b.keyRanges[krIdx-1].ShardID] = struct{}{}
 	}
-	if krIdx < len(b.keyRanges)-1 && (len(res) == 0 || b.keyRanges[krIdx+1].ShardID != res[0]) && b.keyRanges[krIdx+1].ShardID != curShard {
-		res = append(res, b.keyRanges[krIdx+1].ShardID)
+	if krIdx < len(b.keyRanges)-1 {
+		res[b.keyRanges[krIdx+1].ShardID] = struct{}{}
 	}
+	// do not include current shard
+	delete(res, b.keyRanges[krIdx].ShardID)
 	return res
 }
 
