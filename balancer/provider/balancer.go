@@ -29,11 +29,11 @@ type BalancerImpl struct {
 
 func NewBalancer() (*BalancerImpl, error) {
 	threshold := make([]float64, 2*metricsCount)
-	threshold[cpuMetric] = config.BalancerConfig().CpuThreshold
-	threshold[metricsCount+cpuMetric] = config.BalancerConfig().CpuThreshold
-	threshold[spaceMetric] = config.BalancerConfig().SpaceThreshold
-	threshold[metricsCount+spaceMetric] = config.BalancerConfig().SpaceThreshold
-
+	configThresholds := []float64{config.BalancerConfig().CpuThreshold, config.BalancerConfig().SpaceThreshold}
+	for i := 0; i < metricsCount; i++ {
+		threshold[i] = configThresholds[i]
+		threshold[metricsCount+i] = configThresholds[i]
+	}
 	conn, err := grpc.Dial(config.BalancerConfig().CoordinatorAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
