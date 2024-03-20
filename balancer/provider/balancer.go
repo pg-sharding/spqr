@@ -398,8 +398,7 @@ func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKe
 	for kind, metric := range shard.MetricsTotal {
 		meanKeyMetric := krMetrics[kind] / float64(krKeyCount)
 		loadExpectation := meanKeyMetric*float64(keyCountToMove) + metric
-		// TODO this may be bullshit
-		if b.threshold[kind] > loadExpectation {
+		if b.threshold[kind] < loadExpectation {
 			return false
 		}
 	}
