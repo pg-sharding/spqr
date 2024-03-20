@@ -25,6 +25,7 @@ type BalancerImpl struct {
 
 	keyRanges []*kr.KeyRange
 	krIdx     map[string]int
+	shardKr   map[string][]int
 }
 
 func NewBalancer() (*BalancerImpl, error) {
@@ -41,6 +42,9 @@ func NewBalancer() (*BalancerImpl, error) {
 	return &BalancerImpl{
 		coordinatorConn: conn,
 		threshold:       threshold,
+		keyRanges:       []*kr.KeyRange{},
+		krIdx:           map[string]int{},
+		shardKr:         map[string][]int{},
 	}, nil
 }
 
@@ -264,7 +268,8 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 		return err
 	}
 
-	for i, krg := range b.keyRanges {
+	for _, i := range b.shardKr[shard.ShardId] {
+		krg := b.keyRanges[i]
 		if krg.ShardID != shard.ShardId {
 			continue
 		}
@@ -655,16 +660,21 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 		return err
 	}
 	keyRanges := make([]*kr.KeyRange, len(keyRangesProto.KeyRangesInfo))
-	for i, krg := range keyRangesProto.KeyRangesInfo {
-		keyRanges[i] = kr.KeyRangeFromProto(krg)
+	for i, krProto := range keyRangesProto.KeyRangesInfo {
+		keyRanges[i] = kr.KeyRangeFromProto(krProto)
 	}
 	sort.Slice(keyRanges, func(i, j int) bool {
 		return kr.CmpRangesLess(keyRanges[i].LowerBound, keyRanges[j].LowerBound)
 	})
 	b.keyRanges = keyRanges
 	b.krIdx = make(map[string]int)
+	b.shardKr = make(map[string][]int)
 	for i, krg := range b.keyRanges {
 		b.krIdx[krg.ID] = i
+		if _, ok := b.shardKr[krg.ShardID]; !ok {
+			b.shardKr[krg.ShardID] = make([]int, 0)
+		}
+		b.shardKr[krg.ShardID] = append(b.shardKr[krg.ShardID], i)
 	}
 
 	return nil
