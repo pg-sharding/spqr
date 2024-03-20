@@ -148,6 +148,9 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.S
 		if err != nil {
 			return nil, err
 		}
+		if hostsMetrics == nil {
+			continue
+		}
 		if isMaster {
 			res.SetMasterMetrics(hostsMetrics)
 			res.Master = host
@@ -167,7 +170,7 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 	spqrlog.Zero.Debug().Str("host", dsn).Msg("getting host state")
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
-		return nil, false, err
+		return nil, false, nil
 	}
 	metrics = NewHostMetrics()
 
