@@ -123,7 +123,10 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 	if math.Abs(kRLoad) < 1e-3 {
 		return &tasks.TaskGroup{}, nil
 	}
-	keyCount := int(((shardFrom.MetricsTotal[criterion] - b.threshold[criterion]) * float64(shardFrom.KeyCountKR[krId])) / kRLoad)
+	meanKeyLoad := kRLoad / float64(shardFrom.KeyCountKR[krId])
+	keyCount := int((shardFrom.MetricsTotal[criterion] - b.threshold[criterion]) / meanKeyLoad)
+	// do not move more keys than there are in the key range
+	keyCount = min(keyCount, int(shardFrom.KeyCountKR[krId]))
 
 	// determine where to move keys to
 	shId, err := b.getShardToMoveTo(shardStates, shardToState, krId, shardFrom.ShardId, keyCount)
@@ -404,7 +407,8 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shar
 	maxCount = -1
 	for kind, metric := range shard.MetricsTotal {
 		// TODO move const to config
-		count := int(0.8 * ((b.threshold[kind] - metric) / (krMetrics[kind] / float64(krKeyCount))))
+		krMeanMetricKey := krMetrics[kind] / float64(krKeyCount)
+		count := int(0.8 * ((b.threshold[kind] - metric) / krMeanMetricKey))
 		if count > maxCount {
 			maxCount = count
 		}
