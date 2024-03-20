@@ -358,17 +358,20 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 
 // getShardToMoveTo determines where to send keys from specified key range
 // TODO unit tests
-func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCount int) (string, error) {
+func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, error) {
+	krKeyCount := int(shardIdToMetrics[krShardId].KeyCountKR[krId])
+	shardToMetrics := shardIdToMetrics[krShardId].MetricsKR[krId]
+
 	// try fitting on shards with adjacent key ranges
 	adjShards := b.getAdjacentShards(krId)
 	for _, adjShard := range adjShards {
-		if b.fitsOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], keyCount, shardIdToMetrics[adjShard]) {
+		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardIdToMetrics[adjShard]) {
 			return adjShard, nil
 		}
 	}
 	// try fitting on other shards ordered by criterion load ascending
 	for i := len(shardMetrics) - 1; i >= 0; i-- {
-		if b.fitsOnShard(shardIdToMetrics[krShardId].MetricsKR[krId], keyCount, shardMetrics[i]) {
+		if b.fitsOnShard(shardToMetrics, keyCountToMove, krKeyCount, shardMetrics[i]) {
 			return shardMetrics[i].ShardId, nil
 		}
 	}
@@ -391,9 +394,11 @@ func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMe
 
 // fitsOnShard
 // TODO unit tests
-func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCount int, shard *ShardMetrics) bool {
+func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKeyCount int, shard *ShardMetrics) bool {
 	for kind, metric := range shard.MetricsTotal {
-		loadExpectation := krMetrics[kind]*float64(keyCount) + metric
+		meanKeyMetric := krMetrics[kind] / float64(krKeyCount)
+		loadExpectation := meanKeyMetric*float64(keyCountToMove) + metric
+		// TODO this may be bullshit
 		if b.threshold[kind] > loadExpectation {
 			return false
 		}
