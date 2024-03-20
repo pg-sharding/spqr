@@ -278,7 +278,6 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 		}
 
 		for _, rel := range rels {
-			// TODO check units in other queries (mB/KB possible)
 			queryRaw := `
 				SELECT sum(pg_column_size(t.*)) as filesize, count(*) as filerow 
 				FROM %s as t
