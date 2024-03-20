@@ -229,7 +229,11 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 		SELECT
 		    comment_keys->>'key_range_id' AS key_range_id,
 			SUM(user_time + system_time) AS cpu
-		FROM pgcs_get_stats_time_interval(now() - interval '%ds', now())
+		FROM (
+		    SELECT * 
+		    FROM pgcs_get_stats_time_interval(now() - interval '%ds', now())
+		    WHERE comment_keys->>'key_range_id' IS NOT NULL        
+		) as pg_comment_stats
 		GROUP BY key_range_id;
 `, config.BalancerConfig().StatIntervalSec)
 		rows, err := conn.Query(ctx, query)
@@ -432,8 +436,7 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	value = -1
 	for krg := range shard.MetricsKR {
 		metric := shard.MetricsKR[krg][kind]
-		count := shard.KeyCountKR[krg]
-		totalKRMetric := metric * float64(count)
+		totalKRMetric := metric
 		if totalKRMetric > value {
 			value = totalKRMetric
 			krId = krg
