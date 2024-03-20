@@ -522,10 +522,10 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 	}
 	counts[len(counts)-1] = min(keyCount-(moveCount-1)*config.BalancerConfig().KeysPerMove, config.BalancerConfig().KeysPerMove)
 	groupTasks := make([]*tasks.Task, moveCount)
-	cumCount := 0
+	totalCount := 0
 	// TODO multidimensional key ranges
 	for i, count := range counts {
-		offset := cumCount + count
+		offset := totalCount + count
 		if join != tasks.JoinLeft {
 			offset--
 		}
@@ -557,7 +557,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			KrIdTo:      krIdTo,
 			Bound:       []byte(idx),
 		}
-		cumCount += count
+		totalCount += count
 	}
 
 	return &tasks.TaskGroup{Tasks: groupTasks, JoinType: join}, nil
