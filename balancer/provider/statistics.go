@@ -44,12 +44,22 @@ func (m *ShardMetrics) SetReplicaMetrics(metrics HostMetrics) {
 }
 
 func (m HostMetrics) MaxRelative(threshold []float64) (val float64) {
+	val, _ = MaxRelative(m, threshold)
+	return val
+}
+
+func MaxRelative(metrics, threshold []float64) (val float64, kind int) {
+	if len(metrics) != len(threshold) {
+		panic("incorrect size of threshold")
+	}
+
 	val = -1
-	for kind, metric := range m {
-		relative := metric / threshold[kind]
+	for k, metric := range metrics {
+		relative := metric / threshold[k]
 		if relative > val {
 			val = relative
+			kind = k
 		}
 	}
-	return val
+	return
 }

@@ -424,12 +424,10 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 	value = -1
 	kind = -1
 	for _, state := range shards {
-		for metricType, metric := range state.MetricsTotal {
-			v := metric / b.threshold[metricType%metricsCount]
-			if v > value {
-				value = v
-				kind = metricType
-			}
+		v, k := MaxRelative(state.MetricsTotal, b.threshold)
+		if v > value {
+			value = v
+			kind = k
 		}
 	}
 	return
