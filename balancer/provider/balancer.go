@@ -398,7 +398,7 @@ func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCount int, shard *Sha
 	return true
 }
 
-// fitsOnShard
+// maxFitOnShard determines how many keys we can fit on shard
 // TODO unit tests
 func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shard *ShardMetrics) (maxCount int) {
 	maxCount = -1
