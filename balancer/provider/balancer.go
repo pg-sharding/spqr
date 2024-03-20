@@ -14,7 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"math"
 	"sort"
 	"strings"
 )
@@ -120,9 +119,6 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 
 	kRLoad, krId := b.getMostLoadedKR(shardFrom, criterion)
 
-	if math.Abs(kRLoad) < 1e-3 {
-		return &tasks.TaskGroup{}, nil
-	}
 	meanKeyLoad := kRLoad / float64(shardFrom.KeyCountKR[krId])
 	keyCount := int((shardFrom.MetricsTotal[criterion] - b.threshold[criterion]) / meanKeyLoad)
 	// do not move more keys than there are in the key range
