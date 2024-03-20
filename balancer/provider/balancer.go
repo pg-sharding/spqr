@@ -546,7 +546,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		if err := row.Scan(&idx); err != nil {
 			return nil, err
 		}
-		groupTasks[i] = &tasks.Task{
+		groupTasks[len(groupTasks)-1-i] = &tasks.Task{
 			ShardFromId: shardFrom.ShardId,
 			ShardToId:   shardToId,
 			KrIdFrom:    krId,
@@ -587,7 +587,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 	id := uuid.New()
 
 	for len(group.Tasks) > 0 {
-		task := group.Tasks[0]
+		task := group.Tasks[len(group.Tasks)-1]
 		spqrlog.Zero.Debug().
 			Str("key_range_from", task.KrIdFrom).
 			Str("key_range_to", task.KrIdTo).
@@ -643,7 +643,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 				group.JoinType = tasks.JoinRight
 				id = uuid.New()
 			}
-			group.Tasks = group.Tasks[1:]
+			group.Tasks = group.Tasks[:len(group.Tasks)-1]
 			if err := b.syncTaskGroupWithQDB(ctx, group); err != nil {
 				// TODO mb retry?
 				return err
