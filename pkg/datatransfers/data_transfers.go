@@ -230,27 +230,3 @@ func getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange,
 	}
 	return strings.Join(buf, " AND ")
 }
-
-func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
-		}
-	}
-
-	db, err := pgx.Connect(ctx, createConnString(sh))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
-	}
-
-	if commit {
-		_, err = db.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", tx))
-	} else {
-		_, err = db.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", tx))
-	}
-
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-	}
-}
