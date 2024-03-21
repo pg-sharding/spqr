@@ -919,13 +919,30 @@ func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 	case 0:
 		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distribution present in qdb")
 	case 1:
+
+		var distrib *Distribution
+		if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
+			return err
+		}
+
 		resp, err := q.cli.Delete(ctx, distributionNodePath(id))
 
 		spqrlog.Zero.Debug().
 			Interface("response", resp).
 			Msg("etcdqdb: drop distribution")
 
-		return err
+		if err != nil {
+			return err
+		}
+
+		for _, r := range distrib.Relations {
+			_, err := q.cli.Delete(ctx, relationMappingNodePath(r.Name))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	default:
 		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
 	}

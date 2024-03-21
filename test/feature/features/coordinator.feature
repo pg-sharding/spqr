@@ -28,6 +28,72 @@ Feature: Coordinator test
     """
     Then command return code should be "0"
 
+
+  Scenario: Add/Remove distribution works
+    When I run SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer; 
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW distributions;
+    """
+    Then SQL result should match json
+    """
+    [
+        {
+            "Distribution ID":"ds1_test",
+            "Column types":"integer"
+        }
+    ]
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    DROP DISTRIBUTION ds1_test CASCADE
+    """
+    Then command return code should be "0"
+
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW distributions;
+    """
+    Then SQL result should match json
+    """
+    []
+    """
+
+    When I run SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer; 
+    CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
+    CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
+    ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
+    """
+    Then command return code should be "0"
+
+
+    When I run SQL on host "coordinator"
+    """
+    SHOW distributions;
+    """
+    Then SQL result should match json
+    """
+    [
+        {
+            "Distribution ID":"ds1_test",
+            "Column types":"integer"
+        }
+    ]
+    """
+
+
   Scenario: Add/Remove router works
     When I run SQL on host "coordinator"
     """
