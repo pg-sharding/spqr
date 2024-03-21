@@ -873,7 +873,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
 				return err
 			}
-			move.Status = qdb.MoveKeyRangeComplete
+			move.Status = qdb.MoveKeyRangeStarted
 		case qdb.MoveKeyRangeStarted:
 			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 			if err != nil {
