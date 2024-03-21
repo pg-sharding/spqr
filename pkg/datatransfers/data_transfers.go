@@ -121,6 +121,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	// bound of the next key range
 	// TODO get actual value
 	var upperBound kr.KeyRangeBound = make([]byte, 0)
+	krCondition := getKRCondition(krg, upperBound)
 
 	for tx != nil {
 		switch tx.Status {
@@ -145,11 +146,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			for _, rel := range ds.Relations {
 				// TODO check range on receiver
 				query := fmt.Sprintf(`
-					INSERT INTO $1
-					SELECT FROM $2
+					INSERT INTO %s
+					SELECT FROM %s
 					WHERE %s
-`, getKRCondition(krg, upperBound))
-				_, err = to.Exec(ctx, query, rel, fmt.Sprintf("%s.%s", schemaName, rel.Name))
+`, rel.Name, fmt.Sprintf("%s.%s", schemaName, rel.Name), krCondition)
+				_, err = to.Exec(ctx, query)
 				if err != nil {
 					return err
 				}
@@ -161,7 +162,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			for _, rel := range ds.Relations {
-				_, err = to.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, getKRCondition(krg, upperBound)))
+				_, err = to.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, krCondition))
 			}
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
