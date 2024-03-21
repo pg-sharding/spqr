@@ -343,8 +343,7 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		if err != nil {
 			continue
 		}
-		if tx.ToStatus == qdb.Committed && tx.FromStatus != qdb.Committed {
-			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
+		if tx != nil {
 			tem := kr.MoveKeyRange{
 				ShardId: tx.ToShardId,
 				Krid:    r.KeyRangeID,
@@ -353,9 +352,6 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
 			}
-		} else if tx.FromStatus != qdb.Committed {
-			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
-			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
 
 		err = qc.db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
