@@ -823,7 +823,7 @@ func (qc *qdbCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qd
 }
 
 // Move key range from one logical shard to another
-// This function reshards data by locking a portion of it,
+// This function re-shards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
 // TODO : unit tests
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
@@ -850,7 +850,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		return err
 	}
 
-	if move != nil {
+	if move == nil {
 		move = &qdb.MoveKeyRange{
 			MoveId:     uuid.New().String(),
 			ShardId:    req.ShardId,
