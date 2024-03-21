@@ -14,6 +14,8 @@ type ShardingSchemaKeeper interface {
 	ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error)
 	/* mark key range move as completed */
 	UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error
+	// DeleteKeyRangeMove deletes info about key range move
+	DeleteKeyRangeMove(ctx context.Context, moveId string) error
 }
 
 type TopolodyKeeper interface {

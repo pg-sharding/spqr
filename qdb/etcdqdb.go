@@ -1174,14 +1174,11 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
-		Msg("etcdqdb: update key range")
+		Msg("etcdqdb: update key range move status")
 
-	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
-	}
-	if len(resp.Kvs) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update move key range operation by id %s", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
@@ -1203,4 +1200,25 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 		Msg("etcdqdb: update status of move key range operation")
 
 	return nil
+}
+
+func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+	spqrlog.Zero.Debug().
+		Str("id", moveId).
+		Msg("etcdqdb: delete key range move")
+
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
+	if err != nil {
+		return err
+	}
+	var moveKr MoveKeyRange
+	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
+		return err
+	}
+	if moveKr.Status != MoveKeyRangeComplete {
+		return fmt.Errorf("cannot remove non-completed key range move")
+	}
+	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+
+	return err
 }
