@@ -162,7 +162,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if !fromTableExists {
 					continue
 				}
-				res = from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
+				query := fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition)
+				res = from.QueryRow(ctx, query)
 				fromCount := 0
 				if err = res.Scan(&fromCount); err != nil {
 					return err
@@ -176,7 +177,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if !toTableExists {
 					return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
 				}
-				res = from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
+				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition))
 				toCount := 0
 				if err = res.Scan(&toCount); err != nil {
 					return err
@@ -187,11 +188,11 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if toCount > 0 && fromCount != 0 {
 					return fmt.Errorf("key count on sender & receiver mismatch")
 				}
-				query := fmt.Sprintf(`
+				query = fmt.Sprintf(`
 					INSERT INTO %s
 					SELECT FROM %s
 					WHERE %s
-`, rel.Name, fmt.Sprintf("%s.%s", schemaName, rel.Name), krCondition)
+`, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
 				_, err = to.Exec(ctx, query)
 				if err != nil {
 					return err
@@ -204,7 +205,16 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			for _, rel := range ds.Relations {
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, getKRCondition(rel, krg, upperBound)))
+				// TODO account for schema
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+				fromTableExists := false
+				if err = res.Scan(&fromTableExists); err != nil {
+					return err
+				}
+				if !fromTableExists {
+					continue
+				}
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), getKRCondition(rel, krg, upperBound)))
 				if err != nil {
 					return err
 				}
