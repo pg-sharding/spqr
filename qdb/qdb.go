@@ -108,8 +108,10 @@ func NewXQDB(qdbType string) (XQDB, error) {
 type TxStatus string
 
 const (
-	Commited   = TxStatus("commit")
+	Committed  = TxStatus("commit")
 	Processing = TxStatus("process")
+	Planned    = TxStatus("planned")
+	DataCopied = TxStatus("data_copied")
 )
 
 type DataTransferTransaction struct {
@@ -119,4 +121,5 @@ type DataTransferTransaction struct {
 	ToTxName    string   `json:"to_transaction"`
 	FromStatus  TxStatus `json:"from_tx_status"`
 	ToStatus    TxStatus `json:"to_tx_status"`
+	Status      TxStatus `json:"status"`
 }

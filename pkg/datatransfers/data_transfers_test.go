@@ -34,8 +34,8 @@ func TestCommitPositive(t *testing.T) {
 
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
-	assert.Equal(tx.FromStatus, qdb.Commited)
-	assert.Equal(tx.ToStatus, qdb.Commited)
+	assert.Equal(tx.FromStatus, qdb.Committed)
+	assert.Equal(tx.ToStatus, qdb.Committed)
 	assert.Equal(tx.ToTxName, "sh2-krid")
 	assert.Equal(tx.FromTxName, "sh1-krid")
 }
@@ -82,7 +82,7 @@ func TestFailToCommitSecondTx(t *testing.T) {
 	tx, err := db.GetTransferTx(context.TODO(), "krid")
 	assert.NoError(err)
 	assert.Equal(tx.FromStatus, qdb.Processing)
-	assert.Equal(tx.ToStatus, qdb.Commited)
+	assert.Equal(tx.ToStatus, qdb.Committed)
 }
 
 func TestFailToPrepareFirstTx(t *testing.T) {
