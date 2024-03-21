@@ -149,10 +149,29 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 			for _, rel := range ds.Relations {
 				krCondition := getKRCondition(rel, krg, upperBound)
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
+				// TODO account for schema
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, rel.Name))
+				fromTableExists := false
+				if err = res.Scan(&fromTableExists); err != nil {
+					return err
+				}
+				// TODO test this
+				if !fromTableExists {
+					continue
+				}
+				res = from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
 				fromCount := 0
 				if err = res.Scan(&fromCount); err != nil {
 					return err
+				}
+				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, rel.Name))
+				toTableExists := false
+				if err = res.Scan(&toTableExists); err != nil {
+					return err
+				}
+				// TODO test this
+				if !toTableExists {
+					return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
 				}
 				res = from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
 				toCount := 0
