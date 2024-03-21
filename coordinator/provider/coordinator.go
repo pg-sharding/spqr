@@ -856,7 +856,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		return err
 	}
 	/* physical changes on shards */
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db)
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 		return err
