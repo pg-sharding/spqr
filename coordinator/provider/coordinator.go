@@ -490,6 +490,14 @@ func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distribution string
 	return keyr, nil
 }
 
+func (qc *qdbCoordinator) GetKeyRange(ctx context.Context, id string) (*kr.KeyRange, error) {
+	krDB, err := qc.db.GetKeyRange(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return kr.KeyRangeFromDB(krDB), nil
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListAllKeyRanges(ctx)
@@ -796,11 +804,28 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 	return m.MoveId, nil
 }
 
+func (qc *qdbCoordinator) GetKeyRangeMove(ctx context.Context, krId string) (*qdb.MoveKeyRange, error) {
+	ls, err := qc.db.ListKeyRangeMoves(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, krm := range ls {
+		// after the coordinator restarts, it will continue the move that was previously initiated.
+		// key range move already exist for this key range
+		// complete it first
+		if krm.KeyRangeID == krId {
+			return krm, nil
+		}
+	}
+
+	return nil, nil
+}
+
 // Move key range from one logical shard to another
 // This function reshards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
 // TODO : unit tests
-// TODO add some retry ability
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.
@@ -810,78 +835,97 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
-	krDB, err := qc.db.GetKeyRange(ctx, req.Krid)
+	keyRange, err := qc.GetKeyRange(ctx, req.Krid)
 	if err != nil {
 		return err
 	}
-	keyRange := kr.KeyRangeFromDB(krDB)
 
 	// no need to move data to the same shard
 	if keyRange.ShardID == req.ShardId {
 		return nil
 	}
 
-	moveId, err := qc.RecordKeyRangeMove(ctx,
-		&qdb.MoveKeyRange{
+	move, err := qc.GetKeyRangeMove(ctx, req.Krid)
+	if err != nil {
+		return err
+	}
+
+	if move != nil {
+		move = &qdb.MoveKeyRange{
 			MoveId:     uuid.New().String(),
 			ShardId:    req.ShardId,
 			KeyRangeID: req.Krid,
 			Status:     qdb.MoveKeyRangePlanned,
-		})
-
-	/* NOOP if key range move was already recorded */
-	if err != nil {
-		return err
-	}
-
-	krmv, err := qc.LockKeyRange(ctx, req.Krid)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
 		}
-	}()
-
-	defer func() {
-		// set compelted status in the end of key range move operation
-		if err := qc.db.UpdateKeyRangeMoveStatus(ctx, moveId, qdb.MoveKeyRangeComplete); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+		_, err = qc.RecordKeyRangeMove(ctx, move)
+		if err != nil {
+			return err
 		}
-	}()
-
-	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
-	if err != nil {
-		return err
-	}
-	/* physical changes on shards */
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
-		return err
 	}
 
-	// Update the state of the distributed key-range metadata
-	krmv.ShardID = req.ShardId
-	if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krmv); err != nil {
-		// TODO: check if unlock here is ok
-		return err
-	}
+	for move != nil {
+		switch move.Status {
+		case qdb.MoveKeyRangePlanned:
+			_, err = qc.LockKeyRange(ctx, req.Krid)
+			if err != nil {
+				return err
+			}
+			if err = qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
+				return err
+			}
+			move.Status = qdb.MoveKeyRangeComplete
+		case qdb.MoveKeyRangeStarted:
+			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+			if err != nil {
+				return err
+			}
+			/* physical changes on shards */
+			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
+				return err
+			}
 
-	// Notify all routers about scheme changes.
-	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		cl := routerproto.NewKeyRangeServiceClient(cc)
-		moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
-			Id:        krmv.ID,
-			ToShardId: krmv.ShardID,
-		})
-		spqrlog.Zero.Debug().
-			Interface("response", moveResp).
-			Msg("move key range response")
-		return err
-	}); err != nil {
-		return err
+			krg, err := qc.GetKeyRange(ctx, req.Krid)
+			if err != nil {
+				return err
+			}
+			krg.ShardID = req.ShardId
+			if err := ops.ModifyKeyRangeWithChecks(ctx, qc.db, krg); err != nil {
+				// TODO: check if unlock here is ok
+				return err
+			}
+
+			// Notify all routers about scheme changes.
+			if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+				cl := routerproto.NewKeyRangeServiceClient(cc)
+				moveResp, err := cl.MoveKeyRange(ctx, &routerproto.MoveKeyRangeRequest{
+					Id:        krg.ID,
+					ToShardId: krg.ShardID,
+				})
+				spqrlog.Zero.Debug().
+					Interface("response", moveResp).
+					Msg("move key range response")
+				return err
+			}); err != nil {
+				return err
+			}
+
+			if err := qc.db.UpdateKeyRangeMoveStatus(ctx, move.MoveId, qdb.MoveKeyRangeComplete); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+			move.Status = qdb.MoveKeyRangeComplete
+		case qdb.MoveKeyRangeComplete:
+			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+			if err := qc.db.DeleteKeyRangeMove(ctx, move.MoveId); err != nil {
+				return err
+			}
+			move = nil
+		default:
+			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
+		}
 	}
 	return nil
 }
