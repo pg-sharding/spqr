@@ -181,6 +181,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
 			}
+			tx = nil
 		default:
 			return fmt.Errorf("incorrect data transfer transaction status: %s", tx.Status)
 		}
