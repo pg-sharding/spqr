@@ -117,7 +117,6 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	if err != nil {
 		return err
 	}
-	krCondition := getKRCondition(krg, upperBound)
 
 	for tx != nil {
 		switch tx.Status {
@@ -140,6 +139,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return err
 			}
 			for _, rel := range ds.Relations {
+				krCondition := getKRCondition(rel, krg, upperBound)
 				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
 				fromCount := 0
 				if err = res.Scan(&fromCount); err != nil {
@@ -173,7 +173,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			for _, rel := range ds.Relations {
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, krCondition))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, getKRCondition(rel, krg, upperBound)))
 				if err != nil {
 					return err
 				}
@@ -204,10 +204,22 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
-// TODO mb separate it to kr package
-func getKRCondition(krg *kr.KeyRange, next kr.KeyRangeBound) string {
-	// TODO implement
-	panic("implement me")
+func getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange, nextBound kr.KeyRangeBound) string {
+	buf := make([]string, len(rel.DistributionKey))
+	for i, entry := range rel.DistributionKey {
+		// TODO remove after multidimensional key range support
+		if i > 0 {
+			break
+		}
+		// TODO add hash (depends on col type)
+		hashedCol := entry.Column
+		if nextBound != nil {
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextBound))
+		} else {
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, string(kRange.LowerBound))
+		}
+	}
+	return strings.Join(buf, " AND ")
 }
 
 func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
