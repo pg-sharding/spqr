@@ -343,7 +343,7 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		if err != nil {
 			continue
 		}
-		if tx.ToStatus == qdb.Commited && tx.FromStatus != qdb.Commited {
+		if tx.ToStatus == qdb.Committed && tx.FromStatus != qdb.Committed {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, true)
 			tem := kr.MoveKeyRange{
 				ShardId: tx.ToShardId,
@@ -353,7 +353,7 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
 			}
-		} else if tx.FromStatus != qdb.Commited {
+		} else if tx.FromStatus != qdb.Committed {
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.ToShardId, tx.ToTxName, false)
 			datatransfers.ResolvePreparedTransaction(context.TODO(), tx.FromShardId, tx.FromTxName, false)
 		}
@@ -800,6 +800,7 @@ func (qc *qdbCoordinator) RecordKeyRangeMove(ctx context.Context, m *qdb.MoveKey
 // This function reshards data by locking a portion of it,
 // making it unavailable for read and write access during the process.
 // TODO : unit tests
+// TODO add some retry ability
 func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	// First, we create a record in the qdb to track the data movement.
 	// If the coordinator crashes during the process, we need to rerun this function.
@@ -809,10 +810,11 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		Str("shard-id", req.ShardId).
 		Msg("qdb coordinator move key range")
 
-	keyRange, err := qc.db.GetKeyRange(ctx, req.Krid)
+	krDB, err := qc.db.GetKeyRange(ctx, req.Krid)
 	if err != nil {
 		return err
 	}
+	keyRange := kr.KeyRangeFromDB(krDB)
 
 	// no need to move data to the same shard
 	if keyRange.ShardID == req.ShardId {
@@ -849,8 +851,12 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 		}
 	}()
 
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
 	/* physical changes on shards */
-	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, *keyRange, qc.db)
+	err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 		return err

@@ -3,18 +3,17 @@ package datatransfers
 import (
 	"context"
 	"fmt"
+	pgx "github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
 	"strings"
 	"sync"
-
-	pgx "github.com/jackc/pgx/v5"
-	_ "github.com/lib/pq"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -23,7 +22,7 @@ type MoveTableRes struct {
 }
 
 // TODO: use schema
-// var schema = flag.String("shema", "", "")
+// var schema = flag.String("schema", "", "")
 
 type ProxyW struct {
 	w io.WriteCloser
@@ -55,6 +54,7 @@ func createConnString(shardID string) string {
 	if len(sd.Hosts) == 0 {
 		return ""
 	}
+	// TODO find_master
 	host := strings.Split(sd.Hosts[0], ":")[0]
 	port := strings.Split(sd.Hosts[0], ":")[1]
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
@@ -81,11 +81,25 @@ MoveKeys performs physical key-range move from one datashard to another.
 It is assumed that passed key range is already locked on every online spqr-router.
 
 Steps:
-  - traverse pg_class to resolve all relations that matches given sharding rules
-  - create sql copy and delete queries to move data tuples.
-  - prepare and commit distributed move transaction
+  - create postgres_fdw on receiving shard
+  - copy data from sending shard to receiving shard via fdw
+  - delete data from sending shard
 */
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qdb.XQDB) error {
+func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB) error {
+	tx, err := db.GetTransferTx(ctx, krg.ID)
+	if err != nil {
+		return err
+	}
+	if tx == nil {
+		tx = &qdb.DataTransferTransaction{
+			ToShardId:   toId,
+			FromShardId: fromId,
+			Status:      qdb.Planned,
+		}
+		if err = db.RecordTransferTx(ctx, krg.ID, tx); err != nil {
+			return err
+		}
+	}
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -93,7 +107,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qd
 		}
 	}
 
-	from, err := pgx.Connect(ctx, createConnString(fromId))
+	_, err = pgx.Connect(ctx, createConnString(fromId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -104,48 +118,66 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qd
 		return err
 	}
 
-	txFrom, txTo, err := beginTransactions(ctx, from, to)
-	if err != nil {
-		return err
-	}
-	defer func(ctx context.Context) {
-		err := rollbackTransactions(ctx, txTo, txFrom)
-		if err != nil {
-			spqrlog.Zero.Warn().Msg("error closing transaction")
-		}
-	}(ctx)
+	// bound of the next key range
+	// TODO get actual value
+	var upperBound kr.KeyRangeBound = make([]byte, 0)
 
-	var nextKeyRange *kr.KeyRange
-	moveKeyRange := kr.KeyRangeFromDB(&keyr)
-	qdbDs, err := db.GetDistribution(ctx, keyr.DistributionId)
-	if err != nil {
-		return err
-	}
-	ds := distributions.DistributionFromDB(qdbDs)
-
-	if krs, err := db.ListKeyRanges(ctx, moveKeyRange.Distribution); err != nil {
-		return err
-	} else {
-		for _, currkr := range krs {
-			if kr.CmpRangesLess(moveKeyRange.LowerBound, currkr.LowerBound) {
-				if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
-					nextKeyRange = kr.KeyRangeFromDB(currkr)
+	for tx != nil {
+		switch tx.Status {
+		case qdb.Planned:
+			fromShard := shards.ShardsData[fromId]
+			toShard := shards.ShardsData[toId]
+			dbName := fromShard.DB
+			fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+			serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+			// TODO find_master
+			_, err = to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+			if err != nil {
+				return err
+			}
+			// TODO check if name is taken
+			schemaName := fmt.Sprintf("%s_schema", serverName)
+			// TODO schema information in distributions
+			_, err = to.Exec(ctx, `IMPORT FOREIGN SCHEMA public FROM SERVER $1 INTO $2`, serverName, schemaName)
+			if err != nil {
+				return err
+			}
+			for _, rel := range ds.Relations {
+				// TODO check range on receiver
+				query := fmt.Sprintf(`
+					INSERT INTO $1
+					SELECT FROM $2
+					WHERE %s
+`, getKRCondition(krg, upperBound))
+				_, err = to.Exec(ctx, query, rel, fmt.Sprintf("%s.%s", schemaName, rel.Name))
+				if err != nil {
+					return err
 				}
 			}
+			tx.Status = qdb.DataCopied
+			err = db.RecordTransferTx(ctx, krg.ID, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.DataCopied:
+			for _, rel := range ds.Relations {
+				_, err = to.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, getKRCondition(krg, upperBound)))
+			}
+			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("incorrect data transfer transaction status: %s", tx.Status)
 		}
-	}
-
-	err = moveData(ctx, moveKeyRange, nextKeyRange, ds.Relations, txTo, txFrom)
-	if err != nil {
-		return err
-	}
-
-	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txTo, txFrom, db)
-	if err != nil {
-		return err
 	}
 
 	return nil
+}
+
+// TODO mb separate it to kr package
+func getKRCondition(krg *kr.KeyRange, next kr.KeyRangeBound) string {
+	// TODO implement
+	panic("implement me")
 }
 
 func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
@@ -222,7 +254,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 		return err
 	}
 
-	d.ToStatus = qdb.Commited
+	d.ToStatus = qdb.Committed
 	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
@@ -234,7 +266,7 @@ func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txF
 		return err
 	}
 
-	d.FromStatus = qdb.Commited
+	d.FromStatus = qdb.Committed
 	err = db.RecordTransferTx(ctx, krid, &d)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
