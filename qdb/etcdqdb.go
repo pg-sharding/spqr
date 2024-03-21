@@ -436,6 +436,10 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: record data transfer tx")
+
 	bts, err := json.Marshal(info)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to marshal transaction")
@@ -453,6 +457,10 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 
 // TODO : unit tests
 func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: get data transfer tx")
+
 	resp, err := q.cli.Get(ctx, key)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
@@ -473,6 +481,10 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 
 // TODO : unit tests
 func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: remove data transfer tx")
+
 	_, err := q.cli.Delete(ctx, key)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
