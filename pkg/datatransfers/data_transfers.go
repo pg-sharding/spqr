@@ -107,7 +107,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		}
 	}
 
-	_, err = pgx.Connect(ctx, createConnString(fromId))
+	from, err := pgx.Connect(ctx, createConnString(fromId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
@@ -144,7 +144,22 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return err
 			}
 			for _, rel := range ds.Relations {
-				// TODO check range on receiver
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
+				fromCount := 0
+				if err = res.Scan(&fromCount); err != nil {
+					return err
+				}
+				res = from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, rel.Name, krCondition))
+				toCount := 0
+				if err = res.Scan(&toCount); err != nil {
+					return err
+				}
+				if toCount == fromCount {
+					continue
+				}
+				if toCount > 0 && fromCount != 0 {
+					return fmt.Errorf("key count on sender & receiver mismatch")
+				}
 				query := fmt.Sprintf(`
 					INSERT INTO %s
 					SELECT FROM %s
@@ -162,7 +177,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			for _, rel := range ds.Relations {
-				_, err = to.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, krCondition))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, rel.Name, krCondition))
 			}
 			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
 				return err
