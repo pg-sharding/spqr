@@ -153,7 +153,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			for _, rel := range ds.Relations {
 				krCondition := getKRCondition(rel, krg, upperBound)
 				// TODO account for schema
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, rel.Name))
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -167,7 +167,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if err = res.Scan(&fromCount); err != nil {
 					return err
 				}
-				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, rel.Name))
+				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
 				toTableExists := false
 				if err = res.Scan(&toTableExists); err != nil {
 					return err
