@@ -41,7 +41,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    SHOW distributions
+    SHOW distributions;
     """
     Then SQL result should match json
     """
@@ -62,7 +62,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    SHOW distribution
+    SHOW distributions;
     """
     Then SQL result should match json
     """
@@ -81,7 +81,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    SHOW distribution
+    SHOW distributions;
     """
     Then SQL result should match json
     """
