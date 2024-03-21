@@ -134,7 +134,10 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			// TODO check if name is taken
 			schemaName := fmt.Sprintf("%s_schema", serverName)
 			// TODO schema information in distributions
-			_, err = to.Exec(ctx, `IMPORT FOREIGN SCHEMA public FROM SERVER $1 INTO $2`, serverName, schemaName)
+			if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, schemaName)); err != nil {
+				return err
+			}
+			_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %s INTO %s`, serverName, schemaName))
 			if err != nil {
 				return err
 			}
