@@ -1143,7 +1143,7 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list move key range oeprations")
+		Msg("etcdqdb: list move key range operations")
 	return moves, nil
 }
 
