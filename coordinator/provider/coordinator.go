@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"net"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
