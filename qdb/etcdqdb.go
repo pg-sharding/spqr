@@ -453,25 +453,20 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 
 // TODO : unit tests
 func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, key)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
 		return nil, err
 	}
 
 	var st DataTransferTransaction
-
-	for _, e := range resp.Kvs {
-		if err := json.Unmarshal(e.Value, &st); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
-			return nil, err
-		}
-		if st.ToStatus == "" {
-			continue
-		}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
 	}
-	if st.ToStatus == "" {
-		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no transaction in qdb with key %s", key)
+
+	if err := json.Unmarshal(resp.Kvs[0].Value, &st); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
+		return nil, err
 	}
 	return &st, nil
 }

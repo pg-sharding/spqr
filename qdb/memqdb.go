@@ -389,7 +389,7 @@ func (q *MemQDB) GetTransferTx(_ context.Context, key string) (*DataTransferTran
 
 	ans, ok := q.Transactions[key]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no tx with key %s", key)
+		return nil, nil
 	}
 	return ans, nil
 }
