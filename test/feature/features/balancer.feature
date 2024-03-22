@@ -1,4 +1,4 @@
-Feature: Mover test
+Feature: Balancer test
   Background:
     #
     # Make host "coordinator" take control
