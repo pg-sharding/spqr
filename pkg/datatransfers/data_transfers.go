@@ -121,82 +121,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
-			fromShard := shards.ShardsData[fromId]
-			toShard := shards.ShardsData[toId]
-			dbName := fromShard.DB
-			fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
-			serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
-			// TODO find_master
-			_, err = to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
-			if err != nil {
+			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
-			}
-			// TODO check if name is taken
-			schemaName := fmt.Sprintf("%s_schema", serverName)
-			if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %s`, toShard.User, serverName)); err != nil {
-				return err
-			}
-			if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
-				return err
-			}
-			// TODO check if schemaName is not used by relations (needs schemas in distributions)
-			if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, schemaName)); err != nil {
-				return err
-			}
-			if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, schemaName)); err != nil {
-				return err
-			}
-			_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %s INTO %s`, serverName, schemaName))
-			if err != nil {
-				return err
-			}
-			for _, rel := range ds.Relations {
-				krCondition := getKRCondition(rel, krg, upperBound)
-				// TODO account for schema
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
-				fromTableExists := false
-				if err = res.Scan(&fromTableExists); err != nil {
-					return err
-				}
-				// TODO test this
-				if !fromTableExists {
-					continue
-				}
-				query := fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition)
-				res = from.QueryRow(ctx, query)
-				fromCount := 0
-				if err = res.Scan(&fromCount); err != nil {
-					return err
-				}
-				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
-				toTableExists := false
-				if err = res.Scan(&toTableExists); err != nil {
-					return err
-				}
-				// TODO test this
-				if !toTableExists {
-					return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
-				}
-				res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition))
-				toCount := 0
-				if err = res.Scan(&toCount); err != nil {
-					return err
-				}
-				if toCount == fromCount {
-					continue
-				}
-				if toCount > 0 && fromCount != 0 {
-					return fmt.Errorf("key count on sender & receiver mismatch")
-				}
-				query = fmt.Sprintf(`
-					INSERT INTO %s
-					SELECT * FROM %s
-					WHERE %s
-`, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
-				_, err = to.Exec(ctx, query)
-				if err != nil {
-					return err
-				}
 			}
 			tx.Status = qdb.DataCopied
 			err = db.RecordTransferTx(ctx, krg.ID, tx)
@@ -261,4 +187,85 @@ func getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange,
 		}
 	}
 	return strings.Join(buf, " AND ")
+}
+
+func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+	fromShard := shards.ShardsData[fromId]
+	toShard := shards.ShardsData[toId]
+	dbName := fromShard.DB
+	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	// TODO find_master
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+	if err != nil {
+		return err
+	}
+	// TODO check if name is taken
+	schemaName := fmt.Sprintf("%s_schema", serverName)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %s`, toShard.User, serverName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+		return err
+	}
+	// TODO check if schemaName is not used by relations (needs schemas in distributions)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, schemaName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, schemaName)); err != nil {
+		return err
+	}
+	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %s INTO %s`, serverName, schemaName))
+	if err != nil {
+		return err
+	}
+	for _, rel := range ds.Relations {
+		krCondition := getKRCondition(rel, krg, upperBound)
+		// TODO account for schema
+		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+		fromTableExists := false
+		if err = res.Scan(&fromTableExists); err != nil {
+			return err
+		}
+		// TODO test this
+		if !fromTableExists {
+			continue
+		}
+		query := fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition)
+		res = from.QueryRow(ctx, query)
+		fromCount := 0
+		if err = res.Scan(&fromCount); err != nil {
+			return err
+		}
+		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+		toTableExists := false
+		if err = res.Scan(&toTableExists); err != nil {
+			return err
+		}
+		// TODO test this
+		if !toTableExists {
+			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
+		}
+		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition))
+		toCount := 0
+		if err = res.Scan(&toCount); err != nil {
+			return err
+		}
+		if toCount == fromCount {
+			continue
+		}
+		if toCount > 0 && fromCount != 0 {
+			return fmt.Errorf("key count on sender & receiver mismatch")
+		}
+		query = fmt.Sprintf(`
+					INSERT INTO %s
+					SELECT * FROM %s
+					WHERE %s
+`, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
+		_, err = to.Exec(ctx, query)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
