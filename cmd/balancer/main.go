@@ -15,8 +15,8 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "spqr-balancer run --config `path-to-config`",
-	Short: "spqr-coordinator",
-	Long:  "spqr-coordinator",
+	Short: "spqr-balancer",
+	Long:  "spqr-balancer",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
