@@ -43,7 +43,7 @@ func (a *Adapter) ShareKeyRange(id string) error {
 func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	reply, err := c.GetKeyRange(ctx, &proto.GetKeyRangeRequest{
-		Id: []string{krId},
+		Ids: []string{krId},
 	})
 	if err != nil {
 		return nil, err
