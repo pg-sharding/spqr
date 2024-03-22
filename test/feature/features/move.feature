@@ -190,3 +190,38 @@ Feature: Move test
     """
     failed to fetch key range at /keyranges/krid3
     """
+
+  Scenario: Move fails when table does not exist on receiver
+    When I run SQL on host "shard1"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    insert into xMove(w_id, s) values(1, '001');
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "1"
+    And SQL error on host "shard2" should match regexp
+    """
+    relation .* does not exist
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT * FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    001
+    """
+    When I run SQL on host "coordinator"
+    """
+    MOVE KEY RANGE krid1 to sh2
+    """
+    Then command return code should be "1"
+    And SQL error on host "coordinator" should match regexp
+    """
+    relation xMove does not exist on receiving shard
+    """
