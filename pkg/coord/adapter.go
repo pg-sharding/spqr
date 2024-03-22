@@ -38,6 +38,22 @@ func (a *Adapter) ShareKeyRange(id string) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "ShareKeyRange not implemented")
 }
 
+// GetKeyRange gets key range by id
+// TODO unit tests
+func (a *Adapter) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	reply, err := c.GetKeyRange(ctx, &proto.GetKeyRangeRequest{
+		Id: []string{krId},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(reply.KeyRangesInfo) == 0 {
+		return nil, nil
+	}
+	return kr.KeyRangeFromProto(reply.KeyRangesInfo[0]), nil
+}
+
 // TODO : unit tests
 func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)

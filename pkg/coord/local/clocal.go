@@ -383,6 +383,16 @@ func (qr *LocalCoordinator) Shards() []string {
 	return ret
 }
 
+// GetKeyRange gets key range by id
+// TODO unit tests
+func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+	krDb, err := lc.qdb.GetKeyRange(ctx, krId)
+	if err != nil {
+		return nil, err
+	}
+	return kr.KeyRangeFromDB(krDb), nil
+}
+
 // TODO : unit tests
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange

@@ -467,6 +467,16 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	})
 }
 
+// GetKeyRange gets key range by id
+// TODO unit tests
+func (qc *qdbCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
+	krDb, err := qc.db.GetKeyRange(ctx, krId)
+	if err != nil {
+		return nil, err
+	}
+	return kr.KeyRangeFromDB(krDb), nil
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	keyRanges, err := qc.db.ListKeyRanges(ctx, distribution)
