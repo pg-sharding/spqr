@@ -595,6 +595,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 			Msg("processing task")
 		switch task.State {
 		case tasks.TaskPlanned:
+			// TODO check for duplicate key range id
 			newKeyRange := fmt.Sprintf("kr_%s", id.String())
 
 			if _, err := keyRangeService.SplitKeyRange(ctx, &protos.SplitKeyRangeRequest{
