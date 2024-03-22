@@ -190,7 +190,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				}
 				query = fmt.Sprintf(`
 					INSERT INTO %s
-					SELECT FROM %s
+					SELECT * FROM %s
 					WHERE %s
 `, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
 				_, err = to.Exec(ctx, query)
