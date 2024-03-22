@@ -131,8 +131,8 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 			}
 		case qdb.DataCopied:
 			for _, rel := range ds.Relations {
-				// TODO account for schema
-				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+				// TODO get actual schema
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 				fromTableExists := false
 				if err = res.Scan(&fromTableExists); err != nil {
 					return err
@@ -221,13 +221,12 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	}
 	for _, rel := range ds.Relations {
 		krCondition := getKRCondition(rel, krg, upperBound)
-		// TODO account for schema
-		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+		// TODO get actual schema
+		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		fromTableExists := false
 		if err = res.Scan(&fromTableExists); err != nil {
 			return err
 		}
-		// TODO test this
 		if !fromTableExists {
 			continue
 		}
@@ -237,7 +236,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		if err = res.Scan(&fromCount); err != nil {
 			return err
 		}
-		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s'`, strings.ToLower(rel.Name)))
+		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		toTableExists := false
 		if err = res.Scan(&toTableExists); err != nil {
 			return err
