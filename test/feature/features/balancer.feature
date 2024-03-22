@@ -194,7 +194,7 @@ Feature: Mover test
     Then command return code should be "0"
     When I run command on host "coordinator" with timeout "60" seconds
     """
-    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer.yaml > /balancer.log
+    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_several_moves.yaml > /balancer.log
     """
     Then command return code should be "0"
     When I run SQL on host "shard2"
@@ -255,7 +255,7 @@ Feature: Mover test
     Then command return code should be "0"
     When I run command on host "coordinator" with timeout "60" seconds
     """
-    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer.yaml > /balancer.log
+    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_several_moves.yaml > /balancer.log
     """
     Then command return code should be "0"
     When I run SQL on host "shard2"

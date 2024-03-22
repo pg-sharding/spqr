@@ -636,7 +636,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 					return err
 				}
 			} else {
-				for _, otherTask := range group.Tasks[1:] {
+				for _, otherTask := range group.Tasks {
 					otherTask.KrIdTo = task.KrIdTemp
 				}
 				group.JoinType = tasks.JoinRight
