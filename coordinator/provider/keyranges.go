@@ -63,6 +63,22 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// GetKeyRange gets key ranges with given ids
+// TODO unit tests
+func (c *CoordinatorService) GetKeyRange(ctx context.Context, request *protos.GetKeyRangeRequest) (*protos.KeyRangeReply, error) {
+	res := make([]*protos.KeyRangeInfo, 0)
+	for _, id := range request.Ids {
+		krg, err := c.impl.GetKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if krg != nil {
+			res = append(res, krg.ToProto())
+		}
+	}
+	return &protos.KeyRangeReply{KeyRangesInfo: res}, nil
+}
+
 // TODO : unit tests
 func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
