@@ -20,6 +20,7 @@ type UniteKeyRange struct {
 }
 
 type KeyRangeMgr interface {
+	GetKeyRange(ctx context.Context, krId string) (*KeyRange, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	AddKeyRange(ctx context.Context, kr *KeyRange) error
