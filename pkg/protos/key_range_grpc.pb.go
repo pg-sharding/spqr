@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
+	KeyRangeService_GetKeyRange_FullMethodName      = "/spqr.KeyRangeService/GetKeyRange"
 	KeyRangeService_ListKeyRange_FullMethodName     = "/spqr.KeyRangeService/ListKeyRange"
 	KeyRangeService_ListAllKeyRanges_FullMethodName = "/spqr.KeyRangeService/ListAllKeyRanges"
 	KeyRangeService_LockKeyRange_FullMethodName     = "/spqr.KeyRangeService/LockKeyRange"
@@ -36,6 +37,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type KeyRangeServiceClient interface {
+	GetKeyRange(ctx context.Context, in *GetKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	ListAllKeyRanges(ctx context.Context, in *ListAllKeyRangesRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
@@ -55,6 +57,15 @@ type keyRangeServiceClient struct {
 
 func NewKeyRangeServiceClient(cc grpc.ClientConnInterface) KeyRangeServiceClient {
 	return &keyRangeServiceClient{cc}
+}
+
+func (c *keyRangeServiceClient) GetKeyRange(ctx context.Context, in *GetKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
+	out := new(KeyRangeReply)
+	err := c.cc.Invoke(ctx, KeyRangeService_GetKeyRange_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *keyRangeServiceClient) ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error) {
@@ -160,6 +171,7 @@ func (c *keyRangeServiceClient) ResolveKeyRange(ctx context.Context, in *Resolve
 // All implementations must embed UnimplementedKeyRangeServiceServer
 // for forward compatibility
 type KeyRangeServiceServer interface {
+	GetKeyRange(context.Context, *GetKeyRangeRequest) (*KeyRangeReply, error)
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
 	ListAllKeyRanges(context.Context, *ListAllKeyRangesRequest) (*KeyRangeReply, error)
 	LockKeyRange(context.Context, *LockKeyRangeRequest) (*ModifyReply, error)
@@ -178,6 +190,9 @@ type KeyRangeServiceServer interface {
 type UnimplementedKeyRangeServiceServer struct {
 }
 
+func (UnimplementedKeyRangeServiceServer) GetKeyRange(context.Context, *GetKeyRangeRequest) (*KeyRangeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKeyRange not implemented")
+}
 func (UnimplementedKeyRangeServiceServer) ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListKeyRange not implemented")
 }
@@ -222,6 +237,24 @@ type UnsafeKeyRangeServiceServer interface {
 
 func RegisterKeyRangeServiceServer(s grpc.ServiceRegistrar, srv KeyRangeServiceServer) {
 	s.RegisterService(&KeyRangeService_ServiceDesc, srv)
+}
+
+func _KeyRangeService_GetKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).GetKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyRangeService_GetKeyRange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).GetKeyRange(ctx, req.(*GetKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _KeyRangeService_ListKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -429,6 +462,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "spqr.KeyRangeService",
 	HandlerType: (*KeyRangeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetKeyRange",
+			Handler:    _KeyRangeService_GetKeyRange_Handler,
+		},
 		{
 			MethodName: "ListKeyRange",
 			Handler:    _KeyRangeService_ListKeyRange_Handler,

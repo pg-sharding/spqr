@@ -5,6 +5,7 @@ package spqr;
 option go_package = "spqr/proto";
   
 service KeyRangeService {
+  rpc GetKeyRange (GetKeyRangeRequest) returns (KeyRangeReply) {}
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
   rpc ListAllKeyRanges (ListAllKeyRangesRequest) returns (KeyRangeReply) {}
   rpc LockKeyRange (LockKeyRangeRequest) returns (ModifyReply) {}
@@ -95,4 +96,8 @@ message ResolveKeyRangeRequest {
 
 message ResolveKeyRangeReply {
   repeated string key_range_d = 1;
+}
+
+message GetKeyRangeRequest {
+  repeated string id = 1;
 }
