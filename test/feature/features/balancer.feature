@@ -204,7 +204,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99990
+    99970
     """
     When I run SQL on host "shard1"
     """
@@ -213,7 +213,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    10
+    30
     """
     When I run SQL on host "coordinator"
     """
@@ -231,7 +231,7 @@ Feature: Balancer test
     {
       "Key range ID":"kr2",
       "Distribution ID":"ds1",
-      "Lower bound":"100010",
+      "Lower bound":"100030",
       "Shard ID":"sh2"
     }]
     """
@@ -265,7 +265,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    10
+    30
     """
     When I run SQL on host "shard1"
     """
@@ -274,7 +274,7 @@ Feature: Balancer test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    99990
+    99970
     """
     When I run SQL on host "coordinator"
     """
@@ -291,7 +291,7 @@ Feature: Balancer test
     },
     {
       "Distribution ID":"ds1",
-      "Lower bound":"99990",
+      "Lower bound":"99970",
       "Shard ID":"sh2"
     }]
     """
