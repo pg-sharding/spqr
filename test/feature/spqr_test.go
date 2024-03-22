@@ -827,7 +827,7 @@ func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 		return err
 	}
 
-	if tx == nil || tx.FromStatus == "" || tx.ToStatus == "" {
+	if tx == nil || tx.Status == "" {
 		return fmt.Errorf("No valid transaction with key %s", key)
 	}
 	return nil
@@ -835,7 +835,7 @@ func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 
 func (tctx *testContext) stepQDBShouldNotContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
-	if tx == nil || err != nil || tx.FromStatus == "" || tx.ToStatus == "" {
+	if tx == nil || err != nil || tx.Status == "" {
 		return nil
 	}
 	return fmt.Errorf("Valid transaction present with key %s", key)
