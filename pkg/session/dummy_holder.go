@@ -3,17 +3,28 @@ package session
 import "github.com/pg-sharding/spqr/router/routehint"
 
 type DummySessionParamHandler struct {
-	b         [][]byte
-	dataspace string
-	behaviour string
-	key       string
-	rh        routehint.RouteHint
+	b            [][]byte
+	f            []int16
+	distribution string
+	behaviour    string
+	key          string
+	rh           routehint.RouteHint
 }
 
-func NewDummyHandler(dataspace string) SessionParamsHolder {
+// BindParamFormatCodes implements SessionParamsHolder.
+func (t *DummySessionParamHandler) BindParamFormatCodes() []int16 {
+	return t.f
+}
+
+// SetParamFormatCodes implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetParamFormatCodes(f []int16) {
+	t.f = f
+}
+
+func NewDummyHandler(distribution string) SessionParamsHolder {
 	return &DummySessionParamHandler{
-		dataspace: dataspace,
-		rh:        routehint.EmptyRouteHint{},
+		distribution: distribution,
+		rh:           routehint.EmptyRouteHint{},
 	}
 }
 
@@ -22,9 +33,9 @@ func (t *DummySessionParamHandler) BindParams() [][]byte {
 	return t.b
 }
 
-// Dataspace implements session.SessionParamsHolder.
-func (t *DummySessionParamHandler) Dataspace() string {
-	return t.dataspace
+// Distribution implements session.SessionParamsHolder.
+func (t *DummySessionParamHandler) Distribution() string {
+	return t.distribution
 }
 
 // DefaultRouteBehaviour implements session.SessionParamsHolder.
@@ -42,12 +53,12 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 	t.b = b
 }
 
-// SetDataspace implements session.SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDataspace(d string) {
-	t.dataspace = d
+// SetDistribution implements session.SessionParamsHolder.
+func (t *DummySessionParamHandler) SetDistribution(d string) {
+	t.distribution = d
 }
 
-func (t *DummySessionParamHandler) DataspaceIsDefault() bool {
+func (t *DummySessionParamHandler) DistributionIsDefault() bool {
 	return false
 }
 

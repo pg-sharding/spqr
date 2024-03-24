@@ -6,6 +6,7 @@ router_mode: PROXY
 log_level: fatal
 log_filename: router.log
 memqdb_backup_path: memqdb.backup
+memqdb_persistent: true
 init_sql: /spqr/test/feature/conf/fake_init.sql
 time_quantiles:
   - 0.75

@@ -2,9 +2,9 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
@@ -13,34 +13,12 @@ type ShardingRulesService struct {
 	impl coordinator.Coordinator
 }
 
-// TODO : unit tests
 func (s *ShardingRulesService) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
-	for _, rule := range request.Rules {
-		err := s.impl.AddShardingRule(ctx, shrule.ShardingRuleFromProto(rule))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &protos.AddShardingRuleReply{}, nil
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
-// TODO : unit tests
 func (s *ShardingRulesService) ListShardingRules(ctx context.Context, request *protos.ListShardingRuleRequest) (*protos.ListShardingRuleReply, error) {
-	rules, err := s.impl.ListAllShardingRules(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var shardingRules []*protos.ShardingRule
-
-	for _, rule := range rules {
-		shardingRules = append(shardingRules, shrule.ShardingRuleToProto(rule))
-	}
-
-	return &protos.ListShardingRuleReply{
-		Rules: shardingRules,
-	}, nil
+	return nil, spqrerror.ShardingKeysRemoved
 }
 
 func NewShardingRulesServer(impl coordinator.Coordinator) *ShardingRulesService {

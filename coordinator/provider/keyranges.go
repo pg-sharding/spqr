@@ -1,11 +1,9 @@
 package provider
 
 import (
-	"bytes"
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -20,13 +18,7 @@ type CoordinatorService struct {
 
 // TODO : unit tests
 func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.AddKeyRange(ctx, &kr.KeyRange{
-		LowerBound: []byte(request.KeyRangeInfo.KeyRange.LowerBound),
-		UpperBound: []byte(request.KeyRangeInfo.KeyRange.UpperBound),
-		ID:         request.KeyRangeInfo.Krid,
-		ShardID:    request.KeyRangeInfo.ShardId,
-		Dataspace:  "default",
-	})
+	err := c.impl.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
 		return nil, err
 	}
@@ -56,29 +48,12 @@ func (c *CoordinatorService) UnlockKeyRange(ctx context.Context, request *protos
 }
 
 // TODO : unit tests
-func (c *CoordinatorService) KeyRangeIDByBounds(ctx context.Context, keyRange *protos.KeyRange, dataspace string) (string, error) {
-	krsqb, err := c.impl.ListKeyRanges(ctx, dataspace)
-	if err != nil {
-		return "", err
-	}
-
-	// TODO: choose a key range without matching to exact bounds.
-	for _, krqb := range krsqb {
-		if string(krqb.LowerBound) == keyRange.GetLowerBound() &&
-			string(krqb.UpperBound) == keyRange.GetUpperBound() {
-			return krqb.ID, nil
-		}
-	}
-
-	return "", spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, "key range not found")
-}
-
-// TODO : unit tests
 func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.SplitKeyRangeRequest) (*protos.ModifyReply, error) {
 	splitKR := &kr.SplitKeyRange{
-		Bound:    request.Bound,
-		Krid:     request.KeyRangeInfo.Krid,
-		SourceID: request.SourceId,
+		Bound:     request.Bound,
+		Krid:      request.NewId,
+		SourceID:  request.SourceId,
+		SplitLeft: request.SplitLeft,
 	}
 
 	if err := c.impl.Split(ctx, splitKR); err != nil {
@@ -91,7 +66,7 @@ func (c *CoordinatorService) SplitKeyRange(ctx context.Context, request *protos.
 // TODO : unit tests
 func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 
-	krsqb, err := c.impl.ListAllKeyRanges(ctx)
+	krsqb, err := c.impl.ListKeyRanges(ctx, request.Distribution)
 	if err != nil {
 		return nil, err
 	}
@@ -107,10 +82,25 @@ func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.L
 	}, nil
 }
 
+func (c *CoordinatorService) ListAllKeyRanges(ctx context.Context, _ *protos.ListAllKeyRangesRequest) (*protos.KeyRangeReply, error) {
+	krsDb, err := c.impl.ListAllKeyRanges(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	krs := make([]*protos.KeyRangeInfo, len(krsDb))
+
+	for i, krg := range krsDb {
+		krs[i] = krg.ToProto()
+	}
+
+	return &protos.KeyRangeReply{KeyRangesInfo: krs}, nil
+}
+
 // TODO : unit tests
 func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.MoveKeyRangeRequest) (*protos.ModifyReply, error) {
 	if err := c.impl.Move(ctx, &kr.MoveKeyRange{
-		Krid:    request.KeyRange.Krid,
+		Krid:    request.Id,
 		ShardId: request.ToShardId,
 	}); err != nil {
 		return nil, err
@@ -121,47 +111,10 @@ func (c *CoordinatorService) MoveKeyRange(ctx context.Context, request *protos.M
 
 // TODO : unit tests
 func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.MergeKeyRangeRequest) (*protos.ModifyReply, error) {
-	krsqb, err := c.impl.ListAllKeyRanges(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	bound := request.GetBound()
-	uniteKeyRange := &kr.UniteKeyRange{}
-
-	for _, krqb := range krsqb {
-		if bytes.Equal(krqb.LowerBound, bound) {
-			uniteKeyRange.KeyRangeIDRight = krqb.ID
-
-			if uniteKeyRange.KeyRangeIDLeft != "" {
-				break
-			}
-			continue
-		}
-
-		if bytes.Equal(krqb.UpperBound, bound) {
-			uniteKeyRange.KeyRangeIDLeft = krqb.ID
-
-			if uniteKeyRange.KeyRangeIDRight != "" {
-				break
-			}
-			continue
-		}
-	}
-
-	spqrlog.Zero.Debug().
-		Str("left", uniteKeyRange.KeyRangeIDLeft).
-		Str("right", uniteKeyRange.KeyRangeIDRight).
-		Msg("unite keyrange")
-
-	if uniteKeyRange.KeyRangeIDLeft == "" || uniteKeyRange.KeyRangeIDRight == "" {
-		spqrlog.Zero.Debug().
-			Bytes("bound", bound).
-			Msg("key ranges to merge by border not found")
-		return &protos.ModifyReply{}, nil
-	}
-
-	if err := c.impl.Unite(ctx, uniteKeyRange); err != nil {
+	if err := c.impl.Unite(ctx, &kr.UniteKeyRange{
+		BaseKeyRangeId:      request.GetBaseId(),
+		AppendageKeyRangeId: request.GetAppendageId(),
+	}); err != nil {
 		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to unite key ranges: %s", err.Error())
 	}
 

@@ -54,6 +54,7 @@ type Router struct {
 
 	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	MemqdbPersistent bool              `json:"memqdb_persistent" toml:"memqdb_persistent" yaml:"memqdb_persistent"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
 	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
 	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
@@ -79,12 +80,13 @@ type QRouter struct {
 }
 
 type BackendRule struct {
-	DB              string              `json:"db" yaml:"db" toml:"db"`
-	Usr             string              `json:"usr" yaml:"usr" toml:"usr"`
-	AuthRules       map[string]*AuthCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
-	DefaultAuthRule *AuthCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
-	PoolDefault     bool                `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
-	ConnectionLimit int                 `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	DB                string              `json:"db" yaml:"db" toml:"db"`
+	Usr               string              `json:"usr" yaml:"usr" toml:"usr"`
+	AuthRules         map[string]*AuthCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
+	DefaultAuthRule   *AuthCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
+	PoolDefault       bool                `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
+	ConnectionLimit   int                 `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	ConnectionRetries int                 `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
 }
 
 type FrontendRule struct {

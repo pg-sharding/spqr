@@ -147,6 +147,20 @@ func (mr *MockRouterClientMockRecorder) Auth(rt interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Auth", reflect.TypeOf((*MockRouterClient)(nil).Auth), rt)
 }
 
+// BindParamFormatCodes mocks base method.
+func (m *MockRouterClient) BindParamFormatCodes() []int16 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BindParamFormatCodes")
+	ret0, _ := ret[0].([]int16)
+	return ret0
+}
+
+// BindParamFormatCodes indicates an expected call of BindParamFormatCodes.
+func (mr *MockRouterClientMockRecorder) BindParamFormatCodes() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BindParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).BindParamFormatCodes))
+}
+
 // BindParams mocks base method.
 func (m *MockRouterClient) BindParams() [][]byte {
 	m.ctrl.T.Helper()
@@ -241,34 +255,6 @@ func (m *MockRouterClient) DB() string {
 func (mr *MockRouterClientMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockRouterClient)(nil).DB))
-}
-
-// Dataspace mocks base method.
-func (m *MockRouterClient) Dataspace() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Dataspace")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Dataspace indicates an expected call of Dataspace.
-func (mr *MockRouterClientMockRecorder) Dataspace() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dataspace", reflect.TypeOf((*MockRouterClient)(nil).Dataspace))
-}
-
-// DataspaceIsDefault mocks base method.
-func (m *MockRouterClient) DataspaceIsDefault() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataspaceIsDefault")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataspaceIsDefault indicates an expected call of DataspaceIsDefault.
-func (mr *MockRouterClientMockRecorder) DataspaceIsDefault() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataspaceIsDefault", reflect.TypeOf((*MockRouterClient)(nil).DataspaceIsDefault))
 }
 
 // DefaultReply mocks base method.
@@ -495,18 +481,32 @@ func (mr *MockRouterClientMockRecorder) Reply(msg interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reply", reflect.TypeOf((*MockRouterClient)(nil).Reply), msg)
 }
 
-// ReplyCommandComplete mocks base method.
-func (m *MockRouterClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error {
+// ReplyBindComplete mocks base method.
+func (m *MockRouterClient) ReplyBindComplete() error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyCommandComplete", st, commandTag)
+	ret := m.ctrl.Call(m, "ReplyBindComplete")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyBindComplete indicates an expected call of ReplyBindComplete.
+func (mr *MockRouterClientMockRecorder) ReplyBindComplete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyBindComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyBindComplete))
+}
+
+// ReplyCommandComplete mocks base method.
+func (m *MockRouterClient) ReplyCommandComplete(commandTag string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyCommandComplete", commandTag)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyCommandComplete indicates an expected call of ReplyCommandComplete.
-func (mr *MockRouterClientMockRecorder) ReplyCommandComplete(st, commandTag interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyCommandComplete(commandTag interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyCommandComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyCommandComplete), st, commandTag)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyCommandComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyCommandComplete), commandTag)
 }
 
 // ReplyDebugNotice mocks base method.
@@ -613,17 +613,17 @@ func (mr *MockRouterClientMockRecorder) ReplyParseComplete() *gomock.Call {
 }
 
 // ReplyRFQ mocks base method.
-func (m *MockRouterClient) ReplyRFQ() error {
+func (m *MockRouterClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplyRFQ")
+	ret := m.ctrl.Call(m, "ReplyRFQ", txstatus)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReplyRFQ indicates an expected call of ReplyRFQ.
-func (mr *MockRouterClientMockRecorder) ReplyRFQ() *gomock.Call {
+func (mr *MockRouterClientMockRecorder) ReplyRFQ(txstatus interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyRFQ", reflect.TypeOf((*MockRouterClient)(nil).ReplyRFQ))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyRFQ", reflect.TypeOf((*MockRouterClient)(nil).ReplyRFQ), txstatus)
 }
 
 // ReplyWarningMsg mocks base method.
@@ -867,18 +867,6 @@ func (mr *MockRouterClientMockRecorder) SetBindParams(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBindParams", reflect.TypeOf((*MockRouterClient)(nil).SetBindParams), arg0)
 }
 
-// SetDataspace mocks base method.
-func (m *MockRouterClient) SetDataspace(arg0 string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDataspace", arg0)
-}
-
-// SetDataspace indicates an expected call of SetDataspace.
-func (mr *MockRouterClientMockRecorder) SetDataspace(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDataspace", reflect.TypeOf((*MockRouterClient)(nil).SetDataspace), arg0)
-}
-
 // SetDefaultRouteBehaviour mocks base method.
 func (m *MockRouterClient) SetDefaultRouteBehaviour(arg0 string) {
 	m.ctrl.T.Helper()
@@ -901,6 +889,18 @@ func (m *MockRouterClient) SetParam(arg0, arg1 string) {
 func (mr *MockRouterClientMockRecorder) SetParam(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParam", reflect.TypeOf((*MockRouterClient)(nil).SetParam), arg0, arg1)
+}
+
+// SetParamFormatCodes mocks base method.
+func (m *MockRouterClient) SetParamFormatCodes(arg0 []int16) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetParamFormatCodes", arg0)
+}
+
+// SetParamFormatCodes indicates an expected call of SetParamFormatCodes.
+func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
 }
 
 // SetRouteHint mocks base method.

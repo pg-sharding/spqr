@@ -1,170 +1,77 @@
 Feature: MemQDB save state into a file
 
-  Scenario: Sharding rules restored
+  Scenario: Distributions restored
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
     """
     Given cluster is up and running
-
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    []
-    """
-  
     When I execute SQL on host "router-admin"
     """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
     """
     Then command return code should be "0"
     When host "router" is stopped
     And host "router" is started
     When I run SQL on host "router-admin"
     """
-    SHOW sharding_rules;
+    SHOW distributions;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-          "Columns":"id",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule1",
-          "Table Name":"*"
+        "Distribution ID": "ds1",
+        "Column types": "integer"
       },
       {
-          "Columns":"idx",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule2",
-          "Table Name":"test"
-      },
-      {
-          "Columns":"idy",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule3",
-          "Table Name":"*"
+        "Distribution ID": "ds2",
+        "Column types": "varchar"
       }
     ]
     """
-  
-  Scenario: backup is empty after DROP SHARDING RULE ALL
+
+  Scenario: Attached relations restored
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
     """
     Given cluster is up and running
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    []
-    """
     When I execute SQL on host "router-admin"
     """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
-    DROP SHARDING RULE ALL;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id HASH FUNCTION MURMUR;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id;
     """
     Then command return code should be "0"
     When host "router" is stopped
     And host "router" is started
     When I run SQL on host "router-admin"
     """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    []
-    """
-
-  Scenario: Sharding rules initilized on startup without backups
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_initsql.yaml
-    """
-    Given cluster is up and running
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
+    SHOW relations;
     """
     Then command return code should be "0"
     And SQL result should match json_exactly
     """
     [
       {
-          "Columns":"id",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule1",
-          "Table Name":"*"
+        "Relation name": "a",
+        "Distribution ID": "ds1",
+        "Distribution key": "(\"a_id\", murmur)"
       },
       {
-          "Columns":"idx",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule2",
-          "Table Name":"test"
+        "Relation name": "b",
+        "Distribution ID": "ds1",
+        "Distribution key": "(\"b_id\", identity)"
       },
       {
-          "Columns":"idy",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule3",
-          "Table Name":"*"
-      }
-    ]
-    """
-
-  Scenario: Sharding rules initilized on startup even with backups
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_and_initsql.yaml
-    """
-    Given cluster is up and running
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-          "Columns":"id",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule1",
-          "Table Name":"*"
-      },
-      {
-          "Columns":"idx",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule2",
-          "Table Name":"test"
-      },
-      {
-          "Columns":"idy",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule3",
-          "Table Name":"*"
+        "Relation name": "c",
+        "Distribution ID": "ds2",
+        "Distribution key": "(\"c_id\", identity)"
       }
     ]
     """
@@ -177,8 +84,9 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I execute SQL on host "router-admin"
     """
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     """
     Then command return code should be "0"
     When host "router" is stopped
@@ -193,96 +101,15 @@ Feature: MemQDB save state into a file
     [
       {
         "Key range ID": "krid1",
-        "Dataspace ID":"default",
+        "Distribution ID":"ds1",
         "Lower bound": "1",
-        "Shard ID": "sh1",
-        "Upper bound": "10"
+        "Shard ID": "sh1"
       },
       {
         "Key range ID": "krid2",
-        "Dataspace ID":"default",
+        "Distribution ID":"ds1",
         "Lower bound": "11",
-        "Shard ID": "sh1",
-        "Upper bound": "20"
-      }
-    ]
-    """
-
-  Scenario: Sharding rules restored after droping specific one
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    ADD SHARDING RULE rule1 COLUMNS id;
-    ADD SHARDING RULE rule2 TABLE test COLUMNS idx;
-    ADD SHARDING RULE rule3 COLUMNS idy;
-    DROP SHARDING RULE rule1;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-          "Columns":"idx",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule2",
-          "Table Name":"test"
-      },
-      {
-          "Columns":"idy",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule3",
-          "Table Name":"*"
-      }
-    ]
-    """
-
-  Scenario: Sharding rules restored after droping specific one (init.sql ignored)
-    Given cluster environment is
-    """
-    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_backup_and_initsql.yaml
-    """
-    Given cluster is up and running
-    When I execute SQL on host "router-admin"
-    """
-    DROP SHARDING RULE rule1;
-    """
-    Then command return code should be "0"
-    When host "router" is stopped
-    And host "router" is started
-    When I run SQL on host "router-admin"
-    """
-    SHOW sharding_rules;
-    """
-    Then command return code should be "0"
-    And SQL result should match json_exactly
-    """
-    [
-      {
-          "Columns":"idx",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule2",
-          "Table Name":"test"
-      },
-      {
-          "Columns":"idy",
-          "Dataspace ID":"default",
-          "Hash Function":"x->x",
-          "Sharding Rule ID":"rule3",
-          "Table Name":"*"
+        "Shard ID": "sh1"
       }
     ]
     """
@@ -295,8 +122,9 @@ Feature: MemQDB save state into a file
     Given cluster is up and running
     When I run SQL on host "router-admin"
     """
-    ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-    ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    ADD KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     LOCK KEY RANGE krid1;
     """
     Then command return code should be "0"
@@ -316,7 +144,7 @@ Feature: MemQDB save state into a file
     unlocked key range with id krid1
     """
 
-  Scenario: Sharding rules not initialized if init.sql file doesn't exists
+  Scenario: Sharding is not initialized if init.sql file doesn't exists
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_fake_initsql_and_backup.yaml

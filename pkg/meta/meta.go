@@ -3,12 +3,12 @@ package meta
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -17,17 +17,15 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
 type EntityMgr interface {
 	kr.KeyRangeMgr
-	shrule.ShardingRulesMgr
 	topology.RouterMgr
 	datashards.ShardsMgr
-	dataspaces.DataspaceMgr
+	distributions.DistributionMgr
 
 	ShareKeyRange(id string) error
 
@@ -55,53 +53,27 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return cli.DropKeyRange(ctx, []string{stmt.KeyRangeID})
 		}
 	case *spqrparser.ShardingRuleSelector:
-		if stmt.ID == "*" {
-			if rules, err := mngr.DropShardingRuleAll(ctx); err != nil {
-				return cli.ReportError(err)
-			} else {
-				return cli.DropShardingRule(ctx, func() string {
-					var ret []string
-
-					for _, rule := range rules {
-						ret = append(ret, rule.ID())
-					}
-
-					return strings.Join(ret, ",")
-				}())
-			}
-		} else {
-			spqrlog.Zero.Debug().Str("rule", stmt.ID).Msg("parsed drop")
-			err := mngr.DropShardingRule(ctx, stmt.ID)
-			if err != nil {
-				return cli.ReportError(err)
-			}
-			return cli.DropShardingRule(ctx, stmt.ID)
-		}
-	case *spqrparser.DataspaceSelector:
-		srs, err := mngr.ListShardingRules(ctx, stmt.ID)
-		if err != nil {
-			return err
-		}
-
-		krs, err := mngr.ListKeyRanges(ctx, stmt.ID)
-		if err != nil {
-			return err
-		}
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
+	case *spqrparser.DistributionSelector:
+		var krs []*kr.KeyRange
+		var err error
 
 		if stmt.ID == "*" {
-			srs, err = mngr.ListAllShardingRules(ctx)
-			if err != nil {
-				return err
-			}
 
 			krs, err = mngr.ListAllKeyRanges(ctx)
 			if err != nil {
 				return err
 			}
+		} else {
+
+			krs, err = mngr.ListKeyRanges(ctx, stmt.ID)
+			if err != nil {
+				return err
+			}
 		}
 
-		if len(srs)+len(krs) != 0 && !isCascade {
-			return fmt.Errorf("cannot drop dataspace %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
+		if len(krs) != 0 && !isCascade {
+			return fmt.Errorf("cannot drop distribution %s because other objects depend on it\nHINT: Use DROP ... CASCADE to drop the dependent objects too.", stmt.ID)
 		}
 
 		for _, kr := range krs {
@@ -110,32 +82,54 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 				return err
 			}
 		}
-		for _, sr := range srs {
-			err = mngr.DropShardingRule(ctx, sr.Id)
+
+		if stmt.ID != "*" {
+			ds, err := mngr.GetDistribution(ctx, stmt.ID)
 			if err != nil {
 				return err
 			}
+			if len(ds.Relations) != 0 && !isCascade {
+				return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically.", stmt.ID)
+			}
+
+			for _, rel := range ds.Relations {
+				if err := mngr.AlterDistributionDetach(ctx, ds.Id, rel.Name); err != nil {
+					return err
+				}
+			}
+			if err := mngr.DropDistribution(ctx, stmt.ID); err != nil {
+				return cli.ReportError(err)
+			}
+			return cli.DropDistribution(ctx, []string{stmt.ID})
 		}
 
-		dss, err := mngr.ListDataspace(ctx)
+		dss, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return err
+		}
 		ret := make([]string, 0)
 		if err != nil {
 			return err
 		}
 		for _, ds := range dss {
-			if (ds.Id == stmt.ID || stmt.ID == "*") && ds.Id != "default" {
-				ret = append(ret, ds.ID())
-				if ds.ID() == cli.GetDataspace() {
-					cli.SetDataspace("default")
+			if ds.Id != "default" {
+				if len(ds.Relations) != 0 && !isCascade {
+					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations autoimatically", ds.Id)
 				}
-				err = mngr.DropDataspace(ctx, ds)
+				ret = append(ret, ds.ID())
+				err = mngr.DropDistribution(ctx, ds.Id)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		return cli.DropDataspace(ctx, ret)
+		return cli.DropDistribution(ctx, ret)
+	case *spqrparser.ShardSelector:
+		if err := mngr.DropShard(ctx, stmt.ID); err != nil {
+			return err
+		}
+		return cli.DropShard(stmt.ID)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -144,35 +138,27 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 // TODO : unit tests
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
-	case *spqrparser.DataspaceDefinition:
-		dataspace := dataspaces.NewDataspace(stmt.ID)
+	case *spqrparser.DistributionDefinition:
+		distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
 
-		dataspaces, err := mngr.ListDataspace(ctx)
+		distributions, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return err
 		}
-		for _, ds := range dataspaces {
-			if ds.Id == dataspace.Id {
-				spqrlog.Zero.Debug().Msg("Attempt to create existing dataspace")
-				return fmt.Errorf("attempt to create existing dataspace")
+		for _, ds := range distributions {
+			if ds.Id == distribution.Id {
+				spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+				return fmt.Errorf("attempt to create existing distribution")
 			}
 		}
 
-		err = mngr.AddDataspace(ctx, dataspace)
+		err = mngr.CreateDistribution(ctx, distribution)
 		if err != nil {
 			return err
 		}
-		return cli.AddDataspace(ctx, dataspace)
+		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:
-		entries := make([]shrule.ShardingRuleEntry, 0)
-		for _, el := range stmt.Entries {
-			entries = append(entries, *shrule.NewShardingRuleEntry(el.Column, el.HashFunction))
-		}
-		shardingRule := shrule.NewShardingRule(stmt.ID, stmt.TableName, entries, stmt.Dataspace)
-		if err := mngr.AddShardingRule(ctx, shardingRule); err != nil {
-			return err
-		}
-		return cli.AddShardingRule(ctx, shardingRule)
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
 		if err := mngr.AddKeyRange(ctx, req); err != nil {
@@ -180,6 +166,47 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			return cli.ReportError(err)
 		}
 		return cli.AddKeyRange(ctx, req)
+	case *spqrparser.ShardDefinition:
+		dataShard := datashards.NewDataShard(stmt.Id, &config.Shard{
+			Hosts: stmt.Hosts,
+			Type:  config.DataShard,
+		})
+		if err := mngr.AddDataShard(ctx, dataShard); err != nil {
+			return err
+		}
+		return cli.AddShard(dataShard)
+	default:
+		return unknownCoordinatorCommand
+	}
+}
+
+func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AlterDistribution:
+		return processAlterDistribution(ctx, stmt.Element, mngr, cli)
+	default:
+		return unknownCoordinatorCommand
+	}
+}
+
+func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+	switch stmt := astmt.(type) {
+	case *spqrparser.AttachRelation:
+		rels := []*distributions.DistributedRelation{}
+
+		for _, drel := range stmt.Relations {
+			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
+		}
+
+		if err := mngr.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels); err != nil {
+			return err
+		}
+		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels)
+	case *spqrparser.DetachRelation:
+		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
+			return err
+		}
+		return cli.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -265,19 +292,15 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return cli.SplitKeyRange(ctx, splitKeyRange)
 	case *spqrparser.UniteKeyRange:
 		uniteKeyRange := &kr.UniteKeyRange{
-			KeyRangeIDLeft:  stmt.KeyRangeIDL,
-			KeyRangeIDRight: stmt.KeyRangeIDR,
+			BaseKeyRangeId:      stmt.KeyRangeIDL,
+			AppendageKeyRangeId: stmt.KeyRangeIDR,
 		}
 		if err := mgr.Unite(ctx, uniteKeyRange); err != nil {
 			return err
 		}
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
-	case *spqrparser.AttachTable:
-		ds := &dataspaces.Dataspace{Id: stmt.Dataspace.ID}
-		if err := mgr.AttachToDataspace(ctx, stmt.Table, ds); err != nil {
-			return err
-		}
-		return cli.AttachTable(ctx, stmt.Table, ds)
+	case *spqrparser.Alter:
+		return processAlter(ctx, stmt.Element, mgr, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -342,12 +365,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Routers(resp)
 	case spqrparser.ShardingRules:
-		resp, err := mngr.ListAllShardingRules(ctx)
-		if err != nil {
-			return err
-		}
-
-		return cli.ShardingRules(ctx, resp)
+		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case spqrparser.ClientsStr:
 		var resp []client.ClientInfo
 		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
@@ -370,12 +388,29 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		return cli.Pools(ctx, respPools)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
-	case spqrparser.DataspacesStr:
-		dataspaces, err := mngr.ListDataspace(ctx)
+	case spqrparser.DistributionsStr:
+		dss, err := mngr.ListDistributions(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Dataspaces(ctx, dataspaces)
+		return cli.Distributions(ctx, dss)
+	case spqrparser.RelationsStr:
+		dss, err := mngr.ListDistributions(ctx)
+		if err != nil {
+			return err
+		}
+		dsToRels := make(map[string][]*distributions.DistributedRelation)
+		for _, ds := range dss {
+			if _, ok := dsToRels[ds.Id]; ok {
+				return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "Duplicate values on \"%s\" distribution ID", ds.Id)
+			}
+			dsToRels[ds.Id] = make([]*distributions.DistributedRelation, 0)
+			for _, rel := range ds.Relations {
+				dsToRels[ds.Id] = append(dsToRels[ds.Id], rel)
+			}
+		}
+
+		return cli.Relations(dsToRels, stmt.Where)
 	default:
 		return unknownCoordinatorCommand
 	}

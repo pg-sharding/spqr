@@ -5,10 +5,6 @@ import (
 )
 
 type SessionParamsHolder interface {
-	// get current session dataspace
-	Dataspace() string
-	SetDataspace(string)
-	DataspaceIsDefault() bool
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
@@ -21,12 +17,15 @@ type SessionParamsHolder interface {
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
+	BindParamFormatCodes() []int16
+	SetParamFormatCodes([]int16)
+
 	RouteHint() routehint.RouteHint
 	SetRouteHint(routehint.RouteHint)
 }
 
 const (
-	SPQR_DATASPACE               = "__spqr__dataspace"
+	SPQR_DISTRIBUTION            = "__spqr__distribution"
 	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
 	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"

@@ -56,8 +56,8 @@ services:
         hostname: regress_coordinator
         container_name: regress_coordinator
         depends_on:
-            - "router"
-            - "qdb01"
+            - router
+            - qdb01
 
     qdb01:
         image: 'bitnami/etcd:latest'
@@ -76,4 +76,4 @@ services:
         container_name: regress_tests
         depends_on:
             - router
-            - qdb01
+            - coordinator

@@ -38,6 +38,8 @@ services:
             - "7003:7003"
         hostname: spqr_coordinator
         container_name: spqr_coordinator
+        depends_on: 
+            - qdb01
     qdb01:
         image: 'bitnami/etcd:latest'
         container_name: spqr_qdb_0_1
@@ -53,7 +55,7 @@ services:
             context: .
         ports:
             - "8432:6432"
-            - "7013:7003"
+            - "7013:7000"
         hostname: spqr_router_1_1
         container_name: spqr_router_1_1
         environment:
@@ -71,12 +73,6 @@ services:
         environment:
             - ROUTER_CONFIG=/spqr/docker/router/cfg2.yaml
             - COORDINATOR_CONFIG=/spqr/docker/coordinator/cfg2.yaml
-    balancer:
-        build:
-            dockerfile: ./docker/balancer/Dockerfile
-            context: .
-        hostname: spqr_balancer
-        container_name: spqr_balancer
     slicer:
         build:
             dockerfile: ./docker/slicer/Dockerfile

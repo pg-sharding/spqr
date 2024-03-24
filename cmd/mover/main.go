@@ -4,28 +4,23 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type MoveTableRes struct {
-	TableSchema string `db:"table_schema"`
-	TableName   string `db:"table_name"`
-}
+var fromShardConnst = flag.String("from-shard-connstring", "", "Connection string to shard to move data from")
+var toShardConnst = flag.String("to-shard-connstring", "", "Connection string to shard to move data to")
 
-var fromShardConnst = flag.String("from-shard-connstring", "", "")
-var toShardConnst = flag.String("to-shard-connstring", "", "")
-var lb = flag.String("lower-bound", "", "")
-var ub = flag.String("upper-bound", "", "")
-var shkey = flag.String("sharding-key", "", "")
-var etcdAddr = flag.String("etcd-addr", "", "")
+var krId = flag.String("key-range", "", "ID of key range to move")
+var etcdAddr = flag.String("etcd-addr", "", "ETCD address")
 
 // TODO: use schema
 // var schema = flag.String("shema", "", "")
@@ -42,7 +37,7 @@ func (p *ProxyW) Write(bt []byte) (int, error) {
 }
 
 // TODO : unit tests
-func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key *shrule.ShardingRule) error {
+func moveData(ctx context.Context, from, to *pgx.Conn, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation) error {
 	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -65,32 +60,33 @@ func moveData(ctx context.Context, from, to *pgx.Conn, keyRange kr.KeyRange, key
 		}
 	}(txFrom)
 
+	// TODO: use whole RFQN
 	rows, err := txFrom.Query(ctx, `
-SELECT table_schema, table_name
-FROM information_schema.columns
-WHERE column_name=$1;
-`, key.Entries()[0].Column)
+SELECT table_name
+FROM information_schema.tables;
+`)
 	if err != nil {
 		return err
 	}
-	var ress []MoveTableRes
-
+	res := make(map[string]struct{})
 	for rows.Next() {
-		var curres MoveTableRes
-		err = rows.Scan(&curres.TableSchema, &curres.TableName)
+		var tableName string
+		err = rows.Scan(&tableName)
 		if err != nil {
 			return err
 		}
 
-		ress = append(ress, curres)
+		res[tableName] = struct{}{}
 	}
 
 	rows.Close()
 
-	for _, v := range ress {
+	for _, rel := range rels {
+		if _, ok := res[strings.ToLower(rel.Name)]; !ok {
+			continue
+		}
 		spqrlog.Zero.Debug().
-			Str("schema", v.TableSchema).
-			Str("table", v.TableName).
+			Str("relation", rel.Name).
 			Msg("moving table")
 
 		r, w, err := os.Pipe()
@@ -102,8 +98,16 @@ WHERE column_name=$1;
 			w: w,
 		}
 
-		qry := fmt.Sprintf("copy (delete from %s.%s WHERE %s >= %s and %s <= %s returning *) to stdout", v.TableSchema, v.TableName,
-			key.Entries()[0].Column, keyRange.LowerBound, key.Entries()[0].Column, keyRange.UpperBound)
+		var qry string
+
+		// TODO: support multi-column move in SPQR2
+		if nextKeyRange == nil {
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound)
+		} else {
+			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s and %s < %s returning *) to stdout", rel.Name,
+				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
+		}
 
 		spqrlog.Zero.Debug().
 			Str("query", qry).
@@ -119,7 +123,7 @@ WHERE column_name=$1;
 		}
 
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
-			r, fmt.Sprintf("COPY %s.%s FROM STDIN", v.TableSchema, v.TableName))
+			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
 		if err != nil {
 			spqrlog.Zero.Debug().Msg("copy in failed")
 			return err
@@ -156,19 +160,38 @@ func main() {
 		return
 	}
 
-	//entrys := []shrule.ShardingRuleEntry{*shrule.NewShardingRuleEntry("id", "nohash")}
-	//my_rule := shrule.NewShardingRule("r1", "fast", entrys)
-	//db.AddShardingRule(context.TODO(), shrule.ShardingRuleToDB(my_rule))
+	qdbKr, err := db.GetKeyRange(ctx, *krId)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
+	}
+	keyRange := kr.KeyRangeFromDB(qdbKr)
 
-	shRule, err := db.GetShardingRule(context.TODO(), *shkey)
+	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
+	}
+
+	var nextKeyRange *kr.KeyRange
+
+	for _, currkr := range krs {
+		if kr.CmpRangesLess(keyRange.LowerBound, currkr.LowerBound) {
+			if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
+				nextKeyRange = kr.KeyRangeFromDB(currkr)
+			}
+		}
+	}
+
+	dbDs, err := db.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
 	if err := moveData(ctx,
-		connFrom, connTo, kr.KeyRange{LowerBound: []byte(*lb), UpperBound: []byte(*ub)},
-		shrule.ShardingRuleFromDB(shRule)); err != nil {
+		connFrom, connTo, keyRange, nextKeyRange,
+		distributions.DistributionFromDB(dbDs).Relations); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

@@ -360,6 +360,6 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		return nil
 	default:
-		return fmt.Errorf("invalid auth method %v", rule.AuthRule.Method)
+		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
 	}
 }

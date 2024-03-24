@@ -68,7 +68,8 @@ func (srv *ShardServer) Reset() error {
 	if srv.shard == nil {
 		return ErrShardUnavailable
 	}
-	return nil
+
+	return srv.pool.Put(srv.shard)
 }
 
 // TODO : unit tests
@@ -155,6 +156,7 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Type("message-type", msg).
 		Str("txstatus", srv.TxStatus().String()).
 		Uints("shards", shard.ShardIDs(srv.Datashards())).
+		Err(err).
 		Msg("single-shard receiving msg from server")
 	return msg, err
 }

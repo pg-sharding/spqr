@@ -15,7 +15,6 @@ func NewLocalQlog() *LocalQlog {
 	return &LocalQlog{}
 }
 
-// TODO : unit tests
 func (dw *LocalQlog) DumpQuery(ctx context.Context, fname string, q string) error {
 
 	// TODO: use
@@ -45,7 +44,7 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 	spqrlog.Zero.Info().
 		Str("path", path).
 		Msg("autoconf file found")
-		
+
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err

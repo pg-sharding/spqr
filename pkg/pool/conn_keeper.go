@@ -1,8 +1,9 @@
 package pool
 
 import (
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
@@ -21,6 +22,8 @@ type ConnectionKepperData struct {
 
 	m sync.RWMutex
 }
+
+var _ ConnectionKepper = &ConnectionKepperData{}
 
 func NewConnectionKepperData(info *protos.PoolInfo) *ConnectionKepperData {
 	return &ConnectionKepperData{

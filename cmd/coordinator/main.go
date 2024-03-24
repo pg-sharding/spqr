@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/pg-sharding/spqr/coordinator/app"
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg"
@@ -8,7 +11,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spf13/cobra"
-	"runtime"
 )
 
 var (
@@ -19,14 +21,14 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "spqr-coordinator run --config `path-to-config`",
-	Short: "sqpr-coordinator",
+	Short: "spqr-coordinator",
 	Long:  "spqr-coordinator",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
 	Version:       pkg.SpqrVersionRevision,
-	SilenceUsage:  true,
-	SilenceErrors: true,
+	SilenceUsage:  false,
+	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := config.LoadCoordinatorCfg(cfgPath); err != nil {
 			return err
@@ -41,7 +43,13 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		coordinator := provider.NewCoordinator(db)
+		// frontend
+		frTLS, err := config.CoordinatorConfig().FrontendTLS.Init(config.CoordinatorConfig().Host)
+		if err != nil {
+			return fmt.Errorf("init frontend TLS: %w", err)
+		}
+
+		coordinator := provider.NewCoordinator(frTLS, db)
 		app := app.NewApp(coordinator)
 		return app.Run(true)
 	},
@@ -55,6 +63,6 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		spqrlog.Zero.Error().Err(err)
+		spqrlog.Zero.Error().Err(err).Msg("")
 	}
 }

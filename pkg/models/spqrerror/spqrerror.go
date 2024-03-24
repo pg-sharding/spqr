@@ -16,9 +16,11 @@ const (
 	SPQR_KEYRANGE_ERROR      = "SPQRK"
 	SPQR_SHARDING_RULE_ERROR = "SPQRH"
 	SPQR_TRANSFER_ERROR      = "SPQRT"
-	SPQR_NO_DATASPACE        = "SPQRN"
+	SPQR_NO_DISTRIBUTION     = "SPQRN"
 	SPQR_NOT_IMPLEMENTED     = "SPQRI"
 	SPQR_ROUTER_ERROR        = "SPQRL"
+	SPQR_METADATA_CORRUPTION = "SPQRZ"
+	SPQR_INVALID_REQUEST     = "SPQRJ"
 )
 
 var existingErrorCodeMap = map[string]string{
@@ -34,10 +36,14 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_KEYRANGE_ERROR:      "Keyrange error",
 	SPQR_SHARDING_RULE_ERROR: "Sharding rule error",
 	SPQR_TRANSFER_ERROR:      "Transfer error",
-	SPQR_NO_DATASPACE:        "No dataspace",
+	SPQR_NO_DISTRIBUTION:     "No distribution",
 	SPQR_NOT_IMPLEMENTED:     "Not implemented",
 	SPQR_ROUTER_ERROR:        "Router error",
+	SPQR_METADATA_CORRUPTION: "routing metadata corrupted",
+	SPQR_INVALID_REQUEST:     "Invalid Request",
 }
+
+var ShardingKeysRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
 
 func GetMessageByCode(errorCode string) string {
 	rep, ok := existingErrorCodeMap[errorCode]
@@ -62,6 +68,15 @@ func New(errorCode string, errorMsg string) *SpqrError {
 	}
 	return err
 }
+
+func NewByCode(errorCode string) *SpqrError {
+	err := &SpqrError{
+		Err:       fmt.Errorf(GetMessageByCode(errorCode)),
+		ErrorCode: errorCode,
+	}
+	return err
+}
+
 func Newf(errorCode string, format string, a ...any) *SpqrError {
 	err := &SpqrError{
 		Err:       fmt.Errorf(format, a...),

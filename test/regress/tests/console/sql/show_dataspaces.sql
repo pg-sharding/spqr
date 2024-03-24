@@ -1,4 +1,0 @@
-CREATE DATASPACE ds1;
-CREATE DATASPACE ds2;
-
-SHOW dataspaces;

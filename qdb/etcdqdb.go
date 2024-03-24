@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"path"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/clientv3util"
@@ -24,7 +25,7 @@ type EtcdQDB struct {
 	mu  sync.Mutex
 }
 
-var _ QDB = &EtcdQDB{}
+var _ XQDB = &EtcdQDB{}
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 	cli, err := clientv3.New(clientv3.Config{
@@ -48,13 +49,12 @@ func NewEtcdQDB(addr string) (*EtcdQDB, error) {
 }
 
 const (
-	keyRangesNamespace     = "/keyranges/"
-	dataspaceNamespace     = "/dataspaces/"
-	keyRangeMovesNamespace = "/krmoves/"
-	routersNamespace       = "/routers/"
-	shardingRulesNamespace = "/sharding_rules/"
-	shardsNamespace        = "/shards/"
-	tableNamespace         = "/table_mappings/"
+	keyRangesNamespace       = "/keyranges/"
+	distributionNamespace    = "/distributions/"
+	keyRangeMovesNamespace   = "/krmoves/"
+	routersNamespace         = "/routers/"
+	shardsNamespace          = "/shards/"
+	relationMappingNamespace = "/relation_mappings/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -73,187 +73,20 @@ func routerNodePath(key string) string {
 	return path.Join(routersNamespace, key)
 }
 
-func shardingRuleNodePath(key string) string {
-	return path.Join(shardingRulesNamespace, key)
-}
-
 func shardNodePath(key string) string {
 	return path.Join(shardsNamespace, key)
 }
 
-func dataspaceNodePath(key string) string {
-	return path.Join(dataspaceNamespace, key)
+func distributionNodePath(key string) string {
+	return path.Join(distributionNamespace, key)
 }
 
-func tableNodePath(key string) string {
-	return path.Join(tableNamespace, key)
+func relationMappingNodePath(key string) string {
+	return path.Join(relationMappingNamespace, key)
 }
 
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
-}
-
-// ==============================================================================
-//                               SHARDING RULES
-// ==============================================================================
-
-// TODO : unit tests
-func (q *EtcdQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
-	spqrlog.Zero.Debug().
-		Str("id", rule.ID).
-		Str("table", rule.TableName).
-		Str("column", rule.Entries[0].Column).
-		Msg("etcdqdb: add sharding rule")
-
-	rawShardingRule, err := json.Marshal(rule)
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().Msg("etcdqdb: send req to qdb")
-	resp, err := q.cli.Put(ctx, shardingRuleNodePath(rule.ID), string(rawShardingRule))
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: put sharding rule to qdb")
-
-	return err
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) DropShardingRule(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().
-		Str("id", id).
-		Msg("etcdqdb: drop sharding rule")
-
-	resp, err := q.cli.Delete(ctx, shardingRuleNodePath(id))
-	if err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: drop sharding rule")
-
-	return nil
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: drop all sharding rules")
-
-	resp, err := q.cli.Delete(ctx, shardingRulesNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: put sharding rule to qdb")
-
-	return nil, nil
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
-	spqrlog.Zero.Debug().
-		Str("id", id).
-		Msg("etcdqdb: get sharding rule")
-
-	resp, err := q.cli.Get(ctx, shardingRuleNodePath(id), clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	switch len(resp.Kvs) {
-	case 0:
-		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "sharding rule %v already present in qdb", id)
-	case 1:
-		var rule ShardingRule
-		if err := json.Unmarshal(resp.Kvs[0].Value, &rule); err != nil {
-			return nil, err
-		}
-		spqrlog.Zero.Debug().
-			Interface("response", resp).
-			Msg("etcdqdb: get sharding rule")
-
-		return &rule, nil
-	default:
-		return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much sharding rules matched: %d", len(resp.Kvs))
-	}
-
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
-		Msg("etcdqdb: list sharding rules")
-
-	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	rules := make([]*ShardingRule, 0, len(resp.Kvs))
-
-	for _, kv := range resp.Kvs {
-		// XXX: multi-column routing schemas
-		// A sharding rule currently supports only one column
-		var rule *ShardingRule
-		if err := json.Unmarshal(kv.Value, &rule); err != nil {
-			return nil, err
-		}
-		if rule.DataspaceId == dataspace {
-			rules = append(rules, rule)
-		}
-	}
-
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Str("dataspace", dataspace).
-		Msg("etcdqdb: list sharding rules")
-
-	return rules, nil
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list all sharding rules")
-
-	resp, err := q.cli.Get(ctx, shardingRulesNamespace, clientv3.WithPrefix())
-	if err != nil {
-		return nil, err
-	}
-
-	rules := make([]*ShardingRule, 0, len(resp.Kvs))
-
-	for _, kv := range resp.Kvs {
-		// XXX: multi-column routing schemas
-		// A sharding rule currently supports only one column
-		var rule *ShardingRule
-		if err := json.Unmarshal(kv.Value, &rule); err != nil {
-			return nil, err
-		}
-		rules = append(rules, rule)
-	}
-
-	sort.Slice(rules, func(i, j int) bool {
-		return rules[i].ID < rules[j].ID
-	})
-
-	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: list all sharding rules")
-
-	return rules, nil
 }
 
 // ==============================================================================
@@ -264,9 +97,8 @@ func (q *EtcdQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, er
 func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
-		Str("dataspace-id", keyRange.DataspaceId).
+		Str("distribution-id", keyRange.DistributionId).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -305,7 +137,7 @@ func (q *EtcdQDB) fetchKeyRange(ctx context.Context, nodePath string) (*KeyRange
 		return &ret, nil
 
 	default:
-		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range with id %v", nodePath)
+		return nil, spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to fetch key range at %v", nodePath)
 	}
 }
 
@@ -327,9 +159,8 @@ func (q *EtcdQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 func (q *EtcdQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
-		Bytes("upper-bound", keyRange.UpperBound).
 		Str("shard-id", keyRange.ShardID).
-		Str("dataspace-id", keyRange.KeyRangeID).
+		Str("distribution-id", keyRange.KeyRangeID).
 		Str("key-range-id", keyRange.KeyRangeID).
 		Msg("etcdqdb: add key range")
 
@@ -381,15 +212,9 @@ func (q *EtcdQDB) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-// TODO : implement
-func (q *EtcdQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
-	return nil
-}
-
-// TODO : unit tests
-func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error) {
+func (q *EtcdQDB) ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
 
 	resp, err := q.cli.Get(ctx, keyRangesNamespace, clientv3.WithPrefix())
@@ -405,7 +230,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 			return nil, err
 		}
 
-		if dataspace == kr.DataspaceId {
+		if distribution == kr.DistributionId {
 			keyRanges = append(keyRanges, kr)
 		}
 	}
@@ -416,7 +241,7 @@ func (q *EtcdQDB) ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRa
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Str("dataspace", dataspace).
+		Str("distribution", distribution).
 		Msg("etcdqdb: list key ranges")
 
 	return keyRanges, nil
@@ -809,7 +634,7 @@ func (q *EtcdQDB) OpenRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
@@ -862,7 +687,7 @@ func (q *EtcdQDB) CloseRouter(ctx context.Context, id string) error {
 		return err
 	}
 	if len(getResp.Kvs) == 0 {
-		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exists", id)
+		return spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "router with id %s does not exist", id)
 	}
 
 	var routers []*Router
@@ -1011,42 +836,56 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return shardInfo, nil
 }
 
+// TODO : unit tests
+func (q *EtcdQDB) DropShard(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().
+		Str("id", id).
+		Msg("etcdqdb: drop shard")
+
+	nodePath := shardNodePath(id)
+	_, err := q.cli.Delete(ctx, nodePath)
+	return err
+}
+
 // ==============================================================================
-//                                  DATASPACES
+//                                  DISTRIBUTIONS
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
+func (q *EtcdQDB) CreateDistribution(ctx context.Context, distribution *Distribution) error {
 	spqrlog.Zero.Debug().
-		Str("id", dataspace.ID).
-		Msg("etcdqdb: add dataspace")
+		Str("id", distribution.ID).
+		Msg("etcdqdb: add distribution")
 
-	resp, err := q.cli.Put(ctx, dataspaceNodePath(dataspace.ID), dataspace.ID)
+	distrJson, err := json.Marshal(distribution)
+	if err != nil {
+		return err
+	}
+	resp, err := q.cli.Put(ctx, distributionNodePath(distribution.ID), string(distrJson))
 	if err != nil {
 		return err
 	}
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: add dataspace")
+		Msg("etcdqdb: add distribution")
 
 	return nil
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("etcdqdb: list dataspaces")
+func (q *EtcdQDB) ListDistributions(ctx context.Context) ([]*Distribution, error) {
+	spqrlog.Zero.Debug().Msg("etcdqdb: list distributions")
 
-	resp, err := q.cli.Get(ctx, dataspaceNamespace, clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, distributionNamespace, clientv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make([]*Dataspace, 0, len(resp.Kvs)+1)
-	rules = append(rules, &Dataspace{ID: "default"})
+	rules := make([]*Distribution, 0, len(resp.Kvs))
 
 	for _, kv := range resp.Kvs {
-		var rule *Dataspace
+		var rule *Distribution
 		err := json.Unmarshal(kv.Value, &rule)
 		if err != nil {
 			return nil, err
@@ -1061,61 +900,159 @@ func (q *EtcdQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list dataspaces")
+		Msg("etcdqdb: list distributions")
 	return rules, nil
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) DropDataspace(ctx context.Context, id string) error {
+func (q *EtcdQDB) DropDistribution(ctx context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("id", id).
-		Msg("etcdqdb: drop dataspace")
+		Msg("etcdqdb: drop distribution")
 
-	resp, err := q.cli.Delete(ctx, dataspaceNodePath(id))
+	resp, err := q.cli.Get(ctx, distributionNodePath(id), clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
 
+	switch len(resp.Kvs) {
+	case 0:
+		return spqrerror.New(spqrerror.SPQR_SHARDING_RULE_ERROR, "no such distribution present in qdb")
+	case 1:
+
+		var distrib *Distribution
+		if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
+			return err
+		}
+
+		resp, err := q.cli.Delete(ctx, distributionNodePath(id))
+
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("etcdqdb: drop distribution")
+
+		if err != nil {
+			return err
+		}
+
+		for _, r := range distrib.Relations {
+			_, err := q.cli.Delete(ctx, relationMappingNodePath(r.Name))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	default:
+		return spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "too much distributions matched: %d", len(resp.Kvs))
+	}
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error {
 	spqrlog.Zero.Debug().
-		Interface("response", resp).
-		Msg("etcdqdb: drop dataspace")
+		Str("id", id).
+		Msg("etcdqdb: attach table to distribution")
+
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range rels {
+		if _, ok := distribution.Relations[rel.Name]; ok {
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+		}
+		distribution.Relations[rel.Name] = rel
+
+		_, err := q.GetRelationDistribution(ctx, rel.Name)
+		switch e := err.(type) {
+		case *spqrerror.SpqrError:
+			if e.ErrorCode != spqrerror.SPQR_NO_DISTRIBUTION {
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+			}
+		default:
+			return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", rel.Name)
+		}
+
+		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
+		spqrlog.Zero.Debug().
+			Interface("responce", resp).
+			Msg("etcdqdb: attach table to distribution")
+		if err != nil {
+			return err
+		}
+	}
+
+	err = q.CreateDistribution(ctx, distribution)
 
 	return err
 }
 
-// TODO : unit tests
-func (q *EtcdQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
+// TODO: unit tests
+func (q *EtcdQDB) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	spqrlog.Zero.Debug().
-		Str("table", table).
 		Str("id", id).
-		Msg("etcdqdb: attach table to dataspace")
+		Msg("etcdqdb: detach table from distribution")
 
-	resp, err := q.cli.Put(ctx, tableNodePath(table), id)
+	distribution, err := q.GetDistribution(ctx, id)
+	if err != nil {
+		return err
+	}
 
-	spqrlog.Zero.Debug().
-		Interface("responce", resp).
-		Msg("etcdqdb: attach table to dataspace")
+	delete(distribution.Relations, relName)
+	if err = q.CreateDistribution(ctx, distribution); err != nil {
+		return err
+	}
 
+	_, err = q.cli.Delete(ctx, relationMappingNodePath(relName))
 	return err
 }
 
 // TODO : unit tests
-func (q *EtcdQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
+func (q *EtcdQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().
-		Str("table", table).
-		Msg("etcdqdb: get dataspace for table")
+		Str("id", id).
+		Msg("etcdqdb: get distribution by id")
 
-	resp, err := q.cli.Get(ctx, tableNodePath(table))
-
-	if len(resp.Kvs) == 0 {
-		return &Dataspace{ID: "default"}, err
+	resp, err := q.cli.Get(ctx, distributionNodePath(id))
+	if err != nil {
+		return nil, err
 	}
 
-	id := string(resp.Kvs[0].Value)
-	resp, err = q.cli.Get(ctx, dataspaceNodePath(id))
-
 	if len(resp.Kvs) == 0 {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", id)
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
 	}
 
-	return &Dataspace{ID: id}, err
+	var distrib *Distribution
+	if err := json.Unmarshal(resp.Kvs[0].Value, &distrib); err != nil {
+		return nil, err
+	}
+
+	return distrib, nil
+}
+
+// TODO : unit tests
+func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (*Distribution, error) {
+	spqrlog.Zero.Debug().
+		Str("relation", relName).
+		Msg("etcdqdb: get distribution for relation")
+
+	resp, err := q.cli.Get(ctx, relationMappingNodePath(relName))
+	if err != nil {
+		return nil, err
+	}
+	switch len(resp.Kvs) {
+	case 0:
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relName)
+
+	case 1:
+		id := string(resp.Kvs[0].Value)
+		return q.GetDistribution(ctx, id)
+	default:
+		// metadata corruption
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
+	}
 }
 
 // ==============================================================================
@@ -1178,7 +1115,7 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
-		Msg("etcdqdb: get sharding rule")
+		Msg("etcdqdb: update key range")
 
 	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
 	if err != nil {

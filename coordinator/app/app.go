@@ -66,24 +66,27 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 
 	lwg.Add(len(listen))
 
-	for _, addr := range listen {
-		go func(addr string) {
+	for _, l := range listen {
+		go func(address string) {
 			defer lwg.Done()
-			spqrlog.Zero.Info().Str("address", addr).Msg("serve psql")
 
-			listener, err := net.Listen("tcp", addr)
-
+			listener, err := net.Listen("tcp", address)
 			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("error trying to bind psql")
+				spqrlog.Zero.Error().
+					Err(err).
+					Msg("error serve coordinator console")
 				return
 			}
+			spqrlog.Zero.Info().
+				Str("address", address).
+				Msg("serve coordinator console")
 
 			for {
 				conn, err := listener.Accept()
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = app.coordinator.ProcClient(context.TODO(), conn)
 			}
-		}(addr)
+		}(l)
 	}
 	lwg.Wait()
 	return nil
@@ -95,27 +98,31 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	serv := grpc.NewServer()
 	reflection.Register(serv)
 
-	krserv := provider.NewKeyRangeService(app.coordinator)
-	rrserv := provider.NewRouterService(app.coordinator)
-	toposerv := provider.NewTopologyService(app.coordinator)
+	krServ := provider.NewKeyRangeService(app.coordinator)
+	rrServ := provider.NewRouterService(app.coordinator)
+	topServ := provider.NewTopologyService(app.coordinator)
 	shardingRulesServ := provider.NewShardingRulesServer(app.coordinator)
 	shardServ := provider.NewShardServer(app.coordinator)
-
-	protos.RegisterKeyRangeServiceServer(serv, krserv)
-	protos.RegisterRouterServiceServer(serv, rrserv)
-	protos.RegisterTopologyServiceServer(serv, toposerv)
+	dsServ := provider.NewDistributionServer(app.coordinator)
+	protos.RegisterKeyRangeServiceServer(serv, krServ)
+	protos.RegisterRouterServiceServer(serv, rrServ)
+	protos.RegisterTopologyServiceServer(serv, topServ)
 	protos.RegisterShardingRulesServiceServer(serv, shardingRulesServ)
 	protos.RegisterShardServiceServer(serv, shardServ)
+	protos.RegisterDistributionServiceServer(serv, dsServ)
 
-	httpAddr := config.CoordinatorConfig().Host
-
-	spqrlog.Zero.Info().
-		Str("address", httpAddr).
-		Msg("serve grpc coordinator service")
-
-	listener, err := net.Listen("tcp", httpAddr)
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("error serve grpc coordinator service")
 		return err
 	}
+
+	spqrlog.Zero.Info().
+		Str("address", address).
+		Msg("serve grpc coordinator service")
+
 	return serv.Serve(listener)
 }

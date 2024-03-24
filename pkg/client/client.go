@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
 type Pmgr interface {
@@ -33,7 +34,7 @@ type Client interface {
 	ReplyErrMsg(e string, c string) error
 	ReplyErrMsgByCode(code string) error
 	ReplyErr(errmsg error) error
-	ReplyRFQ() error
+	ReplyRFQ(txstatus txstatus.TXStatus) error
 	ReplyNotice(message string) error
 	ReplyDebugNotice(msg string) error
 	ReplyDebugNoticef(fmt string, args ...interface{}) error

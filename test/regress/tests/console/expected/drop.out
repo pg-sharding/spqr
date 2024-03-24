@@ -1,79 +1,48 @@
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
- created key range from 1 to 10
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh1;
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
- created key range from 11 to 20
-(1 row)
-
-ADD SHARDING RULE rule1 COLUMNS id;
-                                      add sharding rule                                       
-----------------------------------------------------------------------------------------------
- created sharding rule rule1 for table (*) with columns [id, hash: x->x] in default dataspace
-(1 row)
-
-ADD SHARDING RULE rule2 COLUMNS idx;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule rule2 for table (*) with columns [idx, hash: x->x] in default dataspace
-(1 row)
-
-ADD SHARDING RULE rule3 COLUMNS idy;
-                                       add sharding rule                                       
------------------------------------------------------------------------------------------------
- created sharding rule rule3 for table (*) with columns [idy, hash: x->x] in default dataspace
+ created key range with bound 11
 (1 row)
 
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
---------------+----------+--------------+-------------+-------------
- krid1        | sh1      | default      | 1           | 10
- krid2        | sh1      | default      | 11          | 20
+ Key range ID | Shard ID | Distribution ID | Lower bound 
+--------------+----------+-----------------+-------------
+ krid1        | sh1      | ds1             | 1
+ krid2        | sh1      | ds1             | 11
 (2 rows)
-
-SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
-------------------+--------------+------------+---------+---------------
- rule1            | default      | *          | id      | x->x
- rule2            | default      | *          | idx     | x->x
- rule3            | default      | *          | idy     | x->x
-(3 rows)
 
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
 
-DROP SHARDING RULE wrong;
-     drop sharding rule      
------------------------------
- dropped sharding rule wrong
-(1 row)
-
-DROP SHARDING RULE ALL;
-           drop sharding rule            
------------------------------------------
- dropped sharding rule rule1,rule2,rule3
-(1 row)
-
 SHOW key_ranges;
- Key range ID | Shard ID | Dataspace ID | Lower bound | Upper bound 
---------------+----------+--------------+-------------+-------------
+ Key range ID | Shard ID | Distribution ID | Lower bound 
+--------------+----------+-----------------+-------------
 (0 rows)
 
-SHOW sharding_rules;
- Sharding Rule ID | Dataspace ID | Table Name | Columns | Hash Function 
-------------------+--------------+------------+---------+---------------
-(0 rows)
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
 

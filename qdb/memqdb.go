@@ -3,10 +3,12 @@ package qdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"fmt"
 	"os"
 	"sort"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -17,36 +19,34 @@ type MemQDB struct {
 	mu           sync.RWMutex
 	muDeletedKrs sync.RWMutex
 
-	deletedKrs     map[string]bool
-	Locks          map[string]*sync.RWMutex            `json:"locks"`
-	Freq           map[string]bool                     `json:"freq"`
-	Krs            map[string]*KeyRange                `json:"krs"`
-	Shards         map[string]*Shard                   `json:"shards"`
-	Shrules        map[string]*ShardingRule            `json:"shrules"`
-	Dataspaces     map[string]*Dataspace               `json:"dataspaces"`
-	TableDataspace map[string]string                   `json:"table_dataspace"`
-	Routers        map[string]*Router                  `json:"routers"`
-	Transactions   map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator    string                              `json:"coordinator"`
+	deletedKrs           map[string]bool
+	Locks                map[string]*sync.RWMutex            `json:"locks"`
+	Freq                 map[string]bool                     `json:"freq"`
+	Krs                  map[string]*KeyRange                `json:"krs"`
+	Shards               map[string]*Shard                   `json:"shards"`
+	Distributions        map[string]*Distribution            `json:"distributions"`
+	RelationDistribution map[string]string                   `json:"relation_distribution"`
+	Routers              map[string]*Router                  `json:"routers"`
+	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
+	Coordinator          string                              `json:"coordinator"`
 
 	backupPath string
 	/* caches */
 }
 
-var _ QDB = &MemQDB{}
+var _ XQDB = &MemQDB{}
 
 func NewMemQDB(backupPath string) (*MemQDB, error) {
 	return &MemQDB{
-		Freq:           map[string]bool{},
-		Krs:            map[string]*KeyRange{},
-		Locks:          map[string]*sync.RWMutex{},
-		Shards:         map[string]*Shard{},
-		Shrules:        map[string]*ShardingRule{},
-		Dataspaces:     map[string]*Dataspace{},
-		TableDataspace: map[string]string{},
-		Routers:        map[string]*Router{},
-		Transactions:   map[string]*DataTransferTransaction{},
-		deletedKrs:     map[string]bool{},
+		Freq:                 map[string]bool{},
+		Krs:                  map[string]*KeyRange{},
+		Locks:                map[string]*sync.RWMutex{},
+		Shards:               map[string]*Shard{},
+		Distributions:        map[string]*Distribution{},
+		RelationDistribution: map[string]string{},
+		Routers:              map[string]*Router{},
+		Transactions:         map[string]*DataTransferTransaction{},
+		deletedKrs:           map[string]bool{},
 
 		backupPath: backupPath,
 	}, nil
@@ -122,108 +122,6 @@ func (q *MemQDB) DumpState() error {
 }
 
 // ==============================================================================
-//                               SHARDING RULES
-// ==============================================================================
-
-// TODO : unit tests
-func (q *MemQDB) AddShardingRule(ctx context.Context, rule *ShardingRule) error {
-	spqrlog.Zero.Debug().Interface("rule", rule).Msg("memqdb: add sharding rule")
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Shrules, rule.ID, rule))
-}
-
-// TODO : unit tests
-func (q *MemQDB) DropShardingRule(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: drop sharding rule")
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Shrules, id))
-}
-
-// TODO : unit tests
-func (q *MemQDB) DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: drop sharding rule all")
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	var ret []*ShardingRule
-	for _, v := range q.Shrules {
-		ret = append(ret, v)
-	}
-
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID < ret[j].ID
-	})
-
-	err := ExecuteCommands(q.DumpState, NewDropCommand(q.Shrules))
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-// TODO : unit tests
-func (q *MemQDB) GetShardingRule(ctx context.Context, id string) (*ShardingRule, error) {
-	spqrlog.Zero.Debug().Str("rule", id).Msg("memqdb: get sharding rule")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	rule, ok := q.Shrules[id]
-	if ok {
-		return rule, nil
-	}
-	return nil, spqrerror.Newf(spqrerror.SPQR_SHARDING_RULE_ERROR, "rule with id %s not found", id)
-}
-
-// TODO : unit tests
-func (q *MemQDB) ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
-		Msg("memqdb: list sharding rules")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	var ret []*ShardingRule
-	for _, v := range q.Shrules {
-		if dataspace == v.DataspaceId {
-			ret = append(ret, v)
-		}
-	}
-
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID < ret[j].ID
-	})
-
-	return ret, nil
-}
-
-// TODO : unit tests
-func (q *MemQDB) ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list all sharding rules")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	var ret []*ShardingRule
-	for _, v := range q.Shrules {
-		ret = append(ret, v)
-	}
-
-	sort.Slice(ret, func(i, j int) bool {
-		return ret[i].ID < ret[j].ID
-	})
-
-	return ret, nil
-}
-
-// TODO : unit tests
-func (q *MemQDB) MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error {
-	spqrlog.Zero.Debug().Msg("memqdb: match sharding rules")
-	q.mu.RLock()
-	defer q.mu.RUnlock()
-	return m(q.Shrules)
-}
-
-// ==============================================================================
 //                                 KEY RANGES
 // ==============================================================================
 
@@ -232,6 +130,12 @@ func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
+	if len(keyRange.DistributionId) > 0 && keyRange.DistributionId != "default" {
+		if _, ok := q.Distributions[keyRange.DistributionId]; !ok {
+			return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, fmt.Sprintf("no such distribution %s", keyRange.DistributionId))
+		}
+	}
 
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Krs, keyRange.KeyRangeID, keyRange),
 		NewUpdateCommand(q.Locks, keyRange.KeyRangeID, &sync.RWMutex{}),
@@ -346,9 +250,9 @@ func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange, error) {
+func (q *MemQDB) ListKeyRanges(_ context.Context, distribution string) ([]*KeyRange, error) {
 	spqrlog.Zero.Debug().
-		Str("dataspace", dataspace).
+		Str("distribution", distribution).
 		Msg("memqdb: list key ranges")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -356,7 +260,7 @@ func (q *MemQDB) ListKeyRanges(_ context.Context, dataspace string) ([]*KeyRange
 	var ret []*KeyRange
 
 	for _, el := range q.Krs {
-		if el.DataspaceId == dataspace {
+		if el.DistributionId == distribution {
 			ret = append(ret, el)
 		}
 	}
@@ -669,27 +573,41 @@ func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "unknown shard %s", id)
 }
 
-// ==============================================================================
-//                                 DATASPACES
-// ==============================================================================
-
 // TODO : unit tests
-func (q *MemQDB) AddDataspace(ctx context.Context, dataspace *Dataspace) error {
-	spqrlog.Zero.Debug().Interface("dataspace", dataspace).Msg("memqdb: add dataspace")
+func (q *MemQDB) DropShard(_ context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: drop shard")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Dataspaces, dataspace.ID, dataspace))
+	delete(q.Shards, id)
+	return nil
+}
+
+// ==============================================================================
+//                                 DISTRIBUTIONS
+// ==============================================================================
+
+// TODO : unit tests
+func (q *MemQDB) CreateDistribution(ctx context.Context, distribution *Distribution) error {
+	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	for _, r := range distribution.Relations {
+		q.RelationDistribution[r.Name] = distribution.ID
+		_ = ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, distribution.ID))
+	}
+
+	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, distribution.ID, distribution))
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: list dataspaces")
+func (q *MemQDB) ListDistributions(ctx context.Context) ([]*Distribution, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: list distributions")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	var ret []*Dataspace
-	ret = append(ret, &Dataspace{ID: "default"})
-	for _, v := range q.Dataspaces {
+	var ret []*Distribution
+	for _, v := range q.Distributions {
 		ret = append(ret, v)
 	}
 
@@ -701,36 +619,97 @@ func (q *MemQDB) ListDataspaces(ctx context.Context) ([]*Dataspace, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropDataspace(ctx context.Context, id string) error {
-	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: delete dataspace")
+func (q *MemQDB) DropDistribution(ctx context.Context, id string) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: delete distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Dataspaces, id))
+	if _, ok := q.Distributions[id]; !ok {
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+	}
+
+	for t, ds := range q.RelationDistribution {
+		if ds == id {
+			if err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, t)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Distributions, id))
 }
 
 // TODO : unit tests
-func (q *MemQDB) AttachToDataspace(ctx context.Context, table string, id string) error {
-	spqrlog.Zero.Debug().Str("dataspace", id).Msg("memqdb: attach table to dataspace")
+func (q *MemQDB) AlterDistributionAttach(_ context.Context, id string, rels []*DistributedRelation) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.TableDataspace, table, id))
+	if ds, ok := q.Distributions[id]; !ok {
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "no such distribution")
+	} else {
+		for _, r := range rels {
+			if _, ok := q.RelationDistribution[r.Name]; ok {
+				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "relation \"%s\" is already attached", r.Name)
+			}
+
+			ds.Relations[r.Name] = &DistributedRelation{
+				Name:            r.Name,
+				DistributionKey: r.DistributionKey,
+			}
+			q.RelationDistribution[r.Name] = id
+			if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.RelationDistribution, r.Name, id)); err != nil {
+				return err
+			}
+		}
+
+		return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds))
+	}
+}
+
+// TODO: unit tests
+func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: attach table to distribution")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	ds, ok := q.Distributions[id]
+	if !ok {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
+	}
+	delete(ds.Relations, relName)
+	if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Distributions, id, ds)); err != nil {
+		return err
+	}
+
+	err := ExecuteCommands(q.DumpState, NewDeleteCommand(q.RelationDistribution, relName))
+	return err
 }
 
 // TODO : unit tests
-func (q *MemQDB) GetDataspace(ctx context.Context, table string) (*Dataspace, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get dataspace for table")
+func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get distribution")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if _, ok := q.TableDataspace[table]; !ok {
-		return &Dataspace{ID: "default"}, nil
-	}
-
-	if dataspace, ok := q.Dataspaces[q.TableDataspace[table]]; ok {
-		return dataspace, nil
+	if ds, ok := q.Distributions[id]; !ok {
+		// DEPRECATE this
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution \"%s\" not found", id)
 	} else {
-		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASPACE, "dataspace with id \"%s\" not found", q.TableDataspace[table])
+		return ds, nil
+	}
+}
+
+func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*Distribution, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get distribution for table")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if ds, ok := q.RelationDistribution[relation]; !ok {
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DISTRIBUTION, "distribution for relation \"%s\" not found", relation)
+	} else {
+		// if there is no distr by key ds
+		// then we have corruption
+		return q.Distributions[ds], nil
 	}
 }

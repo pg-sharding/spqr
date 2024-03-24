@@ -1,33 +1,39 @@
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE SHARDING RULE r1 COLUMN id;
-                                     add sharding rule                                     
--------------------------------------------------------------------------------------------
- created sharding rule r1 for table (*) with columns [id, hash: x->x] in default dataspace
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-CREATE SHARDING RULE r2 COLUMN w_id;
-                                      add sharding rule                                      
----------------------------------------------------------------------------------------------
- created sharding rule r2 for table (*) with columns [w_id, hash: x->x] in default dataspace
-(1 row)
-
-CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
- created key range from 0 to 11
+ created key range with bound 0
 (1 row)
 
-CREATE KEY RANGE kridi2 from 11 to 31 route to sh2;
+CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
           add key range          
 ---------------------------------
- created key range from 11 to 31
+ created key range with bound 11
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
+                attach table                 
+---------------------------------------------
+ attached relation xjoin to distribution ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
+                attach table                 
+---------------------------------------------
+ attached relation yjoin to distribution ds1
 (1 row)
 
 \c regress
@@ -63,28 +69,40 @@ NOTICE: send query to shard(s) : sh1,sh2
 
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
+NOTICE: send query to shard(s) : sh2
+ id | w_id 
+----+------
+ 15 |   15
+(1 row)
+
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;': too complex query to parse, tx status IDLE
+NOTICE: send query to shard(s) : sh1,sh2
+ id | w_id 
+----+------
+ 15 |   15
+(1 row)
+
 DROP TABLE xjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE yjoin;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
+
 DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
-
-DROP SHARDING RULE ALL;
-     drop sharding rule      
------------------------------
- dropped sharding rule r1,r2
-(1 row)
 

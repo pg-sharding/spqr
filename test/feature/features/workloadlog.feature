@@ -26,10 +26,11 @@ Feature: Check WorkloadLog working
         Given cluster is up and running
         When I run SQL on host "router-admin"
         """
-        ADD SHARDING RULE r1 COLUMNS w_id;
-        ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-        ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
-        START TRACE ALL MESSAGES
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
+        START TRACE ALL MESSAGES;
         """ 
         Then command return code should be "0"
         When I run SQL on host "router"
@@ -53,9 +54,10 @@ Feature: Check WorkloadLog working
         Given cluster is up and running
         When I run SQL on host "router-admin"
         """
-        ADD SHARDING RULE r1 COLUMNS w_id;
-        ADD KEY RANGE krid1 FROM 1 TO 10 ROUTE TO sh1;
-        ADD KEY RANGE krid2 FROM 11 TO 20 ROUTE TO sh2;
+        CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+        ADD KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+        ADD KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+        ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
         START TRACE ALL MESSAGES
         """ 
         Then command return code should be "0"

@@ -19,7 +19,7 @@ jobs:
      steps:
 
      - name: Check out code
-       uses: actions/checkout@v2
+       uses: actions/checkout@v4
 
      - name: unit tests
        run: make unittest
@@ -30,7 +30,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: stress tests
         run: make stress
@@ -40,7 +40,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: regress tests
         run: |
@@ -55,7 +55,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         run: make gorm_regress
@@ -66,7 +66,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         run: make xproto_regress
@@ -81,14 +81,14 @@ jobs:
         run: docker --version
 
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - id: step1
         run: |
           make split_feature_test
-          array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk 'NR!=1 {printf $0"\n"}' | python3 .github/scenario_balancer.py)
+          array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk '{printf $0"\n"}' | python3 .github/scenario_balancer.py)
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
       - name: Archive production artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: generated_tests
           path: |
@@ -104,7 +104,7 @@ jobs:
       #  use cache to pass docker images to the test jobs
       - name: Docker shard image caching
         id: cache-shard-image
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}
@@ -135,7 +135,7 @@ jobs:
       - name: Check Docker Version
         run: docker --version
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Update env
         run: |
@@ -145,7 +145,7 @@ jobs:
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
 
       - name: Download generatedFeatures
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: generated_tests
           path: ./test/feature/generatedFeatures
@@ -153,7 +153,7 @@ jobs:
       # load docker images
       - name: Load shard image
         id: cache-shard-image
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ${{ env.CACHE_FILE_SHARD }}

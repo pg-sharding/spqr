@@ -1,0 +1,23 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE SHARDING RULE shrid1 COLUMNS id FOR DISTRIBUTION ds1;
+ERROR:  sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md.
+SHOW sharding_rules;
+ERROR:  sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md.
+DROP SHARDING RULE ALL;
+ERROR:  sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md.
+DROP DISTRIBUTION ALL CASCADE;
+ drop distribution 
+-------------------
+(0 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

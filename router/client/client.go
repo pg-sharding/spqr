@@ -6,9 +6,10 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -64,7 +65,8 @@ type RouterClient interface {
 	CancelMsg() *pgproto3.CancelRequest
 
 	ReplyParseComplete() error
-	ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error
+	ReplyBindComplete() error
+	ReplyCommandComplete(commandTag string) error
 
 	GetCancelPid() uint32
 	GetCancelKey() uint32
@@ -107,13 +109,23 @@ type PsqlClient struct {
 
 	bindParams [][]byte
 
+	paramCodes []int16
+
 	rh routehint.RouteHint
 
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
 
-	dataspaceChanged bool
+// BindParamFormatCodes implements RouterClient.
+func (cl *PsqlClient) BindParamFormatCodes() []int16 {
+	return cl.paramCodes
+}
+
+// SetParamFormatCodes implements RouterClient.
+func (cl *PsqlClient) SetParamFormatCodes(paramCodes []int16) {
+	cl.paramCodes = paramCodes
 }
 
 // BindParams implements RouterClient.
@@ -124,25 +136,6 @@ func (cl *PsqlClient) BindParams() [][]byte {
 // SetBindParams implements RouterClient.
 func (cl *PsqlClient) SetBindParams(p [][]byte) {
 	cl.bindParams = p
-}
-
-// Dataspace implements RouterClient.
-func (cl *PsqlClient) Dataspace() string {
-	if val, ok := cl.internalParamSet[session.SPQR_DATASPACE]; ok {
-		return val
-	}
-	return DefaultDS
-}
-
-// SetDataspace implements RouterClient.
-func (cl *PsqlClient) SetDataspace(d string) {
-	cl.internalParamSet[session.SPQR_DATASPACE] = d
-	cl.dataspaceChanged = true
-}
-
-// DataspaceIsDefault implements RouterClient.
-func (cl *PsqlClient) DataspaceIsDefault() bool {
-	return !cl.dataspaceChanged
 }
 
 // SetShardingKey implements RouterClient.
@@ -194,7 +187,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	cl := &PsqlClient{
 		activeParamSet: make(map[string]string),
 		internalParamSet: map[string]string{
-			session.SPQR_DATASPACE:               "default",
+			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
 		conn:       pgconn,
@@ -239,7 +232,6 @@ func copymap(params map[string]string) map[string]string {
 }
 
 func (cl *PsqlClient) StartTx() {
-	spqrlog.Zero.Debug().Msg("start new params set")
 	cl.beginTxParamSet = copymap(cl.activeParamSet)
 	cl.savepointParamSet = nil
 	cl.savepointParamTxCnt = nil
@@ -415,31 +407,16 @@ func (cl *PsqlClient) Reply(msg string) error {
 	return nil
 }
 
-func (cl *PsqlClient) ReplyCommandComplete(st txstatus.TXStatus, commandTag string) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.CommandComplete{CommandTag: []byte(commandTag)},
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(st),
-		},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
+	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
 }
 
 func (cl *PsqlClient) ReplyParseComplete() error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.ParseComplete{},
-	} {
-		if err := cl.Send(msg); err != nil {
-			return err
-		}
-	}
+	return cl.Send(&pgproto3.ParseComplete{})
+}
 
-	return nil
+func (cl *PsqlClient) ReplyBindComplete() error {
+	return cl.Send(&pgproto3.BindComplete{})
 }
 
 func (cl *PsqlClient) Reset() error {
@@ -721,7 +698,6 @@ func (cl *PsqlClient) Auth(rt *route.Route) error {
 		Uint("client", cl.ID()).
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Str("ds", cl.Dataspace()).
 		Msg("client connection for rule accepted")
 
 	ps, err := rt.Params()
@@ -950,10 +926,10 @@ func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 	return cl.ReplyErrMsg(clerrmsg, code)
 }
 
-func (cl *PsqlClient) ReplyRFQ() error {
+func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXIDLE),
+			TxStatus: byte(txstatus),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -1011,16 +987,6 @@ func (f FakeClient) DB() string {
 	return DefaultDB
 }
 
-func (f FakeClient) Dataspace() string {
-	return DefaultDS
-}
-
-func (f FakeClient) DataspaceIsDefault() bool {
-	return true
-}
-
-func (c FakeClient) SetDS(_ string) {}
-
 func NewFakeClient() *FakeClient {
 	return &FakeClient{}
 }
@@ -1075,16 +1041,6 @@ func (c NoopClient) Usr() string {
 func (c NoopClient) DB() string {
 	return c.dbname
 }
-
-func (c NoopClient) Dataspace() string {
-	return c.dsname
-}
-
-func (c NoopClient) DataspaceIsDefault() bool {
-	return true
-}
-
-func (c NoopClient) SetDS(_ string) {}
 
 func (c NoopClient) RAddr() string {
 	return c.rAddr

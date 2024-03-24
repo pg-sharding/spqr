@@ -70,16 +70,16 @@ type DropStmt interface {
 	iDrop()
 }
 
-type DataspaceDefinition struct {
+type DistributionDefinition struct {
 	ID       string
 	ColTypes []string
 }
 
 type ShardingRuleDefinition struct {
-	ID        string
-	TableName string
-	Entries   []ShardingRuleEntry
-	Dataspace string
+	ID           string
+	TableName    string
+	Entries      []ShardingRuleEntry
+	Distribution string
 }
 
 type ShardingRuleEntry struct {
@@ -88,11 +88,10 @@ type ShardingRuleEntry struct {
 }
 
 type KeyRangeDefinition struct {
-	LowerBound []byte
-	UpperBound []byte
-	ShardID    string
-	KeyRangeID string
-	Dataspace  string
+	LowerBound   []byte
+	ShardID      string
+	KeyRangeID   string
+	Distribution string
 }
 
 type ShardDefinition struct {
@@ -102,7 +101,7 @@ type ShardDefinition struct {
 
 func (*KeyRangeDefinition) iCreate()     {}
 func (*ShardDefinition) iCreate()        {}
-func (*DataspaceDefinition) iCreate()    {}
+func (*DistributionDefinition) iCreate() {}
 func (*ShardingRuleDefinition) iCreate() {}
 
 type SplitKeyRange struct {
@@ -129,7 +128,11 @@ type ShardingRuleSelector struct {
 	ID string
 }
 
-type DataspaceSelector struct {
+type DistributionSelector struct {
+	ID string
+}
+
+type ShardSelector struct {
 	ID string
 }
 
@@ -139,7 +142,8 @@ func (*DropRoutersAll) iStatement() {}
 
 func (*KeyRangeSelector) iDrop()     {}
 func (*ShardingRuleSelector) iDrop() {}
-func (*DataspaceSelector) iDrop()    {}
+func (*DistributionSelector) iDrop() {}
+func (*ShardSelector) iDrop()        {}
 
 const (
 	EntityRouters      = "ROUTERS"
@@ -176,15 +180,61 @@ type UnregisterRouter struct {
 	ID string
 }
 
-type AttachTable struct {
-	Table     string
-	Dataspace *DataspaceSelector
+type AlterStmt interface {
+	iAlter()
 }
+
+type Alter struct {
+	Element Statement
+}
+
+func (*Alter) iStatement() {}
+
+type DistributionAlterStatement interface {
+	AlterStmt
+	iAlterDistribution()
+}
+
+type AlterDistribution struct {
+	Element Statement
+}
+
+func (*AlterDistribution) iStatement()         {}
+func (*AlterDistribution) iAlter()             {}
+func (*AlterDistribution) iAlterDistribution() {}
+
+type DistributionKeyEntry struct {
+	Column       string
+	HashFunction string
+}
+
+type DistributedRelation struct {
+	Name            string
+	DistributionKey []DistributionKeyEntry
+}
+
+type AttachRelation struct {
+	Distribution *DistributionSelector
+	Relations    []*DistributedRelation
+}
+
+func (*AttachRelation) iStatement()         {}
+func (*AttachRelation) iAlter()             {}
+func (*AttachRelation) iAlterDistribution() {}
+
+type DetachRelation struct {
+	Distribution *DistributionSelector
+	RelationName string
+}
+
+func (*DetachRelation) iStatement()         {}
+func (*DetachRelation) iAlter()             {}
+func (*DetachRelation) iAlterDistribution() {}
 
 // The frollowing constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
-	DataspacesStr         = "dataspaces"
+	DistributionsStr      = "distributions"
 	RoutersStr            = "routers"
 	ShardsStr             = "shards"
 	ShardingRules         = "sharding_rules"
@@ -194,6 +244,7 @@ const (
 	BackendConnectionsStr = "backend_connections"
 	StatusStr             = "status"
 	VersionStr            = "version"
+	RelationsStr          = "relations"
 	UnsupportedStr        = "unsupported"
 )
 
@@ -210,7 +261,8 @@ func (*Show) iStatement()                   {}
 func (*Set) iStatement()                    {}
 func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
-func (*DataspaceSelector) iStatement()      {}
+func (*DistributionSelector) iStatement()   {}
+func (*ShardSelector) iStatement()          {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
@@ -218,7 +270,7 @@ func (*Listen) iStatement()                 {}
 func (*MoveKeyRange) iStatement()           {}
 func (*SplitKeyRange) iStatement()          {}
 func (*UniteKeyRange) iStatement()          {}
-func (*DataspaceDefinition) iStatement()    {}
+func (*DistributionDefinition) iStatement() {}
 func (*ShardingRuleDefinition) iStatement() {}
 func (*KeyRangeDefinition) iStatement()     {}
 func (*ShardDefinition) iStatement()        {}
@@ -229,5 +281,3 @@ func (*WhereClauseOp) iStatement()          {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}
-
-func (*AttachTable) iStatement() {}

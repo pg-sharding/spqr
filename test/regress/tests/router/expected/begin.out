@@ -1,38 +1,33 @@
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP SHARDING RULE ALL;
-    drop sharding rule    
---------------------------
- dropped sharding rule t1
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
 (1 row)
 
-DROP KEY RANGE ALL;
- drop key range 
-----------------
-(0 rows)
-
-ADD SHARDING RULE t1 COLUMNS id;
-                                     add sharding rule                                     
--------------------------------------------------------------------------------------------
- created sharding rule t1 for table (*) with columns [id, hash: x->x] in default dataspace
-(1 row)
-
-ADD KEY RANGE krid1 FROM 1 TO 11 ROUTE TO sh1;
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
- created key range from 1 to 11
+ created key range with bound 1
 (1 row)
 
-ADD KEY RANGE krid2 FROM 11 TO 101 ROUTE TO sh2;
-          add key range           
-----------------------------------
- created key range from 11 to 101
+CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+          add key range          
+---------------------------------
+ created key range with bound 11
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION test_beg DISTRIBUTION KEY id;
+                  attach table                  
+------------------------------------------------
+ attached relation test_beg to distribution ds1
 (1 row)
 
 \c regress
@@ -196,16 +191,24 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
+DROP TABLE test_beg;
+NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
-		SQPR router admin console
+		SPQR router admin console
 	Here you can configure your routing rules
 ------------------------------------------------
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-DROP DATASPACE ALL CASCADE
- drop dataspace 
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution   
+-----------------------
+ drop distribution ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
 ----------------
 (0 rows)
 

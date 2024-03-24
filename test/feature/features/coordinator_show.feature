@@ -329,7 +329,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -343,7 +343,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -357,7 +357,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -371,7 +371,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -392,7 +392,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -406,7 +406,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -420,7 +420,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -434,7 +434,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -462,7 +462,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_1:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """
@@ -476,7 +476,7 @@ Feature: Coordinator show clients, pools and backend_connections
                 "pool host":"spqr_shard_2:6432",
                 "pool usr":"regress",
                 "queue residual size":"50",
-                "used connection count":"0"
+                "used connections":"0"
             }
         ]
         """

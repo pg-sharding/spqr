@@ -42,7 +42,7 @@ func randomHex(n int) (string, error) {
 	lock                   *Lock
 	unlock                 *Unlock
 
-	ds                     *DataspaceDefinition
+	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
 	shard                  *ShardDefinition
 	sharding_rule          *ShardingRuleDefinition
@@ -60,16 +60,23 @@ func randomHex(n int) (string, error) {
 	trace                  *TraceStmt
 	stoptrace              *StopTraceStmt
 
-	dataspace              *DataspaceDefinition
+	distribution           *DistributionDefinition
 
-	attach                 *AttachTable
+	alter                  *Alter
+	alter_distribution     *AlterDistribution
+	distributed_relation   *DistributedRelation
 	
+	relations              []*DistributedRelation
 	entrieslist            []ShardingRuleEntry
+	dEntrieslist 	       []DistributionKeyEntry
+
 	shruleEntry            ShardingRuleEntry
+
+	distrKeyEntry          DistributionKeyEntry
 
 	sharding_rule_selector *ShardingRuleSelector
 	key_range_selector     *KeyRangeSelector
-	dataspace_selector     *DataspaceSelector
+	distribution_selector  *DistributionSelector
 
     colref                 ColumnRef
     where                  WhereClauseNode
@@ -120,9 +127,9 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DATASPACE
-%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION
+%token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 
@@ -139,7 +146,7 @@ func randomHex(n int) (string, error) {
 
 %type<sharding_rule_selector> sharding_rule_stmt
 %type<key_range_selector> key_range_stmt
-%type<dataspace_selector> dataspace_select_stmt
+%type<distribution_selector> distribution_select_stmt
 
 %type <str> show_statement_type
 %type <str> kill_statement_type
@@ -153,24 +160,34 @@ func randomHex(n int) (string, error) {
 %type <trace> trace_stmt
 %type <stoptrace> stoptrace_stmt
 
-%type <attach> attach_stmt
-
-%type <ds> dataspace_define_stmt
+%type <ds> distribution_define_stmt
 %type <sharding_rule> sharding_rule_define_stmt
 %type <kr> key_range_define_stmt
 %type <shard> shard_define_stmt
 
 %type<entrieslist> sharding_rule_argument_list
+%type<dEntrieslist> distribution_key_argument_list
 %type<shruleEntry> sharding_rule_entry
+
+%type<distrKeyEntry> distribution_key_entry
 
 %type<str> sharding_rule_table_clause
 %type<str> sharding_rule_column_clause
-%type<str> sharding_rule_hash_function_clause
+%type<str> opt_hash_function_clause
 %type<str> hash_function_name
-%type<str> opt_dataspace
+%type<str> distribution_membership
 
-%type<strlist> col_types_list opt_col_types
+%type<alter> alter_stmt
+%type<alter_distribution> distribution_alter_stmt
+
+%type<relations> relation_attach_stmt
+%type<relations> distributed_relation_list_def
+
+%type<distributed_relation> distributed_relation_def
+
+%type<strlist> col_types_list opt_col_types hosts_list
 %type<str> col_types_elem
+%type<bool> opt_cascade
 
 
 %type <unlock> unlock_stmt
@@ -260,7 +277,7 @@ command:
 	{
 		setParseTree(yylex, $1)
 	}
-	| attach_stmt
+	| alter_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -347,7 +364,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr,BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DataspacesStr, VersionStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -364,6 +381,9 @@ kill_statement_type:
 			$$ = "unsupp"
 		}
 	}
+
+opt_cascade:
+	CASCADE { $$ = true } | {$$ = false}
 
 drop_stmt:
 	DROP key_range_stmt
@@ -382,26 +402,22 @@ drop_stmt:
 	{
 		$$ = &Drop{Element: &ShardingRuleSelector{ID: `*`}}
 	}
-	| DROP dataspace_select_stmt
+	| DROP distribution_select_stmt opt_cascade
 	{
-		$$ = &Drop{Element: $2, CascadeDelete: false}
+		$$ = &Drop{Element: $2, CascadeDelete: $3}
 	}
-	| DROP DATASPACE ALL
+	| DROP DISTRIBUTION ALL opt_cascade
 	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: false}
+		$$ = &Drop{Element: &DistributionSelector{ID: `*`}, CascadeDelete: $4}
 	}
-	| DROP dataspace_select_stmt CASCADE
+	| DROP SHARD any_id
 	{
-		$$ = &Drop{Element: $2, CascadeDelete: true}
-	}
-	| DROP DATASPACE ALL CASCADE
-	{
-		$$ = &Drop{Element: &DataspaceSelector{ID: `*`}, CascadeDelete: true}
+		$$ = &Drop{Element: &ShardSelector{ID: $3}}
 	}
 
 add_stmt:
 	// TODO: drop
-	ADD dataspace_define_stmt
+	ADD distribution_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -437,19 +453,78 @@ stoptrace_stmt:
 		$$ = &StopTraceStmt{}
 	}
 
-
-attach_stmt:
-	ATTACH TABLE any_id TO dataspace_select_stmt
+alter_stmt:
+	ALTER distribution_alter_stmt
 	{
-		$$ = &AttachTable{
-			Table: $3,
-			Dataspace: $5,
+		$$ = &Alter{Element: $2}
+	}
+
+distribution_alter_stmt:
+	distribution_select_stmt relation_attach_stmt
+	{
+		$$ = &AlterDistribution{
+			Element: &AttachRelation{
+				Distribution: $1,
+				Relations:     $2,
+			},
+		}
+	} |
+	distribution_select_stmt DETACH RELATION any_id
+	{
+		$$ = &AlterDistribution{
+			Element: &DetachRelation{
+				Distribution: $1,
+				RelationName: $4,
+			},
 		}
 	}
 
 
+distribution_key_argument_list: 
+    distribution_key_argument_list TCOMMA distribution_key_entry
+    {
+      $$ = append($1, $3)
+    } | distribution_key_entry {
+      $$ = []DistributionKeyEntry {
+		  $1,
+	  }
+    } 
+
+
+
+distribution_key_entry:
+	any_id opt_hash_function_clause
+	{
+		$$ = DistributionKeyEntry {
+			Column: $1,
+			HashFunction: $2,
+		}
+	}
+
+distributed_relation_def:
+	RELATION any_id DISTRIBUTION KEY distribution_key_argument_list
+	{
+		$$ = &DistributedRelation{
+			Name: 	 $2,
+			DistributionKey: $5,
+		}
+	}
+
+
+distributed_relation_list_def:
+	distributed_relation_def {
+		$$ = []*DistributedRelation{$1}
+	} | distributed_relation_list_def distributed_relation_def {
+		$$  = append($1, $2)
+	}
+
+relation_attach_stmt:
+	ATTACH distributed_relation_list_def {
+		$$ = $2
+	}
+
 create_stmt:
-	CREATE dataspace_define_stmt
+	CREATE distribution_define_stmt
 	{
 		$$ = &Create{Element: $2}
 	}
@@ -483,30 +558,21 @@ lock_stmt:
 	// or lock someting else
 
 
-dataspace_define_stmt:
-	DATASPACE any_id opt_col_types
+distribution_define_stmt:
+	DISTRIBUTION any_id opt_col_types
 	{
-		$$ = &DataspaceDefinition{
+		$$ = &DistributionDefinition{
 			ID: $2,
 			ColTypes: $3,
 		}
 	}
 
 opt_col_types:
-	SHARDING COLUMN TYPES col_types_list {
-		$$ = $4
+	COLUMN TYPES col_types_list {
+		$$ = $3
 	} | { 
 		/* empty column types should be prohibited */
 		$$ = nil 
-	}
-
-col_types_elem:
-	VARCHAR {
-		$$ = "varchar"
-	} | INTEGER {
-		$$ = "integer"
-	} | INT {
-		$$ = "integer"
 	}
 
 col_types_list:
@@ -518,19 +584,28 @@ col_types_list:
 		}
 	}
 
+col_types_elem:
+	VARCHAR {
+		$$ = "varchar"
+	} | INTEGER {
+		$$ = "integer"
+	} | INT {
+		$$ = "integer"
+	}
+
 sharding_rule_define_stmt:
-	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
+	SHARDING RULE any_id sharding_rule_table_clause sharding_rule_argument_list distribution_membership
 	{
-		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Dataspace: $6}
+		$$ = &ShardingRuleDefinition{ID: $3, TableName: $4, Entries: $5, Distribution: $6}
 	}
 	|
-	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list opt_dataspace
+	SHARDING RULE sharding_rule_table_clause sharding_rule_argument_list distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Dataspace: $5}
+		$$ = &ShardingRuleDefinition{ID:  "shrule"+str, TableName: $3, Entries: $4, Distribution: $5}
 	}
 
 sharding_rule_argument_list: sharding_rule_entry
@@ -545,7 +620,7 @@ sharding_rule_argument_list: sharding_rule_entry
     }
 
 sharding_rule_entry:
-	sharding_rule_column_clause sharding_rule_hash_function_clause
+	sharding_rule_column_clause opt_hash_function_clause
 	{
 		$$ = ShardingRuleEntry{
 			Column: $1,
@@ -575,68 +650,96 @@ sharding_rule_column_clause:
 hash_function_name:
 	IDENTITY {
 		$$ = "identity"
-	} | MURMUR HASH {
+	} | MURMUR {
 		$$ = "murmur"
-	} | CITY HASH {
+	} | CITY {
 		$$ = "city"
 	}
 
-sharding_rule_hash_function_clause:
+opt_hash_function_clause:
 	HASH FUNCTION hash_function_name
 	{
 		$$ = $3
+	} | /* EMPTY */ {
+		$$ = ""
 	}
-	| /*EMPTY*/ { $$ = ""; }
 
-opt_dataspace:
-    FOR DATASPACE any_id{
+distribution_membership:
+    FOR DISTRIBUTION any_id{
         $$ = $3
     }
-    | /* EMPTY */ { $$ = "default" }
-
 
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	KEY RANGE any_id FROM any_val ROUTE TO any_id distribution_membership
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte($5), UpperBound: []byte($7), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			KeyRangeID: $3,
+			LowerBound: []byte($5),
+			ShardID: $8,
+			Distribution: $9,
+		}
 	}
-	| KEY RANGE any_id FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	| KEY RANGE any_id FROM any_uint ROUTE TO any_id distribution_membership
 	{
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($5), 10)), UpperBound: []byte(strconv.FormatUint(uint64($7), 10)), ShardID: $10, KeyRangeID: $3, Dataspace: $11}
+		$$ = &KeyRangeDefinition{
+			KeyRangeID: $3,
+			LowerBound: []byte(strconv.FormatUint(uint64($5), 10)),
+			ShardID: $8,
+			Distribution: $9,
+		}
 	}
-	| KEY RANGE FROM any_val TO any_val ROUTE TO any_id opt_dataspace
+	| KEY RANGE FROM any_val ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte($4), UpperBound: []byte($6), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{
+			LowerBound: []byte($4),
+			Distribution: $6,
+			ShardID: $7,
+			KeyRangeID: "kr"+str,
+		}
 	}
-	| KEY RANGE FROM any_uint TO any_uint ROUTE TO any_id opt_dataspace
+	| KEY RANGE FROM any_uint ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &KeyRangeDefinition{LowerBound: []byte(strconv.FormatUint(uint64($4), 10)), UpperBound: []byte(strconv.FormatUint(uint64($6), 10)), ShardID: $9, KeyRangeID: "kr"+str, Dataspace: $10}
+		$$ = &KeyRangeDefinition{
+			LowerBound: []byte(strconv.FormatUint(uint64($4), 10)),
+			ShardID: $7,
+			KeyRangeID: "kr"+str,
+			Distribution: $8,
+		}
 	}
-
 
 shard_define_stmt:
-	SHARD any_id WITH HOST any_val
+	SHARD any_id WITH HOSTS hosts_list
 	{
-		$$ = &ShardDefinition{Id: $2, Hosts: []string{$5}}
+		$$ = &ShardDefinition{Id: $2, Hosts: $5}
 	}
 	|
-	SHARD WITH HOST any_val
+	SHARD WITH HOSTS hosts_list
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
-		$$ = &ShardDefinition{Id: "shard" + str, Hosts: []string{$4}}
+		$$ = &ShardDefinition{Id: "shard" + str, Hosts: $4}
 	}
 
+hosts_list:
+	any_val
+	{
+		$$ = []string{$1}
+	}
+	|
+	hosts_list TCOMMA any_val
+	{
+		$$ = append($1, $3)
+	} 
 
 unlock_stmt:
 	UNLOCK key_range_stmt
@@ -656,10 +759,10 @@ key_range_stmt:
 		$$ = &KeyRangeSelector{KeyRangeID: $3}
 	}
 
-dataspace_select_stmt:
-	DATASPACE any_id
+distribution_select_stmt:
+	DISTRIBUTION any_id
 	{
-		$$ = &DataspaceSelector{ID: $2}
+		$$ = &DistributionSelector{ID: $2}
 	}
 
 split_key_range_stmt:

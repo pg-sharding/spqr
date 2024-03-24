@@ -3,9 +3,10 @@ package kr
 import "context"
 
 type SplitKeyRange struct {
-	Bound    KeyRangeBound
-	SourceID string
-	Krid     string
+	Bound     KeyRangeBound
+	SourceID  string
+	Krid      string
+	SplitLeft bool
 }
 
 type MoveKeyRange struct {
@@ -14,12 +15,12 @@ type MoveKeyRange struct {
 }
 
 type UniteKeyRange struct {
-	KeyRangeIDLeft  string
-	KeyRangeIDRight string
+	BaseKeyRangeId      string
+	AppendageKeyRangeId string
 }
 
 type KeyRangeMgr interface {
-	ListKeyRanges(ctx context.Context, dataspace string) ([]*KeyRange, error)
+	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(ctx context.Context) ([]*KeyRange, error)
 	AddKeyRange(ctx context.Context, kr *KeyRange) error
 	LockKeyRange(ctx context.Context, krid string) (*KeyRange, error)

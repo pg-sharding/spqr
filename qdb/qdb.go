@@ -45,19 +45,12 @@ type DistributedXactKepper interface {
 * implementation to keep the distributed state in sync.
  */
 type QDB interface {
-	AddShardingRule(ctx context.Context, rule *ShardingRule) error
-	DropShardingRule(ctx context.Context, id string) error
-	DropShardingRuleAll(ctx context.Context) ([]*ShardingRule, error)
-	GetShardingRule(ctx context.Context, id string) (*ShardingRule, error)
-	ListShardingRules(ctx context.Context, dataspace string) ([]*ShardingRule, error)
-	ListAllShardingRules(ctx context.Context) ([]*ShardingRule, error)
-
 	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error
 	DropKeyRangeAll(ctx context.Context) error
-	ListKeyRanges(_ context.Context, datspace string) ([]*KeyRange, error)
+	ListKeyRanges(_ context.Context, distribution string) ([]*KeyRange, error)
 	ListAllKeyRanges(_ context.Context) ([]*KeyRange, error)
 	LockKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UnlockKeyRange(ctx context.Context, id string) error
@@ -67,21 +60,24 @@ type QDB interface {
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
 	GetShard(ctx context.Context, shardID string) (*Shard, error)
+	DropShard(ctx context.Context, shardID string) error
 
-	MatchShardingRules(ctx context.Context, m func(shrules map[string]*ShardingRule) error) error
+	CreateDistribution(ctx context.Context, distr *Distribution) error
+	ListDistributions(ctx context.Context) ([]*Distribution, error)
+	DropDistribution(ctx context.Context, id string) error
 
-	AddDataspace(ctx context.Context, ks *Dataspace) error
-	ListDataspaces(ctx context.Context) ([]*Dataspace, error)
-	DropDataspace(ctx context.Context, id string) error
+	AlterDistributionAttach(ctx context.Context, id string, rels []*DistributedRelation) error
+	AlterDistributionDetach(ctx context.Context, id string, relName string) error
 
-	AttachToDataspace(ctx context.Context, table string, id string) error
-	GetDataspace(ctx context.Context, table string) (*Dataspace, error)
+	GetDistribution(ctx context.Context, id string) (*Distribution, error)
+	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
+	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 }
 
-// Extended QDB
+// XQDB means extended QDB
 // The coordinator should use an etcd-based implementation to keep the distributed state in sync.
 type XQDB interface {
 	// routing schema

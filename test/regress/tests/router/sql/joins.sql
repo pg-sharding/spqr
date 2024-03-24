@@ -1,9 +1,10 @@
 
 \c spqr-console
-CREATE SHARDING RULE r1 COLUMN id;
-CREATE SHARDING RULE r2 COLUMN w_id;
-CREATE KEY RANGE kridi1 from 0 to 11 route to sh1;
-CREATE KEY RANGE kridi2 from 11 to 31 route to sh2;
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
+ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
+ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
 
 \c regress
 
@@ -24,11 +25,12 @@ SELECT * FROM xjoin JOIN yjoin on id=w_id ORDER BY id;
 -- result is not full
 --SELECT * FROM xjoin JOIN yjoin on true ORDER BY id;
 
+SELECT * FROM xjoin JOIN yjoin on id=w_id where yjoin.w_id = 15 ORDER BY id;
 SELECT * FROM xjoin JOIN yjoin on id=w_id where w_id = 15 ORDER BY id;
 
 DROP TABLE xjoin;
 DROP TABLE yjoin;
 
 \c spqr-console
+DROP DISTRIBUTION ALL CASCADE;
 DROP KEY RANGE ALL;
-DROP SHARDING RULE ALL;

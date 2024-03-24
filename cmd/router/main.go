@@ -41,16 +41,18 @@ var (
 	ccfgPath string
 	qdbImpl  string
 
+	persist bool
+
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
-		Short: "sqpr-router",
+		Short: "spqr-router",
 		Long:  "spqr-router",
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
 		Version:       pkg.SpqrVersionRevision,
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage:  false,
+		SilenceErrors: false,
 	}
 )
 
@@ -66,6 +68,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
+	rootCmd.PersistentFlags().BoolVarP(&persist, "persist", "", false, "tells router to persist its configuration in non-clustered setup")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -95,6 +98,14 @@ var runCmd = &cobra.Command{
 
 		if console && daemonize {
 			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
+		}
+
+		if persist && qdbImpl == "etcd" {
+			return fmt.Errorf("Cannot persist metadata setup locally in clustered mode. Abort")
+		}
+
+		if !persist && rcfg.MemqdbPersistent {
+			persist = true
 		}
 
 		if !console && (rcfg.Daemonize || daemonize) {
@@ -170,7 +181,7 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"))
+		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
@@ -194,7 +205,12 @@ var runCmd = &cobra.Command{
 						return err
 					}
 
-					coordinator := provider.NewCoordinator(db)
+					frTLS, err := config.CoordinatorConfig().FrontendTLS.Init(config.CoordinatorConfig().Host)
+					if err != nil {
+						return fmt.Errorf("init frontend TLS: %w", err)
+					}
+
+					coordinator := provider.NewCoordinator(frTLS, db)
 					app := coordApp.NewApp(coordinator)
 					return app.Run(false)
 				}(); err != nil {

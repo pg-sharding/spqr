@@ -57,19 +57,29 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
 	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
 		skipInitSQL = true
 	}
 
-	qdb, err := qdb.RestoreQDB(rcfg.MemqdbBackupPath)
-	if err != nil {
-		return nil, err
+	var db *qdb.MemQDB
+	var err error
+
+	if persist {
+		db, err = qdb.RestoreQDB(rcfg.MemqdbBackupPath)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		db, err = qdb.NewMemQDB("")
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	lc := local.NewLocalCoordinator(qdb)
+	lc := local.NewLocalCoordinator(db)
 
 	var notifier *sdnotifier.Notifier
 	if rcfg.UseSystemdNotifier {
@@ -114,7 +124,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
 
 	stchan := make(chan struct{})
-	localConsole, err := console.NewConsole(frTLS, lc, rr, stchan, writ)
+	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to initialize router")
 		return nil, err

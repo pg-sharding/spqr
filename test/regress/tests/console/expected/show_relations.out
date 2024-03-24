@@ -1,0 +1,67 @@
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds1
+(1 row)
+
+CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
+         add distribution         
+----------------------------------
+ created distribution with id ds2
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
+              attach table               
+-----------------------------------------
+ attached relation a to distribution ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MURMUR;
+              attach table               
+-----------------------------------------
+ attached relation b to distribution ds1
+(1 row)
+
+ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
+                                                          c_id_2 HASH FUNCTION CITY;
+              attach table               
+-----------------------------------------
+ attached relation c to distribution ds2
+(1 row)
+
+SHOW relations;
+ Relation name | Distribution ID |           Distribution key            
+---------------+-----------------+---------------------------------------
+ a             | ds1             | ("a_id", identity)
+ b             | ds1             | ("b_id", murmur)
+ c             | ds2             | ("c_id_1", identity),("c_id_2", city)
+(3 rows)
+
+SHOW relations WHERE distribution_id = 'ds1';
+ Relation name | Distribution ID |  Distribution key  
+---------------+-----------------+--------------------
+ a             | ds1             | ("a_id", identity)
+ b             | ds1             | ("b_id", murmur)
+(2 rows)
+
+SHOW relations WHERE unknown_param = 'ds1';
+ERROR:  column unknown_param does not exist.
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution   
+-----------------------
+ drop distribution ds1
+ drop distribution ds2
+(2 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

@@ -29,25 +29,36 @@ type shardPool struct {
 
 	host string
 
-	ConnectionLimit int
+	ConnectionLimit            int
+	ConnectionRetries          int
+	ConnectionRetrySleepSlice  int
+	ConnectionRetryRandomSleep int
 }
 
 var _ Pool = &shardPool{}
 
-func NewshardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
+func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
+	connRetries := defaultInstanceConnectionRetries
 	if beRule.ConnectionLimit != 0 {
 		connLimit = beRule.ConnectionLimit
 	}
 
+	if beRule.ConnectionRetries != 0 {
+		connRetries = beRule.ConnectionRetries
+	}
+
 	ret := &shardPool{
-		mu:              sync.Mutex{},
-		pool:            nil,
-		active:          make(map[uint]shard.Shard),
-		alloc:           allocFn,
-		beRule:          beRule,
-		host:            host,
-		ConnectionLimit: connLimit,
+		mu:                         sync.Mutex{},
+		pool:                       nil,
+		active:                     make(map[uint]shard.Shard),
+		alloc:                      allocFn,
+		beRule:                     beRule,
+		host:                       host,
+		ConnectionLimit:            connLimit,
+		ConnectionRetries:          connRetries,
+		ConnectionRetrySleepSlice:  50,
+		ConnectionRetryRandomSleep: 10,
 	}
 
 	ret.queue = make(chan struct{}, connLimit)
@@ -109,9 +120,10 @@ func (h *shardPool) Connection(
 	shardKey kr.ShardKey) (shard.Shard, error) {
 
 	if err := func() error {
-		for rep := 0; rep < 10; rep++ {
+		for rep := 0; rep < h.ConnectionRetries; rep++ {
 			select {
-			case <-time.After(50 * time.Millisecond * time.Duration(1+rand.Int31()%10)):
+			// TODO: configure waits using backend rule
+			case <-time.After(time.Duration(h.ConnectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.ConnectionRetryRandomSleep))):
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).
@@ -152,6 +164,8 @@ func (h *shardPool) Connection(
 	var err error
 	sh, err = h.alloc(shardKey, h.host, h.beRule)
 	if err != nil {
+		// return acquired token
+		h.queue <- struct{}{}
 		return nil, err
 	}
 
@@ -176,6 +190,11 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	if _, ok := h.active[sh.ID()]; !ok {
+		// double free
+		return nil
+	}
+
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
 
@@ -197,6 +216,11 @@ func (h *shardPool) Put(sh shard.Shard) error {
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if _, ok := h.active[sh.ID()]; !ok {
+		// double free
+		panic(sh)
+	}
 
 	/* acquired tok, release it */
 	h.queue <- struct{}{}
@@ -289,7 +313,7 @@ func (c *cPool) List() []shard.Shard {
 func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
-		pool = NewshardPool(c.alloc, host, c.beRule)
+		pool = NewShardPool(c.alloc, host, c.beRule)
 		c.pools.Store(host, pool)
 	} else {
 		pool = val.(Pool)

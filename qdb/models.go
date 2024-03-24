@@ -6,11 +6,10 @@ type ShardKey struct {
 }
 
 type KeyRange struct {
-	LowerBound  []byte `json:"from"`
-	UpperBound  []byte `json:"to"`
-	ShardID     string `json:"shard_id"`
-	KeyRangeID  string `json:"key_range_id"`
-	DataspaceId string `json:"dataspace_id"`
+	LowerBound     []byte `json:"from"`
+	ShardID        string `json:"shard_id"`
+	KeyRangeID     string `json:"key_range_id"`
+	DistributionId string `json:"distribution_id"`
 }
 type MoveKeyRangeStatus string
 
@@ -57,18 +56,6 @@ func (r Router) Addr() string {
 	return r.Address
 }
 
-type ShardingRuleEntry struct {
-	Column       string `json:"column"`
-	HashFunction string `json:"hash"`
-}
-
-type ShardingRule struct {
-	ID          string              `json:"id"`
-	TableName   string              `json:"table"`
-	Entries     []ShardingRuleEntry `json:"columns"`
-	DataspaceId string              `json:"dataspace_id"`
-}
-
 type Shard struct {
 	ID    string   `json:"id"`
 	Hosts []string `json:"hosts"`
@@ -81,14 +68,35 @@ func NewShard(ID string, hosts []string) *Shard {
 	}
 }
 
-type ShardinColumnType string
-
 var (
-	ColumnTypeVarchar = ShardinColumnType("varchar")
-	ColumnTypeInteger = ShardinColumnType("integer")
+	ColumnTypeVarchar  = "varchar"
+	ColumnTypeInteger  = "integer"
+	ColumnTypeUinteger = "uinteger"
 )
 
-type Dataspace struct {
-	ID       string              `json:"id"`
-	ColTypes []ShardinColumnType `json:"col_types,omitempty"`
+type DistributionKeyEntry struct {
+	Column       string `json:"column"`
+	HashFunction string `json:"hash"`
+}
+
+type DistributedRelation struct {
+	Name            string                 `json:"name"`
+	DistributionKey []DistributionKeyEntry `json:"column_names"`
+}
+
+type Distribution struct {
+	ID       string   `json:"id"`
+	ColTypes []string `json:"col_types,omitempty"`
+
+	Relations map[string]*DistributedRelation `json:"relations"`
+}
+
+func NewDistribution(id string, coltypes []string) *Distribution {
+	distr := &Distribution{
+		ID:        id,
+		ColTypes:  coltypes,
+		Relations: map[string]*DistributedRelation{},
+	}
+
+	return distr
 }

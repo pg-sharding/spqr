@@ -3,13 +3,17 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+
 	"github.com/pg-sharding/spqr/pkg"
-	"github.com/pg-sharding/spqr/pkg/models/dataspaces"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -24,7 +28,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/shrule"
 )
 
 type Interactor interface {
@@ -56,16 +59,6 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 	}
 
 	return nil
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) GetDataspace() string {
-	return pi.cl.Dataspace()
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) SetDataspace(dataspace string) {
-	pi.cl.SetDataspace(dataspace)
 }
 
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
@@ -138,7 +131,7 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		"pool db",
 		"pool usr",
 		"pool host",
-		"used connection count",
+		"used connections",
 		"idle connections",
 		"queue residual size"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -198,6 +191,25 @@ func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 }
 
 // TODO : unit tests
+func (pi *PSQLInteractor) DropShard(id string) error {
+	if err := pi.WriteHeader("drop shard"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped shard with %s", id))}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// TODO : unit tests
 func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 	spqrlog.Zero.Debug().Msg("listing key ranges")
 
@@ -205,9 +217,8 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
 			TextOidFD("Key range ID"),
 			TextOidFD("Shard ID"),
-			TextOidFD("Dataspace ID"),
+			TextOidFD("Distribution ID"),
 			TextOidFD("Lower bound"),
-			TextOidFD("Upper bound"),
 		},
 		},
 	} {
@@ -222,9 +233,8 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 			Values: [][]byte{
 				[]byte(keyRange.ID),
 				[]byte(keyRange.ShardID),
-				[]byte(keyRange.Dataspace),
+				[]byte(keyRange.Distribution),
 				keyRange.LowerBound,
-				keyRange.UpperBound,
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -242,7 +252,7 @@ func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range from %s to %s", keyRange.LowerBound, keyRange.UpperBound))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created key range with bound %s", keyRange.LowerBound))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -381,7 +391,7 @@ func MatchRow(row []string, nameToIndex map[string]int, condition spqrparser.Whe
 		case "=":
 			i, ok := nameToIndex[where.ColRef.ColName]
 			if !ok {
-				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s not exists", where.ColRef.ColName)
+				return true, spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "column %s does not exist", where.ColRef.ColName)
 			}
 			return row[i] == where.Value, nil
 		default:
@@ -491,14 +501,11 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.ShardingRule) error {
+func (pi *PSQLInteractor) Distributions(_ context.Context, distributions []*distributions.Distribution) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("Sharding Rule ID"),
-			TextOidFD("Dataspace ID"),
-			TextOidFD("Table Name"),
-			TextOidFD("Columns"),
-			TextOidFD("Hash Function"),
+			TextOidFD("Distribution ID"),
+			TextOidFD("Column types"),
 		}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -506,57 +513,11 @@ func (pi *PSQLInteractor) ShardingRules(ctx context.Context, rules []*shrule.Sha
 			return err
 		}
 	}
-
-	for _, rule := range rules {
-		var entries strings.Builder
-		var hashFunctions strings.Builder
-		for _, entry := range rule.Entries() {
-			entries.WriteString(entry.Column)
-
-			if entry.HashFunction == "" {
-				hashFunctions.WriteString("x->x")
-			} else {
-				hashFunctions.WriteString(entry.HashFunction)
-			}
-		}
-		tableName := "*"
-		if rule.TableName != "" {
-			tableName = rule.TableName
-		}
-
+	for _, distribution := range distributions {
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
-				[]byte(rule.Id),
-				[]byte(rule.Dataspace),
-				[]byte(tableName),
-				[]byte(entries.String()),
-				[]byte(hashFunctions.String()),
-			},
-		}); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) Dataspaces(ctx context.Context, dataspaces []*dataspaces.Dataspace) error {
-	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
-			TextOidFD("Dataspace ID"),
-		}},
-	} {
-		if err := pi.cl.Send(msg); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
-		}
-	}
-	for _, dataspace := range dataspaces {
-		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{
-				[]byte(dataspace.Id),
+				[]byte(distribution.Id),
+				[]byte(strings.Join(distribution.ColTypes, ",")),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -588,34 +549,6 @@ func (pi *PSQLInteractor) ReportError(err error) error {
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) DropShardingRule(ctx context.Context, id string) error {
-	if err := pi.WriteHeader("drop sharding rule"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("dropped sharding rule %s", id)); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
-func (pi *PSQLInteractor) AddShardingRule(ctx context.Context, rule *shrule.ShardingRule) error {
-	if err := pi.WriteHeader("add sharding rule"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	if err := pi.WriteDataRow(fmt.Sprintf("created %s", rule.String())); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-	return pi.CompleteMsg(0)
-}
-
-// TODO : unit tests
 func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRange) error {
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
@@ -630,7 +563,7 @@ func (pi *PSQLInteractor) MergeKeyRanges(_ context.Context, unite *kr.UniteKeyRa
 			},
 		},
 		},
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.KeyRangeIDLeft, unite.KeyRangeIDRight))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("merge key ranges %v and %v", unite.BaseKeyRangeId, unite.AppendageKeyRangeId))}},
 		&pgproto3.CommandComplete{},
 		&pgproto3.ReadyForQuery{},
 	} {
@@ -764,13 +697,13 @@ func (pi *PSQLInteractor) DropKeyRange(ctx context.Context, ids []string) error 
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Dataspace) error {
-	if err := pi.WriteHeader("add dataspace"); err != nil {
+func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions.Distribution) error {
+	if err := pi.WriteHeader("add distribution"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created dataspace with id %s", ks.ID())); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created distribution with id %s", ks.ID())); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -778,14 +711,14 @@ func (pi *PSQLInteractor) AddDataspace(ctx context.Context, ks *dataspaces.Datas
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error {
-	if err := pi.WriteHeader("drop dataspace"); err != nil {
+func (pi *PSQLInteractor) DropDistribution(ctx context.Context, ids []string) error {
+	if err := pi.WriteHeader("drop distribution"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, id := range ids {
-		if err := pi.WriteDataRow(fmt.Sprintf("drop dataspace %s", id)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("drop distribution %s", id)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -795,16 +728,34 @@ func (pi *PSQLInteractor) DropDataspace(ctx context.Context, ids []string) error
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AttachTable(ctx context.Context, table string, ds *dataspaces.Dataspace) error {
+func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string, ds []*distributions.DistributedRelation) error {
 	if err := pi.WriteHeader("attach table"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("attached table %s to dataspace %s", table, ds.ID())); err != nil {
+	for _, r := range ds {
+		if err := pi.WriteDataRow(fmt.Sprintf("attached relation %s to distribution %s", r.Name, id)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
+// TODO : unit tests
+func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, relName string) error {
+	if err := pi.WriteHeader("detach relation"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("detached relation %s from distribution %s", relName, id)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
 	return pi.CompleteMsg(0)
 }
 
@@ -858,4 +809,61 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 	}
 
 	return pi.CompleteMsg(len(shs))
+}
+
+// Relations sends information about attached relations that satisfy conditions in WHERE-clause
+// TODO unit tests
+func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.DistributedRelation, condition spqrparser.WhereClauseNode) error {
+	if err := pi.cl.Send(&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+		TextOidFD("Relation name"),
+		TextOidFD("Distribution ID"),
+		TextOidFD("Distribution key"),
+	}}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	dss := make([]string, len(dsToRels))
+	i := 0
+	for ds := range dsToRels {
+		dss[i] = ds
+		i++
+	}
+	sort.Strings(dss)
+
+	c := 0
+	index := map[string]int{"distribution_id": 0}
+	for _, ds := range dss {
+		rels := dsToRels[ds]
+		sort.Slice(rels, func(i, j int) bool {
+			return rels[i].Name < rels[j].Name
+		})
+		if ok, err := MatchRow([]string{ds}, index, condition); err != nil {
+			return err
+		} else if !ok {
+			continue
+		}
+		for _, rel := range rels {
+			dsKey := make([]string, len(rel.DistributionKey))
+			for i, e := range rel.DistributionKey {
+				t, err := hashfunction.HashFunctionByName(e.HashFunction)
+				if err != nil {
+					return err
+				}
+				dsKey[i] = fmt.Sprintf("(\"%s\", %s)", e.Column, hashfunction.ToString(t))
+			}
+			if err := pi.cl.Send(&pgproto3.DataRow{
+				Values: [][]byte{
+					[]byte(rel.Name),
+					[]byte(ds),
+					[]byte(strings.Join(dsKey, ",")),
+				},
+			}); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+			c++
+		}
+	}
+	return pi.CompleteMsg(c)
 }

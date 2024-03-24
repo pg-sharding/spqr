@@ -1,0 +1,21 @@
+\c regress
+SET __spqr__distribution = ds1;
+ERROR:  client proccessing error: setting "__spqr__distribution" is forbidden., tx status IDLE
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+ drop distribution 
+-------------------
+(0 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

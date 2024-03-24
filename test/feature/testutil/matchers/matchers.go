@@ -154,7 +154,7 @@ func JSONExactlyMatcher(actual string, expected string) error {
 	return nil
 }
 
-// GetMatcher returns registred matcher by name
+// GetMatcher returns registered matcher by name
 func GetMatcher(name string) (Matcher, error) {
 	if matcher, ok := registry[name]; ok {
 		return matcher, nil
