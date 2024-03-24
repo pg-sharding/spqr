@@ -10,7 +10,7 @@ time_quantiles:
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
   cert_file: /etc/odyssey/ssl/server.crt
-  sslmode: require
+  sslmode: allow
 frontend_rules:
   - usr: user1
     db: db1

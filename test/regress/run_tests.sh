@@ -2,7 +2,7 @@
 
 export PGDATABASE=regress
 export PGUSER=regress
-export PGSSLMODE=disable
+export PGSSLMODE=allow
 
 run_tests () {
     DIR=$1  # router
