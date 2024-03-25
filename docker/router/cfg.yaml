@@ -8,8 +8,8 @@ log_level: debug
 time_quantiles:
   - 0.8
 frontend_tls:
-  key_file: /etc/odyssey/ssl/server.key
-  cert_file: /etc/odyssey/ssl/server.crt
+  key_file: /etc/spqr/ssl/server.key
+  cert_file: /etc/spqr/ssl/server.crt
   sslmode: allow
 frontend_rules:
   - usr: user1
