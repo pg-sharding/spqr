@@ -28,8 +28,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardingRulesServiceClient interface {
+	// Deprecated: Do not use.
 	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	// Deprecated: Do not use.
 	DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error)
+	// Deprecated: Do not use.
 	ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error)
 }
 
@@ -41,6 +44,7 @@ func NewShardingRulesServiceClient(cc grpc.ClientConnInterface) ShardingRulesSer
 	return &shardingRulesServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
 	out := new(AddShardingRuleReply)
 	err := c.cc.Invoke(ctx, ShardingRulesService_AddShardingRules_FullMethodName, in, out, opts...)
@@ -50,6 +54,7 @@ func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *A
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error) {
 	out := new(DropShardingRuleReply)
 	err := c.cc.Invoke(ctx, ShardingRulesService_DropShardingRules_FullMethodName, in, out, opts...)
@@ -59,6 +64,7 @@ func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error) {
 	out := new(ListShardingRuleReply)
 	err := c.cc.Invoke(ctx, ShardingRulesService_ListShardingRules_FullMethodName, in, out, opts...)
@@ -72,8 +78,11 @@ func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *
 // All implementations must embed UnimplementedShardingRulesServiceServer
 // for forward compatibility
 type ShardingRulesServiceServer interface {
+	// Deprecated: Do not use.
 	AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	// Deprecated: Do not use.
 	DropShardingRules(context.Context, *DropShardingRuleRequest) (*DropShardingRuleReply, error)
+	// Deprecated: Do not use.
 	ListShardingRules(context.Context, *ListShardingRuleRequest) (*ListShardingRuleReply, error)
 	mustEmbedUnimplementedShardingRulesServiceServer()
 }
