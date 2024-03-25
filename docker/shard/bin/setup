@@ -40,14 +40,15 @@ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE ROLE $POSTGRES
 
 # Create databases
 sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE DATABASE $POSTGRES_DB" -d postgres >> $SETUP_LOG 2>&1 || {
-    echo "ERROR: users creation failed, examine the log"
+    echo "ERROR: databases creation failed, examine the log"
     cat "$SETUP_LOG"
     exit 1
 }
 
- # Create extension
- sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements; CREATE EXTENSION IF NOT EXISTS pg_stat_kcache; CREATE EXTENSION IF NOT EXISTS pg_comment_stats;" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
-     echo "ERROR: users creation failed, examine the log"
+
+# # Create extension
+ sudo -u postgres psql -p 6432 -h localhost -U postgres -c "CREATE EXTENSION IF NOT EXISTS postgres_fdw; CREATE EXTENSION IF NOT EXISTS pg_stat_statements; CREATE EXTENSION IF NOT EXISTS pg_stat_kcache; CREATE EXTENSION IF NOT EXISTS pg_comment_stats;" -d $POSTGRES_DB >> $SETUP_LOG 2>&1 || {
+     echo "ERROR: extensions creation failed, examine the log"
      cat "$SETUP_LOG"
      exit 1
  }
