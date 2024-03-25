@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"math/rand"
 	"sync"
 
@@ -30,6 +31,22 @@ type LocalCoordinator struct {
 
 	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
+}
+
+func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	group, err := lc.qdb.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromDb(group), nil
+}
+
+func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+}
+
+func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
+	return lc.qdb.RemoveTaskGroup(ctx)
 }
 
 // TODO : unit tests
@@ -452,7 +469,7 @@ func (qr *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) 
 	return addr, err
 }
 
-func (qr *LocalCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (qr *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
 

@@ -21,6 +21,9 @@ deps:
 
 ####################### BUILD #######################
 
+build_balancer:
+	go build -pgo=auto -o spqr-balancer ./cmd/balancer
+
 build_coorctl:
 	go build -pgo=auto -o coorctl ./cmd/coordctl
 
@@ -42,7 +45,7 @@ build_workloadreplay:
 build_spqrdump:
 	go build -pgo=auto -o spqrdump ./cmd/spqrdump
 
-build: build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
+build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
 
 build_images:
 	docker compose build spqr-base-image
@@ -59,7 +62,7 @@ save_shard_image:
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
 clean:
-	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock
+	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
 	make clean_feature_test
 
 ######################## RUN ########################

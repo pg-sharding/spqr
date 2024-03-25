@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 
-	"github.com/pg-sharding/spqr/pkg/config"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -31,9 +30,7 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, datashards.NewDataShard(newShard.Id, &config.Shard{
-		Hosts: newShard.Hosts,
-	})); err != nil {
+	if err := s.impl.AddDataShard(ctx, datashards.DataShardFromProto(newShard)); err != nil {
 		return nil, err
 	}
 
@@ -54,11 +51,8 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
-	for _, shard := range shardList {
-		protoShards = append(protoShards, &protos.Shard{
-			Hosts: shard.Cfg.Hosts,
-			Id:    shard.ID,
-		})
+	for _, sh := range shardList {
+		protoShards = append(protoShards, datashards.DataShardToProto(sh))
 	}
 
 	return &protos.ListShardsReply{
@@ -67,17 +61,14 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsReques
 }
 
 // TODO : unit tests
-func (s *ShardServer) GetShardInfo(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardInfoReply, error) {
-	shardInfo, err := s.impl.GetShardInfo(ctx, shardRequest.Id)
+func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRequest) (*protos.ShardReply, error) {
+	sh, err := s.impl.GetShard(ctx, shardRequest.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &protos.ShardInfoReply{
-		ShardInfo: &protos.ShardInfo{
-			Hosts: shardInfo.Cfg.Hosts,
-			Id:    shardInfo.ID,
-		},
+	return &protos.ShardReply{
+		Shard: datashards.DataShardToProto(sh),
 	}, nil
 }
 

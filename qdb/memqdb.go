@@ -29,6 +29,7 @@ type MemQDB struct {
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
+	TaskGroup            *TaskGroup                          `json:"taskGroup"`
 
 	backupPath string
 	/* caches */
@@ -712,4 +713,39 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 		// then we have corruption
 		return q.Distributions[ds], nil
 	}
+}
+
+// ==============================================================================
+//                                   TASKS
+// ==============================================================================
+
+func (q *MemQDB) GetTaskGroup(_ context.Context) (*TaskGroup, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get task group")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	if q.TaskGroup == nil {
+		return &TaskGroup{
+			Tasks: []*Task{},
+		}, nil
+	}
+	return q.TaskGroup, nil
+}
+
+func (q *MemQDB) WriteTaskGroup(_ context.Context, group *TaskGroup) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write task group")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.TaskGroup = group
+	return nil
+}
+
+func (q *MemQDB) RemoveTaskGroup(ctx context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.TaskGroup = nil
+	return nil
 }

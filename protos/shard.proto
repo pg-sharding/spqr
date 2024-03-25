@@ -14,16 +14,15 @@ message ShardInfo {
   repeated string hosts = 2;
 }
 
-//TODO is ListShards returns all types of shards or only data-shards?
 service ShardService {
   rpc ListShards (ListShardsRequest) returns (ListShardsReply) {}
   rpc AddDataShard (AddShardRequest) returns (AddShardReply) {}
   rpc AddWorldShard (AddWorldShardRequest) returns (AddShardReply) {}
-  rpc GetShardInfo (ShardRequest) returns (ShardInfoReply) {}
+  rpc GetShard (ShardRequest) returns (ShardReply) {}
 }
 
-message ShardInfoReply {
-  ShardInfo shard_info = 1;
+message ShardReply {
+  Shard shard = 1;
 }
 
 message ListShardsRequest {

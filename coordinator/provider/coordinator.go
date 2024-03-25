@@ -33,6 +33,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
@@ -987,6 +988,22 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
+func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	group, err := qc.db.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromDb(group), nil
+}
+
+func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	return qc.db.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+}
+
+func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
+	return qc.db.RemoveTaskGroup(ctx)
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType, "")
@@ -1277,6 +1294,6 @@ func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string
 	})
 }
 
-func (qc *qdbCoordinator) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (qc *qdbCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	panic("implement or delete me")
 }

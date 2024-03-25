@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -298,12 +299,12 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 }
 
 // TODO : unit tests
-func (a *Adapter) GetShardInfo(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (a *Adapter) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
-	resp, err := c.GetShardInfo(ctx, &proto.ShardRequest{Id: shardID})
+	resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID})
 	return &datashards.DataShard{
-		ID:  resp.ShardInfo.Id,
-		Cfg: &config.Shard{Hosts: resp.ShardInfo.Hosts},
+		ID:  resp.Shard.Id,
+		Cfg: &config.Shard{Hosts: resp.Shard.Hosts},
 	}, err
 }
 
@@ -400,6 +401,29 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 	}
 
 	return distributions.DistributionFromProto(resp.Distribution), nil
+}
+
+func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	res, err := tasksService.GetTaskGroup(ctx, &proto.GetTaskGroupRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.TaskGroupFromProto(res.TaskGroup), nil
+}
+
+func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	_, err := tasksService.WriteTaskGroup(ctx, &proto.WriteTaskGroupRequest{
+		TaskGroup: tasks.TaskGroupToProto(taskGroup),
+	})
+	return err
+}
+
+func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
+	tasksService := proto.NewTasksServiceClient(a.conn)
+	_, err := tasksService.RemoveTaskGroup(ctx, &proto.RemoveTaskGroupRequest{})
+	return err
 }
 
 // TODO : unit tests

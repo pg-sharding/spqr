@@ -3,8 +3,10 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -26,9 +28,49 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBackendConnectionsServiceServer
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
+	protos.UnimplementedTasksServiceServer
+	protos.UnimplementedShardServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
+}
+
+func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
+	shards, err := l.mgr.ListShards(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ListShardsReply{
+		Shards: func() []*protos.Shard {
+			res := make([]*protos.Shard, len(shards))
+			for i, sh := range shards {
+				res[i] = datashards.DataShardToProto(sh)
+			}
+			return res
+		}(),
+	}, nil
+}
+
+func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
+	if err := l.mgr.AddDataShard(ctx, datashards.DataShardFromProto(request.GetShard())); err != nil {
+		return nil, err
+	}
+	return &protos.AddShardReply{}, nil
+}
+
+func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.ShardRequest) (*protos.ShardReply, error) {
+	sh, err := l.mgr.GetShard(ctx, request.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.ShardReply{
+		Shard: datashards.DataShardToProto(sh),
+	}, nil
 }
 
 // CreateDistribution creates distribution in QDB
@@ -371,6 +413,24 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.Get
 	return reply, err
 }
 
+func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
+	group, err := l.mgr.GetTaskGroup(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetTaskGroupReply{
+		TaskGroup: tasks.TaskGroupToProto(group),
+	}, nil
+}
+
+func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*protos.WriteTaskGroupReply, error) {
+	return &protos.WriteTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+}
+
+func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
+	return &protos.RemoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
+}
+
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
 
 	lqr := &LocalQrouterServer{
@@ -389,6 +449,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 	protos.RegisterPoolServiceServer(server, lqr)
 	protos.RegisterDistributionServiceServer(server, lqr)
+	protos.RegisterTasksServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -398,3 +459,5 @@ var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
+var _ protos.TasksServiceServer = &LocalQrouterServer{}
+var _ protos.ShardServiceServer = &LocalQrouterServer{}

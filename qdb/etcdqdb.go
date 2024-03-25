@@ -55,6 +55,7 @@ const (
 	routersNamespace         = "/routers/"
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
+	taskGroupPath            = "/move_task_group"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -1053,6 +1054,54 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 		// metadata corruption
 		return nil, spqrerror.NewByCode(spqrerror.SPQR_METADATA_CORRUPTION)
 	}
+}
+
+// ==============================================================================
+//                                    TASKS
+// ==============================================================================
+
+func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get task group")
+
+	resp, err := q.cli.Get(ctx, taskGroupPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return &TaskGroup{
+			Tasks: []*Task{},
+		}, nil
+	}
+
+	var taskGroup *TaskGroup
+	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
+		return nil, err
+	}
+
+	return taskGroup, nil
+}
+
+func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write task group")
+
+	groupJson, err := json.Marshal(group)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, taskGroupPath, string(groupJson))
+	return err
+}
+
+func (q *EtcdQDB) RemoveTaskGroup(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: remove task group")
+
+	_, err := q.cli.Delete(ctx, taskGroupPath)
+	return err
 }
 
 // ==============================================================================

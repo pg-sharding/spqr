@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -26,6 +27,7 @@ type EntityMgr interface {
 	topology.RouterMgr
 	datashards.ShardsMgr
 	distributions.DistributionMgr
+	tasks.TaskMgr
 
 	ShareKeyRange(id string) error
 

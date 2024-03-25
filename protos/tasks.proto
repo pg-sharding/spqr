@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package spqr;
+
+option go_package = "spqr/proto";
+
+enum TaskStatus {
+  Planned = 0;
+  Split = 1;
+  Moved = 2;
+}
+
+message Task {
+  string shardIdFrom = 1;
+  string shardIdTo = 2;
+  string keyRangeIdFrom = 3;
+  string keyRangeIdTo = 4;
+  string keyRangeIdTemp = 5;
+  bytes bound = 6;
+  TaskStatus status = 7;
+}
+
+enum JoinType {
+  JoinNone = 0;
+  JoinLeft = 1;
+  JoinRight = 2;
+}
+
+message TaskGroup {
+  repeated Task tasks = 1;
+  JoinType joinType = 2;
+}
+
+message GetTaskGroupRequest{}
+message GetTaskGroupReply {
+  TaskGroup taskGroup = 1;
+}
+
+message WriteTaskGroupRequest{
+  TaskGroup taskGroup = 1;
+}
+message WriteTaskGroupReply {}
+
+message RemoveTaskGroupRequest{}
+message RemoveTaskGroupReply{}
+
+service TasksService {
+  rpc GetTaskGroup(GetTaskGroupRequest) returns (GetTaskGroupReply) {}
+  rpc WriteTaskGroup(WriteTaskGroupRequest) returns(WriteTaskGroupReply) {}
+  rpc RemoveTaskGroup(RemoveTaskGroupRequest) returns(RemoveTaskGroupReply) {}
+}
