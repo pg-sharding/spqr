@@ -323,9 +323,9 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 	return registerRouter()
 }
 
-// TODO : unit tests
 // RunCoordinator side effect: it runs an asynchronous goroutine
 // that checks the availability of the SPQR router
+// TODO : unit tests
 func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
 	if !qc.lockCoordinator(ctx, initialRouter) {
 		return
@@ -335,7 +335,7 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 	if err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
-			Msg("faild to list key ranges")
+			Msg("failed to list key ranges")
 	}
 
 	for _, r := range ranges {
