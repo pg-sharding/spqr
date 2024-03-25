@@ -71,6 +71,28 @@ Feature: Move test
     """
     001
     """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "Key range ID":"krid1",
+      "Distribution ID":"ds1",
+      "Lower bound":"1",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid2",
+      "Distribution ID":"ds1",
+      "Lower bound":"11",
+      "Shard ID":"sh2"
+      }
+    ]
+    """
 
   Scenario: MOVE KEY RANGE works with many rows
     When I run SQL on host "shard1"
@@ -110,6 +132,28 @@ Feature: Move test
     And SQL result should not match regexp
     """
     .*001(.|\n)*002(.|\n)*003(.|\n)*004(.|\n)*005
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "Key range ID":"krid1",
+      "Distribution ID":"ds1",
+      "Lower bound":"1",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid2",
+      "Distribution ID":"ds1",
+      "Lower bound":"11",
+      "Shard ID":"sh2"
+      }
+    ]
     """
 
   Scenario: MOVE KEY RANGE works with many tables
@@ -167,6 +211,28 @@ Feature: Move test
     And SQL result should not match regexp
     """
     002
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+      "Key range ID":"krid1",
+      "Distribution ID":"ds1",
+      "Lower bound":"1",
+      "Shard ID":"sh2"
+      },
+      {
+      "Key range ID":"krid2",
+      "Distribution ID":"ds1",
+      "Lower bound":"11",
+      "Shard ID":"sh2"
+      }
+    ]
     """
 
   Scenario: Move to non-existent shard fails
