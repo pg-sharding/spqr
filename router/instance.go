@@ -60,7 +60,7 @@ var _ Router = &InstanceImpl{}
 func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
-	if _, err := os.Stat(rcfg.MemqdbBackupPath); err == nil {
+	if _, err := os.Stat(rcfg.MemqdbBackupPath); !persist && err == nil {
 		skipInitSQL = true
 	}
 
