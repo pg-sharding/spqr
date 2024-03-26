@@ -22,9 +22,10 @@ type BalancerImpl struct {
 	coordinatorConn *grpc.ClientConn
 	threshold       []float64
 
-	keyRanges []*kr.KeyRange
-	krIdx     map[string]int
-	shardKr   map[string][]int
+	dsToKeyRanges map[string][]*kr.KeyRange
+	dsToKrIdx     map[string]map[string]int
+	shardKr       map[string][]string
+	krToDs        map[string]string
 }
 
 func NewBalancer() (*BalancerImpl, error) {
@@ -41,9 +42,10 @@ func NewBalancer() (*BalancerImpl, error) {
 	return &BalancerImpl{
 		coordinatorConn: conn,
 		threshold:       threshold,
-		keyRanges:       []*kr.KeyRange{},
-		krIdx:           map[string]int{},
-		shardKr:         map[string][]int{},
+		dsToKeyRanges:   map[string][]*kr.KeyRange{},
+		dsToKrIdx:       map[string]map[string]int{},
+		shardKr:         map[string][]string{},
+		krToDs:          map[string]string{},
 	}, nil
 }
 
@@ -252,7 +254,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 			if err = rows.Scan(&krId, &cpu); err != nil {
 				return err
 			}
-			if _, ok := b.krIdx[krId]; !ok {
+			if _, ok := b.dsToKrIdx[krId]; !ok {
 				continue
 			}
 			if _, ok := shard.MetricsKR[krId]; !ok {
@@ -267,8 +269,10 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 		return err
 	}
 
-	for _, i := range b.shardKr[shard.ShardId] {
-		krg := b.keyRanges[i]
+	for _, krId := range b.shardKr[shard.ShardId] {
+		ds := b.krToDs[krId]
+		i := b.dsToKrIdx[ds][krId]
+		krg := b.dsToKeyRanges[ds][i]
 		if krg.ShardID != shard.ShardId {
 			continue
 		}
@@ -284,8 +288,8 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 				WHERE %s;
 `
 			var nextKR *kr.KeyRange
-			if i < len(b.keyRanges)-1 {
-				nextKR = b.keyRanges[i+1]
+			if i < len(b.dsToKeyRanges[ds])-1 {
+				nextKR = b.dsToKeyRanges[ds][i+1]
 			}
 			condition, err := b.getKRCondition(rel, krg, nextKR, "t")
 			if err != nil {
@@ -417,15 +421,16 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shar
 
 func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
 	res := make(map[string]struct{}, 0)
-	krIdx := b.krIdx[krId]
+	ds := b.krToDs[krId]
+	krIdx := b.dsToKrIdx[ds][krId]
 	if krIdx != 0 {
-		res[b.keyRanges[krIdx-1].ShardID] = struct{}{}
+		res[b.dsToKeyRanges[ds][krIdx-1].ShardID] = struct{}{}
 	}
-	if krIdx < len(b.keyRanges)-1 {
-		res[b.keyRanges[krIdx+1].ShardID] = struct{}{}
+	if krIdx < len(b.dsToKeyRanges)-1 {
+		res[b.dsToKeyRanges[ds][krIdx+1].ShardID] = struct{}{}
 	}
 	// do not include current shard
-	delete(res, b.keyRanges[krIdx].ShardID)
+	delete(res, b.dsToKeyRanges[ds][krIdx].ShardID)
 	return res
 }
 
@@ -463,14 +468,18 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 		Int("key_count", keyCount).
 		Msg("generating move tasks")
 	// Move from beginning or the end of key range
-	krInd := b.krIdx[krId]
+	if _, ok := b.krToDs[krId]; !ok {
+		return nil, fmt.Errorf("unknown key range id \"%s\"", krId)
+	}
+	ds := b.krToDs[krId]
+	krInd := b.dsToKrIdx[ds][krId]
 	krIdTo := ""
 	var join tasks.JoinType = tasks.JoinNone
-	if krInd < len(b.keyRanges)-1 && b.keyRanges[krInd+1].ShardID == shardToId {
-		krIdTo = b.keyRanges[krInd+1].ID
+	if krInd < len(b.dsToKeyRanges[ds])-1 && b.dsToKeyRanges[ds][krInd+1].ShardID == shardToId {
+		krIdTo = b.dsToKeyRanges[ds][krInd+1].ID
 		join = tasks.JoinRight
-	} else if krInd > 0 && b.keyRanges[krInd-1].ShardID == shardToId {
-		krIdTo = b.keyRanges[krInd-1].ID
+	} else if krInd > 0 && b.dsToKeyRanges[ds][krInd-1].ShardID == shardToId {
+		krIdTo = b.dsToKeyRanges[ds][krInd-1].ID
 		join = tasks.JoinLeft
 	}
 
@@ -491,11 +500,8 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			maxCount = count
 		}
 	}
-	if _, ok := b.krIdx[krId]; !ok {
-		return nil, fmt.Errorf("unknown key range id \"%s\"", krId)
-	}
 	var rel *distributions.DistributedRelation = nil
-	allRels, err := b.getKRRelations(ctx, b.keyRanges[b.krIdx[krId]])
+	allRels, err := b.getKRRelations(ctx, b.dsToKeyRanges[ds][krInd])
 	if err != nil {
 		return nil, err
 	}
@@ -664,22 +670,35 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	keyRanges := make([]*kr.KeyRange, len(keyRangesProto.KeyRangesInfo))
-	for i, krProto := range keyRangesProto.KeyRangesInfo {
-		keyRanges[i] = kr.KeyRangeFromProto(krProto)
-	}
-	sort.Slice(keyRanges, func(i, j int) bool {
-		return kr.CmpRangesLess(keyRanges[i].LowerBound, keyRanges[j].LowerBound)
-	})
-	b.keyRanges = keyRanges
-	b.krIdx = make(map[string]int)
-	b.shardKr = make(map[string][]int)
-	for i, krg := range b.keyRanges {
-		b.krIdx[krg.ID] = i
-		if _, ok := b.shardKr[krg.ShardID]; !ok {
-			b.shardKr[krg.ShardID] = make([]int, 0)
+	keyRanges := make(map[string][]*kr.KeyRange)
+	for _, krProto := range keyRangesProto.KeyRangesInfo {
+		if _, ok := keyRanges[krProto.DistributionId]; !ok {
+			keyRanges[krProto.DistributionId] = make([]*kr.KeyRange, 0)
 		}
-		b.shardKr[krg.ShardID] = append(b.shardKr[krg.ShardID], i)
+		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto))
+	}
+	for _, krs := range keyRanges {
+		sort.Slice(krs, func(i, j int) bool {
+			return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound)
+		})
+	}
+
+	b.dsToKeyRanges = keyRanges
+	b.dsToKrIdx = make(map[string]map[string]int)
+	b.shardKr = make(map[string][]string)
+	b.krToDs = make(map[string]string)
+	for ds, krs := range b.dsToKeyRanges {
+		for i, krg := range krs {
+			b.krToDs[krg.ID] = ds
+			if _, ok := b.dsToKrIdx[ds]; !ok {
+				b.dsToKrIdx[ds] = make(map[string]int)
+			}
+			b.dsToKrIdx[ds][krg.ID] = i
+			if _, ok := b.shardKr[krg.ShardID]; !ok {
+				b.shardKr[krg.ShardID] = make([]string, 0)
+			}
+			b.shardKr[krg.ShardID] = append(b.shardKr[krg.ShardID], krg.ID)
+		}
 	}
 
 	return nil
