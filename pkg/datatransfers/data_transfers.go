@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
@@ -140,7 +141,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if !fromTableExists {
 					continue
 				}
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), getKRCondition(rel, krg, upperBound)))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), util.GetKRCondition(ds, rel, krg, upperBound, "")))
 				if err != nil {
 					return err
 				}
@@ -169,24 +170,6 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 		}
 	}
 	return bound, nil
-}
-
-func getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange, nextBound kr.KeyRangeBound) string {
-	buf := make([]string, len(rel.DistributionKey))
-	for i, entry := range rel.DistributionKey {
-		// TODO remove after multidimensional key range support
-		if i > 0 {
-			break
-		}
-		// TODO add hash (depends on col type)
-		hashedCol := entry.Column
-		if nextBound != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextBound))
-		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, string(kRange.LowerBound))
-		}
-	}
-	return strings.Join(buf, " AND ")
 }
 
 func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
@@ -220,7 +203,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		return err
 	}
 	for _, rel := range ds.Relations {
-		krCondition := getKRCondition(rel, krg, upperBound)
+		krCondition := util.GetKRCondition(ds, rel, krg, upperBound, "")
 		// TODO get actual schema
 		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		fromTableExists := false
