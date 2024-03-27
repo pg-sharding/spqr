@@ -181,7 +181,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
 	// create postgres_fdw server on receiving shard
-	// TODO find_master
+	// TODO find master
 	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
