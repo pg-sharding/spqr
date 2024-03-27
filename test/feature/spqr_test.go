@@ -857,7 +857,7 @@ func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
 	if err != nil {
 		return err
 	}
-	if txs == nil || len(txs) == 0 {
+	if len(txs) == 0 {
 		return nil
 	}
 	return fmt.Errorf("key range moves present")
