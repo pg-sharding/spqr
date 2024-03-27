@@ -102,12 +102,12 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		}
 	}
 
-	from, err := pgx.Connect(ctx, createConnString(fromId)) // nolint: staticcheck
+	from, err := pgx.Connect(ctx, createConnString(fromId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
 	}
-	to, err := pgx.Connect(ctx, createConnString(toId)) // nolint: staticcheck
+	to, err := pgx.Connect(ctx, createConnString(toId))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
 		return err
