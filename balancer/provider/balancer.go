@@ -254,7 +254,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 			if err = rows.Scan(&krId, &cpu); err != nil {
 				return err
 			}
-			if _, ok := b.dsToKrIdx[krId]; !ok {
+			if _, ok := b.krToDs[krId]; !ok {
 				continue
 			}
 			if _, ok := shard.MetricsKR[krId]; !ok {
