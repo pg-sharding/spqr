@@ -211,33 +211,27 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		krCondition := kr.GetKRCondition(ds, rel, krg, upperBound, "")
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
-		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
-		fromTableExists := false
-		if err = res.Scan(&fromTableExists); err != nil {
+		fromTableExists, err := checkTableExists(ctx, from, strings.ToLower(rel.Name), "public")
+		if err != nil {
 			return err
 		}
 		if !fromTableExists {
 			continue
 		}
-		query := fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition)
-		res = from.QueryRow(ctx, query)
-		fromCount := 0
-		if err = res.Scan(&fromCount); err != nil {
+		fromCount, err := getEntriesCount(ctx, from, rel.Name, krCondition)
+		if err != nil {
 			return err
 		}
 		// check that relation exists on receiving shard. If not, exit
-		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
-		toTableExists := false
-		if err = res.Scan(&toTableExists); err != nil {
+		toTableExists, err := checkTableExists(ctx, to, strings.ToLower(rel.Name), "public")
+		if err != nil {
 			return err
 		}
-		// TODO test this
 		if !toTableExists {
 			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
 		}
-		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, strings.ToLower(rel.Name), krCondition))
-		toCount := 0
-		if err = res.Scan(&toCount); err != nil {
+		toCount, err := getEntriesCount(ctx, to, rel.Name, krCondition)
+		if err != nil {
 			return err
 		}
 		// if data is already copied, skip
@@ -248,7 +242,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}
-		query = fmt.Sprintf(`
+		query := fmt.Sprintf(`
 					INSERT INTO %s
 					SELECT * FROM %s
 					WHERE %s
@@ -259,4 +253,22 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		}
 	}
 	return nil
+}
+
+func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
+	exists := false
+	if err := res.Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func getEntriesCount(ctx context.Context, conn *pgx.Conn, relName string, condition string) (int, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, relName, condition))
+	count := 0
+	if err := res.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
