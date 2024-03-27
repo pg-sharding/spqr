@@ -6,7 +6,7 @@ Feature: Balancer test
     Given cluster is up and running
     And host "coordinator2" is stopped
     And host "coordinator2" is started
-    
+
     When I execute SQL on host "coordinator"
     """
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
@@ -354,6 +354,103 @@ Feature: Balancer test
       "Key range ID":"kr2",
       "Distribution ID":"ds1",
       "Lower bound":"99990",
+      "Shard ID":"sh2"
+    }]
+    """
+
+  Scenario: balancer works with several distributions
+    When I execute SQL on host "coordinator"
+    """
+    CREATE DISTRIBUTION ds2 COLUMN TYPES integer;
+    ALTER DISTRIBUTION ds2 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr2 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr3 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds2;
+    CREATE KEY RANGE kr4 FROM 10000 ROUTE TO sh2 FOR DISTRIBUTION ds2;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    CREATE TABLE xMove2(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
+    INSERT INTO xMove2 (w_id, s) SELECT generate_series(10, 9999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "60" seconds
+    """
+    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_several_moves.yaml > /balancer.log
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove2
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove2
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    9990
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    30
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    99970
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr2",
+      "Distribution ID":"ds1",
+      "Lower bound":"99970",
+      "Shard ID":"sh2"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds2",
+      "Lower bound":"10",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds2",
+      "Lower bound":"10000",
       "Shard ID":"sh2"
     }]
     """
