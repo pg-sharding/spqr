@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/pkg/util"
 	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
@@ -141,7 +140,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if !fromTableExists {
 					continue
 				}
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), util.GetKRCondition(ds, rel, krg, upperBound, "")))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), kr.GetKRCondition(ds, rel, krg, upperBound, "")))
 				if err != nil {
 					return err
 				}
@@ -203,7 +202,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		return err
 	}
 	for _, rel := range ds.Relations {
-		krCondition := util.GetKRCondition(ds, rel, krg, upperBound, "")
+		krCondition := kr.GetKRCondition(ds, rel, krg, upperBound, "")
 		// TODO get actual schema
 		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		fromTableExists := false
