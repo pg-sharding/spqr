@@ -238,6 +238,22 @@ func (l *LocalQrouterServer) AddKeyRange(ctx context.Context, request *protos.Ad
 	return &protos.ModifyReply{}, nil
 }
 
+// GetKeyRange gets key ranges with given ids
+// TODO unit tests
+func (l *LocalQrouterServer) GetKeyRange(ctx context.Context, request *protos.GetKeyRangeRequest) (*protos.KeyRangeReply, error) {
+	res := make([]*protos.KeyRangeInfo, 0)
+	for _, id := range request.Ids {
+		krg, err := l.mgr.GetKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		if krg != nil {
+			res = append(res, krg.ToProto())
+		}
+	}
+	return &protos.KeyRangeReply{KeyRangesInfo: res}, nil
+}
+
 // TODO : unit tests
 func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.ListKeyRangeRequest) (*protos.KeyRangeReply, error) {
 	var krs []*protos.KeyRangeInfo
