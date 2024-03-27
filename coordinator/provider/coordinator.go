@@ -338,25 +338,36 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 			Msg("failed to list key ranges")
 	}
 
+	// Finish any key range move or data transfer transaction in progress
 	for _, r := range ranges {
+		move, err := qc.GetKeyRangeMove(context.TODO(), r.KeyRangeID)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("error getting key range move from qdb")
+		}
+
 		tx, err := qc.db.GetTransferTx(context.TODO(), r.KeyRangeID)
 		if err != nil {
-			continue
+			spqrlog.Zero.Error().Err(err).Msg("error getting data transfer transaction from qdb")
 		}
-		if tx != nil {
-			tem := kr.MoveKeyRange{
-				ShardId: tx.ToShardId,
-				Krid:    r.KeyRangeID,
+
+		var krm *kr.MoveKeyRange
+		if move != nil {
+			krm = &kr.MoveKeyRange{
+				Krid:    move.KeyRangeID,
+				ShardId: move.ShardId,
 			}
-			err = qc.Move(context.TODO(), &tem)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("failed to move key range")
+		} else if tx != nil {
+			krm = &kr.MoveKeyRange{
+				Krid:    r.KeyRangeID,
+				ShardId: tx.ToShardId,
 			}
 		}
 
-		err = qc.db.RemoveTransferTx(context.TODO(), r.KeyRangeID)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
+		if krm != nil {
+			err = qc.Move(context.TODO(), krm)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("error moving key range")
+			}
 		}
 	}
 
