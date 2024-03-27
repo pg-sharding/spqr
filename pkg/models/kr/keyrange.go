@@ -128,14 +128,14 @@ func GetKRCondition(ds *distributions.Distribution, rel *distributions.Distribut
 		if ds.ColTypes[i] == "varchar" {
 			lBound = fmt.Sprintf("'%s'", string(kRange.LowerBound))
 		} else {
-			lBound = fmt.Sprintf("%s", string(kRange.LowerBound))
+			lBound = string(kRange.LowerBound)
 		}
 		if upperBound != nil {
 			rBound := ""
 			if ds.ColTypes[i] == "varchar" {
 				rBound = fmt.Sprintf("'%s'", string(upperBound))
 			} else {
-				rBound = fmt.Sprintf("%s", string(upperBound))
+				rBound = string(upperBound)
 			}
 			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, lBound, hashedCol, rBound)
 		} else {
