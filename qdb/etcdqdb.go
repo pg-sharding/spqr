@@ -56,6 +56,7 @@ const (
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
 	taskGroupPath            = "/move_task_group"
+	transactionNamespace     = "/transfer_txs/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -88,6 +89,10 @@ func relationMappingNodePath(key string) string {
 
 func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
+}
+
+func transferTxNodePath(key string) string {
+	return path.Join(transactionNamespace, key)
 }
 
 // ==============================================================================
@@ -441,7 +446,7 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, key, string(bts))
+	_, err = q.cli.Put(ctx, transferTxNodePath(key), string(bts))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to write transaction")
 		return err
@@ -457,7 +462,7 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 		Msg("etcdqdb: get data transfer tx")
 
 	// TODO move to separate namespace
-	resp, err := q.cli.Get(ctx, key)
+	resp, err := q.cli.Get(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
 		return nil, err
@@ -481,7 +486,7 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 		Str("key", key).
 		Msg("etcdqdb: remove data transfer tx")
 
-	_, err := q.cli.Delete(ctx, key)
+	_, err := q.cli.Delete(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
 		return err
