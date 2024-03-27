@@ -86,6 +86,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 		return err
 	}
 	if tx == nil {
+		// No transaction in progress
 		tx = &qdb.DataTransferTransaction{
 			ToShardId:   toId,
 			FromShardId: fromId,
@@ -121,6 +122,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	for tx != nil {
 		switch tx.Status {
 		case qdb.Planned:
+			// copy data of key range to receiving shard
 			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
 				return err
 			}
@@ -130,6 +132,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				return err
 			}
 		case qdb.DataCopied:
+			// drop data from sending shard
 			for _, rel := range ds.Relations {
 				// TODO get actual schema
 				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
@@ -177,11 +180,13 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	dbName := fromShard.DB
 	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
 	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	// create postgres_fdw server on receiving shard
 	// TODO find_master
 	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
 	}
+	// create user mapping for postgres_fdw server
 	// TODO check if name is taken
 	schemaName := fmt.Sprintf("%s_schema", serverName)
 	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %s`, toShard.User, serverName)); err != nil {
@@ -190,6 +195,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
 		return err
 	}
+	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
 	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, schemaName)); err != nil {
 		return err
@@ -203,6 +209,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	}
 	for _, rel := range ds.Relations {
 		krCondition := kr.GetKRCondition(ds, rel, krg, upperBound, "")
+		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
 		res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		fromTableExists := false
@@ -218,6 +225,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		if err = res.Scan(&fromCount); err != nil {
 			return err
 		}
+		// check that relation exists on receiving shard. If not, exit
 		res = to.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
 		toTableExists := false
 		if err = res.Scan(&toTableExists); err != nil {
@@ -232,9 +240,11 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		if err = res.Scan(&toCount); err != nil {
 			return err
 		}
+		// if data is already copied, skip
 		if toCount == fromCount {
 			continue
 		}
+		// if data is inconsistent, fail
 		if toCount > 0 && fromCount != 0 {
 			return fmt.Errorf("key count on sender & receiver mismatch")
 		}

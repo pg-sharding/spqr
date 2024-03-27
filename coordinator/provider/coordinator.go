@@ -853,6 +853,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	}
 
 	if move == nil {
+		// No key range moves in progress
 		move = &qdb.MoveKeyRange{
 			MoveId:     uuid.New().String(),
 			ShardId:    req.ShardId,
@@ -868,6 +869,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	for move != nil {
 		switch move.Status {
 		case qdb.MoveKeyRangePlanned:
+			// lock the key range
 			_, err = qc.LockKeyRange(ctx, req.Krid)
 			if err != nil {
 				return err
@@ -877,17 +879,18 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			}
 			move.Status = qdb.MoveKeyRangeStarted
 		case qdb.MoveKeyRangeStarted:
+			// move the data
 			ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 			if err != nil {
 				return err
 			}
-			/* physical changes on shards */
 			err = datatransfers.MoveKeys(ctx, keyRange.ShardID, req.ShardId, keyRange, ds, qc.db, qc)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("failed to move rows")
 				return err
 			}
 
+			// update key range
 			krg, err := qc.GetKeyRange(ctx, req.Krid)
 			if err != nil {
 				return err
@@ -918,6 +921,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			}
 			move.Status = qdb.MoveKeyRangeComplete
 		case qdb.MoveKeyRangeComplete:
+			// unlock key range
 			if err := qc.UnlockKeyRange(ctx, req.Krid); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}
