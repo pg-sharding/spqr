@@ -129,6 +129,14 @@ func (q *MemQDB) DumpState() error {
 // TODO : unit tests
 func (q *MemQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
+
+	q.mu.RLock()
+	if _, ok := q.Krs[keyRange.KeyRangeID]; ok {
+		q.mu.RUnlock()
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" already exists", keyRange.KeyRangeID)
+	}
+	q.mu.RUnlock()
+
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -302,14 +310,18 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 	}
 	q.muDeletedKrs.RUnlock()
 
+	res := false
 	if read {
-		lock.RLock()
+		res = lock.TryRLock()
 	} else {
-		lock.Lock()
+		res = lock.TryLock()
+	}
+	if !res {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is already locked", id)
 	}
 
 	if _, ok := q.Krs[id]; !ok {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted after lock acuired", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted after lock acquired", id)
 	}
 	return nil
 }
