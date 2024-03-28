@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"io"
 	"log"
 	"os"
@@ -725,6 +726,21 @@ func (tctx *testContext) stepRecordQDBTx(key string, body *godog.DocString) erro
 	return tctx.qdb.RecordTransferTx(context.TODO(), key, &st)
 }
 
+func (tctx *testContext) stepQDBShouldNotContainRelation(key string) error {
+	_, err := tctx.qdb.GetRelationDistribution(context.TODO(), key)
+	switch t := err.(type) {
+	case *spqrerror.SpqrError:
+		if t.ErrorCode == spqrerror.SPQR_NO_DISTRIBUTION {
+			return nil
+		}
+		return err
+	case nil:
+		return fmt.Errorf("relation \"%s\" is still attached in qdb", key)
+	default:
+		return err
+	}
+}
+
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
 	if err != nil {
@@ -834,6 +850,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
+	s.Step(`^qdb should not contain relation "([^"]*)"$`, tctx.stepQDBShouldNotContainRelation)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
