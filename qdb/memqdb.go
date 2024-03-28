@@ -271,7 +271,7 @@ func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error
 		res = lock.TryLock()
 	}
 	if !res {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is already locked", id)
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
 	}
 
 	if _, ok := q.Krs[id]; !ok {
