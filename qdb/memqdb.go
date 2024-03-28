@@ -16,10 +16,8 @@ import (
 type MemQDB struct {
 	ShardingSchemaKeeper
 	// TODO create more mutex per map if needed
-	mu           sync.RWMutex
-	muDeletedKrs sync.RWMutex
+	mu sync.RWMutex
 
-	deletedKrs           map[string]bool
 	Locks                map[string]*sync.RWMutex            `json:"locks"`
 	Freq                 map[string]bool                     `json:"freq"`
 	Krs                  map[string]*KeyRange                `json:"krs"`
@@ -47,7 +45,6 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		RelationDistribution: map[string]string{},
 		Routers:              map[string]*Router{},
 		Transactions:         map[string]*DataTransferTransaction{},
-		deletedKrs:           map[string]bool{},
 
 		backupPath: backupPath,
 	}, nil
@@ -267,14 +264,6 @@ func (q *MemQDB) ListAllKeyRanges(_ context.Context) ([]*KeyRange, error) {
 
 // TODO : unit tests
 func (q *MemQDB) TryLockKeyRange(lock *sync.RWMutex, id string, read bool) error {
-	q.muDeletedKrs.RLock()
-
-	if _, ok := q.deletedKrs[id]; ok {
-		q.muDeletedKrs.RUnlock()
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range '%s' deleted", id)
-	}
-	q.muDeletedKrs.RUnlock()
-
 	res := false
 	if read {
 		res = lock.TryRLock()
