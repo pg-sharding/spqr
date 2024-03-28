@@ -31,10 +31,7 @@ var mockRouter = &qdb.Router{
 var mockDataTransferTransaction = &qdb.DataTransferTransaction{
 	ToShardId:   mockShard.ID,
 	FromShardId: mockShard.ID,
-	FromTxName:  "fake_tx_1",
-	ToTxName:    "fake_tx_2",
-	FromStatus:  "fake_st_1",
-	ToStatus:    "fake_st_2",
+	Status:      "fake_st",
 }
 
 // must run with -race

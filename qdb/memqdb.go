@@ -14,6 +14,7 @@ import (
 )
 
 type MemQDB struct {
+	// TODO implement those methods
 	ShardingSchemaKeeper
 	// TODO create more mutex per map if needed
 	mu           sync.RWMutex
@@ -427,7 +428,7 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 
 	ans, ok := q.Transactions[key]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no tx with key %s", key)
+		return nil, nil
 	}
 	return ans, nil
 }

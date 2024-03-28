@@ -3,18 +3,18 @@ package datatransfers
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
+	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"io"
 	"os"
 	"strings"
 	"sync"
-
-	pgx "github.com/jackc/pgx/v5"
-	_ "github.com/lib/pq"
-	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 )
 
 type MoveTableRes struct {
@@ -23,16 +23,10 @@ type MoveTableRes struct {
 }
 
 // TODO: use schema
-// var schema = flag.String("shema", "", "")
+// var schema = flag.String("schema", "", "")
 
 type ProxyW struct {
 	w io.WriteCloser
-}
-
-type pgxConnIface interface {
-	Begin(context.Context) (pgx.Tx, error)
-	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
-	Close(context.Context) error
 }
 
 func (p *ProxyW) Write(bt []byte) (int, error) {
@@ -55,6 +49,7 @@ func createConnString(shardID string) string {
 	if len(sd.Hosts) == 0 {
 		return ""
 	}
+	// TODO find_master
 	host := strings.Split(sd.Hosts[0], ":")[0]
 	port := strings.Split(sd.Hosts[0], ":")[1]
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
@@ -81,11 +76,26 @@ MoveKeys performs physical key-range move from one datashard to another.
 It is assumed that passed key range is already locked on every online spqr-router.
 
 Steps:
-  - traverse pg_class to resolve all relations that matches given sharding rules
-  - create sql copy and delete queries to move data tuples.
-  - prepare and commit distributed move transaction
+  - create postgres_fdw on receiving shard
+  - copy data from sending shard to receiving shard via fdw
+  - delete data from sending shard
 */
-func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qdb.XQDB) error {
+func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, cr coordinator.Coordinator) error {
+	tx, err := db.GetTransferTx(ctx, krg.ID)
+	if err != nil {
+		return err
+	}
+	if tx == nil {
+		// No transaction in progress
+		tx = &qdb.DataTransferTransaction{
+			ToShardId:   toId,
+			FromShardId: fromId,
+			Status:      qdb.Planned,
+		}
+		if err = db.RecordTransferTx(ctx, krg.ID, tx); err != nil {
+			return err
+		}
+	}
 	if shards == nil {
 		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
 		if err != nil {
@@ -104,220 +114,161 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qd
 		return err
 	}
 
-	txFrom, txTo, err := beginTransactions(ctx, from, to)
+	upperBound, err := resolveNextBound(ctx, krg, cr)
 	if err != nil {
 		return err
 	}
-	defer func(ctx context.Context) {
-		err := rollbackTransactions(ctx, txTo, txFrom)
-		if err != nil {
-			spqrlog.Zero.Warn().Msg("error closing transaction")
-		}
-	}(ctx)
 
-	var nextKeyRange *kr.KeyRange
-	moveKeyRange := kr.KeyRangeFromDB(&keyr)
-	qdbDs, err := db.GetDistribution(ctx, keyr.DistributionId)
-	if err != nil {
-		return err
-	}
-	ds := distributions.DistributionFromDB(qdbDs)
-
-	if krs, err := db.ListKeyRanges(ctx, moveKeyRange.Distribution); err != nil {
-		return err
-	} else {
-		for _, currkr := range krs {
-			if kr.CmpRangesLess(moveKeyRange.LowerBound, currkr.LowerBound) {
-				if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
-					nextKeyRange = kr.KeyRangeFromDB(currkr)
+	for tx != nil {
+		switch tx.Status {
+		case qdb.Planned:
+			// copy data of key range to receiving shard
+			if err = copyData(ctx, from, to, fromId, toId, krg, ds, upperBound); err != nil {
+				return err
+			}
+			tx.Status = qdb.DataCopied
+			err = db.RecordTransferTx(ctx, krg.ID, tx)
+			if err != nil {
+				return err
+			}
+		case qdb.DataCopied:
+			// drop data from sending shard
+			for _, rel := range ds.Relations {
+				// TODO get actual schema
+				res := from.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = 'public'`, strings.ToLower(rel.Name)))
+				fromTableExists := false
+				if err = res.Scan(&fromTableExists); err != nil {
+					return err
+				}
+				if !fromTableExists {
+					continue
+				}
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), kr.GetKRCondition(ds, rel, krg, upperBound, "")))
+				if err != nil {
+					return err
 				}
 			}
+			if err = db.RemoveTransferTx(ctx, krg.ID); err != nil {
+				return err
+			}
+			tx = nil
+		default:
+			return fmt.Errorf("incorrect data transfer transaction status: %s", tx.Status)
 		}
-	}
-
-	err = moveData(ctx, moveKeyRange, nextKeyRange, ds.Relations, txTo, txFrom)
-	if err != nil {
-		return err
-	}
-
-	err = commitTransactions(ctx, fromId, toId, keyr.KeyRangeID, txTo, txFrom, db)
-	if err != nil {
-		return err
 	}
 
 	return nil
 }
 
-func ResolvePreparedTransaction(ctx context.Context, sh, tx string, commit bool) {
-	if shards == nil {
-		err := LoadConfig(config.CoordinatorConfig().ShardDataCfg)
-		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("error loading config")
+func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coordinator) (kr.KeyRangeBound, error) {
+	krs, err := cr.ListKeyRanges(ctx, krg.Distribution)
+	if err != nil {
+		return nil, err
+	}
+	var bound kr.KeyRangeBound
+	for _, kRange := range krs {
+		if kr.CmpRangesLess(krg.LowerBound, kRange.LowerBound) && (bound == nil || kr.CmpRangesLess(kRange.LowerBound, bound)) {
+			bound = kRange.LowerBound
 		}
 	}
-
-	db, err := pgx.Connect(ctx, createConnString(sh))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error connecting to shard")
-	}
-
-	if commit {
-		_, err = db.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s'", tx))
-	} else {
-		_, err = db.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s'", tx))
-	}
-
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-	}
+	return bound, nil
 }
 
-func beginTransactions(ctx context.Context, from, to pgxConnIface) (pgx.Tx, pgx.Tx, error) {
-	txFrom, err := from.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
-		return nil, nil, err
-	}
-	txTo, err := to.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error begining transaction")
-		return nil, nil, err
-	}
-	return txFrom, txTo, nil
-}
-
-func commitTransactions(ctx context.Context, f, t string, krid string, txTo, txFrom pgx.Tx, db qdb.XQDB) error {
-	_, err := txTo.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", t, krid))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
-		return err
-	}
-	_, err = txFrom.Exec(ctx, fmt.Sprintf("PREPARE TRANSACTION '%s-%s'", f, krid))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error preparing transaction")
-		_, err1 := txTo.Exec(ctx, fmt.Sprintf("ROLLBACK PREPARED '%s-%s'", t, krid))
-		if err1 != nil {
-			spqrlog.Zero.Error().Err(err1).Msg("error closing transaction")
-		}
-		return err
-	}
-
-	d := qdb.DataTransferTransaction{
-		ToShardId:   t,
-		ToTxName:    fmt.Sprintf("%s-%s", t, krid),
-		FromTxName:  fmt.Sprintf("%s-%s", f, krid),
-		FromShardId: f,
-		ToStatus:    qdb.Processing,
-		FromStatus:  qdb.Processing,
-	}
-
-	err = db.RecordTransferTx(ctx, krid, &d)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
-	}
-
-	_, err = txTo.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s-%s'", t, krid))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		return err
-	}
-
-	d.ToStatus = qdb.Commited
-	err = db.RecordTransferTx(ctx, krid, &d)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error writing to qdb")
-	}
-
-	_, err = txFrom.Exec(ctx, fmt.Sprintf("COMMIT PREPARED '%s-%s'", f, krid))
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error closing transaction")
-		return err
-	}
-
-	d.FromStatus = qdb.Commited
-	err = db.RecordTransferTx(ctx, krid, &d)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("error removing from qdb")
-	}
-	return nil
-}
-
-func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
-	err := txTo.Rollback(ctx)
-	if err != nil {
-		spqrlog.Zero.Warn().Msg("error closing transaction")
-	}
-	err1 := txFrom.Rollback(ctx)
-	if err1 != nil {
-		spqrlog.Zero.Warn().Msg("error closing transaction")
-		return err1
-	}
-	return err
-}
-
-// TODO enhance for multi-column sharding rules
-func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation, txTo, txFrom pgx.Tx) error {
-	// TODO: use whole RFQN
-	rows, err := txFrom.Query(ctx, `
-SELECT table_name
-FROM information_schema.tables;
-`)
+func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
+	fromShard := shards.ShardsData[fromId]
+	toShard := shards.ShardsData[toId]
+	dbName := fromShard.DB
+	fromHost := strings.Split(fromShard.Hosts[0], ":")[0]
+	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
+	// create postgres_fdw server on receiving shard
+	// TODO find master
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
 	}
-	res := make(map[string]struct{})
-	for rows.Next() {
-		var tableName string
-		err = rows.Scan(&tableName)
+	// create user mapping for postgres_fdw server
+	// TODO check if name is taken
+	schemaName := fmt.Sprintf("%s_schema", serverName)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %s`, toShard.User, serverName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+		return err
+	}
+	// create foreign tables corresponding to such on sending shard
+	// TODO check if schemaName is not used by relations (needs schemas in distributions)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, schemaName)); err != nil {
+		return err
+	}
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, schemaName)); err != nil {
+		return err
+	}
+	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %s INTO %s`, serverName, schemaName))
+	if err != nil {
+		return err
+	}
+	for _, rel := range ds.Relations {
+		krCondition := kr.GetKRCondition(ds, rel, krg, upperBound, "")
+		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
+		// TODO get actual schema
+		fromTableExists, err := checkTableExists(ctx, from, strings.ToLower(rel.Name), "public")
 		if err != nil {
 			return err
 		}
-
-		res[tableName] = struct{}{}
-	}
-
-	rows.Close()
-
-	for _, rel := range rels {
-		if _, ok := res[strings.ToLower(rel.Name)]; !ok {
+		if !fromTableExists {
 			continue
 		}
-		r, w, err := os.Pipe()
+		fromCount, err := getEntriesCount(ctx, from, rel.Name, krCondition)
 		if err != nil {
 			return err
 		}
-
-		pw := ProxyW{
-			w: w,
-		}
-
-		// This code does not work for multi-column key ranges.
-		var qry string
-		if nextKeyRange == nil {
-			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s RETURNING *) TO STDOUT", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound)
-		} else {
-			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
-		}
-
-		go func() {
-			_, err = txFrom.Conn().PgConn().CopyTo(ctx, &pw, qry)
-			if err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-			}
-
-			if err := pw.w.Close(); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
-			}
-		}()
-		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
-			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
+		// check that relation exists on receiving shard. If not, exit
+		toTableExists, err := checkTableExists(ctx, to, strings.ToLower(rel.Name), "public")
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("copy in failed")
+			return err
+		}
+		if !toTableExists {
+			return fmt.Errorf("relation %s does not exist on receiving shard", rel.Name)
+		}
+		toCount, err := getEntriesCount(ctx, to, rel.Name, krCondition)
+		if err != nil {
+			return err
+		}
+		// if data is already copied, skip
+		if toCount == fromCount {
+			continue
+		}
+		// if data is inconsistent, fail
+		if toCount > 0 && fromCount != 0 {
+			return fmt.Errorf("key count on sender & receiver mismatch")
+		}
+		query := fmt.Sprintf(`
+					INSERT INTO %s
+					SELECT * FROM %s
+					WHERE %s
+`, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
+		_, err = to.Exec(ctx, query)
+		if err != nil {
 			return err
 		}
 	}
-
 	return nil
+}
+
+func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
+	exists := false
+	if err := res.Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func getEntriesCount(ctx context.Context, conn *pgx.Conn, relName string, condition string) (int, error) {
+	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, relName, condition))
+	count := 0
+	if err := res.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
