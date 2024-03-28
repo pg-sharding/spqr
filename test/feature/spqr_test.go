@@ -210,6 +210,7 @@ func (tctx *testContext) connectPostgresqlWithCredentials(username string, passw
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		err := db.PingContext(ctx)
+		log.Printf("ping postgres at \"%s\", err: %s", addr, err)
 		if err != nil {
 			log.Printf("failed to ping postgres at %s: %s", addr, err)
 		}
@@ -231,6 +232,7 @@ func (tctx *testContext) connectCoordinatorWithCredentials(username string, pass
 
 func (tctx *testContext) connectRouterConsoleWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
+		fmt.Printf("pinging %#v", db)
 		_, err := db.Exec("SHOW key_ranges")
 		if err != nil {
 			log.Printf("failed to ping router console at %s: %s", addr, err)
