@@ -98,7 +98,7 @@ Feature: Proxy console
         """
         Then SQL error on host "router2" should match regexp
         """
-        context deadline exceeded
+        key range "krid1" is locked
         """
 
         When I run SQL on host "router-admin"
