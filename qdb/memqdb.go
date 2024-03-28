@@ -410,7 +410,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 }
 
 // ==============================================================================
-//                           Transfer transactions
+//                           TRANSACTION TRANSFERS
 // ==============================================================================
 
 // TODO : unit tests
