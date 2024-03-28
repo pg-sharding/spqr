@@ -426,7 +426,7 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 }
 
 // ==============================================================================
-//                           Transfer transactions
+//                           TRANSACTION TRANSFERS
 // ==============================================================================
 
 // TODO : unit tests
