@@ -73,7 +73,7 @@ func TestMemqdbRacing(t *testing.T) {
 		func() { _ = memqdb.UpdateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.DeleteRouter(ctx, mockRouter.ID) },
 	}
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1000; i++ {
 		for _, m := range methods {
 			wg.Add(1)
 			go func(m func()) {
