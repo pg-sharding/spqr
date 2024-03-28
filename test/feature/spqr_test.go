@@ -378,7 +378,7 @@ func (tctx *testContext) stepClusterEnvironmentIs(body *godog.DocString) error {
 	return nil
 }
 
-func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
+func (tctx *testContext) stepClusterIsUpAndRunning() error {
 	err := tctx.composer.Up(tctx.composerEnv)
 	if err != nil {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
@@ -812,9 +812,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
-	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
+	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning() })
 	s.Step(`^cluster is failed up and running$`, func() error {
-		err := tctx.stepClusterIsUpAndRunning(true)
+		err := tctx.stepClusterIsUpAndRunning()
 		if err != nil {
 			return nil
 		}
