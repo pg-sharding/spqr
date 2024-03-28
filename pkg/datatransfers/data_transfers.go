@@ -3,11 +3,12 @@ package datatransfers
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"io"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
 	pgx "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -115,21 +116,23 @@ func MoveKeys(ctx context.Context, fromId, toId string, keyr qdb.KeyRange, db qd
 		}
 	}(ctx)
 
-	var nextKeyRange *kr.KeyRange
-	moveKeyRange := kr.KeyRangeFromDB(&keyr)
 	qdbDs, err := db.GetDistribution(ctx, keyr.DistributionId)
 	if err != nil {
 		return err
 	}
+
+	var nextKeyRange *kr.KeyRange
+	moveKeyRange := kr.KeyRangeFromDB(&keyr, qdbDs.ColTypes)
 	ds := distributions.DistributionFromDB(qdbDs)
 
 	if krs, err := db.ListKeyRanges(ctx, moveKeyRange.Distribution); err != nil {
 		return err
 	} else {
 		for _, currkr := range krs {
-			if kr.CmpRangesLess(moveKeyRange.LowerBound, currkr.LowerBound) {
-				if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
-					nextKeyRange = kr.KeyRangeFromDB(currkr)
+			typedKr := kr.KeyRangeFromDB(currkr, qdbDs.ColTypes)
+			if kr.CmpRangesLess(moveKeyRange.LowerBound, typedKr.LowerBound, qdbDs.ColTypes) {
+				if nextKeyRange == nil || kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, qdbDs.ColTypes) {
+					nextKeyRange = typedKr
 				}
 			}
 		}
@@ -256,6 +259,7 @@ func rollbackTransactions(ctx context.Context, txTo, txFrom pgx.Tx) error {
 }
 
 // TODO enhance for multi-column sharding rules
+// TODO: unite this logic with spqr-mover
 func moveData(ctx context.Context, keyRange, nextKeyRange *kr.KeyRange, rels map[string]*distributions.DistributedRelation, txTo, txFrom pgx.Tx) error {
 	// TODO: use whole RFQN
 	rows, err := txFrom.Query(ctx, `
@@ -295,10 +299,10 @@ FROM information_schema.tables;
 		var qry string
 		if nextKeyRange == nil {
 			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s RETURNING *) TO STDOUT", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound)
+				rel.DistributionKey[0].Column, keyRange.SendRaw()[0])
 		} else {
 			qry = fmt.Sprintf("COPY (DELETE FROM %s WHERE %s >= %s and %s < %s RETURNING *) TO STDOUT", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
+				rel.DistributionKey[0].Column, keyRange.SendRaw()[0], rel.DistributionKey[0].Column, nextKeyRange.SendRaw()[0])
 		}
 
 		go func() {
@@ -311,6 +315,7 @@ FROM information_schema.tables;
 				spqrlog.Zero.Error().Err(err).Msg("error closing pipe")
 			}
 		}()
+
 		_, err = txTo.Conn().PgConn().CopyFrom(ctx,
 			r, fmt.Sprintf("COPY %s FROM STDIN", rel.Name))
 		if err != nil {

@@ -3,6 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
@@ -14,8 +17,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"sort"
-	"strings"
 )
 
 type BalancerImpl struct {
@@ -346,10 +347,11 @@ func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kR
 		} else {
 			hashedCol = entry.Column
 		}
+		// TODO: fix multidim case
 		if nextKR != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, string(kRange.LowerBound), hashedCol, string(nextKR.LowerBound))
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendRaw()[0], hashedCol, nextKR.SendRaw()[0])
 		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, string(kRange.LowerBound))
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendRaw()[0])
 		}
 	}
 	return strings.Join(buf, " AND "), nil
@@ -666,6 +668,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
+	distrService := protos.NewDistributionServiceClient(b.coordinatorConn)
 	keyRangesProto, err := keyRangeService.ListAllKeyRanges(ctx, &protos.ListAllKeyRangesRequest{})
 	if err != nil {
 		return err
@@ -675,11 +678,17 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 		if _, ok := keyRanges[krProto.DistributionId]; !ok {
 			keyRanges[krProto.DistributionId] = make([]*kr.KeyRange, 0)
 		}
-		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto))
+		ds, err := distrService.GetDistribution(ctx, &protos.GetDistributionRequest{
+			Id: krProto.DistributionId,
+		})
+		if err != nil {
+			return err
+		}
+		keyRanges[krProto.DistributionId] = append(keyRanges[krProto.DistributionId], kr.KeyRangeFromProto(krProto, ds.Distribution.ColumnTypes))
 	}
 	for _, krs := range keyRanges {
 		sort.Slice(krs, func(i, j int) bool {
-			return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound)
+			return kr.CmpRangesLess(krs[i].LowerBound, krs[j].LowerBound, krs[j].ColumnTypes)
 		})
 	}
 

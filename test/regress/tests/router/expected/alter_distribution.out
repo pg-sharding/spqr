@@ -6,13 +6,13 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DISTRIBUTION ds1;
+CREATE DISTRIBUTION ds1 COLUMN TYPES int;
          add distribution         
 ----------------------------------
  created distribution with id ds1
 (1 row)
 
-CREATE DISTRIBUTION ds2;
+CREATE DISTRIBUTION ds2 COLUMN TYPES int;
          add distribution         
 ----------------------------------
  created distribution with id ds2
@@ -55,7 +55,7 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 (1 row)
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-ERROR:  no such distribution.
+ERROR:  distribution "ds3" not found.
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  relation "xx" is already attached.
 \c regress
