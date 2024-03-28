@@ -124,7 +124,7 @@ func (q *MemQDB) DumpState() error {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 
 	q.mu.RLock()
@@ -149,7 +149,7 @@ func (q *MemQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) {
+func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -163,7 +163,7 @@ func (q *MemQDB) GetKeyRange(ctx context.Context, id string) (*KeyRange, error) 
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) UpdateKeyRange(_ context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: update key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -172,7 +172,7 @@ func (q *MemQDB) UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
+func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: drop key range")
 
 	q.mu.Lock()
@@ -190,7 +190,7 @@ func (q *MemQDB) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropKeyRangeAll(ctx context.Context) error {
+func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: drop all key ranges")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -380,14 +380,14 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+func (q *MemQDB) RecordTransferTx(_ context.Context, key string, info *DataTransferTransaction) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return ExecuteCommands(q.DumpState, NewUpdateCommand(q.Transactions, key, info))
 }
 
 // TODO : unit tests
-func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
+func (q *MemQDB) GetTransferTx(_ context.Context, key string) (*DataTransferTransaction, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -399,7 +399,7 @@ func (q *MemQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTr
 }
 
 // TODO : unit tests
-func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
+func (q *MemQDB) RemoveTransferTx(_ context.Context, key string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Transactions, key))
@@ -409,12 +409,12 @@ func (q *MemQDB) RemoveTransferTx(ctx context.Context, key string) error {
 //	                           COORDINATOR LOCK
 // ==============================================================================
 
-func (q *MemQDB) TryCoordinatorLock(ctx context.Context) error {
+func (q *MemQDB) TryCoordinatorLock(_ context.Context) error {
 	return nil
 }
 
 // TODO : unit tests
-func (q *MemQDB) UpdateCoordinator(ctx context.Context, address string) error {
+func (q *MemQDB) UpdateCoordinator(_ context.Context, address string) error {
 	spqrlog.Zero.Debug().Str("address", address).Msg("memqdb: update coordinator address")
 
 	q.mu.Lock()
@@ -434,7 +434,7 @@ func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
+func (q *MemQDB) AddRouter(_ context.Context, r *Router) error {
 	spqrlog.Zero.Debug().Interface("router", r).Msg("memqdb: add router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -443,7 +443,7 @@ func (q *MemQDB) AddRouter(ctx context.Context, r *Router) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
+func (q *MemQDB) DeleteRouter(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("router", id).Msg("memqdb: delete router")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -452,7 +452,7 @@ func (q *MemQDB) DeleteRouter(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
+func (q *MemQDB) OpenRouter(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
 		Msg("memqdb: open router")
@@ -465,7 +465,7 @@ func (q *MemQDB) OpenRouter(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) CloseRouter(ctx context.Context, id string) error {
+func (q *MemQDB) CloseRouter(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().
 		Str("router", id).
 		Msg("memqdb: open router")
@@ -478,7 +478,7 @@ func (q *MemQDB) CloseRouter(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
+func (q *MemQDB) ListRouters(_ context.Context) ([]*Router, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list routers")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -501,7 +501,7 @@ func (q *MemQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
+func (q *MemQDB) AddShard(_ context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().Interface("shard", shard).Msg("memqdb: add shard")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -510,7 +510,7 @@ func (q *MemQDB) AddShard(ctx context.Context, shard *Shard) error {
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
+func (q *MemQDB) ListShards(_ context.Context) ([]*Shard, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list shards")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -529,7 +529,7 @@ func (q *MemQDB) ListShards(ctx context.Context) ([]*Shard, error) {
 }
 
 // TODO : unit tests
-func (q *MemQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
+func (q *MemQDB) GetShard(_ context.Context, id string) (*Shard, error) {
 	spqrlog.Zero.Debug().Str("shard", id).Msg("memqdb: get shard")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -556,7 +556,7 @@ func (q *MemQDB) DropShard(_ context.Context, id string) error {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) CreateDistribution(ctx context.Context, distribution *Distribution) error {
+func (q *MemQDB) CreateDistribution(_ context.Context, distribution *Distribution) error {
 	spqrlog.Zero.Debug().Interface("distribution", distribution).Msg("memqdb: add distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -570,7 +570,7 @@ func (q *MemQDB) CreateDistribution(ctx context.Context, distribution *Distribut
 }
 
 // TODO : unit tests
-func (q *MemQDB) ListDistributions(ctx context.Context) ([]*Distribution, error) {
+func (q *MemQDB) ListDistributions(_ context.Context) ([]*Distribution, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: list distributions")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -587,7 +587,7 @@ func (q *MemQDB) ListDistributions(ctx context.Context) ([]*Distribution, error)
 }
 
 // TODO : unit tests
-func (q *MemQDB) DropDistribution(ctx context.Context, id string) error {
+func (q *MemQDB) DropDistribution(_ context.Context, id string) error {
 	spqrlog.Zero.Debug().Str("distribution", id).Msg("memqdb: delete distribution")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -655,7 +655,7 @@ func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName s
 }
 
 // TODO : unit tests
-func (q *MemQDB) GetDistribution(ctx context.Context, id string) (*Distribution, error) {
+func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get distribution")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -708,7 +708,7 @@ func (q *MemQDB) WriteTaskGroup(_ context.Context, group *TaskGroup) error {
 	return nil
 }
 
-func (q *MemQDB) RemoveTaskGroup(ctx context.Context) error {
+func (q *MemQDB) RemoveTaskGroup(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
