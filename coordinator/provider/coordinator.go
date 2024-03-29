@@ -215,6 +215,7 @@ var _ coordinator.Coordinator = &qdbCoordinator{}
 // TODO : unit tests
 func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	for {
+		/* check we are still coordinator */
 		spqrlog.Zero.Debug().Msg("start routers watch iteration")
 
 		// TODO: lock router
@@ -278,6 +279,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 			}
 		}
 
+		// TODO: configure sleep
 		time.Sleep(time.Second)
 	}
 }
