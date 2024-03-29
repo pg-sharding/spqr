@@ -466,7 +466,6 @@ func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferT
 		Str("key", key).
 		Msg("etcdqdb: get data transfer tx")
 
-	// TODO move to separate namespace
 	resp, err := q.cli.Get(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
