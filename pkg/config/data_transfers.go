@@ -27,7 +27,7 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 	var cfg DatatransferConnections
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return &cfg, err
+		return nil, fmt.Errorf("could not open file \"%s\": %s", cfgPath, err)
 	}
 
 	defer func(file *os.File) {
@@ -63,4 +63,14 @@ func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 		return json.NewDecoder(file).Decode(&cfg)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+}
+
+func (s *ShardConnect) GetConnStrings() []string {
+	res := make([]string, len(s.Hosts))
+	for i, host := range s.Hosts {
+		address := strings.Split(host, ":")[0]
+		port := strings.Split(host, ":")[1]
+		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", s.User, address, port, s.DB, s.Password)
+	}
+	return res
 }

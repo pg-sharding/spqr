@@ -22,6 +22,7 @@ type BalancerImpl struct {
 	coordinatorConn *grpc.ClientConn
 	threshold       []float64
 
+	shardConns    *config.DatatransferConnections
 	dsToKeyRanges map[string][]*kr.KeyRange
 	dsToKrIdx     map[string]map[string]int
 	shardKr       map[string][]string
@@ -29,6 +30,10 @@ type BalancerImpl struct {
 }
 
 func NewBalancer() (*BalancerImpl, error) {
+	shards, err := loadShardsConfig(config.BalancerConfig().ShardsConfig)
+	if err != nil {
+		return nil, err
+	}
 	threshold := make([]float64, 2*metricsCount)
 	configThresholds := []float64{config.BalancerConfig().CpuThreshold, config.BalancerConfig().SpaceThreshold}
 	for i := 0; i < metricsCount; i++ {
@@ -40,6 +45,7 @@ func NewBalancer() (*BalancerImpl, error) {
 		return nil, err
 	}
 	return &BalancerImpl{
+		shardConns:      shards,
 		coordinatorConn: conn,
 		threshold:       threshold,
 		dsToKeyRanges:   map[string][]*kr.KeyRange{},
@@ -79,20 +85,14 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 }
 
 func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, error) {
-	shardsServiceClient := protos.NewShardServiceClient(b.coordinatorConn)
-	r, err := shardsServiceClient.ListShards(ctx, &protos.ListShardsRequest{})
-	if err != nil {
-		return nil, err
-	}
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
-	spqrlog.Zero.Debug().Int("shards count", len(r.Shards)).Msg("got shards from coordinator")
-	for _, shard := range r.Shards {
-		state, err := b.getShardCurrentState(ctx, shard)
+	for shardId, shard := range b.shardConns.ShardsData {
+		state, err := b.getShardCurrentState(ctx, shardId, shard)
 		if err != nil {
 			return nil, err
 		}
-		shardToState[shard.Id] = state
+		shardToState[shardId] = state
 		shardStates = append(shardStates, state)
 	}
 
@@ -108,11 +108,11 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 		return &tasks.TaskGroup{}, nil
 	}
 
-	if err = b.updateKeyRanges(ctx); err != nil {
+	if err := b.updateKeyRanges(ctx); err != nil {
 		return nil, fmt.Errorf("error updating key range info: %s", err)
 	}
 
-	if err = b.getStatsByKeyRange(ctx, shardStates[0]); err != nil {
+	if err := b.getStatsByKeyRange(ctx, shardStates[0]); err != nil {
 		return nil, fmt.Errorf("error getting detailed stats: %s", err)
 	}
 
@@ -142,14 +142,14 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.TaskGroup, err
 	return b.getTasks(ctx, shardFrom, krId, shId, keyCount)
 }
 
-func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.Shard) (*ShardMetrics, error) {
-	spqrlog.Zero.Debug().Str("shard id", shard.Id).Msg("getting shard state")
-	hosts := shard.Hosts
+func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
+	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
+	connStrings := shard.GetConnStrings()
 	res := NewShardMetrics()
-	res.ShardId = shard.Id
+	res.ShardId = shardId
 	replicaMetrics := NewHostMetrics()
-	for _, host := range hosts {
-		hostsMetrics, isMaster, err := b.getHostStatus(ctx, host)
+	for _, connString := range connStrings {
+		hostsMetrics, isMaster, err := b.getHostStatus(ctx, connString)
 		if err != nil {
 			return nil, err
 		}
@@ -158,13 +158,13 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shard *protos.S
 		}
 		if isMaster {
 			res.SetMasterMetrics(hostsMetrics)
-			res.Master = host
+			res.Master = connString
 			continue
 		}
 		replicaThreshold := b.threshold[metricsCount:]
 		if replicaMetrics.MaxRelative(replicaThreshold) < hostsMetrics.MaxRelative(replicaThreshold) {
 			replicaMetrics = hostsMetrics
-			res.TargetReplica = host
+			res.TargetReplica = connString
 		}
 	}
 	res.SetReplicaMetrics(replicaMetrics)
@@ -702,4 +702,14 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func loadShardsConfig(path string) (*config.DatatransferConnections, error) {
+	var err error
+
+	shards, err := config.LoadShardDataCfg(path)
+	if err != nil {
+		return nil, err
+	}
+	return shards, nil
 }
