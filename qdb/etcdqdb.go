@@ -508,15 +508,6 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		return err
 	}
 
-	go func() {
-		for resp := range keepAliveCh {
-			spqrlog.Zero.Debug().
-				Uint64("raft-term", resp.RaftTerm).
-				Int64("lease-id", int64(resp.ID)).
-				Msg("etcd keep alive channel")
-		}
-	}()
-
 	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().Host, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
@@ -528,6 +519,16 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	if !stat.Succeeded {
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
+
+	// okay, we acquired lock, time to spawn keep alive channel
+	go func() {
+		for resp := range keepAliveCh {
+			spqrlog.Zero.Debug().
+				Uint64("raft-term", resp.RaftTerm).
+				Int64("lease-id", int64(resp.ID)).
+				Msg("etcd keep alive channel")
+		}
+	}()
 
 	return nil
 }
