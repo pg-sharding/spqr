@@ -18,6 +18,8 @@ type Balancer struct {
 
 	CoordinatorAddress string `json:"coordinator_address" toml:"coordinator_address" yaml:"coordinator_address"`
 
+	ShardsConfig string `json:"shards_config" yaml:"shards_config" toml:"shards_config"`
+
 	// TODO set default values (probably the type needs to be de-exported)
 	CpuThreshold   float64 `json:"cpu_threshold" yaml:"cpu_threshold" toml:"cpu_threshold"`
 	SpaceThreshold float64 `json:"space_threshold" yaml:"space_threshold" toml:"space_threshold"`
