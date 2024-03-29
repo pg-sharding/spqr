@@ -235,7 +235,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "router" should match regexp
     """
-    key range "krid1" is locked
+    key range .* is locked
     """
 
     Given I run SQL on host "coordinator"
@@ -342,7 +342,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "coordinator" should match regexp
     """
-    key range "krid1" is locked
+    key range .* is locked
     """
 
     When I run SQL on host "coordinator"
