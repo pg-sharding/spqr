@@ -178,12 +178,14 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if lock, ok := q.Locks[id]; ok {
-		if !lock.TryLock() {
-			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
-		}
-		defer lock.Unlock()
+	lock, ok := q.Locks[id]
+	if !ok {
+		return nil
 	}
+	if !lock.TryLock() {
+		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)
+	}
+	defer lock.Unlock()
 
 	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, id),
 		NewDeleteCommand(q.Freq, id), NewDeleteCommand(q.Locks, id))
@@ -196,24 +198,17 @@ func (q *MemQDB) DropKeyRangeAll(_ context.Context) error {
 	defer q.mu.Unlock()
 
 	// Wait until key range will be unlocked
-	success := true
-	lockedKR := ""
 	var locks []*sync.RWMutex
-	for krId, l := range q.Locks {
-		if !l.TryLock() {
-			success = false
-			lockedKR = krId
-			break
-		}
-		locks = append(locks, l)
-	}
 	defer func() {
 		for _, l := range locks {
 			l.Unlock()
 		}
 	}()
-	if !success {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", lockedKR)
+	for krId, l := range q.Locks {
+		if !l.TryLock() {
+			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", krId)
+		}
+		locks = append(locks, l)
 	}
 	spqrlog.Zero.Debug().Msg("memqdb: acquired all locks")
 
