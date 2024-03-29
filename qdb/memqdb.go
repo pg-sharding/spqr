@@ -14,8 +14,6 @@ import (
 )
 
 type MemQDB struct {
-	// TODO implement those methods
-	ShardingSchemaKeeper
 	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
@@ -117,6 +115,30 @@ func (q *MemQDB) DumpState() error {
 		return err
 	}
 
+	return nil
+}
+
+// ==============================================================================
+//                               KEY RANGE MOVES
+// ==============================================================================
+
+func (q *MemQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+	// TODO implement
+	return nil
+}
+
+func (q *MemQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+	// TODO implement
+	return nil, nil
+}
+
+func (q *MemQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+	// TODO implement
+	return nil
+}
+
+func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+	// TODO implement
 	return nil
 }
 
