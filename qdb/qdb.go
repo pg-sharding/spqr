@@ -115,6 +115,8 @@ const (
 	DataCopied = TxStatus("data_copied")
 )
 
+// DataTransferTransaction contains information about data transfer
+// from one shard to another
 type DataTransferTransaction struct {
 	ToShardId   string   `json:"to_shard"`
 	FromShardId string   `json:"from_shard"`
