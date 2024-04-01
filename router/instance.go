@@ -57,7 +57,7 @@ func (r *InstanceImpl) Initialized() bool {
 
 var _ Router = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool, initialize bool) (*InstanceImpl, error) {
 	/* TODO: fix by adding configurable setting */
 	skipInitSQL := false
 	if _, err := os.Stat(rcfg.MemqdbBackupPath); !persist && err == nil {
@@ -158,7 +158,9 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		}
 	}
 
-	qr.Initialize()
+	if initialize {
+		qr.Initialize()
+	}
 
 	return &InstanceImpl{
 		RuleRouter: rr,

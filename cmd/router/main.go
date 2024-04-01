@@ -43,6 +43,8 @@ var (
 
 	persist bool
 
+	initialize bool
+
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
 		Short: "spqr-router",
@@ -69,6 +71,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 	rootCmd.PersistentFlags().BoolVarP(&persist, "persist", "", false, "tells router to persist its configuration in non-clustered setup")
+	rootCmd.PersistentFlags().BoolVarP(&initialize, "initialize", "", true, "tells router to initialize itself after config/init sql processing")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -181,7 +184,8 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
+		/* TODO: more granual configure source of initial configuration (initSQL/coordinator) */
+		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist, initialize)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
