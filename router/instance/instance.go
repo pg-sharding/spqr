@@ -156,6 +156,9 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		}
 	} else if rcfg.UseCoordinatorInit {
 		panic("implement me")
+	} else {
+		/* TODO: maybe error-out? */
+		r.Initialize()
 	}
 
 	return r, nil
