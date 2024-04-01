@@ -164,20 +164,6 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 
 var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}
 
-type routerConn struct {
-	routerproto.KeyRangeServiceClient
-	addr string
-	id   string
-}
-
-func (r *routerConn) Addr() string {
-	return r.addr
-}
-
-func (r *routerConn) ID() string {
-	return r.id
-}
-
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", r.ID).
