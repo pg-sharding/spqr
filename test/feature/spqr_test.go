@@ -40,7 +40,7 @@ const (
 	spqrCoordinatorPort             = 7002
 	qdbPort                         = 2379
 	shardUser                       = "regress"
-	shardPassword                   = ""
+	shardPassword                   = "12345678"
 	coordinatorPassword             = "password"
 	dbName                          = "regress"
 	consoleName                     = "spqr-console"
