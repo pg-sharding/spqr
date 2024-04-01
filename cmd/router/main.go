@@ -20,8 +20,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
-	router "github.com/pg-sharding/spqr/router"
 	"github.com/pg-sharding/spqr/router/app"
+	"github.com/pg-sharding/spqr/router/instance"
 	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 	"github.com/spf13/cobra"
@@ -135,6 +135,10 @@ var runCmd = &cobra.Command{
 			spqrlog.Zero.Debug().Msg("daemon started")
 		}
 
+		if rcfg.UseCoordinatorInit && rcfg.UseInitSQL {
+			return fmt.Errorf("Cannot use initSQL andd coordinator-based init simultaneously")
+		}
+
 		ctx, cancelCtx := context.WithCancel(context.Background())
 		defer cancelCtx()
 
@@ -181,7 +185,7 @@ var runCmd = &cobra.Command{
 		/* will change on reload */
 		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
 		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
-		router, err := router.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
+		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}

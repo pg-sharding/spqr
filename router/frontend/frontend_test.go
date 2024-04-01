@@ -1,4 +1,4 @@
-package app_test
+package frontend_test
 
 import (
 	"io"
@@ -11,7 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	app "github.com/pg-sharding/spqr/router"
+	"github.com/pg-sharding/spqr/router/frontend"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
@@ -41,7 +41,7 @@ func TestFrontendSimpleEOF(t *testing.T) {
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).Times(1)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
@@ -146,7 +146,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
@@ -293,7 +293,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
@@ -406,7 +406,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := app.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
 
 	assert.NoError(err, "")
 }
