@@ -256,7 +256,7 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 		return success
 	}, timeout, 2*time.Second)
 	if !success {
-		return nil, fmt.Errorf("postgres is unresponsive")
+		return nil, fmt.Errorf("postgres does not respond")
 	}
 	return db, nil
 }
