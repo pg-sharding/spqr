@@ -58,7 +58,7 @@ Feature: Coordinator test
     DROP DISTRIBUTION ds1_test CASCADE
     """
     Then command return code should be "0"
-
+    And qdb should not contain relation "test1"
 
     When I run SQL on host "coordinator"
     """
