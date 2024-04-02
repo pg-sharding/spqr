@@ -154,3 +154,10 @@ Feature: MemQDB save state into a file
     """
     fake_init\.sql: no such file or directory
     """
+
+  Scenario: Router crashes when coordinator init is given as well as init.sql
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_with_initsql_and_coordinator_init.yaml
+    """
+    And cluster is failed up and running
