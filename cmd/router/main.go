@@ -136,7 +136,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if rcfg.UseCoordinatorInit && rcfg.UseInitSQL {
-			return fmt.Errorf("Cannot use initSQL andd coordinator-based init simultaneously")
+			return fmt.Errorf("cannot use initSQL and coordinator-based init simultaneously")
 		}
 
 		ctx, cancelCtx := context.WithCancel(context.Background())
