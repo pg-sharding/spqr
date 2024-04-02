@@ -68,6 +68,8 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 		if err != nil {
 			return err
 		}
+		defer cc.Close()
+
 		if err := cb(cc, r.Address); err != nil {
 			return err
 		}
@@ -220,6 +222,8 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				if err != nil {
 					return err
 				}
+
+				defer cc.Close()
 
 				rrClient := routerproto.NewTopologyServiceClient(cc)
 
@@ -385,9 +389,11 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			if err != nil {
 				return err
 			}
+			defer cc.Close()
 
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
+				return err
 			}
 
 			return nil
