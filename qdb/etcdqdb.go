@@ -521,6 +521,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 	}
 
 	if !stat.Succeeded {
+		_ = q.cli.Lease.Close()
 		return spqrerror.New(spqrerror.SPQR_UNEXPECTED, "qdb is already in use")
 	}
 
