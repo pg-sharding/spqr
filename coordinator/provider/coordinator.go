@@ -37,7 +37,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
-	router "github.com/pg-sharding/spqr/router"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
@@ -164,22 +163,6 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 }
 
 var _ connectiterator.ConnectIterator = &grpcConnectionIterator{}
-
-type routerConn struct {
-	routerproto.KeyRangeServiceClient
-	addr string
-	id   string
-}
-
-func (r *routerConn) Addr() string {
-	return r.addr
-}
-
-func (r *routerConn) ID() string {
-	return r.id
-}
-
-var _ router.Router = &routerConn{}
 
 func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	spqrlog.Zero.Debug().

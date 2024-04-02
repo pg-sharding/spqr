@@ -52,7 +52,10 @@ type Router struct {
 	WorldShardFallback bool `json:"world_shard_fallback" toml:"world_shard_fallback" yaml:"world_shard_fallback"`
 	ShowNoticeMessages bool `json:"show_notice_messages" toml:"show_notice_messages" yaml:"show_notice_messages"`
 
-	InitSQL          string            `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
+	InitSQL            string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
+	UseInitSQL         bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
+	UseCoordinatorInit bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
+
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	MemqdbPersistent bool              `json:"memqdb_persistent" toml:"memqdb_persistent" yaml:"memqdb_persistent"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`

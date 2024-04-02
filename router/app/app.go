@@ -7,17 +7,17 @@ import (
 
 	reuse "github.com/libp2p/go-reuseport"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	router "github.com/pg-sharding/spqr/router"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
+	"github.com/pg-sharding/spqr/router/instance"
 	"github.com/pg-sharding/spqr/router/port"
 	"google.golang.org/grpc"
 )
 
 type App struct {
-	spqr *router.InstanceImpl
+	spqr *instance.InstanceImpl
 }
 
-func NewApp(sg *router.InstanceImpl) *App {
+func NewApp(sg *instance.InstanceImpl) *App {
 	return &App{
 		spqr: sg,
 	}
