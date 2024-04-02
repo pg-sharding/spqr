@@ -14,15 +14,23 @@ import (
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type App struct {
 	coordinator coordinator.Coordinator
+	sem         *semaphore.Weighted
 }
+
+const (
+	maxWorkers = 50
+)
 
 func NewApp(c coordinator.Coordinator) *App {
 	return &App{
 		coordinator: c,
+		sem:         semaphore.NewWeighted(int64(maxWorkers)),
 	}
 }
 
@@ -83,8 +91,20 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 
 			for {
 				conn, err := listener.Accept()
-				spqrlog.Zero.Error().Err(err).Msg("")
-				_ = app.coordinator.ProcClient(context.TODO(), conn)
+				if err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("")
+				}
+
+				app.sem.Acquire(context.Background(), 1)
+
+				go func() {
+					defer app.sem.Release(1)
+
+					err := app.coordinator.ProcClient(context.TODO(), conn)
+					if err != nil {
+						spqrlog.Zero.Error().Err(err).Msg("failed to serve client")
+					}
+				}()
 			}
 		}(l)
 	}

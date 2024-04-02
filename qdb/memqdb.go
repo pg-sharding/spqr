@@ -459,6 +459,7 @@ func (q *MemQDB) UpdateCoordinator(ctx context.Context, address string) error {
 }
 
 func (q *MemQDB) GetCoordinator(ctx context.Context) (string, error) {
+	spqrlog.Zero.Debug().Str("address", q.Coordinator).Msg("memqdb: get coordinator address")
 	return q.Coordinator, nil
 }
 
