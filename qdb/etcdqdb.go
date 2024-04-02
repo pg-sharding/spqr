@@ -63,7 +63,7 @@ const (
 )
 
 func keyLockPath(key string) string {
-	return path.Join("lock", key)
+	return path.Join("/lock", key)
 }
 
 func keyRangeNodePath(key string) string {
