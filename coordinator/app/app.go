@@ -93,11 +93,12 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 				conn, err := listener.Accept()
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("")
-					return err
+					continue
 				}
 
 				if err := app.sem.Acquire(context.Background(), 1); err != nil {
-					return err
+					spqrlog.Zero.Error().Err(err).Msg("")
+					continue
 				}
 
 				go func() {
