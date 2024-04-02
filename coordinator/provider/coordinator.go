@@ -246,12 +246,13 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				case routerproto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
 
+					/* TODO: check router metadata consistency */
+
 					/* Mark router as opened in qdb */
 					err := qc.db.OpenRouter(ctx, internalR.ID)
 					if err != nil {
 						return err
 					}
-					// TODO: consistency checks
 				}
 				return nil
 			}(); err != nil {
@@ -423,7 +424,7 @@ func (qc *qdbCoordinator) AddRouter(ctx context.Context, router *topology.Router
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (qc *qdbCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	// add key range to metadb
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
@@ -431,14 +432,14 @@ func (qc *qdbCoordinator) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange
 		Str("key-range-id", keyRange.ID).
 		Msg("add key range")
 
-	err := ops.AddKeyRangeWithChecks(ctx, qc.db, keyRange)
+	err := ops.CreateKeyRangeWithChecks(ctx, qc.db, keyRange)
 	if err != nil {
 		return err
 	}
 
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
+		resp, err := cl.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
 			KeyRangeInfo: keyRange.ToProto(),
 		})
 
@@ -615,7 +616,7 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 		return err
 	}
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
+	if err := ops.CreateKeyRangeWithChecks(ctx, qc.db, krNew); err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to add a new key range: %s", err.Error())
 	}
 
@@ -926,7 +927,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	}
 
 	for _, keyRange := range keyRanges {
-		resp, err := krClient.AddKeyRange(ctx, &routerproto.AddKeyRangeRequest{
+		resp, err := krClient.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
 			KeyRangeInfo: kr.KeyRangeFromDB(keyRange).ToProto(),
 		})
 

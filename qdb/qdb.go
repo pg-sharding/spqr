@@ -3,6 +3,7 @@ package qdb
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
@@ -44,7 +45,7 @@ type DistributedXactKepper interface {
 * implementation to keep the distributed state in sync.
  */
 type QDB interface {
-	AddKeyRange(ctx context.Context, keyRange *KeyRange) error
+	CreateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	GetKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	UpdateKeyRange(ctx context.Context, keyRange *KeyRange) error
 	DropKeyRange(ctx context.Context, id string) error

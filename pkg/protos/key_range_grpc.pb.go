@@ -23,7 +23,7 @@ const (
 	KeyRangeService_ListKeyRange_FullMethodName     = "/spqr.KeyRangeService/ListKeyRange"
 	KeyRangeService_ListAllKeyRanges_FullMethodName = "/spqr.KeyRangeService/ListAllKeyRanges"
 	KeyRangeService_LockKeyRange_FullMethodName     = "/spqr.KeyRangeService/LockKeyRange"
-	KeyRangeService_AddKeyRange_FullMethodName      = "/spqr.KeyRangeService/AddKeyRange"
+	KeyRangeService_CreateKeyRange_FullMethodName   = "/spqr.KeyRangeService/CreateKeyRange"
 	KeyRangeService_DropKeyRange_FullMethodName     = "/spqr.KeyRangeService/DropKeyRange"
 	KeyRangeService_DropAllKeyRanges_FullMethodName = "/spqr.KeyRangeService/DropAllKeyRanges"
 	KeyRangeService_UnlockKeyRange_FullMethodName   = "/spqr.KeyRangeService/UnlockKeyRange"
@@ -41,7 +41,7 @@ type KeyRangeServiceClient interface {
 	ListKeyRange(ctx context.Context, in *ListKeyRangeRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	ListAllKeyRanges(ctx context.Context, in *ListAllKeyRangesRequest, opts ...grpc.CallOption) (*KeyRangeReply, error)
 	LockKeyRange(ctx context.Context, in *LockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
-	AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
+	CreateKeyRange(ctx context.Context, in *CreateKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 	DropKeyRange(ctx context.Context, in *DropKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 	DropAllKeyRanges(ctx context.Context, in *DropAllKeyRangesRequest, opts ...grpc.CallOption) (*DropAllKeyRangesResponse, error)
 	UnlockKeyRange(ctx context.Context, in *UnlockKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
@@ -95,9 +95,9 @@ func (c *keyRangeServiceClient) LockKeyRange(ctx context.Context, in *LockKeyRan
 	return out, nil
 }
 
-func (c *keyRangeServiceClient) AddKeyRange(ctx context.Context, in *AddKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
+func (c *keyRangeServiceClient) CreateKeyRange(ctx context.Context, in *CreateKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error) {
 	out := new(ModifyReply)
-	err := c.cc.Invoke(ctx, KeyRangeService_AddKeyRange_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, KeyRangeService_CreateKeyRange_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ type KeyRangeServiceServer interface {
 	ListKeyRange(context.Context, *ListKeyRangeRequest) (*KeyRangeReply, error)
 	ListAllKeyRanges(context.Context, *ListAllKeyRangesRequest) (*KeyRangeReply, error)
 	LockKeyRange(context.Context, *LockKeyRangeRequest) (*ModifyReply, error)
-	AddKeyRange(context.Context, *AddKeyRangeRequest) (*ModifyReply, error)
+	CreateKeyRange(context.Context, *CreateKeyRangeRequest) (*ModifyReply, error)
 	DropKeyRange(context.Context, *DropKeyRangeRequest) (*ModifyReply, error)
 	DropAllKeyRanges(context.Context, *DropAllKeyRangesRequest) (*DropAllKeyRangesResponse, error)
 	UnlockKeyRange(context.Context, *UnlockKeyRangeRequest) (*ModifyReply, error)
@@ -202,8 +202,8 @@ func (UnimplementedKeyRangeServiceServer) ListAllKeyRanges(context.Context, *Lis
 func (UnimplementedKeyRangeServiceServer) LockKeyRange(context.Context, *LockKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LockKeyRange not implemented")
 }
-func (UnimplementedKeyRangeServiceServer) AddKeyRange(context.Context, *AddKeyRangeRequest) (*ModifyReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddKeyRange not implemented")
+func (UnimplementedKeyRangeServiceServer) CreateKeyRange(context.Context, *CreateKeyRangeRequest) (*ModifyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) DropKeyRange(context.Context, *DropKeyRangeRequest) (*ModifyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropKeyRange not implemented")
@@ -311,20 +311,20 @@ func _KeyRangeService_LockKeyRange_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _KeyRangeService_AddKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddKeyRangeRequest)
+func _KeyRangeService_CreateKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateKeyRangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(KeyRangeServiceServer).AddKeyRange(ctx, in)
+		return srv.(KeyRangeServiceServer).CreateKeyRange(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: KeyRangeService_AddKeyRange_FullMethodName,
+		FullMethod: KeyRangeService_CreateKeyRange_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KeyRangeServiceServer).AddKeyRange(ctx, req.(*AddKeyRangeRequest))
+		return srv.(KeyRangeServiceServer).CreateKeyRange(ctx, req.(*CreateKeyRangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -479,8 +479,8 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _KeyRangeService_LockKeyRange_Handler,
 		},
 		{
-			MethodName: "AddKeyRange",
-			Handler:    _KeyRangeService_AddKeyRange_Handler,
+			MethodName: "CreateKeyRange",
+			Handler:    _KeyRangeService_CreateKeyRange_Handler,
 		},
 		{
 			MethodName: "DropKeyRange",

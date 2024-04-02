@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -163,11 +164,11 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		return cli.ReportError(spqrerror.ShardingKeysRemoved)
 	case *spqrparser.KeyRangeDefinition:
 		req := kr.KeyRangeFromSQL(stmt)
-		if err := mngr.AddKeyRange(ctx, req); err != nil {
+		if err := mngr.CreateKeyRange(ctx, req); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
 			return cli.ReportError(err)
 		}
-		return cli.AddKeyRange(ctx, req)
+		return cli.CreateKeyRange(ctx, req)
 	case *spqrparser.ShardDefinition:
 		dataShard := datashards.NewDataShard(stmt.Id, &config.Shard{
 			Hosts: stmt.Hosts,

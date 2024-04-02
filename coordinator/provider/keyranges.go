@@ -17,8 +17,8 @@ type CoordinatorService struct {
 }
 
 // TODO : unit tests
-func (c *CoordinatorService) AddKeyRange(ctx context.Context, request *protos.AddKeyRangeRequest) (*protos.ModifyReply, error) {
-	err := c.impl.AddKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
+func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
+	err := c.impl.CreateKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
 	if err != nil {
 		return nil, err
 	}

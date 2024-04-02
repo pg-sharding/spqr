@@ -90,12 +90,16 @@ func keyRangeMovesNodePath(key string) string {
 	return path.Join(keyRangeMovesNamespace, key)
 }
 
+func (q *EtcdQDB) Client() *clientv3.Client {
+	return q.cli
+}
+
 // ==============================================================================
 //                                 KEY RANGES
 // ==============================================================================
 
 // TODO : unit tests
-func (q *EtcdQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *EtcdQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().
 		Bytes("lower-bound", keyRange.LowerBound).
 		Str("shard-id", keyRange.ShardID).
