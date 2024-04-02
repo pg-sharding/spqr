@@ -16,6 +16,28 @@ type CoordinatorService struct {
 	impl coordinator.Coordinator
 }
 
+// DropAllKeyRanges implements proto.KeyRangeServiceServer.
+func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
+	err := c.impl.DropKeyRangeAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protos.DropAllKeyRangesResponse{}, nil
+}
+
+// DropKeyRange implements proto.KeyRangeServiceServer.
+func (c *CoordinatorService) DropKeyRange(ctx context.Context, request *protos.DropKeyRangeRequest) (*protos.ModifyReply, error) {
+	for _, id := range request.Id {
+		err := c.impl.DropKeyRange(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &protos.ModifyReply{}, nil
+}
+
 // TODO : unit tests
 func (c *CoordinatorService) CreateKeyRange(ctx context.Context, request *protos.CreateKeyRangeRequest) (*protos.ModifyReply, error) {
 	err := c.impl.CreateKeyRange(ctx, kr.KeyRangeFromProto(request.KeyRangeInfo))
