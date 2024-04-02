@@ -763,7 +763,7 @@ func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body 
 }
 
 // nolint: unused
-func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
+func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
 		// TODO: how to report errors in godog
@@ -785,6 +785,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 	})
 	s.StepContext().After(func(ctx context.Context, step *godog.Step, status godog.StepResultStatus, err error) (context.Context, error) {
 		if err != nil {
+			if !debug {
+				return ctx, err
+			}
 			log.Println(err)
 			log.Println("sleeping")
 			time.Sleep(time.Hour)
@@ -865,9 +868,14 @@ func TestSpqr(t *testing.T) {
 		paths = append(paths, featureDir)
 	}
 
+	debug := false
+	if debugEnv, ok := os.LookupEnv("FEATURE_DEBUG"); ok && strings.ToLower(debugEnv) == "true" {
+		debug = true
+	}
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(s *godog.ScenarioContext) {
-			InitializeScenario(s, t)
+			InitializeScenario(s, t, debug)
 		},
 		Options: &godog.Options{
 			Format:        "pretty",
