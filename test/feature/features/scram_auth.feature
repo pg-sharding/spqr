@@ -22,16 +22,18 @@ Feature: SCRAM auth test
     ROUTER_CONFIG=/spqr/test/feature/conf/router_with_scram_backend.yaml
     """
     Given cluster is up and running
-    When I run command on host "shard1"
+    When I run command on host "shard1" with timeout "40" seconds
     """
     echo 'host all all all scram-sha-256' > /var/lib/postgresql/13/main/pg_hba.conf
     service postgresql reload
+    sleep 30
     """
     Then command return code should be "0"
-    When I run command on host "shard2"
+    When I run command on host "shard2" with timeout "40" seconds
     """
     echo 'host all all all scram-sha-256' > /var/lib/postgresql/13/main/pg_hba.conf
     service postgresql reload
+    sleep 30
     """
     Then command return code should be "0"
     When I run SQL on host "router"
