@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"io"
 	"log"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -804,9 +805,19 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T) {
 			log.Println(err)
 			log.Println("sleeping")
 			time.Sleep(time.Hour)
+			return ctx, err
 		}
 		if tctx.templateErr != nil {
 			log.Fatalf("Error in templating %s: %v\n", step.Text, tctx.templateErr)
+		}
+		ds, err := tctx.qdb.ListDistributions(ctx)
+		if err != nil {
+			return ctx, err
+		}
+		for _, d := range ds {
+			if err := tctx.qdb.DropDistribution(ctx, d.ID); err != nil {
+				return ctx, err
+			}
 		}
 		return ctx, nil
 	})
