@@ -1036,10 +1036,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return err
 			}
 
+			/* TODO: refactor code to make this less ugly */
+			saveTxStatus := rst.txStatus
+
 			_, retMsg, err := rst.DeployPrepStmt(q.Name)
 			if err != nil {
 				return err
 			}
+
+			rst.SetTxStatus(saveTxStatus)
 
 			// tdb: fix this
 			rst.plainQ = q.Query
