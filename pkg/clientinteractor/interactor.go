@@ -245,7 +245,7 @@ func (pi *PSQLInteractor) KeyRanges(krs []*kr.KeyRange) error {
 }
 
 // TODO : unit tests
-func (pi *PSQLInteractor) AddKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
+func (pi *PSQLInteractor) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRange) error {
 	if err := pi.WriteHeader("add key range"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err

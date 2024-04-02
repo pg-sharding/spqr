@@ -127,7 +127,7 @@ func (q *MemQDB) DumpState() error {
 // ==============================================================================
 
 // TODO : unit tests
-func (q *MemQDB) AddKeyRange(ctx context.Context, keyRange *KeyRange) error {
+func (q *MemQDB) CreateKeyRange(ctx context.Context, keyRange *KeyRange) error {
 	spqrlog.Zero.Debug().Interface("key-range", keyRange).Msg("memqdb: add key range")
 	q.mu.Lock()
 	defer q.mu.Unlock()

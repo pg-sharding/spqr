@@ -49,7 +49,7 @@ func TestMemqdbRacing(t *testing.T) {
 
 	methods := []func(){
 		func() { _ = memqdb.CreateDistribution(ctx, mockDistribution) },
-		func() { _ = memqdb.AddKeyRange(ctx, mockKeyRange) },
+		func() { _ = memqdb.CreateKeyRange(ctx, mockKeyRange) },
 		func() { _ = memqdb.AddRouter(ctx, mockRouter) },
 		func() { _ = memqdb.AddShard(ctx, mockShard) },
 		func() {
@@ -193,14 +193,14 @@ func TestKeyRanges(t *testing.T) {
 
 	assert.NoError(err)
 
-	assert.NoError(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
+	assert.NoError(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
 		LowerBound:     []byte("1111"),
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
 	}))
 
-	assert.Error(memqdb.AddKeyRange(ctx, &qdb.KeyRange{
+	assert.Error(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
 		LowerBound:     []byte("1111"),
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",

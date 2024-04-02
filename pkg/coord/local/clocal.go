@@ -3,9 +3,10 @@ package local
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"math/rand"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -353,7 +354,7 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		return err
 	}
 
-	if err := ops.AddKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
+	if err := ops.CreateKeyRangeWithChecks(ctx, qr.qdb, krNew); err != nil {
 		return fmt.Errorf("failed to add a new key range: %w", err)
 	}
 
@@ -447,8 +448,8 @@ func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router
 	}}, nil
 }
 
-func (qr *LocalCoordinator) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
-	return ops.AddKeyRangeWithChecks(ctx, qr.qdb, kr)
+func (qr *LocalCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+	return ops.CreateKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {

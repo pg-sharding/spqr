@@ -143,7 +143,7 @@ func TestComment(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution,
 		KeyRangeID:     "id1",
@@ -152,7 +152,7 @@ func TestComment(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		KeyRangeID:     "id2",
 		DistributionId: distribution,
@@ -266,7 +266,7 @@ func TestSingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution,
 		KeyRangeID:     "id1",
@@ -275,7 +275,7 @@ func TestSingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution,
 		KeyRangeID:     "id2",
@@ -541,7 +541,7 @@ func TestInsertOffsets(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
 		DistributionId: distribution,
@@ -550,7 +550,7 @@ func TestInsertOffsets(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution,
 		KeyRangeID:     "id2",
@@ -730,7 +730,7 @@ func TestJoins(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
 		DistributionId: distribution,
@@ -739,7 +739,7 @@ func TestJoins(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		KeyRangeID:     "id2",
 		DistributionId: distribution,
@@ -855,7 +855,7 @@ func TestUnnest(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		KeyRangeID:     "id1",
 		DistributionId: distribution,
@@ -864,7 +864,7 @@ func TestUnnest(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution,
 		KeyRangeID:     "id2",
@@ -966,7 +966,7 @@ func TestCopySingleShard(t *testing.T) {
 		},
 	})
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution,
 		KeyRangeID:     "id1",
@@ -975,7 +975,7 @@ func TestCopySingleShard(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution,
 		KeyRangeID:     "id2",
@@ -1047,7 +1047,7 @@ func TestSetStmt(t *testing.T) {
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
 		KeyRangeID:     "id1",
@@ -1056,7 +1056,7 @@ func TestSetStmt(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution2,
 		KeyRangeID:     "id2",
@@ -1128,7 +1128,7 @@ func TestMiscRouting(t *testing.T) {
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
 	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
 
-	err := db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
 		DistributionId: distribution1,
 		KeyRangeID:     "id1",
@@ -1137,7 +1137,7 @@ func TestMiscRouting(t *testing.T) {
 
 	assert.NoError(err)
 
-	err = db.AddKeyRange(context.TODO(), &qdb.KeyRange{
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
 		DistributionId: distribution2,
 		KeyRangeID:     "id2",

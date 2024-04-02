@@ -2,6 +2,7 @@ package coord
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -90,9 +91,9 @@ func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) 
 }
 
 // TODO : unit tests
-func (a *Adapter) AddKeyRange(ctx context.Context, kr *kr.KeyRange) error {
+func (a *Adapter) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.AddKeyRange(ctx, &proto.AddKeyRangeRequest{
+	_, err := c.CreateKeyRange(ctx, &proto.CreateKeyRangeRequest{
 		KeyRangeInfo: kr.ToProto(),
 	})
 	return err
