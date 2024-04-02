@@ -221,7 +221,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 
 	var retMsg pgproto3.BackendMessage
 
-	deplotyed := false
+	deployed := false
 
 	for _, msg := range unreplied {
 		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
@@ -229,7 +229,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		case *pgproto3.ParseComplete:
 			// skip
 			retMsg = msg
-			deplotyed = true
+			deployed = true
 		case *pgproto3.ErrorResponse:
 			retMsg = msg
 		case *pgproto3.NoData:
@@ -244,7 +244,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		}
 	}
 
-	if deplotyed {
+	if deployed {
 		// dont need to complete relay because tx state didt changed
 		rst.Cl.Server().PrepareStatement(hash, rd)
 	}
