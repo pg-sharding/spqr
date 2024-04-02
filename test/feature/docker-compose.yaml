@@ -40,6 +40,7 @@ services:
       - "7012:7002"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_LOG='router1.log'
       - 'ROUTER_HOST=host: ''regress_router'''
       - COORDINATOR_CONFIG=${COORDINATOR_CONFIG}
     hostname: regress_router
@@ -65,6 +66,7 @@ services:
       - "7022:7002"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
+      - ROUTER_LOG='router2.log'
       - 'ROUTER_HOST=host: ''regress_router_2'''
       - COORDINATOR_CONFIG=${COORDINATOR_CONFIG_2}
     hostname: regress_router_2

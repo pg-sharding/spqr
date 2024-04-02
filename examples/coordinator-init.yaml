@@ -1,0 +1,66 @@
+log_level: debug
+
+host: '::1'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7010'
+
+world_shard_fallback: true
+router_mode: PROXY
+
+use_coordinator_init: true
+
+with_coordinator: true
+
+frontend_tls:
+  key_file: /etc/odyssey/ssl/server.key
+  cert_file: /etc/odyssey/ssl/server.crt
+  sslmode: disable
+
+frontend_rules:
+  - usr: user1
+    db: db1
+    pool_mode: TRANSACTION
+    pool_prepared_statement: true
+    auth_rule:
+      auth_method: ok
+      password: strong
+  - pool_mode: TRANSACTION
+    pool_default: true
+    pool_prepared_statement: false
+    auth_rule:
+      auth_method: ok
+
+backend_rules:
+  - usr: user1
+    db: db1
+    pool_discard: false
+    pool_rollback: true
+  - pool_default: true
+    pool_discard: false
+    pool_rollback: true
+
+shards:
+  sh1:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'localhost:5550'
+  sh2:
+    tls:
+      key_file: /etc/odyssey/ssl/server.key
+      sslmode: disable
+      cert_file: /etc/odyssey/ssl/server.crt
+    db: db1
+    usr: user1
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'localhost:5551'
+

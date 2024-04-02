@@ -470,6 +470,10 @@ func (qr *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topo
 	return ErrNotCoordinator
 }
 
+func (qr *LocalCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+	return ErrNotCoordinator
+}
+
 func (qr *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
 	return qr.qdb.UpdateCoordinator(ctx, addr)
 }

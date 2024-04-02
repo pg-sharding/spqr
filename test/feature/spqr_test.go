@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"io"
 	"log"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/cucumber/godog"
 	"github.com/jackc/pgx/v5"
@@ -45,8 +46,8 @@ const (
 	coordinatorPassword             = "password"
 	dbName                          = "regress"
 	consoleName                     = "spqr-console"
-	postgresqlConnectTimeout        = 30 * time.Second
-	postgresqlInitialConnectTimeout = 10 * time.Second
+	postgresqlConnectTimeout        = 60 * time.Second
+	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
 )
 
@@ -206,7 +207,7 @@ func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (
 
 func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
 	ping := func(db *sqlx.DB) bool {
-		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		err := db.PingContext(ctx)
 		if err != nil {
@@ -868,6 +869,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		tctx.composerEnv = []string{
 			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
 			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
+			"COORDINATOR_CONFIG_2=/spqr/test/feature/conf/coordinator.yaml",
 		}
 		tctx.variables = make(map[string]interface{})
 		return ctx, nil

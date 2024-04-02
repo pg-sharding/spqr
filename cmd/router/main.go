@@ -317,6 +317,26 @@ var runCmd = &cobra.Command{
 			}
 		}()
 
+		/* initialize metadata */
+		if rcfg.UseInitSQL {
+			i := instance.NewInitSQLMetadataBootstraper(rcfg.InitSQL)
+			if err := i.InitializeMetadata(ctx, router); err != nil {
+				return err
+			}
+		} else if rcfg.UseCoordinatorInit {
+			/* load config if not yet */
+			if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+				return err
+			}
+			e := instance.NewEtcdMetadataBootstraper(config.CoordinatorConfig().QdbAddr)
+			if err := e.InitializeMetadata(ctx, router); err != nil {
+				return err
+			}
+		} else {
+			/* TODO: maybe error-out? */
+			router.Initialize()
+		}
+
 		wg := &sync.WaitGroup{}
 
 		wg.Add(1)
