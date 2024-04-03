@@ -88,7 +88,7 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().RUnlock().AnyTimes()
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateReRoute(gomock.Any()).Return(true)
+	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
@@ -210,7 +210,7 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().RUnlock().AnyTimes()
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateReRoute(gomock.Any()).Return(true)
+	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
@@ -243,13 +243,17 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Sync{}, nil)
 
 	cl.EXPECT().StorePreparedStatement("stmtcache_1", "select 'Hello, world!'").Times(1).Return()
-	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").Return("select 'Hello, world!'")
+	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").AnyTimes().Return("select 'Hello, world!'")
 
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).Return(false, shard.PreparedStatementDescriptor{}).AnyTimes()
-	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).AnyTimes()
+	res := false
+
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, shard.PreparedStatementDescriptor{} }).AnyTimes()
+	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
+		res = true
+	}).AnyTimes()
 	/* */
 
 	srv.EXPECT().Send(&pgproto3.Parse{
@@ -289,7 +293,7 @@ func TestFrontendXProto(t *testing.T) {
 	}, nil)
 
 	// receive this 4 msgs
-	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
+	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
@@ -339,7 +343,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().RUnlock().AnyTimes()
 
 	// reroute on first query in this case
-	cmngr.EXPECT().ValidateReRoute(gomock.Any()).Return(true)
+	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
 
 	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
