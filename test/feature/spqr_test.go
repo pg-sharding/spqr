@@ -41,7 +41,7 @@ const (
 	spqrCoordinatorPort             = 7002
 	qdbPort                         = 2379
 	shardUser                       = "regress"
-	shardPassword                   = ""
+	shardPassword                   = "12345678"
 	coordinatorPassword             = "password"
 	dbName                          = "regress"
 	consoleName                     = "spqr-console"
@@ -250,17 +250,85 @@ func (tctx *testContext) connectorWithCredentials(username string, password stri
 	if err != nil {
 		return nil, err
 	}
+	success := false
 	// sql is lazy in go, so we need ping db
 	testutil.Retry(func() bool {
-		return ping(db)
+		success = ping(db)
+		return success
 	}, timeout, 2*time.Second)
+	if !success {
+		return nil, fmt.Errorf("postgres does not respond")
+	}
 	return db, nil
+}
+
+func (tctx *testContext) trySetupConnection(service string) (*sqlx.DB, error) {
+	// check databases
+	if strings.HasPrefix(service, spqrShardName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get shard addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+		return db, nil
+	}
+
+	// check router
+	if strings.HasPrefix(service, spqrRouterName) {
+		addr, err := tctx.composer.GetAddr(service, spqrPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+
+		// router console
+		addr, err = tctx.composer.GetAddr(service, spqrConsolePort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err = tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
+		}
+		service = fmt.Sprintf("%s-admin", service)
+		tctx.dbs[service] = db
+
+		return db, nil
+	}
+
+	// check coordinator
+	if strings.HasPrefix(service, spqrCoordinatorName) {
+		addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get router addr %s: %s", service, err)
+		}
+		db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+		}
+		tctx.dbs[service] = db
+		return db, nil
+	}
+
+	return nil, fmt.Errorf("unrecognised service \"%s\"", service)
 }
 
 func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
 	if !ok {
-		return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+		var err error
+		db, err = tctx.trySetupConnection(host)
+		if err != nil {
+			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+		}
 	}
 	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
 		return db, nil
@@ -379,7 +447,7 @@ func (tctx *testContext) stepClusterEnvironmentIs(body *godog.DocString) error {
 	return nil
 }
 
-func (tctx *testContext) stepClusterIsUpAndRunning(createHaNodes bool) error {
+func (tctx *testContext) stepClusterIsUpAndRunning() error {
 	err := tctx.composer.Up(tctx.composerEnv)
 	if err != nil {
 		return fmt.Errorf("failed to setup compose cluster: %s", err)
@@ -553,9 +621,10 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		}
 		db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 		if err != nil {
-			return fmt.Errorf("failed to connect to SPQR coordinator %s: %s", service, err)
+			log.Printf("failed to connect to SPQR coordinator %s: %s", service, err)
+		} else {
+			tctx.dbs[service] = db
 		}
-		tctx.dbs[service] = db
 		return nil
 	}
 
@@ -611,6 +680,14 @@ func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) e
 
 	_, err := tctx.queryPostgresql(host, query, struct{}{})
 	return err
+}
+
+func (tctx *testContext) stepIFailSQLOnHost(host string) error {
+	_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{})
+	if err == nil {
+		return fmt.Errorf("host is accessible via SQL")
+	}
+	return nil
 }
 
 func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog.DocString) error {
@@ -831,9 +908,9 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// host manipulation
 	s.Step(`^cluster environment is$`, tctx.stepClusterEnvironmentIs)
-	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning(true) })
+	s.Step(`^cluster is up and running$`, func() error { return tctx.stepClusterIsUpAndRunning() })
 	s.Step(`^cluster is failed up and running$`, func() error {
-		err := tctx.stepClusterIsUpAndRunning(true)
+		err := tctx.stepClusterIsUpAndRunning()
 		if err != nil {
 			return nil
 		}
@@ -858,6 +935,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
+	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)

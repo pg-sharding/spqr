@@ -24,11 +24,7 @@ Feature: Coordinator test
     """
     router
     """
-    When I run SQL on host "coordinator2"
-    """
-    SHOW routers
-    """
-    Then command return code should be "1"
+    And I fail to run SQL on host "coordinator2"
 
   Scenario: Second coordinator turns on when other is dead
     Given host "coordinator" is stopped
@@ -54,8 +50,4 @@ Feature: Coordinator test
     router
     """
     Given host "coordinator" is started
-     When I run SQL on host "coordinator"
-    """
-    SHOW routers
-    """
-    Then command return code should be "1"
+    And I fail to run SQL on host "coordinator"
