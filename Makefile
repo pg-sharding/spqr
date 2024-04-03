@@ -61,9 +61,8 @@ save_shard_image:
 	docker compose build ${IMAGE_SHARD};\
 	docker save ${IMAGE_SHARD} | gzip -c > ${CACHE_FILE_SHARD};\
 
-clean:
+clean: clean_feature_test
 	rm -f spqr-router spqr-coordinator spqr-mover spqr-worldmock spqr-balancer
-	make clean_feature_test
 
 ######################## RUN ########################
 
@@ -135,13 +134,12 @@ feature_test_ci:
 	mkdir ./test/feature/logs
 	(cd test/feature; go test -timeout 150m)
 
-feature_test: build_images
+feature_test: clean_feature_test build_images
 	make split_feature_test
 	go build ./test/feature/...
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
 	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
-	make clean_feature_test
 
 lint:
 	golangci-lint run --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
