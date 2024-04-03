@@ -235,7 +235,7 @@ Feature: Coordinator test
     """
     Then SQL error on host "router" should match regexp
     """
-    context deadline exceeded
+    key range .* is locked
     """
 
     Given I run SQL on host "coordinator"
