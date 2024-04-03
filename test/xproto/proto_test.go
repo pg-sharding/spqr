@@ -1408,7 +1408,7 @@ func TestPrepStmtAdvadsedParsing(t *testing.T) {
 				&pgproto3.BindComplete{},
 				&pgproto3.DataRow{
 					Values: [][]byte{
-						{'1', '1'},
+						[]byte("11"),
 					},
 				},
 
