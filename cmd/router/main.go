@@ -44,7 +44,10 @@ var (
 
 	persist bool
 
-	routerPort int
+	routerPort   int
+	routerROPort int
+	adminPort    int
+	grpcPort     int
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -74,6 +77,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&persist, "persist", "", false, "tells router to persist its configuration in non-clustered setup")
 
 	rootCmd.PersistentFlags().IntVarP(&routerPort, "router-port", "", 0, "router PostgreSQL port")
+	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "router read-only PostgreSQL port")
+	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "router Metadata PostgreSQL interface admin port")
+	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "router Metadata GRPC interface admin port")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -193,6 +199,18 @@ var runCmd = &cobra.Command{
 
 		if routerPort != 0 {
 			rcfg.RouterPort = strconv.FormatInt(int64(routerPort), 10)
+		}
+
+		if routerROPort != 0 {
+			rcfg.RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
+		}
+
+		if adminPort != 0 {
+			rcfg.AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
+		}
+
+		if grpcPort != 0 {
+			rcfg.GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
 		}
 
 		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
