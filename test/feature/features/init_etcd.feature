@@ -15,8 +15,6 @@ Feature: Initialize router metadata from Etcd
         When I run SQL on host "router-admin"
         """
         UNREGISTER ROUTER ALL;
-        REGISTER ROUTER r1 ADDRESS regress_router::7000;
-        REGISTER ROUTER r2 ADDRESS regress_router_2::7000;
         """
         Then command return code should be "0"
         And host "router" is stopped
