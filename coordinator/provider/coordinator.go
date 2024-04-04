@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"time"
 
@@ -291,7 +290,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 		router := &topology.Router{
 			ID:      uuid.NewString(),
-			Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+			Address: net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
 			State:   qdb.OPENED,
 		}
 		if err := qc.RegisterRouter(ctx, router); err != nil {
@@ -300,7 +299,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		if err := qc.SyncRouterMetadata(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
 		}
-		if err := qc.UpdateCoordinator(ctx, fmt.Sprintf("%s:%s", config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
+		if err := qc.UpdateCoordinator(ctx, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
 			return false
 		}
 		return true
