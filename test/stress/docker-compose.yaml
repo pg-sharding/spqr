@@ -28,6 +28,7 @@ services:
             - "6432:6432"
         environment:
             - ROUTER_CONFIG=/spqr/test/stress/router.yaml
+            - ROUTER_LOG='router1.log'
         hostname: stress_router
         container_name: stress_router
         depends_on:

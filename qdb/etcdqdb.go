@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"path"
 	"sort"
 	"sync"
@@ -512,7 +513,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		return err
 	}
 
-	op := clientv3.OpPut(coordLockKey, config.CoordinatorConfig().Host, clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
+	op := clientv3.OpPut(coordLockKey, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort), clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {

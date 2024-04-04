@@ -3,6 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
@@ -14,8 +17,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"sort"
-	"strings"
 )
 
 type BalancerImpl struct {

@@ -29,6 +29,7 @@ type RouterInstance interface {
 	Initialize() bool
 
 	Console() console.Console
+	Config() *config.Router
 }
 
 type InstanceImpl struct {
@@ -38,10 +39,10 @@ type InstanceImpl struct {
 	Mgr        meta.EntityMgr
 	Writer     workloadlog.WorkloadLog
 
-	stchan     chan struct{}
-	addr       string
-	frTLS      *tls.Config
-	WithJaeger bool
+	stchan chan struct{}
+	addr   string
+	frTLS  *tls.Config
+	cfg    *config.Router
 
 	notifier *sdnotifier.Notifier
 }
@@ -49,6 +50,10 @@ type InstanceImpl struct {
 // Console implements RouterInstance.
 func (r *InstanceImpl) Console() console.Console {
 	return r.AdmConsole
+}
+
+func (r *InstanceImpl) Config() *config.Router {
+	return r.cfg
 }
 
 func (r *InstanceImpl) ID() string {
@@ -143,22 +148,9 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		Mgr:        lc,
 		stchan:     stchan,
 		frTLS:      frTLS,
-		WithJaeger: rcfg.WithJaeger,
+		cfg:        rcfg,
 		Writer:     writ,
 		notifier:   notifier,
-	}
-
-	/* initialize metadata */
-	if rcfg.UseInitSQL {
-		i := NewInitSQLMetadataBootstraper(rcfg.InitSQL)
-		if err := i.InitializeMetadata(ctx, r); err != nil {
-			return nil, err
-		}
-	} else if rcfg.UseCoordinatorInit {
-		panic("implement me")
-	} else {
-		/* TODO: maybe error-out? */
-		r.Initialize()
 	}
 
 	return r, nil
@@ -201,7 +193,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
-	if r.WithJaeger {
+	if r.cfg.WithJaeger {
 		closer, err := r.initJaegerTracer(r.RuleRouter.Config())
 		if err != nil {
 			return fmt.Errorf("could not initialize jaeger tracer: %s", err)

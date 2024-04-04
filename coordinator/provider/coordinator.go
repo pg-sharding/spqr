@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net"
 	"time"
 
@@ -71,6 +70,9 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 		defer cc.Close()
 
 		if err := cb(cc, r.Address); err != nil {
+			return err
+		}
+		if err := cc.Close(); err != nil {
 			return err
 		}
 	}
@@ -235,22 +237,23 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				switch resp.Status {
 				case routerproto.RouterStatus_CLOSED:
 					spqrlog.Zero.Debug().Msg("router is closed")
-					if err := qc.SyncRouterMetadata(ctx, internalR); err != nil {
-						return err
-					}
-					if _, err := rrClient.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
+					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
 						return err
 					}
 
 					/* Mark router as opened in qdb */
-					err := qc.db.OpenRouter(ctx, internalR.ID)
+					err := qc.db.CloseRouter(ctx, internalR.ID)
 					if err != nil {
 						return err
 					}
+
 				case routerproto.RouterStatus_OPENED:
 					spqrlog.Zero.Debug().Msg("router is opened")
 
 					/* TODO: check router metadata consistency */
+					if err := qc.SyncRouterCoordinatorAddress(ctx, internalR); err != nil {
+						return err
+					}
 
 					/* Mark router as opened in qdb */
 					err := qc.db.OpenRouter(ctx, internalR.ID)
@@ -287,7 +290,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		}
 		router := &topology.Router{
 			ID:      uuid.NewString(),
-			Address: fmt.Sprintf("%s:%s", config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+			Address: net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
 			State:   qdb.OPENED,
 		}
 		if err := qc.RegisterRouter(ctx, router); err != nil {
@@ -296,7 +299,7 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		if err := qc.SyncRouterMetadata(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("sync router metadata when locking coordinator")
 		}
-		if err := qc.UpdateCoordinator(ctx, fmt.Sprintf("%s:%s", config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
+		if err := qc.UpdateCoordinator(ctx, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
 			return false
 		}
 		return true
@@ -389,6 +392,8 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			if err != nil {
 				return err
 			}
+			defer cc.Close()
+
 			defer cc.Close()
 
 			if err := cb(cc); err != nil {
@@ -948,6 +953,45 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	spqrlog.Zero.Debug().Msg("successfully add all key ranges")
 
 	rCl := routerproto.NewTopologyServiceClient(cc)
+	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+		Address: net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort),
+	}); err != nil {
+		return err
+	}
+
+	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
+		return err
+	} else {
+		spqrlog.Zero.Debug().
+			Interface("response", resp).
+			Msg("open router response")
+	}
+
+	return nil
+}
+
+// TODO : unit tests
+func (qc *qdbCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
+	spqrlog.Zero.Debug().
+		Str("address", qRouter.Address).
+		Msg("qdb coordinator: sync router metadata")
+
+	cc, err := DialRouter(qRouter)
+	if err != nil {
+		return err
+	}
+	defer cc.Close()
+
+	/* Update current coordinator address. */
+	/* Todo: check that router metadata is in sync. */
+
+	rCl := routerproto.NewTopologyServiceClient(cc)
+	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
+		Address: net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort),
+	}); err != nil {
+		return err
+	}
+
 	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
 		return err
 	} else {

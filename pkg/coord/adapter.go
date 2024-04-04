@@ -282,6 +282,15 @@ func (a *Adapter) SyncRouterMetadata(ctx context.Context, router *topology.Route
 	return err
 }
 
+// SyncRouterCoordinatorAddress implements meta.EntityMgr.
+func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
+	c := proto.NewRouterServiceClient(a.conn)
+	_, err := c.SyncMetadata(ctx, &proto.SyncMetadataRequest{
+		Router: topology.RouterToProto(router),
+	})
+	return err
+}
+
 // TODO : unit tests
 // TODO : implement
 func (a *Adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
