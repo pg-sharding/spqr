@@ -23,7 +23,7 @@ Feature: Initialize router metadata from Etcd
         And host "router2" is stopped
 
     Scenario: Router initialize its metadata from Etcd when no coodinator alive
-        When I run SQL on host "router-admin"
+        When I run SQL on host "coordinator"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
         CREATE KEY RANGE krid1 FROM 19 ROUTE TO sh1 FOR DISTRIBUTION ds1;
