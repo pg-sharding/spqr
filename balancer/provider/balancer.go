@@ -41,7 +41,7 @@ func NewBalancer() (*BalancerImpl, error) {
 		threshold[i] = configThresholds[i]
 		threshold[metricsCount+i] = configThresholds[i]
 	}
-	conn, err := grpc.Dial(config.BalancerConfig().CoordinatorAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(config.BalancerConfig().CoordinatorAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

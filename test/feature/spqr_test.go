@@ -553,10 +553,12 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			return false
 		}
 		addr := strings.Split(output, "\n")[1]
-		conn, err := grpc.Dial(addr, grpc.WithInsecure()) //nolint:all
+		conn, err := grpc.NewClient(addr, grpc.WithInsecure()) //nolint:all
 		if err != nil {
 			return false
 		}
+		defer conn.Close()
+
 		client := protos.NewRouterServiceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()

@@ -173,7 +173,7 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 		Str("router-id", r.ID).
 		Msg("dialing router")
 	// TODO: add creds
-	return grpc.Dial(r.Address, grpc.WithInsecure()) //nolint:all
+	return grpc.NewClient(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
 type CoordinatorClient interface {
