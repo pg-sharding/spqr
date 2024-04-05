@@ -95,7 +95,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 			if err != nil {
 				return err
 			}
-			conn, err := grpc.Dial(coordAddr, grpc.WithInsecure()) //nolint:all
+			conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 		if err != nil {
 			return err
 		}
-		conn, err := grpc.Dial(coordAddr, grpc.WithInsecure()) //nolint:all
+		conn, err := grpc.NewClient(coordAddr, grpc.WithInsecure()) //nolint:all
 		if err != nil {
 			return err
 		}
