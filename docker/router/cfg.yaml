@@ -46,17 +46,6 @@ shards:
     type: DATA
     hosts:
       - 'spqr_shard_2:6432'
-  w1:
-    tls:
-      key_file: /etc/odyssey/ssl/server.key
-      sslmode: disable
-      cert_file: /etc/odyssey/ssl/server.crt
-    db: db1
-    usr: user1
-    pwd: 12345678
-    type: WORLD
-    hosts:
-      - 'spqr_world:6432'
 backend_rules:
   - usr: user1
     db: db1
