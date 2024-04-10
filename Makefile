@@ -68,8 +68,6 @@ clean: clean_feature_test
 
 run: build_images
 	docker compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
-	docker compose build client
-	docker compose run --entrypoint /bin/bash client
 
 proxy_2sh_run:
 	./spqr-router run --config ./examples/2shardproxy.yaml -d --proto-debug
@@ -106,9 +104,6 @@ gorm_regress: build_images
 
 xproto_regress: build_images
 	docker compose -f test/xproto/docker-compose.yaml down && docker compose -f test/xproto/docker-compose.yaml run --remove-orphans --build regress
-
-e2e: build_images
-	docker compose up --remove-orphans --exit-code-from client --build router coordinator shard1 shard2 qdb01 client
 
 stress: build_images
 	docker compose -f test/stress/docker-compose.yaml up --remove-orphans --exit-code-from stress --build router shard1 shard2 stress
