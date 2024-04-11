@@ -34,7 +34,7 @@ user_time    | 6.000000000000363e-06
 
 ## Data movement internals
 
-Balancer is a separate binary that executes the algorithm. It executes the algorithm exactly once without cyclic repetition, and its running time is on the order of a second. If the queue is not empty, the balancer performs a task from the queue. A data transport task is actually a group of tasks that can have many actions, and between all actions, the task state is synchronized with etcd. After completion, the task is removed from the task group.
+Balancer is a separate binary that executes the algorithm. It executes the algorithm exactly once without cyclic repetition, and its running time is on the order of seconds. If the queue is not empty, the balancer performs a task from the queue. A data transport task is actually a group of tasks that can have many actions, and between all actions, the task state is synchronized with etcd. After completion, the task is removed from the task group.
 
 For clarity, here is how it is defined [in the code](https://github.com/pg-sharding/spqr/blob/master/pkg/models/tasks/tasks.go ):
 
