@@ -13,10 +13,10 @@ This is a brief summary of what stages balancing consists of:
 1. **Collecting statistics**: The load balancer collects statistics on the workload on the shards using [pg_comment_stats](#pg_comment_stats) to measure CPU and disk usage.
 2. **Finding the most heavily loaded shard**: Based on the collected statistics, the load balancer identifies the shard with the highest workload.
 3. **Selecting the most significant load criterion**: Among all the workload criteria, the one with the greatest impact on the overall workload is chosen.
-4. **Checking out the need for data migration**: The workload on the key range is compared to a threshold value. If it exceeds the threshold, a decision is made to migrate the data.
+4. **Checking out the need for data migration**: The workload on the key range is compared to a threshold value. If it exceeds the threshold, it's time to migrate the data.
 5. **Finding the key range with the heaviest load**: On the identified shard, the key range with the highest workload is determined.
 6. **Choosing a destination**: It is decided which shard and key range the data will be migrated to.
-7. **Data movement**: A data movement operation is initiated, which may involve splitting the data into smaller chunks, if necessary, and transferring them to the designated shard.
+7. **Data movement**: A data movement operation is initiated, which may involve splitting the data into smaller chunks, if necessary, and transferring them to the destination shard.
 8. **Synchronization**: The changes are synchronized with the etcd cluster to ensure data consistency.
 
 ## pg_comment_stats
