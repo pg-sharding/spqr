@@ -16,7 +16,7 @@ This is a brief summary of what stages balancing consists of:
 4. **Checking out the need for data migration**: The workload on the key range is compared to a threshold value. If it exceeds the threshold, it's time to migrate the data.
 5. **Finding the key range with the heaviest load**: On the identified shard, the key range with the highest workload is determined.
 6. **Choosing a destination**: It is decided which shard and key range the data will be migrated to.
-7. **Data movement**: A data movement operation is initiated, which may involve splitting the data into smaller chunks, if necessary, and transferring them to the destination shard.
+7. **Data movement**: A data movement operation is initiated, which may involve splitting the data into smaller chunks, if necessary, and transferring them to the destination shard. For more details see [data movement internals](#Data movement internals)
 8. **Synchronization**: The changes are synchronized with the etcd cluster to ensure data consistency.
 
 ## pg_comment_stats
@@ -30,4 +30,27 @@ We fork pg_stat_statements and modified it a little bit. The original version of
 comment_keys | {"a": "1"}
 query_count  | 1
 user_time    | 6.000000000000363e-06
+```
+
+## Data movement internals
+
+Balancer is a separate binary that executes the algorithm. It executes the algorithm exactly once without cyclic repetition, and its running time is on the order of a second. If the queue is not empty, the balancer performs a task from the queue. A data transport task is actually a group of tasks that can have many actions, and between all actions, the task state is synchronized with etcd. After completion, the task is removed from the task group.
+
+For clarity, here is how it is defined [in the code](https://github.com/pg-sharding/spqr/blob/master/pkg/models/tasks/tasks.go ):
+
+```
+type Task struct {
+	ShardFromId string
+	ShardToId   string
+	KrIdFrom    string
+	KrIdTo      string
+	Bound       []byte
+	KrIdTemp    string
+	State       TaskState // Planned, Split, Moved
+}
+
+type TaskGroup struct {
+	Tasks    []*Task
+	JoinType JoinType // JoinNone, JoinLeft, JoinRight
+}
 ```
