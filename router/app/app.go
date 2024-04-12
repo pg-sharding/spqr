@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"net"
+	"os"
 	"sync"
 
 	reuse "github.com/libp2p/go-reuseport"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	rgrpc "github.com/pg-sharding/spqr/router/grpc"
 	"github.com/pg-sharding/spqr/router/instance"
@@ -106,5 +108,28 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 
 	<-ctx.Done()
 	server.GracefulStop()
+	return nil
+}
+
+func (app *App) ServceUnixSocket(ctx context.Context) error {
+	if err := os.MkdirAll("/var/run/postgresql/", 0770); err != nil {
+		return err
+	}
+	lAddr := &net.UnixAddr{Name: config.UnixSocketPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", lAddr)
+	if err != nil {
+		return err
+	}
+	defer func(listener net.Listener) {
+		_ = listener.Close()
+	}(listener)
+
+	spqrlog.Zero.Info().
+		Msg("SPQR Router is ready by unix socket")
+	go func() {
+		_ = app.spqr.Run(ctx, listener, port.UnixSocketPortType)
+	}()
+
+	<-ctx.Done()
 	return nil
 }

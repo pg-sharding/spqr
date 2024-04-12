@@ -1,5 +1,9 @@
 package config
 
+const (
+	UnixSocketPath = "/var/run/postgresql/.s.PGSQL.5432"
+)
+
 type AuthMethod string
 
 const (
