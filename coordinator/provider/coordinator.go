@@ -1051,10 +1051,14 @@ func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, error) {
-	cl := psqlclient.NewPsqlClient(nconn, port.DefaultRouterPortType, "")
+func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (CoordinatorClient, error) {
+	cl := psqlclient.NewPsqlClient(nconn, pt, "")
 
-	if err := cl.Init(qc.tlsconfig); err != nil {
+	tlsconfig := qc.tlsconfig
+	if pt == port.UnixSocketPortType {
+		tlsconfig = nil
+	}
+	if err := cl.Init(tlsconfig); err != nil {
 		return nil, err
 	}
 
@@ -1094,8 +1098,8 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn) (CoordinatorClient, erro
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn) error {
-	cl, err := qc.PrepareClient(nconn)
+func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error {
+	cl, err := qc.PrepareClient(nconn, pt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err

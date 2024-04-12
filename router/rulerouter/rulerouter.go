@@ -3,9 +3,10 @@ package rulerouter
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"net"
 	"sync"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -171,7 +172,11 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
 	cl := rclient.NewPsqlClient(conn, pt, r.Config().Qr.DefaultRouteBehaviour)
 
-	if err := cl.Init(r.tlsconfig); err != nil {
+	tlsConfig := r.tlsconfig
+	if pt == port.UnixSocketPortType {
+		tlsConfig = nil
+	}
+	if err := cl.Init(tlsConfig); err != nil {
 		return cl, err
 	}
 
