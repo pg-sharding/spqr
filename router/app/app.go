@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
+	"path"
 	"sync"
 
 	reuse "github.com/libp2p/go-reuseport"
@@ -112,10 +114,11 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 }
 
 func (app *App) ServceUnixSocket(ctx context.Context) error {
-	if err := os.MkdirAll("/var/run/postgresql/", 0770); err != nil {
+	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
 		return err
 	}
-	lAddr := &net.UnixAddr{Name: config.UnixSocketPath, Net: "unix"}
+	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", app.spqr.Config().RouterPort))
+	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", lAddr)
 	if err != nil {
 		return err

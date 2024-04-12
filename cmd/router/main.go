@@ -366,6 +366,15 @@ var runCmd = &cobra.Command{
 			wg.Done()
 		}(wg)
 
+		wg.Add(1)
+		go func(wg *sync.WaitGroup) {
+			err := app.ServceUnixSocket(ctx)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+			wg.Done()
+		}(wg)
+
 		wg.Wait()
 
 		return nil
