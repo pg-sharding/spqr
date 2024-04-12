@@ -55,6 +55,7 @@ shards:
       sslmode: disable
     db: db1
     usr: user1
+    pwd: 12345678
     type: DATA
     hosts:
       - 'localhost:5550'
