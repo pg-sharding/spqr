@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 
@@ -31,7 +32,7 @@ import (
 )
 
 type Interactor interface {
-	ProcClient(ctx context.Context, nconn net.Conn) error
+	ProcClient(ctx context.Context, nconn net.Conn, pt port.RouterPortType) error
 }
 
 type PSQLInteractor struct {

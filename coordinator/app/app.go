@@ -2,10 +2,14 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"os"
+	"path"
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/port"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -55,6 +59,12 @@ func (app *App) Run(withPsql bool) error {
 			}
 		}(wg)
 	}
+	wg.Add(1)
+	go func(wg *sync.WaitGroup) {
+		if err := app.ServeUnixSocket(wg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}(wg)
 
 	wg.Wait()
 
@@ -104,7 +114,7 @@ func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 				go func() {
 					defer app.sem.Release(1)
 
-					err := app.coordinator.ProcClient(context.TODO(), conn)
+					err := app.coordinator.ProcClient(context.TODO(), conn, port.DefaultRouterPortType)
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("failed to serve client")
 					}
@@ -149,4 +159,40 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 		Msg("serve grpc coordinator service")
 
 	return serv.Serve(listener)
+}
+
+func (app *App) ServeUnixSocket(wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
+		return err
+	}
+	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", config.CoordinatorConfig().CoordinatorPort))
+	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
+	listener, err := net.ListenUnix("unix", lAddr)
+	if err != nil {
+		return err
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			continue
+		}
+
+		if err := app.sem.Acquire(context.Background(), 1); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			continue
+		}
+
+		go func() {
+			defer app.sem.Release(1)
+
+			err := app.coordinator.ProcClient(context.TODO(), conn, port.UnixSocketPortType)
+			if err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve client")
+			}
+		}()
+	}
 }
