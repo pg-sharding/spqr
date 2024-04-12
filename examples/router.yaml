@@ -1,4 +1,4 @@
-host: '[spqr_router_1_1]'
+host: '[localhost]'
 router_port: '8432'
 admin_console_port: '8433'
 grpc_api_port: '7001'
@@ -12,6 +12,9 @@ router_mode: PROXY
 time_quantiles:
   - 0.5
   - 0.9
+
+init_sql: "examples/init.sql"
+use_init_sql: false
 
 frontend_tls:
   key_file: /etc/odyssey/ssl/server.key
@@ -42,6 +45,9 @@ backend_rules:
       auth_method: md5
       password: strong
 
+
+log_level: debug
+
 shards:
   sh1:
     tls:
@@ -52,21 +58,13 @@ shards:
     pwd: 12345678
     type: DATA
     hosts:
-      - '192.168.233.2:6432'
+      - 'localhost:5550'
   sh2:
     tls:
       root_cert_file: /path/to/root.ca
       sslmode: disable
-    type: DATA
-    hosts:
-      - '192.168.233.3:6432'
-  w1:
-    tls:
-      root_cert_file: /path/to/root.ca
-      sslmode: disable
-    db: db1
     usr: user1
     pwd: 12345678
-    type: WORLD
+    type: DATA
     hosts:
-      - '192.168.233.8:6432'
+      - 'localhost:5551'
