@@ -649,6 +649,19 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 	return fmt.Errorf("service %s was not found in docker composer", service)
 }
 
+func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
+	const trials = 10
+	const timeout = 20 * time.Second
+	for i := 0; i < trials; i++ {
+		_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{})
+		if err == nil {
+			return nil
+		}
+		time.Sleep(timeout)
+	}
+	return fmt.Errorf("host \"%s\" did not respond until timeout", host)
+}
+
 func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocString) error {
 	cmd := strings.TrimSpace(body.Content)
 	var err error
@@ -964,11 +977,11 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)
+	s.Step(`^I wait for host "([^"]*)" to respond$`, tctx.stepWaitPostgresqlToRespond)
 
 	// variable manipulation
 	s.Step(`^we save response row "([^"]*)" column "([^"]*)"$`, tctx.stepSaveResponseBodyAtPathAsJSON)
 	s.Step(`^hide "([^"]*)" field$`, tctx.stepHideField)
-
 }
 
 func TestSpqr(t *testing.T) {
