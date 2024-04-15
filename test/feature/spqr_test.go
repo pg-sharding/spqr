@@ -81,13 +81,33 @@ var postgresqlLogsToSave = map[string]string{
 	"/var/log/postgresql/postgresql-13-main.log": "postgresql.log",
 }
 
+var routerLogsToSave = map[string]string{
+	"/var/log/spqr-router.log": "router.log",
+}
+
 func (tctx *testContext) saveLogs(scenario string) error {
+	fmt.Println("Enter saveLogs")
 	var errs []error
 	for _, service := range tctx.composer.Services() {
 		var logsToSave map[string]string
 		switch {
 		case strings.HasPrefix(service, spqrShardName):
 			logsToSave = postgresqlLogsToSave
+		case strings.HasPrefix(service, spqrRouterName):
+			for file := range routerLogsToSave {
+				remoteFile, err := tctx.composer.GetFile(service, file)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				content, err := io.ReadAll(remoteFile)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				fmt.Println("router logs:")
+				fmt.Println(string(content))
+			}
 		default:
 			continue
 		}
@@ -930,6 +950,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		return ctx, nil
 	})
 	s.After(func(ctx context.Context, scenario *godog.Scenario, err error) (context.Context, error) {
+		fmt.Printf("Enter after part, err = %s\n", err)
 		if err != nil {
 			name := scenario.Name
 			name = strings.Replace(name, " ", "_", -1)
