@@ -105,7 +105,7 @@ func (tctx *testContext) saveLogs(scenario string) error {
 					errs = append(errs, err)
 					continue
 				}
-				fmt.Println("router logs:")
+				fmt.Printf("\"%s\" router logs:\n", service)
 				fmt.Println(string(content))
 			}
 		default:
