@@ -31,7 +31,11 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
 
 	for _, host := range hosts {
-		shard, err := s.pool.Connection(clid, key, host)
+		spqrlog.Zero.Debug().
+			Str("host", host).
+			Str("pool", fmt.Sprintf("%#v", s.pool)).
+			Msg("checking host")
+		sh, err := s.pool.Connection(clid, key, host)
 		if err != nil {
 			spqrlog.Zero.Error().
 				Err(err).
@@ -42,11 +46,11 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 		}
 
 		// callback should Discard/Put connection to Pool properly here
-		if !cb(shard) {
+		if !cb(sh) {
 			continue
 		}
 
-		return shard
+		return sh
 	}
 
 	return nil
@@ -99,7 +103,7 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 		return sh, nil
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
+	return nil, fmt.Errorf("shard %s failed to find primary within %s; %#v", key.Name, total_msg, s.pool)
 }
 
 // TODO : unit tests
