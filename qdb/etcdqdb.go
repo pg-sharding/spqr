@@ -57,6 +57,7 @@ const (
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
 	taskGroupPath            = "/move_task_group"
+	transactionNamespace     = "/transfer_txs/"
 
 	CoordKeepAliveTtl = 3
 	keyspace          = "key_space"
@@ -93,6 +94,10 @@ func keyRangeMovesNodePath(key string) string {
 
 func (q *EtcdQDB) Client() *clientv3.Client {
 	return q.cli
+}
+
+func transferTxNodePath(key string) string {
+	return path.Join(transactionNamespace, key)
 }
 
 // ==============================================================================
@@ -436,13 +441,17 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTransferTransaction) error {
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: record data transfer tx")
+
 	bts, err := json.Marshal(info)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to marshal transaction")
 		return err
 	}
 
-	_, err = q.cli.Put(ctx, key, string(bts))
+	_, err = q.cli.Put(ctx, transferTxNodePath(key), string(bts))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to write transaction")
 		return err
@@ -453,32 +462,35 @@ func (q *EtcdQDB) RecordTransferTx(ctx context.Context, key string, info *DataTr
 
 // TODO : unit tests
 func (q *EtcdQDB) GetTransferTx(ctx context.Context, key string) (*DataTransferTransaction, error) {
-	resp, err := q.cli.Get(ctx, key, clientv3.WithPrefix())
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: get data transfer tx")
+
+	resp, err := q.cli.Get(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to get transaction")
 		return nil, err
 	}
 
 	var st DataTransferTransaction
-
-	for _, e := range resp.Kvs {
-		if err := json.Unmarshal(e.Value, &st); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
-			return nil, err
-		}
-		if st.ToStatus == "" {
-			continue
-		}
+	if len(resp.Kvs) == 0 {
+		return nil, nil
 	}
-	if st.ToStatus == "" {
-		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no transaction in qdb with key %s", key)
+
+	if err := json.Unmarshal(resp.Kvs[0].Value, &st); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal transaction")
+		return nil, err
 	}
 	return &st, nil
 }
 
 // TODO : unit tests
 func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
-	_, err := q.cli.Delete(ctx, key)
+	spqrlog.Zero.Debug().
+		Str("key", key).
+		Msg("etcdqdb: remove data transfer tx")
+
+	_, err := q.cli.Delete(ctx, transferTxNodePath(key))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to delete transaction")
 		return err
@@ -1143,7 +1155,7 @@ func (q *EtcdQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error
 
 	spqrlog.Zero.Debug().
 		Interface("response", resp).
-		Msg("etcdqdb: list move key range oeprations")
+		Msg("etcdqdb: list move key range operations")
 	return moves, nil
 }
 
@@ -1174,14 +1186,11 @@ func (q *EtcdQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error
 func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
 	spqrlog.Zero.Debug().
 		Str("id", moveId).
-		Msg("etcdqdb: update key range")
+		Msg("etcdqdb: update key range move status")
 
-	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId), clientv3.WithPrefix())
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
 	if err != nil {
 		return err
-	}
-	if len(resp.Kvs) != 1 {
-		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "failed to update move key range operation by id %s", moveId)
 	}
 	var moveKr MoveKeyRange
 	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
@@ -1203,4 +1212,25 @@ func (q *EtcdQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s
 		Msg("etcdqdb: update status of move key range operation")
 
 	return nil
+}
+
+func (q *EtcdQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+	spqrlog.Zero.Debug().
+		Str("id", moveId).
+		Msg("etcdqdb: delete key range move")
+
+	resp, err := q.cli.Get(ctx, keyRangeMovesNodePath(moveId))
+	if err != nil {
+		return err
+	}
+	var moveKr MoveKeyRange
+	if err := json.Unmarshal(resp.Kvs[0].Value, &moveKr); err != nil {
+		return err
+	}
+	if moveKr.Status != MoveKeyRangeComplete {
+		return fmt.Errorf("cannot remove non-completed key range move")
+	}
+	_, err = q.cli.Delete(ctx, keyRangeMovesNodePath(moveId))
+
+	return err
 }

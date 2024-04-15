@@ -14,7 +14,6 @@ import (
 )
 
 type MemQDB struct {
-	ShardingSchemaKeeper
 	// TODO create more mutex per map if needed
 	mu sync.RWMutex
 
@@ -116,6 +115,30 @@ func (q *MemQDB) DumpState() error {
 		return err
 	}
 
+	return nil
+}
+
+// ==============================================================================
+//                               KEY RANGE MOVES
+// ==============================================================================
+
+func (q *MemQDB) RecordKeyRangeMove(ctx context.Context, m *MoveKeyRange) error {
+	// TODO implement
+	return nil
+}
+
+func (q *MemQDB) ListKeyRangeMoves(ctx context.Context) ([]*MoveKeyRange, error) {
+	// TODO implement
+	return nil, nil
+}
+
+func (q *MemQDB) UpdateKeyRangeMoveStatus(ctx context.Context, moveId string, s MoveKeyRangeStatus) error {
+	// TODO implement
+	return nil
+}
+
+func (q *MemQDB) DeleteKeyRangeMove(ctx context.Context, moveId string) error {
+	// TODO implement
 	return nil
 }
 
@@ -388,7 +411,7 @@ func (q *MemQDB) GetTransferTx(_ context.Context, key string) (*DataTransferTran
 
 	ans, ok := q.Transactions[key]
 	if !ok {
-		return nil, spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "no tx with key %s", key)
+		return nil, nil
 	}
 	return ans, nil
 }

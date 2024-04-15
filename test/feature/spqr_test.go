@@ -821,13 +821,24 @@ func (tctx *testContext) stepQDBShouldNotContainRelation(key string) error {
 	}
 }
 
+func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var m qdb.MoveKeyRange
+	if err := json.Unmarshal([]byte(query), &m); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
+}
+
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
 	if err != nil {
 		return err
 	}
 
-	if tx == nil || tx.FromStatus == "" || tx.ToStatus == "" {
+	if tx == nil || tx.Status == "" {
 		return fmt.Errorf("No valid transaction with key %s", key)
 	}
 	return nil
@@ -835,10 +846,21 @@ func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 
 func (tctx *testContext) stepQDBShouldNotContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
-	if tx == nil || err != nil || tx.FromStatus == "" || tx.ToStatus == "" {
+	if tx == nil || err != nil || tx.Status == "" {
 		return nil
 	}
 	return fmt.Errorf("Valid transaction present with key %s", key)
+}
+
+func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
+	txs, err := tctx.qdb.ListKeyRangeMoves(context.TODO())
+	if err != nil {
+		return err
+	}
+	if len(txs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("key range moves present")
 }
 
 func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body *godog.DocString) error {
@@ -935,8 +957,10 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^SQL result should not match (\w+)$`, tctx.stepSQLResultShouldNotMatch)
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
 	s.Step(`^qdb should not contain relation "([^"]*)"$`, tctx.stepQDBShouldNotContainRelation)
+	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
+	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
 	s.Step(`^SQL error on host "([^"]*)" should match (\w+)$`, tctx.stepErrorShouldMatch)
 	s.Step(`^file "([^"]*)" on host "([^"]*)" should match (\w+)$`, tctx.stepFileOnHostShouldMatch)
 	s.Step(`^I fail to run SQL on host "([^"]*)"$`, tctx.stepIFailSQLOnHost)

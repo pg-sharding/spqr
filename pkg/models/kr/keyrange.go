@@ -1,9 +1,12 @@
 package kr
 
 import (
+	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"strings"
 )
 
 type KeyRangeBound []byte
@@ -103,4 +106,41 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 		Krid:           kr.ID,
 		DistributionId: kr.Distribution,
 	}
+}
+
+// GetKRCondition returns SQL condition for elements of distributed relation between two key ranges
+// TODO support multidimensional key ranges
+func GetKRCondition(ds *distributions.Distribution, rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) string {
+	buf := make([]string, len(rel.DistributionKey))
+	for i, entry := range rel.DistributionKey {
+		// TODO remove after multidimensional key range support
+		if i > 0 {
+			break
+		}
+		// TODO add hash (depends on col type)
+		hashedCol := ""
+		if prefix != "" {
+			hashedCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
+		} else {
+			hashedCol = entry.Column
+		}
+		lBound := ""
+		if ds.ColTypes[i] == "varchar" {
+			lBound = fmt.Sprintf("'%s'", string(kRange.LowerBound))
+		} else {
+			lBound = string(kRange.LowerBound)
+		}
+		if upperBound != nil {
+			rBound := ""
+			if ds.ColTypes[i] == "varchar" {
+				rBound = fmt.Sprintf("'%s'", string(upperBound))
+			} else {
+				rBound = string(upperBound)
+			}
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, lBound, hashedCol, rBound)
+		} else {
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, lBound)
+		}
+	}
+	return strings.Join(buf, " AND ")
 }
