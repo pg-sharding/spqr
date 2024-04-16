@@ -92,6 +92,20 @@ func (tctx *testContext) saveLogs(scenario string) error {
 		var logsToSave map[string]string
 		switch {
 		case strings.HasPrefix(service, spqrShardName):
+			for file := range postgresqlLogsToSave {
+				remoteFile, err := tctx.composer.GetFile(service, file)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				content, err := io.ReadAll(remoteFile)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				fmt.Printf("\"%s\" shard logs:\n", service)
+				fmt.Println(string(content))
+			}
 			logsToSave = postgresqlLogsToSave
 		case strings.HasPrefix(service, spqrRouterName):
 			for file := range routerLogsToSave {

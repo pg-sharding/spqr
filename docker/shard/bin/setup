@@ -13,6 +13,11 @@ host   all       all       all           trust
 EOF
 
 cat >> /var/lib/postgresql/$POSTGRES_VERSION/main/postgresql.conf <<-EOF
+logging_collector = on
+log_min_messages = info
+log_statement = 'all'
+log_directory = '/var/log/postgresql/'
+log_filename = 'postgresql-13-main.log'
 listen_addresses = '*'
 port = 6432
 max_prepared_transactions = 5
