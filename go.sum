@@ -150,6 +150,8 @@ github.com/pg-sharding/lyx v0.0.0-20240415130146-c1d5e8c133a3 h1:0Rek6RY7FakEUdo
 github.com/pg-sharding/lyx v0.0.0-20240415130146-c1d5e8c133a3/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pg-sharding/lyx v0.0.0-20240416111413-d677885320c6 h1:hi3tNazpapIq7nAMFKLxE7HZ+ITJpjNVShjCsr32txY=
 github.com/pg-sharding/lyx v0.0.0-20240416111413-d677885320c6/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
+github.com/pg-sharding/lyx v0.0.0-20240416115551-6d4ef5db77b6 h1:6U6B5R54e9Llr6RRXGZ/btQn8Aywo7Xk+Jd0pME6oWU=
+github.com/pg-sharding/lyx v0.0.0-20240416115551-6d4ef5db77b6/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
