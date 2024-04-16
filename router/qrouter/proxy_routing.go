@@ -3,8 +3,9 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
@@ -44,6 +45,9 @@ type RoutingMetadataContext struct {
 	rels  map[RelationFQN]struct{}
 	exprs map[RelationFQN]map[string]string
 
+	// cached CTE names
+	cteNames map[string]struct{}
+
 	unparsed_columns map[string]struct{}
 
 	// needed to parse
@@ -59,6 +63,7 @@ type RoutingMetadataContext struct {
 func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
 	meta := &RoutingMetadataContext{
 		rels:             map[RelationFQN]struct{}{},
+		cteNames:         map[string]struct{}{},
 		tableAliases:     map[string]RelationFQN{},
 		exprs:            map[RelationFQN]map[string]string{},
 		unparsed_columns: map[string]struct{}{},
@@ -86,8 +91,17 @@ func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *Rout
 	return meta
 }
 
+func (meta *RoutingMetadataContext) RFQNIsCTE(resolvedRelation RelationFQN) bool {
+	_, ok := meta.cteNames[resolvedRelation.RelationName]
+	return len(resolvedRelation.SchemaName) == 0 && ok
+}
+
 // TODO : unit tests
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr string) {
+	if meta.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return
+	}
 	meta.rels[resolvedRelation] = struct{}{}
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
@@ -372,6 +386,12 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 	switch q := node.(type) {
 	case *lyx.RangeVar:
 		rqdn := RelationFQNFromRangeRangeVar(q)
+
+		// CTE, skip
+		if meta.RFQNIsCTE(rqdn) {
+			return nil
+		}
+
 		if _, ok := meta.rels[rqdn]; !ok {
 			meta.rels[rqdn] = struct{}{}
 		}
@@ -483,6 +503,15 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 	meta *RoutingMetadataContext) error {
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
+		if stmt.WithClause != nil {
+			for _, cte := range stmt.WithClause {
+				meta.cteNames[cte.Name] = struct{}{}
+				if err := qr.deparseShardingMapping(ctx, cte.SubQuery, meta); err != nil {
+					return err
+				}
+			}
+		}
+
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
 			// for single-table queries, process as usual
