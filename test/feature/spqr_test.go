@@ -45,7 +45,6 @@ const (
 	shardPassword                   = "12345678"
 	coordinatorPassword             = "password"
 	dbName                          = "regress"
-	consoleName                     = "spqr-console"
 	postgresqlConnectTimeout        = 60 * time.Second
 	postgresqlInitialConnectTimeout = 30 * time.Second
 	postgresqlQueryTimeout          = 10 * time.Second
@@ -63,6 +62,7 @@ type testContext struct {
 	commandOutput     string
 	qdb               qdb.XQDB
 	t                 *testing.T
+	debug             bool
 }
 
 func newTestContext(t *testing.T) (*testContext, error) {
@@ -86,45 +86,34 @@ var routerLogsToSave = map[string]string{
 }
 
 func (tctx *testContext) saveLogs(scenario string) error {
-	fmt.Println("Enter saveLogs")
 	var errs []error
 	for _, service := range tctx.composer.Services() {
 		var logsToSave map[string]string
 		switch {
 		case strings.HasPrefix(service, spqrShardName):
-			for file := range postgresqlLogsToSave {
-				remoteFile, err := tctx.composer.GetFile(service, file)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-				content, err := io.ReadAll(remoteFile)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-				fmt.Printf("\"%s\" shard logs:\n", service)
-				fmt.Println(string(content))
-			}
 			logsToSave = postgresqlLogsToSave
 		case strings.HasPrefix(service, spqrRouterName):
-			for file := range routerLogsToSave {
-				remoteFile, err := tctx.composer.GetFile(service, file)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-				content, err := io.ReadAll(remoteFile)
-				if err != nil {
-					errs = append(errs, err)
-					continue
-				}
-				fmt.Printf("\"%s\" router logs:\n", service)
-				fmt.Println(string(content))
-			}
+			logsToSave = routerLogsToSave
 		default:
 			continue
 		}
+		if tctx.debug {
+			for file := range logsToSave {
+				remoteFile, err := tctx.composer.GetFile(service, file)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				content, err := io.ReadAll(remoteFile)
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				fmt.Printf("\"%s\" logs:\n", service)
+				fmt.Println(string(content))
+			}
+		}
+
 		logdir := filepath.Join("logs", scenario, service)
 		err := os.MkdirAll(logdir, 0755)
 		if err != nil {
@@ -414,7 +403,7 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 	return result, nil
 }
 
-func (tctx *testContext) executePostgresql(host string, query string, args interface{}) error {
+func (tctx *testContext) executePostgresql(host string, query string) error {
 	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return err
@@ -591,7 +580,9 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		if err != nil {
 			return false
 		}
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 
 		client := protos.NewRouterServiceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -754,7 +745,7 @@ func (tctx *testContext) stepSQLResultShouldNotMatch(matcher string, body *godog
 	if err != nil {
 		return nil
 	}
-	return fmt.Errorf("Should not match")
+	return fmt.Errorf("should not match")
 }
 
 func (tctx *testContext) stepSQLResultShouldMatch(matcher string, body *godog.DocString) error {
@@ -773,7 +764,7 @@ func (tctx *testContext) stepIExecuteSql(host string, body *godog.DocString) err
 	query := strings.TrimSpace(body.Content)
 	query = strings.Replace(query, "\"", "", 2)
 
-	err := tctx.executePostgresql(host, query, struct{}{})
+	err := tctx.executePostgresql(host, query)
 	return err
 }
 
@@ -782,7 +773,7 @@ func (tctx *testContext) stepFileOnHostShouldMatch(path string, node string, mat
 	if err != nil {
 		return err
 	}
-	defer remoteFile.Close()
+	defer func() { _ = remoteFile.Close() }()
 
 	var res strings.Builder
 	for {
@@ -806,16 +797,16 @@ func (tctx *testContext) stepFileOnHostShouldMatch(path string, node string, mat
 	if err != nil {
 		return err
 	}
-	return m(string(actualContent), expectedContent)
+	return m(actualContent, expectedContent)
 }
 
 func (tctx *testContext) stepSaveResponseBodyAtPathAsJSON(rowIndex string, column string) error {
 	i, err := strconv.Atoi(rowIndex)
 	if err != nil {
-		return fmt.Errorf("Failed to get row index: %q not a number", rowIndex)
+		return fmt.Errorf("failed to get row index: %q not a number", rowIndex)
 	}
 	if i >= len(tctx.sqlQueryResult) {
-		return fmt.Errorf("Failed to get row at index %q: index is out of range", i)
+		return fmt.Errorf("failed to get row at index %q: index is out of range", i)
 	}
 
 	a, b := tctx.sqlQueryResult[i][column]
@@ -825,7 +816,7 @@ func (tctx *testContext) stepSaveResponseBodyAtPathAsJSON(rowIndex string, colum
 
 	actualPartByte, err := json.Marshal(a)
 	if err != nil {
-		return fmt.Errorf("Can't marshal to json: %w", err)
+		return fmt.Errorf("can't marshal to json: %w", err)
 	}
 
 	tctx.variables[column] = string(actualPartByte)
@@ -886,7 +877,7 @@ func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 	}
 
 	if tx == nil || tx.Status == "" {
-		return fmt.Errorf("No valid transaction with key %s", key)
+		return fmt.Errorf("no valid transaction with key %s", key)
 	}
 	return nil
 }
@@ -896,7 +887,7 @@ func (tctx *testContext) stepQDBShouldNotContainTx(key string) error {
 	if tx == nil || err != nil || tx.Status == "" {
 		return nil
 	}
-	return fmt.Errorf("Valid transaction present with key %s", key)
+	return fmt.Errorf("valid transaction present with key %s", key)
 }
 
 func (tctx *testContext) stepQDBShouldNotContainKRMoves() error {
@@ -931,9 +922,9 @@ func (tctx *testContext) stepErrorShouldMatch(host string, matcher string, body 
 func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	tctx, err := newTestContext(t)
 	if err != nil {
-		// TODO: how to report errors in godog
-		panic(err)
+		t.Fatal(err)
 	}
+	tctx.debug = debug
 
 	s.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
 		//tctx.cleanup()
@@ -964,7 +955,6 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		return ctx, nil
 	})
 	s.After(func(ctx context.Context, scenario *godog.Scenario, err error) (context.Context, error) {
-		fmt.Printf("Enter after part, err = %s\n", err)
 		if err != nil {
 			name := scenario.Name
 			name = strings.Replace(name, " ", "_", -1)
