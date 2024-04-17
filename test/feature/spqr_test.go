@@ -97,6 +97,7 @@ func (tctx *testContext) saveLogs(scenario string) error {
 		default:
 			continue
 		}
+		// Print logs to stdout when debug is enabled
 		if tctx.debug {
 			for file := range logsToSave {
 				remoteFile, err := tctx.composer.GetFile(service, file)
