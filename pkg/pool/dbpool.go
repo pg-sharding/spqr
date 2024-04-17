@@ -31,7 +31,7 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
 
 	for _, host := range hosts {
-		shard, err := s.pool.Connection(clid, key, host)
+		sh, err := s.pool.Connection(clid, key, host)
 		if err != nil {
 			spqrlog.Zero.Error().
 				Err(err).
@@ -42,11 +42,11 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 		}
 
 		// callback should Discard/Put connection to Pool properly here
-		if !cb(shard) {
+		if !cb(sh) {
 			continue
 		}
 
-		return shard
+		return sh
 	}
 
 	return nil
