@@ -83,17 +83,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Check directory checksum
-        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
-
       - id: step1
         run: |
           make split_feature_test
           array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk '{printf $0"\n"}' | python3 .github/scenario_balancer.py)
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
-
-      - name: Check directory checksum
-        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
@@ -104,7 +98,7 @@ jobs:
 
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(find docker/shard/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}')"
+          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
@@ -145,12 +139,9 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Check directory checksum
-        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
-
       - name: Update env
         run: |
-          SHARD_CACHE_KEY="spqr-shard-image-$(find docker/shard/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}')"
+          SHARD_CACHE_KEY="spqr-shard-image-$(git rev-parse HEAD)"
           CACHE_FILE_SHARD="~/$SHARD_CACHE_KEY.tgz"
           echo "SHARD_CACHE_KEY=$SHARD_CACHE_KEY" >> $GITHUB_ENV
           echo "CACHE_FILE_SHARD=$CACHE_FILE_SHARD" >> $GITHUB_ENV
