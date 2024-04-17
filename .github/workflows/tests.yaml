@@ -82,11 +82,19 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Check directory checksum
+        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
+
       - id: step1
         run: |
           make split_feature_test
           array=$(find test/feature/generatedFeatures -type f -exec wc -l {} \; | sort -rn | awk '{printf $0"\n"}' | python3 .github/scenario_balancer.py)
           echo "features=$(echo "{\"command\": $array}")" >> $GITHUB_OUTPUT
+
+      - name: Check directory checksum
+        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
+
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -136,6 +144,9 @@ jobs:
         run: docker --version
       - name: Check out code
         uses: actions/checkout@v4
+
+      - name: Check directory checksum
+        run: find docker/ -type f -exec sha256sum '{}' \; | sha256sum | awk '{printf $1}'
 
       - name: Update env
         run: |
