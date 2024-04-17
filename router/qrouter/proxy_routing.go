@@ -326,6 +326,10 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				default:
 					queue = append(queue, texpr.Left, texpr.Right)
 				}
+			case *lyx.Select:
+				if err := qr.DeparseSelectStmt(ctx, lft, meta); err != nil {
+					return err
+				}
 			default:
 				/* Consider there cases */
 				// if !(texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_OP || texpr.Kind == pgquery.A_Expr_Kind_AEXPR_BETWEEN) {
@@ -701,7 +705,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 	/*
 	 * Step 1: traverse query tree and deparse mapping from
-	 * columns to their values (either contant or expression).
+	 * columns to their values (either constant or expression).
 	 * Note that exact (routing) value of (sharding) column may not be
 	 * known after this phase, as it can be Parse Step of Extended proto.
 	 */
@@ -713,7 +717,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	case *lyx.VariableSetStmt:
 		/* TBD: maybe skip all set stmts? */
 		/*
-		 * SET x = y etc, do not dispatch any statement to shards, just process this in router
+		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
 		return routingstate.RandomMatchState{}, nil
 
@@ -746,7 +750,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
-		// XXX: doit
+		// XXX: do it
 		return routingstate.MultiMatchState{}, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:

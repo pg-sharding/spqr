@@ -273,8 +273,36 @@ func TestCTE(t *testing.T) {
 			query: `
 			WITH xxxx AS (
 				SELECT * from t where i = 1
-			) 
+			)
 			SELECT * from xxxx;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+		},
+		{
+			query: `
+			WITH xxxx AS (
+				SELECT * from t where i = 1
+			),
+			zzzz AS (
+				UPDATE t 
+				SET a = 0
+				WHERE i = 1 AND (SELECT COUNT(*) FROM xxxx WHERE b = 0) = 1
+			)	
+			SELECT * FROM xxxx;
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
