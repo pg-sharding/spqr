@@ -208,6 +208,103 @@ func TestComment(t *testing.T) {
 	}
 }
 
+func TestCTE(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   routingstate.RoutingState
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID: distribution,
+		Relations: map[string]*qdb.DistributedRelation{
+			"t": {
+				Name: "t",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:        "sh1",
+		DistributionId: distribution,
+		KeyRangeID:     "id1",
+		LowerBound:     []byte("1"),
+	})
+
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:        "sh2",
+		DistributionId: distribution,
+		KeyRangeID:     "id2",
+		LowerBound:     []byte("11"),
+	})
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {
+			Hosts: nil,
+		},
+		"sh2": {
+			Hosts: nil,
+		},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	})
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+
+		{
+			query: `
+			WITH xxxx AS (
+				SELECT * from t where i = 1
+			) 
+			SELECT * from xxxx;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, tt.query)
+	}
+}
+
 func TestSingleShard(t *testing.T) {
 	assert := assert.New(t)
 
