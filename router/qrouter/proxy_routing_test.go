@@ -320,6 +320,21 @@ func TestCTE(t *testing.T) {
 				TargetSessionAttrs: "any",
 			},
 		},
+		{
+			query: `
+			WITH xxxx AS (
+			SELECT * from t where i = 1
+		),
+			zzzz AS (
+				UPDATE t
+				SET a = 0
+				WHERE i = 12
+			)
+			SELECT * FROM xxxx;
+			`,
+			err: nil,
+			exp: routingstate.MultiMatchState{},
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 

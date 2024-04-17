@@ -105,7 +105,7 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN
 	meta.rels[resolvedRelation] = struct{}{}
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string]string{}
-	}
+	} // TODO: else branch
 	delete(meta.unparsed_columns, colname)
 	meta.exprs[resolvedRelation][colname] = expr
 }
