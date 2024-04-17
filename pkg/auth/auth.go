@@ -23,7 +23,6 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 	spqrlog.Zero.Debug().
 		Uint("shard ", spqrlog.GetPointer(shard)).
 		Type("authtype", msg).
-		Str("berule", fmt.Sprintf("%#v", berule)).
 		Msg("auth backend")
 
 	switch v := msg.(type) {
