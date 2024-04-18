@@ -2,6 +2,7 @@ package qrouter_test
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -332,8 +333,8 @@ func TestCTE(t *testing.T) {
 			)
 			SELECT * FROM xxxx;
 			`,
-			err: nil,
-			exp: routingstate.MultiMatchState{},
+			err: spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "several different values for distribution key."),
+			exp: nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -342,7 +343,11 @@ func TestCTE(t *testing.T) {
 
 		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
 
 		assert.Equal(tt.exp, tmp, tt.query)
 	}
