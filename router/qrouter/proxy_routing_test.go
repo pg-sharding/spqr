@@ -2,7 +2,6 @@ package qrouter_test
 
 import (
 	"context"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -333,8 +332,36 @@ func TestCTE(t *testing.T) {
 			)
 			SELECT * FROM xxxx;
 			`,
-			err: spqrerror.Newf(spqrerror.SPQR_COMPLEX_QUERY, "several different values for distribution key."),
-			exp: nil,
+			err: nil,
+			exp: routingstate.SkipRoutingState{},
+		},
+		{
+			query: `
+			WITH xxxx AS (
+				SELECT * from t where i = 1
+			),
+			zzzz AS (
+				UPDATE t
+				SET a = 0
+				WHERE i = 2
+			)
+			SELECT * FROM xxxx;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
