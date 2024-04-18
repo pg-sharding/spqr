@@ -282,27 +282,37 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				switch rght := texpr.Right.(type) {
 				case *lyx.ParamRef:
 					if rght.Number <= len(meta.params) {
-						return qr.RecordDistributionKeyColumnValue(meta, alias, colname, string(meta.params[rght.Number-1]))
+						if err := qr.RecordDistributionKeyColumnValue(meta, alias, colname, string(meta.params[rght.Number-1])); err != nil {
+							return err
+						}
 					}
 					// else  error out?
 				case *lyx.AExprSConst:
 					// TBD: postpone routing from here to root of parsing tree
-					return qr.RecordDistributionKeyColumnValue(meta, alias, colname, rght.Value)
+					if err := qr.RecordDistributionKeyColumnValue(meta, alias, colname, rght.Value); err != nil {
+						return err
+					}
 				case *lyx.AExprIConst:
 					// TBD: postpone routing from here to root of parsing tree
 					// maybe expimely inefficient. Will be fixed in SPQR-2.0
-					return qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", rght.Value))
+					if err := qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", rght.Value)); err != nil {
+						return err
+					}
 				case *lyx.AExprList:
 					if len(rght.List) != 0 {
 						expr := rght.List[0]
 						switch bexpr := expr.(type) {
 						case *lyx.AExprSConst:
 							// TBD: postpone routing from here to root of parsing tree
-							return qr.RecordDistributionKeyColumnValue(meta, alias, colname, bexpr.Value)
+							if err := qr.RecordDistributionKeyColumnValue(meta, alias, colname, bexpr.Value); err != nil {
+								return err
+							}
 						case *lyx.AExprIConst:
 							// TBD: postpone routing from here to root of parsing tree
 							// maybe expimely inefficient. Will be fixed in SPQR-2.0
-							return qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", bexpr.Value))
+							if err := qr.RecordDistributionKeyColumnValue(meta, alias, colname, fmt.Sprintf("%d", bexpr.Value)); err != nil {
+								return err
+							}
 						}
 					}
 				case *lyx.FuncApplication:

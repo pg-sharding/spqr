@@ -660,6 +660,24 @@ func TestSingleShard(t *testing.T) {
 		},
 
 		{
+			query: "SELECT * FROM t WHERE i = 12 AND j = 1;",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						ID:           "id2",
+						Distribution: distribution,
+						LowerBound:   []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+		{
 			query: "SELECT * FROM t WHERE i = 12 UNION ALL SELECT * FROM xxmixed WHERE i = 22;",
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{
@@ -1394,4 +1412,8 @@ func TestMiscRouting(t *testing.T) {
 			assert.Error(tt.err, err, tt.query)
 		}
 	}
+}
+
+func TestSimple(t *testing.T) {
+
 }
