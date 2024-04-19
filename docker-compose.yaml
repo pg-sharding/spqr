@@ -1,5 +1,3 @@
-version: '3'
-
 services:
     spqr-shard-image:
         image: spqr-shard-image
