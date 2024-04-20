@@ -180,7 +180,7 @@ func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created datashard with name %s", shard.ID))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("created datashard %s", shard.ID))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -199,7 +199,7 @@ func (pi *PSQLInteractor) DropShard(id string) error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped shard with %s", id))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped shard %s", id))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -292,7 +292,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(fmt.Sprintf("lock key range with id %v", krid))},
+			[]byte(fmt.Sprintf("lock key range %v", krid))},
 		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -314,7 +314,7 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{
 			[]byte(
-				fmt.Sprintf("unlocked key range with id %v", krid)),
+				fmt.Sprintf("unlocked key range %v", krid)),
 		},
 		},
 	} {
@@ -338,7 +338,7 @@ func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataS
 
 	for _, shard := range shards {
 		if err := pi.cl.Send(&pgproto3.DataRow{
-			Values: [][]byte{[]byte(fmt.Sprintf("datashard with ID %s", shard.ID))},
+			Values: [][]byte{[]byte(fmt.Sprintf("datashard %s", shard.ID))},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -704,7 +704,7 @@ func (pi *PSQLInteractor) AddDistribution(ctx context.Context, ks *distributions
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("created distribution with id %s", ks.ID())); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("created distribution %s", ks.ID())); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
