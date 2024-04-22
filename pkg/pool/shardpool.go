@@ -163,7 +163,6 @@ func (h *shardPool) Connection(
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// do not hold lock on poolRW while allocate new connection
 	var err error
 	sh, err = h.alloc(shardKey, h.host, h.beRule)
 	if err != nil {
