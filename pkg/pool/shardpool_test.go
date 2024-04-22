@@ -187,7 +187,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 					Name: "1",
 				})
 				if err != nil {
-					// too much connections
+					// too many connections
 					continue
 				}
 

@@ -142,7 +142,7 @@ func (h *shardPool) Connection(
 
 	/* reuse cached connection, if any */
 	{
-		/* TDB: per-bucket lock */
+		/* TODO: per-bucket lock */
 		h.mu.Lock()
 
 		if len(h.pool) > 0 {
@@ -160,6 +160,9 @@ func (h *shardPool) Connection(
 		h.mu.Unlock()
 	}
 
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	// do not hold lock on poolRW while allocate new connection
 	var err error
 	sh, err = h.alloc(shardKey, h.host, h.beRule)
@@ -169,9 +172,10 @@ func (h *shardPool) Connection(
 		return nil, err
 	}
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
+	if _, ok := h.active[sh.ID()]; ok {
+		// double take
+		panic(sh)
+	}
 	h.active[sh.ID()] = sh
 
 	return sh, nil
