@@ -20,7 +20,7 @@ Feature: Initialize router metadata from Etcd
         And host "router" is stopped
         And host "router2" is stopped
 
-    Scenario: Router initialize its metadata from Etcd when no coodinator alive
+    Scenario: Router initialize its metadata from Etcd when no coordinator alive
         When I run SQL on host "coordinator"
         """
         CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
