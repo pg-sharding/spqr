@@ -325,11 +325,11 @@ func (m *MockPreparedStatementHolder) EXPECT() *MockPreparedStatementHolderMockR
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockPreparedStatementHolder) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+func (m *MockPreparedStatementHolder) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(shard.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(*shard.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -340,7 +340,7 @@ func (mr *MockPreparedStatementHolderMockRecorder) HasPrepareStatement(hash inte
 }
 
 // PrepareStatement mocks base method.
-func (m *MockPreparedStatementHolder) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (m *MockPreparedStatementHolder) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "PrepareStatement", hash, rd)
 }
@@ -473,11 +473,11 @@ func (mr *MockShardMockRecorder) DB() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockShard) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+func (m *MockShard) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(shard.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(*shard.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -558,7 +558,7 @@ func (mr *MockShardMockRecorder) Params() *gomock.Call {
 }
 
 // PrepareStatement mocks base method.
-func (m *MockShard) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (m *MockShard) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "PrepareStatement", hash, rd)
 }

@@ -47,7 +47,7 @@ type Conn struct {
 
 	status txstatus.TXStatus
 
-	mp map[uint64]shard.PreparedStatementDescriptor
+	mp map[uint64]*shard.PreparedStatementDescriptor
 }
 
 func (sh *Conn) Close() error {
@@ -199,7 +199,7 @@ func NewShard(
 		ps:       shard.ParameterSet{},
 		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
-		mp:       map[uint64]shard.PreparedStatementDescriptor{},
+		mp:       map[uint64]*shard.PreparedStatementDescriptor{},
 	}
 
 	dtSh.dedicated = pgi
@@ -326,12 +326,12 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 }
 
 // TODO : unit tests
-func (srv *Conn) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	rd, ok := srv.mp[hash]
 	return ok, rd
 }
 
 // TODO : unit tests
-func (srv *Conn) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	srv.mp[hash] = rd
 }

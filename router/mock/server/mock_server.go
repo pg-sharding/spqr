@@ -81,11 +81,11 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+func (m *MockServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(shard.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(*shard.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -110,7 +110,7 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 }
 
 // PrepareStatement mocks base method.
-func (m *MockServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (m *MockServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "PrepareStatement", hash, rd)
 }
