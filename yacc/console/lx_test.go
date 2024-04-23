@@ -172,6 +172,14 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.IDENT,
 			},
 		},
+		{
+			query: "DROP TASK GROUP",
+			exp: []int{
+				spqrparser.DROP,
+				spqrparser.TASK,
+				spqrparser.GROUP,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 
