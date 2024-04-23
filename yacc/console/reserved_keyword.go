@@ -59,4 +59,6 @@ var reservedWords = map[string]int{
 	"relation":     RELATION,
 	"detach":       DETACH,
 	"hosts":        HOSTS,
+	"task":         TASK,
+	"group":        GROUP,
 }
