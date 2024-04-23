@@ -871,6 +871,17 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
 }
 
+func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var taskGroup qdb.TaskGroup
+	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.WriteTaskGroup(context.TODO(), &taskGroup)
+}
+
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
 	if err != nil {
@@ -997,6 +1008,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
 	s.Step(`^qdb should not contain relation "([^"]*)"$`, tctx.stepQDBShouldNotContainRelation)
 	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
+	s.Step(`^I record in qdb move task group$`, tctx.stepRecordQDBTaskGroup)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)
