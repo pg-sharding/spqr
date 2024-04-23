@@ -3,6 +3,7 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"net"
 	"sort"
 	"strconv"
@@ -324,6 +325,41 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 		}
 	}
 
+	return pi.CompleteMsg(0)
+}
+
+func (pi *PSQLInteractor) Tasks(_ context.Context, ts []*tasks.Task) error {
+	spqrlog.Zero.Debug().Msg("listing move tasks")
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			TextOidFD("State"),
+			TextOidFD("Bound"),
+			TextOidFD("Source key range ID"),
+			TextOidFD("Destination key range ID"),
+		},
+		},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	for _, task := range ts {
+
+		if err := pi.cl.Send(&pgproto3.DataRow{
+			Values: [][]byte{
+				[]byte(tasks.TaskStateToStr(task.State)),
+				task.Bound,
+				[]byte(task.KrIdFrom),
+				[]byte(task.KrIdTo),
+			},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 	return pi.CompleteMsg(0)
 }
 

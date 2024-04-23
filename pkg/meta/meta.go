@@ -419,6 +419,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Relations(dsToRels, stmt.Where)
+	case spqrparser.TaskGroupStr:
+		group, err := mngr.GetTaskGroup(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Tasks(ctx, group.Tasks)
 	default:
 		return unknownCoordinatorCommand
 	}
