@@ -1236,8 +1236,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				spqrlog.Zero.Debug().Str("name", string(rd.RowDesc.Fields[0].Name)).Uint("param desc", spqrlog.GetPointer(&rd.RowDesc.Fields[0])).Msg("sending to client")
-
 				if err := rst.Client().Send(rd.ParamDesc); err != nil {
 					return err
 				}

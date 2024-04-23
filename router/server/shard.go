@@ -33,10 +33,6 @@ func NewShardServer(spool pool.DBPool) *ShardServer {
 // TODO : unit tests
 func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	b, rd := srv.shard.HasPrepareStatement(hash)
-
-	if rd != nil {
-		spqrlog.Zero.Debug().Uint("addr", spqrlog.GetPointer(&rd.RowDesc.Fields[0])).Msg("saved desc")
-	}
 	return b, rd
 }
 
@@ -52,7 +48,6 @@ func (srv *ShardServer) Name() string {
 
 // TODO : unit tests
 func (srv *ShardServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
-	spqrlog.Zero.Debug().Uint("addr", spqrlog.GetPointer(&rd.RowDesc.Fields[0])).Msg("saved desc")
 	srv.shard.PrepareStatement(hash, rd)
 }
 
