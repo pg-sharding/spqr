@@ -327,6 +327,24 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 	return pi.CompleteMsg(0)
 }
 
+func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
+	if err := pi.WriteHeader("drop task group"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped all tasks"))}},
+	} {
+		if err := pi.cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(0)
+}
+
 // TODO : unit tests
 func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard) error {
 	if err := pi.WriteHeader("listing data shards"); err != nil {

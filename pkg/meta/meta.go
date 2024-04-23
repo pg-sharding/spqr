@@ -133,6 +133,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return err
 		}
 		return cli.DropShard(stmt.ID)
+	case *spqrparser.TaskGroupSelector:
+		if err := mngr.RemoveTaskGroup(ctx); err != nil {
+			return err
+		}
+		return cli.DropTaskGroup(ctx)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
