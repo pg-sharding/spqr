@@ -145,12 +145,6 @@ func (*ShardingRuleSelector) iDrop() {}
 func (*DistributionSelector) iDrop() {}
 func (*ShardSelector) iDrop()        {}
 
-const (
-	EntityRouters      = "ROUTERS"
-	EntityKeyRanges    = "KEY_RANGES"
-	EntityShardingRule = "SHARDING_RULE"
-)
-
 type Lock struct {
 	KeyRangeID string
 }
