@@ -370,7 +370,7 @@ func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("dropped all tasks"))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte("dropped all tasks")}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
