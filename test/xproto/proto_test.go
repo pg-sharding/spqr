@@ -2307,6 +2307,48 @@ func TestMultiPortal(t *testing.T) {
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Parse{
+					Name:  "mp-0-1",
+					Query: "SELECT 1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					DestinationPortal: "",
+					PreparedStatement: "mp-0-1",
+				},
+				&pgproto3.Sync{},
+
+				&pgproto3.Execute{
+					Portal: "",
+				},
+				&pgproto3.Sync{},
+			},
+
+			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ErrorResponse{
+					Severity: "ERROR",
+					Code:     "34000",
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
 					Name:  "mp-1",
 					Query: "SELECT 1",
 				},
@@ -2422,7 +2464,6 @@ func TestMultiPortal(t *testing.T) {
 				retMsgType.SeverityUnlocalized = ""
 				retMsgType.File = ""
 				retMsgType.Message = ""
-				retMsgType.Code = ""
 
 			case *pgproto3.RowDescription:
 				for i := range retMsgType.Fields {
