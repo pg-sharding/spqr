@@ -2403,6 +2403,7 @@ func TestDoubleDescribe(t *testing.T) {
 }
 
 func TestMultiPortal(t *testing.T) {
+	t.Skip("todo")
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -2411,8 +2412,6 @@ func TestMultiPortal(t *testing.T) {
 	defer func() {
 		_ = conn.Close()
 	}()
-
-	return
 
 	frontend := pgproto3.NewFrontend(conn, conn)
 	frontend.Send(&pgproto3.StartupMessage{
