@@ -480,3 +480,52 @@ Feature: Coordinator show clients, pools and backend_connections
             }
         ]
         """
+
+    Scenario: Show task group
+        When I record in qdb move task group
+        """
+        {
+            "tasks":
+            [
+                {
+                    "shard_from_id": "sh_from",
+                    "shard_to_id":   "sh_to",
+                    "kr_id_from":    "kr_from",
+                    "kr_id_to":      "kr_to",
+                    "bound":         "MQ==",
+                    "state":         1
+                },
+                {
+                    "shard_from_id": "sh_from",
+                    "shard_to_id":   "sh_to",
+                    "kr_id_from":    "kr_from",
+                    "kr_id_to":      "kr_to",
+                    "bound":         "MTA=",
+                    "state":         0
+                }
+            ]
+        }
+        """
+        Then command return code should be "0"
+        When I run SQL on host "coordinator"
+        """
+        SHOW task_group
+        """
+        Then command return code should be "0"
+        And SQL result should match json_exactly
+        """
+        [
+            {
+                "State":                    "SPLIT",
+                "Bound":                    "1",
+                "Source key range ID":      "kr_from",
+                "Destination key range ID": "kr_to"
+            },
+            {
+                "State":                    "PLANNED",
+                "Bound":                    "10",
+                "Source key range ID":      "kr_from",
+                "Destination key range ID": "kr_to"
+            }
+        ]
+        """

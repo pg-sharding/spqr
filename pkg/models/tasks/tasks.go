@@ -74,6 +74,19 @@ func TaskStateToProto(state TaskState) protos.TaskStatus {
 	}
 }
 
+func TaskStateToStr(state TaskState) string {
+	switch state {
+	case TaskPlanned:
+		return "PLANNED"
+	case TaskSplit:
+		return "SPLIT"
+	case TaskMoved:
+		return "MOVED"
+	default:
+		panic("incorrect task state")
+	}
+}
+
 func JoinTypeToProto(t JoinType) protos.JoinType {
 	switch t {
 	case JoinNone:

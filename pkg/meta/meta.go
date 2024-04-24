@@ -133,6 +133,11 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return err
 		}
 		return cli.DropShard(stmt.ID)
+	case *spqrparser.TaskGroupSelector:
+		if err := mngr.RemoveTaskGroup(ctx); err != nil {
+			return err
+		}
+		return cli.DropTaskGroup(ctx)
 	default:
 		return fmt.Errorf("unknown drop statement")
 	}
@@ -414,6 +419,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Relations(dsToRels, stmt.Where)
+	case spqrparser.TaskGroupStr:
+		group, err := mngr.GetTaskGroup(ctx)
+		if err != nil {
+			return err
+		}
+		return cli.Tasks(ctx, group.Tasks)
 	default:
 		return unknownCoordinatorCommand
 	}
