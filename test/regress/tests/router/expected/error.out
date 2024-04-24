@@ -45,7 +45,7 @@ ERROR:  column "ixxxd" does not exist
 LINE 1: SELECT * FROM x WHERE ixxxd = 1;
                               ^
 SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE
+ERROR:  client processing error: error processing query 'SELECT * FROM x WHERE ixxxd = 1 iuwehiuhweui;': syntax error on pos 32, tx status IDLE
 SELECT * FROM x WHERE id = 1;
 NOTICE: send query to shard(s) : sh1
  id 
