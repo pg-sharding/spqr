@@ -250,7 +250,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	res := false
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, shard.PreparedStatementDescriptor{} }).AnyTimes()
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, &shard.PreparedStatementDescriptor{} }).AnyTimes()
 	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
 		res = true
 	}).AnyTimes()
@@ -292,8 +292,8 @@ func TestFrontendXProto(t *testing.T) {
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
 
-	// receive this 4 msgs
-	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
+	// receive this 3 msgs
+	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
