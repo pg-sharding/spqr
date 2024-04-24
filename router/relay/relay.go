@@ -53,7 +53,7 @@ type RelayStateMgr interface {
 	Client() client.RouterClient
 
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
-	PrepareStatement(hash uint64, d server.PrepStmtDesc) (shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
+	PrepareStatement(hash uint64, d server.PrepStmtDesc) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
 	PrepareRelayStep(cmngr poolmgr.PoolMgr) error
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
@@ -181,7 +181,7 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) (shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	rst.Cl.ServerAcquireUse()
 
 	if ok, rd := rst.Cl.Server().HasPrepareStatement(hash); ok {
@@ -197,7 +197,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Name:  d.Name,
 		Query: d.Query,
 	}); err != nil {
-		return shard.PreparedStatementDescriptor{}, nil, err
+		return nil, nil, err
 	}
 
 	err := rst.FireMsg(&pgproto3.Describe{
@@ -205,18 +205,20 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		Name:       d.Name,
 	})
 	if err != nil {
-		return shard.PreparedStatementDescriptor{}, nil, err
+		return nil, nil, err
 	}
 
 	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
 
 	_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
 	if err != nil {
-		return shard.PreparedStatementDescriptor{}, nil, err
+		return nil, nil, err
 	}
 
-	rd := shard.PreparedStatementDescriptor{
-		NoData: false,
+	rd := &shard.PreparedStatementDescriptor{
+		NoData:    false,
+		RowDesc:   nil,
+		ParamDesc: nil,
 	}
 
 	var retMsg pgproto3.BackendMessage
@@ -236,10 +238,21 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 			rd.NoData = true
 		case *pgproto3.ParameterDescription:
 			// copy
-			rd.ParamDesc = *q
+			cp := *q
+			rd.ParamDesc = &cp
 		case *pgproto3.RowDescription:
 			// copy
-			rd.RowDesc = *q
+			rd.RowDesc = &pgproto3.RowDescription{}
+
+			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+
+			for i := 0; i < len(q.Fields); i++ {
+				s := make([]byte, len(q.Fields[i].Name))
+				copy(s, q.Fields[i].Name)
+
+				rd.RowDesc.Fields[i] = q.Fields[i]
+				rd.RowDesc.Fields[i].Name = s
+			}
 		default:
 		}
 	}
@@ -955,12 +968,12 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 var MultiShardPrepStmtDeployError = fmt.Errorf("multishard prepared statement deploy is not supported")
 
 // TODO : unit tests
-func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	query := rst.Client().PreparedStatementQueryByName(qname)
 	hash := murmur3.Sum64([]byte(query))
 
 	if len(rst.Client().Server().Datashards()) != 1 {
-		return shard.PreparedStatementDescriptor{}, nil, MultiShardPrepStmtDeployError
+		return nil, nil, MultiShardPrepStmtDeployError
 	}
 
 	spqrlog.Zero.Debug().
@@ -977,7 +990,7 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (shard.PreparedStatement
 		if len(routes) == 1 {
 			rst.bindRoute = routes[0]
 		} else {
-			return shard.PreparedStatementDescriptor{}, nil, fmt.Errorf("failed to deploy prepared statement %s", query)
+			return nil, nil, fmt.Errorf("failed to deploy prepared statement %s", query)
 		}
 	}
 
@@ -1158,7 +1171,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				// do not send saved bind twice
 				if rst.saveBind == nil {
 					// wtf?
-					return fmt.Errorf("failed to describe statement, stmt was never binded")
+					return fmt.Errorf("failed to describe statement, stmt was never deployed")
 				}
 
 				_, _, err = rst.RelayStep(rst.saveBind, false, false)
@@ -1223,8 +1236,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 
-				if err := rst.Client().Send(&rd.ParamDesc); err != nil {
-					return err
+				if rd.ParamDesc != nil {
+					if err := rst.Client().Send(rd.ParamDesc); err != nil {
+						return err
+					}
 				}
 
 				if rd.NoData {
@@ -1232,7 +1247,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 						return err
 					}
 				} else {
-					if err := rst.Client().Send(&rd.RowDesc); err != nil {
+					if err := rst.Client().Send(rd.RowDesc); err != nil {
 						return err
 					}
 				}
