@@ -17,7 +17,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/libp2p/go-reuseport v0.4.0
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pg-sharding/lyx v0.0.0-20240417111237-40a0e3320599
+	github.com/pg-sharding/lyx v0.0.0-20240419111011-78b6979ac476
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.32.0
 	github.com/sevlyar/go-daemon v0.1.6
