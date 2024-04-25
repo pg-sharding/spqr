@@ -1413,7 +1413,3 @@ func TestMiscRouting(t *testing.T) {
 		}
 	}
 }
-
-func TestSimple(t *testing.T) {
-
-}
