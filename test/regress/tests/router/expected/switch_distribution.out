@@ -1,6 +1,6 @@
 \c regress
 SET __spqr__distribution = ds1;
-ERROR:  client proccessing error: setting "__spqr__distribution" is forbidden., tx status IDLE
+ERROR:  client processing error: setting "__spqr__distribution" is forbidden., tx status IDLE
 \c spqr-console
 
 		SPQR router admin console
