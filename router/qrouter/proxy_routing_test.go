@@ -320,6 +320,49 @@ func TestCTE(t *testing.T) {
 				TargetSessionAttrs: "any",
 			},
 		},
+		{
+			query: `
+			WITH xxxx AS (
+			SELECT * from t where i = 1
+		),
+			zzzz AS (
+				UPDATE t
+				SET a = 0
+				WHERE i = 12
+			)
+			SELECT * FROM xxxx;
+			`,
+			err: nil,
+			exp: routingstate.SkipRoutingState{},
+		},
+		{
+			query: `
+			WITH xxxx AS (
+				SELECT * from t where i = 1
+			),
+			zzzz AS (
+				UPDATE t
+				SET a = 0
+				WHERE i = 2
+			)
+			SELECT * FROM xxxx;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
@@ -327,7 +370,11 @@ func TestCTE(t *testing.T) {
 
 		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+		} else {
+			assert.Error(err, "query %s", tt.query)
+		}
 
 		assert.Equal(tt.exp, tmp, tt.query)
 	}
@@ -612,6 +659,24 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 
+		{
+			query: "SELECT * FROM t WHERE i = 12 AND j = 1;",
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh2",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh2",
+						ID:           "id2",
+						Distribution: distribution,
+						LowerBound:   []byte("11"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
 		{
 			query: "SELECT * FROM t WHERE i = 12 UNION ALL SELECT * FROM xxmixed WHERE i = 22;",
 			exp: routingstate.ShardMatchState{
