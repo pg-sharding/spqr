@@ -372,6 +372,17 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 			}
 		}
 
+		if s.LArg != nil {
+			if err := qr.DeparseSelectStmt(ctx, s.LArg, meta); err != nil {
+				return err
+			}
+		}
+		if s.RArg != nil {
+			if err := qr.DeparseSelectStmt(ctx, s.RArg, meta); err != nil {
+				return err
+			}
+		}
+
 	/* SELECT * FROM VALUES() ... */
 	case *lyx.ValueClause:
 		/* random route */
@@ -780,7 +791,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		/* We cannot route SQL stmt with no FROM clause provided, but there is still
 		* a few cases to consider
 		 */
-		if len(node.FromClause) == 0 {
+		if len(node.FromClause) == 0 && (node.LArg == nil || node.RArg == nil) {
 			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
 			data-independent expr */
 
@@ -814,6 +825,15 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			}
 			if any_routable {
 				return routingstate.RandomMatchState{}, nil
+			}
+		} else if node.LArg != nil && node.RArg != nil {
+			err := qr.deparseShardingMapping(ctx, node.LArg, meta)
+			if err != nil {
+				return nil, err
+			}
+			err = qr.deparseShardingMapping(ctx, node.RArg, meta)
+			if err != nil {
+				return nil, err
 			}
 		} else {
 			// SELECT stmts, which
