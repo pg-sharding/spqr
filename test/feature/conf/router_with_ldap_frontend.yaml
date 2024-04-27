@@ -20,8 +20,8 @@ frontend_rules:
         ldapport: 389
         ldapscheme: ldap
         ldapbasedn: dc=example,dc=org
-        ldapbinddn: dc=example,dc=org
-        ldapbindpasswd: password
+        ldapbinddn: cn=admin,dc=example,dc=org
+        ldapbindpasswd: admin
 shards:
   sh1:
     db: regress
