@@ -124,6 +124,8 @@ services:
 
   openldapr:
     image: "osixia/openldap:1.5.0"
+    volumes:
+      - "./feature/conf/ldap_user/:/container/service/slapd/assets/config/bootstrap/ldif/custom/"
     ports:
       - "389:389"
       - "636:636"
