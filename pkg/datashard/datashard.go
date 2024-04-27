@@ -303,8 +303,10 @@ func (sh *Conn) fire(q string) error {
 // TODO : unit tests
 func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 	if rule.PoolRollback {
-		if err := sh.fire("ROLLBACK"); err != nil {
-			return err
+		if sh.TxStatus() != txstatus.TXIDLE {
+			if err := sh.fire("ROLLBACK"); err != nil {
+				return err
+			}
 		}
 	}
 
