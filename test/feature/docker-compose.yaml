@@ -122,6 +122,12 @@ services:
     ports:
       - "2379:2379"
 
+  openldapr:
+    image: "osixia/openldap:1.5.0"
+    ports:
+      - "389:389"
+      - "636:636"
+
 #networks:
 #  mysync_net:
 #    driver: bridge

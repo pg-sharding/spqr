@@ -1,0 +1,16 @@
+dn: uid=regress,dc=example,dc=org
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: regress
+uid: regress
+uidNumber: 16859
+gidNumber: 100
+homeDirectory: /home/user1
+loginShell: /bin/bash
+gecos: regress
+userPassword: password
+shadowLastChange: 0
+shadowMax: 0
+shadowWarning: 0
