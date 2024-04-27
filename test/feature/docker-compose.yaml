@@ -124,8 +124,10 @@ services:
 
   openldapr:
     image: "osixia/openldap:1.5.0"
+    environment:
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
     volumes:
-      - "./feature/conf/ldap_user/:/container/service/slapd/assets/config/bootstrap/ldif/custom/"
+      - "./conf/ldap_user:/container/service/slapd/assets/config/bootstrap/ldif/custom"
     ports:
       - "389:389"
       - "636:636"
