@@ -22,6 +22,7 @@ frontend_rules:
         ldapbasedn: dc=example,dc=org
         ldapbinddn: cn=admin,dc=example,dc=org
         ldapbindpasswd: admin
+        ldapsearchattribute: gecos
 shards:
   sh1:
     db: regress
