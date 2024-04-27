@@ -8,7 +8,7 @@ Feature: LDAP auth test
     Given cluster is up and running
     When I run command on host "router"
     """
-    ldapadd -x -H ldap://openldapr -D "cn=admin,dc=example,dc=org" -wadmin -f /ldap/usr1.ldif
+    ldapadd -x -H ldap://openldapr -D "cn=admin,dc=example,dc=org" -wadmin -f /spqr/test/feature/conf/ldap_user.ldif
     sleep 1
     PGPASSWORD=password psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
     """
