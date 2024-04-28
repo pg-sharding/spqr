@@ -50,12 +50,6 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
-    healthcheck:
-      test: psql -h regress_router -p 6432 -U regress -d regress
-      interval: 10s
-      timeout: 3s
-      retries: 50
-
 
   router2:
     build:
