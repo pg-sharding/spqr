@@ -26,4 +26,4 @@ Feature: LDAP auth test
    """
    PGPASSWORD=wrongpassword psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
    """
-   Then command return code should be "1"
+   Then command return code should be "2"
