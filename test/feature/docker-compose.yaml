@@ -44,8 +44,6 @@ services:
     hostname: regress_router
     container_name: regress_router
     depends_on:
-      openldapr:
-        condition: service_healthy
       shard1:
         condition: service_healthy
       shard2:
