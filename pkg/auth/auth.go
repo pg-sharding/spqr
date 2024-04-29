@@ -295,7 +295,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		defer l.Close()
 		if rule.AuthRule.LDAPConfig.LdapTLS {
-			err = l.StartTLS(&tls.Config{InsecureSkipVerify: true})
+			err = l.StartTLS(&tls.Config{})
 			if err != nil {
 				return err
 			}
