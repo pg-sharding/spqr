@@ -135,7 +135,7 @@ services:
       - "389:389"
       - "636:636"
     healthcheck:
-      test: ldapwhoami -D "uid=regress,dc=example,dc=org" -w password
+      test: ldapwhoami -D "uid=regress,dc=example,dc=org" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
