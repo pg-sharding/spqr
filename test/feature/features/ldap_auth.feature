@@ -8,7 +8,7 @@ Feature: LDAP auth test
     Given cluster is up and running
     When I run command on host "router"
     """
-    PGPASSWORD=password psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
+    PGPASSWORD=12345678 psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
     """
     Then command return code should be "0"
     And command output should match regexp
@@ -24,6 +24,6 @@ Feature: LDAP auth test
    Given cluster is up and running
    When I run command on host "router"
    """
-   PGPASSWORD=wro psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
+   PGPASSWORD=wrongpassword psql -c "SELECT 1" -d regress -U regress -p 6432 -h localhost
    """
    Then command return code should be "1"

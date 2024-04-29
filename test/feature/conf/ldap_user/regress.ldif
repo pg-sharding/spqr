@@ -10,7 +10,7 @@ gidNumber: 100
 homeDirectory: /home/regress
 loginShell: /bin/bash
 gecos: regress
-userPassword: password
+userPassword: 12345678
 shadowLastChange: 0
 shadowMax: 0
 shadowWarning: 0
