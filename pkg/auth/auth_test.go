@@ -2,6 +2,8 @@ package auth_test
 
 import (
 	"bytes"
+	"github.com/golang/mock/gomock"
+	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -246,4 +248,52 @@ func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 
 	//clean test data
 	buf.Reset()
+}
+
+func MockFrontendRule(method string, ldapConfig *config.LDAPCfg) *config.FrontendRule {
+	auth1 := &config.AuthCfg{
+		Method:     config.AuthMethod(method),
+		Password:   "123",
+		LDAPConfig: ldapConfig,
+	}
+
+	fr := &config.FrontendRule{
+		Usr:      "vasya",
+		DB:       "random",
+		AuthRule: auth1,
+	}
+	return fr
+}
+
+func TestAuthFrontend(t *testing.T) {
+	assert := assert.New(t)
+	ctrl := gomock.NewController(t)
+	cl := mockcl.NewMockRouterClient(ctrl)
+	cl.EXPECT().Usr().AnyTimes().Return("gauss")
+	cl.EXPECT().PasswordCT().AnyTimes().Return("password", nil)
+
+	// Testing on external open ldap server
+	// Test search+bind mode
+	ldapConfig := config.LDAPCfg{
+		LdapServer:     "ldap.forumsys.com",
+		LdapPort:       389,
+		LdapScheme:     "ldap",
+		LdapBaseDn:     "dc=example,dc=com",
+		LdapBindDn:     "cn=read-only-admin,dc=example,dc=com",
+		LdapBindPasswd: "password",
+	}
+	authRule := MockFrontendRule("ldap", &ldapConfig)
+	err := auth.AuthFrontend(cl, authRule)
+	assert.NoError(err)
+
+	// Test simple-bind mode
+	ldapConfig = config.LDAPCfg{
+		LdapServer: "ldap.forumsys.com",
+		LdapPort:   389,
+		LdapScheme: "ldap",
+		LdapSuffix: ",dc=example,dc=com",
+		LdapPrefix: "uid=",
+	}
+	err = auth.AuthFrontend(cl, authRule)
+	assert.NoError(err)
 }

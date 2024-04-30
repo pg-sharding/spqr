@@ -54,6 +54,7 @@ services:
       timeout: 3s
       retries: 50
 
+
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -121,6 +122,21 @@ services:
       ETCD_LOG_LEVEL: "debug"
     ports:
       - "2379:2379"
+
+  openldapr:
+    image: "osixia/openldap:1.5.0"
+    environment:
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+    volumes:
+      - "./conf/ldap_user:/container/service/slapd/assets/config/bootstrap/ldif/custom"
+    ports:
+      - "389:389"
+      - "636:636"
+    healthcheck:
+      test: ldapwhoami -D "uid=regress,dc=example,dc=org" -w 12345678
+      interval: 10s
+      timeout: 3s
+      retries: 50
 
 #networks:
 #  mysync_net:
