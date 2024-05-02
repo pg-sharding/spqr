@@ -1,6 +1,7 @@
 package prep_stmt_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -838,6 +839,115 @@ func TestPrepStmtSimpleParametrizedQuery(t *testing.T) {
 				break
 			}
 			assert.Equal(t, msg, retMsg, fmt.Sprintf("index=%d", ind))
+		}
+	}
+}
+
+func TestPrepStmtQueryTwoParams(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err != nil {
+		t.Fatalf("Failed to send startup message: %v", err)
+	}
+	err = frontend.Flush()
+	if err != nil {
+		t.Fatalf("Failed to flush startup message: %v", err)
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		t.Fatalf("Failed waiting for ReadyForQuery: %v", err)
+	}
+
+	for _, msgroup := range []struct {
+		Requests  []pgproto3.FrontendMessage
+		Responses []pgproto3.BackendMessage
+	}{
+		{
+			Requests: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_1",
+					Query: "BEGIN;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_2",
+					Query: "INSERT INTO t (id) VALUES ($1);",
+				},
+				&pgproto3.Bind{
+					PreparedStatement:    "stmtcache_sr_2",
+					Parameters:           [][]byte{{0, 0, 0, 2}},
+					ParameterFormatCodes: []int16{1},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_4",
+					Query: "SELECT * FROM t WHERE id > $1 AND id < $2 ORDER BY id ASC LIMIT 1;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_4",
+					Parameters: [][]byte{
+						{0, 0, 0, 1},
+						{0, 0, 0, 3},
+					},
+					ParameterFormatCodes: []int16{1, 1},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Parse{
+					Name:  "stmtcache_sr_3",
+					Query: "ROLLBACK;",
+				},
+				&pgproto3.Bind{
+					PreparedStatement: "stmtcache_sr_3",
+				},
+				&pgproto3.Execute{},
+			},
+		},
+	} {
+		for _, req := range msgroup.Requests {
+			frontend.Send(req)
+		}
+		err = frontend.Flush()
+		if err != nil {
+			t.Fatalf("Failed to flush requests: %v", err)
+		}
+
+		expectedId := []byte{0, 0, 0, 2}
+		selectedIdMatched := false
+
+		for {
+			msg, err := frontend.Receive()
+			if err != nil {
+				t.Fatalf("Failed to receive response: %v", err)
+			}
+
+			switch msg := msg.(type) {
+			case *pgproto3.DataRow:
+				for _, col := range msg.Values {
+					if bytes.Equal(col, expectedId) {
+						selectedIdMatched = true
+					}
+				}
+			case *pgproto3.ReadyForQuery:
+				if !selectedIdMatched {
+					t.Fatal("SELECT query did not return the correct result: expected id = 2")
+				}
+				return
+			}
 		}
 	}
 }
