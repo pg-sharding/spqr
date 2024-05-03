@@ -1247,8 +1247,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 						return err
 					}
 				} else {
-					if err := rst.Client().Send(rd.RowDesc); err != nil {
-						return err
+					if rd.RowDesc != nil {
+						if err := rst.Client().Send(rd.RowDesc); err != nil {
+							return err
+						}
 					}
 				}
 
