@@ -1,7 +1,6 @@
 package prep_stmt_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -103,10 +102,6 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r1 COLUMNS id FOR DISTRIBUTION ds1;")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
-	}
 	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -120,10 +115,6 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
-	}
-	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r2 COLUMNS id FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
@@ -870,84 +861,79 @@ func TestPrepStmtQueryTwoParams(t *testing.T) {
 		t.Fatalf("Failed waiting for ReadyForQuery: %v", err)
 	}
 
-	for _, msgroup := range []struct {
-		Requests  []pgproto3.FrontendMessage
-		Responses []pgproto3.BackendMessage
-	}{
+	statements := []*pgproto3.Parse{
 		{
-			Requests: []pgproto3.FrontendMessage{
-				&pgproto3.Parse{
-					Name:  "stmtcache_sr_1",
-					Query: "BEGIN;",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "stmtcache_sr_1",
-				},
-				&pgproto3.Execute{},
-				&pgproto3.Parse{
-					Name:  "stmtcache_sr_2",
-					Query: "INSERT INTO t (id) VALUES ($1);",
-				},
-				&pgproto3.Bind{
-					PreparedStatement:    "stmtcache_sr_2",
-					Parameters:           [][]byte{{0, 0, 0, 2}},
-					ParameterFormatCodes: []int16{1},
-				},
-				&pgproto3.Execute{},
-				&pgproto3.Parse{
-					Name:  "stmtcache_sr_4",
-					Query: "SELECT * FROM t WHERE id > $1 AND id < $2 ORDER BY id ASC LIMIT 1;",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "stmtcache_sr_4",
-					Parameters: [][]byte{
-						{0, 0, 0, 1},
-						{0, 0, 0, 3},
-					},
-					ParameterFormatCodes: []int16{1, 1},
-				},
-				&pgproto3.Execute{},
-				&pgproto3.Parse{
-					Name:  "stmtcache_sr_3",
-					Query: "ROLLBACK;",
-				},
-				&pgproto3.Bind{
-					PreparedStatement: "stmtcache_sr_3",
-				},
-				&pgproto3.Execute{},
-			},
+			Name:  "insert_stmt",
+			Query: "INSERT INTO t (id) VALUES ($1);",
 		},
-	} {
-		for _, req := range msgroup.Requests {
-			frontend.Send(req)
-		}
-		err = frontend.Flush()
+		{
+			Name:  "select_stmt",
+			Query: "SELECT * FROM t WHERE id > $1 AND id < $2 ORDER BY id ASC LIMIT 1;",
+		},
+		{
+			Name:  "rollback_stmt",
+			Query: "ROLLBACK;",
+		},
+	}
+
+	for _, stmt := range statements {
+		frontend.Send(stmt)
+	}
+	frontend.Send(&pgproto3.Sync{})
+	err = frontend.Flush()
+	if err != nil {
+		t.Fatalf("Failed to flush preparation statements: %v", err)
+	}
+
+	frontend.Send(&pgproto3.Query{String: "BEGIN;"})
+	frontend.Send(&pgproto3.Sync{})
+
+	frontend.Send(&pgproto3.Bind{
+		PreparedStatement:    "insert_stmt",
+		Parameters:           [][]byte{[]byte("2")},
+		ParameterFormatCodes: []int16{0},
+	})
+	frontend.Send(&pgproto3.Execute{})
+	frontend.Send(&pgproto3.Sync{})
+
+	frontend.Send(&pgproto3.Bind{
+		PreparedStatement: "select_stmt",
+		Parameters: [][]byte{
+			[]byte("1"),
+			[]byte("3"),
+		},
+		ParameterFormatCodes: []int16{0, 0}})
+	frontend.Send(&pgproto3.Execute{})
+	frontend.Send(&pgproto3.Sync{})
+
+	frontend.Send(&pgproto3.Bind{PreparedStatement: "rollback_stmt"})
+	frontend.Send(&pgproto3.Execute{})
+	frontend.Send(&pgproto3.Sync{})
+
+	err = frontend.Flush()
+	if err != nil {
+		t.Fatalf("Failed to flush transaction commands: %v", err)
+	}
+
+	expectedMessageCount := 17
+	for i := 0; i < expectedMessageCount; i++ {
+		msg, err := frontend.Receive()
 		if err != nil {
-			t.Fatalf("Failed to flush requests: %v", err)
+			t.Fatalf("Failed to receive message: %v", err)
 		}
 
-		expectedId := []byte{0, 0, 0, 2}
-		selectedIdMatched := false
-
-		for {
-			msg, err := frontend.Receive()
-			if err != nil {
-				t.Fatalf("Failed to receive response: %v", err)
+		switch msg := msg.(type) {
+		case *pgproto3.ParseComplete, *pgproto3.ReadyForQuery,
+			*pgproto3.CommandComplete, *pgproto3.BindComplete:
+			continue // expected message
+		case *pgproto3.DataRow:
+			if len(msg.Values) == 0 || string(msg.Values[0]) != "2" {
+				t.Fatalf("Invalid data in DataRow. Expected first value '2', got: %v", string(msg.Values[0]))
 			}
-
-			switch msg := msg.(type) {
-			case *pgproto3.DataRow:
-				for _, col := range msg.Values {
-					if bytes.Equal(col, expectedId) {
-						selectedIdMatched = true
-					}
-				}
-			case *pgproto3.ReadyForQuery:
-				if !selectedIdMatched {
-					t.Fatal("SELECT query did not return the correct result: expected id = 2")
-				}
-				return
-			}
+		case *pgproto3.ErrorResponse:
+			t.Fatalf("Received unexpected error response: %v", msg)
+		default:
+			t.Fatalf("Received unexpected message type: %T", msg)
 		}
 	}
 }
