@@ -249,10 +249,13 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
 	res := false
+	rd := &shard.PreparedStatementDescriptor{}
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, &shard.PreparedStatementDescriptor{} }).AnyTimes()
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
 	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
 		res = true
+		rd.ParamDesc = &pgproto3.ParameterDescription{}
+		rd.RowDesc = &pgproto3.RowDescription{}
 	}).AnyTimes()
 	/* */
 
@@ -292,8 +295,8 @@ func TestFrontendXProto(t *testing.T) {
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
 
-	// receive this 3 msgs
-	cl.EXPECT().Send(gomock.Any()).Times(3).Return(nil)
+	// receive this 4 msgs
+	cl.EXPECT().Send(gomock.Any()).Times(4).Return(nil)
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
