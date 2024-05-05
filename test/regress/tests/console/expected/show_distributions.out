@@ -6,15 +6,15 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
-         add distribution         
-----------------------------------
- created distribution with id ds2
+    add distribution
+------------------------
+ distribution id -> ds2
 (1 row)
 
 SHOW distributions;
@@ -25,10 +25,10 @@ SHOW distributions;
 (2 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
- drop distribution ds2
+   drop distribution
+------------------------
+ distribution id -> ds1
+ distribution id -> ds2
 (2 rows)
 
 DROP KEY RANGE ALL;
