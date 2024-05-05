@@ -8,25 +8,25 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that numeric type works
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range
+ add key range 
 ---------------
  bound -> 1
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range
+ add key range 
 ---------------
  bound -> 11
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
-        attach table
+        attach table        
 ----------------------------
  relation name   -> xxmixed
  distribution id -> ds1
@@ -147,25 +147,25 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- check that uuid type works
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds2
 (1 row)
 
 CREATE KEY RANGE krid3 FROM 00000000-0000-0000-0000-000000000000 ROUTE TO sh1 FOR DISTRIBUTION ds2;
-                 add key range
+                 add key range                 
 -----------------------------------------------
  bound -> 00000000-0000-0000-0000-000000000000
 (1 row)
 
 CREATE KEY RANGE krid4 FROM 88888888-8888-8888-8888-888888888888 ROUTE TO sh2 FOR DISTRIBUTION ds2;
-                 add key range
+                 add key range                 
 -----------------------------------------------
  bound -> 88888888-8888-8888-8888-888888888888
 (1 row)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid DISTRIBUTION KEY id;
-          attach table
+          attach table          
 --------------------------------
  relation name   -> xxmixeduuid
  distribution id -> ds2
@@ -228,7 +228,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution
+   drop distribution    
 ------------------------
  distribution id -> ds1
  distribution id -> ds2

@@ -7,45 +7,45 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range
+ add key range 
 ---------------
  bound -> 1
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range
+ add key range 
 ---------------
  bound -> 11
 (1 row)
 
 CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range
+ add key range 
 ---------------
  bound -> 21
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-      attach table
+      attach table      
 ------------------------
  relation name   -> xx
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
-       attach table
+       attach table       
 --------------------------
  relation name   -> xxerr
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
-       attach table
+       attach table       
 --------------------------
  relation name   -> xxtt1
  distribution id -> ds1
@@ -294,7 +294,7 @@ ERROR:  table "xxerr" does not exist
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution
+   drop distribution    
 ------------------------
  distribution id -> ds1
 (1 row)

@@ -6,26 +6,26 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds2
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
-      attach table
+      attach table      
 ------------------------
  relation name   -> a
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MURMUR;
-      attach table
+      attach table      
 ------------------------
  relation name   -> b
  distribution id -> ds1
@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MUR
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
                                                           c_id_2 HASH FUNCTION CITY;
-      attach table
+      attach table      
 ------------------------
  relation name   -> c
  distribution id -> ds2
@@ -57,7 +57,7 @@ SHOW relations WHERE distribution_id = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param does not exist.
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution
+   drop distribution    
 ------------------------
  distribution id -> ds1
  distribution id -> ds2

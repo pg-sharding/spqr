@@ -6,34 +6,34 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-    add distribution
+    add distribution    
 ------------------------
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r1 DISTRIBUTION KEY col1 HASH FUNCTION IDENT;
-      attach table
+      attach table      
 ------------------------
  relation name   -> r1
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r2 DISTRIBUTION KEY col1 HASH FUNCTION IDENTITY;
-      attach table
+      attach table      
 ------------------------
  relation name   -> r2
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r3 DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
-      attach table
+      attach table      
 ------------------------
  relation name   -> r3
  distribution id -> ds1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CITY;
-      attach table
+      attach table      
 ------------------------
  relation name   -> r4
  distribution id -> ds1
@@ -55,7 +55,7 @@ SHOW RELATIONS;
 (4 rows)
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution
+   drop distribution    
 ------------------------
  distribution id -> ds1
 (1 row)

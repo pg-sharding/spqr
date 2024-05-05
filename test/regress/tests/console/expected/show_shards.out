@@ -6,7 +6,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 SHOW shards;
- listing data shards
+ listing data shards 
 ---------------------
  shard id -> sh1
  shard id -> sh2

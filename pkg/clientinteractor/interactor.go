@@ -272,7 +272,8 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
-		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("key range id -> %v\nbound        -> %s", split.SourceID, string(split.Bound)))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("key range id -> %v", split.SourceID))}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(fmt.Sprintf("bound        -> %s", string(split.Bound)))}},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -736,7 +737,12 @@ func (pi *PSQLInteractor) AlterDistributionAttach(ctx context.Context, id string
 	}
 
 	for _, r := range ds {
-		if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s\ndistribution id -> %s", r.Name, id)); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", r.Name)); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+
+		if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -752,7 +758,12 @@ func (pi *PSQLInteractor) AlterDistributionDetach(_ context.Context, id string, 
 		return err
 	}
 
-	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s\ndistribution id -> %s", relName, id)); err != nil {
+	if err := pi.WriteDataRow(fmt.Sprintf("relation name   -> %s", relName)); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	if err := pi.WriteDataRow(fmt.Sprintf("distribution id -> %s", id)); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
