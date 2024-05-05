@@ -29,14 +29,14 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
 ---------------------------
  relation name   -> orders
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY order_id;
         attach table         
 -----------------------------
  relation name   -> delivery
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE orders(id INT PRIMARY KEY);

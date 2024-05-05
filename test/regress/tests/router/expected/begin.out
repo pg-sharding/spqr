@@ -29,7 +29,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test_beg DISTRIBUTION KEY id;
 -----------------------------
  relation name   -> test_beg
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE test_beg(id int, age int);

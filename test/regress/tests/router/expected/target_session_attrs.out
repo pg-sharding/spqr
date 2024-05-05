@@ -29,7 +29,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tsa_test DISTRIBUTION KEY id;
 -----------------------------
  relation name   -> tsa_test
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE tsa_test (id int);

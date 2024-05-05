@@ -30,7 +30,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
 ----------------------------
  relation name   -> xxmixed
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE xxmixed(id int);
@@ -169,7 +169,7 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid DISTRIBUTION KEY id;
 --------------------------------
  relation name   -> xxmixeduuid
  distribution id -> ds2
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE xxmixeduuid(id uuid);

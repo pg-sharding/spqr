@@ -29,14 +29,14 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xjoin DISTRIBUTION KEY id;
 --------------------------
  relation name   -> xjoin
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION yjoin DISTRIBUTION KEY w_id;
        attach table       
 --------------------------
  relation name   -> yjoin
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE xjoin(id int);

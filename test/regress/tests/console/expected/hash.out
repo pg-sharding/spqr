@@ -16,28 +16,28 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION r1 DISTRIBUTION KEY col1 HASH FUNCTION ID
 ------------------------
  relation name   -> r1
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r2 DISTRIBUTION KEY col1 HASH FUNCTION IDENTITY;
       attach table      
 ------------------------
  relation name   -> r2
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r3 DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
       attach table      
 ------------------------
  relation name   -> r3
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CITY;
       attach table      
 ------------------------
  relation name   -> r4
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 SHOW DISTRIBUTIONS;
  Distribution ID | Column types 

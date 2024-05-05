@@ -35,21 +35,21 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ------------------------
  relation name   -> xx
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
        attach table       
 --------------------------
  relation name   -> xxerr
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
        attach table       
 --------------------------
  relation name   -> xxtt1
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE xx (w_id int);

@@ -47,14 +47,14 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ------------------------
  relation name   -> xx
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
       attach table      
 ------------------------
  relation name   -> yy
  distribution id -> ds2
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  no such distribution.
@@ -99,21 +99,21 @@ ALTER DISTRIBUTION ds2 DETACH RELATION yy;
 ------------------------
  relation name   -> yy
  distribution id -> ds2
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
     detach relation     
 ------------------------
  relation name   -> yy
  distribution id -> ds2
-(1 row)
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
       attach table      
 ------------------------
  relation name   -> yy
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 SELECT * FROM yy WHERE w_id=5;

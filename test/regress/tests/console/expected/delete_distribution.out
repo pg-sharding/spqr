@@ -40,7 +40,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id;
 ------------------------
  relation name   -> rel
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 -- drop non-existing one
 DROP DISTRIBUTION ds23223;

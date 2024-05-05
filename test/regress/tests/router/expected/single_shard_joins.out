@@ -29,7 +29,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 DISTRIBUTION KEY i;
 ---------------------------
  relation name   -> sshjt1
  distribution id -> ds1
-(1 row)
+(2 rows)
 
 \c regress
 CREATE TABLE sshjt1(i int, j int);
