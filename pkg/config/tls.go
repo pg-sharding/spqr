@@ -20,6 +20,15 @@ type TLSConfig struct {
 
 // ConfigTLS creates tls.Init from SPQR config.
 // Almost full copy of https://github.com/jackc/pgx/blob/a968ce3437eefc4168b39bbc4b1ea685f4c8ae66/pgconn/config.go#L610.
+
+// Init initializes the TLS configuration based on the provided host and TLSConfig struct.
+//
+// Parameters:
+// - host (string): The host to connect to.
+// - c (*TLSConfig): A pointer to the TLSConfig struct.
+//
+// Returns:
+// - (*tls.Config, error): The initialized TLS configuration and an error if any occurred.
 func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	// Match libpq default behavior
 	if c == nil || c.SslMode == "" {

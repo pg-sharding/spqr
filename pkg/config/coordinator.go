@@ -26,6 +26,13 @@ type Coordinator struct {
 	SystemdNotifierDebug bool       `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }
 
+// LoadCoordinatorCfg loads the coordinator configuration from the specified file path.
+//
+// Parameters:
+//   - cfgPath (string): The path of the configuration file.
+//
+// Returns:
+//   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) error {
 	file, err := os.Open(cfgPath)
 	if err != nil {
@@ -46,6 +53,13 @@ func LoadCoordinatorCfg(cfgPath string) error {
 	return nil
 }
 
+// initCoordinatorConfig initializes the coordinator configuration based on the file content and file format.
+//
+// Parameters:
+//   - file (*os.File): the file containing the configuration data.
+//   - filepath (string): the path of the configuration file.
+// Returns:
+//   - error: an error if any occurred during the initialization process.
 func initCoordinatorConfig(file *os.File, filepath string) error {
 	if strings.HasSuffix(filepath, ".toml") {
 		_, err := toml.NewDecoder(file).Decode(&cfgCoordinator)
@@ -60,6 +74,10 @@ func initCoordinatorConfig(file *os.File, filepath string) error {
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
 
+// CoordinatorConfig returns a pointer to the Coordinator configuration.
+//
+// Returns:
+//   - *Coordinator: a pointer to the Coordinator configuration.
 func CoordinatorConfig() *Coordinator {
 	return &cfgCoordinator
 }

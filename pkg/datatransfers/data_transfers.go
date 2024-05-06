@@ -29,6 +29,14 @@ type ProxyW struct {
 	w io.WriteCloser
 }
 
+// Write writes the given byte slice to the underlying io.WriteCloser.
+//
+// Parameters:
+// - bt ([]byte): a byte slice to be written.
+//
+// Returns:
+// - int: the number of bytes written.
+// - error: an error, if any, that occurred during the
 func (p *ProxyW) Write(bt []byte) (int, error) {
 	return p.w.Write(bt)
 }
@@ -38,6 +46,13 @@ var lock sync.RWMutex
 
 var localConfigDir = "/../../cmd/mover/shard_data.yaml"
 
+// createConnString generates a connection string for the specified shard ID.
+//
+// Parameters:
+// - shardID (string): The ID of the shard for which the connection string is generated.
+//
+// Returns:
+// - string: The generated connection string. If the shard ID is not found or if there are no hosts for the shard, an empty string is returned.
 func createConnString(shardID string) string {
 	lock.Lock()
 	defer lock.Unlock()
@@ -55,6 +70,13 @@ func createConnString(shardID string) string {
 	return fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", sd.User, host, port, sd.DB, sd.Password)
 }
 
+// LoadConfig loads the configuration from the specified path or the localConfigDir directory.
+//
+// Parameters:
+// - path (string): the path to the configuration file.
+//
+// Returns:
+// - error: an error if the configuration cannot be loaded.
 func LoadConfig(path string) error {
 	var err error
 	lock.Lock()
@@ -80,6 +102,26 @@ Steps:
   - copy data from sending shard to receiving shard via fdw
   - delete data from sending shard
 */
+
+// MoveKeys performs physical key-range move from one datashard to another.
+//
+// It is assumed that the passed key range is already locked on every online spqr-router.
+// The function performs the following steps:
+//  - Create a postgres_fdw on the receiving shard.
+//  - Copy data from the sending shard to the receiving shard via fdw.
+//  - Delete data from the sending shard.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the function.
+//   - fromId (string): the ID of the sending shard.
+//   - toId (string): the ID of the receiving shard.
+//   - krg (*kr.KeyRange): the KeyRange object representing the key range being moved.
+//   - ds (*distributions.Distribution): the Distributions object representing the distribution of data.
+//   - db (qdb.XQDB): the XQDB object for interacting with the database.
+//   - cr (coordinator.Coordinator): the Coordinator object for coordinating the move.
+//
+// Returns:
+//   - error: an error if the move fails.
 func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, db qdb.XQDB, cr coordinator.Coordinator) error {
 	tx, err := db.GetTransferTx(ctx, krg.ID)
 	if err != nil {
@@ -160,6 +202,17 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 	return nil
 }
 
+
+// resolveNextBound finds the next lower bound key range from the given key range list that is greater than the lower bound of the given key range.
+//
+// Parameters:
+// - ctx (context.Context): The context for the function.
+// - krg (*kr.KeyRange): the key range for which the next lower bound is to be found.
+// - cr (coordinator.Coordinator): the coordinator.Coordinator object used to list key ranges.
+//
+// Returns:
+// - kr.KeyRangeBound: the next lower bound key range found, or nil if no such key range exists.
+// - error: an error if the key range list cannot be retrieved or if there is an error in the function execution.
 func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coordinator) (kr.KeyRangeBound, error) {
 	krs, err := cr.ListKeyRanges(ctx, krg.Distribution)
 	if err != nil {
@@ -174,6 +227,23 @@ func resolveNextBound(ctx context.Context, krg *kr.KeyRange, cr coordinator.Coor
 	return bound, nil
 }
 
+// copyData performs physical key-range move from one datashard to another.
+//
+// It is assumed that the passed key range is already locked on every online spqr-router.
+// The function performs the following steps:
+//  - Create a postgres_fdw on the receiving shard.
+//  - Copy data from the sending shard to the receiving shard via fdw.
+//
+// Parameters:
+// - ctx (context.Context): The context for the function.
+// - from, to (*pgx.Conn): The connections to the sending and receiving shards.
+// - fromId, toId (string): the IDs of the sending and receiving shards.
+// - krg (*kr.KeyRange): the KeyRange object representing the key range being moved.
+// - ds (*distributions.Distribution): the Distributions object representing the distribution of data.
+// - upperBound (kr.KeyRangeBound): the upper bound of the key range being moved.
+//
+// Returns:
+// - error: an error if the move fails.
 func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg *kr.KeyRange, ds *distributions.Distribution, upperBound kr.KeyRangeBound) error {
 	fromShard := shards.ShardsData[fromId]
 	toShard := shards.ShardsData[toId]
@@ -255,6 +325,17 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	return nil
 }
 
+// checkTableExists checks if a table exists in the database.
+//
+// Parameters:
+// - ctx (context.Context): The context for the function.
+// - conn (*pgx.Conn): the database connection.
+// - relName (string): the name of the table to check.
+// - schema (string): the schema of the table to check.
+//
+// Returns:
+// - bool: true if the table exists, false otherwise.
+// - error: an error if there was a problem executing the query.
 func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema string) (bool, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) > 0 as table_exists FROM information_schema.tables WHERE table_name = '%s' AND table_schema = '%s'`, relName, schema))
 	exists := false
@@ -264,6 +345,17 @@ func checkTableExists(ctx context.Context, conn *pgx.Conn, relName, schema strin
 	return exists, nil
 }
 
+// getEntriesCount retrieves the number of entries from a database table based on the provided condition.
+//
+// Parameters:
+// - ctx (context.Context): The context for the function.
+// - conn (*pgx.Conn): the database connection.
+// - relName (string): the name of the table to query.
+// - condition (string): the condition to apply in the query.
+//
+// Returns:
+// - int: the count of entries in the table.
+// - error: an error if there was a problem executing the query.
 func getEntriesCount(ctx context.Context, conn *pgx.Conn, relName string, condition string) (int, error) {
 	res := conn.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, relName, condition))
 	count := 0

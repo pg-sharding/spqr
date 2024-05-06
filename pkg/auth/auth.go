@@ -20,6 +20,19 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
+// AuthBackend authenticates a user with the backend based on the provided message type.
+//
+// Parameters:
+// - shard (conn.DBInstance): The database instance to authenticate against.
+// - berule (*config.BackendRule): The backend rule containing authentication rules.
+// - msg (pgproto3.BackendMessage): The authentication message.
+//
+// Returns:
+// - error: An error if authentication fails or an unexpected message type is received.
+//   - If the authentication method is `pgproto3.AuthenticationMD5Password`, the error message will be "auth rule not set for {shardName}-{berule.DB}-{berule.Usr}" if the rule is not found.
+//   - If the authentication method is `pgproto3.AuthenticationCleartextPassword`, the error message will be "auth rule not set for {shardName}-{berule.DB}-{berule.Usr}" if the rule is not found.
+//   - If the authentication method is `pgproto3.AuthenticationSASL`, the error message will depend on the specific error that occurs during the authentication process.
+//   - For any other authentication method, the error message will be "authBackend type {type} not supported".
 func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("shard ", spqrlog.GetPointer(shard)).
@@ -155,6 +168,18 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 	}
 }
 
+// AuthFrontend handles authentication for the frontend based on the specified authentication method.
+//
+// Parameters:
+// - cl (client.Client): - the client interface. It should implement the `Usr`, `PasswordCT`, and `PasswordMD5` methods.
+// - rule (*config.FrontendRule): - the frontend rule configuration. It should contain the `AuthRule` field, which in turn should contain the `Method` field.
+//
+// Returns:
+// - error: An error if authentication fails. The type of error returned depends on the authentication method used.
+//   - If the authentication method is `config.AuthNotOK`, the error message will be "user {username} {database} blocked".
+//   - If the authentication method is `config.AuthClearText`, the error message will be "user {username} {database} auth failed".
+//   - If the authentication method is `config.AuthMD5`, the error message will be "[frontend_auth] route {username} {database}: md5 password mismatch".
+//   - If the authentication method is `config.AuthSCRAM`, the error message will be "error: {error_message}".
 func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 	switch rule.AuthRule.Method {
 	case config.AuthOK:
