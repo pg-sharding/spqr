@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/port"
@@ -18,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/coordinator/provider"
 	"github.com/pg-sharding/spqr/pkg/config"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	sdnotifier "github.com/pg-sharding/spqr/router/sdnotifier"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -43,6 +45,20 @@ func (app *App) Run(withPsql bool) error {
 
 	app.coordinator.RunCoordinator(context.TODO(), !withPsql)
 
+	var notifier *sdnotifier.Notifier
+	if config.CoordinatorConfig().UseSystemdNotifier {
+		// systemd notifier
+		var err error
+		notifier, err = sdnotifier.NewNotifier(os.Getenv("NOTIFY_SOCKET"), config.CoordinatorConfig().SystemdNotifierDebug)
+		if err != nil {
+			return err
+		}
+
+		if err := notifier.Ready(); err != nil {
+			return fmt.Errorf("could not send ready msg: %s", err)
+		}
+	}
+
 	wg := &sync.WaitGroup{}
 
 	wg.Add(1)
@@ -65,6 +81,17 @@ func (app *App) Run(withPsql bool) error {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}(wg)
+
+	if notifier != nil {
+		go func() {
+			for {
+				if err := notifier.Notify(); err != nil {
+					spqrlog.Zero.Error().Err(err).Msg("error sending systemd notification")
+				}
+				time.Sleep(sdnotifier.Timeout)
+			}
+		}()
+	}
 
 	wg.Wait()
 

@@ -14,14 +14,16 @@ import (
 var cfgCoordinator Coordinator
 
 type Coordinator struct {
-	LogLevel        string     `json:"log_level" toml:"log_level" yaml:"log_level"`
-	QdbAddr         string     `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
-	CoordinatorPort string     `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
-	GrpcApiPort     string     `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
-	Host            string     `json:"host" toml:"host" yaml:"host"`
-	Auth            *AuthCfg   `json:"auth" toml:"auth" yaml:"auth"`
-	FrontendTLS     *TLSConfig `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	ShardDataCfg    string     `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
+	LogLevel             string     `json:"log_level" toml:"log_level" yaml:"log_level"`
+	QdbAddr              string     `json:"qdb_addr" toml:"qdb_addr" yaml:"qdb_addr"`
+	CoordinatorPort      string     `json:"coordinator_port" toml:"coordinator_port" yaml:"coordinator_port"`
+	GrpcApiPort          string     `json:"grpc_api_port" toml:"grpc_api_port" yaml:"grpc_api_port"`
+	Host                 string     `json:"host" toml:"host" yaml:"host"`
+	Auth                 *AuthCfg   `json:"auth" toml:"auth" yaml:"auth"`
+	FrontendTLS          *TLSConfig `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	ShardDataCfg         string     `json:"shard_data" toml:"shard_data" yaml:"shard_data"`
+	UseSystemdNotifier   bool       `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
+	SystemdNotifierDebug bool       `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }
 
 func LoadCoordinatorCfg(cfgPath string) error {
