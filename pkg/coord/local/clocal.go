@@ -34,6 +34,15 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 }
 
+
+// GetTaskGroup retrieves the task group from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - *tasks.TaskGroup: the retrieved task group, or nil if an error occurred.
+// - error: an error if the retrieval process fails.
 func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
 	group, err := lc.qdb.GetTaskGroup(ctx)
 	if err != nil {
@@ -42,15 +51,39 @@ func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup,
 	return tasks.TaskGroupFromDb(group), nil
 }
 
+// WriteTaskGroup writes the given task group to the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - taskGroup (*tasks.TaskGroup): the task group to be written to the QDB.
+//
+// Returns:
+// - error: an error if the write operation fails.
 func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
 	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
+// RemoveTaskGroup removes the task group from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - error: an error if the removal operation fails.
 func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
 	return lc.qdb.RemoveTaskGroup(ctx)
 }
 
 // TODO : unit tests
+
+// ListDistributions retrieves a list of distributions from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - []*distributions.Distribution: a slice of distributions.Distribution objects representing the retrieved distributions.
+// - error: an error if the retrieval operation fails.
 func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -68,6 +101,15 @@ func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distribut
 }
 
 // TODO : unit tests
+
+// CreateDistribution creates a distribution in the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - ds (*distributions.Distribution): the distributions.Distribution object to be created.
+//
+// Returns:
+// - error: an error if the creation operation fails.
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -75,6 +117,16 @@ func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distribu
 }
 
 // TODO : unit tests
+
+// AlterDistributionAttach alters the distribution by attaching additional distributed relations.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the distribution to be altered.
+// - rels ([]*distributions.DistributedRelation): the slice of distributions.DistributedRelation objects representing the relations to be attached.
+//
+// Returns:
+// - error: an error if the alteration operation fails.
 func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id string, rels []*distributions.DistributedRelation) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -88,6 +140,16 @@ func (lc *LocalCoordinator) AlterDistributionAttach(ctx context.Context, id stri
 }
 
 // TODO : unit tests
+
+// AlterDistributionDetach alters the distribution by detaching a specific distributed relation.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the distribution to be altered.
+// - relName (string): the name of the distributed relation to be detached.
+//
+// Returns:
+// - error: an error if the alteration operation fails.
 func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id string, relName string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -96,6 +158,16 @@ func (lc *LocalCoordinator) AlterDistributionDetach(ctx context.Context, id stri
 }
 
 // TODO : unit tests
+
+// GetDistribution retrieves a distribution from the local coordinator's QDB by its ID.
+//
+// Parameters:
+// - ctx (context.Context): the context.Context object for managing the request's lifetime.
+// - id (string): the ID of the distribution to retrieve.
+//
+// Returns:
+// - *distributions.Distribution: a pointer to the distributions.Distribution object representing the retrieved distribution.
+// - error: an error if the retrieval operation fails.
 func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -107,6 +179,15 @@ func (lc *LocalCoordinator) GetDistribution(ctx context.Context, id string) (*di
 	return distributions.DistributionFromDB(ret), nil
 }
 
+// GetRelationDistribution retrieves a distribution based on the given relation from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - relation (string): The name of the relation for which to retrieve the distribution.
+//
+// Returns:
+// - *distributions.Distribution: A pointer to the distributions.Distribution object representing the retrieved distribution.
+// - error: An error if the retrieval operation fails.
 func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relation string) (*distributions.Distribution, error) {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -119,6 +200,14 @@ func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relatio
 }
 
 // TODO : unit tests
+
+// ListDataShards retrieves a list of data shards from the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - []*datashards.DataShard: A slice of datashards.DataShard objects representing the list of data shards.
 func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.DataShard {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -131,6 +220,15 @@ func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.Da
 }
 
 // TODO : unit tests
+
+// DropDistribution removes a distribution with the specified ID from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - id (string): The ID of the distribution to be dropped.
+//
+// Returns:
+// - error: An error if the removal operation fails.
 func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -138,6 +236,15 @@ func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) err
 }
 
 // TODO : unit tests
+
+// ListShards retrieves a list of data shards from the local coordinator's QDB.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - []*datashards.DataShard: A slice of datashards.DataShard objects representing the list of data shards.
+// - error: An error if the retrieval operation fails.
 func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
@@ -156,6 +263,15 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataS
 	return retShards, nil
 }
 
+
+// AddWorldShard adds a world shard to the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - ds (*datashards.DataShard): The datashards.DataShard object representing the world shard to be added.
+//
+// Returns:
+// - error: An error if the addition of the world shard fails.
 func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.DataShard) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -168,6 +284,14 @@ func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.Da
 	return nil
 }
 
+// DropShard drops a shard from the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - shardId (string): The ID of the shard to be dropped.
+//
+// Returns:
+// - error: An error if the dropping of the shard fails.
 func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -179,6 +303,15 @@ func (lc *LocalCoordinator) DropShard(ctx context.Context, shardId string) error
 }
 
 // TODO : unit tests
+
+// DropKeyRange drops a key range from the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - id (string): The ID of the key range to be dropped.
+//
+// Returns:
+// - error: An error if the dropping of the key range fails.
 func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -190,6 +323,14 @@ func (lc *LocalCoordinator) DropKeyRange(ctx context.Context, id string) error {
 }
 
 // TODO : unit tests
+
+// DropKeyRangeAll drops all key ranges from the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+//
+// Returns:
+// - error: An error if the dropping of all key ranges fails.
 func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -199,6 +340,14 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 }
 
 // TODO : unit tests
+
+// DataShardsRoutes returns a slice of DataShardRoute objects representing the data shards routes.
+//
+// Parameters:
+// - None
+//
+// Returns:
+// - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the data shards routes.
 func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -218,6 +367,14 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 }
 
 // TODO : unit tests
+
+// WorldShardsRoutes returns a slice of DataShardRoute objects representing the world shards routes in a round-robin fashion.
+//
+// Parameters:
+// - None
+//
+// Returns:
+// - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the world shards routes after applying round-robin.
 func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -241,6 +398,14 @@ func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	return ret
 }
 
+// WorldShards returns a slice of strings containing the names of the world shards
+// stored in the LocalCoordinator.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - []string: a slice of strings containing the names of the world shards.
 func (lc *LocalCoordinator) WorldShards() []string {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
@@ -255,6 +420,15 @@ func (lc *LocalCoordinator) WorldShards() []string {
 }
 
 // TODO : unit tests
+
+// Move moves a key range identified by req.Krid to a new shard specified by req.ShardId
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - req (*kr.MoveKeyRange): a pointer to a MoveKeyRange object containing the necessary information for the move operation.
+//
+// Returns:
+// - error: an error if the move operation encounters any issues.
 func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error {
 	var krmv *qdb.KeyRange
 	var err error
@@ -268,6 +442,15 @@ func (qr *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 }
 
 // TODO : unit tests
+
+// Unite merges two key ranges identified by req.BaseKeyRangeId and req.AppendageKeyRangeId into a single key range.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - req (*kr.UniteKeyRange): a pointer to a UniteKeyRange object containing the necessary information for the unite operation.
+//
+// Returns:
+// - error: an error if the unite operation encounters any issues.
 func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) error {
 	var krBase *qdb.KeyRange
 	var krAppendage *qdb.KeyRange
@@ -309,6 +492,15 @@ func (qr *LocalCoordinator) Unite(ctx context.Context, req *kr.UniteKeyRange) er
 }
 
 // TODO : unit tests
+
+// Split splits an existing key range identified by req.SourceID into two new key ranges.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - req (*kr.SplitKeyRange): a pointer to a SplitKeyRange object containing the necessary information for the split operation.
+//
+// Returns:
+// - error: an error if the split operation encounters any issues.
 func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) error {
 	var krOld *qdb.KeyRange
 	var err error
@@ -362,6 +554,16 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 }
 
 // TODO : unit tests
+
+// LockKeyRange locks a key range identified by krid and returns the corresponding KeyRange object.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - krid (string): the ID of the key range to lock.
+//
+// Returns:
+// - *kr.KeyRange: the locked KeyRange object.
+// - error: an error if the lock operation encounters any issues.
 func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.KeyRange, error) {
 	keyRangeDB, err := qr.qdb.LockKeyRange(ctx, krid)
 	if err != nil {
@@ -372,11 +574,29 @@ func (qr *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 }
 
 // TODO : unit tests
+
+// UnlockKeyRange unlocks a key range identified by krid.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - krid (string): the ID of the key range to lock.
+//
+// Returns:
+// - error: an error if the unlock operation encounters any issues.
 func (qr *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
 	return qr.qdb.UnlockKeyRange(ctx, krid)
 }
 
 // TODO : unit tests
+
+// AddDataShard adds a new data shard to the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context.Context object for managing the request's lifetime.
+// - ds: a pointer to a DataShard object containing the information of the data shard to be added.
+//
+// Returns:
+// - error: an error if the operation encounters any issues.
 func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
@@ -391,6 +611,14 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.Dat
 }
 
 // TODO : unit tests
+
+// Shards returns a slice of strings containing the names of the data shards stored in the LocalCoordinator.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - []string: a slice of strings containing the names of the data shards.
 func (qr *LocalCoordinator) Shards() []string {
 	var ret []string
 
@@ -401,8 +629,18 @@ func (qr *LocalCoordinator) Shards() []string {
 	return ret
 }
 
-// GetKeyRange gets key range by id
 // TODO unit tests
+
+// GetKeyRange gets key range by id
+// GetKeyRange retrieves a key range identified by krId from the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): the context of the operation.
+// - krId (string): the ID of the key range to retrieve.
+//
+// Returns:
+// - *kr.KeyRange: the KeyRange object retrieved.
+// - error: an error if the retrieval encounters any issues.
 func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.KeyRange, error) {
 	krDb, err := lc.qdb.GetKeyRange(ctx, krId)
 	if err != nil {
@@ -412,6 +650,16 @@ func (lc *LocalCoordinator) GetKeyRange(ctx context.Context, krId string) (*kr.K
 }
 
 // TODO : unit tests
+
+// ListKeyRanges retrieves a list of key ranges associated with the specified distribution from the LocalCoordinator.
+//
+// Parameters:
+// - ctx: the context of the operation.
+// - distribution: the distribution to filter the key ranges by.
+//
+// Returns:
+// - []*kr.KeyRange: a slice of KeyRange objects retrieved.
+// - error: an error if the retrieval encounters any issues.
 func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution string) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListKeyRanges(ctx, distribution); err != nil {
@@ -427,6 +675,15 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution stri
 }
 
 // TODO : unit tests
+
+// ListAllKeyRanges retrieves a list of all key ranges stored in the LocalCoordinator.
+//
+// Parameters:
+// - ctx: the context of the operation.
+//
+// Returns:
+// - []*kr.KeyRange: a slice of KeyRange objects representing all key ranges.
+// - error: an error if the retrieval encounters any issues.
 func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
@@ -442,60 +699,164 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 }
 
 // TODO : unit tests
+
+// ListRouters retrieves a list of routers stored in the LocalCoordinator.
+//
+// Parameters:
+// - ctx: the context of the operation.
+//
+// Returns:
+// - []*topology.Router: a slice of Router objects representing all routers.
+// - error: an error if the retrieval encounters any issues.
 func (qr *LocalCoordinator) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	return []*topology.Router{{
 		ID: "local",
 	}}, nil
 }
 
+// CreateKeyRange creates a new key range in the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - kr (*kr.KeyRange): The key range object to be created.
+//
+// Returns:
+// - error: An error if the creation encounters any issues.
 func (qr *LocalCoordinator) CreateKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.CreateKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
+// MoveKeyRange moves a key range in the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - kr (*kr.KeyRange): The key range object to be moved.
+//
+// Returns:
+// - error: An error if the move encounters any issues.
 func (qr *LocalCoordinator) MoveKeyRange(ctx context.Context, kr *kr.KeyRange) error {
 	return ops.ModifyKeyRangeWithChecks(ctx, qr.qdb, kr)
 }
 
 var ErrNotCoordinator = fmt.Errorf("request is unprocessable in router")
 
+// RegisterRouter registers a router in the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - r (*topology.Router): The router to be registered.
+//
+// Returns:
+// - error: An error indicating the registration status.
 func (qr *LocalCoordinator) RegisterRouter(ctx context.Context, r *topology.Router) error {
 	return ErrNotCoordinator
 }
 
+// UnregisterRouter unregisters a router in the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - id (string): The ID of the router to be unregistered.
+//
+// Returns:
+// - error: An error indicating the unregistration status.
 func (qr *LocalCoordinator) UnregisterRouter(ctx context.Context, id string) error {
 	return ErrNotCoordinator
 }
 
+// SyncRouterMetadata synchronizes the metadata of a router in the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - router (*topology.Router): The router whose metadata needs to be synchronized.
+//
+// Returns:
+// - error: An error indicating the synchronization status. In this case, it returns ErrNotCoordinator.
 func (qr *LocalCoordinator) SyncRouterMetadata(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
 }
 
+// SyncRouterCoordinatorAddress updates the coordinator address for the specified router.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - router (*topology.Router): The router for which the coordinator address needs to be updated.
+//
+// Returns:
+// - error: An error indicating the update status.
 func (qr *LocalCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, router *topology.Router) error {
 	return ErrNotCoordinator
 }
 
+// UpdateCoordinator updates the coordinator address in the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - addr (string): The new address of the coordinator.
+//
+// Returns:
+// - error: An error indicating the update status.
 func (qr *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) error {
 	return qr.qdb.UpdateCoordinator(ctx, addr)
 }
 
+
+// GetCoordinator retrieves the coordinator address from the local coordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+//
+// Returns:
+// - string: The address of the coordinator.
+// - error: An error indicating the retrieval status.
 func (qr *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 	addr, err := qr.qdb.GetCoordinator(ctx)
 	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordiantor: get coordinator")
 	return addr, err
 }
 
+// GetShard retrieves a DataShard by its ID from the LocalCoordinator.
+//
+// Parameters:
+// - ctx (context.Context): The context of the operation.
+// - shardID (string): The ID of the DataShard to retrieve.
+//
+// Returns:
+// - *datashards.DataShard: The retrieved DataShard, or nil if it doesn't exist.
+// - error: An error indicating the retrieval status, or ErrNotCoordinator if the operation is not supported by the LocalCoordinator.
 func (qr *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
 
+// ShareKeyRange shares a key range with the LocalCoordinator.
+//
+// Parameters:
+// - id (string): The ID of the key range to be shared.
+//
+// Returns:
+// - error: An error indicating the sharing status.
 func (lc *LocalCoordinator) ShareKeyRange(id string) error {
 	return lc.qdb.ShareKeyRange(id)
 }
 
+// QDB returns the QDB instance associated with the LocalCoordinator.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - qdb.QDB: The QDB instance.
 func (lc *LocalCoordinator) QDB() qdb.QDB {
 	return lc.qdb
 }
 
+// NewLocalCoordinator creates a new LocalCoordinator instance.
+//
+// Parameters:
+// - db (qdb.QDB): The QDB instance to associate with the LocalCoordinator.
+//
+// Returns:
+// - meta.EntityMgr: The newly created LocalCoordinator instance.
 func NewLocalCoordinator(db qdb.QDB) meta.EntityMgr {
 	return &LocalCoordinator{
 		DataShardCfgs:  map[string]*config.Shard{},

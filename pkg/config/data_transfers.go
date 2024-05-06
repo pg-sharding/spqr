@@ -23,6 +23,14 @@ type ShardConnect struct {
 	Password string   `json:"pwd" toml:"pwd" yaml:"pwd"`
 }
 
+// LoadShardDataCfg loads the shard data configuration from the given file path.
+//
+// Parameters:
+// - cfgPath (string): The path to the configuration file.
+//
+// Returns:
+// - *DatatransferConnections: A pointer to the loaded DatatransferConnections struct.
+// - error: An error if the file cannot be opened or the configuration cannot be initialized.
 func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 	var cfg DatatransferConnections
 	file, err := os.Open(cfgPath)
@@ -51,6 +59,14 @@ func LoadShardDataCfg(cfgPath string) (*DatatransferConnections, error) {
 	return &cfg, nil
 }
 
+// initShardDataConfig initializes the shard data configuration from the given file.
+//
+// Parameters:
+// - file (*os.File): The file containing the configuration data.
+// - cfg (*DatatransferConnections): A pointer to the DatatransferConnections struct to be initialized.
+//
+// Returns:
+// - error: An error if the file cannot be decoded or if the file format is unknown.
 func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 	if strings.HasSuffix(file.Name(), ".toml") {
 		_, err := toml.NewDecoder(file).Decode(&cfg)
@@ -65,6 +81,13 @@ func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
 
+// GetConnStrings generates connection strings based on the ShardConnect fields.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - []string: a slice of strings containing connection strings.
 func (s *ShardConnect) GetConnStrings() []string {
 	res := make([]string, len(s.Hosts))
 	for i, host := range s.Hosts {

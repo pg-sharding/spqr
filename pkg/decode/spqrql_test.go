@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+
+// TestKeyRange is a unit test function for the KeyRange function.
+//
+// It tests the KeyRange function by creating a key range with the given parameters and
+// asserting that the returned string matches the expected value.
+// 
+// Parameters:
+// - t (*testing.T): The testing object used for assertions.
+//
+// Returns:
+// - None.
 func TestKeyRange(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal("CREATE KEY RANGE kr1 FROM 10 ROUTE TO sh1 FOR DISTRIBUTION ds1;",
@@ -19,6 +30,16 @@ func TestKeyRange(t *testing.T) {
 		}))
 }
 
+// TestDistribution is a unit test function for the Distribution function.
+//
+// It tests the Distribution function by creating a distribution with the given parameters and
+// asserting that the returned string matches the expected value.
+// 
+// Parameters:
+// - t (*testing.T): The testing object used for assertions.
+//
+// Returns:
+// - None.
 func TestDistribution(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal("CREATE DISTRIBUTION ds1 COLUMN TYPES integer;",
@@ -52,6 +73,15 @@ func TestDistribution(t *testing.T) {
 		}))
 }
 
+// TestDistributedRelation is a unit test function for the DistributedRelation function.
+//
+// It tests the DistributedRelation function by asserting that the returned string matches the expected string.
+// 
+// Parameters:
+// - t (*testing.T): The testing object used for assertions.
+//
+// Returns:
+// - None.
 func TestDistributedRelation(t *testing.T) {
 	assert := assert.New(t)
 	assert.Equal("ALTER DISTRIBUTION ds1 ATTACH RELATION rel DISTRIBUTION KEY id HASH FUNCTION identity;",

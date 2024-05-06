@@ -116,6 +116,13 @@ type Shard struct {
 	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
+// LoadRouterCfg loads the router configuration from the specified file path.
+//
+// Parameters:
+//   - cfgPath (string): The path of the configuration file.
+//
+// Returns:
+//   - error: An error if any occurred during the loading process.
 func LoadRouterCfg(cfgPath string) error {
 	var rcfg Router
 	file, err := os.Open(cfgPath)
@@ -148,6 +155,14 @@ func LoadRouterCfg(cfgPath string) error {
 	return nil
 }
 
+// initRouterConfig initializes the router configuration from a file.
+//
+// Parameters:
+// - file: *os.File - the file to read the configuration from.
+// - cfgRouter: *Router - a pointer to the router configuration struct.
+//
+// Returns:
+// - error: an error if the configuration file format is unknown or if there was an error decoding the file.
 func initRouterConfig(file *os.File, cfgRouter *Router) error {
 	if strings.HasSuffix(file.Name(), ".toml") {
 		_, err := toml.NewDecoder(file).Decode(cfgRouter)
@@ -162,6 +177,13 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
 
+// RouterConfig returns the router configuration.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - *Router: a pointer to the router configuration struct.
 func RouterConfig() *Router {
 	return &cfgRouter
 }
