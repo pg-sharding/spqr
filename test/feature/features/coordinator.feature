@@ -180,7 +180,7 @@ Feature: Coordinator test
     Then SQL result should match json_exactly
     """
     [{
-      "show routers":"router -> r1-regress_router:7000",
+      "show routers":"router -\u003e r1-regress_router:7000",
       "status":"OPENED"
     }]
     """
@@ -503,7 +503,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    router -> r1-regress_router:7000
+    router -\\u003e r1-regress_router:7000
     """
 
     #

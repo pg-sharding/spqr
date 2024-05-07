@@ -293,7 +293,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{
-			[]byte(fmt.Sprintf("key range id -> %v", krid))},
+			[]byte(fmt.Sprintf("key range id -\u003e %v", krid))},
 		},
 	} {
 		if err := pi.cl.Send(msg); err != nil {
@@ -315,7 +315,7 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.DataRow{Values: [][]byte{
 			[]byte(
-				fmt.Sprintf("key rande id -> %v", krid)),
+				fmt.Sprintf("key range id -\u003e %v", krid)),
 		},
 		},
 	} {
