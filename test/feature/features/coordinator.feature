@@ -465,10 +465,10 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "datashard with ID sh1"
+        "listing data shards": "shard id -\u003e sh1"
       },
       {
-        "listing data shards": "datashard with ID sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """
@@ -486,7 +486,7 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "datashard with ID sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """
