@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/startup"
 )
 
 type Key struct {
@@ -51,10 +52,15 @@ type Route struct {
 }
 
 func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
+	sp := &startup.StartupParams{}
+	if frRule != nil {
+		sp.SearchPath = frRule.SearchPath
+	}
+
 	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping),
+		servPool: pool.NewDBPool(mapping, sp),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}

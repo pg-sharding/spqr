@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/startup"
 
 	"github.com/pg-sharding/spqr/pkg/auth"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -34,11 +35,17 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 			"database":         sh.beRule.DB,
 		},
 	}
+
+	if sh.sp.SearchPath != "" {
+		sm.Parameters["search_path"] = sh.sp.SearchPath
+	}
+
 	return sm
 }
 
 type Conn struct {
 	beRule             *config.BackendRule
+	sp                 *startup.StartupParams
 	cfg                *config.Shard
 	name               string
 	dedicated          conn.DBInstance
@@ -211,7 +218,6 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	return msg, nil
 }
 
-
 // String returns the name of the Conn struct as a string.
 //
 // Parameters:
@@ -350,12 +356,13 @@ func NewShard(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
 	cfg *config.Shard,
-	beRule *config.BackendRule) (shard.Shard, error) {
+	beRule *config.BackendRule, sp *startup.StartupParams) (shard.Shard, error) {
 
 	dtSh := &Conn{
 		cfg:      cfg,
 		name:     key.Name,
 		beRule:   beRule,
+		sp:       sp,
 		ps:       shard.ParameterSet{},
 		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
@@ -373,7 +380,6 @@ func NewShard(
 
 	return dtSh, nil
 }
-
 
 // Auth handles the authentication process for a shard connection.
 //
@@ -509,8 +515,8 @@ func (sh *Conn) Cleanup(rule *config.FrontendRule) error {
 // Parameters:
 // - tx (txstatus.TXStatus): the transaction status to be set.
 //
-// Returns: 
-//  - None.
+// Returns:
+//   - None.
 func (sh *Conn) SetTxStatus(tx txstatus.TXStatus) {
 	sh.status = tx
 }
@@ -520,7 +526,7 @@ func (sh *Conn) SetTxStatus(tx txstatus.TXStatus) {
 // Parameters:
 // - None.
 //
-// Returns: 
+// Returns:
 // - txstatus.TXStatus: the transaction status.
 func (sh *Conn) TxStatus() txstatus.TXStatus {
 	return sh.status
@@ -549,7 +555,7 @@ func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatemen
 // - hash (uint64): the hash of the prepared statement.
 // - rd (*shard.PreparedStatementDescriptor): the prepared statement descriptor.
 //
-// Returns: 
+// Returns:
 // - None.
 func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	srv.mp[hash] = rd
