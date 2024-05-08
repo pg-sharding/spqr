@@ -95,6 +95,7 @@ type BackendRule struct {
 type FrontendRule struct {
 	DB                    string   `json:"db" yaml:"db" toml:"db"`
 	Usr                   string   `json:"usr" yaml:"usr" toml:"usr"`
+	SearchPath            string   `json:"search_path" yaml:"search_path" toml:"search_path"`
 	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolDiscard           bool     `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/startup"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
@@ -201,7 +202,7 @@ func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
 	return s.pool.Discard(sh)
 }
 
-func NewDBPool(mapping map[string]*config.Shard) DBPool {
+func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
 		shard := mapping[shardKey.Name]
 
@@ -214,7 +215,7 @@ func NewDBPool(mapping map[string]*config.Shard) DBPool {
 		if err != nil {
 			return nil, err
 		}
-		shardC, err := datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule)
+		shardC, err := datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, sp)
 		if err != nil {
 			return nil, err
 		}
