@@ -52,14 +52,17 @@ type Route struct {
 }
 
 func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping map[string]*config.Shard) *Route {
+	sp := &startup.StartupParams{}
+	if frRule != nil {
+		sp.SearchPath = frRule.SearchPath
+	}
+
 	route := &Route{
-		beRule: beRule,
-		frRule: frRule,
-		servPool: pool.NewDBPool(mapping, &startup.StartupParams{
-			SearchPath: frRule.SearchPath,
-		}),
-		clPool: client.NewClientPool(),
-		params: shard.ParameterSet{},
+		beRule:   beRule,
+		frRule:   frRule,
+		servPool: pool.NewDBPool(mapping, sp),
+		clPool:   client.NewClientPool(),
+		params:   shard.ParameterSet{},
 	}
 	_ = route.servPool.InitRule(beRule)
 	return route
