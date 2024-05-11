@@ -64,10 +64,11 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 
 	//servicePrincipal := k.servicePrincipal
 	kt := k.kt
-	log.Print(kt)
+	//log.Print(kt)
 	if err != nil {
 		panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
 	}
+	settings := service.NewSettings(kt)
 	msg := &pgproto3.AuthenticationGSS{}
 	if err := cl.Send(msg); err != nil {
 		return "", err
@@ -76,7 +77,6 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 		return "", err
 	}
 
-	settings := service.NewSettings(k.kt)
 	// Set up the SPNEGO GSS-API mechanism
 	//var spnegoMech *spnego.SPNEGO
 	//h, err := types.GetHostAddress(cl.Ra)
@@ -109,21 +109,22 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	// Validate the context token
 	authed, status := st.Verify()
 	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
-		errText := fmt.Sprintf("SPNEGO validation error: %v", status)
+		errText := fmt.Sprintf("Kerberos validation error: %v", status)
 		log.Print(errText)
 		return "", fmt.Errorf(errText)
 	}
 	if status.Code == gssapi.StatusContinueNeeded {
-		errText := fmt.Sprintf("SPNEGO GSS-API continue needed")
+		errText := "Kerberos GSS-API continue needed"
 		log.Print(errText)
 		return "", fmt.Errorf(errText)
 	}
 	if authed {
 		ctx := st.Context()
 		id := ctx.Value(ctxCredentials).(goidentity.Identity)
+		log.Print(id.UserName())
 		return id.UserName(), nil
 	} else {
-		errText := fmt.Sprintf("SPNEGO Kerberos authentication failed")
+		errText := "Kerberos authentication failed"
 		log.Print(errText)
 		return "", fmt.Errorf(errText)
 	}

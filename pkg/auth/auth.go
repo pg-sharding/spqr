@@ -398,7 +398,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(username)
+		fmt.Println(fmt.Sprintf("AUTHED AS '%v'", username))
 		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
