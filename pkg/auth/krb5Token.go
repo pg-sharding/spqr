@@ -2,22 +2,16 @@ package auth
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/jcmturner/gofork/encoding/asn1"
 	"github.com/jcmturner/gokrb5/v8/asn1tools"
-	"github.com/jcmturner/gokrb5/v8/client"
-	"github.com/jcmturner/gokrb5/v8/credentials"
 	"github.com/jcmturner/gokrb5/v8/gssapi"
-	"github.com/jcmturner/gokrb5/v8/iana/chksumtype"
 	"github.com/jcmturner/gokrb5/v8/iana/msgtype"
-	"github.com/jcmturner/gokrb5/v8/krberror"
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/service"
-	"github.com/jcmturner/gokrb5/v8/types"
 )
 
 // GSSAPI KRB5 MechToken IDs.
@@ -158,61 +152,4 @@ func (m *KRB5Token) IsKRBError() bool {
 // Context returns the KRB5 token's context which will contain any verify user identity information.
 func (m *KRB5Token) Context() context.Context {
 	return m.context
-}
-
-// NewKRB5TokenAPREQ creates a new KRB5 token with AP_REQ
-func NewKRB5TokenAPREQ(cl *client.Client, tkt messages.Ticket, sessionKey types.EncryptionKey, GSSAPIFlags []int, APOptions []int) (KRB5Token, error) {
-	// TODO consider providing the SPN rather than the specific tkt and key and get these from the krb client.
-	var m KRB5Token
-	m.OID = gssapi.OIDKRB5.OID()
-	tb, _ := hex.DecodeString(TOK_ID_KRB_AP_REQ)
-	m.tokID = tb
-
-	auth, err := krb5TokenAuthenticator(cl.Credentials, GSSAPIFlags)
-	if err != nil {
-		return m, err
-	}
-	APReq, err := messages.NewAPReq(
-		tkt,
-		sessionKey,
-		auth,
-	)
-	if err != nil {
-		return m, err
-	}
-	for _, o := range APOptions {
-		types.SetFlag(&APReq.APOptions, o)
-	}
-	m.APReq = APReq
-	return m, nil
-}
-
-// krb5TokenAuthenticator creates a new kerberos authenticator for kerberos MechToken
-func krb5TokenAuthenticator(creds *credentials.Credentials, flags []int) (types.Authenticator, error) {
-	//RFC 4121 Section 4.1.1
-	auth, err := types.NewAuthenticator(creds.Domain(), creds.CName())
-	if err != nil {
-		return auth, krberror.Errorf(err, krberror.KRBMsgError, "error generating new authenticator")
-	}
-	auth.Cksum = types.Checksum{
-		CksumType: chksumtype.GSSAPI,
-		Checksum:  newAuthenticatorChksum(flags),
-	}
-	return auth, nil
-}
-
-// Create new authenticator checksum for kerberos MechToken
-func newAuthenticatorChksum(flags []int) []byte {
-	a := make([]byte, 24)
-	binary.LittleEndian.PutUint32(a[:4], 16)
-	for _, i := range flags {
-		if i == gssapi.ContextFlagDeleg {
-			x := make([]byte, 28-len(a))
-			a = append(a, x...)
-		}
-		f := binary.LittleEndian.Uint32(a[20:24])
-		f |= uint32(i)
-		binary.LittleEndian.PutUint32(a[20:24], f)
-	}
-	return a
 }

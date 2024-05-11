@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/jcmturner/goidentity/v6"
-	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/gssapi"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/service"
@@ -17,7 +16,6 @@ const ctxCredentials = "github.com/jcmturner/gokrb5/v8/ctxCredentials"
 
 type BaseAuthModule struct {
 	properties map[string]interface{}
-	r          config.Realm
 }
 type Kerberos struct {
 	BaseAuthModule
@@ -61,10 +59,7 @@ func NewKerberosModule(base BaseAuthModule) *Kerberos {
 }
 
 func (k *Kerberos) Process(cl client.Client) (username string, err error) {
-
-	//servicePrincipal := k.servicePrincipal
 	kt := k.kt
-	//log.Print(kt)
 	if err != nil {
 		panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
 	}
@@ -77,19 +72,6 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 		return "", err
 	}
 
-	// Set up the SPNEGO GSS-API mechanism
-	//var spnegoMech *spnego.SPNEGO
-	//h, err := types.GetHostAddress(cl.Ra)
-	//if err == nil {
-	//	// put in this order so that if the user provides a ClientAddress it will override the one here.
-	//	o := append([]func(*service.Settings){service.ClientAddress(h)}, settings)
-	//	spnegoMech = spnego.SPNEGOService(kt, o...)
-	//} else {
-	//spnegoMech = spnego.SPNEGOService(kt)
-	//log.Printf("%s - SPNEGO could not parse client address: %v", r.RemoteAddr, err)
-	//}
-
-	// Decode the header into an SPNEGO context token
 	st := KRB5Token{
 		settings: settings,
 	}

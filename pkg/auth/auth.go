@@ -398,7 +398,9 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(fmt.Sprintf("AUTHED AS '%v'", username))
+		if username != cl.Usr() {
+			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v", username, cl.Usr())
+		}
 		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
