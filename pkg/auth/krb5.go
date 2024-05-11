@@ -8,7 +8,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/gssapi"
 	"github.com/jcmturner/gokrb5/v8/keytab"
-	"github.com/jcmturner/gokrb5/v8/spnego"
+	"github.com/jcmturner/gokrb5/v8/service"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"log"
 )
@@ -76,7 +76,7 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 		return "", err
 	}
 
-	//settings := service.KeytabPrincipal(servicePrincipal)
+	settings := service.NewSettings(k.kt)
 	// Set up the SPNEGO GSS-API mechanism
 	//var spnegoMech *spnego.SPNEGO
 	//h, err := types.GetHostAddress(cl.Ra)
@@ -90,7 +90,9 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	//}
 
 	// Decode the header into an SPNEGO context token
-	var st spnego.KRB5Token
+	st := KRB5Token{
+		settings: settings,
+	}
 	clientMsgRaw, err := cl.Receive()
 	if err != nil {
 		return "", err
@@ -104,7 +106,6 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	default:
 		return "", fmt.Errorf("unexpected message type %T", clientMsgRaw)
 	}
-
 	// Validate the context token
 	authed, status := st.Verify()
 	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
