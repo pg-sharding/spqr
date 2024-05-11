@@ -1,126 +1,128 @@
 package auth
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/jcmturner/goidentity/v6"
+	"github.com/jcmturner/gokrb5/v8/config"
+	"github.com/jcmturner/gokrb5/v8/gssapi"
+	"github.com/jcmturner/gokrb5/v8/keytab"
+	"github.com/jcmturner/gokrb5/v8/spnego"
 	"github.com/pg-sharding/spqr/pkg/client"
+	"log"
 )
 
-// #cgo LDFLAGS: -lgssapi_krb5 -lcom_err -lkrb5 -lkrb5support -ldl -lk5crypto -lresolv
-//
+const ctxCredentials = "github.com/jcmturner/gokrb5/v8/ctxCredentials"
 
-// #include <gssapi/gssapi.h>
-// #include <stdlib.h>
-import "C"
-
-// https://github.com/cockroachdb/cockroach/blob/master/pkg/ccl/gssapiccl/get_user.go#L30
-func getGssUser(c client.Client) (connClose func(), gssUser string, _ error) {
-	var (
-		majStat, minStat, lminS, gflags C.OM_uint32
-		gbuf                            C.gss_buffer_desc
-		contextHandle                   C.gss_ctx_id_t  = C.GSS_C_NO_CONTEXT
-		acceptorCredHandle              C.gss_cred_id_t = C.GSS_C_NO_CREDENTIAL
-		srcName                         C.gss_name_t
-		outputToken                     C.gss_buffer_desc
-	)
-	msg := &pgproto3.AuthenticationGSS{}
-	if err := c.Send(msg); err != nil {
-		return nil, "", err
-	}
-	if err := c.SetAuthType(pgproto3.AuthTypeGSS); err != nil {
-		return nil, "", err
-	}
-
-	// This cleanup function must be called at the
-	// "completion of a communications session", not
-	// merely at the end of an authentication init. See
-	// https://tools.ietf.org/html/rfc2744.html, section
-	// `1. Introduction`, stage `d`:
-	//
-	//   At the completion of a communications session (which
-	//   may extend across several transport connections),
-	//   each application calls a GSS-API routine to delete
-	//   the security context.
-	//
-	// See https://github.com/postgres/postgres/blob/f4d59369d2ddf0ad7850112752ec42fd115825d4/src/backend/libpq/pqcomm.c#L269
-	connClose = func() {
-		C.gss_delete_sec_context(&lminS, &contextHandle, C.GSS_C_NO_BUFFER)
-	}
-
-	for {
-		var token []byte
-		clientMsgRaw, err := c.Receive()
-		if err != nil {
-			return nil, "", err
-		}
-		switch clientMsgRaw := clientMsgRaw.(type) {
-		case *pgproto3.GSSResponse:
-			token = clientMsgRaw.Data
-		default:
-			return nil, "", fmt.Errorf("unexpected message type %T", clientMsgRaw)
-		}
-
-		gbuf.length = C.ulong(len(token))
-		gbuf.value = C.CBytes(token)
-
-		majStat = C.gss_accept_sec_context(
-			&minStat,
-			&contextHandle,
-			acceptorCredHandle,
-			&gbuf,
-			C.GSS_C_NO_CHANNEL_BINDINGS,
-			&srcName,
-			nil,
-			&outputToken,
-			&gflags,
-			nil,
-			nil,
-		)
-		C.free(gbuf.value)
-
-		if outputToken.length != 0 {
-			outputBytes := C.GoBytes(outputToken.value, C.int(outputToken.length))
-			C.gss_release_buffer(&lminS, &outputToken)
-			msgContinue := &pgproto3.AuthenticationGSSContinue{
-				Data: outputBytes,
-			}
-			if err := c.Send(msgContinue); err != nil {
-				return connClose, "", err
-			}
-		}
-		if majStat != C.GSS_S_COMPLETE && majStat != C.GSS_S_CONTINUE_NEEDED {
-			return connClose, "", gssError("accepting GSS security context failed", majStat, minStat)
-		}
-		if majStat != C.GSS_S_CONTINUE_NEEDED {
-			break
-		}
-	}
-
-	majStat = C.gss_display_name(&minStat, srcName, &gbuf, nil)
-	if majStat != C.GSS_S_COMPLETE {
-		return connClose, "", gssError("retrieving GSS user name failed", majStat, minStat)
-	}
-	gssUser = C.GoStringN((*C.char)(gbuf.value), C.int(gbuf.length))
-	C.gss_release_buffer(&lminS, &gbuf)
-
-	return connClose, gssUser, nil
+type BaseAuthModule struct {
+	properties map[string]interface{}
+	r          config.Realm
+}
+type Kerberos struct {
+	BaseAuthModule
+	servicePrincipal string
+	kt               *keytab.Keytab
 }
 
-func gssError(msg string, majStat, minStat C.OM_uint32) error {
-	var (
-		gmsg          C.gss_buffer_desc
-		lminS, msgCtx C.OM_uint32
-	)
+const (
+	keyTabFileProperty       = "keytabfile"
+	keyTabDataProperty       = "keytabdata"
+	servicePrincipalProperty = "serviceprincipal"
+)
 
-	msgCtx = 0
-	C.gss_display_status(&lminS, majStat, C.GSS_C_GSS_CODE, C.GSS_C_NO_OID, &msgCtx, &gmsg)
-	msgMajor := C.GoString((*C.char)(gmsg.value))
-	C.gss_release_buffer(&lminS, &gmsg)
+func NewKerberosModule(base BaseAuthModule) *Kerberos {
+	k := &Kerberos{
+		BaseAuthModule: base,
+	}
+	var kt *keytab.Keytab
+	var err error
+	if ktFileProp, ok := k.BaseAuthModule.properties[keyTabFileProperty]; ok {
+		ktFile, _ := ktFileProp.(string)
+		kt, err = keytab.Load(ktFile)
+		if err != nil {
+			panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
+		}
+	} else if ktDataProp, ok := k.BaseAuthModule.properties[keyTabDataProperty]; ok {
+		ktData := ktDataProp.(string)
+		b, _ := hex.DecodeString(ktData)
+		kt = keytab.New()
+		err = kt.Unmarshal(b)
+		if err != nil {
+			panic(err)
+		}
+	}
+	k.kt = kt
+	if spProp, ok := k.BaseAuthModule.properties[servicePrincipalProperty]; ok {
+		k.servicePrincipal = spProp.(string)
+	}
 
-	msgCtx = 0
-	C.gss_display_status(&lminS, minStat, C.GSS_C_MECH_CODE, C.GSS_C_NO_OID, &msgCtx, &gmsg)
-	msgMinor := C.GoString((*C.char)(gmsg.value))
-	C.gss_release_buffer(&lminS, &gmsg)
+	return k
+}
 
-	return fmt.Errorf("%s: %s: %s", msg, msgMajor, msgMinor)
+func (k *Kerberos) Process(cl client.Client) (username string, err error) {
+
+	//servicePrincipal := k.servicePrincipal
+	kt := k.kt
+	log.Print(kt)
+	if err != nil {
+		panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
+	}
+	msg := &pgproto3.AuthenticationGSS{}
+	if err := cl.Send(msg); err != nil {
+		return "", err
+	}
+	if err := cl.SetAuthType(pgproto3.AuthTypeGSS); err != nil {
+		return "", err
+	}
+
+	//settings := service.KeytabPrincipal(servicePrincipal)
+	// Set up the SPNEGO GSS-API mechanism
+	var spnegoMech *spnego.SPNEGO
+	//h, err := types.GetHostAddress(cl.Ra)
+	//if err == nil {
+	//	// put in this order so that if the user provides a ClientAddress it will override the one here.
+	//	o := append([]func(*service.Settings){service.ClientAddress(h)}, settings)
+	//	spnegoMech = spnego.SPNEGOService(kt, o...)
+	//} else {
+	spnegoMech = spnego.SPNEGOService(kt)
+	//log.Printf("%s - SPNEGO could not parse client address: %v", r.RemoteAddr, err)
+	//}
+
+	// Decode the header into an SPNEGO context token
+	var st spnego.SPNEGOToken
+	clientMsgRaw, err := cl.Receive()
+	if err != nil {
+		return "", err
+	}
+	switch clientMsgRaw := clientMsgRaw.(type) {
+	case *pgproto3.GSSResponse:
+		err := st.Unmarshal(clientMsgRaw.Data)
+		if err != nil {
+			return "", err
+		}
+	default:
+		return "", fmt.Errorf("unexpected message type %T", clientMsgRaw)
+	}
+
+	// Validate the context token
+	authed, ctx, status := spnegoMech.AcceptSecContext(&st)
+	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
+		errText := fmt.Sprintf("SPNEGO validation error: %v", status)
+		log.Print(errText)
+		return "", fmt.Errorf(errText)
+	}
+	if status.Code == gssapi.StatusContinueNeeded {
+		errText := fmt.Sprintf("SPNEGO GSS-API continue needed")
+		log.Print(errText)
+		return "", fmt.Errorf(errText)
+	}
+	if authed {
+		id := ctx.Value(ctxCredentials).(goidentity.Identity)
+		return id.UserName(), nil
+	} else {
+		errText := fmt.Sprintf("SPNEGO Kerberos authentication failed")
+		log.Print(errText)
+		return "", fmt.Errorf(errText)
+	}
 }

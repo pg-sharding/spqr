@@ -385,14 +385,20 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		return nil
 	case config.AuthGSS:
-		connClose, gssUser, err := getGssUser(cl)
-		if connClose != nil {
-			defer connClose()
+		if rule.AuthRule.GssConfig == nil {
+			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
 		}
+		b := BaseAuthModule{
+			properties: map[string]interface{}{
+				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
+			},
+		}
+		kerb := NewKerberosModule(b)
+		username, err := kerb.Process(cl)
 		if err != nil {
 			return err
 		}
-		fmt.Println(gssUser)
+		fmt.Println(username)
 		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
