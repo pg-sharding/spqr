@@ -78,19 +78,19 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 
 	//settings := service.KeytabPrincipal(servicePrincipal)
 	// Set up the SPNEGO GSS-API mechanism
-	var spnegoMech *spnego.SPNEGO
+	//var spnegoMech *spnego.SPNEGO
 	//h, err := types.GetHostAddress(cl.Ra)
 	//if err == nil {
 	//	// put in this order so that if the user provides a ClientAddress it will override the one here.
 	//	o := append([]func(*service.Settings){service.ClientAddress(h)}, settings)
 	//	spnegoMech = spnego.SPNEGOService(kt, o...)
 	//} else {
-	spnegoMech = spnego.SPNEGOService(kt)
+	//spnegoMech = spnego.SPNEGOService(kt)
 	//log.Printf("%s - SPNEGO could not parse client address: %v", r.RemoteAddr, err)
 	//}
 
 	// Decode the header into an SPNEGO context token
-	var st spnego.SPNEGOToken
+	var st spnego.KRB5Token
 	clientMsgRaw, err := cl.Receive()
 	if err != nil {
 		return "", err
@@ -106,7 +106,7 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	}
 
 	// Validate the context token
-	authed, ctx, status := spnegoMech.AcceptSecContext(&st)
+	authed, status := st.Verify()
 	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
 		errText := fmt.Sprintf("SPNEGO validation error: %v", status)
 		log.Print(errText)
@@ -118,6 +118,7 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 		return "", fmt.Errorf(errText)
 	}
 	if authed {
+		ctx := st.Context()
 		id := ctx.Value(ctxCredentials).(goidentity.Identity)
 		return id.UserName(), nil
 	} else {
