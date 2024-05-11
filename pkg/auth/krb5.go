@@ -12,8 +12,6 @@ import (
 	"log"
 )
 
-const ctxCredentials = "github.com/jcmturner/gokrb5/v8/ctxCredentials"
-
 type BaseAuthModule struct {
 	properties map[string]interface{}
 }

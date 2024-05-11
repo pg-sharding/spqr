@@ -399,7 +399,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return err
 		}
 		if username != cl.Usr() {
-			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v", username, cl.Usr())
+			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v'", username, cl.Usr())
 		}
 		return nil
 	default:

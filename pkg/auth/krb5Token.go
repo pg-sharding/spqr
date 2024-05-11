@@ -14,6 +14,8 @@ import (
 	"github.com/jcmturner/gokrb5/v8/service"
 )
 
+const ctxCredentials = "github.com/jcmturner/gokrb5/v8/ctxCredentials"
+
 // GSSAPI KRB5 MechToken IDs.
 const (
 	TOK_ID_KRB_AP_REQ = "0100"
@@ -127,26 +129,17 @@ func (m *KRB5Token) Verify() (bool, gssapi.Status) {
 
 // IsAPReq tests if the MechToken contains an AP_REQ.
 func (m *KRB5Token) IsAPReq() bool {
-	if hex.EncodeToString(m.tokID) == TOK_ID_KRB_AP_REQ {
-		return true
-	}
-	return false
+	return hex.EncodeToString(m.tokID) == TOK_ID_KRB_AP_REQ
 }
 
 // IsAPRep tests if the MechToken contains an AP_REP.
 func (m *KRB5Token) IsAPRep() bool {
-	if hex.EncodeToString(m.tokID) == TOK_ID_KRB_AP_REP {
-		return true
-	}
-	return false
+	return hex.EncodeToString(m.tokID) == TOK_ID_KRB_AP_REP
 }
 
 // IsKRBError tests if the MechToken contains an KRB_ERROR.
 func (m *KRB5Token) IsKRBError() bool {
-	if hex.EncodeToString(m.tokID) == TOK_ID_KRB_ERROR {
-		return true
-	}
-	return false
+	return hex.EncodeToString(m.tokID) == TOK_ID_KRB_ERROR
 }
 
 // Context returns the KRB5 token's context which will contain any verify user identity information.
