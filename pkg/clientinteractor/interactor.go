@@ -400,7 +400,7 @@ func (pi *PSQLInteractor) SplitKeyRange(ctx context.Context, split *kr.SplitKeyR
 
 // TODO : unit tests
 
-// LockKeyRange sends the row description message for locking a key range with the specified ID, 
+// LockKeyRange sends the row description message for locking a key range with the specified ID,
 // followed by a data row indicating the locking of the key range, and completes the message.
 //
 // Parameters:
@@ -431,7 +431,7 @@ func (pi *PSQLInteractor) LockKeyRange(ctx context.Context, krid string) error {
 
 // TODO : unit tests
 
-// UnlockKeyRange sends the row description message for unlocking a key range with the specified ID, 
+// UnlockKeyRange sends the row description message for unlocking a key range with the specified ID,
 // followed by a data row indicating the unlocking of the key range, and completes the message.
 //
 // Parameters:
@@ -505,12 +505,11 @@ func (pi *PSQLInteractor) Tasks(_ context.Context, ts []*tasks.Task) error {
 	return pi.CompleteMsg(0)
 }
 
-
 // DropTaskGroup drops all tasks in the task group.
 //
 // Parameters:
 // - _ (context.Context): The context parameter.
-// 
+//
 // Returns:
 // - error: An error if there was a problem dropping the tasks.
 func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
@@ -651,8 +650,8 @@ type ClientDesc struct {
 //   - Hostname (string): The hostname.
 //   - RAddr (string): The rAddr.
 //   - Quantiles ([]float64): The quantiles of time statistics for the client.
-//     - TimeQuantileRouter (float64): The time quantile for the router.
-//     - TimeQuantileShard (float64): The time quantile for the shard.
+//   - TimeQuantileRouter (float64): The time quantile for the router.
+//   - TimeQuantileShard (float64): The time quantile for the shard.
 func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
 	quantiles := statistics.GetQuantiles()
 	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
@@ -691,8 +690,6 @@ func (ClientDesc) GetHeader() []string {
 	}
 	return headers
 }
-
-// TODO : unit tests
 
 // GetColumnsMap generates a map that maps column names to their respective indices in the table description header.
 //
