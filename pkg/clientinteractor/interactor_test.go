@@ -1,6 +1,8 @@
 package clientinteractor_test
 
 import (
+	"github.com/golang/mock/gomock"
+	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,7 +66,6 @@ func TestSimpleNoMatchWhere(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(expected, actual)
 }
-
 
 // TestAndNoMatchWhere tests the MatchRow function with a complex where clause that is expected to not match.
 //
@@ -136,4 +137,41 @@ func TestOrMatchWhere(t *testing.T) {
 	actual, err := clientinteractor.MatchRow(row, rowDesc, where)
 	assert.NoError(err)
 	assert.Equal(expected, actual)
+}
+
+func TestGetColumnsMap(t *testing.T) {
+	assert := assert.New(t)
+
+	testCases := []struct {
+		name        string
+		header      []string
+		expectedMap map[string]int
+	}{
+		{
+			name:        "Simple header",
+			header:      []string{"a", "b", "c"},
+			expectedMap: map[string]int{"a": 0, "b": 1, "c": 2},
+		},
+		{
+			name:        "Empty header",
+			header:      []string{},
+			expectedMap: map[string]int{},
+		},
+		{
+			name:        "Nil header",
+			header:      nil,
+			expectedMap: map[string]int{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			tableDescMock := mock.NewMockTableDesc(ctrl)
+			tableDescMock.EXPECT().GetHeader().Return(testCase.header)
+			assert.Equal(testCase.expectedMap, clientinteractor.GetColumnsMap(tableDescMock))
+		})
+	}
+
 }
