@@ -3,11 +3,12 @@ package clientinteractor
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"net"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 
@@ -1210,7 +1211,7 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 // Returns:
 // - error: An error if any occurred during the operation.
 func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
-	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
@@ -1222,7 +1223,7 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 			router = s.Router()
 		}
 
-		if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), fmt.Sprintf("%d", sh.Pid()), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -1296,4 +1297,21 @@ func (pi *PSQLInteractor) Relations(dsToRels map[string][]*distributions.Distrib
 		}
 	}
 	return pi.CompleteMsg(c)
+}
+
+func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.PreparedStatementsMgrDescriptor) error {
+	if err := pi.WriteHeader("name", "backend_id", "hash", "query"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	for _, sh := range shs {
+		if err := pi.WriteDataRow(sh.Name, fmt.Sprintf("%d", sh.ServerId), fmt.Sprintf("%d", sh.Hash), sh.Query); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+
+	}
+
+	return pi.CompleteMsg(len(shs))
 }
