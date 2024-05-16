@@ -216,6 +216,8 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	}
 
 	rd := &shard.PreparedStatementDescriptor{
+		Name:      d.Name,
+		OrigQuery: d.Query,
 		NoData:    false,
 		RowDesc:   nil,
 		ParamDesc: nil,

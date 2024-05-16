@@ -65,6 +65,25 @@ type Conn struct {
 	mp map[uint64]*shard.PreparedStatementDescriptor
 }
 
+// ListPreparedStatements implements shard.Shard.
+func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
+	ret := make([]shard.PreparedStatementsMgrDescriptor, 0)
+
+	for hash, desc := range sh.mp {
+
+		ret = append(ret,
+			shard.PreparedStatementsMgrDescriptor{
+				Hash:     hash,
+				ServerId: sh.ID(),
+				Query:    desc.OrigQuery,
+				Name:     desc.Name,
+			},
+		)
+	}
+
+	return ret
+}
+
 // Close closes the connection to the database.
 // It returns an error if there was a problem closing the connection.
 //
@@ -263,6 +282,10 @@ func (sh *Conn) Cfg() *config.Shard {
 // - string: The hostname of the instance associated with the Conn struct.
 func (sh *Conn) InstanceHostname() string {
 	return sh.Instance().Hostname()
+}
+
+func (sh *Conn) Pid() uint32 {
+	return sh.backend_key_pid
 }
 
 // ShardKeyName returns the name of the shard key.
