@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/jcmturner/goidentity/v6"
+	"github.com/jcmturner/gokrb5/v8/credentials"
 	"github.com/jcmturner/gokrb5/v8/gssapi"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/service"
@@ -56,7 +56,7 @@ func NewKerberosModule(base BaseAuthModule) *Kerberos {
 	return k
 }
 
-func (k *Kerberos) Process(cl client.Client) (username string, err error) {
+func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err error) {
 	kt := k.kt
 	if err != nil {
 		panic(err) // If the "krb5.keytab" file is not available the application will show an error message.
@@ -64,10 +64,10 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	settings := service.NewSettings(kt)
 	msg := &pgproto3.AuthenticationGSS{}
 	if err := cl.Send(msg); err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := cl.SetAuthType(pgproto3.AuthTypeGSS); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	st := KRB5Token{
@@ -75,37 +75,38 @@ func (k *Kerberos) Process(cl client.Client) (username string, err error) {
 	}
 	clientMsgRaw, err := cl.Receive()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	switch clientMsgRaw := clientMsgRaw.(type) {
 	case *pgproto3.GSSResponse:
 		err := st.Unmarshal(clientMsgRaw.Data)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	default:
-		return "", fmt.Errorf("unexpected message type %T", clientMsgRaw)
+		return nil, fmt.Errorf("unexpected message type %T", clientMsgRaw)
 	}
 	// Validate the context token
 	authed, status := st.Verify()
 	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
 		errText := fmt.Sprintf("Kerberos validation error: %v", status)
 		log.Print(errText)
-		return "", fmt.Errorf(errText)
+		return nil, fmt.Errorf(errText)
 	}
 	if status.Code == gssapi.StatusContinueNeeded {
 		errText := "Kerberos GSS-API continue needed"
 		log.Print(errText)
-		return "", fmt.Errorf(errText)
+		return nil, fmt.Errorf(errText)
 	}
 	if authed {
 		ctx := st.Context()
-		id := ctx.Value(ctxCredentials).(goidentity.Identity)
+		id := ctx.Value(CtxCredential).(credentials.Credentials)
 		log.Print(id.UserName())
-		return id.UserName(), nil
+		log.Print(id.Realm())
+		return &id, nil
 	} else {
 		errText := "Kerberos authentication failed"
 		log.Print(errText)
-		return "", fmt.Errorf(errText)
+		return nil, fmt.Errorf(errText)
 	}
 }

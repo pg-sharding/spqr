@@ -394,12 +394,19 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			},
 		}
 		kerb := NewKerberosModule(b)
-		username, err := kerb.Process(cl)
+		cred, err := kerb.Process(cl)
 		if err != nil {
 			return err
 		}
+		username := cred.UserName()
+		if rule.AuthRule.GssConfig.IncludeRealm {
+			username = fmt.Sprintf("%s@%s", cred.UserName(), cred.Realm())
+		}
 		if username != cl.Usr() {
 			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v'", username, cl.Usr())
+		}
+		if rule.AuthRule.GssConfig.KrbRealm != "" && rule.AuthRule.GssConfig.KrbRealm != cred.Realm() {
+			return fmt.Errorf("GSS realm in token missmatch with realm in confing: '%v' != '%v'", rule.AuthRule.GssConfig.KrbRealm, cred.Realm())
 		}
 		return nil
 	default:
