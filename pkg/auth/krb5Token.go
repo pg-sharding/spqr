@@ -14,7 +14,9 @@ import (
 	"github.com/jcmturner/gokrb5/v8/service"
 )
 
-const CtxCredential = "spqr/gokrb5/CtxCredential"
+type ContextKey string
+
+const CtxCredential ContextKey = "spqr/gokrb5/CtxCredential"
 
 // GSSAPI KRB5 MechToken IDs.
 const (
