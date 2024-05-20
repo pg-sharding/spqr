@@ -48,8 +48,6 @@ type RoutingMetadataContext struct {
 	// cached CTE names
 	cteNames map[string]struct{}
 
-	unparsed_columns map[string]struct{}
-
 	// needed to parse
 	// SELECT * FROM t1 a where a.i = 1
 	// rarg:{range_var:{relname:"t2" inh:true relpersistence:"p" alias:{aliasname:"b"}
@@ -66,7 +64,6 @@ func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *Rout
 		cteNames:         map[string]struct{}{},
 		tableAliases:     map[string]RelationFQN{},
 		exprs:            map[RelationFQN]map[string][]string{},
-		unparsed_columns: map[string]struct{}{},
 		params:           params,
 	}
 	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
@@ -106,7 +103,6 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN
 	if _, ok := meta.exprs[resolvedRelation]; !ok {
 		meta.exprs[resolvedRelation] = map[string][]string{}
 	}
-	delete(meta.unparsed_columns, colname)
 	if _, ok := meta.exprs[resolvedRelation][colname]; !ok {
 		meta.exprs[resolvedRelation][colname] = make([]string, 0)
 	}
@@ -252,7 +248,6 @@ func (qr *ProxyQrouter) RecordDistributionKeyColumnValue(meta *RoutingMetadataCo
 	resolvedRelation, err := meta.ResolveRelationByAlias(alias)
 	if err != nil {
 		// failed to resolve relation, skip column
-		meta.unparsed_columns[colname] = struct{}{}
 		return nil
 	}
 
