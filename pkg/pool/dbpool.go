@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -57,14 +58,14 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
-	total_msg := ""
+	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-			total_msg += fmt.Sprintf("host %s: ", shard.Instance().Hostname()) + err.Error()
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 			return false
 		} else if ch {
-			total_msg += fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason)
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
 			_ = s.Put(shard)
 			return false
 		}
@@ -74,23 +75,22 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 		return sh, nil
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
+	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, strings.Join(totalMsg, ";"))
 }
 
 // TODO : unit tests
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
-
-	total_msg := ""
+	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
-			total_msg += fmt.Sprintf("host %s: ", shard.Instance().Hostname()) + err.Error()
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 			return false
 		} else if !ch {
-			total_msg += fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason)
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
 			_ = s.Put(shard)
 			return false
 		}
@@ -100,7 +100,7 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 		return sh, nil
 	}
 
-	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
+	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, strings.Join(totalMsg, ";"))
 }
 
 // TODO : unit tests
