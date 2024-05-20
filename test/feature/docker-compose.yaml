@@ -142,7 +142,7 @@ services:
     build:
       context: ./conf/kdc
     volumes:
-      - ./kdc/start.sh:/start.sh
+      - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab
 volumes:
   keytab:
