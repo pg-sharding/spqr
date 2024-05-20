@@ -38,6 +38,13 @@ shards:
     type: DATA
     hosts:
       - 'spqr_shard_2:6432'
+  sh3:
+    db: regress
+    usr: tester
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_3:6432'
 
 backend_rules:
   - db: regress
@@ -52,9 +59,6 @@ backend_rules:
   - db: regress
     usr: tester
     auth_rules:
-      sh1:
-        auth_method: password
-        password: 12345678
-      sh2:
+      sh3:
         auth_method: password
         password: 12345678
