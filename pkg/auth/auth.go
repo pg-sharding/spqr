@@ -181,6 +181,9 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 //   - If the authentication method is `config.AuthMD5`, the error message will be "[frontend_auth] route {username} {database}: md5 password mismatch".
 //   - If the authentication method is `config.AuthSCRAM`, the error message will be "error: {error_message}".
 func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
+	if cl.Usr() != rule.Usr {
+		return fmt.Errorf("user from client %v != %v missmatch user in config", cl.Usr(), rule.Usr)
+	}
 	switch rule.AuthRule.Method {
 	case config.AuthOK:
 		return nil
