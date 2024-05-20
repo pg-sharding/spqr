@@ -81,7 +81,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-
+    volumes:
+      - keytab:/keytab
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
