@@ -37,6 +37,17 @@ type shardPool struct {
 
 var _ Pool = &shardPool{}
 
+// NewShardPool creates a new instance of shardPool based on the provided ConnectionAllocFn, host, and BackendRule.
+// It initializes the fields of shardPool with the corresponding values from the ConnectionAllocFn and BackendRule.
+// It also initializes the queue with the ConnectionLimit.
+//
+// Parameters:
+//   - allocFn: The ConnectionAllocFn to be used for the shardPool.
+//   - host: The host to be used for the shardPool.
+//   - beRule: The BackendRule to be used for the shardPool.
+//
+// Returns:
+//   - Pool: The created instance of shardPool.
 func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
 	connLimit := defaultInstanceConnectionLimit
 	connRetries := defaultInstanceConnectionRetries
@@ -74,18 +85,28 @@ func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.Backend
 	return ret
 }
 
+// Hostname returns the hostname of the shardPool.
 func (h *shardPool) Hostname() string {
 	return h.host
 }
 
+// RouterName returns the name of the router.
 func (h *shardPool) RouterName() string {
 	return "unimplemented"
 }
 
+// Rule returns the backend rule associated with the shard pool.
 func (h *shardPool) Rule() *config.BackendRule {
 	return h.beRule
 }
 
+// Cut removes all shards from the shard pool and returns them as a slice.
+//
+// Parameters:
+//   - host: The host from which to cut the shards.
+//
+// Returns:
+//   - []shard.Shard: The removed shards as a slice.
 func (h *shardPool) Cut(host string) []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -96,18 +117,21 @@ func (h *shardPool) Cut(host string) []shard.Shard {
 	return ret
 }
 
+// UsedConnectionCount returns the number of currently used connections in the shard pool.
 func (s *shardPool) UsedConnectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.active)
 }
 
+// IdleConnectionCount returns the number of idle connections in the shard pool.
 func (s *shardPool) IdleConnectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return len(s.pool)
 }
 
+// QueueResidualSize returns the number of elements in the queue of the shard pool.
 func (s *shardPool) QueueResidualSize() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -115,6 +139,22 @@ func (s *shardPool) QueueResidualSize() int {
 }
 
 // TODO : unit tests
+// Connection retrieves a connection to a shard based on the provided client ID and shard key.
+// It first attempts to retrieve a connection from the connection pool. If a connection is available,
+// it is reused. If no connection is available, it waits for a connection to become available or
+// retries based on the configured connection retries and sleep duration.
+// If a connection cannot be obtained within the configured retries, an error is returned.
+// If a connection is successfully obtained, it is added to the active connections and returned.
+// If an error occurs during the allocation of a new connection, the acquired token is returned
+// and an error is returned.
+//
+// Parameters:
+//   - clid: The client ID to be used for the connection.
+//   - shardKey: The ShardKey to be used for the connection.
+//
+// Returns:
+//   - shard.Shard: The obtained connection to the shard.
+//   - error: The error that occurred during the connection process.
 func (h *shardPool) Connection(
 	clid uint,
 	shardKey kr.ShardKey) (shard.Shard, error) {
@@ -178,6 +218,14 @@ func (h *shardPool) Connection(
 }
 
 // TODO : unit tests
+// Discard removes a shard from the shard pool and closes the connection to the shard's host.
+// It returns an error if there was an issue closing the connection.
+//
+// Parameters:
+//   - sh: The shard to be removed from the shard pool.
+//
+// Returns:
+//   - error: The error that occurred during the removal of the shard.
 func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -204,6 +252,16 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 }
 
 // TODO : unit tests
+// Put puts the given shard back into the shard pool.
+// It first checks if the shard's transaction status is idle.
+// If not, it discards the shard.
+// Then, it removes the shard from the active map and adds it back to the pool.
+//
+// Parameters:
+//   - sh: The shard to be put back into the shard pool.
+//
+// Returns:
+//   - error: The error that occurred during the put operation.
 func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -232,6 +290,14 @@ func (h *shardPool) Put(sh shard.Shard) error {
 }
 
 // TODO : unit tests
+// ForEach iterates over each shard in the shard pool and calls the provided callback function.
+// If the callback function returns an error, the iteration stops and the error is returned.
+//
+// Parameters:
+//   - cb: The callback function to be called for each shard.
+//
+// Returns:
+//   - error: The error that occurred during the iteration.
 func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -251,6 +317,7 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 }
 
 // TODO : unit tests
+// List returns a slice of shards in the shard pool.
 func (h *shardPool) List() []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -271,6 +338,9 @@ type cPool struct {
 	beRule *config.BackendRule
 }
 
+// NewPool creates a new MultiShardPool with the given connection allocation function.
+// The connection allocation function allocFn is used to allocate connections for each shard.
+// It returns a pointer to the created MultiShardPool.
 func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	return &cPool{
 		pools: sync.Map{},
@@ -279,6 +349,14 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 }
 
 // TODO : unit tests
+// ForEach iterates over each shard in the shard pool and calls the provided callback function.
+// If the callback function returns an error, the iteration stops and the error is returned.
+//
+// Parameters:
+//   - cb: The callback function to be called for each shard.
+//
+// Returns:
+//   - error: The error that occurred during the iteration.
 func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
@@ -289,6 +367,15 @@ func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 }
 
 // TODO : unit tests
+// ForEachPool iterates over each pool in the cPool and calls the provided callback function.
+// The callback function takes a Pool as a parameter and returns an error.
+// If the callback function returns an error, the iteration stops and the error is returned.
+//
+// Parameters:
+//   - cb: The callback function to be called for each pool.
+//
+// Returns:
+//   - error: The error that occurred during the iteration.
 func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = cb(value.(Pool))
@@ -299,6 +386,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 }
 
 // TODO : unit tests
+// List returns a slice of shard.Shard containing all the shards in the cPool.
 func (c *cPool) List() []shard.Shard {
 	var ret []shard.Shard
 
@@ -310,6 +398,19 @@ func (c *cPool) List() []shard.Shard {
 }
 
 // TODO : unit tests
+// Connection returns a shard connection for the given client ID, shard key, and host.
+// If a connection pool for the host does not exist, a new pool is created and stored.
+// Otherwise, the existing pool is retrieved from the cache.
+// The method then delegates the connection retrieval to the pool and returns the result.
+//
+// Parameters:
+//   - clid: The client ID to be used for the connection.
+//   - shardKey: The ShardKey to be used for the connection.
+//   - host: The host to be used for the connection.
+//
+// Returns:
+//   - shard.Shard: The obtained connection to the shard.
+//   - error: The error that occurred during the connection process.
 func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
@@ -322,12 +423,29 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 }
 
 // TODO : unit tests
+// Cut removes and returns the shards associated with the specified host.
+// It returns a slice of shard.Shard.
+//
+// Parameters:
+//   - host: The host for which to cut the shards.
+//
+// Returns:
+//   - []shard.Shard: The removed shards as a slice.
 func (c *cPool) Cut(host string) []shard.Shard {
 	rt, _ := c.pools.LoadAndDelete(host)
 	return rt.([]shard.Shard)
 }
 
 // TODO : unit tests
+// Put adds a shard to the pool.
+// It checks if the pool for the given host exists, and if so, it calls the Put method on that pool.
+// If the pool does not exist, it panics with the given host.
+//
+// Parameters:
+//   - host: The host to which the shard belongs.
+//
+// Returns:
+//   - error: The error that occurred during the put operation.
 func (c *cPool) Put(host shard.Shard) error {
 	if val, ok := c.pools.Load(host.Instance().Hostname()); ok {
 		return val.(Pool).Put(host)
@@ -338,6 +456,15 @@ func (c *cPool) Put(host shard.Shard) error {
 }
 
 // TODO : unit tests
+// Discard removes a shard from the pool.
+// If the shard is found in the pool, it calls the Discard method of the corresponding pool.
+// If the shard is not found in the pool, it panics with the shard as the argument.
+//
+// Parameters:
+//   - sh: The shard to be removed from the pool.
+//
+// Returns:
+//   - error: The error that occurred during the discard operation.
 func (c *cPool) Discard(sh shard.Shard) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Discard(sh)
@@ -348,6 +475,9 @@ func (c *cPool) Discard(sh shard.Shard) error {
 }
 
 // TODO : unit tests
+// InitRule initializes the backend rule for the cPool.
+// It takes a pointer to a config.BackendRule as input and sets it as the backend rule for the cPool.
+// Returns an error if any.
 func (c *cPool) InitRule(rule *config.BackendRule) error {
 	c.beRule = rule
 	return nil

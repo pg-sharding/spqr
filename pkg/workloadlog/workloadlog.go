@@ -47,6 +47,15 @@ type WorkloadLogger struct {
 	mutex        sync.RWMutex
 }
 
+// NewLogger creates a new instance of WorkloadLog with the specified batch size and log file.
+// It returns a pointer to the created WorkloadLogger.
+//
+// Parameters:
+//   - batchSize: The number of messages to batch before writing to the log file.
+//   - logFile: The path to the log file where the workload will be saved.
+//
+// Returns:
+//   - WorkloadLog: A pointer to the created WorkloadLogger.
 func NewLogger(batchSize int, logFile string) WorkloadLog {
 	return &WorkloadLogger{
 		mode:         None,
@@ -59,6 +68,20 @@ func NewLogger(batchSize int, logFile string) WorkloadLog {
 	}
 }
 
+// StartLogging starts the logging process for the WorkloadLogger.
+// If the 'all' parameter is set to true, it enables logging for all clients.
+// If the 'all' parameter is set to false, it enables logging for a specific client identified by the 'id' parameter.
+// The 'id' parameter is used to associate a client with a session.
+// This function acquires a lock on the WorkloadLogger mutex to ensure thread safety.
+// If the WorkloadLogger mode is set to None, it creates a new context and cancels any existing context.
+// If the 'all' parameter is true, it sets the mode to All.
+// If the 'all' parameter is false, it sets the mode to Client and associates the client with a session.
+// The session ID is incremented for each new client.
+// The logging process is executed in a separate goroutine by calling the 'serv' method.
+//
+// Parameters:
+//   - all: A boolean flag to enable logging for all clients.
+//   - id: The ID of the client to enable logging for.
 func (wl *WorkloadLogger) StartLogging(all bool, id uint) {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
@@ -75,14 +98,25 @@ func (wl *WorkloadLogger) StartLogging(all bool, id uint) {
 	go wl.serv()
 }
 
+// IsLogging checks if the workload logger is currently logging.
+// It returns true if the logger is in any mode other than None, and false otherwise.
 func (wl *WorkloadLogger) IsLogging() bool {
 	return !(wl.mode == None)
 }
 
+// GetMode returns the current mode of the WorkloadLogger.
 func (wl *WorkloadLogger) GetMode() WorkloadLogMode {
 	return wl.mode
 }
 
+// ClientMatches checks if the given client ID matches any client in the workload logger.
+// It returns true if the client ID is found, otherwise it returns false.
+//
+// Parameters:
+//   - client: The ID of the client to check.
+//
+// Returns:
+//   - bool: A boolean value indicating if the client ID matches any client in the workload logger.
 func (wl *WorkloadLogger) ClientMatches(client uint) bool {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
@@ -90,6 +124,15 @@ func (wl *WorkloadLogger) ClientMatches(client uint) bool {
 	return ok
 }
 
+// RecordWorkload records the workload by adding the given message, timestamp, and session to the message queue.
+// It acquires a lock on the WorkloadLogger mutex to ensure thread safety.
+// The message is added to the message queue along with the timestamp and session.
+// The message queue is a channel of TimedMessage.
+// The message queue is read by the 'serv' goroutine, which writes the messages to the log file.
+//
+// Parameters:
+//   - msg: The message to record.
+//   - client: The ID of the client that sent the message.
 func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client uint) {
 	wl.mutex.Lock()
 	defer wl.mutex.Unlock()
@@ -100,6 +143,9 @@ func (wl *WorkloadLogger) RecordWorkload(msg pgproto3.FrontendMessage, client ui
 	}
 }
 
+// StopLogging stops the logging session.
+// It checks if there is an active logging session and cancels it.
+// Returns an error if there was no active logging session.
 func (wl *WorkloadLogger) StopLogging() error {
 	if !wl.IsLogging() {
 		return fmt.Errorf("was no active logging session")
@@ -109,6 +155,8 @@ func (wl *WorkloadLogger) StopLogging() error {
 	return nil
 }
 
+// serv is a goroutine that continuously listens for incoming messages in the messageQueue and saves them to a log file.
+// It also handles the termination signal from the context and performs necessary cleanup operations.
 func (wl *WorkloadLogger) serv() {
 	interData := []byte{}
 
@@ -140,6 +188,17 @@ func (wl *WorkloadLogger) serv() {
 	}
 }
 
+// flush writes the intercepted data to the specified file.
+// It opens the file in append mode, writes the data, and then closes the file.
+// If the file does not exist, it will be created.
+// The function returns an error if any error occurs during the file operations.
+//
+// Parameters:
+//   - interceptedData: The data to write to the file.
+//   - file: The path to the file where the data will be written.
+//
+// Returns:
+//   - error: An error if any error occurs during the file operations.
 func flush(interceptedData []byte, file string) error {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -163,6 +222,16 @@ Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
 4 bytes - message length (except header)
 ?? bytes - message bytes
 */
+// EncodeMessage encodes a TimedMessage into a byte slice.
+// It encodes the message and timestamp into binary format and appends them together.
+// The encoded byte slice is returned along with any error encountered during encoding.
+//
+// Parameters:
+//   - tm: The TimedMessage to encode.
+//
+// Returns:
+//   - []byte: The encoded byte slice.
+//   - error: An error if any error occurs during encoding.
 func EncodeMessage(tm TimedMessage) ([]byte, error) {
 	binMsg, err := tm.Msg.Encode(nil)
 	if err != nil {

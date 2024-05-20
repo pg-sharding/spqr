@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestCoordConnectionKepperRule tests the Rule method of the ConnectionKepperData struct.
 func TestCoordConnectionKepperRule(t *testing.T) {
 	assert := assert.New(t)
 
@@ -22,6 +23,7 @@ func TestCoordConnectionKepperRule(t *testing.T) {
 	assert.Equal("usr", br.Usr)
 }
 
+// TestCoordConnectionKepperList is a unit test function that tests the List method of the ConnectionKepperData struct.
 func TestCoordConnectionKepperList(t *testing.T) {
 	assert := assert.New(t)
 
@@ -30,6 +32,8 @@ func TestCoordConnectionKepperList(t *testing.T) {
 	assert.Nil(k.List())
 }
 
+// TestCoordConnectionKepperHostname is a unit test function that tests the Hostname method of the ConnectionKepperData struct.
+// It asserts that the Hostname method returns the expected hostname value.
 func TestCoordConnectionKepperHostname(t *testing.T) {
 	assert := assert.New(t)
 
@@ -40,6 +44,7 @@ func TestCoordConnectionKepperHostname(t *testing.T) {
 	assert.Equal("host", k.Hostname())
 }
 
+// TestCoordConnectionKepperQueueResidualSize tests the QueueResidualSize method of the ConnectionKepperData struct.
 func TestCoordConnectionKepperQueueResidualSize(t *testing.T) {
 	assert := assert.New(t)
 	k := pool.ConnectionKepperData{
@@ -49,6 +54,7 @@ func TestCoordConnectionKepperQueueResidualSize(t *testing.T) {
 	assert.Equal(3, k.QueueResidualSize())
 }
 
+// TestCoordConnectionKepperConnectionCount is a unit test function that tests the connection count methods of the ConnectionKepperData struct.
 func TestCoordConnectionKepperConnectionCount(t *testing.T) {
 	assert := assert.New(t)
 	k := pool.ConnectionKepperData{
@@ -60,6 +66,8 @@ func TestCoordConnectionKepperConnectionCount(t *testing.T) {
 	assert.Equal(2, k.IdleConnectionCount())
 }
 
+// TestCoordConnectionKepperControlling is a unit test function that tests the controlling behavior of the CoordConnectionKepper.
+// It verifies that the Put and Discard methods of the ConnectionKepperData struct return errors as expected.
 func TestCoordConnectionKepperControlling(t *testing.T) {
 	assert := assert.New(t)
 	k := pool.ConnectionKepperData{}
@@ -70,6 +78,7 @@ func TestCoordConnectionKepperControlling(t *testing.T) {
 	assert.Error(err1)
 }
 
+// TestCoordConnectionKepperThreading tests the threading behavior of the CoordConnectionKepper.
 func TestCoordConnectionKepperThreading(t *testing.T) {
 	assert := assert.New(t)
 	inf := &pool.ConnectionKepperData{

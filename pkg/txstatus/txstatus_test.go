@@ -1,10 +1,13 @@
 package txstatus
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
+// TestString tests the String method of the TXStatus type.
+// It asserts that the String method returns the expected string representation for each TXStatus value.
 func TestString(t *testing.T) {
 	assert := assert.New(t)
 	cases := map[TXStatus]string{
