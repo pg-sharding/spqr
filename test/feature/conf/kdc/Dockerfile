@@ -8,6 +8,6 @@ COPY krb5.conf /etc/krb5.conf
 
 RUN kdb5_util create -s -P kpass \
   && kadmin.local -q "addprinc -pw psql tester@MY.EX" \
-  && kadmin.local -q "addprinc -randkey postgres/gss_cockroach_1.gss_default@MY.EX"
+  && kadmin.local -q "addprinc -randkey postgres/gss_spqr_1.gss_spqr@MY.EX"
 
-CMD ["/start.sh"]
+CMD ["sh", "/start.sh"]
