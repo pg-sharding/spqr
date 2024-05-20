@@ -11,12 +11,14 @@ show_notice_messages: true
 frontend_rules:
   - db: regress
     usr: regress
+    pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
   - db: regress
     usr: tester
     auth_rule:
       auth_method: gss
+      pool_mode: TRANSACTION
       gss_config:
         krb_keytab_file: '/keytab/tester.keytab'
         krb_realm: 'example'
