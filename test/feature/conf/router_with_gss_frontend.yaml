@@ -44,7 +44,7 @@ shards:
     pwd: 12345678
     type: DATA
     hosts:
-      - 'spqr_shard_3:6432'
+      - 'tester_spqr_shard_3:6432'
 
 backend_rules:
   - db: regress
