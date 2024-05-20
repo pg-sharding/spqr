@@ -32,17 +32,17 @@ var buf bytes.Buffer
 //
 // Returns:
 // - *config.BackendRule: The generated BackendRule object.
-func MockBakendRule(method string) *config.BackendRule {
-	auth1 := &config.AuthCfg{
-		Method:   config.AuthMethod(method),
+func MockBakendRule() *config.BackendRule {
+	auth1 := &config.AuthBackendCfg{
+		//Method:   config.AuthMethod(method),
 		Password: "123",
 	}
-	auth2 := &config.AuthCfg{
-		Method:   config.AuthMethod(method),
+	auth2 := &config.AuthBackendCfg{
+		// Method:   config.AuthMethod(method),
 		Password: "321",
 	}
 
-	authRules := map[string]*config.AuthCfg{shardName1: auth1, shardName2: auth2}
+	authRules := map[string]*config.AuthBackendCfg{shardName1: auth1, shardName2: auth2}
 
 	br := &config.BackendRule{
 		Usr:             "vasya",
@@ -94,10 +94,10 @@ func TestDifferentPasswordsForDifferentShards(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule("md5")
+	br_md5 := MockBakendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule("clear_text")
+	br_clear := MockBakendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
@@ -155,10 +155,10 @@ func TestSamePasswordForOneShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule("md5")
+	br_md5 := MockBakendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule("clear_text")
+	br_clear := MockBakendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
@@ -209,10 +209,10 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule("md5")
+	br_md5 := MockBakendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule("clear_text")
+	br_clear := MockBakendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard := MockShard("unexisting")
@@ -243,8 +243,8 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 // - None.
 func TestCanConnectWithDefaultRule(t *testing.T) {
 	//init test data
-	authRule_md5 := &config.AuthCfg{
-		Method:   "md5",
+	authRule_md5 := &config.AuthBackendCfg{
+		// Method:   "md5",
 		Password: "12345",
 	}
 
@@ -256,8 +256,8 @@ func TestCanConnectWithDefaultRule(t *testing.T) {
 	}
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	authRule_clear := &config.AuthCfg{
-		Method:   "clear_text",
+	authRule_clear := &config.AuthBackendCfg{
+		//Method:   "clear_text",
 		Password: "12345",
 	}
 
@@ -302,16 +302,16 @@ func TestCanConnectWithDefaultRule(t *testing.T) {
 // - None.
 func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 	//init test data
-	br_md5 := MockBakendRule("md5")
-	br_md5.DefaultAuthRule = &config.AuthCfg{
-		Method:   "md5",
+	br_md5 := MockBakendRule()
+	br_md5.DefaultAuthRule = &config.AuthBackendCfg{
+		//Method:   "md5",
 		Password: "12345",
 	}
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule("clear_text")
-	br_clear.DefaultAuthRule = &config.AuthCfg{
-		Method:   "clear_text",
+	br_clear := MockBakendRule()
+	br_clear.DefaultAuthRule = &config.AuthBackendCfg{
+		//Method:   "clear_text",
 		Password: "12345",
 	}
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
@@ -378,7 +378,6 @@ func MockFrontendRule(method string, ldapConfig *config.LDAPCfg) *config.Fronten
 	}
 	return fr
 }
-
 
 // TestAuthFrontend is a unit test function that tests the AuthFrontend function in the auth package.
 //
