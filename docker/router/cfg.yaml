@@ -22,6 +22,14 @@ frontend_rules:
     pool_prepared_statement: false
     auth_rule:
       auth_method: ok
+  - db: regress
+    usr: tester
+    auth_rule:
+      auth_method: gss
+      gss_config:
+        krb_keytab_file: '/keytab/tester.keytab'
+        krb_realm: 'example'
+        include_realm: 0
 world_shard_fallback: true
 shards:
   sh1:
