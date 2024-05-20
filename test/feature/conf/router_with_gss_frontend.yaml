@@ -40,8 +40,6 @@ shards:
 backend_rules:
   - db: regress
     usr: regress
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: password
@@ -51,8 +49,6 @@ backend_rules:
         password: 12345678
   - db: regress
     usr: tester
-    pool_discard: true
-    pool_rollback: true
     auth_rules:
       sh1:
         auth_method: password
