@@ -140,7 +140,7 @@ services:
       retries: 50
   kdc:
     build:
-      context: ./kdc
+      context: ./conf/kdc
     volumes:
       - ./kdc/start.sh:/start.sh
       - keytab:/keytab
