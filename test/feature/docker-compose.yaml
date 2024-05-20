@@ -53,7 +53,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-
+    volumes:
+      - keytab:/keytab
 
   router2:
     build:
@@ -137,7 +138,14 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-
+  kdc:
+    build:
+      context: ./kdc
+    volumes:
+      - ./kdc/start.sh:/start.sh
+      - keytab:/keytab
+volumes:
+  keytab:
 #networks:
 #  mysync_net:
 #    driver: bridge

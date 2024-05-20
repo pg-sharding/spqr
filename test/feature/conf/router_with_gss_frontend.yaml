@@ -22,7 +22,7 @@ frontend_rules:
     auth_rule:
       auth_method: gss
       gss_config:
-        krb_keytab_file: ' /etc/spqr/krb/tester.keytab'
+        krb_keytab_file: '/keytab/tester.keytab'
         krb_realm: 'example'
         include_realm: 0
 shards:
