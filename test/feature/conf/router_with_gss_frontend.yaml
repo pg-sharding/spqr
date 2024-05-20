@@ -21,7 +21,7 @@ frontend_rules:
       pool_mode: TRANSACTION
       gss_config:
         krb_keytab_file: '/keytab/tester.keytab'
-        krb_realm: 'example'
+        krb_realm: 'MY.EX'
         include_realm: false
 shards:
   sh1:
