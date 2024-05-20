@@ -100,10 +100,10 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 	}
 	if authed {
 		ctx := st.Context()
-		id := ctx.Value(CtxCredential).(credentials.Credentials)
+		id := ctx.Value(CtxCredential).(*credentials.Credentials)
 		log.Print(id.UserName())
 		log.Print(id.Realm())
-		return &id, nil
+		return id, nil
 	} else {
 		errText := "Kerberos authentication failed"
 		log.Print(errText)
