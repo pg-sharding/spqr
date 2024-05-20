@@ -31,7 +31,7 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.beRule.Usr,
+			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 		},
 	}
@@ -337,8 +337,12 @@ func (sh *Conn) ID() uint {
 // - None.
 //
 // Returns:
-// - string: The username associated with the Conn struct.
+// - string: The username from auth config or associated with the Conn struct.
 func (sh *Conn) Usr() string {
+	rule := sh.AuthRule()
+	if rule != nil && rule.Usr != "" {
+		return rule.Usr
+	}
 	return sh.beRule.Usr
 }
 
@@ -582,4 +586,16 @@ func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatemen
 // - None.
 func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	srv.mp[hash] = rd
+}
+
+func (sh *Conn) AuthRule() *config.AuthBackendCfg {
+	var rule *config.AuthBackendCfg
+	if sh.beRule.AuthRules == nil {
+		rule = sh.beRule.DefaultAuthRule
+	} else if _, exists := sh.beRule.AuthRules[sh.dedicated.ShardName()]; exists {
+		rule = sh.beRule.AuthRules[sh.dedicated.ShardName()]
+	} else {
+		rule = sh.beRule.DefaultAuthRule
+	}
+	return rule
 }
