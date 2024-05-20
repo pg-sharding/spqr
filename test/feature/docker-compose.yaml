@@ -55,7 +55,7 @@ services:
       retries: 50
     volumes:
       - keytab:/keytab
-
+      - ./conf/kdc/start.sh:/start.sh
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -83,6 +83,7 @@ services:
       retries: 50
     volumes:
       - keytab:/keytab
+      - ./conf/kdc/start.sh:/start.sh
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile

@@ -24,7 +24,7 @@ frontend_rules:
       gss_config:
         krb_keytab_file: '/keytab/tester.keytab'
         krb_realm: 'example'
-        include_realm: 0
+        include_realm: false
 shards:
   sh1:
     db: regress
