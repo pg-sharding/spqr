@@ -695,6 +695,25 @@ func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocStrin
 	return err
 }
 
+func (tctx *testContext) stepIRunCommandsOnHost(host string, body *godog.DocString) error {
+	commands := strings.Split(strings.TrimSpace(body.Content), "\n")
+	var lastOutput string
+	var lastRetCode int
+	for _, command := range commands {
+		cmd := strings.TrimSpace(command)
+		var err error
+		lastRetCode, lastOutput, err = tctx.composer.RunCommand(host, cmd, commandExecutionTimeout)
+		if err != nil {
+			tctx.commandRetcode = lastRetCode
+			tctx.commandOutput = lastOutput
+			return err
+		}
+	}
+	tctx.commandRetcode = lastRetCode
+	tctx.commandOutput = lastOutput
+	return nil
+}
+
 func (tctx *testContext) stepIRunCommandOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	cmd := strings.TrimSpace(body.Content)
 	var err error
