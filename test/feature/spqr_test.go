@@ -703,6 +703,11 @@ func (tctx *testContext) stepIRunCommandsOnHost(host string, body *godog.DocStri
 		cmd := strings.TrimSpace(command)
 		var err error
 		lastRetCode, lastOutput, err = tctx.composer.RunCommand(host, cmd, commandExecutionTimeout)
+		if lastRetCode != 0 {
+			log.Println("Get non zero code from command")
+			log.Println(cmd)
+			log.Println(lastRetCode)
+		}
 		if err != nil {
 			tctx.commandRetcode = lastRetCode
 			tctx.commandOutput = lastOutput
