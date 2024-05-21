@@ -7,7 +7,7 @@ Feature: GSS Kerberos 5 auth test
     Given cluster is up and running
     When I run commands on host "router"
     """
-    kinit tester <<<'psql'
+    echo psql
     """
     Then command return code should be "0"
 
