@@ -37,7 +37,7 @@ services:
     hostname: tester_spqr_shard_3
     container_name: tester_spqr_shard_3
     healthcheck:
-      test: psql -h tester_spqr_shard_3 -p 6432 -U tester -d regress
+      test: psql -h tester_spqr_shard_3 -p 6432 -U tester -d db3
       interval: 10s
       timeout: 3s
       retries: 50
