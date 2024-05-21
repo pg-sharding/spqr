@@ -707,6 +707,7 @@ func (tctx *testContext) stepIRunCommandsOnHost(host string, body *godog.DocStri
 			log.Println("Get non zero code from command")
 			log.Println(cmd)
 			log.Println(lastRetCode)
+			log.Println(lastOutput)
 		}
 		if err != nil {
 			tctx.commandRetcode = lastRetCode
