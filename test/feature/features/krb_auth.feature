@@ -7,8 +7,7 @@ Feature: GSS Kerberos 5 auth test
     Given cluster is up and running
     When I run commands on host "router"
     """
-    sleep 5
-    echo psql | kinit tester@MY.EX
+    echo psql | kinit tester
     psql -c "SELECT 1" -d regress -U tester -p 6432 -h localhost
     """
     Then command return code should be "0"

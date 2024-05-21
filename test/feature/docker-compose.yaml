@@ -62,7 +62,7 @@ services:
       shard2:
         condition: service_healthy
       kdc:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -70,7 +70,7 @@ services:
       retries: 50
     volumes:
       - keytab:/keytab
-      - ./conf/kdc/start.sh:/start.sh
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf
   router2:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -98,7 +98,7 @@ services:
       retries: 50
     volumes:
       - keytab:/keytab
-      - ./conf/kdc/start.sh:/start.sh
+      - ./conf/kdc/krb5.conf:/etc/krb5.conf
   coordinator:
     build:
       dockerfile: ./docker/coordinator/Dockerfile
@@ -158,8 +158,6 @@ services:
   kdc:
     build:
       context: ./conf/kdc
-    healthcheck:
-      test: echo psql | kinit tester
     volumes:
       - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab

@@ -1,7 +1,7 @@
 FROM alpine:3.14
 
 RUN apk add --no-cache \
-  krb5-server krb5 \
+  krb5-server \
   && rm -rf /var/cache/apk/*
 
 COPY krb5.conf /etc/krb5.conf
