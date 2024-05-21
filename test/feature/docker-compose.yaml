@@ -62,7 +62,7 @@ services:
       shard2:
         condition: service_healthy
       kdc:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
@@ -158,6 +158,8 @@ services:
   kdc:
     build:
       context: ./conf/kdc
+    healthcheck:
+      test: echo psql | kinit tester
     volumes:
       - ./conf/kdc/start.sh:/start.sh
       - keytab:/keytab
