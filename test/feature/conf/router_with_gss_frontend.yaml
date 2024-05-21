@@ -14,7 +14,7 @@ frontend_rules:
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
-  - db: regress
+  - db: db3
     usr: tester
     auth_rule:
       auth_method: gss
@@ -39,7 +39,7 @@ shards:
     hosts:
       - 'spqr_shard_2:6432'
   sh3:
-    db: regress
+    db: db3
     usr: tester
     pwd: 12345678
     type: DATA
@@ -56,7 +56,7 @@ backend_rules:
       sh2:
         auth_method: password
         password: 12345678
-  - db: regress
+  - db: db3
     usr: tester
     auth_rules:
       sh3:

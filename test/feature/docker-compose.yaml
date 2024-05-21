@@ -31,7 +31,7 @@ services:
     image: spqr-shard-image
     environment:
       - POSTGRES_USER=tester
-      - POSTGRES_DB=regress
+      - POSTGRES_DB=db3
     ports:
       - "5502:6432"
     hostname: tester_spqr_shard_3
@@ -57,6 +57,8 @@ services:
     hostname: regress_router
     container_name: regress_router
     depends_on:
+      tester-shard3:
+        condition: service_healthy
       shard1:
         condition: service_healthy
       shard2:

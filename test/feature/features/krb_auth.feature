@@ -8,7 +8,7 @@ Feature: GSS Kerberos 5 auth test
     When I run commands on host "router"
     """
     echo psql | kinit tester
-    psql -c "SELECT 1" -d regress -U tester -p 6432 -h localhost
+    psql -c "SELECT 1" -d db3 -U tester -p 6432 -h localhost
     """
     Then command return code should be "0"
     And command output should match regexp
