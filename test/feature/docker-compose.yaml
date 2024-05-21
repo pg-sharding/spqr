@@ -61,6 +61,8 @@ services:
         condition: service_healthy
       shard2:
         condition: service_healthy
+      kdc:
+        condition: service_started
     healthcheck:
       test: psql -h regress_router -p 6432 -U regress -d regress
       interval: 10s
