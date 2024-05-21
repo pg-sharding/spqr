@@ -1016,6 +1016,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// command and SQL execution
 	s.Step(`^I run command on host "([^"]*)"$`, tctx.stepIRunCommandOnHost)
+	s.Step(`^I run commands on host "([^"]*)"$`, tctx.stepIRunCommandsOnHost)
 	s.Step(`^I run command on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunCommandOnHostWithTimeout)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
