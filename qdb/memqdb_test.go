@@ -205,3 +205,44 @@ func TestKeyRanges(t *testing.T) {
 	}))
 
 }
+
+func Test_MemQDB_GetKeyRange(t *testing.T) {
+
+	assert := assert.New(t)
+
+	memqdb, err := qdb.RestoreQDB(MemQDBPath)
+	assert.NoError(err)
+
+	ctx := context.TODO()
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds1", nil))
+	assert.NoError(err)
+
+	err = memqdb.CreateDistribution(ctx, qdb.NewDistribution("ds2", nil))
+	assert.NoError(err)
+
+	keyRange1 := qdb.KeyRange{
+		LowerBound:     []byte("1111"),
+		ShardID:        "sh1",
+		KeyRangeID:     "krid1",
+		DistributionId: "ds1",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, &keyRange1))
+
+	keyRange2 := qdb.KeyRange{
+		LowerBound:     []byte("1111"),
+		ShardID:        "sh1",
+		KeyRangeID:     "krid2",
+		DistributionId: "ds2",
+	}
+	assert.NoError(memqdb.CreateKeyRange(ctx, &keyRange2))
+
+	res, _ := memqdb.GetKeyRange(ctx, keyRange1.KeyRangeID)
+	assert.Equal(keyRange1.ShardID, res.ShardID)
+	assert.Equal(keyRange1.KeyRangeID, res.KeyRangeID)
+	assert.Equal(keyRange1.DistributionId, res.DistributionId)
+	assert.Equal(keyRange1.LowerBound, res.LowerBound)
+
+	_, err = memqdb.GetKeyRange(ctx, "krid3")
+	assert.NotNil(err)
+}
