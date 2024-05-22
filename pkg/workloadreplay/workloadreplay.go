@@ -15,7 +15,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 )
 
-// TODO : unit tests
 // ReplayLogs replays logs from a file to a specified host, port, user, and database.
 // It reads log messages from the file and sends them to the corresponding session.
 // If a session does not exist, a new session is created.
@@ -30,6 +29,8 @@ import (
 //
 // Returns:
 // - error: an error if there is any issue with opening the file or parsing the log messages
+//
+// TODO : unit tests
 func ReplayLogs(host string, port string, user string, db string, file string) error {
 	f, err := os.OpenFile(file, os.O_RDONLY, 0600)
 	if err != nil {
@@ -61,7 +62,6 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 	}
 }
 
-// TODO : unit tests
 // startNewSession establishes a connection to a PostgreSQL server and starts a new session.
 // It takes the host, port, user, db parameters as input and a channel to receive timed messages.
 // The function sends a startup message to the server, receives the backend reply, and then enters a loop
@@ -76,6 +76,8 @@ func ReplayLogs(host string, port string, user string, db string, file string) e
 // - user: the username to connect to the PostgreSQL server
 // - db: the database name to connect to
 // - ch: a channel to receive timed messages
+//
+// TODO : unit tests
 func startNewSession(host string, port string, user string, db string, ch chan workloadlog.TimedMessage) {
 	ctx := context.Background()
 
@@ -133,7 +135,6 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 	}
 }
 
-// TODO : unit tests
 // parseFile reads a file and parses the contents into a TimedMessage struct.
 // It expects the file to have a specific format where each message is structured as follows:
 // - 15 bytes: timestamp
@@ -144,6 +145,8 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 //
 // The function returns a TimedMessage struct and an error. If there is an error while parsing the file,
 // the function returns an empty TimedMessage and the corresponding error.
+//
+// TODO : unit tests
 func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	// 15 byte - timestamp
 	// 4 bytes - session number
@@ -222,7 +225,6 @@ func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	return tm, nil
 }
 
-// TODO : unit tests
 // recieveBackend receives messages from the database frontend until a ReadyForQuery message is received.
 // It returns an error if there is a failure in receiving the message.
 //
@@ -231,6 +233,8 @@ func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 //
 // Returns:
 // - error: an error if there is a failure in receiving the message
+//
+// TODO : unit tests
 func recieveBackend(frontend *pgproto3.Frontend) error {
 	for {
 		retmsg, err := frontend.Receive()

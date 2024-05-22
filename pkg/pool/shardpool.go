@@ -138,7 +138,6 @@ func (s *shardPool) QueueResidualSize() int {
 	return len(s.queue)
 }
 
-// TODO : unit tests
 // Connection retrieves a connection to a shard based on the provided client ID and shard key.
 // It first attempts to retrieve a connection from the connection pool. If a connection is available,
 // it is reused. If no connection is available, it waits for a connection to become available or
@@ -155,6 +154,8 @@ func (s *shardPool) QueueResidualSize() int {
 // Returns:
 //   - shard.Shard: The obtained connection to the shard.
 //   - error: The error that occurred during the connection process.
+//
+// TODO : unit tests
 func (h *shardPool) Connection(
 	clid uint,
 	shardKey kr.ShardKey) (shard.Shard, error) {
@@ -217,7 +218,6 @@ func (h *shardPool) Connection(
 	return sh, nil
 }
 
-// TODO : unit tests
 // Discard removes a shard from the shard pool and closes the connection to the shard's host.
 // It returns an error if there was an issue closing the connection.
 //
@@ -226,6 +226,8 @@ func (h *shardPool) Connection(
 //
 // Returns:
 //   - error: The error that occurred during the removal of the shard.
+//
+// TODO : unit tests
 func (h *shardPool) Discard(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -251,7 +253,6 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 	return err
 }
 
-// TODO : unit tests
 // Put puts the given shard back into the shard pool.
 // It first checks if the shard's transaction status is idle.
 // If not, it discards the shard.
@@ -262,6 +263,8 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 //
 // Returns:
 //   - error: The error that occurred during the put operation.
+//
+// TODO : unit tests
 func (h *shardPool) Put(sh shard.Shard) error {
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
@@ -289,7 +292,6 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	return nil
 }
 
-// TODO : unit tests
 // ForEach iterates over each shard in the shard pool and calls the provided callback function.
 // If the callback function returns an error, the iteration stops and the error is returned.
 //
@@ -298,6 +300,8 @@ func (h *shardPool) Put(sh shard.Shard) error {
 //
 // Returns:
 //   - error: The error that occurred during the iteration.
+//
+// TODO : unit tests
 func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -316,8 +320,8 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return nil
 }
 
-// TODO : unit tests
 // List returns a slice of shards in the shard pool.
+// TODO : unit tests
 func (h *shardPool) List() []shard.Shard {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -348,7 +352,6 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	}
 }
 
-// TODO : unit tests
 // ForEach iterates over each shard in the shard pool and calls the provided callback function.
 // If the callback function returns an error, the iteration stops and the error is returned.
 //
@@ -357,6 +360,8 @@ func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 //
 // Returns:
 //   - error: The error that occurred during the iteration.
+//
+// TODO : unit tests
 func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = value.(Pool).ForEach(cb)
@@ -366,7 +371,6 @@ func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return nil
 }
 
-// TODO : unit tests
 // ForEachPool iterates over each pool in the cPool and calls the provided callback function.
 // The callback function takes a Pool as a parameter and returns an error.
 // If the callback function returns an error, the iteration stops and the error is returned.
@@ -376,6 +380,8 @@ func (c *cPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 //
 // Returns:
 //   - error: The error that occurred during the iteration.
+//
+// TODO : unit tests
 func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	c.pools.Range(func(key, value any) bool {
 		_ = cb(value.(Pool))
@@ -385,8 +391,8 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	return nil
 }
 
-// TODO : unit tests
 // List returns a slice of shard.Shard containing all the shards in the cPool.
+// TODO : unit tests
 func (c *cPool) List() []shard.Shard {
 	var ret []shard.Shard
 
@@ -397,7 +403,6 @@ func (c *cPool) List() []shard.Shard {
 	return ret
 }
 
-// TODO : unit tests
 // Connection returns a shard connection for the given client ID, shard key, and host.
 // If a connection pool for the host does not exist, a new pool is created and stored.
 // Otherwise, the existing pool is retrieved from the cache.
@@ -411,6 +416,8 @@ func (c *cPool) List() []shard.Shard {
 // Returns:
 //   - shard.Shard: The obtained connection to the shard.
 //   - error: The error that occurred during the connection process.
+//
+// TODO : unit tests
 func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
@@ -422,7 +429,6 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 	return pool.Connection(clid, shardKey)
 }
 
-// TODO : unit tests
 // Cut removes and returns the shards associated with the specified host.
 // It returns a slice of shard.Shard.
 //
@@ -431,12 +437,13 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 //
 // Returns:
 //   - []shard.Shard: The removed shards as a slice.
+//
+// TODO : unit tests
 func (c *cPool) Cut(host string) []shard.Shard {
 	rt, _ := c.pools.LoadAndDelete(host)
 	return rt.([]shard.Shard)
 }
 
-// TODO : unit tests
 // Put adds a shard to the pool.
 // It checks if the pool for the given host exists, and if so, it calls the Put method on that pool.
 // If the pool does not exist, it panics with the given host.
@@ -446,6 +453,8 @@ func (c *cPool) Cut(host string) []shard.Shard {
 //
 // Returns:
 //   - error: The error that occurred during the put operation.
+//
+// TODO : unit tests
 func (c *cPool) Put(host shard.Shard) error {
 	if val, ok := c.pools.Load(host.Instance().Hostname()); ok {
 		return val.(Pool).Put(host)
@@ -455,7 +464,6 @@ func (c *cPool) Put(host shard.Shard) error {
 	}
 }
 
-// TODO : unit tests
 // Discard removes a shard from the pool.
 // If the shard is found in the pool, it calls the Discard method of the corresponding pool.
 // If the shard is not found in the pool, it panics with the shard as the argument.
@@ -465,6 +473,8 @@ func (c *cPool) Put(host shard.Shard) error {
 //
 // Returns:
 //   - error: The error that occurred during the discard operation.
+//
+// TODO : unit tests
 func (c *cPool) Discard(sh shard.Shard) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Discard(sh)
@@ -474,10 +484,11 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	}
 }
 
-// TODO : unit tests
 // InitRule initializes the backend rule for the cPool.
 // It takes a pointer to a config.BackendRule as input and sets it as the backend rule for the cPool.
 // Returns an error if any.
+//
+// TODO : unit tests
 func (c *cPool) InitRule(rule *config.BackendRule) error {
 	c.beRule = rule
 	return nil

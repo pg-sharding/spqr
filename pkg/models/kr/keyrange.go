@@ -24,9 +24,9 @@ type KeyRange struct {
 	Distribution string
 }
 
-// TODO : unit tests
 // CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
 // The comparison is based on the length of the slices and the lexicographic order of their string representations.
+// TODO : unit tests
 func CmpRangesLess(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) < string(other)
@@ -35,10 +35,10 @@ func CmpRangesLess(kr []byte, other []byte) bool {
 	return len(kr) < len(other)
 }
 
-// TODO : unit tests
 // CmpRangesLessEqual compares two byte slices, kr and other, and returns true if kr is less than or equal to other.
 // The comparison is done by comparing the lengths of the slices first. If the lengths are equal, the function compares the byte values lexicographically.
 // Returns true if kr is less than or equal to other, false otherwise.
+// TODO : unit tests
 func CmpRangesLessEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) <= string(other)
@@ -47,9 +47,9 @@ func CmpRangesLessEqual(kr []byte, other []byte) bool {
 	return len(kr) < len(other)
 }
 
-// TODO : unit tests
 // CmpRangesEqual compares two byte slices, kr and other, and returns true if they are equal.
 // It checks if the lengths of kr and other are the same, and then compares their string representations.
+// TODO : unit tests
 func CmpRangesEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
 		return string(kr) == string(other)
@@ -58,9 +58,9 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 	return false
 }
 
-// TODO : unit tests
 // KeyRangeFromDB converts a qdb.KeyRange object to a KeyRange object.
 // It creates a new KeyRange object with the values from the qdb.KeyRange object.
+// TODO : unit tests
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
 		LowerBound:   kr.LowerBound,
@@ -70,10 +70,10 @@ func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	}
 }
 
-// TODO : unit tests
 // KeyRangeFromSQL converts a spqrparser.KeyRangeDefinition into a KeyRange.
 // If kr is nil, it returns nil.
 // Otherwise, it creates a new KeyRange with the provided values and returns a pointer to it.
+// TODO : unit tests
 func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	if kr == nil {
 		return nil
@@ -86,9 +86,9 @@ func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	}
 }
 
-// TODO : unit tests
 // KeyRangeFromProto converts a protobuf KeyRangeInfo to a KeyRange object.
 // If the input KeyRangeInfo is nil, it returns nil.
+// TODO : unit tests
 func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 	if kr == nil {
 		return nil
@@ -101,9 +101,9 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 	}
 }
 
-// TODO : unit tests
 // ToDB converts the KeyRange struct to a qdb.KeyRange struct.
 // It returns a pointer to the converted qdb.KeyRange struct.
+// TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
 		LowerBound:     kr.LowerBound,
@@ -113,8 +113,8 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	}
 }
 
-// TODO : unit tests
 // ToProto converts the KeyRange struct to a protobuf KeyRangeInfo message.
+// TODO : unit tests
 func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 	return &proto.KeyRangeInfo{
 		KeyRange: &proto.KeyRange{

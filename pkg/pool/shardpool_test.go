@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestShardPoolConnectionAcquirePut tests the acquisition and putting of connections in the ShardPool.
+// It verifies that the ShardPool correctly acquires a connection and puts it back after use.
 func TestShardPoolConnectionAcquirePut(t *testing.T) {
 
 	assert := assert.New(t)

@@ -26,32 +26,33 @@ type InstancePoolImpl struct {
 
 var _ DBPool = &InstancePoolImpl{}
 
+// traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
+// for each host until the callback returns true. It returns the shard that satisfies the callback
+// condition. If no shard satisfies the condition, it returns nil.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//   - cb: The callback function that takes a shard and returns a boolean value.
+//
+// Returns:
+//   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
+//
+// traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
+// for each host until the callback returns true. It returns the shard that satisfies the callback
+// condition. If no shard satisfies the condition, it returns nil.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//   - cb: The callback function that takes a shard and returns a boolean value.
+//
+// Returns:
+//   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
+//
 // TODO : unit tests
-// traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
-// for each host until the callback returns true. It returns the shard that satisfies the callback
-// condition. If no shard satisfies the condition, it returns nil.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//   - cb: The callback function that takes a shard and returns a boolean value.
-//
-// Returns:
-//   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
-//
-// traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
-// for each host until the callback returns true. It returns the shard that satisfies the callback
-// condition. If no shard satisfies the condition, it returns nil.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//   - cb: The callback function that takes a shard and returns a boolean value.
-//
-// Returns:
-//   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
 func (s *InstancePoolImpl) traverseHostsMatchCB(
 	clid uint,
 	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
@@ -78,34 +79,35 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 	return nil
 }
 
+// SelectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
+// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
+// If a suitable shard host is found, it is returned along with a nil error.
+// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//
+// Returns:
+//   - shard.Shard: The selected read-only shard host.
+//   - error: An error if no suitable shard host is found.
+//
+// SelectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
+// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
+// If a suitable shard host is found, it is returned along with a nil error.
+// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//
+// Returns:
+//   - shard.Shard: The selected read-only shard host.
+//   - error: An error if no suitable shard host is found.
+//
 // TODO : unit tests
-// SelectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
-// If a suitable shard host is found, it is returned along with a nil error.
-// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-only shard host.
-//   - error: An error if no suitable shard host is found.
-//
-// SelectReadOnlyShardHost selects a read-only shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and performs checks to ensure the selected shard host is suitable for read-only operations.
-// If a suitable shard host is found, it is returned along with a nil error.
-// If no suitable shard host is found, an error is returned with a message indicating the reason for failure.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-only shard host.
-//   - error: An error if no suitable shard host is found.
 func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
@@ -129,34 +131,35 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	return nil, fmt.Errorf("shard %s failed to find replica within %s", key.Name, total_msg)
 }
 
+// SelectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
+// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
+// If a suitable shard is found, it is returned along with no error.
+// If no suitable shard is found, an error is returned indicating the failure reason.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//
+// Returns:
+//   - shard.Shard: The selected read-write shard host.
+//   - error: An error if no suitable shard host is found.
+//
+// SelectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
+// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
+// If a suitable shard is found, it is returned along with no error.
+// If no suitable shard is found, an error is returned indicating the failure reason.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - hosts: The list of hosts to traverse.
+//
+// Returns:
+//   - shard.Shard: The selected read-write shard host.
+//   - error: An error if no suitable shard host is found.
+//
 // TODO : unit tests
-// SelectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
-// If a suitable shard is found, it is returned along with no error.
-// If no suitable shard is found, an error is returned indicating the failure reason.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-write shard host.
-//   - error: An error if no suitable shard host is found.
-//
-// SelectReadWriteShardHost selects a read-write shard host from the given list of hosts based on the provided client ID and shard key.
-// It traverses the hosts and checks if each shard is available and suitable for read-write operations.
-// If a suitable shard is found, it is returned along with no error.
-// If no suitable shard is found, an error is returned indicating the failure reason.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - hosts: The list of hosts to traverse.
-//
-// Returns:
-//   - shard.Shard: The selected read-write shard host.
-//   - error: An error if no suitable shard host is found.
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	clid uint,
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
@@ -182,32 +185,33 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	return nil, fmt.Errorf("shard %s failed to find primary within %s", key.Name, total_msg)
 }
 
+// Connection acquires a new instance connection for a client to a shard with target session attributes.
+// It selects a shard host based on the target session attributes and returns a shard connection.
+// If no connection can be established, it returns an error.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - targetSessionAttrs: The target session attributes.
+//
+// Returns:
+//   - shard.Shard: The acquired shard connection.
+//   - error: An error if the connection cannot be established.
+//
+// Connection acquires a new instance connection for a client to a shard with target session attributes.
+// It selects a shard host based on the target session attributes and returns a shard connection.
+// If no connection can be established, it returns an error.
+//
+// Parameters:
+//   - clid: The client ID.
+//   - key: The shard key.
+//   - targetSessionAttrs: The target session attributes.
+//
+// Returns:
+//   - shard.Shard: The acquired shard connection.
+//   - error: An error if the connection cannot be established.
+//
 // TODO : unit tests
-// Connection acquires a new instance connection for a client to a shard with target session attributes.
-// It selects a shard host based on the target session attributes and returns a shard connection.
-// If no connection can be established, it returns an error.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - targetSessionAttrs: The target session attributes.
-//
-// Returns:
-//   - shard.Shard: The acquired shard connection.
-//   - error: An error if the connection cannot be established.
-//
-// Connection acquires a new instance connection for a client to a shard with target session attributes.
-// It selects a shard host based on the target session attributes and returns a shard connection.
-// If no connection can be established, it returns an error.
-//
-// Parameters:
-//   - clid: The client ID.
-//   - key: The shard key.
-//   - targetSessionAttrs: The target session attributes.
-//
-// Returns:
-//   - shard.Shard: The acquired shard connection.
-//   - error: An error if the connection cannot be established.
 func (s *InstancePoolImpl) Connection(
 	clid uint,
 	key kr.ShardKey,
@@ -312,25 +316,26 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return s.pool.ForEach(cb)
 }
 
+// Put puts a shard into the instance pool.
+// It discards the shard if it is not synchronized or if it is not in idle transaction status.
+// Otherwise, it puts the shard into the pool.
+//
+// Parameters:
+// - sh: The shard to be put into the pool.
+//
+// Returns:
+// - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
+// Put puts a shard into the instance pool.
+// It discards the shard if it is not synchronized or if it is not in idle transaction status.
+// Otherwise, it puts the shard into the pool.
+//
+// Parameters:
+// - sh: The shard to be put into the pool.
+//
+// Returns:
+// - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
+//
 // TODO : unit tests
-// Put puts a shard into the instance pool.
-// It discards the shard if it is not synchronized or if it is not in idle transaction status.
-// Otherwise, it puts the shard into the pool.
-//
-// Parameters:
-// - sh: The shard to be put into the pool.
-//
-// Returns:
-// - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
-// Put puts a shard into the instance pool.
-// It discards the shard if it is not synchronized or if it is not in idle transaction status.
-// Otherwise, it puts the shard into the pool.
-//
-// Parameters:
-// - sh: The shard to be put into the pool.
-//
-// Returns:
-// - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
 		spqrlog.Zero.Error().

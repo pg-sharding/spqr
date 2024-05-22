@@ -214,14 +214,6 @@ func flush(interceptedData []byte, file string) error {
 	return nil
 }
 
-/*
-Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
-15 byte - timestamp
-4 bytes - session number
-1 byte - message header
-4 bytes - message length (except header)
-?? bytes - message bytes
-*/
 // EncodeMessage encodes a TimedMessage into a byte slice.
 // It encodes the message and timestamp into binary format and appends them together.
 // The encoded byte slice is returned along with any error encountered during encoding.
@@ -232,6 +224,14 @@ Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
 // Returns:
 //   - []byte: The encoded byte slice.
 //   - error: An error if any error occurs during encoding.
+/*
+Gets pgproto3.FrontendMessage and encodes it in binary with timestamp.
+15 byte - timestamp
+4 bytes - session number
+1 byte - message header
+4 bytes - message length (except header)
+?? bytes - message bytes
+*/
 func EncodeMessage(tm TimedMessage) ([]byte, error) {
 	binMsg, err := tm.Msg.Encode(nil)
 	if err != nil {
