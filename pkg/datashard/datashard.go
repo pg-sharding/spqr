@@ -588,6 +588,13 @@ func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescri
 	srv.mp[hash] = rd
 }
 
+// AuthRule returns the backend auth configuration of the Conn object.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - config.AuthBackendCfg: the configuration config.
 func (sh *Conn) AuthRule() *config.AuthBackendCfg {
 	var rule *config.AuthBackendCfg
 	if sh.beRule.AuthRules == nil {
