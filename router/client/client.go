@@ -43,7 +43,8 @@ type RouterClient interface {
 
 	/* only call this function while holding lock */
 	Server() server.Server
-	/* functions for operation with cleint's server */
+	/* functions for operation with client's server */
+
 	ServerAcquireUse()
 	ServerReleaseUse()
 
@@ -59,6 +60,7 @@ type RouterClient interface {
 	Rule() *config.FrontendRule
 
 	/* Client target-session-attrs policy */
+
 	GetTsa() string
 	SetTsa(string)
 
