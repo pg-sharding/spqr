@@ -555,7 +555,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 	_ = rst.
 		Client().
 		ReplyDebugNotice(
-			fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
+			fmt.Sprintf("executing your query %v", query)) // TODO performance issue
 
 	if err := rst.Client().Server().Send(query); err != nil {
 		return err
