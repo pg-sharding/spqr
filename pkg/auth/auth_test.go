@@ -34,11 +34,9 @@ var buf bytes.Buffer
 // - *config.BackendRule: The generated BackendRule object.
 func MockBakendRule() *config.BackendRule {
 	auth1 := &config.AuthBackendCfg{
-		//Method:   config.AuthMethod(method),
 		Password: "123",
 	}
 	auth2 := &config.AuthBackendCfg{
-		// Method:   config.AuthMethod(method),
 		Password: "321",
 	}
 
@@ -244,7 +242,6 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 func TestCanConnectWithDefaultRule(t *testing.T) {
 	//init test data
 	authRule_md5 := &config.AuthBackendCfg{
-		// Method:   "md5",
 		Password: "12345",
 	}
 
@@ -257,7 +254,6 @@ func TestCanConnectWithDefaultRule(t *testing.T) {
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
 	authRule_clear := &config.AuthBackendCfg{
-		//Method:   "clear_text",
 		Password: "12345",
 	}
 
@@ -304,14 +300,12 @@ func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 	//init test data
 	br_md5 := MockBakendRule()
 	br_md5.DefaultAuthRule = &config.AuthBackendCfg{
-		//Method:   "md5",
 		Password: "12345",
 	}
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
 	br_clear := MockBakendRule()
 	br_clear.DefaultAuthRule = &config.AuthBackendCfg{
-		//Method:   "clear_text",
 		Password: "12345",
 	}
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}

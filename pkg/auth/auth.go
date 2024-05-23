@@ -57,7 +57,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
 		username := berule.Usr
-		if rule != nil && rule.Usr != "" {
+		if rule.Usr != "" {
 			username = rule.Usr
 		}
 		var res []byte
@@ -116,7 +116,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
 		username := berule.Usr
-		if rule != nil && rule.Usr != "" {
+		if rule.Usr != "" {
 			username = rule.Usr
 		}
 		clientSHA256, err := scram.SHA256.NewClient(username, rule.Password, "")
