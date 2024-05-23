@@ -21,6 +21,16 @@ var (
 	errNoSuchHashFunction = fmt.Errorf("no such hash function")
 )
 
+// ApplyHashFunction applies the specified hash function to the input byte slice.
+// It returns the hashed byte slice and an error, if any.
+//
+// Parameters:
+//   - inp: The input byte slice to hash.
+//   - hf: The hash function to apply.
+//
+// Returns:
+//   - []byte: The hashed byte slice.
+//   - error: An error if any error occurs during the process.
 func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
 	switch hf {
 	case HashFunctionIdent:
@@ -36,6 +46,16 @@ func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
 	}
 }
 
+// HashFunctionByName returns the corresponding HashFunctionType based on the given hash function name.
+// It accepts a string parameter `hfn` representing the hash function name.
+// It returns the corresponding HashFunctionType and an error if the hash function name is not recognized.
+//
+// Parameters:
+//   - hfn: The name of the hash function.
+//
+// Returns:
+//   - HashFunctionType: The corresponding HashFunctionType.
+//   - error: An error if the hash function name is not recognized.
 func HashFunctionByName(hfn string) (HashFunctionType, error) {
 	switch hfn {
 	case "identity", "ident", "":
@@ -48,6 +68,16 @@ func HashFunctionByName(hfn string) (HashFunctionType, error) {
 		return 0, errNoSuchHashFunction
 	}
 }
+
+// ToString converts a HashFunctionType to its corresponding string representation.
+// It takes a HashFunctionType as input and returns the string representation of the hash function.
+// If the input HashFunctionType is not recognized, an empty string is returned.
+//
+// Parameters:
+//   - hf: The HashFunctionType to convert.
+//
+// Returns:
+//   - string: The string representation of the hash function.
 func ToString(hf HashFunctionType) string {
 	switch hf {
 	case HashFunctionIdent:
