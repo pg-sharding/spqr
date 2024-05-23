@@ -375,7 +375,7 @@ func MockFrontendRule(method string, ldapConfig *config.LDAPCfg) *config.Fronten
 
 // TestAuthFrontend is a unit test function that tests the AuthFrontend function in the auth package.
 //
-// It sets up a mock client, defines the LDAP configuration for testing on an external open LDAP server,
+// It sets up a mock client, defines the LDAP configuration for testing on an external LDAP server,
 // and tests the AuthFrontend function with both search+bind and simple-bind modes.
 // The function asserts that there are no errors returned by the AuthFrontend function.
 //
