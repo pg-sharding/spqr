@@ -221,11 +221,17 @@ func (s *InstancePoolImpl) InitRule(rule *config.BackendRule) error {
 }
 
 // ShardMapping returns the shard mapping of the instance pool.
+//
+// Returns:
+//   - map[string]*config.Shard: The shard mapping of the instance pool.
 func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
 	return s.shardMapping
 }
 
 // List returns a list of shards in the instance pool.
+//
+// Returns:
+//   - []shard.Shard: A list of shards in the instance pool.
 func (s *InstancePoolImpl) List() []shard.Shard {
 	/* mutex? */
 	return s.pool.List()

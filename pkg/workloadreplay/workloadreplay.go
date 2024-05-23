@@ -146,6 +146,13 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 // The function returns a TimedMessage struct and an error. If there is an error while parsing the file,
 // the function returns an empty TimedMessage and the corresponding error.
 //
+// Parameters:
+// - f: the file to parse
+//
+// Returns:
+// - TimedMessage: the parsed message
+// - error: an error if there is an issue with reading or parsing the file
+//
 // TODO : unit tests
 func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	// 15 byte - timestamp

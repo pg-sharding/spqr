@@ -86,16 +86,25 @@ func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.Backend
 }
 
 // Hostname returns the hostname of the shardPool.
+//
+// Returns:
+//   - string: The hostname of the shardPool.
 func (h *shardPool) Hostname() string {
 	return h.host
 }
 
 // RouterName returns the name of the router.
+//
+// Returns:
+//   - string: The name of the router.
 func (h *shardPool) RouterName() string {
 	return "unimplemented"
 }
 
 // Rule returns the backend rule associated with the shard pool.
+//
+// Returns:
+//   - *config.BackendRule: The backend rule associated with the shard pool.
 func (h *shardPool) Rule() *config.BackendRule {
 	return h.beRule
 }
@@ -118,6 +127,9 @@ func (h *shardPool) Cut(host string) []shard.Shard {
 }
 
 // UsedConnectionCount returns the number of currently used connections in the shard pool.
+//
+// Returns:
+//   - int: The number of currently used connections in the shard pool.
 func (s *shardPool) UsedConnectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -125,6 +137,9 @@ func (s *shardPool) UsedConnectionCount() int {
 }
 
 // IdleConnectionCount returns the number of idle connections in the shard pool.
+//
+// Returns:
+//   - int: The number of idle connections in the shard pool.
 func (s *shardPool) IdleConnectionCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -132,6 +147,9 @@ func (s *shardPool) IdleConnectionCount() int {
 }
 
 // QueueResidualSize returns the number of elements in the queue of the shard pool.
+//
+// Returns:
+//   - int: The number of elements in the queue of the shard pool.
 func (s *shardPool) QueueResidualSize() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -321,6 +339,10 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 }
 
 // List returns a slice of shards in the shard pool.
+//
+// Returns:
+//   - []shard.Shard: The slice of shards in the shard pool.
+//
 // TODO : unit tests
 func (h *shardPool) List() []shard.Shard {
 	h.mu.Lock()
@@ -345,6 +367,12 @@ type cPool struct {
 // NewPool creates a new MultiShardPool with the given connection allocation function.
 // The connection allocation function allocFn is used to allocate connections for each shard.
 // It returns a pointer to the created MultiShardPool.
+//
+// Parameters:
+//   - allocFn: The connection allocation function to be used for the MultiShardPool.
+//
+// Returns:
+//   - MultiShardPool: The created MultiShardPool.
 func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
 	return &cPool{
 		pools: sync.Map{},
@@ -392,6 +420,10 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 }
 
 // List returns a slice of shard.Shard containing all the shards in the cPool.
+//
+// Returns:
+//   - []shard.Shard: The slice of shard.Shard containing all the shards in the cPool.
+//
 // TODO : unit tests
 func (c *cPool) List() []shard.Shard {
 	var ret []shard.Shard
@@ -487,6 +519,12 @@ func (c *cPool) Discard(sh shard.Shard) error {
 // InitRule initializes the backend rule for the cPool.
 // It takes a pointer to a config.BackendRule as input and sets it as the backend rule for the cPool.
 // Returns an error if any.
+//
+// Parameters:
+//   - rule: The backend rule to be set for the cPool.
+//
+// Returns:
+//   - error: The error that occurred during the initialization of the backend rule.
 //
 // TODO : unit tests
 func (c *cPool) InitRule(rule *config.BackendRule) error {

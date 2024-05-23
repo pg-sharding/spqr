@@ -28,6 +28,9 @@ type CachedTSAChecker struct {
 
 // NewTSAChecker creates a new instance of TSAChecker.
 // It returns a TSAChecker interface that can be used to perform TSA checks.
+//
+// Returns:
+//   - TSAChecker: A new instance of TSAChecker.
 func NewTSAChecker() TSAChecker {
 	return &CachedTSAChecker{
 		mu:    sync.Mutex{},

@@ -26,6 +26,14 @@ type KeyRange struct {
 
 // CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
 // The comparison is based on the length of the slices and the lexicographic order of their string representations.
+//
+// Parameters:
+//   - kr: The first byte slice to compare.
+//   - other: The second byte slice to compare.
+//
+// Returns:
+//   - bool: True if kr is less than other, false otherwise.
+//
 // TODO : unit tests
 func CmpRangesLess(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
@@ -38,6 +46,14 @@ func CmpRangesLess(kr []byte, other []byte) bool {
 // CmpRangesLessEqual compares two byte slices, kr and other, and returns true if kr is less than or equal to other.
 // The comparison is done by comparing the lengths of the slices first. If the lengths are equal, the function compares the byte values lexicographically.
 // Returns true if kr is less than or equal to other, false otherwise.
+//
+// Parameters:
+//   - kr: The first byte slice to compare.
+//   - other: The second byte slice to compare.
+//
+// Returns:
+//   - bool: True if kr is less than or equal to other, false otherwise.
+//
 // TODO : unit tests
 func CmpRangesLessEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
@@ -49,6 +65,14 @@ func CmpRangesLessEqual(kr []byte, other []byte) bool {
 
 // CmpRangesEqual compares two byte slices, kr and other, and returns true if they are equal.
 // It checks if the lengths of kr and other are the same, and then compares their string representations.
+//
+// Parameters:
+//   - kr: The first byte slice to compare.
+//   - other: The second byte slice to compare.
+//
+// Returns:
+//   - bool: True if kr and other are equal, false otherwise.
+//
 // TODO : unit tests
 func CmpRangesEqual(kr []byte, other []byte) bool {
 	if len(kr) == len(other) {
@@ -60,6 +84,14 @@ func CmpRangesEqual(kr []byte, other []byte) bool {
 
 // KeyRangeFromDB converts a qdb.KeyRange object to a KeyRange object.
 // It creates a new KeyRange object with the values from the qdb.KeyRange object.
+// It returns a pointer to the new KeyRange object.
+//
+// Parameters:
+//   - kr: The qdb.KeyRange object to convert.
+//
+// Returns:
+//   - *KeyRange: A pointer to the new KeyRange object.
+//
 // TODO : unit tests
 func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 	return &KeyRange{
@@ -73,6 +105,13 @@ func KeyRangeFromDB(kr *qdb.KeyRange) *KeyRange {
 // KeyRangeFromSQL converts a spqrparser.KeyRangeDefinition into a KeyRange.
 // If kr is nil, it returns nil.
 // Otherwise, it creates a new KeyRange with the provided values and returns a pointer to it.
+//
+// Parameters:
+//   - kr: The spqrparser.KeyRangeDefinition to convert.
+//
+// Returns:
+//   - *KeyRange: A pointer to the new KeyRange object.
+//
 // TODO : unit tests
 func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 	if kr == nil {
@@ -88,6 +127,14 @@ func KeyRangeFromSQL(kr *spqrparser.KeyRangeDefinition) *KeyRange {
 
 // KeyRangeFromProto converts a protobuf KeyRangeInfo to a KeyRange object.
 // If the input KeyRangeInfo is nil, it returns nil.
+// Otherwise, it creates a new KeyRange object with the values from the KeyRangeInfo object and returns a pointer to it.
+//
+// Parameters:
+//   - kr: The protobuf KeyRangeInfo to convert.
+//
+// Returns:
+//   - *KeyRange: A pointer to the new KeyRange object.
+//
 // TODO : unit tests
 func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 	if kr == nil {
@@ -103,6 +150,10 @@ func KeyRangeFromProto(kr *proto.KeyRangeInfo) *KeyRange {
 
 // ToDB converts the KeyRange struct to a qdb.KeyRange struct.
 // It returns a pointer to the converted qdb.KeyRange struct.
+//
+// Returns:
+//   - *qdb.KeyRange: A pointer to the converted qdb.KeyRange struct.
+//
 // TODO : unit tests
 func (kr *KeyRange) ToDB() *qdb.KeyRange {
 	return &qdb.KeyRange{
@@ -114,6 +165,11 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 }
 
 // ToProto converts the KeyRange struct to a protobuf KeyRangeInfo message.
+// It returns a pointer to the converted KeyRangeInfo message.
+//
+// Returns:
+//   - *proto.KeyRangeInfo: A pointer to the converted KeyRangeInfo message.
+//
 // TODO : unit tests
 func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 	return &proto.KeyRangeInfo{

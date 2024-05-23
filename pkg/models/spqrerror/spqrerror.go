@@ -45,6 +45,14 @@ var existingErrorCodeMap = map[string]string{
 
 var ShardingKeysRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
 
+// GetMessageByCode returns the error message associated with the provided error code.
+// If the error code is not found in the existingErrorCodeMap, the function returns "Unexpected error".
+//
+// Parameters:
+//   - errorCode: The error code for which to retrieve the error message.
+//
+// Returns:
+//   - string: The error message associated with the provided error code.
 func GetMessageByCode(errorCode string) string {
 	rep, ok := existingErrorCodeMap[errorCode]
 	if ok {

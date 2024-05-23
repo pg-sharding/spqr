@@ -70,6 +70,7 @@ func (t *DummySessionParamHandler) SetDistribution(d string) {
 	t.distribution = d
 }
 
+// DistributionIsDefault implements session.SessionParamsHolder.
 // DistributionIsDefault returns whether the distribution is set to default.
 func (t *DummySessionParamHandler) DistributionIsDefault() bool {
 	return false
