@@ -621,7 +621,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}
-		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectPostgresql(addr, 10*postgresqlInitialConnectTimeout)
 		if err != nil {
 			return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 		}
