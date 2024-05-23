@@ -535,6 +535,12 @@ func (qr *LocalCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) er
 		return err
 	}
 
+	defer func() {
+		if err := qr.qdb.UnlockKeyRange(ctx, req.SourceID); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+		}
+	}()
+
 	ds, err := qr.qdb.GetDistribution(ctx, krOld.DistributionId)
 	if err != nil {
 		return err

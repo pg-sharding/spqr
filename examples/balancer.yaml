@@ -9,5 +9,5 @@ space_threshold: 10000000
 
 stat_interval_sec: 100000
 
-max_move_count: 1
+max_move_count: 3
 keys_per_move: 10

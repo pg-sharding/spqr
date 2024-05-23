@@ -391,8 +391,6 @@ func (qc *qdbCoordinator) traverseRouters(ctx context.Context, cb func(cc *grpc.
 			}
 			defer cc.Close()
 
-			defer cc.Close()
-
 			if err := cb(cc); err != nil {
 				spqrlog.Zero.Debug().Err(err).Str("router id", rtr.ID).Msg("traverse routers")
 				return err
@@ -450,12 +448,7 @@ func (qc *qdbCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 		resp, err := cl.CreateKeyRange(ctx, &routerproto.CreateKeyRangeRequest{
 			KeyRangeInfo: keyRange.ToProto(),
 		})
-
-		if err != nil {
-			return err
-		}
-
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("add key range response")
 		return nil
@@ -539,11 +532,8 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 		resp, err := cl.LockKeyRange(ctx, &routerproto.LockKeyRangeRequest{
 			Id: []string{keyRangeID},
 		})
-		if err != nil {
-			return err
-		}
 
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("lock key range response")
 		return nil
@@ -560,14 +550,12 @@ func (qc *qdbCoordinator) UnlockKeyRange(ctx context.Context, keyRangeID string)
 		resp, err := cl.UnlockKeyRange(ctx, &routerproto.UnlockKeyRangeRequest{
 			Id: []string{keyRangeID},
 		})
-		if err != nil {
-			return err
-		}
 
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
-			Msg("lock key range response")
-		return nil
+			Msg("unlock key range response")
+
+		return err
 	})
 }
 
@@ -664,9 +652,9 @@ func (qc *qdbCoordinator) Split(ctx context.Context, req *kr.SplitKeyRange) erro
 			SourceId: req.SourceID,
 			NewId:    krNew.ID,
 		})
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
-			Msg("drop key range response")
+			Msg("split key range response")
 		return err
 	}); err != nil {
 		return err
@@ -683,7 +671,7 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
 		resp, err := cl.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
 		return err
@@ -704,7 +692,7 @@ func (qc *qdbCoordinator) DropKeyRange(ctx context.Context, id string) error {
 		resp, err := cl.DropKeyRange(ctx, &routerproto.DropKeyRangeRequest{
 			Id: []string{id},
 		})
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
 		return err
@@ -792,7 +780,7 @@ func (qc *qdbCoordinator) Unite(ctx context.Context, uniteKeyRange *kr.UniteKeyR
 			AppendageId: uniteKeyRange.AppendageKeyRangeId,
 		})
 
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("merge key range response")
 		return err
@@ -928,7 +916,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 					Id:        krg.ID,
 					ToShardId: krg.ShardID,
 				})
-				spqrlog.Zero.Debug().
+				spqrlog.Zero.Debug().Err(err).
 					Interface("response", moveResp).
 					Msg("move key range response")
 				return err
