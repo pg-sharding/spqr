@@ -5,16 +5,13 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/go-ldap/ldap/v3"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/xdg-go/scram"
 	"golang.org/x/crypto/pbkdf2"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -321,79 +318,59 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		err = cl.Send(&pgproto3.AuthenticationSASLFinal{Data: []byte(finalMsg)})
 		return err
 	case config.AuthLDAP:
-		if rule.AuthRule.LDAPConfig == nil {
-			return fmt.Errorf("LDAP configuration are not set for ldap auth method")
-		}
-		l, err := ldap.DialURL(fmt.Sprintf("%s://%s:%d", rule.AuthRule.LDAPConfig.LdapScheme, rule.AuthRule.LDAPConfig.LdapServer, rule.AuthRule.LDAPConfig.LdapPort))
+		conn, err := rule.AuthRule.LDAPConfig.ServerConn()
 		if err != nil {
 			return err
 		}
-		defer l.Close()
-		if rule.AuthRule.LDAPConfig.LdapTLS {
-			err = l.StartTLS(&tls.Config{})
+		defer conn.Close()
+
+		switch rule.AuthRule.LDAPConfig.AuthMode {
+		case config.SimpleBindMode:
+			password, err := cl.PasswordCT()
 			if err != nil {
 				return err
 			}
-		}
-		if rule.AuthRule.LDAPConfig.LdapPrefix != "" || rule.AuthRule.LDAPConfig.LdapSuffix != "" {
-			passwd, err := cl.PasswordCT()
+
+			err = rule.AuthRule.LDAPConfig.SimpleBind(conn, cl.Usr(), password)
 			if err != nil {
 				return err
 			}
-			err = l.Bind(rule.AuthRule.LDAPConfig.LdapPrefix+cl.Usr()+rule.AuthRule.LDAPConfig.LdapSuffix, passwd)
-			if err != nil {
-				return err
-			}
+
 			return nil
-		}
-		if rule.AuthRule.LDAPConfig.LdapBindPasswd != "" || rule.AuthRule.LDAPConfig.LdapBindDn != "" {
-			err = l.Bind(rule.AuthRule.LDAPConfig.LdapBindDn, rule.AuthRule.LDAPConfig.LdapBindPasswd)
+		case config.SearchAndBindMode:
+			err = rule.AuthRule.LDAPConfig.SearchBind(conn)
 			if err != nil {
 				return err
 			}
-		} else {
-			err = l.UnauthenticatedBind(cl.Usr())
+
+			searchAttribute := rule.AuthRule.LDAPConfig.ModifySearchAttribute()
+			searchFilter := rule.AuthRule.LDAPConfig.ModifySearchFilter(searchAttribute, cl.Usr())
+
+			searchResult, err := rule.AuthRule.LDAPConfig.DoSearchRequest(conn, searchFilter)
 			if err != nil {
 				return err
 			}
-		}
-		var searchFilter string
-		if rule.AuthRule.LDAPConfig.LdapSearchFilter != "" {
-			searchFilter = strings.ReplaceAll(rule.AuthRule.LDAPConfig.LdapSearchFilter, "$username", ldap.EscapeFilter(cl.Usr()))
-		} else {
-			if rule.AuthRule.LDAPConfig.LdapSearchAttribute == "" {
-				rule.AuthRule.LDAPConfig.LdapSearchAttribute = "uid"
+
+			err = rule.AuthRule.LDAPConfig.CheckSearchResult(searchResult.Entries)
+			if err != nil {
+				return err
 			}
-			searchFilter = fmt.Sprintf("(%s=%s)", rule.AuthRule.LDAPConfig.LdapSearchAttribute, ldap.EscapeFilter(cl.Usr()))
-		}
-		searchRequest := ldap.NewSearchRequest(
-			rule.AuthRule.LDAPConfig.LdapBaseDn,
-			ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-			searchFilter,
-			[]string{"dn"},
-			nil,
-		)
-		sr, err := l.Search(searchRequest)
-		if err != nil {
-			return err
-		}
 
-		if len(sr.Entries) != 1 {
-			return fmt.Errorf("User does not exist or too many entries returned")
-		}
+			userDN := searchResult.Entries[0].DN
+			password, err := cl.PasswordCT()
+			if err != nil {
+				return err
+			}
 
-		userdn := sr.Entries[0].DN
+			err = rule.AuthRule.LDAPConfig.SimpleBind(conn, userDN, password)
+			if err != nil {
+				return err
+			}
 
-		// Bind as the user to verify their password
-		passwd, err := cl.PasswordCT()
-		if err != nil {
-			return err
+			return nil
+		default:
+			return fmt.Errorf("invalid ldap auth mode '%v'", rule.AuthRule.LDAPConfig.AuthMode)
 		}
-		err = l.Bind(userdn, passwd)
-		if err != nil {
-			return err
-		}
-		return nil
 	case config.AuthGSS:
 		if rule.AuthRule.GssConfig == nil {
 			return fmt.Errorf("GSS configuration are not set for GSS auth method")

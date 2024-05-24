@@ -2,9 +2,10 @@ package auth_test
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
-	"testing"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -394,12 +395,16 @@ func TestAuthFrontend(t *testing.T) {
 	// Testing on external open ldap server
 	// Test search+bind mode
 	ldapConfig := config.LDAPCfg{
-		LdapServer:     "ldap.forumsys.com",
-		LdapPort:       389,
-		LdapScheme:     "ldap",
-		LdapBaseDn:     "dc=example,dc=com",
-		LdapBindDn:     "cn=read-only-admin,dc=example,dc=com",
-		LdapBindPasswd: "password",
+		AuthMode: "simple_bind",
+		ConnConfig: &config.LDAPConnCfg{
+			Scheme: "ldap",
+			Port:   "389",
+		},
+		Servers: []string{"ldap.forumsys.com"},
+
+		BindDN:       "cn=read-only-admin,dc=example,dc=com",
+		BindPassword: "password",
+		BaseDN:       "dc=example,dc=com",
 	}
 	authRule := MockFrontendRule("ldap", &ldapConfig)
 	err := auth.AuthFrontend(cl, authRule)
@@ -407,11 +412,15 @@ func TestAuthFrontend(t *testing.T) {
 
 	// Test simple-bind mode
 	ldapConfig = config.LDAPCfg{
-		LdapServer: "ldap.forumsys.com",
-		LdapPort:   389,
-		LdapScheme: "ldap",
-		LdapSuffix: ",dc=example,dc=com",
-		LdapPrefix: "uid=",
+		AuthMode: "simple_bind",
+		ConnConfig: &config.LDAPConnCfg{
+			Scheme: "ldap",
+			Port:   "389",
+		},
+		Servers: []string{"ldap.forumsys.com"},
+
+		Prefix: "uid=",
+		Suffix: ",dc=example,dc=com",
 	}
 	err = auth.AuthFrontend(cl, authRule)
 	assert.NoError(err)

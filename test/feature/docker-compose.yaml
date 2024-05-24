@@ -127,20 +127,40 @@ services:
     ports:
       - "2379:2379"
 
-  openldapr:
-    image: "osixia/openldap:1.5.0"
+  ldapserver:
+    image: "bitnami/openldap:latest"
+    hostname: regress_ldap_server
+    container_name: regress_ldap_server
     environment:
-      LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
-    volumes:
-      - "./conf/ldap_user:/container/service/slapd/assets/config/bootstrap/ldif/custom"
+      - LDAP_ROOT=dc=example,dc=com
+      - LDAP_USERS=regress
+      - LDAP_PASSWORDS=password
+      - LDAP_PORT_NUMBER=389
     ports:
-      - "389:389"
-      - "636:636"
+      - "1389:389"
     healthcheck:
-      test: ldapwhoami -D "uid=regress,dc=example,dc=org" -w 12345678
+      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w password
       interval: 10s
       timeout: 3s
       retries: 50
+  
+  ldapserver2:
+    image: "bitnami/openldap:latest"
+    hostname: regress_ldap_server_2
+    container_name: regress_ldap_server_2
+    environment:
+      - LDAP_ROOT=dc=example,dc=com
+      - LDAP_USERS=regress
+      - LDAP_PASSWORDS=password
+      - LDAP_PORT_NUMBER=389
+    ports:
+      - "2389:389"
+    healthcheck:
+      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w password
+      interval: 10s
+      timeout: 3s
+      retries: 50
+
   kdc:
     build:
       context: ./conf/kdc
