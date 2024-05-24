@@ -239,6 +239,7 @@ const (
 	VersionStr            = "version"
 	RelationsStr          = "relations"
 	TaskGroupStr          = "task_group"
+	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
 )
 

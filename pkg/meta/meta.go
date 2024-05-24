@@ -157,7 +157,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 
 // TODO : unit tests
 
-// processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution, 
+// processCreate processes the given astmt statement of type spqrparser.Statement by creating a new distribution,
 // sharding rule, key range, or data shard depending on the type of the statement.
 //
 // Parameters:
@@ -409,7 +409,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 // - ctx (context.Context): The context for the operation.
 // - stmt (*spqrparser.Show): The SHOW statement to process.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - ci (connectiterator.ConnectIterator): The connect iterator for client interactions.
+// - ci (connectiterator.ConnectIterator): The connect iterator for connection interactions.
 // - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
 //
 // Returns:
@@ -506,6 +506,17 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 		return cli.Tasks(ctx, group.Tasks)
+	case spqrparser.PreparedStatementsStr:
+
+		var resp []shard.PreparedStatementsMgrDescriptor
+		if err := ci.ForEach(func(sh shard.Shardinfo) error {
+			resp = append(resp, sh.ListPreparedStatements()...)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return cli.PreparedStatements(ctx, resp)
 	default:
 		return unknownCoordinatorCommand
 	}

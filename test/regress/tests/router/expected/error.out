@@ -7,28 +7,29 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE KEY RANGE kridi1 from 1 route to sh1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 1
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 11
+ add key range 
+---------------
+ bound -> 11
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION x DISTRIBUTION KEY id;
-              attach table               
------------------------------------------
- attached relation x to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> x
+ distribution id -> ds1
+(2 rows)
 
 \c regress
 CREATE TABLE x(id int);
@@ -63,9 +64,9 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
+   drop distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 DROP KEY RANGE ALL;

@@ -17,6 +17,15 @@ type ParameterStatus struct {
 
 type ParameterSet map[string]string
 
+// Save saves the given ParameterStatus to the ParameterSet.
+// It returns true if the status was successfully saved, and false if the status already exists in the set.
+//
+// Parameters:
+//   - status: The ParameterStatus to save.
+//
+// Returns:
+//   - bool: A boolean indicating whether the status was successfully saved.
+//
 // TODO : unit tests
 func (ps ParameterSet) Save(status ParameterStatus) bool {
 	if _, ok := ps[status.Name]; ok {
@@ -26,15 +35,25 @@ func (ps ParameterSet) Save(status ParameterStatus) bool {
 	return true
 }
 
+type PreparedStatementsMgrDescriptor struct {
+	Name     string
+	Query    string
+	Hash     uint64
+	ServerId uint
+}
+
 type Shardinfo interface {
 	ID() uint
 	ShardKeyName() string
 	InstanceHostname() string
+	Pid() uint32
 	Usr() string
 	DB() string
 	Sync() int64
 	TxServed() int64
 	TxStatus() txstatus.TXStatus
+
+	ListPreparedStatements() []PreparedStatementsMgrDescriptor
 }
 
 type CoordShardinfo interface {
@@ -43,6 +62,8 @@ type CoordShardinfo interface {
 }
 
 type PreparedStatementDescriptor struct {
+	Name      string
+	OrigQuery string
 	NoData    bool
 	ParamDesc *pgproto3.ParameterDescription
 	RowDesc   *pgproto3.RowDescription

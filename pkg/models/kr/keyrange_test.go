@@ -1,12 +1,17 @@
 package kr_test
 
 import (
+	"testing"
+
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
+// TestGetKRCondition is a unit test function that tests the behavior of the GetKRCondition function.
+// It verifies that the generated condition string matches the expected result for different test cases.
+// The test cases include various combinations of distributions, distributed relations, key ranges, upper bounds, and prefixes.
+// The function uses the assert package to compare the generated condition with the expected result.
 func TestGetKRCondition(t *testing.T) {
 	assert := assert.New(t)
 

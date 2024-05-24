@@ -31,7 +31,7 @@ func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
 		Parameters: map[string]string{
 			"application_name": "app",
 			"client_encoding":  "UTF8",
-			"user":             sh.beRule.Usr,
+			"user":             sh.Usr(),
 			"database":         sh.beRule.DB,
 		},
 	}
@@ -63,6 +63,25 @@ type Conn struct {
 	status txstatus.TXStatus
 
 	mp map[uint64]*shard.PreparedStatementDescriptor
+}
+
+// ListPreparedStatements implements shard.Shard.
+func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
+	ret := make([]shard.PreparedStatementsMgrDescriptor, 0)
+
+	for hash, desc := range sh.mp {
+
+		ret = append(ret,
+			shard.PreparedStatementsMgrDescriptor{
+				Hash:     hash,
+				ServerId: sh.ID(),
+				Query:    desc.OrigQuery,
+				Name:     desc.Name,
+			},
+		)
+	}
+
+	return ret
 }
 
 // Close closes the connection to the database.
@@ -265,6 +284,10 @@ func (sh *Conn) InstanceHostname() string {
 	return sh.Instance().Hostname()
 }
 
+func (sh *Conn) Pid() uint32 {
+	return sh.backend_key_pid
+}
+
 // ShardKeyName returns the name of the shard key.
 //
 // It returns the name of the shard key by calling the SHKey method of the Conn struct and accessing the Name field of the returned ShardKey struct.
@@ -314,8 +337,12 @@ func (sh *Conn) ID() uint {
 // - None.
 //
 // Returns:
-// - string: The username associated with the Conn struct.
+// - string: The username from auth config or associated with the Conn struct.
 func (sh *Conn) Usr() string {
+	rule := sh.AuthRule()
+	if rule != nil && rule.Usr != "" {
+		return rule.Usr
+	}
 	return sh.beRule.Usr
 }
 
@@ -559,4 +586,23 @@ func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatemen
 // - None.
 func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	srv.mp[hash] = rd
+}
+
+// AuthRule returns the backend auth configuration of the Conn object.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - config.AuthBackendCfg: the configuration config.
+func (sh *Conn) AuthRule() *config.AuthBackendCfg {
+	var rule *config.AuthBackendCfg
+	if sh.beRule.AuthRules == nil {
+		rule = sh.beRule.DefaultAuthRule
+	} else if _, exists := sh.beRule.AuthRules[sh.dedicated.ShardName()]; exists {
+		rule = sh.beRule.AuthRules[sh.dedicated.ShardName()]
+	} else {
+		rule = sh.beRule.DefaultAuthRule
+	}
+	return rule
 }

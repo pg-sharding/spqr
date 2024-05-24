@@ -13,6 +13,11 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
+// TestTSA_RW is a unit test function that tests the CheckTSA function of the TSA package.
+// It verifies that the CheckTSA function correctly checks the transaction read-only status.
+// The function sets up a mock DB instance and a mock shard, and expects certain method calls
+// on the mock objects. It then calls the CheckTSA function and asserts that the result and error
+// values are as expected.
 func TestTSA_RW(t *testing.T) {
 
 	assert := assert.New(t)
@@ -55,6 +60,10 @@ func TestTSA_RW(t *testing.T) {
 	assert.Equal(true, res)
 }
 
+// TestTSA_RO is a unit test function that tests the CheckTSA function of the TSA checker.
+// It verifies the behavior of the CheckTSA function when the transaction_read_only setting is 'on'.
+// The function sets up the necessary mocks and expectations, and then calls the CheckTSA function.
+// It asserts that the returned result is false, indicating that the transaction is not read-only.
 func TestTSA_RO(t *testing.T) {
 
 	assert := assert.New(t)

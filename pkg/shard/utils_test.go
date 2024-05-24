@@ -1,13 +1,16 @@
 package shard_test
 
 import (
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
+// TestShardIDs is a unit test function that tests the behavior of the ShardIDs function in the shard package.
+// It verifies that the ShardIDs function returns the correct slice of shard IDs for different input scenarios.
 func TestShardIDs(t *testing.T) {
 	assert := assert.New(t)
 

@@ -216,6 +216,8 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 	}
 
 	rd := &shard.PreparedStatementDescriptor{
+		Name:      d.Name,
+		OrigQuery: d.Query,
 		NoData:    false,
 		RowDesc:   nil,
 		ParamDesc: nil,
@@ -553,7 +555,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 	_ = rst.
 		Client().
 		ReplyDebugNotice(
-			fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
+			fmt.Sprintf("executing your query %v", query)) // TODO performance issue
 
 	if err := rst.Client().Server().Send(query); err != nil {
 		return err

@@ -1,7 +1,7 @@
 -- UNREGISTER ROUTER ALL
 REGISTER ROUTER r1 ADDRESS regress_router:7000;
-             register routers             
-------------------------------------------
- router r1-regress_router:7000 registered
+         register router          
+----------------------------------
+ router -> r1-regress_router:7000
 (1 row)
 

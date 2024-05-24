@@ -130,7 +130,7 @@ Feature: MemQDB save state into a file
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    lock key range with id krid1
+    key range id -\\u003e krid1
     """
     When host "router" is stopped
     And host "router" is started
@@ -141,7 +141,7 @@ Feature: MemQDB save state into a file
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    unlocked key range with id krid1
+    key range id -\\u003e krid1
     """
 
   Scenario: Sharding is not initialized if init.sql file doesn't exists

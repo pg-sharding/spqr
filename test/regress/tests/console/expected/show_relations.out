@@ -6,35 +6,38 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2 COLUMN TYPES varchar, integer;
-         add distribution         
-----------------------------------
- created distribution with id ds2
+    add distribution    
+------------------------
+ distribution id -> ds2
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION a DISTRIBUTION KEY a_id;
-              attach table               
------------------------------------------
- attached relation a to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> a
+ distribution id -> ds1
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION b DISTRIBUTION KEY b_id HASH FUNCTION MURMUR;
-              attach table               
------------------------------------------
- attached relation b to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> b
+ distribution id -> ds1
+(2 rows)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION c DISTRIBUTION KEY c_id_1 HASH FUNCTION IDENT,
                                                           c_id_2 HASH FUNCTION CITY;
-              attach table               
------------------------------------------
- attached relation c to distribution ds2
-(1 row)
+      attach table      
+------------------------
+ relation name   -> c
+ distribution id -> ds2
+(2 rows)
 
 SHOW relations;
  Relation name | Distribution ID |           Distribution key            
@@ -54,10 +57,10 @@ SHOW relations WHERE distribution_id = 'ds1';
 SHOW relations WHERE unknown_param = 'ds1';
 ERROR:  column unknown_param does not exist.
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
- drop distribution ds2
+   drop distribution    
+------------------------
+ distribution id -> ds1
+ distribution id -> ds2
 (2 rows)
 
 DROP KEY RANGE ALL;

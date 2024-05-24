@@ -44,7 +44,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
 
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -56,7 +56,10 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		if rule == nil {
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
-
+		username := berule.Usr
+		if rule.Usr != "" {
+			username = rule.Usr
+		}
 		var res []byte
 
 		/* password may be configured in partially-calculated
@@ -67,7 +70,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 			res = []byte(rule.Password[3:])
 		} else {
 			hash := md5.New()
-			hash.Write([]byte(rule.Password + berule.Usr))
+			hash.Write([]byte(rule.Password + username))
 			res = hash.Sum(nil)
 			res = []byte(hex.EncodeToString(res))
 		}
@@ -86,7 +89,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -101,7 +104,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: rule.Password})
 	case *pgproto3.AuthenticationSASL:
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -109,7 +112,14 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		} else {
 			rule = berule.DefaultAuthRule
 		}
-		clientSHA256, err := scram.SHA256.NewClient(berule.Usr, rule.Password, "")
+		if rule == nil {
+			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
+		}
+		username := berule.Usr
+		if rule.Usr != "" {
+			username = rule.Usr
+		}
+		clientSHA256, err := scram.SHA256.NewClient(username, rule.Password, "")
 		if err != nil {
 			return err
 		}
