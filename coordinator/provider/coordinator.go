@@ -460,7 +460,7 @@ func (qc *qdbCoordinator) CreateKeyRange(ctx context.Context, keyRange *kr.KeyRa
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("add key range response")
-		return nil
+		return err
 	})
 }
 
