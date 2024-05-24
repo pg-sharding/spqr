@@ -11,5 +11,6 @@ Methods supported for frontend auth, the way they`re specified in config:
 - `md5`
 - `scram`, same as `scram-sha-256`
 - `ldap`
+- `gss`, using Kerberos
 
 For more information about authentication config, see [pkg/config/auth.go](../pkg/config/auth.go)
