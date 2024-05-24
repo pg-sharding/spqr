@@ -289,6 +289,15 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		if !initialRouter {
 			return true
 		}
+		router := &topology.Router{
+			ID:      uuid.NewString(),
+			Address: net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+			State:   qdb.OPENED,
+		}
+		if err := qc.RegisterRouter(ctx, router); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
+		}
+
 		if err := qc.UpdateCoordinator(ctx, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
 			return false
 		}
