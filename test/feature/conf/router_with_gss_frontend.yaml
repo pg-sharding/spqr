@@ -14,7 +14,7 @@ frontend_rules:
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
-  - db: db3
+  - db: regress
     usr: tester
     auth_rule:
       auth_method: gss
