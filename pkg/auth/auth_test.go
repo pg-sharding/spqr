@@ -395,8 +395,9 @@ func TestAuthFrontend(t *testing.T) {
 	// Testing on external open ldap server
 	// Test search+bind mode
 	ldapConfig := config.LDAPCfg{
-		AuthMode: "simple_bind",
+		AuthMode: "search_and_bind",
 		ConnConfig: &config.LDAPConnCfg{
+			ConnMode: "unencrypted",
 			Scheme: "ldap",
 			Port:   "389",
 		},
@@ -414,6 +415,7 @@ func TestAuthFrontend(t *testing.T) {
 	ldapConfig = config.LDAPCfg{
 		AuthMode: "simple_bind",
 		ConnConfig: &config.LDAPConnCfg{
+			ConnMode: "unencrypted",
 			Scheme: "ldap",
 			Port:   "389",
 		},
