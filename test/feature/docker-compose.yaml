@@ -27,20 +27,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 50
-  tester-shard3:
-    image: spqr-shard-image
-    environment:
-      - POSTGRES_USER=tester
-      - POSTGRES_DB=db3
-    ports:
-      - "5502:6432"
-    hostname: tester_spqr_shard_3
-    container_name: tester_spqr_shard_3
-    healthcheck:
-      test: psql -h tester_spqr_shard_3 -p 6432 -U tester -d db3
-      interval: 10s
-      timeout: 3s
-      retries: 50
   router:
     build:
       dockerfile: ./docker/router/Dockerfile
@@ -57,8 +43,6 @@ services:
     hostname: regress_router
     container_name: regress_router
     depends_on:
-      tester-shard3:
-        condition: service_healthy
       shard1:
         condition: service_healthy
       shard2:
