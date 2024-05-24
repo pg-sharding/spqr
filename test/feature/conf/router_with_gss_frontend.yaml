@@ -53,4 +53,5 @@ backend_rules:
         usr: regress
         password: 12345678
       sh2:
+        usr: regress
         password: 12345678
