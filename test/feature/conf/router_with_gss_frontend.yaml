@@ -1,0 +1,57 @@
+host: 'regress_router'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: debug
+time_quantiles:
+  - 0.75
+world_shard_fallback: true
+show_notice_messages: true
+frontend_rules:
+  - db: regress
+    usr: regress
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ok
+  - db: regress
+    usr: tester
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: gss
+      gss_config:
+        krb_keytab_file: '/keytab/tester.keytab'
+        krb_realm: 'MY.EX'
+        include_realm: false
+shards:
+  sh1:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_1:6432'
+  sh2:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_2:6432'
+backend_rules:
+  - db: regress
+    usr: regress
+    auth_rules:
+      sh1:
+        password: 12345678
+      sh2:
+        password: 12345678
+  - db: regress
+    usr: tester
+    auth_rules:
+      sh1:
+        usr: regress
+        password: 12345678
+      sh2:
+        usr: regress
+        password: 12345678

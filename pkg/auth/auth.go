@@ -394,6 +394,34 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return err
 		}
 		return nil
+	case config.AuthGSS:
+		if rule.AuthRule.GssConfig == nil {
+			return fmt.Errorf("GSS configuration are not set for GSS auth method")
+		}
+		if cl.Usr() != rule.Usr {
+			return fmt.Errorf("user from client %v != %v missmatch user in config", cl.Usr(), rule.Usr)
+		}
+		b := BaseAuthModule{
+			properties: map[string]interface{}{
+				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
+			},
+		}
+		kerb := NewKerberosModule(b)
+		cred, err := kerb.Process(cl)
+		if err != nil {
+			return err
+		}
+		username := cred.UserName()
+		if rule.AuthRule.GssConfig.IncludeRealm {
+			username = fmt.Sprintf("%s@%s", cred.UserName(), cred.Realm())
+		}
+		if username != cl.Usr() {
+			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v'", username, cl.Usr())
+		}
+		if rule.AuthRule.GssConfig.KrbRealm != "" && rule.AuthRule.GssConfig.KrbRealm != cred.Realm() {
+			return fmt.Errorf("GSS realm in token missmatch with realm in confing: '%v' != '%v'", rule.AuthRule.GssConfig.KrbRealm, cred.Realm())
+		}
+		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
 	}
