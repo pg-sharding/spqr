@@ -136,7 +136,7 @@ services:
       - LDAP_ADMIN_USERNAME=admin
       - LDAP_ADMIN_PASSWORD=adminpassword
       - LDAP_USERS=regress
-      - LDAP_PASSWORDS=password
+      - LDAP_PASSWORDS=12345678
       - LDAP_PORT_NUMBER=389
     ports:
       - "1389:389"
@@ -155,7 +155,7 @@ services:
       - LDAP_ADMIN_USERNAME=admin
       - LDAP_ADMIN_PASSWORD=adminpassword
       - LDAP_USERS=regress
-      - LDAP_PASSWORDS=password
+      - LDAP_PASSWORDS=12345678
       - LDAP_PORT_NUMBER=389
     ports:
       - "2389:389"
