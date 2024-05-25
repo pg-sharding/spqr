@@ -138,14 +138,16 @@ services:
       - LDAP_USERS=regress
       - LDAP_PASSWORDS=12345678
       - LDAP_PORT_NUMBER=389
+      - LDAP_LDAPS_PORT_NUMBER=636
     ports:
       - "1389:389"
+      - "1636:636"
     healthcheck:
       test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
-  
+
   ldapserver2:
     image: "bitnami/openldap:latest"
     hostname: regress_ldap_server_2
@@ -157,8 +159,10 @@ services:
       - LDAP_USERS=regress
       - LDAP_PASSWORDS=12345678
       - LDAP_PORT_NUMBER=389
+      - LDAP_LDAPS_PORT_NUMBER=636
     ports:
       - "2389:389"
+      - "2636:636"
     healthcheck:
       test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
       interval: 10s
