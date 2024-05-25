@@ -129,8 +129,8 @@ services:
 
   ldapserver:
     image: "bitnami/openldap:latest"
-    hostname: ldapserver
-    container_name: ldapserver
+    hostname: regress_ldap_server
+    container_name: regress_ldap_server
     environment:
       - LDAP_ROOT=dc=example,dc=com
       - LDAP_ADMIN_USERNAME=admin
@@ -141,15 +141,15 @@ services:
     ports:
       - "1389:389"
     healthcheck:
-      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w password
+      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
   
   ldapserver2:
     image: "bitnami/openldap:latest"
-    hostname: ldapserver2
-    container_name: ldapserver2
+    hostname: regress_ldap_server_2
+    container_name: regress_ldap_server_2
     environment:
       - LDAP_ROOT=dc=example,dc=com
       - LDAP_ADMIN_USERNAME=admin
@@ -160,7 +160,7 @@ services:
     ports:
       - "2389:389"
     healthcheck:
-      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w password
+      test: ldapwhoami -D "cn=regress,ou=users,dc=example,dc=com" -w 12345678
       interval: 10s
       timeout: 3s
       retries: 50
