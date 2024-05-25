@@ -398,14 +398,15 @@ func TestAuthFrontend(t *testing.T) {
 		AuthMode: "search_and_bind",
 		ConnConfig: &config.LDAPConnCfg{
 			ConnMode: "unencrypted",
-			Scheme: "ldap",
-			Port:   "389",
+			Scheme:   "ldap",
+			Port:     "389",
 		},
 		Servers: []string{"ldap.forumsys.com"},
 
-		BindDN:       "cn=read-only-admin,dc=example,dc=com",
-		BindPassword: "password",
-		BaseDN:       "dc=example,dc=com",
+		BindDN:          "cn=read-only-admin,dc=example,dc=com",
+		BindPassword:    "password",
+		BaseDN:          "dc=example,dc=com",
+		SearchAttribute: "uid",
 	}
 	authRule := MockFrontendRule("ldap", &ldapConfig)
 	err := auth.AuthFrontend(cl, authRule)
@@ -416,12 +417,12 @@ func TestAuthFrontend(t *testing.T) {
 		AuthMode: "simple_bind",
 		ConnConfig: &config.LDAPConnCfg{
 			ConnMode: "unencrypted",
-			Scheme: "ldap",
-			Port:   "389",
+			Scheme:   "ldap",
+			Port:     "389",
 		},
 		Servers: []string{"ldap.forumsys.com"},
 
-		Prefix: "uid=",
+		Prefix: "cn=",
 		Suffix: ",dc=example,dc=com",
 	}
 	err = auth.AuthFrontend(cl, authRule)

@@ -133,6 +133,8 @@ services:
     container_name: regress_ldap_server
     environment:
       - LDAP_ROOT=dc=example,dc=com
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
       - LDAP_USERS=regress
       - LDAP_PASSWORDS=password
       - LDAP_PORT_NUMBER=389
@@ -150,6 +152,8 @@ services:
     container_name: regress_ldap_server_2
     environment:
       - LDAP_ROOT=dc=example,dc=com
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
       - LDAP_USERS=regress
       - LDAP_PASSWORDS=password
       - LDAP_PORT_NUMBER=389
