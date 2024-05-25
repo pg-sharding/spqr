@@ -545,7 +545,7 @@ func (qc *qdbCoordinator) LockKeyRange(ctx context.Context, keyRangeID string) (
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("lock key range response")
-		return nil
+		return err
 	})
 }
 
