@@ -422,7 +422,7 @@ func TestAuthFrontend(t *testing.T) {
 		},
 		Servers: []string{"ldap.forumsys.com"},
 
-		Prefix: "cn=",
+		Prefix: "uid=",
 		Suffix: ",dc=example,dc=com",
 	}
 	err = auth.AuthFrontend(cl, authRule)

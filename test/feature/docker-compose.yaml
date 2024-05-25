@@ -129,8 +129,8 @@ services:
 
   ldapserver:
     image: "bitnami/openldap:latest"
-    hostname: regress_ldap_server
-    container_name: regress_ldap_server
+    hostname: ldapserver
+    container_name: ldapserver
     environment:
       - LDAP_ROOT=dc=example,dc=com
       - LDAP_ADMIN_USERNAME=admin
@@ -148,8 +148,8 @@ services:
   
   ldapserver2:
     image: "bitnami/openldap:latest"
-    hostname: regress_ldap_server_2
-    container_name: regress_ldap_server_2
+    hostname: ldapserver2
+    container_name: ldapserver2
     environment:
       - LDAP_ROOT=dc=example,dc=com
       - LDAP_ADMIN_USERNAME=admin

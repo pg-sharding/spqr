@@ -22,8 +22,8 @@ frontend_rules:
           scheme: 'ldap'
           port: '389'
         servers:
-          - 'regress_ldap_server'
-          - 'regress_ldap_server_2'
+          - 'ldapserver'
+          - 'ldapserver2'
         bind_dn: 'cn=admin,dc=example,dc=com'
         bind_password: 'adminpassword'
         base_dn: 'dc=example,dc=com'
