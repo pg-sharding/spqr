@@ -102,10 +102,6 @@ func SetupSharding() {
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
-	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r1 COLUMNS id FOR DISTRIBUTION ds1;")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
-	}
 	_, err = conn.Exec(context.Background(), "CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
@@ -119,10 +115,6 @@ func SetupSharding() {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
 	_, err = conn.Exec(context.Background(), "CREATE DISTRIBUTION ds2 COLUMN TYPES varchar;")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
-	}
-	_, err = conn.Exec(context.Background(), "CREATE SHARDING RULE r2 COLUMNS id FOR DISTRIBUTION ds2;")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "could not setup sharding: %s\n", err)
 	}
