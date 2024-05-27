@@ -36,6 +36,7 @@ services:
       - "6432:6432"
       - "7432:7432"
       - "7012:7002"
+      - "7013:7003"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - ROUTER_LOG=/var/log/spqr-router.log
@@ -63,6 +64,7 @@ services:
       - "6433:6432"
       - "7433:7432"
       - "7022:7002"
+      - "7023:7003"
     environment:
       - ROUTER_CONFIG=${ROUTER_CONFIG}
       - ROUTER_LOG=/var/log/spqr-router.log
