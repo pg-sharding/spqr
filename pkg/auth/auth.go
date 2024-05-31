@@ -318,6 +318,10 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		err = cl.Send(&pgproto3.AuthenticationSASLFinal{Data: []byte(finalMsg)})
 		return err
 	case config.AuthLDAP:
+		if rule.AuthRule.LDAPConfig == nil {
+			return fmt.Errorf("LDAP configuration is not set for ldap auth method")
+		}
+
 		conn, err := rule.AuthRule.LDAPConfig.ServerConn()
 		if err != nil {
 			return err
