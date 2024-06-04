@@ -60,11 +60,11 @@ type RoutingMetadataContext struct {
 
 func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
 	meta := &RoutingMetadataContext{
-		rels:             map[RelationFQN]struct{}{},
-		cteNames:         map[string]struct{}{},
-		tableAliases:     map[string]RelationFQN{},
-		exprs:            map[RelationFQN]map[string][]string{},
-		params:           params,
+		rels:         map[RelationFQN]struct{}{},
+		cteNames:     map[string]struct{}{},
+		tableAliases: map[string]RelationFQN{},
+		exprs:        map[RelationFQN]map[string][]string{},
+		params:       params,
 	}
 	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
 	if len(paramsFormatCodes) > 1 {
@@ -341,8 +341,12 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				// if !(texpr.AExpr.Kind == pgquery.A_Expr_Kind_AEXPR_OP || texpr.Kind == pgquery.A_Expr_Kind_AEXPR_BETWEEN) {
 				// 	return ComplexQuery
 				// }
-
-				queue = append(queue, texpr.Left, texpr.Right)
+				if texpr.Left != nil {
+					queue = append(queue, texpr.Left)
+				}
+				if texpr.Right != nil {
+					queue = append(queue, texpr.Right)
+				}
 			}
 		case *lyx.ColumnRef:
 			/* colref = colref case, skip */

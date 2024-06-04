@@ -270,6 +270,33 @@ func TestCTE(t *testing.T) {
 	for _, tt := range []tcase{
 
 		{
+			query: `WITH qqq AS (
+				
+			  DELETE FROM t
+			  WHERE i = 10 and (k, j) IN (
+			  (12::int, 14))
+			  )
+
+			  SELECT * FROM qqq;
+			`,
+			err: nil,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ShardID:      "sh1",
+						ID:           "id1",
+						Distribution: distribution,
+						LowerBound:   []byte("1"),
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+		},
+
+		{
 			query: `
 			WITH xxxx AS (
 				SELECT * from t where i = 1
