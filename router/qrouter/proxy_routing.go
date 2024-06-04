@@ -131,7 +131,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 	}
 }
 
-var ComplexQuery = fmt.Errorf("too complex query to parse")
+var ComplexQuery = fmt.Errorf("too complex query to route")
 var InformationSchemaCombinedQuery = fmt.Errorf("combined information schema and regular relation is not supported")
 var FailedToFindKeyRange = fmt.Errorf("failed to match key with ranges")
 var FailedToMatch = fmt.Errorf("failed to match query to any sharding rule")
