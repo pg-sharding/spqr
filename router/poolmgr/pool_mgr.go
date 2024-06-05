@@ -18,6 +18,12 @@ type ConnectionKeeper interface {
 	txstatus.TxStatusMgr
 	ActiveShards() []kr.ShardKey
 	ActiveShardsReset()
+
+	SyncCount() int64
+
+	DataPending() bool
+	RequestData()
+
 	Client() client.RouterClient
 }
 
@@ -139,7 +145,13 @@ func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Int("shards", len(rst.ActiveShards())).
+		Int64("sync-count", rst.SyncCount()).
+		Bool("data pending", rst.DataPending()).
 		Msg("client validate rerouting of TX")
+
+	if rst.SyncCount() != 0 || rst.DataPending() {
+		return false
+	}
 
 	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
