@@ -5,6 +5,7 @@ test: copy_routing
 test: joins
 test: target_session_attrs
 test: transactions
+test: hash_routing
 test: with_tables
 test: single_shard_joins
 test: multishard
