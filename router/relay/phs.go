@@ -5,11 +5,42 @@ import (
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
+type CacheEntry struct {
+	ps   parser.ParseState
+	comm string
+	err  error
+}
+
 type SimpleProtoStateHandler struct {
 	cmngr poolmgr.PoolMgr
+
+	caching bool
+	cache   map[string]CacheEntry
+}
+
+// ParseSQL implements ProtoStateHandler.
+func (s *SimpleProtoStateHandler) ParseSQL(rst RelayStateMgr, query string) (parser.ParseState, string, error) {
+	if !s.caching {
+		return rst.Parse(query)
+	} else {
+		if ce, ok := s.cache[query]; ok {
+			return ce.ps, ce.comm, ce.err
+		} else {
+			st, comm, err := rst.Parse(query)
+			if err != nil {
+				s.cache[query] = CacheEntry{
+					ps:   st,
+					comm: comm,
+					err:  err,
+				}
+			}
+			return st, comm, err
+		}
+	}
 }
 
 // query in commit query. maybe commit or commit `name`
@@ -93,8 +124,10 @@ func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, query, name, v
 
 var _ ProtoStateHandler = &SimpleProtoStateHandler{}
 
-func NewSimpleProtoStateHandler(cmngr poolmgr.PoolMgr) ProtoStateHandler {
+func NewSimpleProtoStateHandler(cmngr poolmgr.PoolMgr, caching bool) ProtoStateHandler {
 	return &SimpleProtoStateHandler{
-		cmngr: cmngr,
+		cmngr:   cmngr,
+		caching: caching,
+		cache:   map[string]CacheEntry{},
 	}
 }

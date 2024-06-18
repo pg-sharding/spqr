@@ -65,10 +65,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
-	state, comment, err := rst.Parse(query)
-	if err != nil {
-		return fmt.Errorf("error processing query '%v': %w", query, err)
-	}
+	state, comment, err := ph.ParseSQL(rst, query)
 
 	mp, err := parser.ParseComment(comment)
 
