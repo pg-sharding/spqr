@@ -31,7 +31,7 @@ func (s *SimpleProtoStateHandler) ParseSQL(rst RelayStateMgr, query string) (par
 			return ce.ps, ce.comm, ce.err
 		} else {
 			st, comm, err := rst.Parse(query)
-			if err != nil {
+			if err == nil {
 				s.cache[query] = CacheEntry{
 					ps:   st,
 					comm: comm,
