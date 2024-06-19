@@ -66,6 +66,9 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
 	state, comment, err := ph.ParseSQL(rst, query)
+	if err != nil {
+		return err
+	}
 
 	mp, err := parser.ParseComment(comment)
 
