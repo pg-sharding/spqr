@@ -1082,7 +1082,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			// However, to execute commit, rollbacks, etc., we need to wait for the next query
 			// or process it locally (set statement)
 
-			phx := NewSimpleProtoStateHandler(rst.manager)
+			phx := NewSimpleProtoStateHandler(rst.manager, true)
 
 			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
 
