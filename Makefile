@@ -43,7 +43,7 @@ build_workloadreplay:
 	go build -pgo=auto -o spqr-workloadreplay ./cmd/workloadreplay
 
 build_spqrdump:
-	go build -pgo=auto -o spqrdump ./cmd/spqrdump
+	go build -pgo=auto -o spqr-dump ./cmd/spqrdump
 
 build: build_balancer build_coordinator build_coorctl build_router build_mover build_worldmock build_workloadreplay build_spqrdump
 
@@ -158,6 +158,7 @@ mockgen:
 	mockgen -source=./router/poolmgr/pool_mgr.go -destination=./router/mock/poolmgr/mock_pool_mgr.go -package=mock
 	mockgen -source=./router/qrouter/qrouter.go -destination=./router/mock/qrouter/mock_qrouter.go -package=mock
 	mockgen -source=./pkg/clientinteractor/interactor.go -destination=pkg/mock/clientinteractor/mock_interactor.go -package=mock
+	mockgen -source=qdb/qdb.go -destination=qdb/mock/qdb.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen

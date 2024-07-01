@@ -19,7 +19,7 @@ var mockShard = &qdb.Shard{
 	Hosts: []string{"host1", "host2"},
 }
 var mockKeyRange = &qdb.KeyRange{
-	LowerBound: []byte{1, 2},
+	LowerBound: [][]byte{[]byte{1, 2}},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }
@@ -191,14 +191,14 @@ func TestKeyRanges(t *testing.T) {
 	assert.NoError(err)
 
 	assert.NoError(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
 	}))
 
 	assert.Error(memqdb.CreateKeyRange(ctx, &qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
 		DistributionId: "dserr",
@@ -222,7 +222,7 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	assert.NoError(err)
 
 	keyRange1 := qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid1",
 		DistributionId: "ds1",
@@ -230,7 +230,7 @@ func Test_MemQDB_GetKeyRange(t *testing.T) {
 	assert.NoError(memqdb.CreateKeyRange(ctx, &keyRange1))
 
 	keyRange2 := qdb.KeyRange{
-		LowerBound:     []byte("1111"),
+		LowerBound:     [][]byte{[]byte("1111")},
 		ShardID:        "sh1",
 		KeyRangeID:     "krid2",
 		DistributionId: "ds2",

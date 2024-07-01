@@ -6,30 +6,18 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE DISTRIBUTION ds1;
-    add distribution    
-------------------------
- distribution id -> ds1
-(1 row)
-
-CREATE DISTRIBUTION ds2;
+CREATE DISTRIBUTION ds1 COLUMN TYPES int;
+ERROR:  attempt to create existing distribution
+CREATE DISTRIBUTION ds2 COLUMN TYPES int;
     add distribution    
 ------------------------
  distribution id -> ds2
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 1
-(1 row)
-
+ERROR:  key range krid1 already present in qdb.
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
- add key range 
----------------
- bound -> 11
-(1 row)
-
+ERROR:  key range krid2 already present in qdb.
 CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
  add key range 
 ---------------
@@ -43,12 +31,7 @@ CREATE KEY RANGE FROM 1 ROUTE TO sh2 FOR DISTRIBUTION ds2;
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-      attach table      
-------------------------
- relation name   -> xx
- distribution id -> ds1
-(2 rows)
-
+ERROR:  relation "xx" is already attached.
 ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
       attach table      
 ------------------------
@@ -57,25 +40,29 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 (2 rows)
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-ERROR:  no such distribution.
+ERROR:  distribution "ds3" not found.
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  relation "xx" is already attached.
 \c regress
 DROP TABLE IF EXISTS xx;
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xx (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  client processing error: error processing query 'CREATE TABLE xx (w_id int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 INSERT INTO xx(w_id) VALUES(5);
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  relation "xx" does not exist
+LINE 1: INSERT INTO xx(w_id) VALUES(5);
+                    ^
 INSERT INTO xx(w_id) VALUES(20);
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  relation "xx" does not exist
+LINE 1: INSERT INTO xx(w_id) VALUES(20);
+                    ^
 SELECT * FROM xx WHERE w_id=5;
-NOTICE: send query to shard(s) : sh1
- w_id 
-------
-    5
-(1 row)
-
+NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  relation "xx" does not exist
+LINE 1: SELECT * FROM xx WHERE w_id=5;
+                      ^
 CREATE TABLE yy (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 SELECT * FROM yy WHERE w_id=5;
@@ -124,6 +111,7 @@ NOTICE: send query to shard(s) : sh1
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
+ERROR:  table "xx" does not exist
 DROP TABLE yy;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console

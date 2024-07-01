@@ -194,11 +194,11 @@ tr24:
  lex.te = ( lex.p)
 ( lex.p)--
 { 
-                vl, err := strconv.Atoi(string(lex.data[lex.ts:lex.te]))
+                vl, err := strconv.ParseUint(string(lex.data[lex.ts:lex.te]), 10, 64)
                 if err != nil {
                     vl = 0
                 }
-                lval.uinteger = uint(vl); tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
+                lval.uinteger = vl; tok = ICONST; {( lex.p)++;  lex.cs = 4; goto _out }    
             }
 	goto st4
 	st4:

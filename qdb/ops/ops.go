@@ -29,7 +29,8 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 	}
 
 	for _, v := range existsKrids {
-		if kr.CmpRangesEqual(keyRange.LowerBound, v.LowerBound) {
+		eph := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		if kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes) {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
@@ -58,7 +59,9 @@ func ModifyKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 			// update req
 			continue
 		}
-		if kr.CmpRangesEqual(keyRange.LowerBound, v.LowerBound) {
+
+		eph := kr.KeyRangeFromBytes(v.LowerBound, keyRange.ColumnTypes)
+		if kr.CmpRangesEqual(keyRange.LowerBound, eph.LowerBound, keyRange.ColumnTypes) {
 			return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range %v intersects with key range %v in QDB", keyRange.ID, v.KeyRangeID)
 		}
 	}
