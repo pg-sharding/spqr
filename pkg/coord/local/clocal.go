@@ -727,19 +727,17 @@ func (qr *LocalCoordinator) ListKeyRanges(ctx context.Context, distribution stri
 // - []*kr.KeyRange: a slice of KeyRange objects representing all key ranges.
 // - error: an error if the retrieval encounters any issues.
 func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
-	var ret []*kr.KeyRange
 	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
 		return nil, err
 	} else {
-
-		cache := make(map[string]*qdb.Distribution)
+		var ret []*kr.KeyRange
+		cache := map[string]*qdb.Distribution{}
 
 		for _, keyRange := range krs {
 			var ds *qdb.Distribution
 			var err error
-			if ds, ok := cache[keyRange.DistributionId]; ok {
-
-			} else {
+			var ok bool
+			if ds, ok = cache[keyRange.DistributionId]; !ok {
 				ds, err = qr.qdb.GetDistribution(ctx, keyRange.DistributionId)
 				if err != nil {
 					return nil, err
@@ -749,9 +747,8 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 
 			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
 		}
+		return ret, nil
 	}
-
-	return ret, nil
 }
 
 // TODO : unit tests
