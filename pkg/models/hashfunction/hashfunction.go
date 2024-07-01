@@ -30,7 +30,7 @@ var (
 //   - hf: The hash function to apply.
 //
 // Returns:
-//   - []byte: The hashed byte slice.
+//   - []interface: The hashed byte slice.
 //   - error: An error if any error occurs during the process.
 func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
 	switch hf {

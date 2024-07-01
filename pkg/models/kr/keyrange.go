@@ -29,16 +29,9 @@ type KeyRange struct {
 	ColumnTypes []string
 }
 
-// CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
-// The comparison is based on the length of the slices and the lexicographic order of their string representations.
-//
-// Parameters:
-//   - kr: The first byte slice to compare.
-//   - other: The second byte slice to compare.
-//
-// Returns:
-//   - bool: True if kr is less than other, false otherwise.
-//
+/*
+* Old style key ranges comparation
+ */
 // TODO : unit tests
 func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	if len(bound) == len(key) {
@@ -115,6 +108,16 @@ func (kr *KeyRange) SendRaw() []string {
 // TODO: use it
 var MissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 
+// CmpRangesLess compares two byte slices, kr and other, and returns true if kr is less than other.
+// The comparison is based on the length of the slices and the lexicographic order of their string representations.
+//
+// Parameters:
+//   - kr: The first byte slice to compare.
+//   - other: The second byte slice to compare.
+//
+// Returns:
+//   - bool: True if kr is less than other, false otherwise.
+//
 // TODO : unit tests
 func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	// Here we panic if we failed to convert key range bound
@@ -204,6 +207,16 @@ func CmpRangesLessEqual(bound KeyRangeBound, key KeyRangeBound, types []string) 
 	return CmpRangesEqual(bound, key, types) || CmpRangesLess(bound, key, types)
 }
 
+// KeyRangeFromDB converts a qdb.KeyRange object to a KeyRange object.
+// It creates a new KeyRange object with the values from the qdb.KeyRange object.
+// It returns a pointer to the new KeyRange object.
+//
+// Parameters:
+//   - kr: The qdb.KeyRange object to convert.
+//
+// Returns:
+//   - *KeyRange: A pointer to the new KeyRange object.
+//
 // TODO : unit tests
 func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 	kr := &KeyRange{
@@ -281,6 +294,7 @@ func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
 //
 // Parameters:
 //   - kr: The protobuf KeyRangeInfo to convert.
+//   - colTypes: the column types list
 //
 // Returns:
 //   - *KeyRange: A pointer to the new KeyRange object.
