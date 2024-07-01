@@ -222,7 +222,7 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							[]byte{2, 0, 0, 0, 0, 0, 0, 0},
+							[]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 						},
 					},
 				},
@@ -258,7 +258,7 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							[]byte{0, 0, 0, 0, 0, 0, 0, 0},
+							[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 							[]byte("a"),
 						},
 					},
@@ -339,7 +339,7 @@ func TestSplitKeyRange(t *testing.T) {
 			exp: &spqrparser.SplitKeyRange{
 				Border: &spqrparser.KeyRangeBound{
 					Pivots: [][]byte{
-						{10, 0, 0, 0, 0, 0, 0, 0},
+						{0x05, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 					},
 				},
 				KeyRangeFromID: "krid1",
