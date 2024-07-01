@@ -731,12 +731,20 @@ func (qr *LocalCoordinator) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRang
 	if krs, err := qr.qdb.ListAllKeyRanges(ctx); err != nil {
 		return nil, err
 	} else {
+
+		cache := make(map[string]*qdb.Distribution)
+
 		for _, keyRange := range krs {
+			var ds *qdb.Distribution
+			var err error
+			if ds, ok := cache[keyRange.DistributionId]; ok {
 
-			ds, err := qr.qdb.GetDistribution(ctx, keyRange.DistributionId)
-
-			if err != nil {
-				return nil, err
+			} else {
+				ds, err = qr.qdb.GetDistribution(ctx, keyRange.DistributionId)
+				if err != nil {
+					return nil, err
+				}
+				cache[keyRange.DistributionId] = ds
 			}
 
 			ret = append(ret, kr.KeyRangeFromDB(keyRange, ds.ColTypes))
