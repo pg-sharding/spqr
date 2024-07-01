@@ -28,7 +28,7 @@ func randomHex(n int) (string, error) {
 	byte                   byte
 	bytes                  []byte
 	integer                int
-	uinteger               uint
+	uinteger               uint64
 	bool                   bool
 	empty                  struct{}
 
@@ -295,7 +295,7 @@ command:
 
 any_uint:
 	ICONST {
-		$$ = uint($1)
+		$$ = $1
 	}
 
 any_val: SCONST
@@ -458,7 +458,7 @@ trace_stmt:
 	} | 
 	START TRACE CLIENT any_uint {
 		$$ = &TraceStmt {
-			Client: $4,
+			Client: uint($4),
 		}
 	}
 
@@ -691,8 +691,8 @@ key_range_bound_elem:
 		$$ = []byte($1)
 	}
 	| any_uint {
-		buf := make([]byte, 8)
-		binary.PutVarint(buf, int64($1))
+		buf := make([]byte, 10)
+		binary.PutUvarint(buf, $1)
 		$$ = buf
 	}
 
@@ -794,10 +794,10 @@ split_key_range_stmt:
 kill_stmt:
 	KILL kill_statement_type any_uint
 	{
-		$$ = &Kill{Cmd: $2, Target: $3}
+		$$ = &Kill{Cmd: $2, Target: uint($3)}
 	}
 	| KILL CLIENT any_uint {
-		$$ = &Kill{Cmd: "client", Target: $3}
+		$$ = &Kill{Cmd: "client", Target: uint($3)}
 	}
 
 move_key_range_stmt:

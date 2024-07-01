@@ -67,7 +67,7 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		raw := make([]byte, 8)
+		raw := make([]byte, 10)
 		_ = binary.PutUvarint(raw, kr.LowerBound[attribInd].(uint64))
 		return raw
 	case qdb.ColumnTypeVarcharDeprecated:
@@ -81,6 +81,8 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 func (kr *KeyRange) SendFunc(attribInd int) string {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
+		fallthrough
+	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])

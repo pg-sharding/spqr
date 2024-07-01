@@ -31,7 +31,7 @@ type yySymType struct {
 	byte     byte
 	bytes    []byte
 	integer  int
-	uinteger uint
+	uinteger uint64
 	bool     bool
 	empty    struct{}
 
@@ -881,7 +881,7 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:297
 		{
-			yyVAL.uinteger = uint(yyDollar[1].uinteger)
+			yyVAL.uinteger = yyDollar[1].uinteger
 		}
 	case 22:
 		yyDollar = yyS[yypt-1 : yypt+1]
@@ -1100,7 +1100,7 @@ yydefault:
 //line gram.y:459
 		{
 			yyVAL.trace = &TraceStmt{
-				Client: yyDollar[4].uinteger,
+				Client: uint(yyDollar[4].uinteger),
 			}
 		}
 	case 55:
@@ -1391,8 +1391,8 @@ yydefault:
 		yyDollar = yyS[yypt-1 : yypt+1]
 //line gram.y:693
 		{
-			buf := make([]byte, 8)
-			binary.PutVarint(buf, int64(yyDollar[1].uinteger))
+			buf := make([]byte, 10)
+			binary.PutUvarint(buf, yyDollar[1].uinteger)
 			yyVAL.bytes = buf
 		}
 	case 98:
@@ -1501,13 +1501,13 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:796
 		{
-			yyVAL.kill = &Kill{Cmd: yyDollar[2].str, Target: yyDollar[3].uinteger}
+			yyVAL.kill = &Kill{Cmd: yyDollar[2].str, Target: uint(yyDollar[3].uinteger)}
 		}
 	case 112:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:799
 		{
-			yyVAL.kill = &Kill{Cmd: "client", Target: yyDollar[3].uinteger}
+			yyVAL.kill = &Kill{Cmd: "client", Target: uint(yyDollar[3].uinteger)}
 		}
 	case 113:
 		yyDollar = yyS[yypt-4 : yypt+1]
