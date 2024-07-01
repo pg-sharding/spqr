@@ -602,6 +602,8 @@ col_types_list:
 col_types_elem:
 	VARCHAR {
 		$$ = "varchar"
+	} | VARCHAR HASH {
+		$$ = "varchar hashed"
 	} | INTEGER {
 		$$ = "integer"
 	} | INT {

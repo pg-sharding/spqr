@@ -1632,3 +1632,98 @@ func TestMiscRouting(t *testing.T) {
 		}
 	}
 }
+
+func TestHashRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query        string
+		distribution string
+		exp          routingstate.RoutingState
+		err          error
+	}
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution1 := "ds1"
+
+	assert.NoError(db.CreateDistribution(context.TODO(),
+		qdb.NewDistribution(distribution1,
+			[]string{qdb.ColumnTypeVarcharHashed})))
+
+	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
+		ShardID:        "sh1",
+		DistributionId: distribution1,
+		KeyRangeID:     "id1",
+		LowerBound:     [][]byte{[]byte("1")},
+	})
+
+	assert.NoError(err)
+
+	err = db.AlterDistributionAttach(context.TODO(), distribution1, []*qdb.DistributedRelation{
+		{
+			Name: "xx",
+			DistributionKey: []qdb.DistributionKeyEntry{
+				{
+					Column:       "col1",
+					HashFunction: "murmur",
+				},
+			},
+		},
+	})
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {
+			Hosts: nil,
+		},
+		"sh2": {
+			Hosts: nil,
+		},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	})
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query:        "INSERT INTO xx (col1) VALUES ('Hello, world!');",
+			distribution: distribution1,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ID: "id1",
+						LowerBound: kr.KeyRangeBound{
+							uint64(49),
+						},
+						ShardID:      "sh1",
+						Distribution: "ds1",
+						ColumnTypes: []string{
+							qdb.ColumnTypeVarcharHashed,
+						},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.distribution))
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp, tt.query)
+		} else {
+			assert.Error(tt.err, err, tt.query)
+		}
+	}
+}

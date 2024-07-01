@@ -272,6 +272,8 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 				switch tp {
 				case qdb.ColumnTypeVarcharDeprecated:
 					fallthrough
+				case qdb.ColumnTypeVarcharHashed:
+					fallthrough
 				case qdb.ColumnTypeVarchar:
 					return meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
 				case qdb.ColumnTypeInteger:
@@ -314,9 +316,10 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 					return meta.RecordConstExpr(resolvedRelation, colname, num)
 				}
 			case xproto.FormatCodeText:
-
 				switch tp {
 				case qdb.ColumnTypeVarcharDeprecated:
+					fallthrough
+				case qdb.ColumnTypeVarcharHashed:
 					fallthrough
 				case qdb.ColumnTypeVarchar:
 					return meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
@@ -345,6 +348,8 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 		switch tp {
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			return meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
 		case qdb.ColumnTypeInteger:
@@ -366,15 +371,14 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 		switch tp {
 		case qdb.ColumnTypeVarcharDeprecated:
 			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
 		case qdb.ColumnTypeVarchar:
 			return fmt.Errorf("expression with incorrect type")
 		case qdb.ColumnTypeInteger:
-
 			return meta.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
 		case qdb.ColumnTypeUinteger:
-
 			return meta.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
-
 		default:
 			return fmt.Errorf("expression with incorrect type")
 		}

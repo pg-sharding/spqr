@@ -46,6 +46,8 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	case qdb.ColumnTypeInteger:
 		n, _ := binary.Varint(raw)
 		kr.LowerBound[attribInd] = n
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		n, _ := binary.Uvarint(raw)
 		kr.LowerBound[attribInd] = n
@@ -62,6 +64,8 @@ func (kr *KeyRange) OutFunc(attribInd int) []byte {
 		raw := make([]byte, 8)
 		_ = binary.PutVarint(raw, kr.LowerBound[attribInd].(int64))
 		return raw
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
 	case qdb.ColumnTypeUinteger:
 		raw := make([]byte, 8)
 		_ = binary.PutUvarint(raw, kr.LowerBound[attribInd].(uint64))
@@ -127,6 +131,18 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 
 	for i := 0; i < len(bound); i++ {
 		switch types[i] {
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeUinteger:
+			i1 := bound[i].(uint64)
+			i2 := key[i].(uint64)
+			if i1 == i2 {
+				// continue
+			} else if i1 < i2 {
+				return true
+			} else {
+				return false
+			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
 			i2 := key[i].(int64)
@@ -169,6 +185,16 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	for i := 0; i < len(bound); i++ {
 		switch types[i] {
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeUinteger:
+			i1 := bound[i].(uint64)
+			i2 := key[i].(uint64)
+			if i1 == i2 {
+				// continue
+			} else {
+				return false
+			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
 			i2 := key[i].(int64)

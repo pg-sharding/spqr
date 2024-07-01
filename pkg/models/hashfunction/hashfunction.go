@@ -49,11 +49,19 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 			binary.PutUvarint(buf, inp.(uint64))
 			h := murmur3.Sum64(buf)
 			return h, nil
-		case qdb.ColumnTypeVarcharDeprecated:
-			fallthrough
-		case qdb.ColumnTypeVarchar:
-			h := murmur3.Sum64(inp.([]byte))
-			return h, nil
+		case qdb.ColumnTypeVarcharHashed:
+			switch v := inp.(type) {
+			case []byte:
+				h := murmur3.Sum64(v)
+
+				return h, nil
+			case string:
+				h := murmur3.Sum64([]byte(v))
+
+				return h, nil
+			default:
+				return nil, errNoSuchHashFunction
+			}
 		default:
 			return nil, errNoSuchHashFunction
 		}
@@ -70,11 +78,19 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 			binary.PutUvarint(buf, inp.(uint64))
 			h := city.Hash64(buf)
 			return h, nil
-		case qdb.ColumnTypeVarcharDeprecated:
-			fallthrough
-		case qdb.ColumnTypeVarchar:
-			h := city.Hash64(inp.([]byte))
-			return h, nil
+		case qdb.ColumnTypeVarcharHashed:
+			switch v := inp.(type) {
+			case []byte:
+				h := city.Hash64(v)
+
+				return h, nil
+			case string:
+				h := city.Hash64([]byte(v))
+
+				return h, nil
+			default:
+				return nil, errNoSuchHashFunction
+			}
 		default:
 			return nil, errNoSuchHashFunction
 		}

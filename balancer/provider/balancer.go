@@ -575,6 +575,8 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 			fallthrough
 		case qdb.ColumnTypeVarcharDeprecated:
 			bound = []byte(idx)
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
 		case qdb.ColumnTypeInteger:
 			i, err := strconv.ParseInt(idx, 10, 64)
 			if err != nil {

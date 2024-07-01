@@ -70,6 +70,7 @@ func NewShard(ID string, hosts []string) *Shard {
 
 var (
 	ColumnTypeVarchar           = "varchar"
+	ColumnTypeVarcharHashed     = "varchar hashed"
 	ColumnTypeVarcharDeprecated = "_varchar"
 	ColumnTypeInteger           = "integer"
 	ColumnTypeUinteger          = "uinteger"

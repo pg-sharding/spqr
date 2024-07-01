@@ -538,6 +538,18 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					ID: "db1",
+					ColTypes: []string{
+						"varchar hashed",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar, varchar;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
