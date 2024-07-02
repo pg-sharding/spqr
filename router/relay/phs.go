@@ -17,6 +17,7 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 	if !s.cmngr.ConnectionActive(rst) {
 		rst.Client().CommitActiveSet()
 		rst.SetTxStatus(txstatus.TXIDLE)
+		rst.Flush()
 		return nil
 	}
 	rst.AddQuery(&pgproto3.Query{
@@ -35,6 +36,7 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 	if !s.cmngr.ConnectionActive(rst) {
 		rst.Client().Rollback()
 		rst.SetTxStatus(txstatus.TXIDLE)
+		rst.Flush()
 		return nil
 	}
 	rst.AddQuery(&pgproto3.Query{
@@ -49,11 +51,11 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 
 func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name, value string) error {
 	if len(name) == 0 {
-		// some session charactericctic, ignore
+		// some session characteristic, ignore
 		return rst.Client().ReplyCommandComplete("SET")
 	}
+	rst.Client().SetParam(name, value)
 	if !s.cmngr.ConnectionActive(rst) {
-		rst.Client().SetParam(name, value)
 		return rst.Client().ReplyCommandComplete("SET")
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
