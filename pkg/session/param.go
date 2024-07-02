@@ -20,6 +20,9 @@ type SessionParamsHolder interface {
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
 
+	ShowNoticeMsg() bool
+	SetShowNoticeMsg(bool)
+
 	RouteHint() routehint.RouteHint
 	SetRouteHint(routehint.RouteHint)
 }
@@ -29,4 +32,5 @@ const (
 	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
 	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"
+	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"
 )

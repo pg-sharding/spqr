@@ -82,11 +82,11 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			rst.Client().SetTsa(val)
 		}
 		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse default route behaviour from comment")
+			spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
 			rst.Client().SetDefaultRouteBehaviour(val)
 		}
 		if val, ok := mp[session.SPQR_SHARDING_KEY]; ok {
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse sharding key from comment")
+			spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
 			rst.Client().SetShardingKey(val)
 		}
 	}
@@ -150,6 +150,12 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:
 				rst.Client().SetShardingKey(st.Value)
+			case session.SPQR_REPLY_NOTICE:
+				if st.Value == "on" || st.Value == "true" {
+					rst.Client().SetShowNoticeMsg(true)
+				} else {
+					rst.Client().SetShowNoticeMsg(false)
+				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
 			}
@@ -190,6 +196,40 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					},
 				},
 			)
+
+		case session.SPQR_REPLY_NOTICE:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("show notice messages"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+
+			if rst.Client().ShowNoticeMsg() {
+				_ = rst.Client().Send(
+					&pgproto3.DataRow{
+						Values: [][]byte{
+							[]byte("true"),
+						},
+					},
+				)
+			} else {
+				_ = rst.Client().Send(
+					&pgproto3.DataRow{
+						Values: [][]byte{
+							[]byte("false"),
+						},
+					},
+				)
+			}
+
 		case session.SPQR_SHARDING_KEY:
 
 			_ = rst.Client().Send(
@@ -235,6 +275,11 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				},
 			)
 		default:
+
+			/* If router does dot have any info about param, fire query to random shard. */
+			if _, ok := rst.Client().Params()[param]; !ok {
+				return binder()
+			}
 
 			_ = rst.Client().Send(
 				&pgproto3.RowDescription{

@@ -11,6 +11,16 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 }
 
+// SetShowNoticeMsg implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetShowNoticeMsg(bool) {
+	panic("unimplemented")
+}
+
+// ShowNoticeMsg implements SessionParamsHolder.
+func (t *DummySessionParamHandler) ShowNoticeMsg() bool {
+	panic("unimplemented")
+}
+
 // BindParamFormatCodes implements SessionParamsHolder.
 // BindParamFormatCodes returns the format codes for binding parameters.
 func (t *DummySessionParamHandler) BindParamFormatCodes() []int16 {

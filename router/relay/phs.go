@@ -54,8 +54,8 @@ func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name,
 		// some session characteristic, ignore
 		return rst.Client().ReplyCommandComplete("SET")
 	}
-	rst.Client().SetParam(name, value)
 	if !s.cmngr.ConnectionActive(rst) {
+		rst.Client().SetParam(name, value)
 		return rst.Client().ReplyCommandComplete("SET")
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
