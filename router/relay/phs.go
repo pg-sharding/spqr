@@ -1,8 +1,6 @@
 package relay
 
 import (
-	"fmt"
-
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -15,7 +13,9 @@ type SimpleProtoStateHandler struct {
 // query in commit query. maybe commit or commit `name`
 func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
 	if !s.cmngr.ConnectionActive(rst) {
-		return fmt.Errorf("client relay has no connection to shards")
+		spqrlog.Zero.Debug().Msg("client relay has no active shards, skipping")
+		rst.Client().ResetAll()
+		return nil
 	}
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
