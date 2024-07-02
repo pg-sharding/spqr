@@ -1,0 +1,119 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 101
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxtest_sw DISTRIBUTION KEY id;
+         attach table         
+------------------------------
+ relation name   -> xxtest_sw
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE xxtest_sw (id int);
+NOTICE: send query to shard(s) : sh1,sh2
+SET application_name = 'a1';
+BEGIN;
+SET application_name = 'a2';
+SHOW application_name;
+NOTICE: send query to shard(s) : sh1
+ application_name 
+------------------
+ a2
+(1 row)
+
+ROLLBACK;
+SHOW application_name;
+NOTICE: send query to shard(s) : sh1
+ application_name 
+------------------
+ a1
+(1 row)
+
+BEGIN;
+SET application_name = 'a3';
+SHOW application_name;
+NOTICE: send query to shard(s) : sh1
+ application_name 
+------------------
+ a3
+(1 row)
+
+COMMIT;
+SHOW application_name;
+NOTICE: send query to shard(s) : sh2
+ application_name 
+------------------
+ a3
+(1 row)
+
+INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
+NOTICE: send query to shard(s) : sh1
+SELECT * from xxtest_sw WHERE id <= 2;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  2
+(2 rows)
+
+SET search_path to 'error';
+-- should fail
+SELECT * from xxtest_sw WHERE id <= 2;
+NOTICE: send query to shard(s) : sh1
+ERROR:  relation "xxtest_sw" does not exist
+LINE 1: SELECT * from xxtest_sw WHERE id <= 2;
+                      ^
+SET search_path to 'public';
+-- should success
+SELECT * from xxtest_sw WHERE id <= 2;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  2
+(2 rows)
+
+DROP TABLE xxtest_sw;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
