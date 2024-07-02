@@ -26,6 +26,19 @@ COMMIT;
 
 SELECT * FROM transactions_test WHERE id = 1;;
 
+-- check an unrouted transaction can be rollbacked
+BEGIN;
+ROLLBACK;
+
+-- check an unrouted transaction can be committed
+BEGIN;
+COMMIT;
+
+-- special jooq case
+BEGIN;
+SET application_name = 'application';
+COMMIT;
+
 DROP TABLE transactions_test;
 
 \c spqr-console

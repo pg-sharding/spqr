@@ -219,6 +219,7 @@ func (t *SessConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
 
+// TODO the wat
 // TODO : unit tests
 func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil
