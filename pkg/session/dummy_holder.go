@@ -11,6 +11,16 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 }
 
+// MaintainParams implements SessionParamsHolder.
+func (t *DummySessionParamHandler) MaintainParams() bool {
+	panic("unimplemented")
+}
+
+// SetMaintainParams implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetMaintainParams(bool) {
+	panic("unimplemented")
+}
+
 // SetShowNoticeMsg implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetShowNoticeMsg(bool) {
 	panic("unimplemented")

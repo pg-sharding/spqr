@@ -23,6 +23,9 @@ type SessionParamsHolder interface {
 	ShowNoticeMsg() bool
 	SetShowNoticeMsg(bool)
 
+	MaintainParams() bool
+	SetMaintainParams(bool)
+
 	RouteHint() routehint.RouteHint
 	SetRouteHint(routehint.RouteHint)
 }
@@ -33,4 +36,5 @@ const (
 	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"
 	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"
+	SPQR_MAINTAIN_PARAMS         = "__spqr__maintain_params"
 )

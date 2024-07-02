@@ -355,6 +355,20 @@ func (mr *MockRouterClientMockRecorder) Init(cfg interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockRouterClient)(nil).Init), cfg)
 }
 
+// MaintainParams mocks base method.
+func (m *MockRouterClient) MaintainParams() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MaintainParams")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// MaintainParams indicates an expected call of MaintainParams.
+func (mr *MockRouterClientMockRecorder) MaintainParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockRouterClient)(nil).MaintainParams))
+}
+
 // Params mocks base method.
 func (m *MockRouterClient) Params() map[string]string {
 	m.ctrl.T.Helper()
@@ -877,6 +891,18 @@ func (m *MockRouterClient) SetDefaultRouteBehaviour(arg0 string) {
 func (mr *MockRouterClientMockRecorder) SetDefaultRouteBehaviour(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).SetDefaultRouteBehaviour), arg0)
+}
+
+// SetMaintainParams mocks base method.
+func (m *MockRouterClient) SetMaintainParams(arg0 bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetMaintainParams", arg0)
+}
+
+// SetMaintainParams indicates an expected call of SetMaintainParams.
+func (mr *MockRouterClientMockRecorder) SetMaintainParams(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), arg0)
 }
 
 // SetParam mocks base method.

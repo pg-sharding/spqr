@@ -6,6 +6,12 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxtest_sw DISTRIBUTION KEY id;
 
 \c regress
 
+SET __spqr__maintain_params To true;
+SET __spqr__reply_notice TO false;
+
+SHOW __spqr__maintain_params;
+SHOW __spqr__reply_notice;
+
 CREATE TABLE xxtest_sw (id int);
 
 SET application_name = 'a1';
@@ -23,6 +29,8 @@ SHOW application_name;
 COMMIT;
 
 SHOW application_name;
+
+SET __spqr__reply_notice TO true;
 
 INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
 

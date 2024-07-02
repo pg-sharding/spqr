@@ -116,10 +116,21 @@ type PsqlClient struct {
 	rh routehint.RouteHint
 
 	show_notice_messages bool
+	maintain_params      bool
 
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+// MaintainParams implements RouterClient.
+func (cl *PsqlClient) MaintainParams() bool {
+	return cl.maintain_params
+}
+
+// SetMaintainParams implements RouterClient.
+func (cl *PsqlClient) SetMaintainParams(val bool) {
+	cl.maintain_params = val
 }
 
 // SetShowNoticeMsg implements client.Client.

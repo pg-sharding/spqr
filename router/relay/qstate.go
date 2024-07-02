@@ -156,6 +156,12 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				} else {
 					rst.Client().SetShowNoticeMsg(false)
 				}
+			case session.SPQR_MAINTAIN_PARAMS:
+				if st.Value == "on" || st.Value == "true" {
+					rst.Client().SetMaintainParams(true)
+				} else {
+					rst.Client().SetMaintainParams(false)
+				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
 			}
@@ -213,6 +219,39 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			)
 
 			if rst.Client().ShowNoticeMsg() {
+				_ = rst.Client().Send(
+					&pgproto3.DataRow{
+						Values: [][]byte{
+							[]byte("true"),
+						},
+					},
+				)
+			} else {
+				_ = rst.Client().Send(
+					&pgproto3.DataRow{
+						Values: [][]byte{
+							[]byte("false"),
+						},
+					},
+				)
+			}
+
+		case session.SPQR_MAINTAIN_PARAMS:
+
+			_ = rst.Client().Send(
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("maintain params"),
+							DataTypeOID:  25,
+							DataTypeSize: -1,
+							TypeModifier: -1,
+						},
+					},
+				},
+			)
+
+			if rst.Client().MaintainParams() {
 				_ = rst.Client().Send(
 					&pgproto3.DataRow{
 						Values: [][]byte{
