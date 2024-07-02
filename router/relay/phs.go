@@ -1,10 +1,9 @@
 package relay
 
 import (
-	"fmt"
-
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
@@ -14,8 +13,11 @@ type SimpleProtoStateHandler struct {
 
 // query in commit query. maybe commit or commit `name`
 func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
+	// Virtual tx case. Do the whole logic locally
 	if !s.cmngr.ConnectionActive(rst) {
-		return fmt.Errorf("client relay has no connection to shards")
+		rst.Client().CommitActiveSet()
+		rst.SetTxStatus(txstatus.TXIDLE)
+		return nil
 	}
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
@@ -27,7 +29,14 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 	return err
 }
 
+/* TODO: proper support for rollback to savepoint */
 func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) error {
+	// Virtual tx case. Do the whole logic locally
+	if !s.cmngr.ConnectionActive(rst) {
+		rst.Client().Rollback()
+		rst.SetTxStatus(txstatus.TXIDLE)
+		return nil
+	}
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
