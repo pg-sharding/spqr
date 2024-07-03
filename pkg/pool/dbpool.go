@@ -125,7 +125,6 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	key kr.ShardKey, hosts []string) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)

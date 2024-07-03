@@ -67,6 +67,7 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -189,6 +190,7 @@ func TestFrontendXProto(t *testing.T) {
 	})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -325,6 +327,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")

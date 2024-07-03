@@ -15,3 +15,4 @@ test: error
 test: begin
 test: switch_distribution
 test: alter_distribution
+test: show_processing

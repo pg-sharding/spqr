@@ -115,9 +115,32 @@ type PsqlClient struct {
 
 	rh routehint.RouteHint
 
+	show_notice_messages bool
+	maintain_params      bool
+
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+// MaintainParams implements RouterClient.
+func (cl *PsqlClient) MaintainParams() bool {
+	return cl.maintain_params
+}
+
+// SetMaintainParams implements RouterClient.
+func (cl *PsqlClient) SetMaintainParams(val bool) {
+	cl.maintain_params = val
+}
+
+// SetShowNoticeMsg implements client.Client.
+func (cl *PsqlClient) SetShowNoticeMsg(val bool) {
+	cl.show_notice_messages = val
+}
+
+// ShowNoticeMsg implements RouterClient.
+func (cl *PsqlClient) ShowNoticeMsg() bool {
+	return cl.show_notice_messages
 }
 
 // BindParamFormatCodes implements RouterClient.
@@ -178,7 +201,7 @@ func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
 	cl.rh = rh
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool) *PsqlClient {
 	tsa := config.TargetSessionAttrsRW
 
 	// enforce default port behaviour
@@ -198,6 +221,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		tsa:        tsa,
 		defaultTsa: tsa,
 		rh:         routehint.EmptyRouteHint{},
+
+		show_notice_messages: showNoticeMessages,
 	}
 
 	return cl

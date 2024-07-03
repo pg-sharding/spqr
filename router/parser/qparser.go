@@ -144,10 +144,6 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.stmt = routerStmts
 	qp.state = ParseStateQuery{}
 
-	if err != nil {
-		return ParseStateQuery{}, comment, nil
-	}
-
 	spqrlog.Zero.Debug().Type("stmt-type", routerStmts).Msg("parsed query statements")
 	qp.state = ParseStateQuery{}
 
@@ -190,7 +186,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 			}, comment, nil
 		}
 
-		return ParseStateQuery{}, comment, nil
+		return ParseStateShowStmt{}, comment, nil
 	case *lyx.VariableSetStmt:
 		spqrlog.Zero.Debug().
 			Str("name", q.Name).

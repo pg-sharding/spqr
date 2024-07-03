@@ -170,7 +170,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn, pt, r.Config().Qr.DefaultRouteBehaviour)
+	cl := rclient.NewPsqlClient(conn, pt, r.Config().Qr.DefaultRouteBehaviour, r.Config().ShowNoticeMessages)
 
 	tlsConfig := r.tlsconfig
 	if pt == port.UnixSocketPortType {

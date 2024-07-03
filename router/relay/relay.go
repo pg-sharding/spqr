@@ -516,7 +516,9 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
 	}
-	if rst.maintain_params {
+
+	/* take care of session param if we told to */
+	if rst.Client().MaintainParams() {
 		query := rst.Cl.ConstructClientParams()
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
