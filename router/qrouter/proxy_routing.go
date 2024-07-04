@@ -134,7 +134,6 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 var ComplexQuery = fmt.Errorf("too complex query to route")
 var InformationSchemaCombinedQuery = fmt.Errorf("combined information schema and regular relation is not supported")
 var FailedToFindKeyRange = fmt.Errorf("failed to match key with ranges")
-var FailedToMatch = fmt.Errorf("failed to match query to any sharding rule")
 var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
 var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
@@ -992,7 +991,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case routingstate.MultiMatchState:
 		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
-			return routingstate.SkipRoutingState{}, FailedToMatch
+			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD) 
 		default:
 			return routingstate.MultiMatchState{}, nil
 		}

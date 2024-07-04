@@ -27,7 +27,6 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_NO_DATASHARD:        "failed to match any datashard",
 	SPQR_SKIP:                "skip executing this query, wait for next",
 	SPQR_COMPLEX_QUERY:       "ComplexQuery",
-	SPQR_FAILED_MATCH:        "FailedToMatch",
 	SPQR_SKIP_COLUMN:         "SkipColumn",
 	SPQR_MISS_SHARDING_KEY:   "ShardingKeysMissing",
 	SPQR_CROSS_SHARD_QUERY:   "CrossShardQueryUnsupported",
@@ -43,7 +42,7 @@ var existingErrorCodeMap = map[string]string{
 	SPQR_INVALID_REQUEST:     "Invalid Request",
 }
 
-var ShardingKeysRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
+var ShardingRulesRemoved = New(SPQR_INVALID_REQUEST, "sharding rules are removed from SPQR, see https://github.com/pg-sharding/spqr/blob/master/docs/Syntax.md")
 
 // GetMessageByCode returns the error message associated with the provided error code.
 // If the error code is not found in the existingErrorCodeMap, the function returns "Unexpected error".
