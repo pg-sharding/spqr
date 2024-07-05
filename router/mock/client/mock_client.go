@@ -56,6 +56,20 @@ func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryByName(
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryByName), name)
 }
 
+// PreparedStatementQueryHashByName mocks base method.
+func (m *MockPreparedStatementMapper) PreparedStatementQueryHashByName(name string) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreparedStatementQueryHashByName", name)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// PreparedStatementQueryHashByName indicates an expected call of PreparedStatementQueryHashByName.
+func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryHashByName(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryHashByName), name)
+}
+
 // StorePreparedStatement mocks base method.
 func (m *MockPreparedStatementMapper) StorePreparedStatement(name, query string) {
 	m.ctrl.T.Helper()
@@ -425,6 +439,20 @@ func (m *MockRouterClient) PreparedStatementQueryByName(name string) string {
 func (mr *MockRouterClientMockRecorder) PreparedStatementQueryByName(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryByName), name)
+}
+
+// PreparedStatementQueryHashByName mocks base method.
+func (m *MockRouterClient) PreparedStatementQueryHashByName(name string) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreparedStatementQueryHashByName", name)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// PreparedStatementQueryHashByName indicates an expected call of PreparedStatementQueryHashByName.
+func (mr *MockRouterClientMockRecorder) PreparedStatementQueryHashByName(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryHashByName), name)
 }
 
 // RLock mocks base method.

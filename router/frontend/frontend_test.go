@@ -246,6 +246,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().StorePreparedStatement("stmtcache_1", "select 'Hello, world!'").Times(1).Return()
 	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").AnyTimes().Return("select 'Hello, world!'")
+	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()

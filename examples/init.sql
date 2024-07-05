@@ -1,5 +1,8 @@
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+create distribution ds1 column types integer;
 
-CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+alter distribution ds1 attach relation pgbench_branches distribution key bid;
+alter distribution ds1 attach relation pgbench_tellers distribution key tid;
+alter distribution ds1 attach relation abalance distribution key aid;
+alter distribution ds1 attach relation pgbench_accounts distribution key aid;
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
