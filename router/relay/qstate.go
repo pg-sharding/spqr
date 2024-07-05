@@ -374,6 +374,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
+
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
 			return nil
 		} else {
@@ -383,6 +384,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
 			// do nothing
+			// wtf? TODO: test and fix
 			rst.Client().PreparedStatementQueryByName(st.Name)
 			return nil
 		} else {

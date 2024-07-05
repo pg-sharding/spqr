@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -31,6 +32,7 @@ var NotRouted = fmt.Errorf("client not routed")
 
 type PreparedStatementMapper interface {
 	PreparedStatementQueryByName(name string) string
+	PreparedStatementQueryHashByName(name string) uint64
 	StorePreparedStatement(name, query string)
 }
 
@@ -97,7 +99,8 @@ type PsqlClient struct {
 
 	r *route.Route
 
-	prepStmts map[string]string
+	prepStmts     map[string]string
+	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
 	tsa        string
@@ -215,12 +218,13 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
-		conn:       pgconn,
-		startupMsg: &pgproto3.StartupMessage{},
-		prepStmts:  map[string]string{},
-		tsa:        tsa,
-		defaultTsa: tsa,
-		rh:         routehint.EmptyRouteHint{},
+		conn:          pgconn,
+		startupMsg:    &pgproto3.StartupMessage{},
+		prepStmts:     map[string]string{},
+		prepStmtsHash: map[string]uint64{},
+		tsa:           tsa,
+		defaultTsa:    tsa,
+		rh:            routehint.EmptyRouteHint{},
 
 		show_notice_messages: showNoticeMessages,
 	}
@@ -328,7 +332,9 @@ func (cl *PsqlClient) ResetAll() {
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
+	hash := murmur3.Sum64([]byte(query))
 	cl.prepStmts[name] = query
+	cl.prepStmtsHash[name] = hash
 }
 
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
@@ -336,6 +342,10 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 		return v
 	}
 	return ""
+}
+
+func (cl *PsqlClient) PreparedStatementQueryHashByName(name string) uint64 {
+	return cl.prepStmtsHash[name]
 }
 
 func (cl *PsqlClient) ResetParam(name string) {
