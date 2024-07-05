@@ -7,18 +7,29 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-
-	"github.com/xdg-go/scram"
-	"golang.org/x/crypto/pbkdf2"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/xdg-go/scram"
+	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 )
 
+// AuthBackend authenticates a user with the backend based on the provided message type.
+//
+// Parameters:
+// - shard (conn.DBInstance): The database instance to authenticate against.
+// - berule (*config.BackendRule): The backend rule containing authentication rules.
+// - msg (pgproto3.BackendMessage): The authentication message.
+//
+// Returns:
+// - error: An error if authentication fails or an unexpected message type is received.
+//   - If the authentication method is `pgproto3.AuthenticationMD5Password`, the error message will be "auth rule not set for {shardName}-{berule.DB}-{berule.Usr}" if the rule is not found.
+//   - If the authentication method is `pgproto3.AuthenticationCleartextPassword`, the error message will be "auth rule not set for {shardName}-{berule.DB}-{berule.Usr}" if the rule is not found.
+//   - If the authentication method is `pgproto3.AuthenticationSASL`, the error message will depend on the specific error that occurs during the authentication process.
+//   - For any other authentication method, the error message will be "authBackend type {type} not supported".
 func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("shard ", spqrlog.GetPointer(shard)).
@@ -30,7 +41,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		return nil
 	case *pgproto3.AuthenticationMD5Password:
 
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -42,7 +53,10 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		if rule == nil {
 			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
 		}
-
+		username := berule.Usr
+		if rule.Usr != "" {
+			username = rule.Usr
+		}
 		var res []byte
 
 		/* password may be configured in partially-calculated
@@ -53,7 +67,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 			res = []byte(rule.Password[3:])
 		} else {
 			hash := md5.New()
-			hash.Write([]byte(rule.Password + berule.Usr))
+			hash.Write([]byte(rule.Password + username))
 			res = hash.Sum(nil)
 			res = []byte(hex.EncodeToString(res))
 		}
@@ -72,7 +86,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: "md5" + psswd})
 	case *pgproto3.AuthenticationCleartextPassword:
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -87,7 +101,7 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 
 		return shard.Send(&pgproto3.PasswordMessage{Password: rule.Password})
 	case *pgproto3.AuthenticationSASL:
-		var rule *config.AuthCfg
+		var rule *config.AuthBackendCfg
 		if berule.AuthRules == nil {
 			rule = berule.DefaultAuthRule
 		} else if _, exists := berule.AuthRules[shard.ShardName()]; exists {
@@ -95,7 +109,14 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 		} else {
 			rule = berule.DefaultAuthRule
 		}
-		clientSHA256, err := scram.SHA256.NewClient(berule.Usr, rule.Password, "")
+		if rule == nil {
+			return fmt.Errorf("auth rule not set for %s-%s-%s", shard.ShardName(), berule.DB, berule.Usr)
+		}
+		username := berule.Usr
+		if rule.Usr != "" {
+			username = rule.Usr
+		}
+		clientSHA256, err := scram.SHA256.NewClient(username, rule.Password, "")
 		if err != nil {
 			return err
 		}
@@ -154,6 +175,18 @@ func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3
 	}
 }
 
+// AuthFrontend handles authentication for the frontend based on the specified authentication method.
+//
+// Parameters:
+// - cl (client.Client): - the client interface. It should implement the `Usr`, `PasswordCT`, and `PasswordMD5` methods.
+// - rule (*config.FrontendRule): - the frontend rule configuration. It should contain the `AuthRule` field, which in turn should contain the `Method` field.
+//
+// Returns:
+// - error: An error if authentication fails. The type of error returned depends on the authentication method used.
+//   - If the authentication method is `config.AuthNotOK`, the error message will be "user {username} {database} blocked".
+//   - If the authentication method is `config.AuthClearText`, the error message will be "user {username} {database} auth failed".
+//   - If the authentication method is `config.AuthMD5`, the error message will be "[frontend_auth] route {username} {database}: md5 password mismatch".
+//   - If the authentication method is `config.AuthSCRAM`, the error message will be "error: {error_message}".
 func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 	switch rule.AuthRule.Method {
 	case config.AuthOK:
@@ -284,6 +317,92 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 		}
 		err = cl.Send(&pgproto3.AuthenticationSASLFinal{Data: []byte(finalMsg)})
 		return err
+	case config.AuthLDAP:
+		if rule.AuthRule.LDAPConfig == nil {
+			return fmt.Errorf("LDAP configuration is not set for ldap auth method")
+		}
+
+		conn, err := rule.AuthRule.LDAPConfig.ServerConn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		switch rule.AuthRule.LDAPConfig.AuthMode {
+		case config.SimpleBindMode:
+			password, err := cl.PasswordCT()
+			if err != nil {
+				return err
+			}
+
+			err = rule.AuthRule.LDAPConfig.SimpleBind(conn, cl.Usr(), password)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		case config.SearchAndBindMode:
+			err = rule.AuthRule.LDAPConfig.SearchBind(conn)
+			if err != nil {
+				return err
+			}
+
+			searchAttribute := rule.AuthRule.LDAPConfig.ModifySearchAttribute()
+			searchFilter := rule.AuthRule.LDAPConfig.ModifySearchFilter(searchAttribute, cl.Usr())
+
+			searchResult, err := rule.AuthRule.LDAPConfig.DoSearchRequest(conn, searchFilter)
+			if err != nil {
+				return err
+			}
+
+			err = rule.AuthRule.LDAPConfig.CheckSearchResult(searchResult.Entries)
+			if err != nil {
+				return err
+			}
+
+			userDN := searchResult.Entries[0].DN
+			password, err := cl.PasswordCT()
+			if err != nil {
+				return err
+			}
+
+			err = rule.AuthRule.LDAPConfig.SimpleBind(conn, userDN, password)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		default:
+			return fmt.Errorf("invalid ldap auth mode '%v'", rule.AuthRule.LDAPConfig.AuthMode)
+		}
+	case config.AuthGSS:
+		if rule.AuthRule.GssConfig == nil {
+			return fmt.Errorf("GSS configuration are not set for GSS auth method")
+		}
+		if cl.Usr() != rule.Usr {
+			return fmt.Errorf("user from client %v != %v missmatch user in config", cl.Usr(), rule.Usr)
+		}
+		b := BaseAuthModule{
+			properties: map[string]interface{}{
+				keyTabFileProperty: rule.AuthRule.GssConfig.KrbKeyTabFile,
+			},
+		}
+		kerb := NewKerberosModule(b)
+		cred, err := kerb.Process(cl)
+		if err != nil {
+			return err
+		}
+		username := cred.UserName()
+		if rule.AuthRule.GssConfig.IncludeRealm {
+			username = fmt.Sprintf("%s@%s", cred.UserName(), cred.Realm())
+		}
+		if username != cl.Usr() {
+			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v'", username, cl.Usr())
+		}
+		if rule.AuthRule.GssConfig.KrbRealm != "" && rule.AuthRule.GssConfig.KrbRealm != cred.Realm() {
+			return fmt.Errorf("GSS realm in token missmatch with realm in confing: '%v' != '%v'", rule.AuthRule.GssConfig.KrbRealm, cred.Realm())
+		}
+		return nil
 	default:
 		return fmt.Errorf("invalid auth method '%v'", rule.AuthRule.Method)
 	}

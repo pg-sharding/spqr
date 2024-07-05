@@ -7,28 +7,29 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE KEY RANGE kridi1 from 0 route to sh1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 0
+ add key range 
+---------------
+ bound -> 0
 (1 row)
 
 CREATE KEY RANGE kridi2 from 11 route to sh2 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 11
+ add key range 
+---------------
+ bound -> 11
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 DISTRIBUTION KEY i;
-                 attach table                 
-----------------------------------------------
- attached relation sshjt1 to distribution ds1
-(1 row)
+       attach table        
+---------------------------
+ relation name   -> sshjt1
+ distribution id -> ds1
+(2 rows)
 
 \c regress
 CREATE TABLE sshjt1(i int, j int);
@@ -47,14 +48,14 @@ NOTICE: send query to shard(s) : sh2
  12 | 13
 (2 rows)
 
-SELECT * FROM sshjt1 WHERE i = 12 AND  j =1;
+SELECT * FROM sshjt1 WHERE i = 12 AND j = 1;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---
 (0 rows)
 
 SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;
-ERROR:  client proccessing error: error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37, tx status IDLE
+ERROR:  client processing error: error processing query 'SELECT * FROM sshjt1 a join sshjt1 b WHERE a.i = 12 ON TRUE;': syntax error on pos 37, tx status IDLE
 SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12;
 NOTICE: send query to shard(s) : sh2
  i  | j  | i  | j  
@@ -84,9 +85,9 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
+   drop distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 DROP KEY RANGE ALL;

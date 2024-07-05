@@ -1,0 +1,58 @@
+host: 'regress_router'
+router_port: '6432'
+admin_console_port: '7432'
+grpc_api_port: '7000'
+router_mode: PROXY
+log_level: debug
+time_quantiles:
+  - 0.75
+world_shard_fallback: true
+show_notice_messages: true
+frontend_rules:
+  - db: regress
+    usr: regress
+    pool_default: true
+    pool_mode: TRANSACTION
+    auth_rule:
+      auth_method: ldap
+      ldap_config:
+        ldap_auth_mode: 'search_and_bind'
+        ldap_conn_config:
+          ldap_conn_mode: 'unencrypted'
+          scheme: 'ldap'
+          port: '389'
+        servers:
+          - 'regress_ldap_server'
+          - 'regress_ldap_server_2'
+        bind_dn: 'cn=admin,dc=example,dc=com'
+        bind_password: 'adminpassword'
+        base_dn: 'dc=example,dc=com'
+        search_filter: '(|(cn=$username)(uid=$username))'
+shards:
+  sh1:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_1:6432'
+  sh2:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    type: DATA
+    hosts:
+      - 'spqr_shard_2:6432'
+
+backend_rules:
+  - db: regress
+    usr: regress
+    pool_discard: true
+    pool_rollback: true
+    auth_rules:
+      sh1:
+        auth_method: password
+        password: 12345678
+      sh2:
+        auth_method: password
+        password: 12345678

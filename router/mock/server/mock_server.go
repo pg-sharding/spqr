@@ -66,6 +66,20 @@ func (mr *MockServerMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockServer)(nil).Cancel))
 }
 
+// DataPending mocks base method.
+func (m *MockServer) DataPending() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DataPending")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DataPending indicates an expected call of DataPending.
+func (mr *MockServerMockRecorder) DataPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockServer)(nil).DataPending))
+}
+
 // Datashards mocks base method.
 func (m *MockServer) Datashards() []shard.Shard {
 	m.ctrl.T.Helper()
@@ -81,11 +95,11 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+func (m *MockServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(shard.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(*shard.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -110,7 +124,7 @@ func (mr *MockServerMockRecorder) Name() *gomock.Call {
 }
 
 // PrepareStatement mocks base method.
-func (m *MockServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (m *MockServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "PrepareStatement", hash, rd)
 }
@@ -134,6 +148,18 @@ func (m *MockServer) Receive() (pgproto3.BackendMessage, error) {
 func (mr *MockServerMockRecorder) Receive() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive))
+}
+
+// RequestData mocks base method.
+func (m *MockServer) RequestData() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RequestData")
+}
+
+// RequestData indicates an expected call of RequestData.
+func (mr *MockServerMockRecorder) RequestData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockServer)(nil).RequestData))
 }
 
 // Reset mocks base method.

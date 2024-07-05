@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -31,6 +32,7 @@ var NotRouted = fmt.Errorf("client not routed")
 
 type PreparedStatementMapper interface {
 	PreparedStatementQueryByName(name string) string
+	PreparedStatementQueryHashByName(name string) uint64
 	StorePreparedStatement(name, query string)
 }
 
@@ -43,7 +45,8 @@ type RouterClient interface {
 
 	/* only call this function while holding lock */
 	Server() server.Server
-	/* functions for operation with cleint's server */
+	/* functions for operation with client's server */
+
 	ServerAcquireUse()
 	ServerReleaseUse()
 
@@ -59,6 +62,7 @@ type RouterClient interface {
 	Rule() *config.FrontendRule
 
 	/* Client target-session-attrs policy */
+
 	GetTsa() string
 	SetTsa(string)
 
@@ -95,7 +99,8 @@ type PsqlClient struct {
 
 	r *route.Route
 
-	prepStmts map[string]string
+	prepStmts     map[string]string
+	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
 	tsa        string
@@ -113,9 +118,32 @@ type PsqlClient struct {
 
 	rh routehint.RouteHint
 
+	show_notice_messages bool
+	maintain_params      bool
+
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+// MaintainParams implements RouterClient.
+func (cl *PsqlClient) MaintainParams() bool {
+	return cl.maintain_params
+}
+
+// SetMaintainParams implements RouterClient.
+func (cl *PsqlClient) SetMaintainParams(val bool) {
+	cl.maintain_params = val
+}
+
+// SetShowNoticeMsg implements client.Client.
+func (cl *PsqlClient) SetShowNoticeMsg(val bool) {
+	cl.show_notice_messages = val
+}
+
+// ShowNoticeMsg implements RouterClient.
+func (cl *PsqlClient) ShowNoticeMsg() bool {
+	return cl.show_notice_messages
 }
 
 // BindParamFormatCodes implements RouterClient.
@@ -176,7 +204,7 @@ func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
 	cl.rh = rh
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool) *PsqlClient {
 	tsa := config.TargetSessionAttrsRW
 
 	// enforce default port behaviour
@@ -190,12 +218,15 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
-		conn:       pgconn,
-		startupMsg: &pgproto3.StartupMessage{},
-		prepStmts:  map[string]string{},
-		tsa:        tsa,
-		defaultTsa: tsa,
-		rh:         routehint.EmptyRouteHint{},
+		conn:          pgconn,
+		startupMsg:    &pgproto3.StartupMessage{},
+		prepStmts:     map[string]string{},
+		prepStmtsHash: map[string]uint64{},
+		tsa:           tsa,
+		defaultTsa:    tsa,
+		rh:            routehint.EmptyRouteHint{},
+
+		show_notice_messages: showNoticeMessages,
 	}
 
 	return cl
@@ -301,7 +332,9 @@ func (cl *PsqlClient) ResetAll() {
 }
 
 func (cl *PsqlClient) StorePreparedStatement(name, query string) {
+	hash := murmur3.Sum64([]byte(query))
 	cl.prepStmts[name] = query
+	cl.prepStmtsHash[name] = hash
 }
 
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
@@ -309,6 +342,10 @@ func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 		return v
 	}
 	return ""
+}
+
+func (cl *PsqlClient) PreparedStatementQueryHashByName(name string) uint64 {
+	return cl.prepStmtsHash[name]
 }
 
 func (cl *PsqlClient) ResetParam(name string) {

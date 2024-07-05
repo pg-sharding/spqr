@@ -67,6 +67,7 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -189,6 +190,7 @@ func TestFrontendXProto(t *testing.T) {
 	})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -244,15 +246,19 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().StorePreparedStatement("stmtcache_1", "select 'Hello, world!'").Times(1).Return()
 	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").AnyTimes().Return("select 'Hello, world!'")
+	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
 	res := false
+	rd := &shard.PreparedStatementDescriptor{}
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, shard.PreparedStatementDescriptor{} }).AnyTimes()
+	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
 	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
 		res = true
+		rd.ParamDesc = &pgproto3.ParameterDescription{}
+		rd.RowDesc = &pgproto3.RowDescription{}
 	}).AnyTimes()
 	/* */
 
@@ -322,6 +328,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
+	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")

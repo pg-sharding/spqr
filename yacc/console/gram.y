@@ -137,6 +137,7 @@ func randomHex(n int) (string, error) {
 
 %token<str> START STOP TRACE MESSAGES
 
+%token<str> TASK GROUP
 
 %token<str> VARCHAR INTEGER INT TYPES
 
@@ -364,7 +365,7 @@ show_statement_type:
 	IDENT
 	{
 		switch v := strings.ToLower(string($1)); v {
-		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr:
+		case DatabasesStr, RoutersStr, PoolsStr, ShardsStr, BackendConnectionsStr, KeyRangesStr, ShardingRules, ClientsStr, StatusStr, DistributionsStr, VersionStr, RelationsStr, TaskGroupStr, PreparedStatementsStr:
 			$$ = v
 		default:
 			$$ = UnsupportedStr
@@ -413,6 +414,10 @@ drop_stmt:
 	| DROP SHARD any_id
 	{
 		$$ = &Drop{Element: &ShardSelector{ID: $3}}
+	}
+	| DROP TASK GROUP
+	{
+		$$ = &Drop{Element: &TaskGroupSelector{}}
 	}
 
 add_stmt:

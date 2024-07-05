@@ -77,6 +77,26 @@ type CoordShardInfo struct {
 	router     string
 }
 
+// RequestData implements shard.Shardinfo.
+func (c *CoordShardInfo) RequestData() {
+	panic("unimplemented")
+}
+
+// DataPending implements shard.Shardinfo.
+func (c *CoordShardInfo) DataPending() bool {
+	panic("unimplemented")
+}
+
+// Pid implements shard.Shardinfo.
+func (c *CoordShardInfo) Pid() uint32 {
+	return 0
+}
+
+// ListPreparedStatements implements shard.Shardinfo.
+func (c *CoordShardInfo) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
+	return nil
+}
+
 func NewCoordShardInfo(conn *routerproto.BackendConnectionsInfo, router string) shard.Shardinfo {
 	return &CoordShardInfo{
 		underlying: conn,

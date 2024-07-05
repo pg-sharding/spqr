@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestShardPoolConnectionAcquirePut tests the acquisition and putting of connections in the ShardPool.
+// It verifies that the ShardPool correctly acquires a connection and puts it back after use.
 func TestShardPoolConnectionAcquirePut(t *testing.T) {
 
 	assert := assert.New(t)
@@ -58,6 +60,9 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	assert.Equal(1, shp.IdleConnectionCount())
 }
 
+// TestShardPoolConnectionAcquireDiscard tests the acquisition and discarding of connections in the ShardPool.
+// It verifies that the ShardPool correctly acquires and discards connections, and updates the connection counts accordingly.
+// This test uses a mock DBInstance and a mock Shard for testing purposes.
 func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	assert := assert.New(t)
@@ -98,6 +103,8 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	assert.Equal(0, shp.IdleConnectionCount())
 }
 
+// TestShardPoolAllocFnError tests the behavior of the ShardPool when the allocation function returns an error.
+// It verifies that the ShardPool correctly handles the error and updates its internal state accordingly.
 func TestShardPoolAllocFnError(t *testing.T) {
 
 	assert := assert.New(t)
@@ -126,6 +133,11 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	assert.Equal(1, shp.QueueResidualSize())
 }
 
+// TestShardPoolConnectionAcquireLimit tests the connection acquisition limit of the ShardPool.
+// It creates a pool of shard connections and simulates multiple goroutines trying to acquire and release connections.
+// The test ensures that the connection acquisition limit is respected and that connections are properly released.
+// It uses the assert package for assertions and the gomock package for creating mock objects.
+// The test expects the connection limit to be set to 10 and checks that at least 15% of the connection acquisition attempts are successful.
 func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	connLimit := 10

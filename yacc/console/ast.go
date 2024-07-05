@@ -136,20 +136,13 @@ type ShardSelector struct {
 	ID string
 }
 
-type DropRoutersAll struct{}
-
-func (*DropRoutersAll) iStatement() {}
+type TaskGroupSelector struct{}
 
 func (*KeyRangeSelector) iDrop()     {}
 func (*ShardingRuleSelector) iDrop() {}
 func (*DistributionSelector) iDrop() {}
 func (*ShardSelector) iDrop()        {}
-
-const (
-	EntityRouters      = "ROUTERS"
-	EntityKeyRanges    = "KEY_RANGES"
-	EntityShardingRule = "SHARDING_RULE"
-)
+func (*TaskGroupSelector) iDrop()    {}
 
 type Lock struct {
 	KeyRangeID string
@@ -231,7 +224,7 @@ func (*DetachRelation) iStatement()         {}
 func (*DetachRelation) iAlter()             {}
 func (*DetachRelation) iAlterDistribution() {}
 
-// The frollowing constants represent SHOW statements.
+// The following constants represent SHOW statements.
 const (
 	DatabasesStr          = "databases"
 	DistributionsStr      = "distributions"
@@ -245,6 +238,8 @@ const (
 	StatusStr             = "status"
 	VersionStr            = "version"
 	RelationsStr          = "relations"
+	TaskGroupStr          = "task_group"
+	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
 )
 
@@ -263,6 +258,7 @@ func (*KeyRangeSelector) iStatement()       {}
 func (*ShardingRuleSelector) iStatement()   {}
 func (*DistributionSelector) iStatement()   {}
 func (*ShardSelector) iStatement()          {}
+func (*TaskGroupSelector) iStatement()      {}
 func (*Lock) iStatement()                   {}
 func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}

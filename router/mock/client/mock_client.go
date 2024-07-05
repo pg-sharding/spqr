@@ -56,6 +56,20 @@ func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryByName(
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryByName), name)
 }
 
+// PreparedStatementQueryHashByName mocks base method.
+func (m *MockPreparedStatementMapper) PreparedStatementQueryHashByName(name string) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreparedStatementQueryHashByName", name)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// PreparedStatementQueryHashByName indicates an expected call of PreparedStatementQueryHashByName.
+func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryHashByName(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryHashByName), name)
+}
+
 // StorePreparedStatement mocks base method.
 func (m *MockPreparedStatementMapper) StorePreparedStatement(name, query string) {
 	m.ctrl.T.Helper()
@@ -355,6 +369,20 @@ func (mr *MockRouterClientMockRecorder) Init(cfg interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockRouterClient)(nil).Init), cfg)
 }
 
+// MaintainParams mocks base method.
+func (m *MockRouterClient) MaintainParams() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MaintainParams")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// MaintainParams indicates an expected call of MaintainParams.
+func (mr *MockRouterClientMockRecorder) MaintainParams() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MaintainParams", reflect.TypeOf((*MockRouterClient)(nil).MaintainParams))
+}
+
 // Params mocks base method.
 func (m *MockRouterClient) Params() map[string]string {
 	m.ctrl.T.Helper()
@@ -411,6 +439,20 @@ func (m *MockRouterClient) PreparedStatementQueryByName(name string) string {
 func (mr *MockRouterClientMockRecorder) PreparedStatementQueryByName(name interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryByName), name)
+}
+
+// PreparedStatementQueryHashByName mocks base method.
+func (m *MockRouterClient) PreparedStatementQueryHashByName(name string) uint64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreparedStatementQueryHashByName", name)
+	ret0, _ := ret[0].(uint64)
+	return ret0
+}
+
+// PreparedStatementQueryHashByName indicates an expected call of PreparedStatementQueryHashByName.
+func (mr *MockRouterClientMockRecorder) PreparedStatementQueryHashByName(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryHashByName), name)
 }
 
 // RLock mocks base method.
@@ -879,6 +921,18 @@ func (mr *MockRouterClientMockRecorder) SetDefaultRouteBehaviour(arg0 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).SetDefaultRouteBehaviour), arg0)
 }
 
+// SetMaintainParams mocks base method.
+func (m *MockRouterClient) SetMaintainParams(arg0 bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetMaintainParams", arg0)
+}
+
+// SetMaintainParams indicates an expected call of SetMaintainParams.
+func (mr *MockRouterClientMockRecorder) SetMaintainParams(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), arg0)
+}
+
 // SetParam mocks base method.
 func (m *MockRouterClient) SetParam(arg0, arg1 string) {
 	m.ctrl.T.Helper()
@@ -927,6 +981,18 @@ func (mr *MockRouterClientMockRecorder) SetShardingKey(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockRouterClient)(nil).SetShardingKey), arg0)
 }
 
+// SetShowNoticeMsg mocks base method.
+func (m *MockRouterClient) SetShowNoticeMsg(arg0 bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetShowNoticeMsg", arg0)
+}
+
+// SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
+func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), arg0)
+}
+
 // SetTsa mocks base method.
 func (m *MockRouterClient) SetTsa(arg0 string) {
 	m.ctrl.T.Helper()
@@ -965,6 +1031,20 @@ func (m *MockRouterClient) Shards() []shard.Shard {
 func (mr *MockRouterClientMockRecorder) Shards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Shards", reflect.TypeOf((*MockRouterClient)(nil).Shards))
+}
+
+// ShowNoticeMsg mocks base method.
+func (m *MockRouterClient) ShowNoticeMsg() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowNoticeMsg")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ShowNoticeMsg indicates an expected call of ShowNoticeMsg.
+func (mr *MockRouterClientMockRecorder) ShowNoticeMsg() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).ShowNoticeMsg))
 }
 
 // Shutdown mocks base method.

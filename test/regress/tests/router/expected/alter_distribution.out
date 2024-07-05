@@ -7,52 +7,54 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE DISTRIBUTION ds2;
-         add distribution         
-----------------------------------
- created distribution with id ds2
+    add distribution    
+------------------------
+ distribution id -> ds2
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 1
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 11
+ add key range 
+---------------
+ bound -> 11
 (1 row)
 
 CREATE KEY RANGE krid3 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds2;
-          add key range          
----------------------------------
- created key range with bound 11
+ add key range 
+---------------
+ bound -> 11
 (1 row)
 
 CREATE KEY RANGE FROM 1 ROUTE TO sh2 FOR DISTRIBUTION ds2;
-         add key range          
---------------------------------
- created key range with bound 1
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-               attach table               
-------------------------------------------
- attached relation xx to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> xx
+ distribution id -> ds1
+(2 rows)
 
 ALTER DISTRIBUTION ds2 ATTACH RELATION yy DISTRIBUTION KEY w_id;
-               attach table               
-------------------------------------------
- attached relation yy to distribution ds2
-(1 row)
+      attach table      
+------------------------
+ relation name   -> yy
+ distribution id -> ds2
+(2 rows)
 
 ALTER DISTRIBUTION ds3 ATTACH RELATION xx DISTRIBUTION KEY w_id;
 ERROR:  no such distribution.
@@ -93,22 +95,25 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
 ERROR:  relation "yy" is already attached.
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
-              detach relation               
---------------------------------------------
- detached relation yy from distribution ds2
-(1 row)
+    detach relation     
+------------------------
+ relation name   -> yy
+ distribution id -> ds2
+(2 rows)
 
 ALTER DISTRIBUTION ds2 DETACH RELATION yy;
-              detach relation               
---------------------------------------------
- detached relation yy from distribution ds2
-(1 row)
+    detach relation     
+------------------------
+ relation name   -> yy
+ distribution id -> ds2
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION yy DISTRIBUTION KEY w_id;
-               attach table               
-------------------------------------------
- attached relation yy to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> yy
+ distribution id -> ds1
+(2 rows)
 
 \c regress
 SELECT * FROM yy WHERE w_id=5;
@@ -130,10 +135,10 @@ NOTICE: send query to shard(s) : sh1,sh2
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
- drop distribution ds2
+   drop distribution    
+------------------------
+ distribution id -> ds1
+ distribution id -> ds2
 (2 rows)
 
 DROP KEY RANGE ALL;

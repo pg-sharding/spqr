@@ -102,16 +102,16 @@ func NewDistribution(id string, coltypes []string) *Distribution {
 }
 
 type Task struct {
-	ShardFromId string
-	ShardToId   string
-	KrIdFrom    string
-	KrIdTo      string
-	Bound       []byte
-	KrIdTemp    string
-	State       int
+	ShardFromId string `json:"shard_from_id"`
+	ShardToId   string `json:"shard_to_id"`
+	KrIdFrom    string `json:"kr_id_from"`
+	KrIdTo      string `json:"kr_id_to"`
+	Bound       []byte `json:"bound"`
+	KrIdTemp    string `json:"kr_id_temp"`
+	State       int    `json:"state"`
 }
 
 type TaskGroup struct {
-	Tasks    []*Task
-	JoinType int
+	Tasks    []*Task `json:"tasks"`
+	JoinType int     `json:"join_type"`
 }

@@ -50,6 +50,7 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 				AuthRule:              dfr.AuthRule,
 				PoolMode:              dfr.PoolMode,
 				PoolPreparedStatement: dfr.PoolPreparedStatement,
+				SearchPath:            dfr.SearchPath,
 			}
 		},
 	}

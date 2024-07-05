@@ -23,6 +23,15 @@ type ShardServer struct {
 	mu sync.RWMutex
 }
 
+// DataPending implements Server.
+func (srv *ShardServer) DataPending() bool {
+	return srv.shard.DataPending()
+}
+
+func (srv *ShardServer) RequestData() {
+	srv.shard.RequestData()
+}
+
 func NewShardServer(spool pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool: spool,
@@ -31,8 +40,9 @@ func NewShardServer(spool pool.DBPool) *ShardServer {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
-	return srv.shard.HasPrepareStatement(hash)
+func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
+	b, rd := srv.shard.HasPrepareStatement(hash)
+	return b, rd
 }
 
 // TODO : unit tests
@@ -46,7 +56,7 @@ func (srv *ShardServer) Name() string {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {
+func (srv *ShardServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
 	srv.shard.PrepareStatement(hash, rd)
 }
 

@@ -36,7 +36,7 @@ Feature: Coordinator test
   Scenario: Add/Remove distribution works
     When I run SQL on host "coordinator"
     """
-    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer; 
+    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
     CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
@@ -75,7 +75,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer; 
+    CREATE DISTRIBUTION ds1_test COLUMN TYPES integer;
     CREATE KEY RANGE krid11 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1_test;
     CREATE KEY RANGE krid22 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1_test;
     ALTER DISTRIBUTION ds1_test ATTACH RELATION test1 DISTRIBUTION KEY id;
@@ -122,7 +122,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    router r2-regress_router:7000
+    router -\\u003e r2-regress_router:7000
     """
 
   Scenario: Register 2 routers with same address fails
@@ -141,7 +141,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router r1-regress_router:7000
+    router -\\u003e r1-regress_router:7000
     """
 
   Scenario: Register 2 routers with same id fails
@@ -160,7 +160,7 @@ Feature: Coordinator test
     """
     Then SQL result should match regexp
     """
-    router r1-regress_router:7000
+    router -\\u003e r1-regress_router:7000
     """
 
   Scenario: Register router with invalid address fails
@@ -180,7 +180,7 @@ Feature: Coordinator test
     Then SQL result should match json_exactly
     """
     [{
-      "show routers":"router r1-regress_router:7000",
+      "show routers":"router -\u003e r1-regress_router:7000",
       "status":"OPENED"
     }]
     """
@@ -465,10 +465,10 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "datashard with ID sh1"
+        "listing data shards": "shard id -\u003e sh1"
       },
       {
-        "listing data shards": "datashard with ID sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """
@@ -486,7 +486,7 @@ Feature: Coordinator test
     """
     [
       {
-        "listing data shards": "datashard with ID sh2"
+        "listing data shards": "shard id -\u003e sh2"
       }
     ]
     """
@@ -503,7 +503,7 @@ Feature: Coordinator test
     Then command return code should be "0"
     And SQL result should match regexp
     """
-    router r1-regress_router:7000
+    router -\\u003e r1-regress_router:7000
     """
 
     #
@@ -583,7 +583,7 @@ Feature: Coordinator test
 
     When I run SQL on host "coordinator"
     """
-    CREATE DISTRIBUTION ds1 COLUMN TYPES integer; 
+    CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
     CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh2 FOR DISTRIBUTION ds1;
     ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
@@ -643,4 +643,67 @@ Feature: Coordinator test
         "Distribution key": "(\"id\", identity)"
       }
     ]
+    """
+
+  Scenario: Dropping move task group works
+    When I record in qdb move task group
+    """
+    {
+      "tasks":
+      [
+        {
+          "shard_from_id": "sh_from",
+          "shard_to_id":   "sh_to",
+          "kr_id_from":    "kr_from",
+          "kr_id_to":      "kr_to",
+          "bound":         "MQ==",
+          "state":         1
+        },
+        {
+          "shard_from_id": "sh_from",
+          "shard_to_id":   "sh_to",
+          "kr_id_from":    "kr_from",
+          "kr_id_to":      "kr_to",
+          "bound":         "MTA=",
+          "state":         0
+        }
+      ]
+    }
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+      {
+        "State":                    "SPLIT",
+        "Bound":                    "1",
+        "Source key range ID":      "kr_from",
+        "Destination key range ID": "kr_to"
+      },
+      {
+        "State":                    "PLANNED",
+        "Bound":                    "10",
+        "Source key range ID":      "kr_from",
+        "Destination key range ID": "kr_to"
+      }
+    ]
+    """
+    When I run SQL on host "coordinator"
+    """
+    DROP TASK GROUP
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator"
+    """
+    SHOW task_group
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    []
     """

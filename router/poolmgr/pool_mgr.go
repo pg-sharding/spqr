@@ -18,6 +18,12 @@ type ConnectionKeeper interface {
 	txstatus.TxStatusMgr
 	ActiveShards() []kr.ShardKey
 	ActiveShardsReset()
+
+	SyncCount() int64
+
+	DataPending() bool
+	RequestData()
+
 	Client() client.RouterClient
 }
 
@@ -40,7 +46,6 @@ func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKe
 }
 
 type TxConnManager struct {
-	ReplyNotice bool
 }
 
 // TODO : unit tests
@@ -89,9 +94,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 }
 
 func NewTxConnManager(rcfg *config.Router) *TxConnManager {
-	return &TxConnManager{
-		ReplyNotice: rcfg.ShowNoticeMessages,
-	}
+	return &TxConnManager{}
 }
 
 // TODO : unit tests
@@ -108,7 +111,7 @@ func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
 
 // TODO : unit tests
 func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if t.ReplyNotice {
+	if client.ShowNoticeMsg() {
 		if err := replyShardMatches(client, sh); err != nil {
 			return err
 		}
@@ -139,7 +142,13 @@ func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Int("shards", len(rst.ActiveShards())).
+		Int64("sync-count", rst.SyncCount()).
+		Bool("data pending", rst.DataPending()).
 		Msg("client validate rerouting of TX")
+
+	if rst.SyncCount() != 0 || rst.DataPending() {
+		return false
+	}
 
 	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
@@ -160,7 +169,6 @@ func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
 }
 
 type SessConnManager struct {
-	ReplyNotice bool
 }
 
 // TODO : unit tests
@@ -196,7 +204,7 @@ func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
 
 // TODO : unit tests
 func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if s.ReplyNotice {
+	if client.ShowNoticeMsg() {
 		if err := replyShardMatches(client, sh); err != nil {
 			return err
 		}
@@ -225,9 +233,7 @@ func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 }
 
 func NewSessConnManager(rcfg *config.Router) *SessConnManager {
-	return &SessConnManager{
-		ReplyNotice: rcfg.ShowNoticeMessages,
-	}
+	return &SessConnManager{}
 }
 
 // TODO : unit tests

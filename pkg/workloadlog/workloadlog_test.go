@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestEncodeMsg tests the EncodeMessage function.
 func TestEncodeMsg(t *testing.T) {
 	assert := assert.New(t)
 	tm := TimedMessage{
@@ -22,6 +23,7 @@ func TestEncodeMsg(t *testing.T) {
 	assert.Equal(24, len(byt))
 }
 
+// TestFlushErrorOnUnexistingDir tests the behavior of the flush function when trying to flush data to a non-existing directory.
 func TestFlushErrorOnUnexistingDir(t *testing.T) {
 	assert := assert.New(t)
 
@@ -30,6 +32,8 @@ func TestFlushErrorOnUnexistingDir(t *testing.T) {
 	assert.Error(err)
 }
 
+// TestStartLoggingForAll tests the StartLogging method of the Logger struct
+// when the mode is set to All.
 func TestStartLoggingForAll(t *testing.T) {
 	assert := assert.New(t)
 
@@ -39,6 +43,8 @@ func TestStartLoggingForAll(t *testing.T) {
 	assert.Equal(All, logger.GetMode())
 }
 
+// TestStartLoggingForClients tests the StartLogging method of the Logger struct
+// to ensure that it correctly starts logging for clients and matches the client IDs.
 func TestStartLoggingForClients(t *testing.T) {
 	assert := assert.New(t)
 
@@ -53,6 +59,7 @@ func TestStartLoggingForClients(t *testing.T) {
 	assert.False(logger.ClientMatches(145))
 }
 
+// TestStopLogging tests the StopLogging function of the Logger type.
 func TestStopLogging(t *testing.T) {
 	assert := assert.New(t)
 
@@ -67,6 +74,7 @@ func TestStopLogging(t *testing.T) {
 	assert.Equal(None, logger.GetMode())
 }
 
+// TestStopLoggingWhenNotLogging tests the behavior of the StopLogging method when the logger is not logging.
 func TestStopLoggingWhenNotLogging(t *testing.T) {
 	assert := assert.New(t)
 
@@ -77,6 +85,8 @@ func TestStopLoggingWhenNotLogging(t *testing.T) {
 	assert.Error(err)
 }
 
+// TestStopLoggingClearsClientList tests the behavior of the StopLogging method in the WorkloadLogger struct.
+// It verifies that calling StopLogging clears the client list in the logger.
 func TestStopLoggingClearsClientList(t *testing.T) {
 	assert := assert.New(t)
 

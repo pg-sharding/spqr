@@ -26,6 +26,11 @@ type CachedTSAChecker struct {
 	cache map[string]CacheEntry
 }
 
+// NewTSAChecker creates a new instance of TSAChecker.
+// It returns a TSAChecker interface that can be used to perform TSA checks.
+//
+// Returns:
+//   - TSAChecker: A new instance of TSAChecker.
 func NewTSAChecker() TSAChecker {
 	return &CachedTSAChecker{
 		mu:    sync.Mutex{},
@@ -33,6 +38,19 @@ func NewTSAChecker() TSAChecker {
 	}
 }
 
+// CheckTSA checks the TSA for a given shard and returns the result, comment, and error.
+// If the TSA check result is already cached and not expired, it returns the cached result.
+// Otherwise, it performs the TSA check and updates the cache with the new result.
+// The function returns a boolean indicating whether the shard is in a read-write state,
+// a string describing the reason for the state, and an error if any occurred during the process.
+//
+// Parameters:
+//   - sh: The shard to check the TSA for.
+//
+// Returns:
+//   - bool: A boolean indicating whether the shard is in a read-write state.
+//   - string: A string describing the reason for the state.
+//   - error: An error if any occurred during the process.
 func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (bool, string, error) {
 	ctsa.mu.Lock()
 	defer ctsa.mu.Unlock()
@@ -56,6 +74,20 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (bool, string, error) {
 
 /* target session attr utility */
 
+// CheckTSA checks if the given shard is in a read-only state.
+// It sends a query to the shard to retrieve the value of the "transaction_read_only" setting.
+// If the query is successful and the value is "off", it means the shard is in a read-write state.
+// If the value is not "off", it means the shard is in a read-only state.
+// The function returns a boolean indicating whether the shard is in a read-write state,
+// a string describing the reason for the state, and an error if any occurred during the process.
+//
+// Parameters:
+//   - sh: The shard to check the TSA for.
+//
+// Returns:
+//   - bool: A boolean indicating whether the shard is in a read-write state.
+//   - string: A string describing the reason for the state.
+//   - error: An error if any occurred during the process.
 func CheckTSA(sh shard.Shard) (bool, string, error) {
 	if err := sh.Send(&pgproto3.Query{
 		String: "SHOW transaction_read_only",

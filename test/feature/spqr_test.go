@@ -695,6 +695,31 @@ func (tctx *testContext) stepIRunCommandOnHost(host string, body *godog.DocStrin
 	return err
 }
 
+func (tctx *testContext) stepIRunCommandsOnHost(host string, body *godog.DocString) error {
+	commands := strings.Split(strings.TrimSpace(body.Content), "\n")
+	var lastOutput string
+	var lastRetCode int
+	for _, command := range commands {
+		cmd := strings.TrimSpace(command)
+		var err error
+		lastRetCode, lastOutput, err = tctx.composer.RunCommand(host, cmd, commandExecutionTimeout)
+		if lastRetCode != 0 {
+			log.Println("Get non zero code from command")
+			log.Println(cmd)
+			log.Println(lastRetCode)
+			log.Println(lastOutput)
+		}
+		if err != nil {
+			tctx.commandRetcode = lastRetCode
+			tctx.commandOutput = lastOutput
+			return err
+		}
+	}
+	tctx.commandRetcode = lastRetCode
+	tctx.commandOutput = lastOutput
+	return nil
+}
+
 func (tctx *testContext) stepIRunCommandOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	cmd := strings.TrimSpace(body.Content)
 	var err error
@@ -871,6 +896,17 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 	return tctx.qdb.RecordKeyRangeMove(context.TODO(), &m)
 }
 
+func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+	var taskGroup qdb.TaskGroup
+	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
+		return err
+	}
+
+	return tctx.qdb.WriteTaskGroup(context.TODO(), &taskGroup)
+}
+
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
 	tx, err := tctx.qdb.GetTransferTx(context.TODO(), key)
 	if err != nil {
@@ -986,6 +1022,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 
 	// command and SQL execution
 	s.Step(`^I run command on host "([^"]*)"$`, tctx.stepIRunCommandOnHost)
+	s.Step(`^I run commands on host "([^"]*)"$`, tctx.stepIRunCommandsOnHost)
 	s.Step(`^I run command on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunCommandOnHostWithTimeout)
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
@@ -997,6 +1034,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^I record in qdb data transfer transaction with name "([^"]*)"$`, tctx.stepRecordQDBTx)
 	s.Step(`^qdb should not contain relation "([^"]*)"$`, tctx.stepQDBShouldNotContainRelation)
 	s.Step(`^I record in qdb key range move$`, tctx.stepRecordQDBKRMove)
+	s.Step(`^I record in qdb move task group$`, tctx.stepRecordQDBTaskGroup)
 	s.Step(`^qdb should contain transaction "([^"]*)"$`, tctx.stepQDBShouldContainTx)
 	s.Step(`^qdb should not contain transaction "([^"]*)"$`, tctx.stepQDBShouldNotContainTx)
 	s.Step(`^qdb should not contain key range moves$`, tctx.stepQDBShouldNotContainKRMoves)

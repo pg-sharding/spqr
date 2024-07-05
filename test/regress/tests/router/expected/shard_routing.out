@@ -7,52 +7,55 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
-         add distribution         
-----------------------------------
- created distribution with id ds1
+    add distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-         add key range          
---------------------------------
- created key range with bound 1
+ add key range 
+---------------
+ bound -> 1
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 11 ROUTE TO sh1 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 11
+ add key range 
+---------------
+ bound -> 11
 (1 row)
 
 CREATE KEY RANGE krid3 FROM 21 ROUTE TO sh2 FOR DISTRIBUTION ds1;
-          add key range          
----------------------------------
- created key range with bound 21
+ add key range 
+---------------
+ bound -> 21
 (1 row)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY w_id;
-               attach table               
-------------------------------------------
- attached relation xx to distribution ds1
-(1 row)
+      attach table      
+------------------------
+ relation name   -> xx
+ distribution id -> ds1
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxerr DISTRIBUTION KEY id;
-                attach table                 
----------------------------------------------
- attached relation xxerr to distribution ds1
-(1 row)
+       attach table       
+--------------------------
+ relation name   -> xxerr
+ distribution id -> ds1
+(2 rows)
 
 ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
-                attach table                 
----------------------------------------------
- attached relation xxtt1 to distribution ds1
-(1 row)
+       attach table       
+--------------------------
+ relation name   -> xxtt1
+ distribution id -> ds1
+(2 rows)
 
 \c regress
 CREATE TABLE xx (w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 CREATE TABLE xxerr (i int);
-ERROR:  client proccessing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
+ERROR:  client processing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
 NOTICE: send query to shard(s) : sh1,sh2
 INSERT INTO xx (w_id) VALUES (1);
@@ -291,9 +294,9 @@ ERROR:  table "xxerr" does not exist
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 DROP DISTRIBUTION ALL CASCADE;
-   drop distribution   
------------------------
- drop distribution ds1
+   drop distribution    
+------------------------
+ distribution id -> ds1
 (1 row)
 
 DROP KEY RANGE ALL;

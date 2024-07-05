@@ -171,7 +171,6 @@ func (q *MemQDB) CreateKeyRange(_ context.Context, keyRange *KeyRange) error {
 		NewUpdateCommand(q.Freq, keyRange.KeyRangeID, false))
 }
 
-// TODO : unit tests
 func (q *MemQDB) GetKeyRange(_ context.Context, id string) (*KeyRange, error) {
 	spqrlog.Zero.Debug().Str("key-range", id).Msg("memqdb: get key range")
 	q.mu.RLock()

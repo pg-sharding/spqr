@@ -47,11 +47,21 @@ type MultiShardServer struct {
 	copyBuf []*pgproto3.CopyOutResponse
 }
 
-func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, shard.PreparedStatementDescriptor) {
+// RequestData implements Server.
+func (m *MultiShardServer) RequestData() {
+	panic("unimplemented")
+}
+
+// DataPending implements Server.
+func (m *MultiShardServer) DataPending() bool {
+	panic("unimplemented")
+}
+
+func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	panic("implement me")
 }
 
-func (m *MultiShardServer) PrepareStatement(hash uint64, rd shard.PreparedStatementDescriptor) {}
+func (m *MultiShardServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {}
 
 func (m *MultiShardServer) Reset() error {
 	return nil
