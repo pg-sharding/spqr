@@ -54,6 +54,20 @@ func (mr *MockShardinfoMockRecorder) DB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShardinfo)(nil).DB))
 }
 
+// DataPending mocks base method.
+func (m *MockShardinfo) DataPending() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DataPending")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DataPending indicates an expected call of DataPending.
+func (mr *MockShardinfoMockRecorder) DataPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShardinfo)(nil).DataPending))
+}
+
 // ID mocks base method.
 func (m *MockShardinfo) ID() uint {
 	m.ctrl.T.Helper()
@@ -108,6 +122,18 @@ func (m *MockShardinfo) Pid() uint32 {
 func (mr *MockShardinfoMockRecorder) Pid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardinfo)(nil).Pid))
+}
+
+// RequestData mocks base method.
+func (m *MockShardinfo) RequestData() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RequestData")
+}
+
+// RequestData indicates an expected call of RequestData.
+func (mr *MockShardinfoMockRecorder) RequestData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockShardinfo)(nil).RequestData))
 }
 
 // ShardKeyName mocks base method.
@@ -217,6 +243,20 @@ func (mr *MockCoordShardinfoMockRecorder) DB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockCoordShardinfo)(nil).DB))
 }
 
+// DataPending mocks base method.
+func (m *MockCoordShardinfo) DataPending() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DataPending")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DataPending indicates an expected call of DataPending.
+func (mr *MockCoordShardinfoMockRecorder) DataPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockCoordShardinfo)(nil).DataPending))
+}
+
 // ID mocks base method.
 func (m *MockCoordShardinfo) ID() uint {
 	m.ctrl.T.Helper()
@@ -271,6 +311,18 @@ func (m *MockCoordShardinfo) Pid() uint32 {
 func (mr *MockCoordShardinfoMockRecorder) Pid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockCoordShardinfo)(nil).Pid))
+}
+
+// RequestData mocks base method.
+func (m *MockCoordShardinfo) RequestData() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RequestData")
+}
+
+// RequestData indicates an expected call of RequestData.
+func (mr *MockCoordShardinfoMockRecorder) RequestData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockCoordShardinfo)(nil).RequestData))
 }
 
 // Router mocks base method.
@@ -528,6 +580,20 @@ func (mr *MockShardMockRecorder) DB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShard)(nil).DB))
 }
 
+// DataPending mocks base method.
+func (m *MockShard) DataPending() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DataPending")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// DataPending indicates an expected call of DataPending.
+func (mr *MockShardMockRecorder) DataPending() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShard)(nil).DataPending))
+}
+
 // HasPrepareStatement mocks base method.
 func (m *MockShard) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
@@ -666,6 +732,18 @@ func (m *MockShard) Receive() (pgproto3.BackendMessage, error) {
 func (mr *MockShardMockRecorder) Receive() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockShard)(nil).Receive))
+}
+
+// RequestData mocks base method.
+func (m *MockShard) RequestData() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RequestData")
+}
+
+// RequestData indicates an expected call of RequestData.
+func (mr *MockShardMockRecorder) RequestData() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockShard)(nil).RequestData))
 }
 
 // SHKey mocks base method.
