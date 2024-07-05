@@ -263,7 +263,7 @@ var runCmd = &cobra.Command{
 					if cpuProfile {
 						// write profile
 						pprof.StopCPUProfile()
-						spqrlog.Zero.Info().Msg("writing cpu prof")
+						spqrlog.Zero.Info().Str("fname", pprofCpuFile.Name()).Msg("writing cpu prof")
 
 						if err := pprofCpuFile.Close(); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")
@@ -271,7 +271,7 @@ var runCmd = &cobra.Command{
 					}
 					if memProfile {
 						// write profile
-						spqrlog.Zero.Info().Msg("writing mem prof")
+						spqrlog.Zero.Info().Str("fname", pprofMemFile.Name()).Msg("writing mem prof")
 
 						if err := pprof.WriteHeapProfile(pprofMemFile); err != nil {
 							spqrlog.Zero.Error().Err(err).Msg("")

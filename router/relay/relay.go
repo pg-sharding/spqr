@@ -23,7 +23,6 @@ import (
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
-	"github.com/spaolacci/murmur3"
 	"golang.org/x/exp/slices"
 )
 
@@ -106,6 +105,11 @@ func InternalBufferedMessage(q pgproto3.FrontendMessage) BufferedMessage {
 	}
 }
 
+type PortalDesc struct {
+	rd     *pgproto3.RowDescription
+	nodata *pgproto3.NoData
+}
+
 type RelayStateImpl struct {
 	txStatus   txstatus.TXStatus
 	CopyActive bool
@@ -137,7 +141,8 @@ type RelayStateImpl struct {
 
 	execute func() error
 
-	saveBind *pgproto3.Bind
+	saveBind        *pgproto3.Bind
+	savedPortalDesc map[string]PortalDesc
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -162,6 +167,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		maintain_params:    rcfg.MaintainParams,
 		pgprotoDebug:       rcfg.PgprotoDebug,
 		execute:            nil,
+		savedPortalDesc:    map[string]PortalDesc{},
 	}
 }
 
@@ -994,7 +1000,7 @@ var MultiShardPrepStmtDeployError = fmt.Errorf("multishard prepared statement de
 // TODO : unit tests
 func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	query := rst.Client().PreparedStatementQueryByName(qname)
-	hash := murmur3.Sum64([]byte(query))
+	hash := rst.Client().PreparedStatementQueryHashByName(qname)
 
 	if len(rst.Client().Server().Datashards()) != 1 {
 		return nil, nil, MultiShardPrepStmtDeployError
@@ -1043,7 +1049,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
 
-			hash := murmur3.Sum64([]byte(q.Query))
+			rst.Client().StorePreparedStatement(q.Name, q.Query)
+
+			hash := rst.Client().PreparedStatementQueryHashByName(q.Name)
+
 			spqrlog.Zero.Debug().
 				Str("name", q.Name).
 				Str("query", q.Query).
@@ -1056,7 +1065,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					return err
 				}
 			}
-			rst.Client().StorePreparedStatement(q.Name, q.Query)
 
 			fin, err := rst.PrepareRelayStepOnAnyRoute(cmngr)
 			if err != nil {
@@ -1113,7 +1121,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
 				rst.lastBindName = q.PreparedStatement
-				hash := murmur3.Sum64([]byte(rst.lastBindQuery))
+				hash := rst.Client().PreparedStatementQueryHashByName(q.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
 				rst.saveBind.ParameterFormatCodes = q.ParameterFormatCodes
@@ -1184,63 +1192,96 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					Str("last-bind-name", rst.lastBindName).
 					Msg("Describe portal")
 
-				err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
-				if err != nil {
-					return err
-				}
-
-				if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
-					return err
-				}
-
-				// do not send saved bind twice
-				if rst.saveBind == nil {
-					// wtf?
-					return fmt.Errorf("failed to describe statement, stmt was never deployed")
-				}
-
-				_, _, err = rst.RelayStep(rst.saveBind, false, false)
-				if err != nil {
-					return err
-				}
-
-				_, _, err = rst.RelayStep(q, false, false)
-				if err != nil {
-					return err
-				}
-
-				_, _, err = rst.RelayStep(&pgproto3.Close{
-					ObjectType: 'P',
-				}, false, false)
-				if err != nil {
-					return err
-				}
-
-				_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
-				if err != nil {
-					return err
-				}
-
-				for _, msg := range unreplied {
-					spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
-					// https://www.postgresql.org/docs/current/protocol-flow.html
-					switch qq := msg.(type) {
-					case *pgproto3.RowDescription:
+				if cachedPd, ok := rst.savedPortalDesc[rst.lastBindName]; ok {
+					if cachedPd.rd != nil {
 						// send to the client
-						if err := rst.Client().Send(qq); err != nil {
+						if err := rst.Client().Send(cachedPd.rd); err != nil {
 							return err
 						}
-					case *pgproto3.NoData:
-						// send to the client
-						if err := rst.Client().Send(qq); err != nil {
-							return err
-						}
-					default:
-						// error out? panic? protoc violation?
-						// no, just chill
 					}
-				}
+					if cachedPd.nodata != nil {
+						// send to the client
+						if err := rst.Client().Send(cachedPd.nodata); err != nil {
+							return err
+						}
+					}
+				} else {
 
+					cachedPd = PortalDesc{}
+
+					err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
+					if err != nil {
+						return err
+					}
+
+					if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
+						return err
+					}
+
+					// do not send saved bind twice
+					if rst.saveBind == nil {
+						// wtf?
+						return fmt.Errorf("failed to describe statement, stmt was never deployed")
+					}
+
+					_, _, err = rst.RelayStep(rst.saveBind, false, false)
+					if err != nil {
+						return err
+					}
+
+					_, _, err = rst.RelayStep(q, false, false)
+					if err != nil {
+						return err
+					}
+
+					_, _, err = rst.RelayStep(&pgproto3.Close{
+						ObjectType: 'P',
+					}, false, false)
+					if err != nil {
+						return err
+					}
+
+					_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+					if err != nil {
+						return err
+					}
+
+					for _, msg := range unreplied {
+						spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
+						// https://www.postgresql.org/docs/current/protocol-flow.html
+						switch qq := msg.(type) {
+						case *pgproto3.RowDescription:
+
+							cachedPd.rd = &pgproto3.RowDescription{}
+
+							cachedPd.rd.Fields = make([]pgproto3.FieldDescription, len(qq.Fields))
+
+							for i := 0; i < len(qq.Fields); i++ {
+								s := make([]byte, len(qq.Fields[i].Name))
+								copy(s, qq.Fields[i].Name)
+
+								cachedPd.rd.Fields[i] = qq.Fields[i]
+								cachedPd.rd.Fields[i].Name = s
+							}
+							// send to the client
+							if err := rst.Client().Send(qq); err != nil {
+								return err
+							}
+						case *pgproto3.NoData:
+							cpQ := *qq
+							cachedPd.nodata = &cpQ
+							// send to the client
+							if err := rst.Client().Send(qq); err != nil {
+								return err
+							}
+						default:
+							// error out? panic? protoc violation?
+							// no, just chill
+						}
+					}
+
+					rst.savedPortalDesc[rst.lastBindName] = cachedPd
+				}
 			} else {
 				spqrlog.Zero.Debug().
 					Uint("client", rst.Client().ID()).
