@@ -1229,13 +1229,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 						return err
 					}
 
-
 					_, _, err = rst.RelayStep(q, false, false)
 					if err != nil {
 						return err
 					}
-
-          /* Here we close portal, so other clients can reuse it */
+					
+					/* Here we close portal, so other clients can reuse it */
 					_, _, err = rst.RelayStep(&pgproto3.Close{
 						ObjectType: 'P',
 					}, false, false)
