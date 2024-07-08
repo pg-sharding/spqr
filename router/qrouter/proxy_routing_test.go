@@ -1649,12 +1649,18 @@ func TestHashRouting(t *testing.T) {
 		qdb.NewDistribution(distribution1,
 			[]string{qdb.ColumnTypeVarcharHashed})))
 
-	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
-		ShardID:        "sh1",
-		DistributionId: distribution1,
-		KeyRangeID:     "id1",
-		LowerBound:     [][]byte{[]byte("1")},
-	})
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution1,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(1),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB(),
+	)
 
 	assert.NoError(err)
 
@@ -1699,7 +1705,7 @@ func TestHashRouting(t *testing.T) {
 					Matchedkr: &kr.KeyRange{
 						ID: "id1",
 						LowerBound: kr.KeyRangeBound{
-							uint64(49),
+							uint64(1),
 						},
 						ShardID:      "sh1",
 						Distribution: "ds1",
