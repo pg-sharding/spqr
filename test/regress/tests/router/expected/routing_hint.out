@@ -36,11 +36,11 @@ CREATE TABLE test(id int, age int);
 NOTICE: send query to shard(s) : sh1,sh2
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
-NOTICE: send query to shard(s) : sh2
+NOTICE: send query to shard(s) : sh1
 DROP TABLE test;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
