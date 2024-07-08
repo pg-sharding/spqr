@@ -158,6 +158,7 @@ mockgen:
 	mockgen -source=./router/poolmgr/pool_mgr.go -destination=./router/mock/poolmgr/mock_pool_mgr.go -package=mock
 	mockgen -source=./router/qrouter/qrouter.go -destination=./router/mock/qrouter/mock_qrouter.go -package=mock
 	mockgen -source=./pkg/clientinteractor/interactor.go -destination=pkg/mock/clientinteractor/mock_interactor.go -package=mock
+	mockgen -source=qdb/qdb.go -destination=qdb/mock/qdb.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen
