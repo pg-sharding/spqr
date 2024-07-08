@@ -1142,6 +1142,15 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 	}
 
 	r := route.NewRoute(nil, nil, nil)
+
+	params := map[string]string{
+		"client_encoding": "UTF8",
+		"DateStyle":       "ISO",
+	}
+	for k, v := range params {
+		cl.SetParam(k, v)
+	}
+
 	r.SetParams(cl.Params())
 	if err := cl.Auth(r); err != nil {
 		return nil, err
