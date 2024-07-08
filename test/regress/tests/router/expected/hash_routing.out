@@ -7,7 +7,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 -- SETUP
-CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+CREATE DISTRIBUTION ds1 COLUMN TYPES varchar hash;
     add distribution    
 ------------------------
  distribution id -> ds1
@@ -42,7 +42,7 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (col1) VALUES ('test');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (col1) VALUES ('众口难调');
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (col1) VALUES ('The quick brown fox jumps over the lazy dog');
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES ('Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.');

@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pg-sharding/spqr/pkg/conn"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 
 	"github.com/pg-sharding/spqr/pkg/decode"
@@ -116,14 +117,16 @@ func getconn() (*pgproto3.Frontend, error) {
 // TODO : unit tests
 func DumpKeyRangesPsql() error {
 	return dumpPsql("SHOW key_ranges;", func(v *pgproto3.DataRow) (string, error) {
-		l := string(v.Values[2])
+		l := v.Values[2]
 		id := string(v.Values[0])
 		shard := string(v.Values[1])
 
 		return decode.KeyRange(
-			&protos.KeyRangeInfo{
-				KeyRange: &protos.KeyRange{LowerBound: l},
-				ShardId:  shard, Krid: id}), nil
+			&kr.KeyRange{
+				LowerBound: []interface{}{l},
+				ID:         id,
+				ShardID:    shard,
+			}), nil
 	})
 }
 
@@ -171,13 +174,21 @@ func DumpKeyRanges() error {
 	}
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
+	dCl := protos.NewDistributionServiceClient(cc)
 	if keys, err := rCl.ListAllKeyRanges(context.Background(), &protos.ListAllKeyRangesRequest{}); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint rules")
 	} else {
 		for _, krg := range keys.KeyRangesInfo {
-			fmt.Println(decode.KeyRange(krg))
+			ds, err := dCl.GetDistribution(context.Background(), &protos.GetDistributionRequest{
+				Id: krg.DistributionId,
+			})
+			if err != nil {
+				return err
+			}
+			krCurr := kr.KeyRangeFromProto(krg, ds.Distribution.ColumnTypes)
+			fmt.Println(decode.KeyRange(krCurr))
 		}
 	}
 

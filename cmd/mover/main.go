@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
@@ -103,10 +104,10 @@ FROM information_schema.tables;
 		// TODO: support multi-column move in SPQR2
 		if nextKeyRange == nil {
 			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s returning *) to stdout", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound)
+				rel.DistributionKey[0].Column, keyRange.SendRaw()[0])
 		} else {
 			qry = fmt.Sprintf("copy (delete from %s WHERE %s >= %s and %s < %s returning *) to stdout", rel.Name,
-				rel.DistributionKey[0].Column, keyRange.LowerBound, rel.DistributionKey[0].Column, nextKeyRange.LowerBound)
+				rel.DistributionKey[0].Column, keyRange.SendRaw()[0], rel.DistributionKey[0].Column, nextKeyRange.SendRaw()[0])
 		}
 
 		spqrlog.Zero.Debug().
@@ -132,6 +133,7 @@ FROM information_schema.tables;
 		spqrlog.Zero.Debug().Msg("copy cmd executed")
 	}
 
+	/* TODO: handle errors here */
 	_ = txTo.Commit(ctx)
 	_ = txFrom.Commit(ctx)
 	return nil
@@ -165,7 +167,14 @@ func main() {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
-	keyRange := kr.KeyRangeFromDB(qdbKr)
+
+	ds, err := db.GetDistribution(ctx, qdbKr.DistributionId)
+	if err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return
+	}
+
+	keyRange := kr.KeyRangeFromDB(qdbKr, ds.ColTypes)
 
 	krs, err := db.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
@@ -176,9 +185,10 @@ func main() {
 	var nextKeyRange *kr.KeyRange
 
 	for _, currkr := range krs {
-		if kr.CmpRangesLess(keyRange.LowerBound, currkr.LowerBound) {
-			if nextKeyRange == nil || kr.CmpRangesLess(currkr.LowerBound, nextKeyRange.LowerBound) {
-				nextKeyRange = kr.KeyRangeFromDB(currkr)
+		typedKr := kr.KeyRangeFromDB(currkr, ds.ColTypes)
+		if kr.CmpRangesLess(keyRange.LowerBound, typedKr.LowerBound, ds.ColTypes) {
+			if nextKeyRange == nil || kr.CmpRangesLess(typedKr.LowerBound, nextKeyRange.LowerBound, ds.ColTypes) {
+				nextKeyRange = typedKr
 			}
 		}
 	}

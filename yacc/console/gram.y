@@ -5,6 +5,7 @@ package spqrparser
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/binary"
 	"strings"
 	"strconv"
 )
@@ -41,6 +42,10 @@ func randomHex(n int) (string, error) {
 	kill                   *Kill
 	lock                   *Lock
 	unlock                 *Unlock
+
+
+	krbound                *KeyRangeBound
+
 
 	ds                     *DistributionDefinition
 	kr                     *KeyRangeDefinition
@@ -106,6 +111,11 @@ func randomHex(n int) (string, error) {
 %token<str> SCONST
 
 %token<uinteger> ICONST
+
+
+%type<bytes> key_range_bound_elem
+
+%type<krbound>  key_range_bound
 
 // ';'
 %token<str> TSEMICOLON
@@ -592,6 +602,8 @@ col_types_list:
 col_types_elem:
 	VARCHAR {
 		$$ = "varchar"
+	} | VARCHAR HASH {
+		$$ = "varchar hashed"
 	} | INTEGER {
 		$$ = "integer"
 	} | INT {
@@ -674,49 +686,52 @@ distribution_membership:
         $$ = $3
     }
 
+key_range_bound_elem:
+	any_val {
+		$$ = []byte($1)
+	}
+	| any_uint {
+		buf := make([]byte, 8)
+		binary.PutVarint(buf, int64($1))
+		$$ = buf
+	}
+
+key_range_bound:
+	key_range_bound_elem { 
+		$$ = &KeyRangeBound{
+			Pivots: [][]byte{
+				$1,
+			},
+		}
+	} 
+	| key_range_bound TCOMMA key_range_bound_elem {
+		$$ = &KeyRangeBound{
+			Pivots: append($1.Pivots, $3),
+		}
+	}
+
+
 key_range_define_stmt:
-	KEY RANGE any_id FROM any_val ROUTE TO any_id distribution_membership
+	KEY RANGE any_id FROM key_range_bound ROUTE TO any_id distribution_membership
 	{
 		$$ = &KeyRangeDefinition{
 			KeyRangeID: $3,
-			LowerBound: []byte($5),
+			LowerBound: $5,
 			ShardID: $8,
 			Distribution: $9,
 		}
 	}
-	| KEY RANGE any_id FROM any_uint ROUTE TO any_id distribution_membership
-	{
-		$$ = &KeyRangeDefinition{
-			KeyRangeID: $3,
-			LowerBound: []byte(strconv.FormatUint(uint64($5), 10)),
-			ShardID: $8,
-			Distribution: $9,
-		}
-	}
-	| KEY RANGE FROM any_val ROUTE TO any_id distribution_membership
+	| KEY RANGE FROM key_range_bound ROUTE TO any_id distribution_membership
 	{
 		str, err := randomHex(6)
 		if err != nil {
 			panic(err)
 		}
 		$$ = &KeyRangeDefinition{
-			LowerBound: []byte($4),
-			Distribution: $6,
+			LowerBound: $4,
 			ShardID: $7,
-			KeyRangeID: "kr"+str,
-		}
-	}
-	| KEY RANGE FROM any_uint ROUTE TO any_id distribution_membership
-	{
-		str, err := randomHex(6)
-		if err != nil {
-			panic(err)
-		}
-		$$ = &KeyRangeDefinition{
-			LowerBound: []byte(strconv.FormatUint(uint64($4), 10)),
-			ShardID: $7,
-			KeyRangeID: "kr"+str,
 			Distribution: $8,
+			KeyRangeID: "kr"+str,
 		}
 	}
 
@@ -771,9 +786,9 @@ distribution_select_stmt:
 	}
 
 split_key_range_stmt:
-	SPLIT key_range_stmt FROM any_id BY any_val
+	SPLIT key_range_stmt FROM any_id BY key_range_bound
 	{
-		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: []byte($6)}
+		$$ = &SplitKeyRange{KeyRangeID: $2.KeyRangeID, KeyRangeFromID: $4, Border: $6}
 	}
 
 kill_stmt:

@@ -179,13 +179,13 @@ Feature: Move test
       {
       "Key range ID":"krid3",
       "Distribution ID":"ds2",
-      "Lower bound":"a",
+      "Lower bound":"'a'",
       "Shard ID":"sh2"
       },
       {
       "Key range ID":"krid4",
       "Distribution ID":"ds2",
-      "Lower bound":"aa",
+      "Lower bound":"'aa'",
       "Shard ID":"sh2"
       }
     ]

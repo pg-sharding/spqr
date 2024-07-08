@@ -1,10 +1,11 @@
 package hashfunction
 
 import (
+	"encoding/binary"
 	"fmt"
-	"strconv"
 
 	"github.com/go-faster/city"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/spaolacci/murmur3"
 )
 
@@ -29,18 +30,70 @@ var (
 //   - hf: The hash function to apply.
 //
 // Returns:
-//   - []byte: The hashed byte slice.
+//   - []interface: The hashed byte slice.
 //   - error: An error if any error occurs during the process.
-func ApplyHashFunction(inp []byte, hf HashFunctionType) ([]byte, error) {
+func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (interface{}, error) {
 	switch hf {
 	case HashFunctionIdent:
 		return inp, nil
 	case HashFunctionMurmur:
-		h := murmur3.Sum32(inp)
-		return []byte(strconv.FormatUint(uint64(h), 10)), nil
+		switch ctype {
+		case qdb.ColumnTypeInteger:
+			buf := make([]byte, 8)
+			binary.PutVarint(buf, inp.(int64))
+			h := murmur3.Sum32(buf)
+			return uint64(h), nil
+
+		case qdb.ColumnTypeUinteger:
+			buf := make([]byte, 8)
+			binary.PutUvarint(buf, inp.(uint64))
+			h := murmur3.Sum32(buf)
+			return uint64(h), nil
+		case qdb.ColumnTypeVarcharHashed:
+			switch v := inp.(type) {
+			case []byte:
+				h := murmur3.Sum32(v)
+
+				return uint64(h), nil
+			case string:
+				h := murmur3.Sum32([]byte(v))
+
+				return uint64(h), nil
+			default:
+				return nil, errNoSuchHashFunction
+			}
+		default:
+			return nil, errNoSuchHashFunction
+		}
 	case HashFunctionCity:
-		h := city.Hash32(inp)
-		return []byte(strconv.FormatUint(uint64(h), 10)), nil
+		switch ctype {
+		case qdb.ColumnTypeInteger:
+			buf := make([]byte, 8)
+			binary.PutVarint(buf, inp.(int64))
+			h := city.Hash32(buf)
+			return uint64(h), nil
+
+		case qdb.ColumnTypeUinteger:
+			buf := make([]byte, 8)
+			binary.PutUvarint(buf, inp.(uint64))
+			h := city.Hash32(buf)
+			return uint64(h), nil
+		case qdb.ColumnTypeVarcharHashed:
+			switch v := inp.(type) {
+			case []byte:
+				h := city.Hash32(v)
+
+				return uint64(h), nil
+			case string:
+				h := city.Hash32([]byte(v))
+
+				return uint64(h), nil
+			default:
+				return nil, errNoSuchHashFunction
+			}
+		default:
+			return nil, errNoSuchHashFunction
+		}
 	default:
 		return nil, errNoSuchHashFunction
 	}
