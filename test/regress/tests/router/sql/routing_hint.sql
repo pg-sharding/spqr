@@ -9,8 +9,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 
 CREATE TABLE test(id int, age int);
 -- TODO: specify distribution as well as sharding_key
-INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
-INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000*/;
+INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
+INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__distribution: ds1  */;
+INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 
 DROP TABLE test;
 
