@@ -2638,6 +2638,8 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{String: "begin"},
+				&pgproto3.Query{String: "insert into t (id) values(1022)"},
 
 				&pgproto3.Parse{
 					Name:  "stmtcache_ft_1",
@@ -2657,8 +2659,25 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 				},
 				&pgproto3.Execute{},
 				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "rollback"},
 			},
 			Response: []pgproto3.BackendMessage{
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("INSERT 0 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
 
 				&pgproto3.ParseComplete{},
 
@@ -2688,6 +2707,14 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 
 				&pgproto3.CommandComplete{
 					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
 				},
 
 				&pgproto3.ReadyForQuery{
