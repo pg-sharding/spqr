@@ -71,7 +71,7 @@ Feature: spqrdump test
 
     When I run command on host "router"
     """
-    /spqr/spqrdump dump -e regress_router:7000
+    /spqr/spqr-dump dump -e regress_router:7000
     """
     Then command return code should be "0"
     And command output should match regexp

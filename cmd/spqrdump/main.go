@@ -25,7 +25,7 @@ func Dial(addr string) (*grpc.ClientConn, error) {
 }
 
 var rootCmd = &cobra.Command{
-	Use: "spqrdump -e localhost:7003",
+	Use: "spqr-dump -e localhost:7003",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -260,7 +260,7 @@ var dump = &cobra.Command{
 		}
 		spqrlog.Zero.Debug().
 			Str("endpoint", endpoint).
-			Msg("dialing spqrdump on")
+			Msg("dialing spqr-dump on")
 
 		switch proto {
 		case "grpc":
