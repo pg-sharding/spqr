@@ -10,8 +10,7 @@ test: with_tables
 test: single_shard_joins
 test: multishard
 test: error
-# TODO: fix this
-# test: routing_hint
+test: routing_hint
 test: begin
 test: switch_distribution
 test: alter_distribution
