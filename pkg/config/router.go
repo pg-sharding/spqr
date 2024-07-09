@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -90,6 +91,7 @@ type BackendRule struct {
 	PoolDefault       bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 	ConnectionLimit   int                        `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
 	ConnectionRetries int                        `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
+	ConnectionTimeout time.Duration              `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
 }
 
 type FrontendRule struct {

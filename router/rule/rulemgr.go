@@ -62,11 +62,13 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 				return nil
 			}
 			return &config.BackendRule{
-				Usr:             key.Usr(),
-				DB:              key.DB(),
-				AuthRules:       dbe.AuthRules,
-				DefaultAuthRule: dbe.DefaultAuthRule,
-				ConnectionLimit: dbe.ConnectionLimit,
+				Usr:               key.Usr(),
+				DB:                key.DB(),
+				AuthRules:         dbe.AuthRules,
+				DefaultAuthRule:   dbe.DefaultAuthRule,
+				ConnectionLimit:   dbe.ConnectionLimit,
+				ConnectionRetries: dbe.ConnectionRetries,
+				ConnectionTimeout: dbe.ConnectionTimeout,
 			}
 		},
 	}
@@ -136,11 +138,13 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 				return nil
 			}
 			return &config.BackendRule{
-				Usr:             key.Usr(),
-				DB:              key.DB(),
-				AuthRules:       dbe.AuthRules,
-				DefaultAuthRule: dbe.DefaultAuthRule,
-				ConnectionLimit: dbe.ConnectionLimit,
+				Usr:               key.Usr(),
+				DB:                key.DB(),
+				AuthRules:         dbe.AuthRules,
+				DefaultAuthRule:   dbe.DefaultAuthRule,
+				ConnectionLimit:   dbe.ConnectionLimit,
+				ConnectionRetries: dbe.ConnectionRetries,
+				ConnectionTimeout: dbe.ConnectionTimeout,
 			}
 		},
 	}
