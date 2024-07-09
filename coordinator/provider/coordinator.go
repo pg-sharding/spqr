@@ -1212,6 +1212,8 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 			Msg("received message")
 
 		switch v := msg.(type) {
+		case *pgproto3.Terminate:
+			return nil
 		case *pgproto3.Query:
 			tstmt, err := spqrparser.Parse(v.String)
 			if err != nil {
