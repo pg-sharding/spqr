@@ -334,7 +334,13 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 		if err != nil {
 			return nil, err
 		}
-		pgi, err := conn.NewInstanceConn(host, shardKey.Name, tlsconfig)
+
+		connTimeout := defaultInstanceConnectionTimeout
+		if rule.ConnectionTimeout != 0 {
+			connTimeout = rule.ConnectionTimeout
+		}
+
+		pgi, err := conn.NewInstanceConn(host, shardKey.Name, tlsconfig, connTimeout)
 		if err != nil {
 			return nil, err
 		}

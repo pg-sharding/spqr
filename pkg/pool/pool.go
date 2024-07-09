@@ -1,6 +1,8 @@
 package pool
 
 import (
+	"time"
+
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -9,6 +11,7 @@ import (
 const (
 	defaultInstanceConnectionLimit   = 50
 	defaultInstanceConnectionRetries = 10
+	defaultInstanceConnectionTimeout = time.Second
 )
 
 type ConnectionKepper interface {
