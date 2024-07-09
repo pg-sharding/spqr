@@ -160,8 +160,8 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 //
 // Return:
 // - (DBInstance, error): The newly created instance connection and any error that occurred.
-func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstance, error) {
-	netconn, err := net.DialTimeout("tcp", host, 1*time.Second)
+func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout time.Duration) (DBInstance, error) {
+	netconn, err := net.DialTimeout("tcp", host, timout)
 	if err != nil {
 		return nil, err
 	}

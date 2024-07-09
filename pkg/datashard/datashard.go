@@ -3,6 +3,7 @@ package datashard
 import (
 	"crypto/tls"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -149,7 +150,7 @@ func (sh *Conn) TxServed() int64 {
 // Returns:
 // - error: An error if the cancel operation fails.
 func (sh *Conn) Cancel() error {
-	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), sh.dedicated.ShardName(), nil /* no tls for cancel */)
+	pgiTmp, err := conn.NewInstanceConn(sh.dedicated.Hostname(), sh.dedicated.ShardName(), nil /* no tls for cancel */, 1*time.Second)
 	if err != nil {
 		return err
 	}
