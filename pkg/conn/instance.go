@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -47,7 +48,6 @@ type PostgreSQLInstance struct {
 
 	tlsconfig *tls.Config
 }
-
 
 // SetStatus sets the status of the PostgreSQLInstance.
 //
@@ -161,7 +161,7 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 // Return:
 // - (DBInstance, error): The newly created instance connection and any error that occurred.
 func NewInstanceConn(host string, shard string, tlsconfig *tls.Config) (DBInstance, error) {
-	netconn, err := net.Dial("tcp", host)
+	netconn, err := net.DialTimeout("tcp", host, 1*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,6 @@ func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	pgi.frontend.Send(csm)
 	return pgi.frontend.Flush()
 }
-
 
 // Tls returns the TLS configuration of the PostgreSQLInstance.
 //
