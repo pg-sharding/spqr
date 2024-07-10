@@ -27,6 +27,8 @@ type InstancePoolImpl struct {
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
 
+	shuffleHosts bool
+
 	cacheTSAchecks map[TsaKey]bool
 
 	checker tsa.TSAChecker
@@ -224,12 +226,14 @@ func (s *InstancePoolImpl) Connection(
 		}
 	}
 
-	rand.Shuffle(len(posCache), func(i, j int) {
-		posCache[i], posCache[j] = posCache[j], posCache[i]
-	})
-	rand.Shuffle(len(negCache), func(i, j int) {
-		negCache[i], negCache[j] = negCache[j], negCache[i]
-	})
+	if s.shuffleHosts {
+		rand.Shuffle(len(posCache), func(i, j int) {
+			posCache[i], posCache[j] = posCache[j], posCache[i]
+		})
+		rand.Shuffle(len(negCache), func(i, j int) {
+			negCache[i], negCache[j] = negCache[j], negCache[i]
+		})
+	}
 
 	hostOrder = append(posCache, negCache...)
 
@@ -425,15 +429,17 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 	return &InstancePoolImpl{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
+		shuffleHosts:   true,
 		cacheTSAchecks: map[TsaKey]bool{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
 
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool) DBPool {
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, shuffleHosts bool) DBPool {
 	return &InstancePoolImpl{
 		pool:           mp,
 		shardMapping:   mapping,
+		shuffleHosts:   shuffleHosts,
 		cacheTSAchecks: map[TsaKey]bool{},
 		checker:        tsa.NewTSAChecker(),
 	}
