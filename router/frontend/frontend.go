@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/router/client"
+	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/relay"
@@ -92,7 +93,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		}
 
 		spqrlog.Zero.Debug().
-			Uint("client", spqrlog.GetPointer(rst.Client())).
+			Uint("client", rst.Client().ID()).
 			Msg("client connection synced")
 		return nil
 	case *pgproto3.Parse:
@@ -150,17 +151,17 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog, qp parser.Parser) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Uint("client", spqrlog.GetPointer(cl)).
+		Uint("client", cl.ID()).
 		Msg("process frontend for route")
 
 	if rcfg.PgprotoDebug {
 		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	}
-	rst := relay.NewRelayState(qr, cl, cmngr, rcfg)
+	rst := relay.NewRelayState(qr, cl, cmngr, rcfg, qp)
 
 	defer rst.Close()
 

@@ -15,6 +15,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/frontend"
+	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/qrouter"
@@ -35,6 +36,7 @@ type RouterInstance interface {
 type InstanceImpl struct {
 	RuleRouter rulerouter.RuleRouter
 	Qrouter    qrouter.QueryRouter
+	Qp         parser.Parser
 	AdmConsole console.Console
 	Mgr        meta.EntityMgr
 	Writer     workloadlog.WorkloadLog
@@ -141,9 +143,12 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		return nil, err
 	}
 
+	qp := parser.NewSharedParser()
+
 	r := &InstanceImpl{
 		RuleRouter: rr,
 		Qrouter:    qr,
+		Qp:         qp,
 		AdmConsole: localConsole,
 		Mgr:        lc,
 		stchan:     stchan,
@@ -189,7 +194,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	return frontend.Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer)
+	return frontend.Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer, r.Qp)
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {

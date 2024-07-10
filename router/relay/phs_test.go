@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/stretchr/testify/assert"
 
@@ -23,7 +24,7 @@ func TestTxSimpleCommit(t *testing.T) {
 	cl := mockcl.NewMockRouterClient(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
-	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{})
+	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{}, parser.NewQParser())
 
 	ph := relay.NewSimpleProtoStateHandler(cmngr)
 
@@ -45,7 +46,7 @@ func TestTxSimpleRollback(t *testing.T) {
 	cl := mockcl.NewMockRouterClient(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
-	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{})
+	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{}, parser.NewQParser())
 
 	ph := relay.NewSimpleProtoStateHandler(cmngr)
 

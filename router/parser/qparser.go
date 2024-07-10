@@ -100,6 +100,8 @@ type ParseStateExplain struct {
 	Query lyx.Node
 }
 
+var _ Parser = &QParser{}
+
 // TODO : unit tests
 func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	qp.query = query
@@ -246,4 +248,8 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	}
 
 	return ParseStateQuery{}, comment, nil
+}
+
+func NewQParser() Parser {
+	return &QParser{}
 }

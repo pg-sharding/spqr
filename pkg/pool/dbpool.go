@@ -355,14 +355,14 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
 		spqrlog.Zero.Error().
-			Uint("shard", spqrlog.GetPointer(sh)).
+			Uint("shard", sh.ID()).
 			Int64("sync", sh.Sync()).
 			Msg("discarding unsync connection")
 		return s.pool.Discard(sh)
 	}
 	if sh.TxStatus() != txstatus.TXIDLE {
 		spqrlog.Zero.Error().
-			Uint("shard", spqrlog.GetPointer(sh)).
+			Uint("shard", sh.ID()).
 			Str("txstatus", sh.TxStatus().String()).
 			Msg("discarding non-idle connection")
 		return s.pool.Discard(sh)
