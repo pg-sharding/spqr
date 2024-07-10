@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"net"
 	"time"
 
@@ -42,6 +43,14 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
+
+const greeting = `
+		SPQR coordinator admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+`
 
 type grpcConnectionIterator struct {
 	*qdbCoordinator
@@ -1194,6 +1203,37 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 	if cl.CancelMsg() != nil {
 		// TODO: cancel client here
 		return nil
+	}
+
+	msgs := []pgproto3.BackendMessage{
+		&pgproto3.AuthenticationOk{},
+	}
+
+	params := []string{"client_encoding", "standard_conforming_strings"}
+	for _, p := range params {
+		if v, ok := cl.Params()[p]; ok {
+			msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
+		}
+	}
+
+	msgs = append(msgs, []pgproto3.BackendMessage{
+		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
+		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
+		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
+		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
+		&pgproto3.NoticeResponse{
+			Message: greeting,
+		},
+		&pgproto3.ReadyForQuery{
+			TxStatus: byte(txstatus.TXIDLE),
+		},
+	}...)
+
+	for _, msg := range msgs {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
 	}
 
 	ci := grpcConnectionIterator{qdbCoordinator: qc}
