@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -32,6 +33,11 @@ type InstancePoolImpl struct {
 	cacheTSAchecks map[TsaKey]bool
 
 	checker tsa.TSAChecker
+}
+
+// SetShuffleHosts implements DBPool.
+func (s *InstancePoolImpl) SetShuffleHosts(val bool) {
+	s.shuffleHosts = val
 }
 
 var _ DBPool = &InstancePoolImpl{}
@@ -435,12 +441,12 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 	}
 }
 
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, shuffleHosts bool) DBPool {
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, shuffleHosts bool, tsaRecheckDuration time.Duration) DBPool {
 	return &InstancePoolImpl{
 		pool:           mp,
 		shardMapping:   mapping,
 		shuffleHosts:   shuffleHosts,
 		cacheTSAchecks: map[TsaKey]bool{},
-		checker:        tsa.NewTSAChecker(),
+		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }

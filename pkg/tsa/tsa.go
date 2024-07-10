@@ -22,8 +22,9 @@ type CacheEntry struct {
 }
 
 type CachedTSAChecker struct {
-	mu    sync.Mutex
-	cache map[string]CacheEntry
+	mu            sync.Mutex
+	recheckPeriod time.Duration
+	cache         map[string]CacheEntry
 }
 
 // NewTSAChecker creates a new instance of TSAChecker.
@@ -33,8 +34,17 @@ type CachedTSAChecker struct {
 //   - TSAChecker: A new instance of TSAChecker.
 func NewTSAChecker() TSAChecker {
 	return &CachedTSAChecker{
-		mu:    sync.Mutex{},
-		cache: map[string]CacheEntry{},
+		mu:            sync.Mutex{},
+		recheckPeriod: time.Second,
+		cache:         map[string]CacheEntry{},
+	}
+}
+
+func NewTSACheckerWithDuration(tsaRecheckDuration time.Duration) TSAChecker {
+	return &CachedTSAChecker{
+		mu:            sync.Mutex{},
+		recheckPeriod: tsaRecheckDuration,
+		cache:         map[string]CacheEntry{},
 	}
 }
 
@@ -56,7 +66,7 @@ func (ctsa *CachedTSAChecker) CheckTSA(sh shard.Shard) (bool, string, error) {
 	defer ctsa.mu.Unlock()
 
 	n := time.Now().UnixNano()
-	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n-e.lastCheck < time.Second.Nanoseconds() {
+	if e, ok := ctsa.cache[sh.Instance().Hostname()]; ok && n-e.lastCheck < ctsa.recheckPeriod.Nanoseconds() {
 		return e.result, e.comment, nil
 	}
 
