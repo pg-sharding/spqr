@@ -126,7 +126,7 @@ type RelayStateImpl struct {
 	routingState routingstate.RoutingState
 
 	Qr      qrouter.QueryRouter
-	qp      parser.QParser
+	qp      parser.Parser
 	plainQ  string
 	Cl      client.RouterClient
 	manager poolmgr.PoolMgr
@@ -153,13 +153,14 @@ func (rst *RelayStateImpl) RequestData() {
 	rst.Cl.Server().RequestData()
 }
 
-func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router, parser parser.Parser) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:       nil,
 		txStatus:           txstatus.TXIDLE,
 		msgBuf:             nil,
 		traceMsgs:          false,
 		Qr:                 qr,
+		qp:                 parser,
 		Cl:                 client,
 		manager:            manager,
 		WorldShardFallback: rcfg.WorldShardFallback,
@@ -1233,7 +1234,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					if err != nil {
 						return err
 					}
-					
+
 					/* Here we close portal, so other clients can reuse it */
 					_, _, err = rst.RelayStep(&pgproto3.Close{
 						ObjectType: 'P',
@@ -1364,9 +1365,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
-	state, comm, err := rst.qp.Parse(query)
-	rst.plainQ = query
-	return state, comm, err
+	return rst.qp.Parse(query)
 }
 
 var _ RelayStateMgr = &RelayStateImpl{}

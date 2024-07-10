@@ -69,7 +69,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binder func() error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
-	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
+	spqrlog.Zero.Debug().Str("query", query).Uint("client", rst.Client().ID()).Msgf("process relay state advanced")
 	state, comment, err := rst.Parse(query)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %w", query, err)
