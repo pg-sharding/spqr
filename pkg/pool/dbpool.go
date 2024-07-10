@@ -2,6 +2,7 @@ package pool
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 
@@ -222,6 +223,13 @@ func (s *InstancePoolImpl) Connection(
 			posCache = append(posCache, host)
 		}
 	}
+
+	rand.Shuffle(len(posCache), func(i, j int) {
+		posCache[i], posCache[j] = posCache[j], posCache[i]
+	})
+	rand.Shuffle(len(negCache), func(i, j int) {
+		negCache[i], negCache[j] = negCache[j], negCache[i]
+	})
 
 	hostOrder = append(posCache, negCache...)
 
