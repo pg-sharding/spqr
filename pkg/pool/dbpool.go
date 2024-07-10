@@ -2,7 +2,6 @@ package pool
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"strings"
 
@@ -17,10 +16,17 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
+type TsaKey struct {
+	tsa  string
+	host string
+}
+
 type InstancePoolImpl struct {
 	Pool
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
+
+	cacheTSAchecks map[TsaKey]bool
 
 	checker tsa.TSAChecker
 }
@@ -84,19 +90,33 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(
 // TODO : unit tests
 func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 	clid uint,
-	key kr.ShardKey, hosts []string) (shard.Shard, error) {
+	key kr.ShardKey, hosts []string, targetSessionAttrs string) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
+
+			s.cacheTSAchecks[TsaKey{
+				tsa:  targetSessionAttrs,
+				host: shard.Instance().Hostname(),
+			}] = false
+
 			return false
-		} else if ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
-			_ = s.Put(shard)
-			return false
+		} else {
+			s.cacheTSAchecks[TsaKey{
+				tsa:  targetSessionAttrs,
+				host: shard.Instance().Hostname(),
+			}] = !ch
+
+			if ch {
+				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
+				_ = s.Put(shard)
+				return false
+			}
+
+			return true
 		}
-		return true
 	})
 	if sh != nil {
 		return sh, nil
@@ -122,19 +142,33 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 // TODO : unit tests
 func (s *InstancePoolImpl) SelectReadWriteShardHost(
 	clid uint,
-	key kr.ShardKey, hosts []string) (shard.Shard, error) {
+	key kr.ShardKey, hosts []string, targetSessionAttrs string) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
+
+			s.cacheTSAchecks[TsaKey{
+				tsa:  targetSessionAttrs,
+				host: shard.Instance().Hostname(),
+			}] = false
+
 			return false
-		} else if !ch {
-			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
-			_ = s.Put(shard)
-			return false
+		} else {
+			s.cacheTSAchecks[TsaKey{
+				tsa:  targetSessionAttrs,
+				host: shard.Instance().Hostname(),
+			}] = ch
+
+			if !ch {
+				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
+				_ = s.Put(shard)
+				return false
+			}
+
+			return true
 		}
-		return true
 	})
 	if sh != nil {
 		return sh, nil
@@ -166,21 +200,46 @@ func (s *InstancePoolImpl) Connection(
 		Str("shard", key.Name).
 		Str("tsa", targetSessionAttrs).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
-	hosts := make([]string, len(s.shardMapping[key.Name].Hosts))
-	copy(hosts, s.shardMapping[key.Name].Hosts)
-	rand.Shuffle(len(hosts), func(i, j int) {
-		hosts[j], hosts[i] = hosts[i], hosts[j]
-	})
 
+	var hostOrder []string
+	var posCache []string
+	var negCache []string
+
+	for _, host := range s.shardMapping[key.Name].Hosts {
+		tsaKey := TsaKey{
+			tsa:  targetSessionAttrs,
+			host: host,
+		}
+
+		if res, ok := s.cacheTSAchecks[tsaKey]; ok {
+			if res {
+				posCache = append(posCache, host)
+			} else {
+				negCache = append(negCache, host)
+			}
+		} else {
+			// assume ok
+			posCache = append(posCache, host)
+		}
+	}
+
+	hostOrder = append(posCache, negCache...)
+
+	/* pool.Connection will reoder hosts in such way, that preferred tsa will go first */
 	switch targetSessionAttrs {
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
 		total_msg := ""
-		for _, host := range hosts {
+		for _, host := range hostOrder {
 			shard, err := s.pool.Connection(clid, key, host)
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+
+				s.cacheTSAchecks[TsaKey{
+					tsa:  config.TargetSessionAttrsAny,
+					host: host,
+				}] = false
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -189,19 +248,23 @@ func (s *InstancePoolImpl) Connection(
 					Msg("failed to get connection to host for client")
 				continue
 			}
+			s.cacheTSAchecks[TsaKey{
+				tsa:  config.TargetSessionAttrsAny,
+				host: host,
+			}] = true
 			return shard, nil
 		}
 		return nil, fmt.Errorf("failed to get connection to any shard host within %s", total_msg)
 	case config.TargetSessionAttrsRO:
-		return s.SelectReadOnlyShardHost(clid, key, hosts)
+		return s.SelectReadOnlyShardHost(clid, key, hostOrder, targetSessionAttrs)
 	case config.TargetSessionAttrsPS:
-		if res, err := s.SelectReadOnlyShardHost(clid, key, hosts); err != nil {
-			return s.SelectReadWriteShardHost(clid, key, hosts)
+		if res, err := s.SelectReadOnlyShardHost(clid, key, hostOrder, targetSessionAttrs); err != nil {
+			return s.SelectReadWriteShardHost(clid, key, hostOrder, targetSessionAttrs)
 		} else {
 			return res, nil
 		}
 	case config.TargetSessionAttrsRW:
-		return s.SelectReadWriteShardHost(clid, key, hosts)
+		return s.SelectReadWriteShardHost(clid, key, hostOrder, targetSessionAttrs)
 	default:
 		return nil, fmt.Errorf("failed to match correct target session attrs")
 	}
@@ -352,8 +415,18 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 	}
 
 	return &InstancePoolImpl{
-		pool:         NewPool(allocator),
-		shardMapping: mapping,
-		checker:      tsa.NewTSAChecker(),
+		pool:           NewPool(allocator),
+		shardMapping:   mapping,
+		cacheTSAchecks: map[TsaKey]bool{},
+		checker:        tsa.NewTSAChecker(),
+	}
+}
+
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool) DBPool {
+	return &InstancePoolImpl{
+		pool:           mp,
+		shardMapping:   mapping,
+		cacheTSAchecks: map[TsaKey]bool{},
+		checker:        tsa.NewTSAChecker(),
 	}
 }
