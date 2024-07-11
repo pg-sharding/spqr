@@ -166,6 +166,10 @@ func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout ti
 		return nil, err
 	}
 
+	tcpConn := netconn.(*net.TCPConn)
+	tcpConn.SetKeepAlive(true)
+	tcpConn.SetKeepAlivePeriod(time.Second)
+
 	instance := &PostgreSQLInstance{
 		hostname:  host,
 		shardname: shard,
