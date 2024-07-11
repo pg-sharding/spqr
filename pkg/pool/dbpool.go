@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -19,8 +20,8 @@ import (
 )
 
 type TsaKey struct {
-	tsa  string
-	host string
+	Tsa  string
+	Host string
 }
 
 type InstancePoolImpl struct {
@@ -30,7 +31,7 @@ type InstancePoolImpl struct {
 
 	shuffleHosts bool
 
-	cacheTSAchecks map[TsaKey]bool
+	cacheTSAchecks sync.Map
 
 	checker tsa.TSAChecker
 }
@@ -58,11 +59,17 @@ var _ DBPool = &InstancePoolImpl{}
 // TODO : unit tests
 func (s *InstancePoolImpl) traverseHostsMatchCB(
 	clid uint,
-	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool) shard.Shard {
+	key kr.ShardKey, hosts []string, cb func(shard.Shard) bool, tsa string) shard.Shard {
 
 	for _, host := range hosts {
 		sh, err := s.pool.Connection(clid, key, host)
 		if err != nil {
+
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  tsa,
+				Host: host,
+			}, false)
+
 			spqrlog.Zero.Error().
 				Err(err).
 				Str("host", host).
@@ -106,17 +113,17 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
-			s.cacheTSAchecks[TsaKey{
-				tsa:  targetSessionAttrs,
-				host: shard.Instance().Hostname(),
-			}] = false
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  targetSessionAttrs,
+				Host: shard.Instance().Hostname(),
+			}, false)
 
 			return false
 		} else {
-			s.cacheTSAchecks[TsaKey{
-				tsa:  targetSessionAttrs,
-				host: shard.Instance().Hostname(),
-			}] = !ch
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  targetSessionAttrs,
+				Host: shard.Instance().Hostname(),
+			}, !ch)
 
 			if ch {
 				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
@@ -126,7 +133,7 @@ func (s *InstancePoolImpl) SelectReadOnlyShardHost(
 
 			return true
 		}
-	})
+	}, targetSessionAttrs)
 	if sh != nil {
 		return sh, nil
 	}
@@ -158,17 +165,17 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
-			s.cacheTSAchecks[TsaKey{
-				tsa:  targetSessionAttrs,
-				host: shard.Instance().Hostname(),
-			}] = false
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  targetSessionAttrs,
+				Host: shard.Instance().Hostname(),
+			}, false)
 
 			return false
 		} else {
-			s.cacheTSAchecks[TsaKey{
-				tsa:  targetSessionAttrs,
-				host: shard.Instance().Hostname(),
-			}] = ch
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  targetSessionAttrs,
+				Host: shard.Instance().Hostname(),
+			}, ch)
 
 			if !ch {
 				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
@@ -178,7 +185,7 @@ func (s *InstancePoolImpl) SelectReadWriteShardHost(
 
 			return true
 		}
-	})
+	}, targetSessionAttrs)
 	if sh != nil {
 		return sh, nil
 	}
@@ -216,12 +223,12 @@ func (s *InstancePoolImpl) Connection(
 
 	for _, host := range s.shardMapping[key.Name].Hosts {
 		tsaKey := TsaKey{
-			tsa:  targetSessionAttrs,
-			host: host,
+			Tsa:  targetSessionAttrs,
+			Host: host,
 		}
 
-		if res, ok := s.cacheTSAchecks[tsaKey]; ok {
-			if res {
+		if res, ok := s.cacheTSAchecks.Load(tsaKey); ok {
+			if res.(bool) {
 				posCache = append(posCache, host)
 			} else {
 				negCache = append(negCache, host)
@@ -254,10 +261,10 @@ func (s *InstancePoolImpl) Connection(
 			if err != nil {
 				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
 
-				s.cacheTSAchecks[TsaKey{
-					tsa:  config.TargetSessionAttrsAny,
-					host: host,
-				}] = false
+				s.cacheTSAchecks.Store(TsaKey{
+					Tsa:  config.TargetSessionAttrsAny,
+					Host: host,
+				}, false)
 
 				spqrlog.Zero.Error().
 					Err(err).
@@ -266,10 +273,11 @@ func (s *InstancePoolImpl) Connection(
 					Msg("failed to get connection to host for client")
 				continue
 			}
-			s.cacheTSAchecks[TsaKey{
-				tsa:  config.TargetSessionAttrsAny,
-				host: host,
-			}] = true
+			s.cacheTSAchecks.Store(TsaKey{
+				Tsa:  config.TargetSessionAttrsAny,
+				Host: host,
+			}, true)
+
 			return shard, nil
 		}
 		return nil, fmt.Errorf("failed to get connection to any shard host within %s", total_msg)
@@ -436,7 +444,7 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
 		shuffleHosts:   true,
-		cacheTSAchecks: map[TsaKey]bool{},
+		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
@@ -446,7 +454,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 		pool:           mp,
 		shardMapping:   mapping,
 		shuffleHosts:   shuffleHosts,
-		cacheTSAchecks: map[TsaKey]bool{},
+		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
