@@ -61,4 +61,6 @@ type DBPool interface {
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
+
+	SetShuffleHosts(bool)
 }
