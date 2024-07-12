@@ -43,14 +43,6 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
-const greeting = `
-		SPQR coordinator admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-`
-
 type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
