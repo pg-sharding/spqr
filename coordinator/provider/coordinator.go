@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"net"
 	"time"
 
@@ -1217,16 +1216,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 	}
 
 	msgs = append(msgs, []pgproto3.BackendMessage{
-		&pgproto3.ParameterStatus{Name: "integer_datetimes", Value: "on"},
 		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
-		&pgproto3.ParameterStatus{Name: "DateStyle", Value: "ISO"},
-		&pgproto3.ParameterStatus{Name: "server_version", Value: "console"},
-		&pgproto3.NoticeResponse{
-			Message: greeting,
-		},
-		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXIDLE),
-		},
 	}...)
 
 	for _, msg := range msgs {
