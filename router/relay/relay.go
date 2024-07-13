@@ -1378,7 +1378,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		}
 	}
 
-	// statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
+	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	// no backend connection.
 	// for example, parse + sync will cause so.
