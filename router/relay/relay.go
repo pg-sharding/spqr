@@ -58,6 +58,9 @@ type RelayStateMgr interface {
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
 	PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, route *routingstate.DataShardRoute) error
 
+	HoldRouting()
+	UnholdRouting()
+
 	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
@@ -135,6 +138,8 @@ type RelayStateImpl struct {
 
 	msgBuf []BufferedMessage
 
+	holdRouting bool
+
 	bindRoute     *routingstate.DataShardRoute
 	lastBindQuery string
 	lastBindName  string
@@ -146,6 +151,16 @@ type RelayStateImpl struct {
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
+}
+
+// HoldRouting implements RelayStateMgr.
+func (rst *RelayStateImpl) HoldRouting() {
+	rst.holdRouting = true
+}
+
+// UnholdRouting implements RelayStateMgr.
+func (rst *RelayStateImpl) UnholdRouting() {
+	rst.holdRouting = false
 }
 
 // RequestData implements RelayStateMgr.
@@ -1043,6 +1058,24 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		rst.bindRoute = nil
 	}()
 
+	holdRoute := true
+
+	anyPrepStmt := ""
+	for _, msg := range rst.xBuf {
+		switch q := msg.(type) {
+		case *pgproto3.Bind:
+			if anyPrepStmt == "" {
+				anyPrepStmt = q.PreparedStatement
+			} else if anyPrepStmt != q.PreparedStatement {
+				holdRoute = false
+			}
+		}
+	}
+
+	if holdRoute {
+		defer rst.UnholdRouting()
+	}
+
 	for _, msg := range rst.xBuf {
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
@@ -1132,6 +1165,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 				if err := rst.PrepareRelayStep(cmngr); err != nil {
 					return err
+				}
+
+				// hold route if appropriate
+
+				if holdRoute {
+					rst.HoldRouting()
 				}
 
 				// TODO: multi-shard statements
@@ -1339,7 +1378,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		}
 	}
 
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
+	// statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
 	// no backend connection.
 	// for example, parse + sync will cause so.
@@ -1376,6 +1415,9 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
+	if rst.holdRouting {
+		return nil
+	}
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
@@ -1415,6 +1457,10 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 		Interface("route", route).
 		Msg("preparing relay step for client on target route")
 
+	if rst.holdRouting {
+		return nil
+	}
+
 	// txactive == 0 || activeSh == nil
 	// alreasy has route, no need for any hint
 	if !cmngr.ValidateReRoute(rst) {
@@ -1452,6 +1498,10 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client on any route")
+
+	if rst.holdRouting {
+		return noopCloseRouteFunc, nil
+	}
 
 	// txactive == 0 || activeSh == nil
 	if !cmngr.ValidateReRoute(rst) {

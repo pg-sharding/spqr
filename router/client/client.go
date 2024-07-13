@@ -869,7 +869,13 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	cl.muBe.Lock()
 	defer cl.muBe.Unlock()
 	cl.be.Send(msg)
-	return cl.be.Flush()
+
+	switch msg.(type) {
+	case *pgproto3.ReadyForQuery:
+		return cl.be.Flush()
+	default:
+		return nil
+	}
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
