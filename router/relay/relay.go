@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -113,6 +114,12 @@ type PortalDesc struct {
 	nodata *pgproto3.NoData
 }
 
+type ParseCacheEntry struct {
+	ps   parser.ParseState
+	comm string
+	stmt lyx.Node
+}
+
 type RelayStateImpl struct {
 	txStatus   txstatus.TXStatus
 	CopyActive bool
@@ -149,6 +156,8 @@ type RelayStateImpl struct {
 	saveBind        *pgproto3.Bind
 	savedPortalDesc map[string]PortalDesc
 
+	parseCache map[string]ParseCacheEntry
+
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
 }
@@ -183,6 +192,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		pgprotoDebug:       rcfg.PgprotoDebug,
 		execute:            nil,
 		savedPortalDesc:    map[string]PortalDesc{},
+		parseCache:         map[string]ParseCacheEntry{},
 	}
 }
 
@@ -1401,7 +1411,20 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
+	if cache, ok := rst.parseCache[query]; ok {
+		rst.qp.SetStmt(cache.stmt)
+		return cache.ps, cache.comm, nil
+	}
+
 	state, comm, err := rst.qp.Parse(query)
+	if err == nil {
+		rst.parseCache[query] = ParseCacheEntry{
+			ps:   state,
+			comm: comm,
+			stmt: rst.qp.Stmt(),
+		}
+	}
+
 	rst.plainQ = query
 	return state, comm, err
 }

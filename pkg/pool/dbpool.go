@@ -227,6 +227,8 @@ func (s *InstancePoolImpl) Connection(
 			Host: host,
 		}
 
+		posCache = append(posCache, host)
+
 		if res, ok := s.cacheTSAchecks.Load(tsaKey); ok {
 			if res.(bool) {
 				posCache = append(posCache, host)
