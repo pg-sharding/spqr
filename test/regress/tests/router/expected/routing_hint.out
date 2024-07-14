@@ -41,6 +41,46 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__di
 NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh2
+-- test tranasction support for route-local variables;
+SET __spqr__distribution = 'ds1';
+SET __spqr__sharding_key = 1;
+SELECT * FROM test;
+NOTICE: send query to shard(s) : sh1
+  id  | age 
+------+-----
+ 1210 |  16
+(1 row)
+
+SET __spqr__sharding_key = 12;
+SELECT * FROM test;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+BEGIN;
+SET __spqr__sharding_key = 1;
+SELECT * FROM test;
+NOTICE: send query to shard(s) : sh1
+  id  | age 
+------+-----
+ 1210 |  16
+(1 row)
+
+ROLLBACK;
+-- should return to previous value, so select from first shard
+SELECT * FROM test;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+-- restart session, reset all params
+\c regress
 DROP TABLE test;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
