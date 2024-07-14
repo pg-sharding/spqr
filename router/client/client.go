@@ -339,6 +339,10 @@ func (cl *PsqlClient) ConstructClientParams() *pgproto3.Query {
 			continue
 		}
 
+		if len(k) >= 6 && k[0:6] == "__spqr" {
+			continue
+		}
+
 		query.String += fmt.Sprintf("SET %s='%s';", k, v)
 	}
 
