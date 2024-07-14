@@ -3,6 +3,7 @@ package kr
 import (
 	"encoding/binary"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -149,7 +150,19 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			// TODO what is happening here?
+			// When you passing SPQR_SHARDING_KEY param, this params has a string type
+			// But you sharding key could be an integer type and in this case, obviously,
+			// we try to cast a to int and getting a panic: interface conversion.
+			// A workaroud solution
+			i2, ok := key[i].(int64)
+			if !ok {
+				i2temp, err := strconv.ParseInt(key[i].(string), 10, 64)
+				if err != nil {
+					panic(err)
+				}
+				i2 = i2temp
+			}
 			if i1 == i2 {
 				// continue
 			} else if i1 < i2 {
@@ -201,7 +214,19 @@ func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool
 			}
 		case qdb.ColumnTypeInteger:
 			i1 := bound[i].(int64)
-			i2 := key[i].(int64)
+			// TODO what is happening here?
+			// When you passing SPQR_SHARDING_KEY param, this params has a string type
+			// But you sharding key could be an integer type and in this case, obviously,
+			// we try to cast a to int and getting a panic: interface conversion.
+			// A workaroud solution
+			i2, ok := key[i].(int64)
+			if !ok {
+				i2temp, err := strconv.ParseInt(key[i].(string), 10, 64)
+				if err != nil {
+					panic(err)
+				}
+				i2 = i2temp
+			}
 			if i1 == i2 {
 				// continue
 			} else {

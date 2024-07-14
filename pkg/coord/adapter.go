@@ -37,10 +37,8 @@ func NewAdapter(conn *grpc.ClientConn) *Adapter {
 	}
 }
 
-
 // QDB returns the QDB object associated with the Adapter.
 
-//
 // Parameters:
 // - None.
 //
@@ -383,7 +381,7 @@ func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// 
+//
 // Returns:
 // - error: An error if the key range drop fails, otherwise nil.
 func (a *Adapter) DropKeyRangeAll(ctx context.Context) error {
@@ -416,7 +414,7 @@ func (a *Adapter) RegisterRouter(ctx context.Context, r *topology.Router) error 
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// 
+//
 // Returns:
 // - []*topology.Router: A list of router instances.
 // - error: An error if listing routers fails, otherwise nil.
@@ -767,7 +765,6 @@ func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup
 	})
 	return err
 }
-
 
 // RemoveTaskGroup removes a task group from the system.
 //
