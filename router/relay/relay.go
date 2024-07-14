@@ -144,6 +144,9 @@ type RelayStateImpl struct {
 	saveBind        *pgproto3.Bind
 	savedPortalDesc map[string]PortalDesc
 
+	virtualTxs           map[string]bool
+	virtualTxParseStates map[string]parser.ParseState
+
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
 }
@@ -155,19 +158,21 @@ func (rst *RelayStateImpl) RequestData() {
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards:       nil,
-		txStatus:           txstatus.TXIDLE,
-		msgBuf:             nil,
-		traceMsgs:          false,
-		Qr:                 qr,
-		Cl:                 client,
-		manager:            manager,
-		WorldShardFallback: rcfg.WorldShardFallback,
-		routerMode:         config.RouterMode(rcfg.RouterMode),
-		maintain_params:    rcfg.MaintainParams,
-		pgprotoDebug:       rcfg.PgprotoDebug,
-		execute:            nil,
-		savedPortalDesc:    map[string]PortalDesc{},
+		activeShards:         nil,
+		txStatus:             txstatus.TXIDLE,
+		msgBuf:               nil,
+		traceMsgs:            false,
+		Qr:                   qr,
+		Cl:                   client,
+		manager:              manager,
+		WorldShardFallback:   rcfg.WorldShardFallback,
+		routerMode:           config.RouterMode(rcfg.RouterMode),
+		maintain_params:      rcfg.MaintainParams,
+		pgprotoDebug:         rcfg.PgprotoDebug,
+		execute:              nil,
+		savedPortalDesc:      map[string]PortalDesc{},
+		virtualTxs:           map[string]bool{},
+		virtualTxParseStates: map[string]parser.ParseState{},
 	}
 }
 
@@ -1116,11 +1121,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return nil
 			}
 
-			if err := ProcQueryAdvanced(rst, rst.lastBindQuery, phx, func() error {
+			rst.lastBindName = q.PreparedStatement
+
+			if virtTx, st, err := ProcQueryAdvanced(rst, rst.lastBindQuery, phx, func() error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
-				rst.lastBindName = q.PreparedStatement
 				hash := rst.Client().PreparedStatementQueryHashByName(q.PreparedStatement)
 
 				rst.saveBind.PreparedStatement = fmt.Sprintf("%d", hash)
@@ -1180,6 +1186,12 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return nil
 			}); err != nil {
 				return err
+			} else {
+				/* if we executed statement virtually
+				* (not routed), save this for latter use
+				* in portal describe logic */
+				rst.virtualTxs[rst.lastBindName] = virtTx
+				rst.virtualTxParseStates[rst.lastBindName] = st
 			}
 
 		case *pgproto3.Describe:
@@ -1207,81 +1219,104 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					}
 				} else {
 
-					cachedPd = PortalDesc{}
+					/* If statement was/going to be executed virtually, we need to form describe statement ourselves. */
 
-					err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
-					if err != nil {
-						return err
-					}
-
-					if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
-						return err
-					}
-
-					// do not send saved bind twice
-					if rst.saveBind == nil {
-						// wtf?
-						return fmt.Errorf("failed to describe statement, stmt was never deployed")
-					}
-
-					_, _, err = rst.RelayStep(rst.saveBind, false, false)
-					if err != nil {
-						return err
-					}
-
-					_, _, err = rst.RelayStep(q, false, false)
-					if err != nil {
-						return err
-					}
-					
-					/* Here we close portal, so other clients can reuse it */
-					_, _, err = rst.RelayStep(&pgproto3.Close{
-						ObjectType: 'P',
-					}, false, false)
-					if err != nil {
-						return err
-					}
-
-					_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
-					if err != nil {
-						return err
-					}
-
-					for _, msg := range unreplied {
-						spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
-						// https://www.postgresql.org/docs/current/protocol-flow.html
-						switch qq := msg.(type) {
-						case *pgproto3.RowDescription:
-
-							cachedPd.rd = &pgproto3.RowDescription{}
-
-							cachedPd.rd.Fields = make([]pgproto3.FieldDescription, len(qq.Fields))
-
-							for i := 0; i < len(qq.Fields); i++ {
-								s := make([]byte, len(qq.Fields[i].Name))
-								copy(s, qq.Fields[i].Name)
-
-								cachedPd.rd.Fields[i] = qq.Fields[i]
-								cachedPd.rd.Fields[i].Name = s
-							}
-							// send to the client
-							if err := rst.Client().Send(qq); err != nil {
-								return err
-							}
-						case *pgproto3.NoData:
-							cpQ := *qq
-							cachedPd.nodata = &cpQ
-							// send to the client
-							if err := rst.Client().Send(qq); err != nil {
-								return err
-							}
-						default:
-							// error out? panic? protoc violation?
-							// no, just chill
+					if rst.virtualTxs[rst.lastBindName] {
+						st := rst.virtualTxParseStates[rst.lastBindName]
+						if st == nil {
+							return fmt.Errorf("failed to describe virtual tx statement")
 						}
-					}
+						spqrlog.Zero.Debug().
+							Uint("client", rst.Client().ID()).
+							Str("last-bind-name", rst.lastBindName).
+							Msg("virtually describe portal")
 
-					rst.savedPortalDesc[rst.lastBindName] = cachedPd
+						/* Should be keep in sync with ProcQueryAdvanced */
+						switch st.(type) {
+						/* seems that nodata is for all cases */
+						default:
+							if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+								return err
+							}
+						}
+					} else {
+
+						cachedPd = PortalDesc{}
+
+						err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
+						if err != nil {
+							return err
+						}
+
+						if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
+							return err
+						}
+
+						// do not send saved bind twice
+						if rst.saveBind == nil {
+							// wtf?
+							return fmt.Errorf("failed to describe statement, stmt was never deployed")
+						}
+
+						_, _, err = rst.RelayStep(rst.saveBind, false, false)
+						if err != nil {
+							return err
+						}
+
+						_, _, err = rst.RelayStep(q, false, false)
+						if err != nil {
+							return err
+						}
+
+						/* Here we close portal, so other clients can reuse it */
+						_, _, err = rst.RelayStep(&pgproto3.Close{
+							ObjectType: 'P',
+						}, false, false)
+						if err != nil {
+							return err
+						}
+
+						_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+						if err != nil {
+							return err
+						}
+
+						for _, msg := range unreplied {
+							spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
+							// https://www.postgresql.org/docs/current/protocol-flow.html
+							switch qq := msg.(type) {
+							case *pgproto3.RowDescription:
+
+								cachedPd.rd = &pgproto3.RowDescription{}
+
+								cachedPd.rd.Fields = make([]pgproto3.FieldDescription, len(qq.Fields))
+
+								for i := 0; i < len(qq.Fields); i++ {
+									s := make([]byte, len(qq.Fields[i].Name))
+									copy(s, qq.Fields[i].Name)
+
+									cachedPd.rd.Fields[i] = qq.Fields[i]
+									cachedPd.rd.Fields[i].Name = s
+								}
+								// send to the client
+								if err := rst.Client().Send(qq); err != nil {
+									return err
+								}
+							case *pgproto3.NoData:
+								cpQ := *qq
+								cachedPd.nodata = &cpQ
+								// send to the client
+								if err := rst.Client().Send(qq); err != nil {
+									return err
+								}
+							default:
+								// error out? panic? protoc violation?
+								// no, just chill
+							}
+						}
+
+						rst.savedPortalDesc[rst.lastBindName] = cachedPd
+					}
 				}
 			} else {
 				spqrlog.Zero.Debug().

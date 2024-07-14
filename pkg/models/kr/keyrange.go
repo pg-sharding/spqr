@@ -3,6 +3,7 @@ package kr
 import (
 	"encoding/binary"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -90,6 +91,24 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 		return fmt.Sprintf("%v", kr.LowerBound[attribInd])
 	default:
 		return fmt.Sprintf("'%v'", kr.LowerBound[attribInd])
+	}
+}
+
+func (kr *KeyRange) RecvFunc(attribInd int, val string) {
+	switch kr.ColumnTypes[attribInd] {
+	case qdb.ColumnTypeInteger:
+		n, _ := strconv.ParseInt(val, 10, 64)
+		kr.LowerBound[attribInd] = n
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUinteger:
+		/* TODO: fix  */
+		n, _ := strconv.ParseUint(val, 10, 64)
+		kr.LowerBound[attribInd] = uint64(n)
+	case qdb.ColumnTypeVarcharDeprecated:
+		fallthrough
+	case qdb.ColumnTypeVarchar:
+		kr.LowerBound[attribInd] = val
 	}
 }
 
@@ -313,6 +332,22 @@ func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
 
 	for i := 0; i < len(colTypes); i++ {
 		kr.InFunc(i, val[i])
+	}
+
+	return kr
+}
+
+// Convert key from its string representation
+func KeyRangeFromString(val []string, colTypes []string) *KeyRange {
+
+	kr := &KeyRange{
+		ColumnTypes: colTypes,
+
+		LowerBound: make(KeyRangeBound, len(colTypes)),
+	}
+
+	for i := 0; i < len(colTypes); i++ {
+		kr.RecvFunc(i, val[i])
 	}
 
 	return kr

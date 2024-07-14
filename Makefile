@@ -147,18 +147,20 @@ gogen:
 	protos/* 
 
 mockgen:
-	mockgen -source=pkg/datatransfers/data_transfers.go -destination=pkg/mock/pgx/mock_pgxconn_iface.go -package=mock
-	mockgen -source=pkg/datatransfers/pgx_tx_iface.go -destination=pkg/mock/pgx/mock_pgx_tx.go -package=mock
+	mockgen -source=./pkg/datatransfers/data_transfers.go -destination=./pkg/mock/pgx/mock_pgxconn_iface.go -package=mock
+	mockgen -source=./pkg/datatransfers/pgx_tx_iface.go -destination=./pkg/mock/pgx/mock_pgx_tx.go -package=mock
 	mockgen -source=./pkg/conn/raw.go -destination=./pkg/mock/conn/raw_mock.go -package=mock
-	mockgen -source=./router/server/server.go -destination=router/mock/server/mock_server.go -package=mock
-	mockgen -source=./pkg/conn/instance.go -destination=pkg/mock/conn/mock_instance.go -package=mock
-	mockgen -source=./pkg/shard/shard.go -destination=pkg/mock/shard/mock_shard.go -package=mock
-	mockgen -source=./pkg/pool/pool.go -destination=pkg/mock/pool/mock_pool.go -package=mock
+	mockgen -source=./router/server/server.go -destination=./router/mock/server/mock_server.go -package=mock
+	mockgen -source=./pkg/conn/instance.go -destination=./pkg/mock/conn/mock_instance.go -package=mock
+	mockgen -source=./pkg/shard/shard.go -destination=./pkg/mock/shard/mock_shard.go -package=mock
+	mockgen -source=./pkg/pool/pool.go -destination=./pkg/mock/pool/mock_pool.go -package=mock
 	mockgen -source=./router/client/client.go -destination=./router/mock/client/mock_client.go -package=mock
 	mockgen -source=./router/poolmgr/pool_mgr.go -destination=./router/mock/poolmgr/mock_pool_mgr.go -package=mock
 	mockgen -source=./router/qrouter/qrouter.go -destination=./router/mock/qrouter/mock_qrouter.go -package=mock
-	mockgen -source=./pkg/clientinteractor/interactor.go -destination=pkg/mock/clientinteractor/mock_interactor.go -package=mock
-	mockgen -source=qdb/qdb.go -destination=qdb/mock/qdb.go -package=mock
+	mockgen -source=./pkg/clientinteractor/interactor.go -destination=./pkg/mock/clientinteractor/mock_interactor.go -package=mock
+	mockgen -source=./qdb/qdb.go -destination=./qdb/mock/mock_qdb.go -package=mock
+	mockgen -source=./router/relay/relay.go -destination=./router/mock/relay/mock_relay.go -package=mock
+	mockgen -source=./pkg/meta/meta.go -destination=./pkg/mock/meta/mock_meta.go -package=mock
 
 yaccgen:
 	make -C ./yacc/console gen

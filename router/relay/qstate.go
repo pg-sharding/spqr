@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -23,27 +24,40 @@ func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
 	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
 }
 
+func DeparseRouteHintBound(ctx context.Context,
+	rst RelayStateMgr, params map[string]string, val string, dsId string) ([]interface{}, error) {
+	spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
+
+	distr, err := rst.QueryRouter().Mgr().GetDistribution(ctx, dsId)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: fix this naming.
+
+	return kr.KeyRangeFromString([]string{val}, distr.ColTypes).LowerBound, nil
+}
+
 func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.RouteHint, error) {
 	if _, ok := params[session.SPQR_SCATTER_QUERY]; ok {
 		return &routehint.ScatterRouteHint{}, nil
 	}
 	if val, ok := params[session.SPQR_SHARDING_KEY]; ok {
-		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
 
+		ctx := context.TODO()
 		dsId := ""
+		var ok bool
 		if dsId, ok = params[session.SPQR_DISTRIBUTION]; !ok {
 			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "got sharding key in comment without distribution")
 		}
-
-		ctx := context.TODO()
-		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(ctx, dsId)
+		compositeKey, err := DeparseRouteHintBound(ctx, rst, params, val, dsId)
 		if err != nil {
 			return nil, err
 		}
 
-		// TODO: fix this
-		compositeKey := []interface{}{
-			val,
+		krs, err := rst.QueryRouter().Mgr().ListKeyRanges(ctx, dsId)
+		if err != nil {
+			return nil, err
 		}
 
 		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), compositeKey, krs)
@@ -66,13 +80,14 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binder func() error) error {
+// Returns true if statement will be executed virtually.
+func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binder func() error) (bool, parser.ParseState, error) {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
 	state, comment, err := rst.Parse(query)
 	if err != nil {
-		return fmt.Errorf("error processing query '%v': %w", query, err)
+		return false, nil, fmt.Errorf("error processing query '%v': %w", query, err)
 	}
 
 	mp, err := parser.ParseComment(comment)
@@ -101,7 +116,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if rst.TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
-			return rst.Client().ReplyCommandComplete("BEGIN")
+			return true, st, rst.Client().ReplyCommandComplete("BEGIN")
 		}
 		// explicitly set silent query message, as it can differ from query begin in xporot
 		rst.AddSilentQuery(&pgproto3.Query{
@@ -121,25 +136,25 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				rst.Client().SetTsa(config.TargetSessionAttrsRW)
 			}
 		}
-		return rst.Client().ReplyCommandComplete("BEGIN")
+		return true, st, rst.Client().ReplyCommandComplete("BEGIN")
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return rst.Client().ReplyCommandComplete("COMMIT")
+			return true, st, rst.Client().ReplyCommandComplete("COMMIT")
 		}
-		return ph.ExecCommit(rst, query)
+		return true, st, ph.ExecCommit(rst, query)
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
-			return rst.Client().ReplyCommandComplete("ROLLBACK")
+			return true, st, rst.Client().ReplyCommandComplete("ROLLBACK")
 		}
-		return ph.ExecRollback(rst, query)
+		return true, st, ph.ExecRollback(rst, query)
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
-			return err
+			return false, nil, err
 		}
 		// do not complete relay  here
-		return nil
+		return true, st, nil
 	// with tx pooling we might have no active connection while processing set x to y
 	case parser.ParseStateSetStmt:
 		spqrlog.Zero.Debug().
@@ -150,7 +165,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			switch st.Name {
 			case session.SPQR_DISTRIBUTION:
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "setting \"%s\" is forbidden", session.SPQR_DISTRIBUTION)
+				return false, nil, spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "setting \"%s\" is forbidden", session.SPQR_DISTRIBUTION)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:
@@ -171,10 +186,10 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				rst.Client().SetParam(st.Name, st.Value)
 			}
 
-			return rst.Client().ReplyCommandComplete("SET")
+			return true, st, rst.Client().ReplyCommandComplete("SET")
 		}
 
-		return ph.ExecSet(rst, query, st.Name, st.Value)
+		return true, nil, ph.ExecSet(rst, query, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
 		param := st.Name
 		// manually create router responce
@@ -322,7 +337,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 
 			/* If router does dot have any info about param, fire query to random shard. */
 			if _, ok := rst.Client().Params()[param]; !ok {
-				return binder()
+				return false, st, binder()
 			}
 
 			_ = rst.Client().Send(
@@ -345,18 +360,18 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				},
 			)
 		}
-		return rst.Client().ReplyCommandComplete("SHOW")
+		return true, st, rst.Client().ReplyCommandComplete("SHOW")
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 
 		if err := ph.ExecReset(rst, query, st.Name); err != nil {
-			return err
+			return false, nil, err
 		}
 
-		return rst.Client().ReplyCommandComplete("RESET")
+		return true, st, rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateResetMetadataStmt:
 		if err := ph.ExecResetMetadata(rst, query, st.Setting); err != nil {
-			return err
+			return false, nil, err
 		}
 
 		rst.Client().ResetParam(st.Setting)
@@ -364,42 +379,42 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			rst.Client().ResetParam("role")
 		}
 
-		return rst.Client().ReplyCommandComplete("RESET")
+		return true, st, rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateResetAllStmt:
 		rst.Client().ResetAll()
 
-		return rst.Client().ReplyCommandComplete("RESET")
+		return true, st, rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateSetLocalStmt:
 		if err := ph.ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
-			return err
+			return false, nil, err
 		}
 
-		return rst.Client().ReplyCommandComplete("SET")
+		return true, st, rst.Client().ReplyCommandComplete("SET")
 	case parser.ParseStatePrepareStmt:
 		// sql level prepares stmt pooling
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
 			rst.Client().StorePreparedStatement(st.Name, st.Query)
-			return nil
+			return false, st, nil
 		} else {
 			// process like regular query
-			return binder()
+			return false, st, binder()
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
 			// do nothing
 			// wtf? TODO: test and fix
 			rst.Client().PreparedStatementQueryByName(st.Name)
-			return nil
+			return true, st, nil
 		} else {
 			// process like regular query
-			return binder()
+			return false, st, binder()
 		}
 	case parser.ParseStateExplain:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
-		return nil
+		return true, st, nil
 	default:
-		return binder()
+		return false, st, binder()
 	}
 }
