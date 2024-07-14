@@ -75,6 +75,9 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
 
+	cl.EXPECT().ShardingKey().AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
+
 	cl.EXPECT().ID().AnyTimes()
 
 	cl.EXPECT().Close().Times(1)
@@ -197,6 +200,9 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
+
+	cl.EXPECT().ShardingKey().AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -335,6 +341,9 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
+
+	cl.EXPECT().ShardingKey().AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
