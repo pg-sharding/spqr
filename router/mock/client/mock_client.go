@@ -299,6 +299,20 @@ func (mr *MockRouterClientMockRecorder) DefaultRouteBehaviour() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).DefaultRouteBehaviour))
 }
 
+// Distribution mocks base method.
+func (m *MockRouterClient) Distribution() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Distribution")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Distribution indicates an expected call of Distribution.
+func (mr *MockRouterClientMockRecorder) Distribution() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockRouterClient)(nil).Distribution))
+}
+
 // GetCancelKey mocks base method.
 func (m *MockRouterClient) GetCancelKey() uint32 {
 	m.ctrl.T.Helper()
@@ -919,6 +933,18 @@ func (m *MockRouterClient) SetDefaultRouteBehaviour(arg0 string) {
 func (mr *MockRouterClientMockRecorder) SetDefaultRouteBehaviour(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).SetDefaultRouteBehaviour), arg0)
+}
+
+// SetDistribution mocks base method.
+func (m *MockRouterClient) SetDistribution(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetDistribution", arg0)
+}
+
+// SetDistribution indicates an expected call of SetDistribution.
+func (mr *MockRouterClientMockRecorder) SetDistribution(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), arg0)
 }
 
 // SetMaintainParams mocks base method.

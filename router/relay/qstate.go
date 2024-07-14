@@ -74,7 +74,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binder func() error) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binderQ func() error) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
@@ -83,25 +83,46 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		return fmt.Errorf("error processing query '%v': %w", query, err)
 	}
 
-	mp, err := parser.ParseComment(comment)
+	queryProc := func() error {
+		mp, err := parser.ParseComment(comment)
 
-	if err == nil {
-		routeHint, _ := deparseRouteHint(rst, mp)
-		rst.Client().SetRouteHint(routeHint)
+		if err == nil {
+			if val, ok := mp["target-session-attrs"]; ok {
+				// TBD: validate
+				spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
+				rst.Client().SetTsa(val)
+			}
+			recheckRouteHint := false
 
-		if val, ok := mp["target-session-attrs"]; ok {
-			// TBD: validate
-			spqrlog.Zero.Debug().Str("tsa", val).Msg("parse tsa from comment")
-			rst.Client().SetTsa(val)
+			if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
+				recheckRouteHint = true
+				spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
+				rst.Client().SetDefaultRouteBehaviour(val)
+			}
+
+			val, ok := mp[session.SPQR_SHARDING_KEY]
+			recheckRouteHint = recheckRouteHint || ok || rst.Client().ShardingKey() != ""
+			if ok {
+				spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
+				rst.Client().SetShardingKey(val)
+			}
+
+			if recheckRouteHint {
+				/* if not enforsed by current query, use param, if set */
+				if rst.Client().ShardingKey() != "" {
+					mp[session.SPQR_SHARDING_KEY] = rst.Client().ShardingKey()
+				}
+				routeHint, err := deparseRouteHint(rst, mp)
+				if err == nil {
+					spqrlog.Zero.Debug().Interface("hint", routeHint).Msg("setting routing hint")
+					rst.Client().SetRouteHint(routeHint)
+				} else {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to deparse routing hint")
+				}
+			}
 		}
-		if val, ok := mp[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]; ok {
-			spqrlog.Zero.Debug().Str("default route", val).Msg("parse default route behaviour from comment")
-			rst.Client().SetDefaultRouteBehaviour(val)
-		}
-		if val, ok := mp[session.SPQR_SHARDING_KEY]; ok {
-			spqrlog.Zero.Debug().Str("sharding key", val).Msg("parse sharding key from comment")
-			rst.Client().SetShardingKey(val)
-		}
+
+		return binderQ()
 	}
 
 	switch st := state.(type) {
@@ -158,7 +179,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if strings.HasPrefix(st.Name, "__spqr__") {
 			switch st.Name {
 			case session.SPQR_DISTRIBUTION:
-				return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "setting \"%s\" is forbidden", session.SPQR_DISTRIBUTION)
+				rst.Client().SetDistribution(st.Value)
 			case session.SPQR_DEFAULT_ROUTE_BEHAVIOUR:
 				rst.Client().SetDefaultRouteBehaviour(st.Value)
 			case session.SPQR_SHARDING_KEY:
@@ -177,6 +198,18 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				}
 			default:
 				rst.Client().SetParam(st.Name, st.Value)
+			}
+
+			routeHint, err := deparseRouteHint(rst, map[string]string{
+				session.SPQR_DISTRIBUTION: rst.Client().Distribution(),
+				session.SPQR_SHARDING_KEY: rst.Client().ShardingKey(),
+			})
+
+			if err == nil {
+				spqrlog.Zero.Debug().Interface("hint", routeHint).Msg("setting routing hint")
+				rst.Client().SetRouteHint(routeHint)
+			} else {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to deparse routing hint")
 			}
 
 			return rst.Client().ReplyCommandComplete("SET")
@@ -330,7 +363,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 
 			/* If router does dot have any info about param, fire query to random shard. */
 			if _, ok := rst.Client().Params()[param]; !ok {
-				return binder()
+				return queryProc()
 			}
 
 			_ = rst.Client().Send(
@@ -392,7 +425,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			return nil
 		} else {
 			// process like regular query
-			return binder()
+			return queryProc()
 		}
 	case parser.ParseStateExecute:
 		if AdvancedPoolModeNeeded(rst) {
@@ -402,12 +435,12 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			return nil
 		} else {
 			// process like regular query
-			return binder()
+			return queryProc()
 		}
 	case parser.ParseStateExplain:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_UNEXPECTED)
 		return nil
 	default:
-		return binder()
+		return queryProc()
 	}
 }

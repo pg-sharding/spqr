@@ -1106,7 +1106,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case routingstate.MultiMatchState:
 		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
-			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD) 
+			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		default:
 			return routingstate.MultiMatchState{}, nil
 		}

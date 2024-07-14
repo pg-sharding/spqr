@@ -79,11 +79,14 @@ type RouterClient interface {
 type PsqlClient struct {
 	// client.Client
 
-	activeParamSet      map[string]string
-	internalParamSet    map[string]string
-	savepointParamSet   map[string]map[string]string
-	savepointParamTxCnt map[string]int
-	beginTxParamSet     map[string]string
+	activeParamSet     map[string]string
+	savepointParamSet  map[string]map[string]string
+	savepointTxCounter map[string]int
+	beginTxParamSet    map[string]string
+
+	beginTxRh   routehint.RouteHint
+	activeRh    routehint.RouteHint
+	savepointRh map[string]routehint.RouteHint
 
 	/* cancel */
 	csm *pgproto3.CancelRequest
@@ -116,14 +119,22 @@ type PsqlClient struct {
 
 	paramCodes []int16
 
-	rh routehint.RouteHint
-
 	show_notice_messages bool
 	maintain_params      bool
 
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
+}
+
+// Distribution implements RouterClient.
+func (cl *PsqlClient) Distribution() string {
+	return cl.activeParamSet[session.SPQR_DISTRIBUTION]
+}
+
+// SetDistribution implements RouterClient.
+func (cl *PsqlClient) SetDistribution(val string) {
+	cl.activeParamSet[session.SPQR_DISTRIBUTION] = val
 }
 
 // MaintainParams implements RouterClient.
@@ -168,24 +179,24 @@ func (cl *PsqlClient) SetBindParams(p [][]byte) {
 
 // SetShardingKey implements RouterClient.
 func (cl *PsqlClient) SetShardingKey(k string) {
-	cl.internalParamSet[session.SPQR_SHARDING_KEY] = k
+	cl.activeParamSet[session.SPQR_SHARDING_KEY] = k
 }
 
 // ShardingKey implements RouterClient.
 func (cl *PsqlClient) ShardingKey() string {
-	val := cl.internalParamSet[session.SPQR_SHARDING_KEY]
+	val := cl.activeParamSet[session.SPQR_SHARDING_KEY]
 	return val
 }
 
 // DefaultRouteBehaviour implements RouterClient.
 func (cl *PsqlClient) DefaultRouteBehaviour() string {
-	val := cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]
+	val := cl.activeParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR]
 	return val
 }
 
 // SetDefaultRouteBehaviour implements RouterClient.
 func (cl *PsqlClient) SetDefaultRouteBehaviour(b string) {
-	cl.internalParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR] = b
+	cl.activeParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR] = b
 }
 
 // TODO : implement, unit tests
@@ -196,12 +207,12 @@ func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, er
 
 // RouteHint implements RouterClient.
 func (cl *PsqlClient) RouteHint() routehint.RouteHint {
-	return cl.rh
+	return cl.activeRh
 }
 
 // SetRouteHint implements RouterClient.
 func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
-	cl.rh = rh
+	cl.activeRh = rh
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool) *PsqlClient {
@@ -213,8 +224,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 	}
 
 	cl := &PsqlClient{
-		activeParamSet: make(map[string]string),
-		internalParamSet: map[string]string{
+		activeParamSet: map[string]string{
 			session.SPQR_DISTRIBUTION:            "default",
 			session.SPQR_DEFAULT_ROUTE_BEHAVIOUR: defaultRouteBehaviour,
 		},
@@ -224,7 +234,9 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		prepStmtsHash: map[string]uint64{},
 		tsa:           tsa,
 		defaultTsa:    tsa,
-		rh:            routehint.EmptyRouteHint{},
+		activeRh:      routehint.EmptyRouteHint{},
+		beginTxRh:     routehint.EmptyRouteHint{},
+		savepointRh:   map[string]routehint.RouteHint{},
 
 		show_notice_messages: showNoticeMessages,
 	}
@@ -265,20 +277,23 @@ func copymap(params map[string]string) map[string]string {
 func (cl *PsqlClient) StartTx() {
 	cl.beginTxParamSet = copymap(cl.activeParamSet)
 	cl.savepointParamSet = nil
-	cl.savepointParamTxCnt = nil
+	cl.savepointTxCounter = nil
+	cl.beginTxRh = cl.activeRh
 	cl.txCnt = 0
 }
 
 func (cl *PsqlClient) CommitActiveSet() {
 	cl.beginTxParamSet = nil
 	cl.savepointParamSet = nil
-	cl.savepointParamTxCnt = nil
+	cl.savepointTxCounter = nil
+	cl.beginTxRh = routehint.EmptyRouteHint{}
 	cl.txCnt = 0
 }
 
 func (cl *PsqlClient) Savepoint(name string) {
 	cl.savepointParamSet[name] = copymap(cl.activeParamSet)
-	cl.savepointParamTxCnt[name] = cl.txCnt
+	cl.savepointRh[name] = cl.activeRh
+	cl.savepointTxCounter[name] = cl.txCnt
 	cl.txCnt++
 }
 
@@ -286,16 +301,19 @@ func (cl *PsqlClient) Rollback() {
 	cl.activeParamSet = copymap(cl.beginTxParamSet)
 	cl.beginTxParamSet = nil
 	cl.savepointParamSet = nil
-	cl.savepointParamTxCnt = nil
+	cl.savepointTxCounter = nil
+	cl.beginTxRh = routehint.EmptyRouteHint{}
+	cl.activeRh = routehint.EmptyRouteHint{}
 	cl.txCnt = 0
 }
 
 func (cl *PsqlClient) RollbackToSP(name string) {
 	cl.activeParamSet = cl.savepointParamSet[name]
-	targetTxCnt := cl.savepointParamTxCnt[name]
+	cl.activeRh = cl.savepointRh[name]
+	targetTxCnt := cl.savepointTxCounter[name]
 	for k := range cl.savepointParamSet {
-		if cl.savepointParamTxCnt[k] > targetTxCnt {
-			delete(cl.savepointParamTxCnt, k)
+		if cl.savepointTxCounter[k] > targetTxCnt {
+			delete(cl.savepointTxCounter, k)
 			delete(cl.savepointParamSet, k)
 		}
 	}
