@@ -12,6 +12,7 @@ const (
 	defaultInstanceConnectionLimit   = 50
 	defaultInstanceConnectionRetries = 10
 	defaultInstanceConnectionTimeout = time.Second
+	defaultKeepAlive                 = time.Second
 )
 
 type ConnectionKepper interface {
