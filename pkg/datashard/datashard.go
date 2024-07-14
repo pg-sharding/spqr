@@ -61,7 +61,7 @@ type Conn struct {
 
 	tx_served int64
 
-	id string
+	idSelf uint
 
 	status txstatus.TXStatus
 
@@ -342,7 +342,7 @@ func (sh *Conn) SHKey() kr.ShardKey {
 // Returns:
 // - uint: The unique identifier of the Conn struct.
 func (sh *Conn) ID() uint {
-	return spqrlog.GetPointer(sh)
+	return sh.idSelf
 }
 
 // Usr returns the username associated with the Conn struct.
@@ -409,6 +409,8 @@ func NewShard(
 		sync_out: 0,
 		mp:       map[uint64]*shard.PreparedStatementDescriptor{},
 	}
+
+	dtSh.idSelf = spqrlog.GetPointer(dtSh)
 
 	dtSh.dedicated = pgi
 
@@ -510,7 +512,7 @@ func (sh *Conn) fire(q string) error {
 			return err
 		} else {
 			spqrlog.Zero.Debug().
-				Str("shard", sh.id).
+				Uint("id", sh.ID()).
 				Type("type", msg).
 				Msg("shard rollback response")
 

@@ -136,6 +136,7 @@ func (pgi *PostgreSQLInstance) ShardName() string {
 // - error: An error if the sending or flushing fails.
 func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 	pgi.frontend.Send(query)
+
 	return pgi.frontend.Flush()
 }
 

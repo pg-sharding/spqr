@@ -15,6 +15,7 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
+	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
@@ -37,11 +38,13 @@ func TestFrontendSimpleEOF(t *testing.T) {
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 	cl.EXPECT().Close().Times(1)
 
+	cl.EXPECT().ID().AnyTimes().Return(uint(322332))
+
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).Times(1)
 
-	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil, parser.NewQParser())
 
 	assert.NoError(err, "")
 }
@@ -147,7 +150,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil, parser.NewQParser())
 
 	assert.NoError(err, "")
 }
@@ -303,7 +306,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil, parser.NewQParser())
 
 	assert.NoError(err, "")
 }
@@ -417,7 +420,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(nil, io.EOF)
 
-	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil)
+	err := frontend.Frontend(qr, cl, cmngr, &config.Router{}, nil, parser.NewQParser())
 
 	assert.NoError(err, "")
 }
