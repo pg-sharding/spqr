@@ -3,6 +3,7 @@ package kr
 import (
 	"encoding/binary"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -93,6 +94,32 @@ func (kr *KeyRange) SendFunc(attribInd int) string {
 	}
 }
 
+func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
+	var err error
+	switch kr.ColumnTypes[attribInd] {
+	case qdb.ColumnTypeVarcharDeprecated:
+		fallthrough
+	case qdb.ColumnTypeVarchar:
+		kr.LowerBound[attribInd] = val
+	case qdb.ColumnTypeVarcharHashed: /* is uint */
+		fallthrough
+	case qdb.ColumnTypeUinteger:
+		kr.LowerBound[attribInd], err = strconv.ParseUint(val, 10, 64)
+		if err != nil {
+			return err
+		}
+
+	case qdb.ColumnTypeInteger:
+		kr.LowerBound[attribInd], err = strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return err
+		}
+	default:
+		panic("unknown column type")
+	}
+	return nil
+}
+
 func (kr *KeyRange) Raw() [][]byte {
 	res := make([][]byte, len(kr.ColumnTypes))
 
@@ -111,6 +138,29 @@ func (kr *KeyRange) SendRaw() []string {
 	}
 
 	return res
+}
+
+func (kr *KeyRange) RecvRaw(vals []string) error {
+	kr.LowerBound = make([]interface{}, len(kr.ColumnTypes))
+
+	for i := 0; i < len(kr.ColumnTypes); i++ {
+		err := kr.RecvFunc(i, vals[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]interface{}, error) {
+	kr := &KeyRange{
+		ColumnTypes: colTypes,
+	}
+
+	kr.RecvRaw(vals)
+
+	return kr.LowerBound, nil
 }
 
 // TODO: use it
