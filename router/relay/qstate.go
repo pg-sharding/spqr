@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -32,7 +33,7 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 
 		dsId := ""
 		if dsId, ok = params[session.SPQR_DISTRIBUTION]; !ok {
-			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "got sharding key in comment without distribution")
+			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "sharding key in comment without distribution")
 		}
 
 		ctx := context.TODO()
@@ -41,12 +42,19 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 			return nil, err
 		}
 
-		// TODO: fix this
-		compositeKey := []interface{}{
-			val,
+		distrib, err := rst.QueryRouter().Mgr().GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
 		}
 
-		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(context.TODO(), compositeKey, krs)
+		// TODO: fix this
+		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
+
+		if err != nil {
+			return nil, err
+		}
+
+		ds, err := rst.QueryRouter().DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 		if err != nil {
 			return nil, err
 		}
