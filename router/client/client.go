@@ -302,8 +302,8 @@ func (cl *PsqlClient) Rollback() {
 	cl.beginTxParamSet = nil
 	cl.savepointParamSet = nil
 	cl.savepointTxCounter = nil
+	cl.activeRh = cl.beginTxRh
 	cl.beginTxRh = routehint.EmptyRouteHint{}
-	cl.activeRh = routehint.EmptyRouteHint{}
 	cl.txCnt = 0
 }
 

@@ -13,6 +13,33 @@ INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__d
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__distribution: ds1  */;
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 
+
+
+-- test tranasction support for route-local variables;
+
+SET __spqr__distribution = 'ds1';
+
+SET __spqr__sharding_key = 1;
+SELECT * FROM test;
+
+SET __spqr__sharding_key = 12;
+SELECT * FROM test;
+
+BEGIN;
+
+SET __spqr__sharding_key = 1;
+
+SELECT * FROM test;
+
+ROLLBACK;
+
+
+-- should return to previous value, so select from first shard
+SELECT * FROM test;
+
+-- restart session, reset all params
+\c regress
+
 DROP TABLE test;
 
 \c spqr-console
