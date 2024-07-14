@@ -158,7 +158,9 @@ func KeyRangeBoundFromStrings(colTypes []string, vals []string) ([]interface{}, 
 		ColumnTypes: colTypes,
 	}
 
-	kr.RecvRaw(vals)
+	if err := kr.RecvRaw(vals); err != nil {
+		return nil, err
+	}
 
 	return kr.LowerBound, nil
 }
