@@ -871,7 +871,7 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	cl.be.Send(msg)
 
 	switch msg.(type) {
-	case *pgproto3.ReadyForQuery:
+	case *pgproto3.ReadyForQuery, *pgproto3.ErrorResponse, *pgproto3.AuthenticationCleartextPassword, *pgproto3.AuthenticationOk, *pgproto3.AuthenticationMD5Password, *pgproto3.AuthenticationGSS, *pgproto3.AuthenticationGSSContinue, *pgproto3.AuthenticationSASLFinal, *pgproto3.AuthenticationSASLContinue, *pgproto3.AuthenticationSASL, *pgproto3.CopyInResponse, *pgproto3.CopyOutResponse, *pgproto3.CopyBothResponse:
 		return cl.be.Flush()
 	default:
 		return nil
