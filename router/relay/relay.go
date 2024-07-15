@@ -387,7 +387,6 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Interface("statement", rst.qp.Stmt()).
 		Interface("params", rst.Client().BindParams()).
 		Msg("rerouting the client connection, resolving shard")
 
@@ -442,7 +441,6 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
 	routes := rst.Qr.DataShardsRoutes()
@@ -1233,7 +1231,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 					if err != nil {
 						return err
 					}
-					
+
 					/* Here we close portal, so other clients can reuse it */
 					_, _, err = rst.RelayStep(&pgproto3.Close{
 						ObjectType: 'P',

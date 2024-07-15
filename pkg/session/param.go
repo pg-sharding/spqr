@@ -10,6 +10,10 @@ type SessionParamsHolder interface {
 	DefaultRouteBehaviour() string
 	SetDefaultRouteBehaviour(string)
 
+	// Get current session distribution
+	Distribution() string
+	SetDistribution(string)
+
 	// ShardingKey
 	ShardingKey() string
 	SetShardingKey(string)
