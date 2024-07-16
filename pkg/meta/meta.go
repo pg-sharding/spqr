@@ -200,7 +200,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 			if err != nil {
 				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "error while selecting list of distributions")
 			}
-			if len(list) <= 0 {
+			if len(list) == 0 {
 				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "you don't have any distributions")
 			}
 			if len(list) > 1 {
