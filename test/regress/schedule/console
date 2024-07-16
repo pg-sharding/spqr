@@ -11,4 +11,4 @@ test: hash
 test: teardown
 test: delete_distribution
 test: sharding_rules
-test: key_range
+test: default_distribution
