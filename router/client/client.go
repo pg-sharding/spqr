@@ -869,7 +869,13 @@ func (cl *PsqlClient) Send(msg pgproto3.BackendMessage) error {
 	cl.muBe.Lock()
 	defer cl.muBe.Unlock()
 	cl.be.Send(msg)
-	return cl.be.Flush()
+
+	switch msg.(type) {
+	case *pgproto3.ReadyForQuery, *pgproto3.ErrorResponse, *pgproto3.AuthenticationCleartextPassword, *pgproto3.AuthenticationOk, *pgproto3.AuthenticationMD5Password, *pgproto3.AuthenticationGSS, *pgproto3.AuthenticationGSSContinue, *pgproto3.AuthenticationSASLFinal, *pgproto3.AuthenticationSASLContinue, *pgproto3.AuthenticationSASL, *pgproto3.CopyInResponse, *pgproto3.CopyOutResponse, *pgproto3.CopyBothResponse:
+		return cl.be.Flush()
+	default:
+		return nil
+	}
 }
 
 func (cl *PsqlClient) SendCtx(ctx context.Context, msg pgproto3.BackendMessage) error {
