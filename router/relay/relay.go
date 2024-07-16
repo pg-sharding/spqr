@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -37,7 +38,7 @@ type RelayStateMgr interface {
 	ConnMgr() poolmgr.PoolMgr
 
 	ShouldRetry(err error) bool
-	Parse(query string) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
@@ -113,6 +114,12 @@ type PortalDesc struct {
 	nodata *pgproto3.NoData
 }
 
+type ParseCacheEntry struct {
+	ps   parser.ParseState
+	comm string
+	stmt lyx.Node
+}
+
 type RelayStateImpl struct {
 	txStatus   txstatus.TXStatus
 	CopyActive bool
@@ -149,6 +156,8 @@ type RelayStateImpl struct {
 	saveBind        *pgproto3.Bind
 	savedPortalDesc map[string]PortalDesc
 
+	parseCache map[string]ParseCacheEntry
+
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
 }
@@ -183,6 +192,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		pgprotoDebug:       rcfg.PgprotoDebug,
 		execute:            nil,
 		savedPortalDesc:    map[string]PortalDesc{},
+		parseCache:         map[string]ParseCacheEntry{},
 	}
 }
 
@@ -1215,7 +1225,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 				return nil
-			}); err != nil {
+			}, true /* cache parsing for prep statement */); err != nil {
 				return err
 			}
 
@@ -1400,8 +1410,26 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
+	if cache, ok := rst.parseCache[query]; ok {
+		rst.qp.SetStmt(cache.stmt)
+		return cache.ps, cache.comm, nil
+	}
+
 	state, comm, err := rst.qp.Parse(query)
+	if err == nil && doCaching {
+		stmt := rst.qp.Stmt()
+		/* only cache specific type of queries */
+		switch stmt.(type) {
+		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
+			rst.parseCache[query] = ParseCacheEntry{
+				ps:   state,
+				comm: comm,
+				stmt: stmt,
+			}
+		}
+	}
+
 	rst.plainQ = query
 	return state, comm, err
 }
