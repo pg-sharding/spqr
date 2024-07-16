@@ -74,11 +74,11 @@ func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.Ro
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // ProtoStateHandler provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binderQ func() error) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binderQ func() error, doCaching bool) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
-	state, comment, err := rst.Parse(query)
+	state, comment, err := rst.Parse(query, doCaching)
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %w", query, err)
 	}

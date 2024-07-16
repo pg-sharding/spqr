@@ -44,7 +44,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 				rst.AddQuery(q)
 				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 				return err
-			}); err != nil {
+			}, true); err != nil {
 				return err
 			}
 
@@ -73,7 +73,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 
 				_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 				return err
-			}); err != nil {
+			}, false); err != nil {
 				return err
 			}
 
@@ -140,7 +140,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// this call compeletes relay, sends RFQ
 			_, err := rst.ProcessMessageBuf(true, true, false, rst.ConnMgr())
 			return err
-		}); err != nil {
+		}, false); err != nil {
 			return err
 		}
 

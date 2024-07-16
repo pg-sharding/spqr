@@ -38,7 +38,7 @@ type RelayStateMgr interface {
 	ConnMgr() poolmgr.PoolMgr
 
 	ShouldRetry(err error) bool
-	Parse(query string) (parser.ParseState, string, error)
+	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
@@ -1225,7 +1225,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				}
 
 				return nil
-			}); err != nil {
+			}, true /* cache parsing for prep statement */); err != nil {
 				return err
 			}
 
@@ -1410,14 +1410,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error) {
+func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseState, string, error) {
 	if cache, ok := rst.parseCache[query]; ok {
 		rst.qp.SetStmt(cache.stmt)
 		return cache.ps, cache.comm, nil
 	}
 
 	state, comm, err := rst.qp.Parse(query)
-	if err == nil {
+	if err == nil && doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
 		switch stmt.(type) {
