@@ -171,6 +171,9 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.DistributionDefinition:
+		if stmt.ID == "default" {
+			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
+		}
 		distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
 
 		distributions, err := mngr.ListDistributions(ctx)
@@ -192,6 +195,19 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 	case *spqrparser.ShardingRuleDefinition:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case *spqrparser.KeyRangeDefinition:
+		if stmt.Distribution == "default" {
+			list, err := mngr.ListDistributions(ctx)
+			if err != nil {
+				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "error while selecting list of distributions")
+			}
+			if len(list) == 0 {
+				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "you don't have any distributions")
+			}
+			if len(list) > 1 {
+				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "distributions count not equal one, use FOR DISTRIBUTION syntax")
+			}
+			stmt.Distribution = list[0].Id
+		}
 		ds, err := mngr.GetDistribution(ctx, stmt.Distribution)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("Error when adding key range")
