@@ -684,7 +684,9 @@ opt_hash_function_clause:
 distribution_membership:
     FOR DISTRIBUTION any_id{
         $$ = $3
-    }
+    } | /* empty */ {
+  		$$ = "default"
+	}
 
 key_range_bound_elem:
 	any_val {
