@@ -13,20 +13,12 @@ type QParser struct {
 	stmt  lyx.Node
 }
 
-func (qp *QParser) State() ParseState {
-	return qp.state
-}
-
 func (qp *QParser) Stmt() lyx.Node {
 	return qp.stmt
 }
 
-func (qp *QParser) SetStmt(stmt lyx.Node) lyx.Node {
-	return qp.stmt
-}
-
-func (qp *QParser) Query() string {
-	return qp.query
+func (qp *QParser) SetStmt(stmt lyx.Node) {
+	qp.stmt = stmt
 }
 
 type ParseState interface{}

@@ -1418,10 +1418,15 @@ func (rst *RelayStateImpl) Parse(query string) (parser.ParseState, string, error
 
 	state, comm, err := rst.qp.Parse(query)
 	if err == nil {
-		rst.parseCache[query] = ParseCacheEntry{
-			ps:   state,
-			comm: comm,
-			stmt: rst.qp.Stmt(),
+		stmt := rst.qp.Stmt()
+		/* only cache specific type of queries */
+		switch stmt.(type) {
+		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
+			rst.parseCache[query] = ParseCacheEntry{
+				ps:   state,
+				comm: comm,
+				stmt: stmt,
+			}
 		}
 	}
 
