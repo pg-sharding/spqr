@@ -6,7 +6,7 @@
 https://github.com/pg-sharding/spqr/tree/master/docs
 
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1;
-ERROR:  you didn't have any distributions.
+ERROR:  you don't have any distributions.
 CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     add distribution    
 ------------------------
