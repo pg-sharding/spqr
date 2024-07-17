@@ -215,8 +215,13 @@ func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
 	cl.activeRh = rh
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool) *PsqlClient {
-	tsa := config.TargetSessionAttrsRW
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, intanseDefaultTsa string) *PsqlClient {
+	var tsa string
+	if intanseDefaultTsa != "" {
+		tsa = intanseDefaultTsa
+	} else {
+		tsa = config.TargetSessionAttrsRW
+	}
 
 	// enforce default port behaviour
 	if pt == port.RORouterPortType {

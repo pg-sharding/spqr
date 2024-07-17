@@ -1129,7 +1129,7 @@ func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
 
 // TODO : unit tests
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (CoordinatorClient, error) {
-	cl := psqlclient.NewPsqlClient(nconn, pt, "", false)
+	cl := psqlclient.NewPsqlClient(nconn, pt, "", false, "")
 
 	tlsconfig := qc.tlsconfig
 	if pt == port.UnixSocketPortType {

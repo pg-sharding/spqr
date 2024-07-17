@@ -57,6 +57,9 @@ type Router struct {
 	UseInitSQL         bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
 	UseCoordinatorInit bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 
+	/* default  */
+	DefaultTSA string `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
+
 	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
 	MemqdbPersistent bool              `json:"memqdb_persistent" toml:"memqdb_persistent" yaml:"memqdb_persistent"`
 	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
