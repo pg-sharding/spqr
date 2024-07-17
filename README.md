@@ -10,7 +10,7 @@ PostgreSQL is awesome, but it's hard to manage a single database with some terab
 
 SPQR is a production-ready system for horizontal scaling of PostgreSQL via sharding. We appreciate any kind of feedback and contribution to the project.
 
-For more about SPQR, please see [docs/](docs/).
+To get started, please visit our [documentation](https://pg-sharding.tech).
 
 ## Main features
 
@@ -49,10 +49,10 @@ spqr-router run --config path-to-router-config.yaml
 
 SPQR has all types of tests: unit, regress, and end-to-end. These tests require Docker Compose, and can be run using `make`. For more information on testing, please see `unittest`, `regress`, and `feature` sections in [Makefile](./Makefile).
 
+## Support
+
+We have a [Telegram chat](https://t.me/+jMGhyjwicpI3ZWQy) to discuss SPQR usage and development. If you're missing a feature or have found a bug, please open a [GitHub Issue](https://github.com/pg-sharding/spqr/issues/new/choose). We appreciate any kind of feedback and contribution to the project.
+
 ## License
 
 The SPQR source code is distributed under the PostgreSQL Global Development Group License.
-
-## Chat
-
-We have a [Discord server](https://discord.gg/rKYVXkPu) and a [Telegram chat](https://t.me/+jMGhyjwicpI3ZWQy) to discuss SPQR usage and development.
