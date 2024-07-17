@@ -1,0 +1,15 @@
+---
+title: 'Multiple servers and failover'
+---
+
+In the router configuration, it is possible to specify multiple servers for one shard. Then the router will distribute read-only queries among the replicas. However, in addition to the automatic routing, you also have the option to explicitly define the destination for a specific query by using the target-session-attr parameter within the query.
+
+```sql
+-- you could specify target-session-attrs anywhere in your query
+SELECT pg_is_in_recovery(), id FROM tsa_test WHERE id = 22 /* target-session-attrs: read-write */;
+NOTICE: send query to shard(s) : sh1
+ pg_is_in_recovery | id 
+-------------------+----
+ f                 | 22
+(1 row)
+```

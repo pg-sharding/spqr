@@ -1,0 +1,54 @@
+---
+title: Auth settings
+Description: auth, tls, frontend_tls, etc.
+---
+
+## General Settings
+
+Refer to the [pkg/config/auth.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/auth.go) file for the most up-to-date configuration options.
+
+| Setting          | Description                                           | Possible Values       |
+|------------------|-------------------------------------------------------|-----------------------|
+| `auth_method`    | Specifies the authentication method to be used.       | `ok`, `notok`, `clear_text`, `md5`, `scram`, `ldap`, `gss` |
+| `password`       | The password used for authentication methods that require one. This is applicable for methods like `clear_text`, `md5`, and `scram`. | Any string value |
+| `ldap_config`    | This is required if `auth_method` is set to `ldap`. | See `GSS Auth Settings` |
+| `gss_config`     | This is required if `auth_method` is set to `gss`. | See `LDAP Auth Settings` |
+
+## Admin Console Auth Settings
+
+In router and coordinator `frontend_tls` field. Refer to the [pkg/config/tls.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/tls.go) file for the most up-to-date configuration options.
+
+| Setting Name     | Description                                                                                   | Possible Values       |
+|------------------|-----------------------------------------------------------------------------------------------|-----------------------|
+| `sslmode`        | Determines the level of SSL/TLS protection to use for connections.                            | `disable`, `require`, `verify-ca`, `verify-full` |
+| `key_file`       | Path to the private key file to be used for SSL/TLS connections.                              | Any valid filepath    |
+| `cert_file`      | Path to the certificate file to be used for SSL/TLS connections.                              | Any valid filepath    |
+| `root_cert_file` | Path to the root certificate file. This is used to verify the server's certificate if sslmode is set to `verify-ca` or `verify-full`. | Any valid filepath |
+
+## GSS Auth Settings
+
+Refer to the [pkg/config/gss.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/gss.go) file for the most up-to-date configuration options.
+
+| Setting Name     | Description                                           | Possible Values |
+|------------------|-------------------------------------------------------|-----------------|
+| `krb_keytab_file`| Path to the Kerberos keytab file. This file is used for authenticating against a Kerberos server. | Any valid filepath |
+| `krb_realm`      | Specifies the Kerberos realm. A realm is a network that is defined for authentication purposes. | Any valid realm |
+| `include_realm`  | Determines if the realm should be included in the authentication process. This can affect how user names are interpreted. | `true`, `false` |
+
+
+## LDAP Auth Settings
+
+Refer to the [pkg/config/ldap.go](https://github.com/pg-sharding/spqr/blob/master/pkg/config/ldap.go) file for the most up-to-date configuration options.
+
+| Setting Name       | Description                                                                 | Possible Values |
+|--------------------|-----------------------------------------------------------------------------|-----------------|
+| `ldap_auth_mode`   | Specifies the LDAP authentication mode.                                     | `UnencryptedMode` |
+| `ldap_conn_config` | Configuration for LDAP connection, including server URLs and connection mode. | `LDAPConnCfg` |
+| `servers`          | List of LDAP server URLs.                                                   | array of strings (URLs) |
+| `prefix`           | Prefix to be added to the username during authentication.                   | string |
+| `suffix`           | Suffix to be added to the username during authentication.                   | string |
+| `bind_dn`          | Distinguished Name (DN) to bind to the LDAP server.                         | string |
+| `bind_password`    | Password for the bind DN.                                                   | string |
+| `base_dn`          | Base DN under which to search for users.                                    | string |
+| `search_attribute` | LDAP attribute to search against when looking up users.                     | string |
+| `search_filter`    | Additional LDAP search filters.                                             | string |

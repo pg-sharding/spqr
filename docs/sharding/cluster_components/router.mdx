@@ -1,0 +1,9 @@
+---
+title: 'Router'
+---
+
+The **SPQR Router** routes queries to shards and provides the interface for clients to a sharded cluster. Applications should never communicate directly with shards, but rather use the Router to route their queries.
+
+The **Router** caches metadata from the Coordinator and guesses which shard a transaction should be routed to.
+
+A **Router** is stateless, meaning it has no persistent state, and is typically run on dedicated resources. Or can be run anywhere else, including on the same host as the application.

@@ -1,0 +1,53 @@
+---
+title: Welcome to SPQR
+---
+
+import DockerImage from '/snippets/docker_image.mdx';
+
+## What is SPQR
+
+SPQR (Stateless Postgres Query Router) is a production-ready system for horizontal scaling of PostgreSQL via sharding.
+
+## Why SPQR
+
+PostgreSQL is awesome, but it's hard to manage a single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Existing sharding solutions focus on analytical and hybrid workloads (OLAP, HTAP). Moreover, most of those solutions do not provide a simple, painless path for the monolith \<-\> sharded transitions. That's why the<br /> [Data Platform team of Yandex.Cloud](https://cloud.yandex.com/en-ru/services#data-platform) designed SPQR.
+
+Our team has been exploring different approaches to sharding a PostgreSQL cluster for a long time.  We have considered FDW-based sharding, CustomNode-based sharding, C-implemented lightweight query routing, and finally came to the SPQR design.
+
+SPQR is a good fit for:
+
+- Developers who are comfortable with Postgres and prefer not to use other database engines
+- Developers who cannot or do not wish to implement sharding logic on the application level
+- A database that is well splitted by a sharding key
+- Single-shard OLTP queries
+
+<CardGroup cols={2}>
+  <Card
+    title="Get started"
+    icon="rocket"
+    href="/welcome/get_started"
+  >
+    Start sharding your PostgreSQL cluster in 5 minutes
+  </Card>
+  <Card
+    title="Internals"
+    icon="code"
+    href="/internals/balancing"
+  >
+    Learn more how SPQR works under the hood
+  </Card>
+  <Card
+    title="Features"
+    icon="stars"
+    href="/features/sharding"
+  >
+    Main SPQR features
+  </Card>
+  <Card
+    title="Configuration"
+    icon="screwdriver-wrench"
+    href="/configuration/balancer"
+  >
+    The complete Configuration reference
+  </Card>
+</CardGroup>

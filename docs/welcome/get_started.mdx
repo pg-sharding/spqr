@@ -1,10 +1,30 @@
-# Syntax
+---
+title: 'Get Started'
+description: 'Start sharding your PostgreSQL cluster in 5 minutes'
+---
 
-Before the start, you need to configure the rules by which the router will decide which of the shards to send each request to.
+import DockerImage from '/snippets/docker_image.mdx';
+import BuildLocal from '/snippets/build_local.mdx';
+
+Let's set up the simplest possible installation scenario - when you have two shards and one router.
+
+<AccordionGroup>
+  <Accordion icon="docker" title="Pull the SPQR docker image">
+    <DockerImage />
+  </Accordion>
+  <Accordion icon="rectangle-terminal" title="Build the SPQR locally">
+    <BuildLocal />
+  </Accordion>
+</AccordionGroup>
+
+
+## Setting up sharding
+
+First, you need to configure the rules by which the router will decide which of the shards to send each request to.
 
 For this purpose, SPQR has an administrative console. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
 
-```
+```sql
 ➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
 SPQR router admin console
 Here you can set up your own routing rules
@@ -32,7 +52,7 @@ To make all things work, the router needs to know the following:
 
 Let's create a distribution first:
 
-```
+```sql
 ➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
 demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
          add distribution         
@@ -43,7 +63,7 @@ demo=> CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
 
 The next step is to specify a list of tables and columns.
 
-```
+```sql
 demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION orders DISTRIBUTION KEY id;
                  attach table               
 --------------------------------------------
@@ -59,7 +79,7 @@ demo=> ALTER DISTRIBUTION ds1 ATTACH RELATION item DISTRIBUTION KEY order_id;
 
 And at the end specify a list of ranges: which values to route to which shard. Note: The right bound is infinity if there are no key ranges.
 
-```
+```sql
 CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard1 FOR DISTRIBUTION ds1;
          add key range          
 --------------------------------
@@ -71,6 +91,6 @@ CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 -----------------------------------
  created key range with bound 1000
 (1 row)
-``
+```
 
-Here we go!
+Here we go! You can play with some SELECTs or INSERTs.

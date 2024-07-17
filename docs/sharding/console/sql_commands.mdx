@@ -1,0 +1,115 @@
+---
+title: 'SQL commands'
+Description: 'Create distributions, key ranges and tables and see cluster info'
+---
+
+### CREATE DISTRIBUTION
+
+This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause.
+
+```sql
+CREATE DISTRIBUTION <distributionID> [COLUMN TYPES types]
+
+where types is a comma-separated list of column types
+
+where type is one of: VARCHAR, INTEGER, INT
+```
+
+### DROP DISTRIBUTION
+
+This command is used to drop an existing distribution with the specified name. The CASCADE keyword is optional and indicates that any dependent objects should also be dropped.
+
+```sql
+DROP DISTRIBUTION <distribution_name> [CASCADE]
+```
+
+### ALTER DISTRIBUTION
+
+This command is used to alter an existing distribution. You can attach one or more relations to the distribution using the ATTACH RELATION clause, or detach a relation from the distribution using the DETACH RELATION clause.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> 
+[
+    ATTACH RELATION <relation_name> [, <relation_name> ...] | 
+    DETACH RELATION <relation_name>
+]
+```
+
+### CREATE KEY RANGE
+
+This command is used to create a new key range. Since the key space is an ordered set, it is enough to specify only one end of the range
+
+```sql
+CREATE KEY RANGE [ <keyRangeID> ]
+FROM <lowerBound>
+ROUTE TO <shardID> 
+FOR DISTRIBUTION <distributionID>
+```
+
+### DROP KEY RANGE
+
+This command is used to drop an existing key range.
+
+```sql
+DROP KEY RANGE <keyRangeID>
+```
+
+### MOVE KEY RANGE
+
+This command is used to move an existing key range to a different shard.
+
+```sql
+MOVE KEY RANGE <keyRangeID> TO <shardID>
+```
+### SPLIT KEY RANGE
+
+This command is used to split an existing key range into two separate key ranges.
+
+```sql
+SPLIT KEY RANGE <keyRangeID> FROM <keyRangeFromID> BY <border>
+```
+
+### UNITE KEY RANGE
+
+This command is used to unite two adjacent key ranges into a single key range.
+
+```sql
+UNITE KEY RANGE <keyRangeIDLeft> WITH <keyRangeIDRight>
+```
+
+### SHOW
+
+This command is used to retrieve information about a specific entity of SPQR cluster and simple filtering.
+
+```sql
+SHOW entity [WHERE where_clause]
+
+where entity is one of databases, routers, pools, shards, backend_connections, key_ranges, clients, status, distributions, version, relations, task_groups, prepared_statements:
+```
+
+The`where_clause` is used to filter the results based on specific conditions. It allows you to specify criteria for selecting the information to be shown.
+
+```sql
+spqr-console=> SHOW backend_connections WHERE hostname='hostname:6432'
+
+ backend connection id | router  | shard key name |   hostname    |     user     | dbname | sync | tx_served | tx status
+-----------------------+---------+----------------+---------------+--------------+--------+------+-----------+-----------
+ 824694216064          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10102     | IDLE
+ 824646300800          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7508      | IDLE
+ 824682931072          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 16623     | IDLE
+ 824688144384          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 10112     | IDLE
+ 824686833408          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21080     | IDLE
+ 824686834560          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21069     | IDLE
+ 824653676928          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 34227     | IDLE
+ 824686833664          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 21060     | IDLE
+ 824646300928          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 8003      | IDLE
+ 824682937984          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7622      | IDLE
+```
+
+### KILL CLIENT
+
+This command is used to terminate a specific client connection in a SPQR Router.
+
+```sql
+KILL CLIENT <client_id>
+```

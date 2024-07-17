@@ -1,0 +1,8 @@
+---
+title: 'Coordinator'
+---
+
+The coordinator consists of two parts: the coordinator itself and the QDB.
+
+- The **SPQR Coordinator** provides an interface for managing a sharded cluster configuration and routers. 
+- **QDB** stores the metadata for a sharded cluster, which includes the distributions, key ranges, tables, distributed locks, and so on. It's a regular etcd cluster (https://etcd.io)

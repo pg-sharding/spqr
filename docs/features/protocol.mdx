@@ -1,0 +1,11 @@
+---
+title: 'Works over PostgreSQL protocol'
+---
+
+import ConsoleExample from '/snippets/console_example.mdx';
+
+The application communicates with the router using the PostgreSQL protocol. In other words, the application doesn't even know that it's communicating with a Golang application and not a regular PostgreSQL cluster.
+
+Moreover, you can connect to the router and the coordinator via psql to perform administrative tasks. SPQR has an administrative console. You can find the console port in your config file.
+
+<ConsoleExample />

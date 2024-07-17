@@ -1,0 +1,108 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "SPQR",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#5382ff",
+    "light": "#e2ebff",
+    "dark": "#5382ff",
+    "anchors": {
+      "from": "#5382ff",
+      "to": "#e2ebff"
+    }
+  },
+  "modeToggle": {
+    "default": "light"
+  },
+  "_topbarLinks": [
+    {
+      "name": "Blog",
+      "url": "https://spqr-blog"
+    }
+  ],
+  "topbarCtaButton": {
+    "type": "github",
+    "url": "https://github.com/pg-sharding/spqr"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
+  },
+  "tabs": [],
+  "anchors": [
+    {
+      "name": "Documentation",
+      "icon": "book-open-cover",
+      "url": "/"
+    },
+    {
+      "name": "Community",
+      "icon": "telegram",
+      "url": "https://t.me/+jMGhyjwicpI3ZWQy"
+    },
+    {
+      "name": "Releases",
+      "icon": "clock",
+      "url": "https://github.com/pg-sharding/spqr/releases"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Documentation",
+      "pages": [
+        "welcome/index",
+        "welcome/get_started",
+        {
+          "group": "Features",
+          "pages": [
+            "features/sharding",
+            "features/pooling",
+            "features/fault_tolerance",
+            "features/data_balancing",
+            "features/cross_shard_queries",
+            "features/multiple_servers_and_failover",
+            "features/protocol",
+            "features/read_only",
+            "features/perfomance",
+            "features/authentication",
+            "features/config_reloading",
+            "features/statistics"
+          ]
+        },
+        {
+          "group": "Configuration Guide",
+          "pages": [
+            "configuration/router",
+            "configuration/coordinator",
+            "configuration/balancer",
+            "configuration/auth"
+          ]
+        },
+        {
+          "group": "Sharding",
+          "pages": [
+            "welcome/get_started",
+            {
+              "group": "Cluster Components",
+              "pages": [
+                "sharding/cluster_components/overview",
+                "sharding/cluster_components/shard",
+                "sharding/cluster_components/router",
+                "sharding/cluster_components/coordinator"
+              ]
+            },
+            {
+              "group": "Admin Console",
+              "pages": [
+                "sharding/console/how_to_connect",
+                "sharding/console/concepts",
+                "sharding/console/sql_commands"
+              ]
+            }
+          ]
+        },
+        "welcome/design"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+---
+title: 'How to connect'
+Description: 'SPQR router and coordinator admin console'
+---
+
+import ConsoleExample from '/snippets/console_example.mdx';
+
+Router and coordinator have administrative console. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql:
+
+<ConsoleExample />
+
+Administrative Console is the place where you configure the sharding logic. The router will decide which of the shards to send each request to according to the settings.
