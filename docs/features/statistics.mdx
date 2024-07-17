@@ -1,0 +1,20 @@
+---
+title: 'Statistics'
+---
+
+You can get access to statistics in router's administrative console via [SHOW command](https://github.com/pg-sharding/spqr/blob/master/yacc/console/gram.y#L319).
+
+```sql
+SHOW clients WHERE dbname = testdb;
+  client_id   |   user   | dbname |       server_id       | router_address
+--------------+----------+--------+-----------------------+----------------
+ 824660987840 | test_app | testdb | no backend connection | local
+ 824686914368 | test_app | testdb | no backend connection | local
+ 824656201120 | test_app | testdb | no backend connection | local
+ 824657328608 | test_app | testdb | example.com:6432      | local
+ 824656165344 | test_app | testdb | example.com:6432      | local
+ 824655861952 | test_app | testdb | no backend connection | local
+(6 rows)
+```
+
+For more information, see [SHOW command](/sharding/console/sql_commands#show) reference.

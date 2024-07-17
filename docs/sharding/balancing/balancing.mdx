@@ -1,0 +1,53 @@
+---
+title: 'Balancing internals'
+---
+
+
+## Algorithm 
+
+This is a brief summary of what stages balancing consists of:
+
+1. **Collecting statistics**: The load balancer collects statistics on the workload on the shards using [pg_comment_stats](#pg_comment_stats) to measure CPU and disk usage.
+2. **Finding the most heavily loaded shard**: Based on the collected statistics, the load balancer identifies the shard with the highest workload.
+3. **Selecting the most significant load criterion**: Among all the workload criteria, the one with the greatest impact on the overall workload is chosen.
+4. **Checking out the need for data migration**: The workload on the key range is compared to a threshold value. If it exceeds the threshold, it's time to migrate the data.
+5. **Finding the key range with the heaviest load**: On the identified shard, the key range with the highest workload is determined.
+6. **Choosing a destination**: It is decided which shard and key range the data will be migrated to.
+7. **Data movement**: A data movement operation is initiated, which may involve splitting the data into smaller chunks, if necessary, and transferring them to the destination shard. For more details see [data movement internals](#Data movement internals)
+8. **Synchronization**: The changes are synchronized with the etcd cluster to ensure data consistency.
+
+## pg_comment_stats
+
+We fork pg_stat_statements and modified it a little bit. The original version of the extension records stats for each SQL statement, while [pg_comment_stats](https://github.com/munakoiso/pg_comment_stats) keeps track of queries that have specific keys mentioned in the statement comments.
+
+```sql
+> /* a: 1 c: hmm*/ select 1;
+> select comment_keys, query_count, user_time from pgcs_get_stats() limit 1;
+-[ RECORD 1 ]+----------------------
+comment_keys | {"a": "1"}
+query_count  | 1
+user_time    | 6.000000000000363e-06
+```
+
+## Data movement internals
+
+Balancer is a separate binary that executes the algorithm. It executes the algorithm exactly once without cyclic repetition, and its running time is on the order of seconds. If the queue is not empty, the balancer performs a task from the queue. A data transport task is actually a group of tasks that can have many actions, and between all actions, the task state is synchronized with etcd. After completion, the task is removed from the task group.
+
+For clarity, here is how it is defined [in the code](https://github.com/pg-sharding/spqr/blob/master/pkg/models/tasks/tasks.go ):
+
+```golang
+type Task struct {
+	ShardFromId string
+	ShardToId   string
+	KrIdFrom    string
+	KrIdTo      string
+	Bound       []byte
+	KrIdTemp    string
+	State       TaskState // Planned, Split, Moved
+}
+
+type TaskGroup struct {
+	Tasks    []*Task
+	JoinType JoinType // JoinNone, JoinLeft, JoinRight
+}
+```

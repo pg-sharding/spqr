@@ -1,0 +1,9 @@
+---
+title: 'Shard'
+---
+
+A **shard** contains a subset of sharded data for a sharded cluster. Together, the cluster's shards hold the entire data set for the cluster.
+
+A PostgreSQL cluster can be based on Patroni, Stolon, Managed PostgreSQL, or any other HA solution over vanilla Postgres. Physical quorum-based PostgreSQL HA solutions are battle-proven, and we reuse all their benefits.
+
+SPQR has no control over the operation of shards. All the router needs to know about a shard is how to connect to it and the range of data it contains.
