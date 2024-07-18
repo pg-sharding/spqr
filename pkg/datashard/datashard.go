@@ -153,9 +153,10 @@ func (sh *Conn) Cancel() error {
 	pgiTmp, err := conn.NewInstanceConn(
 		sh.dedicated.Hostname(),
 		sh.dedicated.ShardName(),
-		nil /* no tls for cancel */,
+		nil, /* no tls for cancel */
 		time.Second,
 		time.Second,
+		time.Millisecond*9500,
 	)
 	if err != nil {
 		return err

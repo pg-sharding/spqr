@@ -96,6 +96,7 @@ type BackendRule struct {
 	ConnectionRetries int                        `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
 	ConnectionTimeout time.Duration              `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
 	KeepAlive         time.Duration              `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
+	TcpUserTimeout    time.Duration              `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
 }
 
 type FrontendRule struct {
