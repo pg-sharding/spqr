@@ -76,3 +76,14 @@ func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionPar
 func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	return nil, nil
 }
+
+// TODO : unit tests
+func (l *LocalQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
+	return []*routingstate.DataShardRoute{
+		&routingstate.DataShardRoute{Shkey: kr.ShardKey{
+			Name: l.ds.ID,
+			RW:   false,
+		},
+		},
+	}
+}

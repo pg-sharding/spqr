@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"os"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -157,6 +159,24 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 	return pgi.frontend.Receive()
 }
 
+func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) error {
+	return func(network, address string, c syscall.RawConn) error {
+		var sysErr error
+		var err = c.Control(func(fd uintptr) {
+			/*
+				#define TCP_USER_TIMEOUT	 18 // How long for loss retry before timeout
+			*/
+
+			sysErr = syscall.SetsockoptInt(int(fd), syscall.SOL_TCP, 0x12,
+				int(d.Milliseconds()))
+		})
+		if sysErr != nil {
+			return os.NewSyscallError("setsockopt", sysErr)
+		}
+		return err
+	}
+}
+
 // NewInstanceConn creates a new instance connection to a PostgreSQL database.
 //
 // Parameters:
@@ -166,10 +186,12 @@ func (pgi *PostgreSQLInstance) Receive() (pgproto3.BackendMessage, error) {
 //
 // Return:
 // - (DBInstance, error): The newly created instance connection and any error that occurred.
-func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout time.Duration, keepAlive time.Duration) (DBInstance, error) {
+func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout time.Duration, keepAlive time.Duration, tcpUserTimeout time.Duration) (DBInstance, error) {
 	dd := net.Dialer{
 		Timeout:   timout,
 		KeepAlive: keepAlive,
+
+		Control: setTCPUserTimeout(tcpUserTimeout),
 	}
 
 	netconn, err := dd.Dial("tcp", host)
