@@ -997,6 +997,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		}
 	default:
 		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
+		return routingstate.MultiMatchState{}, nil
 	}
 
 	/*
