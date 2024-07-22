@@ -257,10 +257,7 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 	/* simple key-value pair */
 	switch rght := expr.(type) {
 	case *lyx.ParamRef:
-		meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
-
-		return fmt.Errorf("expression is out of range")
-		// else  error out?
+		return meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeVarcharDeprecated:
