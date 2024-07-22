@@ -47,8 +47,9 @@ type RoutingMetadataContext struct {
 	// and
 	// SELECT * FROM a join b WHERE a.c1 = <val> and a.c2 = <val>
 	// can be routed with different rules
-	rels  map[RelationFQN]struct{}
-	exprs map[RelationFQN]map[string][]interface{}
+	rels      map[RelationFQN]struct{}
+	exprs     map[RelationFQN]map[string][]interface{}
+	paramRefs map[RelationFQN]map[string][]int
 
 	// cached CTE names
 	cteNames map[string]struct{}
@@ -59,38 +60,16 @@ type RoutingMetadataContext struct {
 	tableAliases map[string]RelationFQN
 
 	distributions map[RelationFQN]*distributions.Distribution
-
-	params            [][]byte
-	paramsFormatCodes []int16
-	// TODO: include client ops and metadata here
 }
 
-func NewRoutingMetadataContext(params [][]byte, paramsFormatCodes []int16) *RoutingMetadataContext {
+func NewRoutingMetadataContext() *RoutingMetadataContext {
 	meta := &RoutingMetadataContext{
 		rels:          map[RelationFQN]struct{}{},
 		cteNames:      map[string]struct{}{},
 		tableAliases:  map[string]RelationFQN{},
 		exprs:         map[RelationFQN]map[string][]interface{}{},
+		paramRefs:     map[RelationFQN]map[string][]int{},
 		distributions: map[RelationFQN]*distributions.Distribution{},
-		params:        params,
-	}
-	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
-	if len(paramsFormatCodes) > 1 {
-		meta.paramsFormatCodes = paramsFormatCodes
-	} else if len(paramsFormatCodes) == 1 {
-
-		/* single format specified, use for all columns */
-		meta.paramsFormatCodes = make([]int16, len(meta.params))
-
-		for i := 0; i < len(meta.params); i++ {
-			meta.paramsFormatCodes[i] = paramsFormatCodes[0]
-		}
-	} else {
-		/* use default format for all columns */
-		meta.paramsFormatCodes = make([]int16, len(meta.params))
-		for i := 0; i < len(meta.params); i++ {
-			meta.paramsFormatCodes[i] = xproto.FormatCodeText
-		}
 	}
 
 	return meta
@@ -128,6 +107,22 @@ func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN
 		meta.exprs[resolvedRelation][colname] = make([]interface{}, 0)
 	}
 	meta.exprs[resolvedRelation][colname] = append(meta.exprs[resolvedRelation][colname], expr)
+	return nil
+}
+
+func (meta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation RelationFQN, colname string, ind int) error {
+	if meta.RFQNIsCTE(resolvedRelation) {
+		// CTE, skip
+		return nil
+	}
+	meta.rels[resolvedRelation] = struct{}{}
+	if _, ok := meta.paramRefs[resolvedRelation]; !ok {
+		meta.paramRefs[resolvedRelation] = map[string][]int{}
+	}
+	if _, ok := meta.paramRefs[resolvedRelation][colname]; !ok {
+		meta.paramRefs[resolvedRelation][colname] = make([]int, 0)
+	}
+	meta.paramRefs[resolvedRelation][colname] = append(meta.paramRefs[resolvedRelation][colname], ind)
 	return nil
 }
 
@@ -262,84 +257,7 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 	/* simple key-value pair */
 	switch rght := expr.(type) {
 	case *lyx.ParamRef:
-		if rght.Number <= len(meta.params) {
-			// TODO: switch column type here
-			fc := meta.paramsFormatCodes[rght.Number-1]
-
-			switch fc {
-			case xproto.FormatCodeBinary:
-				switch tp {
-				case qdb.ColumnTypeVarcharDeprecated:
-					fallthrough
-				case qdb.ColumnTypeVarcharHashed:
-					fallthrough
-				case qdb.ColumnTypeVarchar:
-					return meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
-				case qdb.ColumnTypeInteger:
-
-					var num int64
-					var err error
-
-					buf := bytes.NewBuffer(meta.params[rght.Number-1])
-
-					if len(meta.params[rght.Number-1]) == 4 {
-						var tmpnum int32
-						err = binary.Read(buf, binary.BigEndian, &tmpnum)
-						num = int64(tmpnum)
-					} else {
-						err = binary.Read(buf, binary.BigEndian, &num)
-					}
-					if err != nil {
-						return err
-					}
-
-					return meta.RecordConstExpr(resolvedRelation, colname, num)
-				case qdb.ColumnTypeUinteger:
-
-					var num uint64
-					var err error
-
-					buf := bytes.NewBuffer(meta.params[rght.Number-1])
-
-					if len(meta.params[rght.Number-1]) == 4 {
-						var tmpnum uint32
-						err = binary.Read(buf, binary.BigEndian, &tmpnum)
-						num = uint64(tmpnum)
-					} else {
-						err = binary.Read(buf, binary.BigEndian, &num)
-					}
-					if err != nil {
-						return err
-					}
-
-					return meta.RecordConstExpr(resolvedRelation, colname, num)
-				}
-			case xproto.FormatCodeText:
-				switch tp {
-				case qdb.ColumnTypeVarcharDeprecated:
-					fallthrough
-				case qdb.ColumnTypeVarcharHashed:
-					fallthrough
-				case qdb.ColumnTypeVarchar:
-					return meta.RecordConstExpr(resolvedRelation, colname, string(meta.params[rght.Number-1]))
-				case qdb.ColumnTypeInteger:
-					num, err := strconv.ParseInt(string(meta.params[rght.Number-1]), 10, 64)
-					if err != nil {
-						return err
-					}
-					return meta.RecordConstExpr(resolvedRelation, colname, num)
-				case qdb.ColumnTypeUinteger:
-					num, err := strconv.ParseUint(string(meta.params[rght.Number-1]), 10, 64)
-					if err != nil {
-						return err
-					}
-					return meta.RecordConstExpr(resolvedRelation, colname, num)
-				}
-			default:
-				// ??? protoc violation
-			}
-
-		}
+		meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
 
 		return fmt.Errorf("expression is out of range")
 		// else  error out?
@@ -809,6 +727,104 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	return fmt.Errorf("create table stmt ignored: no sharding rule columns found")
 }
 
+func (qr *ProxyQrouter) resolveValue(meta *RoutingMetadataContext, rfqn RelationFQN, col string, bindParams [][]byte, paramResCodes []int16) ([]interface{}, bool) {
+
+	if vals, ok := meta.exprs[rfqn][col]; ok {
+		return vals, true
+	}
+
+	inds, ok := meta.paramRefs[rfqn][col]
+	if !ok {
+		return nil, false
+	}
+
+	off, tp := qr.GetDistributionKeyOffsetType(meta, rfqn, col)
+	if off == -1 {
+		// column not from distr key
+		return nil, false
+	}
+
+	// TODO: switch column type here
+	// only works for one value
+	ind := inds[0]
+	fc := paramResCodes[ind]
+
+	switch fc {
+	case xproto.FormatCodeBinary:
+		switch tp {
+		case qdb.ColumnTypeVarcharDeprecated:
+			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeVarchar:
+			return []interface{}{string(bindParams[ind])}, true
+		case qdb.ColumnTypeInteger:
+
+			var num int64
+			var err error
+
+			buf := bytes.NewBuffer(bindParams[ind])
+
+			if len(bindParams[ind]) == 4 {
+				var tmpnum int32
+				err = binary.Read(buf, binary.BigEndian, &tmpnum)
+				num = int64(tmpnum)
+			} else {
+				err = binary.Read(buf, binary.BigEndian, &num)
+			}
+			if err != nil {
+				return nil, false
+			}
+
+			return []interface{}{num}, true
+		case qdb.ColumnTypeUinteger:
+
+			var num uint64
+			var err error
+
+			buf := bytes.NewBuffer(bindParams[ind])
+
+			if len(bindParams[ind]) == 4 {
+				var tmpnum uint32
+				err = binary.Read(buf, binary.BigEndian, &tmpnum)
+				num = uint64(tmpnum)
+			} else {
+				err = binary.Read(buf, binary.BigEndian, &num)
+			}
+			if err != nil {
+				return nil, false
+			}
+
+			return []interface{}{num}, true
+		}
+	case xproto.FormatCodeText:
+		switch tp {
+		case qdb.ColumnTypeVarcharDeprecated:
+			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeVarchar:
+			return []interface{}{string(bindParams[ind])}, true
+		case qdb.ColumnTypeInteger:
+			num, err := strconv.ParseInt(string(bindParams[ind]), 10, 64)
+			if err != nil {
+				return nil, false
+			}
+			return []interface{}{num}, true
+		case qdb.ColumnTypeUinteger:
+			num, err := strconv.ParseUint(string(bindParams[ind]), 10, 64)
+			if err != nil {
+				return nil, false
+			}
+			return []interface{}{num}, true
+		}
+	default:
+		// ??? protoc violation
+	}
+
+	return nil, false
+}
+
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		// empty statement
@@ -832,7 +848,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 	/* TODO: delay this until step 2. */
 
-	meta := NewRoutingMetadataContext(sph.BindParams(), sph.BindParamFormatCodes())
+	meta := NewRoutingMetadataContext()
 
 	tsa := config.TargetSessionAttrsAny
 
@@ -1003,6 +1019,30 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
+	paramsFormatCodes := sph.BindParamFormatCodes()
+	var queryParamsFormatCodes []int16
+
+	paramsLen := len(sph.BindParams())
+
+	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
+	if len(paramsFormatCodes) > 1 {
+		queryParamsFormatCodes = paramsFormatCodes
+	} else if len(paramsFormatCodes) == 1 {
+
+		/* single format specified, use for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+
+		for i := 0; i < paramsLen; i++ {
+			queryParamsFormatCodes[i] = paramsFormatCodes[0]
+		}
+	} else {
+		/* use default format for all columns */
+		queryParamsFormatCodes = make([]int16, paramsLen)
+		for i := 0; i < paramsLen; i++ {
+			queryParamsFormatCodes[i] = xproto.FormatCodeText
+		}
+	}
+
 	var route routingstate.RoutingState
 	route = nil
 	var route_err error
@@ -1035,7 +1075,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 			col := distrKey[i].Column
 
-			vals, valOk := meta.exprs[rfqn][col]
+			// vals, valOk := meta.exprs[rfqn][col]
+			// if !valOk {
+			// 	ok = false
+			// 	break
+			// }
+
+			vals, valOk := qr.resolveValue(meta, rfqn, col, sph.BindParams(), queryParamsFormatCodes)
+
 			if !valOk {
 				ok = false
 				break
@@ -1076,7 +1123,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			Route:              currroute,
 			TargetSessionAttrs: tsa,
 		})
-
 	}
 
 	if route == nil && route_err != nil {
