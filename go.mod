@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/caio/go-tdigest v3.1.0+incompatible
 	github.com/cucumber/godog v0.14.1
-	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/docker v27.1.0+incompatible
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.8
 	github.com/gofrs/uuid v4.4.0+incompatible
