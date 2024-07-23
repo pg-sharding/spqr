@@ -1072,12 +1072,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 			col := distrKey[i].Column
 
-			// vals, valOk := meta.exprs[rfqn][col]
-			// if !valOk {
-			// 	ok = false
-			// 	break
-			// }
-
 			vals, valOk := qr.resolveValue(meta, rfqn, col, sph.BindParams(), queryParamsFormatCodes)
 
 			if !valOk {
@@ -1087,7 +1081,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 			for i, val := range vals {
 				compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
-				spqrlog.Zero.Debug().Interface("key", meta.exprs[rfqn][col][i]).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
+				spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
 
 				if err != nil {
 					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
