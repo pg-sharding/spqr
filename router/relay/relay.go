@@ -1394,9 +1394,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 	if rst.Client().Server() == nil {
 		return rst.Client().ReplyRFQ(rst.TxStatus())
 	} else {
-		rst.AddQuery(&pgproto3.Sync{})
-		if _, _, err := rst.RelayFlush(true, true); err != nil {
-			return err
+		if len(rst.msgBuf) != 0 {
+			rst.AddQuery(&pgproto3.Sync{})
+			if _, _, err := rst.RelayFlush(true, true); err != nil {
+				return err
+			}
 		}
 
 		if err := rst.CompleteRelay(true); err != nil {
