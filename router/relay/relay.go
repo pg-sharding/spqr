@@ -65,8 +65,6 @@ type RelayStateMgr interface {
 	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error)
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
-	Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
-
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
 	ProcCopy(query pgproto3.FrontendMessage) error
 
@@ -1577,35 +1575,6 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay
 		}
 		return ok, nil
 	}
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) Sync(waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error {
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Msg("client relay exeсuting sync for client")
-
-	// if we have no active connections, we have noting to sync
-	if !cmngr.ConnectionActive(rst) {
-		return rst.Client().ReplyRFQ(rst.TxStatus())
-	}
-	if err := rst.PrepareRelayStep(cmngr); err != nil {
-		return err
-	}
-
-	if _, _, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		/* Relay flush completes relay */
-		return err
-	}
-
-	if err := rst.CompleteRelay(replyCl); err != nil {
-		return err
-	}
-
-	if _, _, err := rst.RelayStep(&pgproto3.Sync{}, waitForResp, replyCl); err != nil {
-		return err
-	}
-	return nil
 }
 
 // TODO : unit tests
