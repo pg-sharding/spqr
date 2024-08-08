@@ -279,7 +279,7 @@ func TestFrontendXProto(t *testing.T) {
 		ObjectType: 'S',
 	}).Times(1).Return(nil)
 
-	srv.EXPECT().Send(&pgproto3.Sync{}).Times(2).Return(nil)
+	srv.EXPECT().Send(&pgproto3.Sync{}).Times(1).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{
@@ -300,7 +300,7 @@ func TestFrontendXProto(t *testing.T) {
 		},
 	}, nil)
 
-	srv.EXPECT().Receive().Times(2).Return(&pgproto3.ReadyForQuery{
+	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ReadyForQuery{
 		TxStatus: byte(txstatus.TXIDLE),
 	}, nil)
 
