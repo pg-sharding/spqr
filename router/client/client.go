@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -30,15 +31,9 @@ import (
 
 var NotRouted = fmt.Errorf("client not routed")
 
-type PreparedStatementMapper interface {
-	PreparedStatementQueryByName(name string) string
-	PreparedStatementQueryHashByName(name string) uint64
-	StorePreparedStatement(name, query string)
-}
-
 type RouterClient interface {
 	client.Client
-	PreparedStatementMapper
+	prepstatement.PreparedStatementMapper
 
 	RLock()
 	RUnlock()
@@ -102,7 +97,7 @@ type PsqlClient struct {
 
 	r *route.Route
 
-	prepStmts     map[string]string
+	prepStmts     map[string]*prepstatement.PreparedStatementDefinition
 	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
@@ -235,7 +230,7 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		},
 		conn:          pgconn,
 		startupMsg:    &pgproto3.StartupMessage{},
-		prepStmts:     map[string]string{},
+		prepStmts:     map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash: map[string]uint64{},
 		tsa:           tsa,
 		defaultTsa:    tsa,
@@ -358,17 +353,24 @@ func (cl *PsqlClient) ResetAll() {
 	cl.activeParamSet = cl.startupMsg.Parameters
 }
 
-func (cl *PsqlClient) StorePreparedStatement(name, query string) {
-	hash := murmur3.Sum64([]byte(query))
-	cl.prepStmts[name] = query
-	cl.prepStmtsHash[name] = hash
+func (cl *PsqlClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
+	hash := murmur3.Sum64([]byte(d.Query))
+	cl.prepStmts[d.Name] = d
+	cl.prepStmtsHash[d.Name] = hash
 }
 
 func (cl *PsqlClient) PreparedStatementQueryByName(name string) string {
 	if v, ok := cl.prepStmts[name]; ok {
-		return v
+		return v.Query
 	}
 	return ""
+}
+
+func (cl *PsqlClient) PreparedStatementDefinitionByName(name string) *prepstatement.PreparedStatementDefinition {
+	if v, ok := cl.prepStmts[name]; ok {
+		return v
+	}
+	return nil
 }
 
 func (cl *PsqlClient) PreparedStatementQueryHashByName(name string) uint64 {

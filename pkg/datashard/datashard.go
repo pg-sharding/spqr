@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/startup"
@@ -65,21 +66,22 @@ type Conn struct {
 
 	status txstatus.TXStatus
 
-	mp map[uint64]*shard.PreparedStatementDescriptor
+	stmtDef  map[uint64]*prepstatement.PreparedStatementDefinition
+	stmtDesc map[uint64]*prepstatement.PreparedStatementDescriptor
 }
 
 // ListPreparedStatements implements shard.Shard.
 func (sh *Conn) ListPreparedStatements() []shard.PreparedStatementsMgrDescriptor {
 	ret := make([]shard.PreparedStatementsMgrDescriptor, 0)
 
-	for hash, desc := range sh.mp {
+	for hash, def := range sh.stmtDef {
 
 		ret = append(ret,
 			shard.PreparedStatementsMgrDescriptor{
 				Hash:     hash,
 				ServerId: sh.ID(),
-				Query:    desc.OrigQuery,
-				Name:     desc.Name,
+				Query:    def.Query,
+				Name:     def.Name,
 			},
 		)
 	}
@@ -414,7 +416,8 @@ func NewShard(
 		ps:       shard.ParameterSet{},
 		sync_in:  1, /* +1 for startup message */
 		sync_out: 0,
-		mp:       map[uint64]*shard.PreparedStatementDescriptor{},
+		stmtDef:  map[uint64]*prepstatement.PreparedStatementDefinition{},
+		stmtDesc: map[uint64]*prepstatement.PreparedStatementDescriptor{},
 	}
 
 	dtSh.dedicated = pgi
@@ -590,8 +593,8 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 // Returns:
 // - bool: true if the prepared statement exists, false otherwise.
 // - *shard.PreparedStatementDescriptor: the prepared statement descriptor, or nil if it does not exist.
-func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
-	rd, ok := srv.mp[hash]
+func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
+	rd, ok := srv.stmtDesc[hash]
 	return ok, rd
 }
 
@@ -605,8 +608,9 @@ func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatemen
 //
 // Returns:
 // - None.
-func (srv *Conn) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
-	srv.mp[hash] = rd
+func (srv *Conn) StorePrepareStatement(hash uint64, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+	srv.stmtDef[hash] = def
+	srv.stmtDesc[hash] = rd
 }
 
 // AuthRule returns the backend auth configuration of the Conn object.

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -421,7 +422,10 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
-			rst.Client().StorePreparedStatement(st.Name, st.Query)
+			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
+				Name:  st.Name,
+				Query: st.Query,
+			})
 			return nil
 		} else {
 			// process like regular query

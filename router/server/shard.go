@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -40,7 +41,7 @@ func NewShardServer(spool pool.DBPool) *ShardServer {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
+func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
 	b, rd := srv.shard.HasPrepareStatement(hash)
 	return b, rd
 }
@@ -56,8 +57,8 @@ func (srv *ShardServer) Name() string {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
-	srv.shard.PrepareStatement(hash, rd)
+func (srv *ShardServer) StorePrepareStatement(hash uint64, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+	srv.shard.StorePrepareStatement(hash, def, rd)
 }
 
 // TODO : unit tests

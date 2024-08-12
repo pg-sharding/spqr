@@ -8,6 +8,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/opentracing/opentracing-go"
@@ -53,7 +54,7 @@ type RelayStateMgr interface {
 	Client() client.RouterClient
 
 	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
-	PrepareStatement(hash uint64, d server.PrepStmtDesc) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
+	PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
 	PrepareRelayStep(cmngr poolmgr.PoolMgr) error
 	PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (func() error, error)
@@ -230,26 +231,27 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	rst.Cl.ServerAcquireUse()
+	defer rst.Cl.ServerReleaseUse()
 
-	if ok, rd := rst.Cl.Server().HasPrepareStatement(hash); ok {
-		rst.Cl.ServerReleaseUse()
+	serv := rst.Client().Server()
+
+	if ok, rd := serv.HasPrepareStatement(hash); ok {
 		return rd, &pgproto3.ParseComplete{}, nil
 	}
 
-	rst.Cl.ServerReleaseUse()
-	// used in following methods
-
 	// Do not wait for result
-	if err := rst.FireMsg(&pgproto3.Parse{
-		Name:  d.Name,
-		Query: d.Query,
+	// simply fire backend msg
+	if err := serv.Send(&pgproto3.Parse{
+		Name:          d.Name,
+		Query:         d.Query,
+		ParameterOIDs: d.ParameterOIDs,
 	}); err != nil {
 		return nil, nil, err
 	}
 
-	err := rst.FireMsg(&pgproto3.Describe{
+	err := serv.Send(&pgproto3.Describe{
 		ObjectType: 'S',
 		Name:       d.Name,
 	})
@@ -264,9 +266,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 		return nil, nil, err
 	}
 
-	rd := &shard.PreparedStatementDescriptor{
-		Name:      d.Name,
-		OrigQuery: d.Query,
+	rd := &prepstatement.PreparedStatementDescriptor{
 		NoData:    false,
 		RowDesc:   nil,
 		ParamDesc: nil,
@@ -310,7 +310,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d server.PrepStmtDesc) 
 
 	if deployed {
 		// dont need to complete relay because tx state didt changed
-		rst.Cl.Server().PrepareStatement(hash, rd)
+		rst.Cl.Server().StorePrepareStatement(hash, d, rd)
 	}
 	return rd, retMsg, nil
 }
@@ -1019,8 +1019,8 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 var MultiShardPrepStmtDeployError = fmt.Errorf("multishard prepared statement deploy is not supported")
 
 // TODO : unit tests
-func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*shard.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
-	query := rst.Client().PreparedStatementQueryByName(qname)
+func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
+	def := rst.Client().PreparedStatementDefinitionByName(qname)
 	hash := rst.Client().PreparedStatementQueryHashByName(qname)
 
 	if len(rst.Client().Server().Datashards()) != 1 {
@@ -1029,27 +1029,18 @@ func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*shard.PreparedStatemen
 
 	spqrlog.Zero.Debug().
 		Str("name", qname).
-		Str("query", query).
+		Str("query", def.Query).
 		Uint64("hash", hash).
 		Uint("client", rst.Client().ID()).
 		Uints("shards", shard.ShardIDs(rst.Client().Server().Datashards())).
 		Msg("deploy prepared statement")
 
 	name := fmt.Sprintf("%d", hash)
-	return rst.PrepareStatement(hash, server.PrepStmtDesc{
-		Name:  name,
-		Query: query,
+	return rst.PrepareStatement(hash, &prepstatement.PreparedStatementDefinition{
+		Name:          name,
+		Query:         def.Query,
+		ParameterOIDs: def.ParameterOIDs,
 	})
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) FireMsg(query pgproto3.FrontendMessage) error {
-	spqrlog.Zero.Debug().Interface("query", query).Msg("firing query")
-
-	rst.Cl.ServerAcquireUse()
-	defer rst.Cl.ServerReleaseUse()
-
-	return rst.Cl.Server().Send(query)
 }
 
 // TODO : unit tests
@@ -1088,7 +1079,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 		switch q := msg.(type) {
 		case *pgproto3.Parse:
 
-			rst.Client().StorePreparedStatement(q.Name, q.Query)
+			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
+				Name:          q.Name,
+				Query:         q.Query,
+				ParameterOIDs: q.ParameterOIDs,
+			})
 
 			hash := rst.Client().PreparedStatementQueryHashByName(q.Name)
 

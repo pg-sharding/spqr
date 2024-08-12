@@ -9,6 +9,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/frontend"
@@ -250,7 +251,10 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Sync{}, nil)
 
-	cl.EXPECT().StorePreparedStatement("stmtcache_1", "select 'Hello, world!'").Times(1).Return()
+	cl.EXPECT().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
+		Name:  "stmtcache_1",
+		Query: "select 'Hello, world!'",
+	}).Times(1).Return()
 	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").AnyTimes().Return("select 'Hello, world!'")
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
@@ -258,10 +262,10 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
 	res := false
-	rd := &shard.PreparedStatementDescriptor{}
+	rd := &prepstatement.PreparedStatementDescriptor{}
 
 	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
-	srv.EXPECT().PrepareStatement(gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
+	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
 		rd.RowDesc = &pgproto3.RowDescription{}

@@ -4,17 +4,13 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
-type PrepStmtDesc struct {
-	Name  string
-	Query string
-}
-
 type Server interface {
-	shard.PreparedStatementHolder
+	prepstatement.PreparedStatementHolder
 	txstatus.TxStatusMgr
 
 	Name() string
