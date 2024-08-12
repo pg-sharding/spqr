@@ -12,75 +12,13 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
+	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
 	routehint "github.com/pg-sharding/spqr/router/routehint"
 	server "github.com/pg-sharding/spqr/router/server"
 )
-
-// MockPreparedStatementMapper is a mock of PreparedStatementMapper interface.
-type MockPreparedStatementMapper struct {
-	ctrl     *gomock.Controller
-	recorder *MockPreparedStatementMapperMockRecorder
-}
-
-// MockPreparedStatementMapperMockRecorder is the mock recorder for MockPreparedStatementMapper.
-type MockPreparedStatementMapperMockRecorder struct {
-	mock *MockPreparedStatementMapper
-}
-
-// NewMockPreparedStatementMapper creates a new mock instance.
-func NewMockPreparedStatementMapper(ctrl *gomock.Controller) *MockPreparedStatementMapper {
-	mock := &MockPreparedStatementMapper{ctrl: ctrl}
-	mock.recorder = &MockPreparedStatementMapperMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPreparedStatementMapper) EXPECT() *MockPreparedStatementMapperMockRecorder {
-	return m.recorder
-}
-
-// PreparedStatementQueryByName mocks base method.
-func (m *MockPreparedStatementMapper) PreparedStatementQueryByName(name string) string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreparedStatementQueryByName", name)
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// PreparedStatementQueryByName indicates an expected call of PreparedStatementQueryByName.
-func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryByName(name interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryByName), name)
-}
-
-// PreparedStatementQueryHashByName mocks base method.
-func (m *MockPreparedStatementMapper) PreparedStatementQueryHashByName(name string) uint64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PreparedStatementQueryHashByName", name)
-	ret0, _ := ret[0].(uint64)
-	return ret0
-}
-
-// PreparedStatementQueryHashByName indicates an expected call of PreparedStatementQueryHashByName.
-func (mr *MockPreparedStatementMapperMockRecorder) PreparedStatementQueryHashByName(name interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockPreparedStatementMapper)(nil).PreparedStatementQueryHashByName), name)
-}
-
-// StorePreparedStatement mocks base method.
-func (m *MockPreparedStatementMapper) StorePreparedStatement(name, query string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StorePreparedStatement", name, query)
-}
-
-// StorePreparedStatement indicates an expected call of StorePreparedStatement.
-func (mr *MockPreparedStatementMapperMockRecorder) StorePreparedStatement(name, query interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePreparedStatement", reflect.TypeOf((*MockPreparedStatementMapper)(nil).StorePreparedStatement), name, query)
-}
 
 // MockRouterClient is a mock of RouterClient interface.
 type MockRouterClient struct {
@@ -439,6 +377,20 @@ func (m *MockRouterClient) PasswordMD5(salt [4]byte) (string, error) {
 func (mr *MockRouterClientMockRecorder) PasswordMD5(salt interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PasswordMD5", reflect.TypeOf((*MockRouterClient)(nil).PasswordMD5), salt)
+}
+
+// PreparedStatementDefinitionByName mocks base method.
+func (m *MockRouterClient) PreparedStatementDefinitionByName(name string) *prepstatement.PreparedStatementDefinition {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PreparedStatementDefinitionByName", name)
+	ret0, _ := ret[0].(*prepstatement.PreparedStatementDefinition)
+	return ret0
+}
+
+// PreparedStatementDefinitionByName indicates an expected call of PreparedStatementDefinitionByName.
+func (mr *MockRouterClientMockRecorder) PreparedStatementDefinitionByName(name interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementDefinitionByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementDefinitionByName), name)
 }
 
 // PreparedStatementQueryByName mocks base method.
@@ -1114,15 +1066,15 @@ func (mr *MockRouterClientMockRecorder) StartupMessage() *gomock.Call {
 }
 
 // StorePreparedStatement mocks base method.
-func (m *MockRouterClient) StorePreparedStatement(name, query string) {
+func (m *MockRouterClient) StorePreparedStatement(d *prepstatement.PreparedStatementDefinition) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StorePreparedStatement", name, query)
+	m.ctrl.Call(m, "StorePreparedStatement", d)
 }
 
 // StorePreparedStatement indicates an expected call of StorePreparedStatement.
-func (mr *MockRouterClientMockRecorder) StorePreparedStatement(name, query interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) StorePreparedStatement(d interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).StorePreparedStatement), name, query)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).StorePreparedStatement), d)
 }
 
 // Unroute mocks base method.

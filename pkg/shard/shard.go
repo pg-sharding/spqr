@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -65,22 +66,9 @@ type CoordShardinfo interface {
 	Router() string
 }
 
-type PreparedStatementDescriptor struct {
-	Name      string
-	OrigQuery string
-	NoData    bool
-	ParamDesc *pgproto3.ParameterDescription
-	RowDesc   *pgproto3.RowDescription
-}
-
-type PreparedStatementHolder interface {
-	HasPrepareStatement(hash uint64) (bool, *PreparedStatementDescriptor)
-	PrepareStatement(hash uint64, rd *PreparedStatementDescriptor)
-}
-
 type Shard interface {
 	txstatus.TxStatusMgr
-	PreparedStatementHolder
+	prepstatement.PreparedStatementHolder
 	Shardinfo
 
 	Cfg() *config.Shard

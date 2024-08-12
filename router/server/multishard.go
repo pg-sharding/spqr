@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -47,21 +48,25 @@ type MultiShardServer struct {
 	copyBuf []*pgproto3.CopyOutResponse
 }
 
+// HasPrepareStatement implements Server.
+func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
+	panic("unimplemented")
+}
+
+// StorePrepareStatement implements Server.
+func (m *MultiShardServer) StorePrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+
+}
+
 // RequestData implements Server.
 func (m *MultiShardServer) RequestData() {
-	panic("unimplemented")
+
 }
 
 // DataPending implements Server.
 func (m *MultiShardServer) DataPending() bool {
 	panic("unimplemented")
 }
-
-func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
-	panic("implement me")
-}
-
-func (m *MultiShardServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {}
 
 func (m *MultiShardServer) Reset() error {
 	return nil

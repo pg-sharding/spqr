@@ -11,6 +11,7 @@ import (
 	pgproto3 "github.com/jackc/pgx/v5/pgproto3"
 	config "github.com/pg-sharding/spqr/pkg/config"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
+	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 )
@@ -95,11 +96,11 @@ func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockServer) HasPrepareStatement(hash uint64) (bool, *shard.PreparedStatementDescriptor) {
+func (m *MockServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(*shard.PreparedStatementDescriptor)
+	ret1, _ := ret[1].(*prepstatement.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
@@ -121,18 +122,6 @@ func (m *MockServer) Name() string {
 func (mr *MockServerMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockServer)(nil).Name))
-}
-
-// PrepareStatement mocks base method.
-func (m *MockServer) PrepareStatement(hash uint64, rd *shard.PreparedStatementDescriptor) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "PrepareStatement", hash, rd)
-}
-
-// PrepareStatement indicates an expected call of PrepareStatement.
-func (mr *MockServerMockRecorder) PrepareStatement(hash, rd interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareStatement", reflect.TypeOf((*MockServer)(nil).PrepareStatement), hash, rd)
 }
 
 // Receive mocks base method.
@@ -200,6 +189,18 @@ func (m *MockServer) SetTxStatus(status txstatus.TXStatus) {
 func (mr *MockServerMockRecorder) SetTxStatus(status interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetTxStatus", reflect.TypeOf((*MockServer)(nil).SetTxStatus), status)
+}
+
+// StorePrepareStatement mocks base method.
+func (m *MockServer) StorePrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StorePrepareStatement", hash, d, rd)
+}
+
+// StorePrepareStatement indicates an expected call of StorePrepareStatement.
+func (mr *MockServerMockRecorder) StorePrepareStatement(hash, d, rd interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePrepareStatement", reflect.TypeOf((*MockServer)(nil).StorePrepareStatement), hash, d, rd)
 }
 
 // Sync mocks base method.
