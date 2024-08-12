@@ -221,6 +221,10 @@ func (s *InstancePoolImpl) Connection(
 	var posCache []string
 	var negCache []string
 
+	if _, ok := s.shardMapping[key.Name]; !ok {
+		return nil, fmt.Errorf("shard with name %q not found", key.Name)
+	}
+
 	for _, host := range s.shardMapping[key.Name].Hosts {
 		tsaKey := TsaKey{
 			Tsa:  targetSessionAttrs,
