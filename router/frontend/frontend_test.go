@@ -251,11 +251,13 @@ func TestFrontendXProto(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(&pgproto3.Sync{}, nil)
 
-	cl.EXPECT().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
+	def := &prepstatement.PreparedStatementDefinition{
 		Name:  "stmtcache_1",
 		Query: "select 'Hello, world!'",
-	}).Times(1).Return()
-	cl.EXPECT().PreparedStatementQueryByName("stmtcache_1").AnyTimes().Return("select 'Hello, world!'")
+	}
+
+	cl.EXPECT().StorePreparedStatement(def).Times(1)
+	cl.EXPECT().PreparedStatementDefinitionByName("stmtcache_1").AnyTimes().Return(def)
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
@@ -265,7 +267,7 @@ func TestFrontendXProto(t *testing.T) {
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
 	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
-	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}) {
+	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}, interface{}) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
 		rd.RowDesc = &pgproto3.RowDescription{}

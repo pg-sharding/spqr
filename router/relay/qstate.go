@@ -422,6 +422,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		if AdvancedPoolModeNeeded(rst) {
 			spqrlog.Zero.Debug().Msg("sql level prep statement pooling support is on")
 
+			/* no OIDS for SQL level prep stmt */
 			rst.Client().StorePreparedStatement(&prepstatement.PreparedStatementDefinition{
 				Name:  st.Name,
 				Query: st.Query,

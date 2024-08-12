@@ -146,9 +146,8 @@ type RelayStateImpl struct {
 
 	holdRouting bool
 
-	bindRoute     *routingstate.DataShardRoute
-	lastBindQuery string
-	lastBindName  string
+	bindRoute    *routingstate.DataShardRoute
+	lastBindName string
 
 	execute func() error
 
@@ -1138,7 +1137,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 			phx := NewSimpleProtoStateHandler(rst.manager)
 
-			rst.lastBindQuery = rst.Client().PreparedStatementQueryByName(q.PreparedStatement)
+			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
 			// We implicitly assume that there is always Execute after Bind for the same portal.
 			// hovewer, postgresql protocol allows some more cases.
@@ -1150,7 +1149,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				return nil
 			}
 
-			if err := ProcQueryAdvanced(rst, rst.lastBindQuery, phx, func() error {
+			if err := ProcQueryAdvanced(rst, def.Query, phx, func() error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
