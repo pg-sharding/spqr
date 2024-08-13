@@ -1,7 +1,12 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "SPQR",
-  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/spqr_icon-main.svg",
+    "dark": "/logo/spqr_icon-main.svg",
+    "href": "https://pg-sharding.tech/"
+  },
+  "favicon": "/logo/spqr_icon-main.svg",
   "colors": {
     "primary": "#5382ff",
     "light": "#e2ebff",
