@@ -1,21 +1,27 @@
-<h1 align="center">
-  <a href="https://pg-sharding.tech/"><img src="docs/logo/spqr_logo-main.svg" alt="Stateless Postgres Query Router" width="400px"></a>
-</h1>
-<p align="center">
-  <b>Stateless Postgres Query Router</b>
-</p>
+<div align=center>
+
+[![Go](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml)
+[![Go](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml)
+[![Docs](https://img.shields.io/badge/docs-SPQR_dev-blue)](https://t.me/+jMGhyjwicpI3ZWQy)
+[![Telegram Chat](https://img.shields.io/badge/telegram-SPQR_dev-blue)](https://t.me/+jMGhyjwicpI3ZWQy)
+
+<picture align=center>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/png/spqr_logo_white_alpha.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/logo/png/spqr_logo_alpha.png">
+    <img alt="Stateless Postgres Query Router" src="docs/logo/png/spqr_logo_white_alpha.png" width="400px">
+</picture>
+
+<h4>Stateless Postgres Query Router is a production-ready system for horizontal scaling of PostgreSQL via sharding.</h4>
+
+</div>
+
+---
 
 PostgreSQL is awesome, but it's hard to manage a single database with some terabytes of data and 10<sup>5</sup>+ queries per second. Current sharding solutions focus on analytical and hybrid workloads (OLAP, HTAP). Moreover, most of those solutions do not provide a smooth path for monolith to sharded transitions, which is why Yandex Cloud's Data Platform team developed SPQR.
 
 SPQR is a production-ready system for horizontal scaling of PostgreSQL via sharding. We appreciate any kind of feedback and contribution to the project.
 
-To get started or see full list of features, please visit our [documentation](https://pg-sharding.tech).
-
-[![Go](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/build.yaml)
-[![Go](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml/badge.svg)](https://github.com/pg-sharding/spqr/actions/workflows/tests.yaml)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pg-sharding/spqr)
-![Go Report](https://goreportcard.com/badge/github.com/pg-sharding/spqr)
-[![Telegram Chat](https://img.shields.io/badge/telegram-SPQR_dev-blue)](https://t.me/+jMGhyjwicpI3ZWQy)
+To get started, please visit our [documentation](https://pg-sharding.tech). The full list of features is available [here](https://pg-sharding.tech/features/).
 
 ## Development
 
