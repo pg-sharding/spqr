@@ -720,16 +720,17 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, condition spqrparser.WhereClauseNode) error {
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
-
+	condition := query.Where
+	order := query.Order
 	if err := pi.WriteHeader(header...); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
-
+	var data [][]string
 	for _, cl := range clients {
 		if len(cl.Shards()) > 0 {
 			for _, sh := range cl.Shards() {
@@ -745,11 +746,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 				if !match {
 					continue
 				}
-
-				if err := pi.WriteDataRow(row...); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-					return err
-				}
+				data = append(data, row)
 			}
 		} else {
 			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
@@ -762,15 +759,56 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 				continue
 			}
 
-			if err := pi.WriteDataRow(row...); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-				return err
-			}
+			data = append(data, row)
 		}
 
 	}
+	switch order.(type) {
+	case spqrparser.Order:
+		ord := order.(spqrparser.Order)
+		var asc_desc int
 
+		switch ord.OptAscDesc.(type) {
+		case spqrparser.SortByAsc:
+			asc_desc = ASC
+		case spqrparser.SortByDesc:
+			asc_desc = DESC
+		case spqrparser.SortByDefault:
+			asc_desc = ASC
+		default:
+			return fmt.Errorf("wrong sorting option (asc/desc)")
+		}
+		sortable := SortableWithContext{data, rowDesc[ord.Col.ColName], asc_desc}
+		sort.Sort(sortable)
+	}
+	for i := 0; i < len(data); i++ {
+		if err := pi.WriteDataRow(data[i]...); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
 	return pi.CompleteMsg(len(clients))
+}
+
+const (
+	ASC = iota
+	DESC
+)
+
+type SortableWithContext struct {
+	Data      [][]string
+	Col_index int
+	Order     int
+}
+
+func (a SortableWithContext) Len() int      { return len(a.Data) }
+func (a SortableWithContext) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], a.Data[i] }
+func (a SortableWithContext) Less(i, j int) bool {
+	if a.Order == ASC {
+		return a.Data[i][a.Col_index] < a.Data[j][a.Col_index]
+	} else {
+		return a.Data[i][a.Col_index] > a.Data[j][a.Col_index]
+	}
 }
 
 // TODO : unit tests
