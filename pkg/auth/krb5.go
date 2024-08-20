@@ -3,13 +3,14 @@ package auth
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/jcmturner/gokrb5/v8/credentials"
 	"github.com/jcmturner/gokrb5/v8/gssapi"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/service"
 	"github.com/pg-sharding/spqr/pkg/client"
-	"log"
 )
 
 type BaseAuthModule struct {
@@ -96,7 +97,7 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 	if status.Code == gssapi.StatusContinueNeeded {
 		errText := "Kerberos GSS-API continue needed"
 		log.Print(errText)
-		return nil, fmt.Errorf(errText)
+		return nil, fmt.Errorf("%s", errText)
 	}
 	if authed {
 		ctx := st.Context()
