@@ -79,7 +79,7 @@ type SpqrError struct {
 //   - *SpqrError: The created SpqrError.
 func New(errorCode string, errorMsg string) *SpqrError {
 	err := &SpqrError{
-		Err:       fmt.Errorf(errorMsg),
+		Err:       fmt.Errorf("%s", errorMsg),
 		ErrorCode: errorCode,
 	}
 	return err
@@ -95,7 +95,7 @@ func New(errorCode string, errorMsg string) *SpqrError {
 //   - *SpqrError: The created SpqrError.
 func NewByCode(errorCode string) *SpqrError {
 	err := &SpqrError{
-		Err:       fmt.Errorf(GetMessageByCode(errorCode)),
+		Err:       fmt.Errorf("%s", GetMessageByCode(errorCode)),
 		ErrorCode: errorCode,
 	}
 	return err
