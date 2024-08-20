@@ -796,18 +796,18 @@ const (
 )
 
 type SortableWithContext struct {
-	data      [][]string
-	col_index int
-	order     int
+	Data      [][]string
+	Col_index int
+	Order     int
 }
 
-func (a SortableWithContext) Len() int      { return len(a.data) }
-func (a SortableWithContext) Swap(i, j int) { a.data[i], a.data[j] = a.data[j], a.data[i] }
+func (a SortableWithContext) Len() int      { return len(a.Data) }
+func (a SortableWithContext) Swap(i, j int) { a.Data[i], a.Data[j] = a.Data[j], a.Data[i] }
 func (a SortableWithContext) Less(i, j int) bool {
-	if a.order == ASC {
-		return a.data[i][a.col_index] < a.data[j][a.col_index]
+	if a.Order == ASC {
+		return a.Data[i][a.Col_index] < a.Data[j][a.Col_index]
 	} else {
-		return a.data[i][a.col_index] > a.data[j][a.col_index]
+		return a.Data[i][a.Col_index] > a.Data[j][a.Col_index]
 	}
 }
 
