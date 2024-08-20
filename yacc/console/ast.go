@@ -19,8 +19,8 @@ type OrderClause interface{}
 
 type Order struct {
 	OrderClause
-	Order OptAscDesc
-	Col   ColumnRef
+	OptAscDesc OptAscDesc
+	Col        ColumnRef
 }
 
 type OrderEmpty struct {

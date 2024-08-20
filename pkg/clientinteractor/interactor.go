@@ -768,7 +768,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		ord := order.(spqrparser.Order)
 		var asc_desc int
 
-		switch ord.Order.(type) {
+		switch ord.OptAscDesc.(type) {
 		case spqrparser.SortByAsc:
 			asc_desc = ASC
 		case spqrparser.SortByDesc:

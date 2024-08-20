@@ -570,7 +570,10 @@ opt_asc_desc: ASC							{ $$ = &SortByAsc{} }
 			| /*EMPTY*/						{ $$ = &SortByAsc{} }
 
 order_clause:
-    ORDER BY ColRef opt_asc_desc {$$ = &Order{Col:$2, Order:$3}}
+    ORDER BY ColRef opt_asc_desc 
+	{
+		$$ = &Order{Col:$3, OptAscDesc:$4}
+	} 
 	| /* empty */    {$$ = &OrderEmpty{}}
 
 
