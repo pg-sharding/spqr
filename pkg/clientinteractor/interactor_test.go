@@ -1,9 +1,11 @@
 package clientinteractor_test
 
 import (
+	"sort"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -174,4 +176,12 @@ func TestGetColumnsMap(t *testing.T) {
 		})
 	}
 
+}
+
+func TestSortableWithContext(t *testing.T) {
+	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
+	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
+	sortable := clientinteractor.SortableWithContext{data, 0, clientinteractor.DESC}
+	sort.Sort(sortable)
+	assert.Equal(t, data, rev_data)
 }
