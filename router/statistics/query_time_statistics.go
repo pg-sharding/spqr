@@ -38,7 +38,8 @@ var queryStatistics = statistics{
 
 func InitStatistics(q []float64) {
 	queryStatistics.Quantiles = q
-	if queryStatistics.Quantiles != nil && len(queryStatistics.Quantiles) > 0 {
+
+	if len(queryStatistics.Quantiles) > 0 { // also not nil
 		queryStatistics.NeedToCollectData = false
 	} else {
 		queryStatistics.NeedToCollectData = true
