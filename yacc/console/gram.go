@@ -88,7 +88,7 @@ type yySymType struct {
 	where  WhereClauseNode
 
 	order_clause OrderClause
-	opt_asc_desc OptAscDest
+	opt_asc_desc OptAscDesc
 }
 
 const IDENT = 57346

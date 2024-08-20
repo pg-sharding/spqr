@@ -87,7 +87,7 @@ func randomHex(n int) (string, error) {
     where                  WhereClauseNode
 
 	order_clause 		   OrderClause
-	opt_asc_desc		   OptAscDest
+	opt_asc_desc		   OptAscDesc
 }
 
 // any non-terminal which returns a value needs a type, which is
