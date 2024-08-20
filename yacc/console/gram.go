@@ -1239,7 +1239,7 @@ yydefault:
 		yyDollar = yyS[yypt-0 : yypt+1]
 //line gram.y:570
 		{
-			yyVAL.opt_asc_desc = &SortByAsc{}
+			yyVAL.opt_asc_desc = &SortByDefault{}
 		}
 	case 73:
 		yyDollar = yyS[yypt-4 : yypt+1]
@@ -1251,7 +1251,7 @@ yydefault:
 		yyDollar = yyS[yypt-0 : yypt+1]
 //line gram.y:577
 		{
-			yyVAL.order_clause = &OrderEmpty{}
+			yyVAL.order_clause = OrderClause(nil)
 		}
 	case 75:
 		yyDollar = yyS[yypt-4 : yypt+1]

@@ -773,8 +773,10 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 			asc_desc = ASC
 		case spqrparser.SortByDesc:
 			asc_desc = DESC
-		default:
+		case spqrparser.SortByDefault:
 			asc_desc = ASC
+		default:
+			return fmt.Errorf("wrong sorting option (asc/desc)")
 		}
 		sortable := SortableWithContext{data, rowDesc[ord.Col.ColName], asc_desc}
 		sort.Sort(sortable)

@@ -567,14 +567,14 @@ create_stmt:
 
 opt_asc_desc: ASC							{ $$ = &SortByAsc{} }
 			| DESC							{ $$ = &SortByDesc{} }
-			| /*EMPTY*/						{ $$ = &SortByAsc{} }
+			| /*EMPTY*/						{ $$ = &SortByDefault{} }
 
 order_clause:
     ORDER BY ColRef opt_asc_desc 
 	{
 		$$ = &Order{Col:$3, OptAscDesc:$4}
 	} 
-	| /* empty */    {$$ = &OrderEmpty{}}
+	| /* empty */    {$$ = OrderClause(nil)}
 
 
 show_stmt:

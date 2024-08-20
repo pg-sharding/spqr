@@ -23,10 +23,6 @@ type Order struct {
 	Col        ColumnRef
 }
 
-type OrderEmpty struct {
-	OrderClause
-}
-
 type WhereClauseNode interface {
 }
 
