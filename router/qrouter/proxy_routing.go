@@ -668,21 +668,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		_ = qr.deparseFromNode(stmt.TableRef, meta)
 
 		return qr.routeByClause(ctx, clause, meta)
-	case *lyx.Copy:
-		if !stmt.IsFrom {
-			return fmt.Errorf("copy from stdin is not implemented")
-		}
-
-		_ = qr.deparseFromNode(stmt.TableRef, meta)
-
-		clause := stmt.Where
-
-		if clause == nil {
-			// will not work
-			return nil
-		}
-
-		return qr.routeByClause(ctx, clause, meta)
 	}
 
 	return nil
@@ -1001,13 +986,15 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return routingstate.RandomMatchState{}, nil
 		}
 
-	case *lyx.Delete, *lyx.Update, *lyx.Copy:
+	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
 			return nil, err
 		}
+	case *lyx.Copy:
+		return routingstate.MultiMatchState{}, nil
 	default:
 		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
 	}
