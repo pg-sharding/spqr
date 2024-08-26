@@ -665,8 +665,6 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData) err
 	rst.Client().RLock()
 	defer rst.Client().RUnlock()
 
-	spqrlog.Zero.Debug().Interface("copy stmt", stmt).Msg("here201")
-
 	// Read delimiter from COPY options
 	delimiter := byte(';')
 	for _, opt := range stmt.Options {
@@ -697,8 +695,6 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData) err
 		if err != nil {
 			return err
 		}
-
-		spqrlog.Zero.Debug().Interface("value", valueClause.Values).Msg("here")
 
 		smt, ok := r.(routingstate.ShardMatchState)
 		if !ok {
@@ -809,6 +805,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			q := rst.qp.Stmt().(*lyx.Copy)
 
 			if err := func() error {
+				buf := []byte{}
 				for {
 					cpMsg, err := rst.Client().Receive()
 					if err != nil {
@@ -817,10 +814,11 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 
 					switch msg := cpMsg.(type) {
 					case *pgproto3.CopyData:
-						if err := rst.ProcCopy(q, msg); err != nil {
+						buf = append(buf, msg.Data...)
+					case *pgproto3.CopyDone, *pgproto3.CopyFail:
+						if err := rst.ProcCopy(q, &pgproto3.CopyData{Data: buf}); err != nil {
 							return err
 						}
-					case *pgproto3.CopyDone, *pgproto3.CopyFail:
 						if err := rst.ProcCopyComplete(&cpMsg); err != nil {
 							return err
 						}
