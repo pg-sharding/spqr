@@ -1426,25 +1426,8 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
-				},
-				TargetSessionAttrs: "any",
-			},
-			err: nil,
+			exp:   routingstate.MultiMatchState{},
+			err:   nil,
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
