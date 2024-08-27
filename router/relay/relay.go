@@ -666,7 +666,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData) err
 	defer rst.Client().RUnlock()
 
 	// Read delimiter from COPY options
-	delimiter := byte(';')
+	delimiter := byte('\t')
 	for _, opt := range stmt.Options {
 		if o := opt.(*lyx.Option); strings.ToLower(o.Name) == "delimiter" {
 			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
