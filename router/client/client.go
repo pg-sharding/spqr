@@ -72,7 +72,7 @@ type RouterClient interface {
 }
 
 type PsqlClient struct {
-	// client.Client
+	client.Client
 
 	activeParamSet     map[string]string
 	savepointParamSet  map[string]map[string]string
