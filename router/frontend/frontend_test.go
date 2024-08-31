@@ -422,7 +422,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	srv.EXPECT().Send(query).Times(1).Return(nil)
 
-	sh1.EXPECT().Send(&pgproto3.CopyData{Data: []byte("1\n1\n1\n1\n")}).Times(1).Return(nil)
+	sh1.EXPECT().Send(&pgproto3.CopyData{Data: []byte("1\n")}).Times(4).Return(nil)
 	srv.EXPECT().Send(&pgproto3.CopyDone{}).Times(1).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CopyInResponse{}, nil)
