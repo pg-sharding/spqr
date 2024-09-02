@@ -675,16 +675,17 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 
 	// Parse data
 	// and decide where to route
-	prev := 0
+	prevDelimiter := 0
+	prevLine := 0
 	valueClause := &lyx.ValueClause{}
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
-			prev = len(data.Data)
+			prevLine = len(data.Data)
 			break
 		}
 		if b == '\n' || b == delimiter {
-			valueClause.Values = append(valueClause.Values, &lyx.AExprSConst{Value: string(data.Data[prev:i])})
-			prev = i + 1
+			valueClause.Values = append(valueClause.Values, &lyx.AExprSConst{Value: string(data.Data[prevDelimiter:i])})
+			prevDelimiter = i + 1
 		}
 		if b != '\n' {
 			continue
@@ -709,13 +710,13 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 		}
 
 		valueClause = &lyx.ValueClause{}
-		prev = i + 1
+		prevLine = i + 1
 	}
 
 	for _, sh := range rst.Client().Server().Datashards() {
 		if expRoute != nil && sh.Name() == expRoute.Shkey.Name {
-			err := sh.Send(&pgproto3.CopyData{Data: data.Data[:prev]})
-			data.Data = data.Data[prev:]
+			err := sh.Send(&pgproto3.CopyData{Data: data.Data[:prevLine]})
+			data.Data = data.Data[prevLine:]
 			return err
 		}
 	}
