@@ -1,12 +1,15 @@
 package clientinteractor_test
 
 import (
+	"context"
 	"sort"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
-
+	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/router/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -184,4 +187,55 @@ func TestSortableWithContext(t *testing.T) {
 	sortable := clientinteractor.SortableWithContext{data, 0, clientinteractor.DESC}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
+}
+
+func TestClientsOrderBy(t *testing.T) {
+	var v1, v2, v3, v4, v5, v6 proto.UsedShardInfo
+	v1.Instance.Hostname = "abracadabra1"
+	v2.Instance.Hostname = "abracadabra2"
+	v3.Instance.Hostname = "abracadabra14"
+	v4.Instance.Hostname = "abracadabra52"
+	v5.Instance.Hostname = "abracadabras"
+	v6.Instance.Hostname = "abracadabrav"
+
+	var a, b, c proto.ClientInfo
+
+	a.ClientId = 1
+	a.Dbname = "Barnaul"
+	a.Dsname = "Rjaken"
+	a.Shards = []*proto.UsedShardInfo{
+		&v1, &v2,
+	}
+
+	b.ClientId = 2
+	b.Dbname = "Moscow"
+	b.Dsname = "Space"
+	b.Shards = []*proto.UsedShardInfo{
+		&v3, &v4,
+	}
+
+	c.ClientId = 2
+	c.Dbname = "Ekaterinburg"
+	c.Dsname = "Hill"
+	c.Shards = []*proto.UsedShardInfo{
+		&v5, &v6,
+	}
+
+	ca := client.NewNoopClient(&a, "addr")
+	cb := client.NewNoopClient(&b, "addr")
+	cc := client.NewNoopClient(&c, "addr")
+	interactor := clientinteractor.NewPSQLInteractor(ca)
+
+	ci := []pkgclient.ClientInfo{
+		pkgclient.ClientInfoImpl{Client: ca},
+		pkgclient.ClientInfoImpl{Client: cb},
+		pkgclient.ClientInfoImpl{Client: cc},
+	}
+	err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
+		Cmd:   spqrparser.ClientsStr,
+		Where: spqrparser.WhereClauseEmpty{},
+		Order: spqrparser.Order{OptAscDesc: spqrparser.ASC,
+			Col: spqrparser.ColumnRef{ColName: "user"}},
+	})
+	assert.Nil(t, err)
 }
