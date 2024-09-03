@@ -8,7 +8,7 @@ Description: 'Create distributions, key ranges and tables and see cluster info'
 This command is used to create a new distribution with the specified name. Optionally, you can specify the column types for the distribution using the COLUMN TYPES clause.
 
 ```sql
-CREATE DISTRIBUTION <distributionID> [COLUMN TYPES types]
+CREATE DISTRIBUTION <distributionID> COLUMN TYPES <types>
 
 where types is a comma-separated list of column types
 
@@ -23,16 +23,23 @@ This command is used to drop an existing distribution with the specified name. T
 DROP DISTRIBUTION <distribution_name> [CASCADE]
 ```
 
-### ALTER DISTRIBUTION
+### ALTER DISTRIBUTION ATTACH RELATION
 
-This command is used to alter an existing distribution. You can attach one or more relations to the distribution using the ATTACH RELATION clause, or detach a relation from the distribution using the DETACH RELATION clause.
+This command is used to alter an existing distribution. You can attach one or more relations to the distribution using the ATTACH RELATION clause.
 
 ```sql
-ALTER DISTRIBUTION <distribution_name> 
-[
-    ATTACH RELATION <relation_name> [, <relation_name> ...] | 
-    DETACH RELATION <relation_name>
-]
+ALTER DISTRIBUTION <distribution_name> ATTACH RELATION <relation_name> [, <relation_name> ...] 
+DISTRIBUTION KEY <keys> [HASH FUNCTION <hash_function_name>]
+
+where hash_function_name is one of: IDENTITY, MURMUR, CITY
+```
+
+### ALTER DISTRIBUTION DETACH RELATION
+
+This command is used to alter an existing distribution. You can detach a relation from the distribution using the DETACH RELATION clause.
+
+```sql
+ALTER DISTRIBUTION <distribution_name> DETACH RELATION <relation_name>
 ```
 
 ### CREATE KEY RANGE
