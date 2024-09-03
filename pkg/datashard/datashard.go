@@ -465,7 +465,7 @@ func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
 				return err
 			}
 		case *pgproto3.ErrorResponse:
-			return fmt.Errorf(v.Message)
+			return fmt.Errorf("%s", v.Message)
 		case *pgproto3.ParameterStatus:
 			if !sh.ps.Save(shard.ParameterStatus{
 				Name:  v.Name,
