@@ -91,12 +91,12 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 	if status.Code != gssapi.StatusComplete && status.Code != gssapi.StatusContinueNeeded {
 		errText := fmt.Sprintf("Kerberos validation error: %v", status)
 		log.Print(errText)
-		return nil, fmt.Errorf(errText)
+		return nil, fmt.Errorf("%s", errText)
 	}
 	if status.Code == gssapi.StatusContinueNeeded {
 		errText := "Kerberos GSS-API continue needed"
 		log.Print(errText)
-		return nil, fmt.Errorf(errText)
+		return nil, fmt.Errorf("%s", errText)
 	}
 	if authed {
 		ctx := st.Context()
@@ -105,6 +105,6 @@ func (k *Kerberos) Process(cl client.Client) (cred *credentials.Credentials, err
 	} else {
 		errText := "Kerberos authentication failed"
 		log.Print(errText)
-		return nil, fmt.Errorf(errText)
+		return nil, fmt.Errorf("%s", errText)
 	}
 }
