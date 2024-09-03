@@ -623,7 +623,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 		case *pgproto3.CommandComplete:
 			return nil
 		case *pgproto3.ErrorResponse:
-			return fmt.Errorf(v.Message)
+			return fmt.Errorf("%s", v.Message)
 		default:
 			spqrlog.Zero.Debug().
 				Uint("client", rst.Client().ID()).
