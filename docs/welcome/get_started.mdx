@@ -22,7 +22,7 @@ Let's set up the simplest possible installation scenario - when you have two sha
 
 First, you need to configure the rules by which the router will decide which of the shards to send each request to.
 
-For this purpose, SPQR has an administrative console. This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
+For this purpose, SPQR has an **administrative console.** This is an app that works by PostgreSQL protocol and you can connect to it by usual psql. You can find the console port in your config file.
 
 ```sql
 ➜  psql "host=localhost sslmode=disable user=demo dbname=demo port=7432"
@@ -95,9 +95,9 @@ CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 
 Here we go! You can play with some SELECTs or INSERTs.
 
-### Connect to SPQR router
+## Connect to SPQR router
 
-Now we can connect to proxy a.k.a. router and play with it:
+Now we can connect to proxy a.k.a. router and play with it. Please use psql again, but this time connect to a different port.
 
 ```bash
 ➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=6432"
@@ -119,7 +119,11 @@ demo=> CREATE TABLE items (
 );
 NOTICE: send query to shard(s) : shard01,shard02
 CREATE TABLE
+```
 
+Then, populate it with an order:
+
+```bash
 demo=> BEGIN;
 BEGIN
 demo=> INSERT INTO orders (id, customer_id, order_data) VALUES (777, 123456, '2024-01-08');
@@ -133,7 +137,7 @@ COMMIT
 
 > NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
 
-You could check now that each shard has only one record:
+The order can be found on the first shard:
 
 ```bash
 demo=> SELECT * FROM orders WHERE id = 777;
@@ -142,13 +146,15 @@ NOTICE: send query to shard(s) : shard01
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)
+```
 
 SPQR can handle such queries as `SELECT * FROM table` but we don't recommend using it. This feature is implemented in a non-transactional way.
 
 ```bash
-demo=> SELECT * FROM orders WHERE id = 777;
-NOTICE: send query to shard(s) : shard01
+demo=> SELECT * FROM orders;
+NOTICE: send query to shard(s) : shard01,shard02
   id  | customer_id | order_data 
 ------+-------------+--------------
   777 |   123456    | '2024-01-08'
 (1 row)
+```
