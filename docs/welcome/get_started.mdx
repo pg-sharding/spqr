@@ -94,3 +94,61 @@ CREATE KEY RANGE krid2 FROM 1000 ROUTE TO shard2 FOR DISTRIBUTION ds1;
 ```
 
 Here we go! You can play with some SELECTs or INSERTs.
+
+### Connect to SPQR router
+
+Now we can connect to proxy a.k.a. router and play with it:
+
+```bash
+➜ psql "host=localhost sslmode=disable user=demo dbname=demo port=6432"
+psql (13.3, server 9.6.22)
+Type "help" for help.
+
+demo=> CREATE TABLE orders (
+    id SERIAL NOT NULL PRIMARY KEY,
+    customer_id INT,
+    order_date DATE
+);
+NOTICE: send query to shard(s) : shard01,shard02
+CREATE TABLE
+
+demo=> CREATE TABLE items (
+    id SERIAL NOT NULL PRIMARY KEY,
+    order_id SERIAL NOT NULL PRIMARY KEY,
+    name VARCHAR,
+);
+NOTICE: send query to shard(s) : shard01,shard02
+CREATE TABLE
+
+demo=> BEGIN;
+BEGIN
+demo=> INSERT INTO orders (id, customer_id, order_data) VALUES (777, 123456, '2024-01-08');
+NOTICE: send query to shard(s) : shard01
+INSERT 0 1
+demo=> INSERT INTO items (id, order_id, name) VALUES (1, 777, 'elephant');
+INSERT 0 1
+demo=> COMMIT;
+COMMIT
+```
+
+> NOTICE messages are disabled by default, specify `show_notice_messages` setting in the router config to enable them
+
+You could check now that each shard has only one record:
+
+```bash
+demo=> SELECT * FROM orders WHERE id = 777;
+NOTICE: send query to shard(s) : shard01
+  id  | customer_id | order_data 
+------+-------------+--------------
+  777 |   123456    | '2024-01-08'
+(1 row)
+
+SPQR can handle such queries as `SELECT * FROM table` but we don't recommend using it. This feature is implemented in a non-transactional way.
+
+```bash
+demo=> SELECT * FROM orders WHERE id = 777;
+NOTICE: send query to shard(s) : shard01
+  id  | customer_id | order_data 
+------+-------------+--------------
+  777 |   123456    | '2024-01-08'
+(1 row)
