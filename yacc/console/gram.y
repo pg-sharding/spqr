@@ -85,6 +85,9 @@ func randomHex(n int) (string, error) {
 
     colref                 ColumnRef
     where                  WhereClauseNode
+
+	order_clause 		   OrderClause
+	opt_asc_desc		   OptAscDesc
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -201,6 +204,9 @@ func randomHex(n int) (string, error) {
 %type<bool> opt_cascade
 
 
+%token <str> ASC DESC ORDER
+%type <order_clause> order_clause
+%type <opt_asc_desc> opt_asc_desc
 %type <unlock> unlock_stmt
 %type <lock> lock_stmt
 %type <shutdown> shutdown_stmt
@@ -559,12 +565,23 @@ create_stmt:
 	}
 
 
-show_stmt:
-	SHOW show_statement_type where_clause
-	{
-		$$ = &Show{Cmd: $2, Where: $3}
-	}
+opt_asc_desc: ASC							{ $$ = &SortByAsc{} }
+			| DESC							{ $$ = &SortByDesc{} }
+			| /*EMPTY*/						{ $$ = &SortByDefault{} }
 
+order_clause:
+    ORDER BY ColRef opt_asc_desc 
+	{
+		$$ = &Order{Col:$3, OptAscDesc:$4}
+	} 
+	| /* empty */    {$$ = OrderClause(nil)}
+
+
+show_stmt:
+	SHOW show_statement_type where_clause order_clause
+	{
+		$$ = &Show{Cmd: $2, Where: $3, Order: $4}
+	}
 lock_stmt:
 	LOCK key_range_stmt
 	{

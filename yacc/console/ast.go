@@ -4,6 +4,24 @@ type ColumnRef struct {
 	TableAlias string
 	ColName    string
 }
+type OptAscDesc interface{}
+
+type SortByDefault struct {
+	OptAscDesc
+}
+type SortByAsc struct {
+	OptAscDesc
+}
+type SortByDesc struct {
+	OptAscDesc
+}
+type OrderClause interface{}
+
+type Order struct {
+	OrderClause
+	OptAscDesc OptAscDesc
+	Col        ColumnRef
+}
 
 type WhereClauseNode interface {
 }
@@ -31,6 +49,7 @@ type WhereClauseOp struct {
 type Show struct {
 	Cmd   string
 	Where WhereClauseNode
+	Order OrderClause
 }
 
 type Set struct {
