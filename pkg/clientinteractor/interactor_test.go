@@ -2,7 +2,6 @@ package clientinteractor_test
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 
