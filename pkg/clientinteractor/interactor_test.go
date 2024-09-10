@@ -9,8 +9,10 @@ import (
 	"github.com/golang/mock/gomock"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
+
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/client"
+	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
@@ -191,6 +193,9 @@ func TestSortableWithContext(t *testing.T) {
 }
 
 func TestClientsOrderBy(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
 	var v1, v2, v3, v4, v5, v6 proto.UsedShardInfo
 	var i1, i2, i3, i4, i5, i6 proto.DBInstaceInfo
 
@@ -231,7 +236,7 @@ func TestClientsOrderBy(t *testing.T) {
 		&v5, &v6,
 	}
 
-	ca := client.NewNoopClient(&a, "addr")
+	ca := mockcl.NewMockRouterClient(ctrl)
 	cb := client.NewNoopClient(&b, "addr")
 	cc := client.NewNoopClient(&c, "addr")
 	interactor := clientinteractor.NewPSQLInteractor(ca)
@@ -241,6 +246,9 @@ func TestClientsOrderBy(t *testing.T) {
 		pkgclient.ClientInfoImpl{Client: cb},
 		pkgclient.ClientInfoImpl{Client: cc},
 	}
+
+	ca.EXPECT().Send(gomock.Any()).AnyTimes()
+
 	err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: spqrparser.WhereClauseEmpty{},
