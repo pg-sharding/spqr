@@ -240,7 +240,6 @@ func TestClientsOrderBy(t *testing.T) {
 	cb := client.NewNoopClient(&b, "addr")
 	cc := client.NewNoopClient(&c, "addr")
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	fmt.Println("sadsad")
 	ci := []pkgclient.ClientInfo{
 		pkgclient.ClientInfoImpl{Client: ca},
 		pkgclient.ClientInfoImpl{Client: cb},
