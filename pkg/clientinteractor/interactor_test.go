@@ -2,6 +2,7 @@ package clientinteractor_test
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -191,12 +192,21 @@ func TestSortableWithContext(t *testing.T) {
 
 func TestClientsOrderBy(t *testing.T) {
 	var v1, v2, v3, v4, v5, v6 proto.UsedShardInfo
-	v1.Instance.Hostname = "abracadabra1"
-	v2.Instance.Hostname = "abracadabra2"
-	v3.Instance.Hostname = "abracadabra14"
-	v4.Instance.Hostname = "abracadabra52"
-	v5.Instance.Hostname = "abracadabras"
-	v6.Instance.Hostname = "abracadabrav"
+	var i1, i2, i3, i4, i5, i6 proto.DBInstaceInfo
+
+	i1.Hostname = "abracadabra1"
+	i2.Hostname = "abracadabra2"
+	i3.Hostname = "abracadabra14"
+	i4.Hostname = "abracadabra52"
+	i5.Hostname = "abracadabras"
+	i6.Hostname = "abracadabrav"
+
+	v1.Instance = &i1
+	v2.Instance = &i2
+	v3.Instance = &i3
+	v4.Instance = &i4
+	v5.Instance = &i5
+	v6.Instance = &i6
 
 	var a, b, c proto.ClientInfo
 
@@ -225,7 +235,7 @@ func TestClientsOrderBy(t *testing.T) {
 	cb := client.NewNoopClient(&b, "addr")
 	cc := client.NewNoopClient(&c, "addr")
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-
+	fmt.Println("sadsad")
 	ci := []pkgclient.ClientInfo{
 		pkgclient.ClientInfoImpl{Client: ca},
 		pkgclient.ClientInfoImpl{Client: cb},
