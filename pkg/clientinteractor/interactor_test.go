@@ -248,11 +248,14 @@ func TestClientsOrderBy(t *testing.T) {
 	}
 
 	ca.EXPECT().Send(gomock.Any()).AnyTimes()
-
+	ca.EXPECT().Shards().AnyTimes()
+	ca.EXPECT().ID().AnyTimes()
+	ca.EXPECT().Usr().AnyTimes()
+	ca.EXPECT().DB().AnyTimes()
 	err := interactor.Clients(context.TODO(), ci, &spqrparser.Show{
 		Cmd:   spqrparser.ClientsStr,
 		Where: spqrparser.WhereClauseEmpty{},
-		Order: spqrparser.Order{OptAscDesc: spqrparser.ASC,
+		Order: spqrparser.Order{OptAscDesc: spqrparser.SortByAsc{},
 			Col: spqrparser.ColumnRef{ColName: "user"}},
 	})
 	assert.Nil(t, err)
