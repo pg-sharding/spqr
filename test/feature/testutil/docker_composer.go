@@ -211,7 +211,7 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	execCfg := types.ExecConfig{
+	execCfg := container.ExecOptions{
 		AttachStdout: true,
 		AttachStderr: true,
 		Cmd:          []string{shell, "-c", cmd},
@@ -220,7 +220,7 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	if err != nil {
 		return 0, "", err
 	}
-	attachResp, err := dc.api.ContainerExecAttach(ctx, execResp.ID, types.ExecStartCheck{})
+	attachResp, err := dc.api.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{})
 	if err != nil {
 		return 0, "", err
 	}
@@ -234,7 +234,7 @@ func (dc *DockerComposer) RunCommand(service string, cmd string, timeout time.Du
 	if err != nil {
 		return 0, "", err
 	}
-	var insp types.ContainerExecInspect
+	var insp container.ExecInspect
 	Retry(func() bool {
 		insp, err = dc.api.ContainerExecInspect(ctx, execResp.ID)
 		return err != nil || !insp.Running
@@ -254,7 +254,7 @@ func (dc *DockerComposer) RunAsyncCommand(service string, cmd string) error {
 	if !ok {
 		return fmt.Errorf("no such service: %s", service)
 	}
-	execCfg := types.ExecConfig{
+	execCfg := container.ExecOptions{
 		Detach: true,
 		Cmd:    []string{shell, "-c", cmd},
 	}
@@ -262,7 +262,7 @@ func (dc *DockerComposer) RunAsyncCommand(service string, cmd string) error {
 	if err != nil {
 		return err
 	}
-	return dc.api.ContainerExecStart(context.Background(), execResp.ID, types.ExecStartCheck{})
+	return dc.api.ContainerExecStart(context.Background(), execResp.ID, container.ExecStartOptions{})
 }
 
 // GetFile returns content of the fail from continer by path
