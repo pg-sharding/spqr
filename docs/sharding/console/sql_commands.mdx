@@ -105,12 +105,15 @@ spqr-console=> SHOW backend_connections WHERE hostname='hostname:6432'
  824646300928          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 8003      | IDLE
  824682937984          | no data | app-prod-spqr1 | hostname:6432 | test_app_app | testdb | 0    | 7622      | IDLE
 ```
+
 Exists feature - order by col asc/desc for clients.
+
 ```sql
 SHOW clients ORDER BY <column> (ASC/DESC)
+```
 
 The ORDER BY column feature works with clients, not works with other entities.
-```
+
 ### KILL CLIENT
 
 This command is used to terminate a specific client connection in a SPQR Router.
