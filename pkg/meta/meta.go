@@ -542,6 +542,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.PreparedStatements(ctx, resp)
+	case spqrparser.QuantilesStr:
+		return cli.Quantiles(ctx)
 	default:
 		return unknownCoordinatorCommand
 	}

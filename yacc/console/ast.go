@@ -264,6 +264,7 @@ const (
 	TaskGroupStr          = "task_group"
 	PreparedStatementsStr = "prepared_statements"
 	UnsupportedStr        = "unsupported"
+	QuantilesStr          = "time_quantiles"
 )
 
 const (
