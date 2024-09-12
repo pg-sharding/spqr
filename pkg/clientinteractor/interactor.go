@@ -241,6 +241,33 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 	return pi.CompleteMsg(0)
 }
 
+// Quantiles sends the row description message for total time quantiles of queries in router and in shard.
+//
+// Parameters:
+// - _ (context.Context): The context parameter (not used in the function).
+//
+// Returns:
+//   - error: An error if sending the messages fails, otherwise nil.
+//
+// TODO: unit tests
+func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
+	if err := pi.WriteHeader("quantile_type", "value"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	quantiles := statistics.GetQuantiles()
+	for _, q := range *quantiles {
+		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
+			return err
+		}
+		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // TODO : unit tests
 
 // AddShard sends the row description message for adding a data shard, followed by a data row
