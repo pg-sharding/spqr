@@ -258,14 +258,15 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 
 	quantiles := statistics.GetQuantiles()
 	for _, q := range *quantiles {
-		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%.2f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
 			return err
 		}
-		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%.2f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	return pi.CompleteMsg(len(*quantiles) * 2)
 }
 
 // TODO : unit tests

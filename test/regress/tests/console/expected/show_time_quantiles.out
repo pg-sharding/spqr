@@ -5,9 +5,10 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-SHOW time_quantiles;
-   quantile_type  | value
- router_time_0.75 |  0.00
-------------------+-------
-(0 rows)
+SHOW time_quantiles
+  quantile_type   | value  
+------------------+--------
+ router_time_0.75 | 0.00ms
+ shard_time_0.75  | 0.00ms
+(2 rows)
 
