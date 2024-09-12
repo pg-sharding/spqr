@@ -33,6 +33,9 @@ func TestStatisticsForOneUser(t *testing.T) {
 
 	assert.Equal(4.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 144))
 	assert.Equal(3.0, statistics.GetTimeQuantile(statistics.Shard, 0.5, 144))
+
+	assert.Equal(4.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
+	assert.Equal(3.0, statistics.GetTotalTimeQuantile(statistics.Shard, 0.5))
 }
 
 func TestStatisticsForDifferentUsers(t *testing.T) {
@@ -62,6 +65,9 @@ func TestStatisticsForDifferentUsers(t *testing.T) {
 
 	assert.Equal(7.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 229))
 	assert.Equal(1.5, statistics.GetTimeQuantile(statistics.Shard, 0.5, 229))
+
+	assert.Equal(5.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
+	assert.Equal(1.0, statistics.GetTotalTimeQuantile(statistics.Shard, 0.5))
 }
 
 func TestNoStatisticsForMisingUser(t *testing.T) {
@@ -83,6 +89,7 @@ func TestNoStatisticsWhenNotNeeded(t *testing.T) {
 	statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 149)
 
 	assert.Equal(0.0, statistics.GetTimeQuantile(statistics.Router, 0.5, 149))
+	assert.Equal(0.0, statistics.GetTotalTimeQuantile(statistics.Router, 0.5))
 }
 
 func TestCheckMultithreading(t *testing.T) {
@@ -102,6 +109,8 @@ func TestCheckMultithreading(t *testing.T) {
 
 				statistics.GetTimeQuantile(statistics.Router, 0.5, 149)
 				statistics.GetTimeQuantile(statistics.Router, 0.99, 149)
+				statistics.GetTotalTimeQuantile(statistics.Router, 0.99)
+				statistics.GetTotalTimeQuantile(statistics.Router, 0.99)
 			}
 			wg.Done()
 		}()
