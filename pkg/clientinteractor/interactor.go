@@ -82,6 +82,9 @@ func (pi *PSQLInteractor) CompleteMsg(rowCnt int) error {
 // TEXTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L81
 const TEXTOID = 25
 
+// DOUBLEOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L223
+const DOUBLEOID = 701
+
 // TODO : unit tests
 
 // TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
@@ -98,6 +101,18 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 		TableAttributeNumber: 0,
 		DataTypeOID:          TEXTOID,
 		DataTypeSize:         -1,
+		TypeModifier:         -1,
+		Format:               0,
+	}
+}
+
+func FloatOidFD(stmt string) pgproto3.FieldDescription {
+	return pgproto3.FieldDescription{
+		Name:                 []byte(stmt),
+		TableOID:             0,
+		TableAttributeNumber: 0,
+		DataTypeOID:          DOUBLEOID,
+		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,
 	}
@@ -251,17 +266,20 @@ func (pi *PSQLInteractor) Version(_ context.Context) error {
 //
 // TODO: unit tests
 func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
-	if err := pi.WriteHeader("quantile_type", "value"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
+	if err := pi.cl.Send(&pgproto3.RowDescription{
+		Fields: []pgproto3.FieldDescription{TextOidFD("quantile_type"), FloatOidFD("time, ms")},
+	}); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("Could not write header for time quantiles")
 		return err
 	}
 
 	quantiles := statistics.GetQuantiles()
+	spqrlog.Zero.Debug().Str("quantiles", fmt.Sprintf("%#v", quantiles)).Msg("Got quantiles")
 	for _, q := range *quantiles {
-		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%.2f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("router_time_%.2f", q), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Router, q))); err != nil {
 			return err
 		}
-		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%.2f", q), fmt.Sprintf("%.2fms", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
+		if err := pi.WriteDataRow(fmt.Sprintf("shard_time_%.2f", q), fmt.Sprintf("%.2f", statistics.GetTotalTimeQuantile(statistics.Shard, q))); err != nil {
 			return err
 		}
 	}
