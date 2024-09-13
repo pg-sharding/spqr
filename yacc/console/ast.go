@@ -152,7 +152,8 @@ type ShardingRuleSelector struct {
 }
 
 type DistributionSelector struct {
-	ID string
+	ID         string
+	Replicated bool
 }
 
 type ShardSelector struct {
@@ -225,8 +226,9 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name            string
-	DistributionKey []DistributionKeyEntry
+	Name               string
+	DistributionKey    []DistributionKeyEntry
+	ReplicatedRelation bool
 }
 
 type AttachRelation struct {

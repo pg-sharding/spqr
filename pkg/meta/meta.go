@@ -272,6 +272,9 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
+			if stmt.Distribution.Replicated {
+				drel.ReplicatedRelation = true
+			}
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
 
