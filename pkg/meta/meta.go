@@ -272,8 +272,8 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
-			if stmt.Distribution.Replicated {
-				drel.ReplicatedRelation = true
+			if stmt.Distribution.Replicated && !drel.ReplicatedRelation {
+				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non replicated relation should be attached to non replicated distribution")
 			}
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}

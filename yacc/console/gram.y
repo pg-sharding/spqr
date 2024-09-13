@@ -529,7 +529,15 @@ distributed_relation_def:
 			Name: 	 $2,
 			DistributionKey: $5,
 		}
+	} | 
+	RELATION any_id
+	{
+		$$ = &DistributedRelation{
+			Name: 	 $2,
+			ReplicatedRelation: true,
+		}
 	}
+
 
 
 distributed_relation_list_def:
