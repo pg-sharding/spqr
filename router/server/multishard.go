@@ -31,7 +31,8 @@ const (
 	RunningState
 	ServerErrorState
 	CommandCompleteState
-	CopyState
+	CopyOutState
+	CopyInState
 )
 
 type MultiShardServer struct {
@@ -178,7 +179,8 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		var saveRd *pgproto3.RowDescription = nil
 		var saveCC *pgproto3.CommandComplete = nil
 		var saveRFQ *pgproto3.ReadyForQuery = nil
-		/* Step one: ensure all shard backend are stared */
+		var saveCIn *pgproto3.CopyInResponse = nil
+		/* Step one: ensure all shard backend are started */
 		for i := range m.activeShards {
 			for {
 				// all shards should be in rfq state
@@ -200,12 +202,19 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 				switch retMsg := msg.(type) {
 				case *pgproto3.CopyOutResponse:
-					if m.multistate != InitialState && m.multistate != CopyState {
+					if m.multistate != InitialState && m.multistate != CopyOutState {
 						return nil, MultiShardSyncBroken
 					}
 					m.states[i] = ShardCopyState
-					m.multistate = CopyState
+					m.multistate = CopyOutState
 					m.copyBuf = append(m.copyBuf, retMsg)
+				case *pgproto3.CopyInResponse:
+					if m.multistate != InitialState && m.multistate != CopyInState {
+						return nil, MultiShardSyncBroken
+					}
+					m.states[i] = ShardCopyState
+					m.multistate = CopyInState
+					saveCIn = retMsg
 				case *pgproto3.CommandComplete:
 					m.states[i] = ShardCCState
 					saveCC = retMsg //
@@ -257,7 +266,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			m.multistate = InitialState
 			return saveRFQ, nil
 		}
-		if m.multistate == CopyState {
+		if m.multistate == CopyOutState {
 			n := len(m.copyBuf)
 			var currMsg *pgproto3.CopyOutResponse
 			m.copyBuf, currMsg = m.copyBuf[n-2:], m.copyBuf[n-1]
@@ -267,10 +276,14 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				Msg("miltishard server: flush copy buff")
 			return currMsg, nil
 		}
+		if m.multistate == CopyInState {
+			m.multistate = RunningState
+			return saveCIn, nil
+		}
 
 		m.multistate = RunningState
 		return saveRd, nil
-	case CopyState:
+	case CopyOutState:
 		if len(m.copyBuf) > 0 {
 			spqrlog.Zero.Debug().Msg("miltishard server: flush copy buff")
 			n := len(m.copyBuf)
@@ -302,7 +315,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			spqrlog.Zero.Info().
 				Uint("shard", m.activeShards[i].ID()).
 				Type("message-type", msg).
-				Msg("multishard server: recived message from shard")
+				Msg("multishard server: received message from shard")
 
 			switch msg.(type) {
 			case *pgproto3.CommandComplete:
@@ -321,6 +334,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		m.multistate = CommandCompleteState
 		return &pgproto3.CommandComplete{
 			CommandTag: []byte{}, // XXX : fix this
+		}, nil
+	case CopyInState:
+		return &pgproto3.CommandComplete{
+			CommandTag: []byte{},
 		}, nil
 	case RunningState:
 		/* Step two: fetch all datarow ms	gs */

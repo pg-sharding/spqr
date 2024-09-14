@@ -329,6 +329,15 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
+	sh1 := mocksh.NewMockShard(ctrl)
+	sh1.EXPECT().Name().AnyTimes().Return("sh1")
+	sh1.EXPECT().SHKey().AnyTimes().Return(kr.ShardKey{Name: "sh1"})
+	sh1.EXPECT().ID().AnyTimes().Return(uint(1))
+	sh2 := mocksh.NewMockShard(ctrl)
+	sh2.EXPECT().Name().AnyTimes().Return("sh2")
+	sh2.EXPECT().SHKey().AnyTimes().Return(kr.ShardKey{Name: "sh2"})
+	sh2.EXPECT().ID().AnyTimes().Return(uint(2))
+
 	frrule := &config.FrontendRule{
 		DB:  "db1",
 		Usr: "user1",
@@ -337,7 +346,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	beRule := &config.BackendRule{}
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
-	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
+	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{sh1, sh2})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -375,22 +384,29 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
+	tableref := &lyx.RangeVar{
+		RelationName: "xx",
+	}
+
 	qr.EXPECT().Route(gomock.Any(), &lyx.Copy{
-		TableRef: &lyx.RangeVar{
-			RelationName: "xx",
-		},
-		Where:  &lyx.AExprEmpty{},
-		IsFrom: true,
-	}, gomock.Any()).Return(routingstate.ShardMatchState{
-		Route: &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: "sh1",
-			},
-		},
-	}, nil).Times(1)
+		TableRef: tableref,
+		Where:    &lyx.AExprEmpty{},
+		IsFrom:   true,
+	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
+
+	qr.EXPECT().Route(gomock.Any(), &lyx.Insert{
+		TableRef:  tableref,
+		SubSelect: &lyx.ValueClause{Values: []lyx.Node{&lyx.AExprSConst{Value: "1"}}},
+	}, cl).Times(4).Return(routingstate.ShardMatchState{Route: &routingstate.DataShardRoute{Shkey: sh1.SHKey()}}, nil)
+
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
+		&routingstate.DataShardRoute{Shkey: sh1.SHKey()},
+		&routingstate.DataShardRoute{Shkey: sh2.SHKey()}},
+	)
 
 	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
 		"sh1": {},
+		"sh2": {},
 	})
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
@@ -401,12 +417,12 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(query, nil)
 
-	cl.EXPECT().Receive().Times(4).Return(&pgproto3.CopyData{}, nil)
+	cl.EXPECT().Receive().Times(4).Return(&pgproto3.CopyData{Data: []byte("1\n")}, nil)
 	cl.EXPECT().Receive().Times(1).Return(&pgproto3.CopyDone{}, nil)
 
 	srv.EXPECT().Send(query).Times(1).Return(nil)
 
-	srv.EXPECT().Send(&pgproto3.CopyData{}).Times(4).Return(nil)
+	sh1.EXPECT().Send(&pgproto3.CopyData{Data: []byte("1\n")}).Times(4).Return(nil)
 	srv.EXPECT().Send(&pgproto3.CopyDone{}).Times(1).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.CopyInResponse{}, nil)

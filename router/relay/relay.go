@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -67,7 +68,7 @@ type RelayStateMgr interface {
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
-	ProcCopy(query pgproto3.FrontendMessage) error
+	ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, expRoute *routingstate.DataShardRoute) error
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
@@ -656,15 +657,72 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcCopy(query pgproto3.FrontendMessage) error {
+func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, expRoute *routingstate.DataShardRoute) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Type("query-type", query).
 		Msg("client process copy")
-	_ = rst.Client().ReplyDebugNotice(fmt.Sprintf("executing your query %v", query)) // TODO perfomance issue
+	_ = rst.Client().ReplyDebugNotice(fmt.Sprintf("executing your query %v", data)) // TODO perfomance issue
 	rst.Client().RLock()
 	defer rst.Client().RUnlock()
-	return rst.Client().Server().Send(query)
+
+	// Read delimiter from COPY options
+	delimiter := byte('\t')
+	for _, opt := range stmt.Options {
+		if o := opt.(*lyx.Option); strings.ToLower(o.Name) == "delimiter" {
+			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
+		}
+	}
+
+	// Parse data
+	// and decide where to route
+	prevDelimiter := 0
+	prevLine := 0
+	valueClause := &lyx.ValueClause{}
+	for i, b := range data.Data {
+		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
+			prevLine = len(data.Data)
+			break
+		}
+		if b == '\n' || b == delimiter {
+			valueClause.Values = append(valueClause.Values, &lyx.AExprSConst{Value: string(data.Data[prevDelimiter:i])})
+			prevDelimiter = i + 1
+		}
+		if b != '\n' {
+			continue
+		}
+
+		// check where this tuple should go
+		r, err := rst.QueryRouter().Route(context.TODO(), &lyx.Insert{TableRef: stmt.TableRef, Columns: stmt.Columns, SubSelect: valueClause}, rst.Cl)
+		if err != nil {
+			return err
+		}
+
+		smt, ok := r.(routingstate.ShardMatchState)
+		if !ok {
+			return fmt.Errorf("multishard copy is not supported")
+		}
+
+		if expRoute.Shkey.Name == "" {
+			*expRoute = *smt.Route
+		}
+		if smt.Route.Shkey.Name != expRoute.Shkey.Name {
+			return fmt.Errorf("multishard copy is not supported")
+		}
+
+		valueClause = &lyx.ValueClause{}
+		prevLine = i + 1
+	}
+
+	for _, sh := range rst.Client().Server().Datashards() {
+		if expRoute != nil && sh.Name() == expRoute.Shkey.Name {
+			err := sh.Send(&pgproto3.CopyData{Data: data.Data[:prevLine]})
+			data.Data = data.Data[prevLine:]
+			return err
+		}
+	}
+
+	// shouldn't exit from here
+	return nil
 }
 
 // TODO : unit tests
@@ -680,16 +738,16 @@ func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) err
 	}
 
 	for {
-		if msg, err := rst.Client().Server().Receive(); err != nil {
+		msg, err := rst.Client().Server().Receive()
+		if err != nil {
 			return err
-		} else {
-			switch msg.(type) {
-			case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
-				return rst.Client().Send(msg)
-			default:
-				if err := rst.Client().Send(msg); err != nil {
-					return err
-				}
+		}
+		switch msg.(type) {
+		case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
+			return rst.Client().Send(msg)
+		default:
+			if err := rst.Client().Send(msg); err != nil {
+				return err
 			}
 		}
 	}
@@ -748,16 +806,21 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 				return txstatus.TXERR, nil, false, err
 			}
 
+			q := rst.qp.Stmt().(*lyx.Copy)
+
 			if err := func() error {
+				msg := &pgproto3.CopyData{Data: make([]byte, 0)}
+				route := &routingstate.DataShardRoute{}
 				for {
 					cpMsg, err := rst.Client().Receive()
 					if err != nil {
 						return err
 					}
 
-					switch cpMsg.(type) {
+					switch newMsg := cpMsg.(type) {
 					case *pgproto3.CopyData:
-						if err := rst.ProcCopy(cpMsg); err != nil {
+						msg.Data = append(msg.Data, newMsg.Data...)
+						if err = rst.ProcCopy(q, msg, route); err != nil {
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:

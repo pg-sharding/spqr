@@ -7,20 +7,17 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
 \c regress
 CREATE TABLE copy_test (id int);
 
-COPY copy_test FROM STDIN WHERE id <= 10;
+COPY copy_test(id) FROM STDIN WHERE id <= 10;
 1
 2
 3
 4
 5
-12
-3434
-43
 \.
 
 SELECT * FROM copy_test WHERE id <= 10;
 
-COPY copy_test FROM STDIN WHERE id <= 30;
+COPY copy_test(id) FROM STDIN;
 1
 2
 3
@@ -35,7 +32,17 @@ COPY copy_test FROM STDIN WHERE id <= 30;
 43
 \.
 
-SELECT * FROM copy_test WHERE id <= 30 ORDER BY copy_test;
+SELECT * FROM copy_test;
+
+COPY copy_test(id) FROM STDIN;
+41
+42
+43
+44
+45
+\.
+
+SELECT * FROM copy_test;
 
 DROP TABLE copy_test;
 
