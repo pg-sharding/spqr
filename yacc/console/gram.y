@@ -88,6 +88,8 @@ func randomHex(n int) (string, error) {
 
 	order_clause 		   OrderClause
 	opt_asc_desc		   OptAscDesc
+
+	group_clause		   GroupClause
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -207,6 +209,7 @@ func randomHex(n int) (string, error) {
 %token <str> ASC DESC ORDER
 %type <order_clause> order_clause
 %type <opt_asc_desc> opt_asc_desc
+%type <group_clause> group_clause
 %type <unlock> unlock_stmt
 %type <lock> lock_stmt
 %type <shutdown> shutdown_stmt
@@ -585,10 +588,18 @@ order_clause:
 	| /* empty */    {$$ = OrderClause(nil)}
 
 
-show_stmt:
-	SHOW show_statement_type where_clause order_clause
+group_clause:
+	GROUP BY ColRef
 	{
-		$$ = &Show{Cmd: $2, Where: $3, Order: $4}
+		$$ = &Group{Col: $3}
+	}
+	| /* empty */	 {$$ = GroupClause(nil)}
+
+
+show_stmt:
+	SHOW show_statement_type where_clause group_clause order_clause
+	{
+		$$ = &Show{Cmd: $2, Where: $3, Group: $4, Order: $5}
 	}
 lock_stmt:
 	LOCK key_range_stmt

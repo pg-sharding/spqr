@@ -23,6 +23,13 @@ type Order struct {
 	Col        ColumnRef
 }
 
+type GroupClause interface{}
+
+type Group struct {
+	GroupClause
+	Col ColumnRef
+}
+
 type WhereClauseNode interface {
 }
 
@@ -50,6 +57,7 @@ type Show struct {
 	Cmd   string
 	Where WhereClauseNode
 	Order OrderClause
+	Group GroupClause
 }
 
 type Set struct {

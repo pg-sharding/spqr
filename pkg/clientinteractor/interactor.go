@@ -1303,24 +1303,46 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
-	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
+func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo, groupByClause *spqrparser.Group) error {
+	headers := []string{"backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"}
+	getters := []func(sh shard.Shardinfo) string{
+		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },
+		func(sh shard.Shardinfo) string {
+			router := "no data"
+			s, ok := sh.(shard.CoordShardinfo)
+			if ok {
+				router = s.Router()
+			}
+			return router
+		},
+		func(sh shard.Shardinfo) string { return sh.ShardKeyName() },
+		func(sh shard.Shardinfo) string { return sh.InstanceHostname() },
+		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.Pid()) },
+		func(sh shard.Shardinfo) string { return sh.Usr() },
+		func(sh shard.Shardinfo) string { return sh.DB() },
+		func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.Sync(), 10) },
+		func(sh shard.Shardinfo) string { return strconv.FormatInt(sh.TxServed(), 10) },
+		func(sh shard.Shardinfo) string { return sh.TxStatus().String() },
+	}
+
+	if groupByClause != nil {
+		return groupBy(headers, shs, getters, groupByClause.Col.ColName, pi)
+	}
+
+	if err := pi.WriteHeader(headers...); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
 
 	for _, sh := range shs {
-		router := "no data"
-		s, ok := sh.(shard.CoordShardinfo)
-		if ok {
-			router = s.Router()
+		vals := []string{}
+		for _, getter := range getters {
+			vals = append(vals, getter(sh))
 		}
-
-		if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), fmt.Sprintf("%d", sh.Pid()), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+		if err := pi.WriteDataRow(vals...); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-
 	}
 
 	return pi.CompleteMsg(len(shs))
@@ -1407,4 +1429,30 @@ func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.Pr
 	}
 
 	return pi.CompleteMsg(len(shs))
+}
+
+func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupBy string, pi *PSQLInteractor) error {
+	ind := -1
+	for i, header := range headers {
+		if header == groupBy {
+			if err := pi.WriteHeader(groupBy, "count"); err != nil {
+				return err
+			}
+			ind = i
+			break
+		}
+	}
+
+	cnt := make(map[string]int)
+	for _, value := range values {
+		cnt[getters[ind](value)]++
+	}
+
+	for k, v := range cnt {
+		if err := pi.WriteDataRow(k, fmt.Sprintf("%d", v)); err != nil {
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(len(cnt))
 }
