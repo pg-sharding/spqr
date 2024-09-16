@@ -12,8 +12,9 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name            string
-	DistributionKey []DistributionKeyEntry
+	Name               string
+	DistributionKey    []DistributionKeyEntry
+	ReplicatedRelation bool
 }
 
 // DistributedRelationFromDB creates a DistributedRelation object from a qdb.DistributedRelation object.
@@ -34,6 +35,8 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 			HashFunction: e.HashFunction,
 		})
 	}
+
+	rdistr.ReplicatedRelation = rel.ReplicatedRelation
 
 	return rdistr
 }
@@ -58,6 +61,8 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 		})
 	}
 
+	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+
 	return rdistr
 }
 
@@ -81,6 +86,8 @@ func DistributedRelatitonToProto(rel *DistributedRelation) *proto.DistributedRel
 		})
 	}
 
+	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+
 	return rdistr
 }
 
@@ -103,6 +110,8 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 		})
 	}
 
+	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+
 	return rdistr
 }
 
@@ -124,6 +133,8 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 			HashFunction: e.HashFunction,
 		})
 	}
+
+	rdistr.ReplicatedRelation = rel.ReplicatedRelation
 
 	return rdistr
 }
