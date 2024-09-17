@@ -64,8 +64,9 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "SHOW version",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.VersionStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.VersionStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
@@ -73,8 +74,9 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "ShOw versIon",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.VersionStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.VersionStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
@@ -82,32 +84,36 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "ShOw pools",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.PoolsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.PoolsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw clients",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.ClientsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.ClientsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw DATABASES",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.DatabasesStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.DatabasesStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw BACKEND_CONNECTIONS",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.BackendConnectionsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.BackendConnectionsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
@@ -148,6 +154,7 @@ func TestSimpleWhere(t *testing.T) {
 					ColRef: spqrparser.ColumnRef{ColName: "user"},
 					Value:  "usr1",
 				},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
 			},
 			err: nil,
 		},
@@ -189,6 +196,37 @@ func TestNestedWhere(t *testing.T) {
 						Value:  "db1",
 					},
 				},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
+func TestGroupBy(t *testing.T) {
+
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "SHOW backend_connections GROUP BY hostname;",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.BackendConnectionsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupBy{Col: spqrparser.ColumnRef{ColName: "hostname"}},
 			},
 			err: nil,
 		},

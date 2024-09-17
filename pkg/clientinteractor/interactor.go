@@ -1303,7 +1303,7 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo, groupByClause *spqrparser.Group) error {
+func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo, groupByClause *spqrparser.GroupBy) error {
 	headers := []string{"backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"}
 	getters := []func(sh shard.Shardinfo) string{
 		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },

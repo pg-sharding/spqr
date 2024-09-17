@@ -455,9 +455,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		var groupBy *spqrparser.Group
-		if stmt.Group != nil {
-			groupBy = stmt.Group.(*spqrparser.Group)
+		var groupBy *spqrparser.GroupBy
+		if stmt.GroupBy != nil {
+			groupBy = stmt.GroupBy.(*spqrparser.GroupBy)
 		}
 		return cli.BackendConnections(ctx, resp, groupBy)
 	case spqrparser.ShardsStr:

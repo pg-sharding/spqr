@@ -90,7 +90,7 @@ type yySymType struct {
 	order_clause OrderClause
 	opt_asc_desc OptAscDesc
 
-	group_clause GroupClause
+	group_clause GroupByClause
 }
 
 const IDENT = 57346
@@ -1275,19 +1275,19 @@ yydefault:
 		yyDollar = yyS[yypt-3 : yypt+1]
 //line gram.y:593
 		{
-			yyVAL.group_clause = &Group{Col: yyDollar[3].colref}
+			yyVAL.group_clause = GroupBy{Col: yyDollar[3].colref}
 		}
 	case 77:
 		yyDollar = yyS[yypt-0 : yypt+1]
 //line gram.y:596
 		{
-			yyVAL.group_clause = GroupClause(nil)
+			yyVAL.group_clause = GroupByClauseEmpty{}
 		}
 	case 78:
 		yyDollar = yyS[yypt-5 : yypt+1]
 //line gram.y:601
 		{
-			yyVAL.show = &Show{Cmd: yyDollar[2].str, Where: yyDollar[3].where, Group: yyDollar[4].group_clause, Order: yyDollar[5].order_clause}
+			yyVAL.show = &Show{Cmd: yyDollar[2].str, Where: yyDollar[3].where, GroupBy: yyDollar[4].group_clause, Order: yyDollar[5].order_clause}
 		}
 	case 79:
 		yyDollar = yyS[yypt-2 : yypt+1]
