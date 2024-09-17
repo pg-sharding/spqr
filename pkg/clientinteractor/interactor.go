@@ -1324,11 +1324,13 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 
 // TODO : unit tests
 
-// BackendConnections writes backend connection information to the PSQL client.
+// BackendConnections writes backend connection information to the PSQL client. If 'GROUP BY hostname' is specified in
+// the query, returned to client is connections count per backend host.
 //
 // Parameters:
 // - _ (context.Context): The context for the operation.
 // - shs ([]shard.Shardinfo): The list of shard information.
+// - stmt (*spqrparser.Show): The 'SHOW backend_connections' statement itself.
 //
 // Returns:
 // - error: An error if any occurred during the operation.
