@@ -64,8 +64,9 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "SHOW version",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.VersionStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.VersionStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
@@ -73,8 +74,9 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "ShOw versIon",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.VersionStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.VersionStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
@@ -82,32 +84,36 @@ func TestSimpleShow(t *testing.T) {
 		{
 			query: "ShOw pools",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.PoolsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.PoolsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw clients",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.ClientsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.ClientsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw DATABASES",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.DatabasesStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.DatabasesStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
 		{
 			query: "ShOw BACKEND_CONNECTIONS",
 			exp: &spqrparser.Show{
-				Cmd:   spqrparser.BackendConnectionsStr,
-				Where: spqrparser.WhereClauseEmpty{},
+				Cmd:     spqrparser.BackendConnectionsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByEmpty{},
 			},
 			err: nil,
 		},
@@ -118,6 +124,14 @@ func TestSimpleShow(t *testing.T) {
 				Target: 824636929312,
 			},
 			err: nil,
+		},
+		{
+			query: "SHOW backend_connections group by shard_host",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.BackendConnectionsStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupBy{ColRef: spqrparser.ColumnRef{ColName: "shard_host"}},
+			},
 		},
 	} {
 		tmp, err := spqrparser.Parse(tt.query)
