@@ -23,6 +23,17 @@ type Order struct {
 	Col        ColumnRef
 }
 
+type GroupByClause interface{}
+
+type GroupByClauseEmpty struct {
+	GroupByClause
+}
+
+type GroupBy struct {
+	GroupByClause
+	Col ColumnRef
+}
+
 type WhereClauseNode interface {
 }
 
@@ -47,9 +58,10 @@ type WhereClauseOp struct {
 }
 
 type Show struct {
-	Cmd   string
-	Where WhereClauseNode
-	Order OrderClause
+	Cmd     string
+	Where   WhereClauseNode
+	Order   OrderClause
+	GroupBy GroupByClause
 }
 
 type Set struct {

@@ -313,6 +313,61 @@ Feature: Coordinator show clients, pools and backend_connections
         ]
         """
 
+    Scenario: 'show backend_connections group by hostname' works 
+        When I run SQL on host "coordinator"
+        """
+        SHOW backend_connections group by hostname
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "hostname":"spqr_shard_1:6432",
+                "count": 2
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
+            {
+                "hostname":"spqr_shard_2:6432",
+                "count": 2
+            }
+        ]
+        """
+
+        When I run SQL on host "coordinator"
+        """
+        SHOW backend_connections group by user
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "user":"regress",
+                "count": 4
+            }
+        ]
+        """
+
+        When I run SQL on host "coordinator"
+        """
+        SHOW backend_connections group by dbname
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "dbname":"regress",
+                "count": 4
+            }
+        ]
+        """
+
     Scenario: show pools works
         When I run SQL on host "coordinator"
         """

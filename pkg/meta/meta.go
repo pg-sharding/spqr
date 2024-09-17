@@ -455,7 +455,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 			return err
 		}
 
-		return cli.BackendConnections(ctx, resp)
+		return cli.BackendConnections(ctx, resp, stmt)
 	case spqrparser.ShardsStr:
 		shards, err := mngr.ListShards(ctx)
 		if err != nil {
