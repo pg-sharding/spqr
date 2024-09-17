@@ -87,7 +87,7 @@ const DOUBLEOID = 701
 
 // TODO : unit tests
 
-// TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
+// TextOidFD generates a pgproto3.FieldDescription object of TEXT type with the provided statement text.
 //
 // Parameters:
 // - stmt (string): The statement text to use in the FieldDescription.
@@ -106,6 +106,13 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 	}
 }
 
+// FloatOidFD generates a pgproto3.FieldDescription object of FLOAT8 type with the provided statement text.
+//
+// Parameters:
+// - stmt (string): The statement text to use in the FieldDescription.
+//
+// Returns:
+// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
 func FloatOidFD(stmt string) pgproto3.FieldDescription {
 	return pgproto3.FieldDescription{
 		Name:                 []byte(stmt),
