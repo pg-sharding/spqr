@@ -219,6 +219,31 @@ Feature: Coordinator show clients, pools and backend_connections
         ]
         """
 
+    Scenario: show backend_connections works
+        When I run SQL on host "coordinator"
+        """
+        SHOW backend_connections GROUP BY hostname
+        """
+        Then command return code should be "0"
+        And SQL result should match json
+        """
+        [
+            {
+                "hostname":"spqr_shard_2:6432",
+                "connections count": 2
+            }
+        ]
+        """
+        And SQL result should match json
+        """
+        [
+            {
+                "hostname":"spqr_shard_1:6432",
+                "connections count": 2
+            }
+        ]
+        """
+
     Scenario: show backend_connections collects data from 2 routers
         When I run SQL on host "coordinator"
         """
