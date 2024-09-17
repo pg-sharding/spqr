@@ -324,7 +324,7 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "hostname":"spqr_shard_1:6432",
-                "count": "2"
+                "count": 2
             }
         ]
         """
@@ -333,7 +333,7 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "hostname":"spqr_shard_2:6432",
-                "count": "2"
+                "count": 2
             }
         ]
         """
@@ -348,7 +348,7 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "user":"regress",
-                "count": "4"
+                "count": 4
             }
         ]
         """
@@ -363,7 +363,7 @@ Feature: Coordinator show clients, pools and backend_connections
         [
             {
                 "dbname":"regress",
-                "count": "4"
+                "count": 4
             }
         ]
         """
