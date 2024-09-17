@@ -437,7 +437,7 @@ func ProcessKill(ctx context.Context, stmt *spqrparser.Kill, mngr EntityMgr, poo
 // - ctx (context.Context): The context for the operation.
 // - stmt (*spqrparser.Show): The SHOW statement to process.
 // - mngr (EntityMgr): The entity manager for managing entities.
-// - ci (connectiterator.ConnectIterator): The connect iterator for connection interactions.
+// - ci (connectiterator.ConnectIterator): The connects iterator for connection interactions.
 // - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
 //
 // Returns:
