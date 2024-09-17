@@ -85,6 +85,9 @@ const TEXTOID = 25
 // DOUBLEOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L223
 const DOUBLEOID = 701
 
+// INTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55
+const INTOID = 20
+
 // TODO : unit tests
 
 // TextOidFD generates a pgproto3.FieldDescription object with the provided statement text.
@@ -106,12 +109,38 @@ func TextOidFD(stmt string) pgproto3.FieldDescription {
 	}
 }
 
+// FloatOidFD generates a pgproto3.FieldDescription object of FLOAT8 type with the provided statement text.
+//
+// Parameters:
+// - stmt (string): The statement text to use in the FieldDescription.
+//
+// Returns:
+// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
 func FloatOidFD(stmt string) pgproto3.FieldDescription {
 	return pgproto3.FieldDescription{
 		Name:                 []byte(stmt),
 		TableOID:             0,
 		TableAttributeNumber: 0,
 		DataTypeOID:          DOUBLEOID,
+		DataTypeSize:         8,
+		TypeModifier:         -1,
+		Format:               0,
+	}
+}
+
+// IntOidFD generates a pgproto3.FieldDescription object of INT type with the provided statement text.
+//
+// Parameters:
+// - stmt (string): The statement text to use in the FieldDescription.
+//
+// Returns:
+// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
+func IntOidFD(stmt string) pgproto3.FieldDescription {
+	return pgproto3.FieldDescription{
+		Name:                 []byte(stmt),
+		TableOID:             0,
+		TableAttributeNumber: 0,
+		DataTypeOID:          INTOID,
 		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,
@@ -1298,12 +1327,13 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 // BackendConnections writes backend connection information to the PSQL client.
 //
 // Parameters:
-// - ctx (context.Context): The context for the operation.
+// - _ (context.Context): The context for the operation.
 // - shs ([]shard.Shardinfo): The list of shard information.
+// - stmt (*spqrparser.Show): The query itself.
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo, groupByClause *spqrparser.GroupBy) error {
+func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shardinfo, stmt *spqrparser.Show) error {
 	headers := []string{"backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"}
 	getters := []func(sh shard.Shardinfo) string{
 		func(sh shard.Shardinfo) string { return fmt.Sprintf("%d", sh.ID()) },
@@ -1325,27 +1355,30 @@ func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Sh
 		func(sh shard.Shardinfo) string { return sh.TxStatus().String() },
 	}
 
-	if groupByClause != nil {
-		return groupBy(headers, shs, getters, groupByClause.Col.ColName, pi)
-	}
-
-	if err := pi.WriteHeader(headers...); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, sh := range shs {
-		vals := []string{}
-		for _, getter := range getters {
-			vals = append(vals, getter(sh))
-		}
-		if err := pi.WriteDataRow(vals...); err != nil {
+	switch gb := stmt.GroupBy.(type) {
+	case spqrparser.GroupBy:
+		return groupBy(headers, shs, getters, gb.Col.ColName, pi)
+	case spqrparser.WhereClauseEmpty:
+		if err := pi.WriteHeader(headers...); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
-	}
 
-	return pi.CompleteMsg(len(shs))
+		for _, sh := range shs {
+			vals := make([]string, 0)
+			for _, getter := range getters {
+				vals = append(vals, getter(sh))
+			}
+			if err := pi.WriteDataRow(vals...); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+		}
+
+		return pi.CompleteMsg(len(shs))
+	default:
+		return spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST)
+	}
 }
 
 // TODO unit tests
@@ -1431,11 +1464,14 @@ func (pi *PSQLInteractor) PreparedStatements(ctx context.Context, shs []shard.Pr
 	return pi.CompleteMsg(len(shs))
 }
 
-func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupBy string, pi *PSQLInteractor) error {
+func groupBy[T any](headers []string, values []T, getters []func(s T) string, groupByCol string, pi *PSQLInteractor) error {
 	ind := -1
 	for i, header := range headers {
-		if header == groupBy {
-			if err := pi.WriteHeader(groupBy, "count"); err != nil {
+		if header == groupByCol {
+			if err := pi.cl.Send(&pgproto3.RowDescription{
+				Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("connections count")},
+			}); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
 				return err
 			}
 			ind = i
