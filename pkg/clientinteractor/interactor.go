@@ -1358,7 +1358,7 @@ func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shar
 	switch gb := stmt.GroupBy.(type) {
 	case spqrparser.GroupBy:
 		return groupBy(headers, shs, getters, gb.Col.ColName, pi)
-	case spqrparser.WhereClauseEmpty:
+	case spqrparser.GroupByClauseEmpty:
 		if err := pi.WriteHeader(headers...); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
@@ -1469,7 +1469,7 @@ func groupBy[T any](headers []string, values []T, getters []func(s T) string, gr
 	for i, header := range headers {
 		if header == groupByCol {
 			if err := pi.cl.Send(&pgproto3.RowDescription{
-				Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("connections count")},
+				Fields: []pgproto3.FieldDescription{TextOidFD(groupByCol), IntOidFD("count")},
 			}); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
 				return err
