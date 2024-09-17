@@ -85,6 +85,9 @@ const TEXTOID = 25
 // DOUBLEOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L223
 const DOUBLEOID = 701
 
+// INTOID https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat#L55
+const INTOID = 20
+
 // TODO : unit tests
 
 // TextOidFD generates a pgproto3.FieldDescription object of TEXT type with the provided statement text.
@@ -119,6 +122,25 @@ func FloatOidFD(stmt string) pgproto3.FieldDescription {
 		TableOID:             0,
 		TableAttributeNumber: 0,
 		DataTypeOID:          DOUBLEOID,
+		DataTypeSize:         8,
+		TypeModifier:         -1,
+		Format:               0,
+	}
+}
+
+// IntOidFD generates a pgproto3.FieldDescription object of INT type with the provided statement text.
+//
+// Parameters:
+// - stmt (string): The statement text to use in the FieldDescription.
+//
+// Returns:
+// - A pgproto3.FieldDescription object initialized with the provided statement text and default values.
+func IntOidFD(stmt string) pgproto3.FieldDescription {
+	return pgproto3.FieldDescription{
+		Name:                 []byte(stmt),
+		TableOID:             0,
+		TableAttributeNumber: 0,
+		DataTypeOID:          INTOID,
 		DataTypeSize:         8,
 		TypeModifier:         -1,
 		Format:               0,
@@ -1305,32 +1327,61 @@ func (pi *PSQLInteractor) KillClient(clientID uint) error {
 // BackendConnections writes backend connection information to the PSQL client.
 //
 // Parameters:
-// - ctx (context.Context): The context for the operation.
+// - _ (context.Context): The context for the operation.
 // - shs ([]shard.Shardinfo): The list of shard information.
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) BackendConnections(ctx context.Context, shs []shard.Shardinfo) error {
-	if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("")
-		return err
-	}
-
-	for _, sh := range shs {
-		router := "no data"
-		s, ok := sh.(shard.CoordShardinfo)
-		if ok {
-			router = s.Router()
-		}
-
-		if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), fmt.Sprintf("%d", sh.Pid()), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+func (pi *PSQLInteractor) BackendConnections(_ context.Context, shs []shard.Shardinfo, stmt *spqrparser.Show) error {
+	switch t := stmt.GroupBy.(type) {
+	case spqrparser.GroupByEmpty:
+		if err := pi.WriteHeader("backend connection id", "router", "shard key name", "hostname", "pid", "user", "dbname", "sync", "tx_served", "tx status"); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
 
-	}
+		for _, sh := range shs {
+			router := "no data"
+			s, ok := sh.(shard.CoordShardinfo)
+			if ok {
+				router = s.Router()
+			}
 
-	return pi.CompleteMsg(len(shs))
+			if err := pi.WriteDataRow(fmt.Sprintf("%d", sh.ID()), router, sh.ShardKeyName(), sh.InstanceHostname(), fmt.Sprintf("%d", sh.Pid()), sh.Usr(), sh.DB(), strconv.FormatInt(sh.Sync(), 10), strconv.FormatInt(sh.TxServed(), 10), sh.TxStatus().String()); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+
+		}
+
+		return pi.CompleteMsg(len(shs))
+	case spqrparser.GroupBy:
+		if t.ColRef.ColName != "hostname" {
+			return pi.ReportError(spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST))
+		}
+		if err := pi.cl.Send(&pgproto3.RowDescription{
+			Fields: []pgproto3.FieldDescription{TextOidFD("hostname"), IntOidFD("connections count")},
+		}); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Could not write header for backend connections")
+			return err
+		}
+
+		res := make(map[string]int)
+		for _, sh := range shs {
+			res[sh.InstanceHostname()]++
+		}
+
+		for hostname, count := range res {
+			if err := pi.WriteDataRow(hostname, fmt.Sprintf("%d", count)); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+				return err
+			}
+		}
+
+		return pi.CompleteMsg(len(res))
+	default:
+		return pi.ReportError(spqrerror.NewByCode(spqrerror.SPQR_INVALID_REQUEST))
+	}
 }
 
 // TODO unit tests

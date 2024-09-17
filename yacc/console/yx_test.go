@@ -126,11 +126,11 @@ func TestSimpleShow(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "SHOW backend_connections group by shard_host",
+			query: "SHOW backend_connections group by hostname",
 			exp: &spqrparser.Show{
 				Cmd:     spqrparser.BackendConnectionsStr,
 				Where:   spqrparser.WhereClauseEmpty{},
-				GroupBy: spqrparser.GroupBy{ColRef: spqrparser.ColumnRef{ColName: "shard_host"}},
+				GroupBy: spqrparser.GroupBy{ColRef: spqrparser.ColumnRef{ColName: "hostname"}},
 			},
 		},
 	} {
