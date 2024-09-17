@@ -89,7 +89,7 @@ func randomHex(n int) (string, error) {
 	order_clause 		   OrderClause
 	opt_asc_desc		   OptAscDesc
 
-	group_clause		   GroupClause
+	group_clause		   GroupByClause
 }
 
 // any non-terminal which returns a value needs a type, which is
@@ -591,15 +591,15 @@ order_clause:
 group_clause:
 	GROUP BY ColRef
 	{
-		$$ = &Group{Col: $3}
+		$$ = GroupBy{Col: $3}
 	}
-	| /* empty */	 {$$ = GroupClause(nil)}
+	| /* empty */	 {$$ = GroupByClauseEmpty{}}
 
 
 show_stmt:
 	SHOW show_statement_type where_clause group_clause order_clause
 	{
-		$$ = &Show{Cmd: $2, Where: $3, Group: $4, Order: $5}
+		$$ = &Show{Cmd: $2, Where: $3, GroupBy: $4, Order: $5}
 	}
 lock_stmt:
 	LOCK key_range_stmt

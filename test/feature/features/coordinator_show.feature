@@ -313,7 +313,7 @@ Feature: Coordinator show clients, pools and backend_connections
         ]
         """
 
-    Scenario: show backend_connections group by
+    Scenario: 'show backend_connections group by hostname' works 
         When I run SQL on host "coordinator"
         """
         SHOW backend_connections group by hostname
