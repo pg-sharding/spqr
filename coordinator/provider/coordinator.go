@@ -276,11 +276,22 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 	}
 }
 
-func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) *qdbCoordinator {
+func NewCoordinator(tlsconfig *tls.Config, db qdb.XQDB) (*qdbCoordinator, error) {
+	shards, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	for id, cfg := range shards.ShardsData {
+		if err := db.AddShard(context.TODO(), qdb.NewShard(id, cfg.Hosts)); err != nil {
+			return nil, err
+		}
+	}
+
 	return &qdbCoordinator{
 		db:        db,
 		tlsconfig: tlsconfig,
-	}
+	}, nil
 }
 
 // TODO : unit tests

@@ -1,0 +1,13 @@
+shards:
+  sh1:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    hosts: 
+    - 'spqr_shard_1:6432'
+  sh2:
+    db: regress
+    usr: regress
+    pwd: 12345678
+    hosts: 
+    - 'spqr_shard_2:6432'
