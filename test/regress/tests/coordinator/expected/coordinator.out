@@ -45,7 +45,7 @@ SHOW key_ranges;
 (1 row)
 
 CREATE KEY RANGE krid2 FROM 33 ROUTE TO nonexistentshard FOR DISTRIBUTION ds1;
-ERROR:  unknown shard nonexistentshard
+ERROR:  shard "nonexistentshard" not found.
 DROP DISTRIBUTION ALL CASCADE;
    drop distribution    
 ------------------------
