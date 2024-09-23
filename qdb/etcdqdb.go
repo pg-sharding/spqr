@@ -847,6 +847,10 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 		return nil, err
 	}
 
+	if len(resp.Kvs) == 0 {
+		return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%s\" not found", id)
+	}
+
 	shardInfo := &Shard{
 		ID: id,
 	}

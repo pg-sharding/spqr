@@ -49,7 +49,11 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("init frontend TLS: %w", err)
 		}
 
-		coordinator := provider.NewCoordinator(frTLS, db)
+		coordinator, err := provider.NewCoordinator(frTLS, db)
+		if err != nil {
+			return err
+		}
+
 		app := app.NewApp(coordinator)
 		return app.Run(true)
 	},
