@@ -357,6 +357,40 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
+func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	var limitType proto.RedistributeLimitType
+	limit := int64(0)
+	switch t := req.Limit.(type) {
+	case kr.RedistributeAllKeys:
+		limitType = proto.RedistributeLimitType_RedistributeAllKeys
+	case kr.RedistributeKeyAmount:
+		limit = t.Amount
+		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
+	default:
+		panic("unknown redistribute limit")
+	}
+	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
+		Id:        req.KrId,
+		ToShardId: req.ShardId,
+		ToKrId:    req.DestKrId,
+		LimitType: limitType,
+		Limit:     limit,
+		BatchSize: int64(req.BatchSize),
+		SplitType: func() proto.SplitType {
+			switch req.Type {
+			case tasks.SplitLeft:
+				return proto.SplitType_SplitLeft
+			case tasks.SplitRight:
+				return proto.SplitType_SplitRight
+			default:
+				panic("unknown split type")
+			}
+		}(),
+	})
+	return err
+}
+
 // TODO : unit tests
 
 // DropKeyRange drops a key range using the provided ID.

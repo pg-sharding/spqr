@@ -56,4 +56,5 @@ type KeyRangeMgr interface {
 	Move(ctx context.Context, move *MoveKeyRange) error
 	DropKeyRange(ctx context.Context, krid string) error
 	DropKeyRangeAll(ctx context.Context) error
+	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
 }
