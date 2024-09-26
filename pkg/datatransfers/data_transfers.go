@@ -187,7 +187,7 @@ func MoveKeys(ctx context.Context, fromId, toId string, krg *kr.KeyRange, ds *di
 				if !fromTableExists {
 					continue
 				}
-				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), kr.GetKRCondition(ds, rel, krg, upperBound, "")))
+				_, err = from.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE %s`, strings.ToLower(rel.Name), kr.GetKRCondition(rel, krg, upperBound, "")))
 				if err != nil {
 					return err
 				}
@@ -283,7 +283,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 		return err
 	}
 	for _, rel := range ds.Relations {
-		krCondition := kr.GetKRCondition(ds, rel, krg, upperBound, "")
+		krCondition := kr.GetKRCondition(rel, krg, upperBound, "")
 		// check that relation exists on sending shard and there is data to copy. If not, skip the relation
 		// TODO get actual schema
 		fromTableExists, err := checkTableExists(ctx, from, strings.ToLower(rel.Name), "public")

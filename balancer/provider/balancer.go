@@ -291,14 +291,11 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 				FROM %s as t
 				WHERE %s;
 `
-			var nextKR *kr.KeyRange
+			var nextBound kr.KeyRangeBound
 			if i < len(b.dsToKeyRanges[ds])-1 {
-				nextKR = b.dsToKeyRanges[ds][i+1]
+				nextBound = b.dsToKeyRanges[ds][i+1].LowerBound
 			}
-			condition, err := b.getKRCondition(rel, krg, nextKR, "t")
-			if err != nil {
-				return err
-			}
+			condition := kr.GetKRCondition(rel, krg, nextBound, "t")
 			query := fmt.Sprintf(queryRaw, rel.Name, condition)
 			spqrlog.Zero.Debug().Str("query", query).Msg("getting space usage & key count")
 

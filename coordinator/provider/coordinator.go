@@ -3,8 +3,14 @@ package provider
 import (
 	"context"
 	"crypto/tls"
+	"encoding/binary"
 	"fmt"
+	"github.com/jackc/pgx/v5"
+	"math"
 	"net"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -965,6 +971,301 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 			return fmt.Errorf("unknown key range move status: \"%s\"", move.Status)
 		}
 	}
+	return nil
+}
+
+func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	/* Steps:
+	1. Get info about key count
+	2. Get info about key placement
+	3. Create move task group
+	4. Launch async execute loop
+	*/
+
+	/* 1. Get info about key count:
+	 */
+	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	if err != nil {
+		return err
+	}
+	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
+	if err != nil {
+		return err
+	}
+	nextRange, err := qc.getNextKeyRange(ctx, keyRange)
+	var nextBound kr.KeyRangeBound
+	if nextRange != nil {
+		nextBound = nextRange.LowerBound
+	}
+	if err != nil {
+		return err
+	}
+
+	// Get connection to source shard's master
+	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
+	if err != nil {
+		return err
+	}
+	if _, ok := conns.ShardsData[keyRange.ShardID]; !ok {
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
+	}
+	sourceShardConn := conns.ShardsData[keyRange.ShardID]
+	sourceMasterConn, err := sourceShardConn.GetMasterConnection(ctx)
+	if err != nil {
+		return err
+	}
+
+	totalCount, relCount, err := qc.getKeyStats(ctx, sourceMasterConn, ds.Relations, keyRange, nextBound)
+	biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
+	biggestRel := ds.Relations[biggestRelName]
+	tasks, err := qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
+	if err != nil {
+		return err
+	}
+
+	execCtx := context.Background()
+	ch := make(chan error)
+	go func() {
+		ch <- qc.executeMoveTasks(execCtx, tasks)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+		case err := <-ch:
+			return err
+		}
+	}
+}
+
+type moveTaskGroup struct {
+	Tasks     []*moveTask
+	KrIdFrom  string
+	KrIdTo    string
+	ShardIdTo string
+
+	Type kr.RedistributeType
+}
+
+/*
+	moveTaskGroup represents tasks designated to move key range from one shard to another
+
+Pipeline:
+ 1. Create dest key range
+ 2. Move batches via Split->Move->Unite
+*/
+type moveTask struct {
+	TempKrId string
+	Bound    [][]byte
+	State    moveTaskState
+}
+
+type moveTaskState string
+
+const (
+	moveTaskPlanned = "P"
+	moveTaskSplit   = "S"
+	moveTaskMoved   = "M"
+)
+
+func (*qdbCoordinator) getKeyStats(
+	ctx context.Context,
+	conn *pgx.Conn,
+	relations map[string]*distributions.DistributedRelation,
+	keyRange *kr.KeyRange,
+	nextBound kr.KeyRangeBound,
+) (totalCount int64, relationCount map[string]int64, err error) {
+	relationCount = make(map[string]int64)
+	for _, rel := range relations {
+		cond := kr.GetKRCondition(rel, keyRange, nextBound, "")
+		query := fmt.Sprintf(`
+				SELECT count(*) 
+				FROM %s as t
+				WHERE %s;
+`, rel.Name, cond)
+		row := conn.QueryRow(ctx, query)
+		var count int64
+		if err = row.Scan(&count); err != nil {
+			return 0, nil, err
+		}
+		relationCount[rel.Name] = count
+		totalCount += count
+	}
+	return
+}
+
+func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount int64) (string, float64) {
+	maxCount := 0.0
+	maxRel := ""
+	for rel, count := range relCount {
+		if float64(count) > maxCount {
+			maxCount = float64(count)
+			maxRel = rel
+		}
+	}
+	return maxRel, maxCount / float64(totalCount)
+}
+
+func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.RedistributeKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*moveTaskGroup, error) {
+	id := uuid.New()
+	tasks := make([]*moveTask, 0)
+	step := int64(float64(req.BatchSize)*coeff + 1)
+
+	limit := func() int64 {
+		switch l := req.Limit.(type) {
+		case kr.RedistributeAllKeys:
+			return math.MaxInt64
+		case kr.RedistributeKeyAmount:
+			return l.Amount
+		default:
+			panic(fmt.Sprintf("unexpected RedistributeLimit type %T", l))
+		}
+	}()
+
+	columns := strings.Join(rel.GetDistributionKeyColumns(), ", ")
+	query := fmt.Sprintf(`
+WITH 
+sub as (
+    SELECT %s, row_number() OVER(ORDER BY i %s) as row_n
+    FROM %s as t
+    WHERE %s
+	LIMIT %d
+),
+constants AS (
+    SELECT %d as row_count, %d as batch_size
+),
+max_row AS (
+    SELECT count(1) as row_n
+    FROM sub
+)
+SELECT sub.*
+FROM sub JOIN max_row ON true JOIN constants ON true
+WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
+   OR (sub.row_n = constants.row_count)
+   OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
+`,
+		columns,
+		func() string {
+			switch req.Type {
+			case kr.RedistributeLeft:
+				return "ASC"
+			case kr.RedistributeRight:
+				fallthrough
+			default:
+				return "DESC"
+			}
+		}(),
+		rel.Name,
+		condition,
+		limit,
+		limit,
+		step,
+	)
+	rows, err := conn.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		values := make([]string, len(columns)+1)
+		if err = rows.Scan(&values); err != nil {
+			return nil, err
+		}
+
+		bound := make([][]byte, len(columns))
+		for i, t := range ds.ColTypes {
+			switch t {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				bound[i] = []byte(values[i])
+			case qdb.ColumnTypeUinteger:
+				number, err := strconv.ParseUint(values[i], 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				bound[i] = make([]byte, 8)
+				binary.PutUvarint(bound[i], number)
+			case qdb.ColumnTypeVarcharHashed:
+				// or is it?
+				fallthrough
+			case qdb.ColumnTypeInteger:
+				number, err := strconv.ParseInt(values[i], 10, 64)
+				if err != nil {
+					return nil, err
+				}
+				bound[i] = make([]byte, 8)
+				binary.PutVarint(bound[i], number)
+			}
+		}
+		tasks = append(tasks, &moveTask{TempKrId: id.String(), State: moveTaskPlanned, Bound: bound})
+	}
+	tasks[0].TempKrId = req.DestKrId
+
+	return &moveTaskGroup{
+		Tasks:     tasks,
+		KrIdFrom:  req.KrId,
+		KrIdTo:    req.DestKrId,
+		ShardIdTo: req.ShardId,
+		Type:      req.Type,
+	}, nil
+}
+
+func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*kr.KeyRange, error) {
+	krs, err := qc.ListKeyRanges(ctx, keyRange.Distribution)
+	if err != nil {
+		return nil, err
+	}
+
+	ind := slices.IndexFunc(krs, func(other *kr.KeyRange) bool {
+		return other.ID == keyRange.ID
+	})
+	if ind < len(krs)-1 {
+		return krs[ind+1], nil
+	}
+	return nil, nil
+}
+
+func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *moveTaskGroup) error {
+	for len(taskGroup.Tasks) != 0 {
+		task := taskGroup.Tasks[0]
+		switch task.State {
+		case moveTaskPlanned:
+			if err := qc.Split(ctx, &kr.SplitKeyRange{
+				Bound:    task.Bound,
+				SourceID: taskGroup.KrIdTo,
+				Krid:     task.TempKrId,
+				SplitLeft: func() bool {
+					switch taskGroup.Type {
+					case kr.RedistributeLeft:
+						return true
+					case kr.RedistributeRight:
+						fallthrough
+					default:
+						return false
+					}
+				}()}); err != nil {
+				return err
+			}
+			task.State = moveTaskSplit
+			// TODO save tasks state
+		case moveTaskSplit:
+			if err := qc.Move(ctx, &kr.MoveKeyRange{Krid: task.TempKrId, ShardId: taskGroup.ShardIdTo}); err != nil {
+				return err
+			}
+			task.State = moveTaskMoved
+			// TODO save tasks state
+		case moveTaskMoved:
+			if task.TempKrId != taskGroup.KrIdTo {
+				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeId: taskGroup.KrIdTo, AppendageKeyRangeId: task.TempKrId}); err != nil {
+					return err
+				}
+			}
+			taskGroup.Tasks = taskGroup.Tasks[1:]
+			// TODO save tasks state
+		}
+	}
+	// TODO drop task group
 	return nil
 }
 
