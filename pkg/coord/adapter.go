@@ -739,11 +739,11 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 // - ctx (context.Context): The context for the request.
 //
 // Returns:
-// - *tasks.TaskGroup: The retrieved task group.
+// - *tasks.MoveTaskGroup: The retrieved task group.
 // - error: An error if the retrieval of the task group fails, otherwise nil.
-func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	res, err := tasksService.GetTaskGroup(ctx, nil)
+func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	res, err := tasksService.GetMoveTaskGroup(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -754,13 +754,13 @@ func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - taskGroup (*tasks.TaskGroup): The task group to be written.
+// - taskGroup (*tasks.MoveTaskGroup): The task group to be written.
 //
 // Returns:
 // - error: An error if the writing of the task group fails, otherwise nil.
-func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	_, err := tasksService.WriteTaskGroup(ctx, &proto.WriteTaskGroupRequest{
+func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.WriteMoveTaskGroup(ctx, &proto.WriteMoveTaskGroupRequest{
 		TaskGroup: tasks.TaskGroupToProto(taskGroup),
 	})
 	return err
@@ -774,8 +774,8 @@ func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
 func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	_, err := tasksService.RemoveTaskGroup(ctx, nil)
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.RemoveMoveTaskGroup(ctx, nil)
 	return err
 }
 

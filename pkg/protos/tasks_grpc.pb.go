@@ -20,163 +20,327 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	TasksService_GetTaskGroup_FullMethodName    = "/spqr.TasksService/GetTaskGroup"
-	TasksService_WriteTaskGroup_FullMethodName  = "/spqr.TasksService/WriteTaskGroup"
-	TasksService_RemoveTaskGroup_FullMethodName = "/spqr.TasksService/RemoveTaskGroup"
+	MoveTasksService_GetMoveTaskGroup_FullMethodName    = "/spqr.MoveTasksService/GetMoveTaskGroup"
+	MoveTasksService_WriteMoveTaskGroup_FullMethodName  = "/spqr.MoveTasksService/WriteMoveTaskGroup"
+	MoveTasksService_RemoveMoveTaskGroup_FullMethodName = "/spqr.MoveTasksService/RemoveMoveTaskGroup"
 )
 
-// TasksServiceClient is the client API for TasksService service.
+// MoveTasksServiceClient is the client API for MoveTasksService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type TasksServiceClient interface {
-	GetTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetTaskGroupReply, error)
-	WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	RemoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+type MoveTasksServiceClient interface {
+	GetMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetMoveTaskGroupReply, error)
+	WriteMoveTaskGroup(ctx context.Context, in *WriteMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type tasksServiceClient struct {
+type moveTasksServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewTasksServiceClient(cc grpc.ClientConnInterface) TasksServiceClient {
-	return &tasksServiceClient{cc}
+func NewMoveTasksServiceClient(cc grpc.ClientConnInterface) MoveTasksServiceClient {
+	return &moveTasksServiceClient{cc}
 }
 
-func (c *tasksServiceClient) GetTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetTaskGroupReply, error) {
-	out := new(GetTaskGroupReply)
-	err := c.cc.Invoke(ctx, TasksService_GetTaskGroup_FullMethodName, in, out, opts...)
+func (c *moveTasksServiceClient) GetMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetMoveTaskGroupReply, error) {
+	out := new(GetMoveTaskGroupReply)
+	err := c.cc.Invoke(ctx, MoveTasksService_GetMoveTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *tasksServiceClient) WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *moveTasksServiceClient) WriteMoveTaskGroup(ctx context.Context, in *WriteMoveTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, TasksService_WriteTaskGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MoveTasksService_WriteMoveTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *tasksServiceClient) RemoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *moveTasksServiceClient) RemoveMoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, TasksService_RemoveTaskGroup_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MoveTasksService_RemoveMoveTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// TasksServiceServer is the server API for TasksService service.
-// All implementations must embed UnimplementedTasksServiceServer
+// MoveTasksServiceServer is the server API for MoveTasksService service.
+// All implementations must embed UnimplementedMoveTasksServiceServer
 // for forward compatibility
-type TasksServiceServer interface {
-	GetTaskGroup(context.Context, *emptypb.Empty) (*GetTaskGroupReply, error)
-	WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*emptypb.Empty, error)
-	RemoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	mustEmbedUnimplementedTasksServiceServer()
+type MoveTasksServiceServer interface {
+	GetMoveTaskGroup(context.Context, *emptypb.Empty) (*GetMoveTaskGroupReply, error)
+	WriteMoveTaskGroup(context.Context, *WriteMoveTaskGroupRequest) (*emptypb.Empty, error)
+	RemoveMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	mustEmbedUnimplementedMoveTasksServiceServer()
 }
 
-// UnimplementedTasksServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedTasksServiceServer struct {
+// UnimplementedMoveTasksServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedMoveTasksServiceServer struct {
 }
 
-func (UnimplementedTasksServiceServer) GetTaskGroup(context.Context, *emptypb.Empty) (*GetTaskGroupReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTaskGroup not implemented")
+func (UnimplementedMoveTasksServiceServer) GetMoveTaskGroup(context.Context, *emptypb.Empty) (*GetMoveTaskGroupReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMoveTaskGroup not implemented")
 }
-func (UnimplementedTasksServiceServer) WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WriteTaskGroup not implemented")
+func (UnimplementedMoveTasksServiceServer) WriteMoveTaskGroup(context.Context, *WriteMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WriteMoveTaskGroup not implemented")
 }
-func (UnimplementedTasksServiceServer) RemoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RemoveTaskGroup not implemented")
+func (UnimplementedMoveTasksServiceServer) RemoveMoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveMoveTaskGroup not implemented")
 }
-func (UnimplementedTasksServiceServer) mustEmbedUnimplementedTasksServiceServer() {}
+func (UnimplementedMoveTasksServiceServer) mustEmbedUnimplementedMoveTasksServiceServer() {}
 
-// UnsafeTasksServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to TasksServiceServer will
+// UnsafeMoveTasksServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to MoveTasksServiceServer will
 // result in compilation errors.
-type UnsafeTasksServiceServer interface {
-	mustEmbedUnimplementedTasksServiceServer()
+type UnsafeMoveTasksServiceServer interface {
+	mustEmbedUnimplementedMoveTasksServiceServer()
 }
 
-func RegisterTasksServiceServer(s grpc.ServiceRegistrar, srv TasksServiceServer) {
-	s.RegisterService(&TasksService_ServiceDesc, srv)
+func RegisterMoveTasksServiceServer(s grpc.ServiceRegistrar, srv MoveTasksServiceServer) {
+	s.RegisterService(&MoveTasksService_ServiceDesc, srv)
 }
 
-func _TasksService_GetTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MoveTasksService_GetMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TasksServiceServer).GetTaskGroup(ctx, in)
+		return srv.(MoveTasksServiceServer).GetMoveTaskGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TasksService_GetTaskGroup_FullMethodName,
+		FullMethod: MoveTasksService_GetMoveTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TasksServiceServer).GetTaskGroup(ctx, req.(*emptypb.Empty))
+		return srv.(MoveTasksServiceServer).GetMoveTaskGroup(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TasksService_WriteTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WriteTaskGroupRequest)
+func _MoveTasksService_WriteMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WriteMoveTaskGroupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TasksServiceServer).WriteTaskGroup(ctx, in)
+		return srv.(MoveTasksServiceServer).WriteMoveTaskGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TasksService_WriteTaskGroup_FullMethodName,
+		FullMethod: MoveTasksService_WriteMoveTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TasksServiceServer).WriteTaskGroup(ctx, req.(*WriteTaskGroupRequest))
+		return srv.(MoveTasksServiceServer).WriteMoveTaskGroup(ctx, req.(*WriteMoveTaskGroupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _TasksService_RemoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MoveTasksService_RemoveMoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TasksServiceServer).RemoveTaskGroup(ctx, in)
+		return srv.(MoveTasksServiceServer).RemoveMoveTaskGroup(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TasksService_RemoveTaskGroup_FullMethodName,
+		FullMethod: MoveTasksService_RemoveMoveTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TasksServiceServer).RemoveTaskGroup(ctx, req.(*emptypb.Empty))
+		return srv.(MoveTasksServiceServer).RemoveMoveTaskGroup(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// TasksService_ServiceDesc is the grpc.ServiceDesc for TasksService service.
+// MoveTasksService_ServiceDesc is the grpc.ServiceDesc for MoveTasksService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var TasksService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "spqr.TasksService",
-	HandlerType: (*TasksServiceServer)(nil),
+var MoveTasksService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "spqr.MoveTasksService",
+	HandlerType: (*MoveTasksServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetTaskGroup",
-			Handler:    _TasksService_GetTaskGroup_Handler,
+			MethodName: "GetMoveTaskGroup",
+			Handler:    _MoveTasksService_GetMoveTaskGroup_Handler,
 		},
 		{
-			MethodName: "WriteTaskGroup",
-			Handler:    _TasksService_WriteTaskGroup_Handler,
+			MethodName: "WriteMoveTaskGroup",
+			Handler:    _MoveTasksService_WriteMoveTaskGroup_Handler,
 		},
 		{
-			MethodName: "RemoveTaskGroup",
-			Handler:    _TasksService_RemoveTaskGroup_Handler,
+			MethodName: "RemoveMoveTaskGroup",
+			Handler:    _MoveTasksService_RemoveMoveTaskGroup_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "protos/tasks.proto",
+}
+
+const (
+	BalancerTaskService_GetBalancerTask_FullMethodName    = "/spqr.BalancerTaskService/GetBalancerTask"
+	BalancerTaskService_WriteBalancerTask_FullMethodName  = "/spqr.BalancerTaskService/WriteBalancerTask"
+	BalancerTaskService_RemoveBalancerTask_FullMethodName = "/spqr.BalancerTaskService/RemoveBalancerTask"
+)
+
+// BalancerTaskServiceClient is the client API for BalancerTaskService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type BalancerTaskServiceClient interface {
+	GetBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetBalancerTaskReply, error)
+	WriteBalancerTask(ctx context.Context, in *WriteBalancerTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+}
+
+type balancerTaskServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewBalancerTaskServiceClient(cc grpc.ClientConnInterface) BalancerTaskServiceClient {
+	return &balancerTaskServiceClient{cc}
+}
+
+func (c *balancerTaskServiceClient) GetBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetBalancerTaskReply, error) {
+	out := new(GetBalancerTaskReply)
+	err := c.cc.Invoke(ctx, BalancerTaskService_GetBalancerTask_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *balancerTaskServiceClient) WriteBalancerTask(ctx context.Context, in *WriteBalancerTaskRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, BalancerTaskService_WriteBalancerTask_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *balancerTaskServiceClient) RemoveBalancerTask(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, BalancerTaskService_RemoveBalancerTask_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// BalancerTaskServiceServer is the server API for BalancerTaskService service.
+// All implementations must embed UnimplementedBalancerTaskServiceServer
+// for forward compatibility
+type BalancerTaskServiceServer interface {
+	GetBalancerTask(context.Context, *emptypb.Empty) (*GetBalancerTaskReply, error)
+	WriteBalancerTask(context.Context, *WriteBalancerTaskRequest) (*emptypb.Empty, error)
+	RemoveBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	mustEmbedUnimplementedBalancerTaskServiceServer()
+}
+
+// UnimplementedBalancerTaskServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedBalancerTaskServiceServer struct {
+}
+
+func (UnimplementedBalancerTaskServiceServer) GetBalancerTask(context.Context, *emptypb.Empty) (*GetBalancerTaskReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBalancerTask not implemented")
+}
+func (UnimplementedBalancerTaskServiceServer) WriteBalancerTask(context.Context, *WriteBalancerTaskRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WriteBalancerTask not implemented")
+}
+func (UnimplementedBalancerTaskServiceServer) RemoveBalancerTask(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveBalancerTask not implemented")
+}
+func (UnimplementedBalancerTaskServiceServer) mustEmbedUnimplementedBalancerTaskServiceServer() {}
+
+// UnsafeBalancerTaskServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BalancerTaskServiceServer will
+// result in compilation errors.
+type UnsafeBalancerTaskServiceServer interface {
+	mustEmbedUnimplementedBalancerTaskServiceServer()
+}
+
+func RegisterBalancerTaskServiceServer(s grpc.ServiceRegistrar, srv BalancerTaskServiceServer) {
+	s.RegisterService(&BalancerTaskService_ServiceDesc, srv)
+}
+
+func _BalancerTaskService_GetBalancerTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BalancerTaskServiceServer).GetBalancerTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BalancerTaskService_GetBalancerTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BalancerTaskServiceServer).GetBalancerTask(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BalancerTaskService_WriteBalancerTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WriteBalancerTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BalancerTaskServiceServer).WriteBalancerTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BalancerTaskService_WriteBalancerTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BalancerTaskServiceServer).WriteBalancerTask(ctx, req.(*WriteBalancerTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BalancerTaskService_RemoveBalancerTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BalancerTaskServiceServer).RemoveBalancerTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BalancerTaskService_RemoveBalancerTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BalancerTaskServiceServer).RemoveBalancerTask(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// BalancerTaskService_ServiceDesc is the grpc.ServiceDesc for BalancerTaskService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var BalancerTaskService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "spqr.BalancerTaskService",
+	HandlerType: (*BalancerTaskServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetBalancerTask",
+			Handler:    _BalancerTaskService_GetBalancerTask_Handler,
+		},
+		{
+			MethodName: "WriteBalancerTask",
+			Handler:    _BalancerTaskService_WriteBalancerTask_Handler,
+		},
+		{
+			MethodName: "RemoveBalancerTask",
+			Handler:    _BalancerTaskService_RemoveBalancerTask_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

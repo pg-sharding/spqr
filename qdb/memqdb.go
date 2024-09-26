@@ -26,7 +26,7 @@ type MemQDB struct {
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
-	TaskGroup            *TaskGroup                          `json:"taskGroup"`
+	TaskGroup            *MoveTaskGroup                      `json:"taskGroup"`
 
 	backupPath string
 	/* caches */
@@ -708,20 +708,20 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 //                                   TASKS
 // ==============================================================================
 
-func (q *MemQDB) GetTaskGroup(_ context.Context) (*TaskGroup, error) {
+func (q *MemQDB) GetTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
 	if q.TaskGroup == nil {
-		return &TaskGroup{
-			Tasks: []*Task{},
+		return &MoveTaskGroup{
+			Tasks: []*MoveTask{},
 		}, nil
 	}
 	return q.TaskGroup, nil
 }
 
-func (q *MemQDB) WriteTaskGroup(_ context.Context, group *TaskGroup) error {
+func (q *MemQDB) WriteTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()

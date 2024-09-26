@@ -5,7 +5,8 @@ package spqr;
 option go_package = "spqr/proto";
 
 import "google/protobuf/empty.proto";
-  
+import "protos/tasks.proto";
+
 service KeyRangeService {
   rpc GetKeyRange (GetKeyRangeRequest) returns (KeyRangeReply) {}
   rpc ListKeyRange (ListKeyRangeRequest) returns (KeyRangeReply) {}
@@ -19,6 +20,7 @@ service KeyRangeService {
   rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
   rpc MoveKeyRange (MoveKeyRangeRequest) returns (ModifyReply) {}
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
+  rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
 }
 
 enum KeyRangeStatus {
@@ -33,7 +35,7 @@ message KeyRangeBound {
 // key range info is mapped to shard
 message KeyRangeInfo {
   KeyRangeBound bound = 1;
-  
+
   string krid = 2;
   string shardId = 3;
   string distributionId = 4;
@@ -55,7 +57,7 @@ message SplitKeyRangeRequest {
 }
 
 message MergeKeyRangeRequest {
-  string base_id= 1;
+  string base_id = 1;
   string appendage_id = 2;
 }
 
@@ -98,4 +100,19 @@ message ResolveKeyRangeReply {
 
 message GetKeyRangeRequest {
   repeated string ids = 1;
+}
+
+enum RedistributeLimitType {
+  RedistributeAllKeys = 0;
+  RedistributeKeysLimit = 1;
+}
+
+message RedistributeKeyRangeRequest {
+  string id = 1;
+  string toShardId = 2;
+  string toKrId = 3;
+  RedistributeLimitType limitType = 4;
+  int64 limit = 5;
+  int64 batchSize = 6;
+  SplitType splitType = 7;
 }

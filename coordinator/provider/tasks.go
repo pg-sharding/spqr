@@ -10,7 +10,7 @@ import (
 )
 
 type TasksServer struct {
-	protos.UnimplementedTasksServiceServer
+	protos.UnimplementedMoveTasksServiceServer
 
 	impl coordinator.Coordinator
 }
@@ -21,21 +21,21 @@ func NewTasksServer(impl coordinator.Coordinator) *TasksServer {
 	}
 }
 
-var _ protos.TasksServiceServer = &TasksServer{}
+var _ protos.MoveTasksServiceServer = &TasksServer{}
 
-func (t TasksServer) GetTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetTaskGroupReply, error) {
+func (t TasksServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
 	group, err := t.impl.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &protos.GetTaskGroupReply{TaskGroup: tasks.TaskGroupToProto(group)}, nil
+	return &protos.GetMoveTaskGroupReply{TaskGroup: tasks.TaskGroupToProto(group)}, nil
 }
 
-func (t TasksServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*emptypb.Empty, error) {
+func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*emptypb.Empty, error) {
 	err := t.impl.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 	return nil, err
 }
 
-func (t TasksServer) RemoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, t.impl.RemoveTaskGroup(ctx)
 }

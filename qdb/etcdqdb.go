@@ -1086,7 +1086,7 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 //                                    TASKS
 // ==============================================================================
 
-func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
+func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get task group")
 
@@ -1096,12 +1096,12 @@ func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return &TaskGroup{
-			Tasks: []*Task{},
+		return &MoveTaskGroup{
+			Tasks: []*MoveTask{},
 		}, nil
 	}
 
-	var taskGroup *TaskGroup
+	var taskGroup *MoveTaskGroup
 	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
 		return nil, err
 	}
@@ -1109,7 +1109,7 @@ func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
 	return taskGroup, nil
 }
 
-func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
+func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
 
