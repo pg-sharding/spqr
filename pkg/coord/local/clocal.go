@@ -457,6 +457,10 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
 }
 
+func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+	return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "local coordinator does not support data moving")
+}
+
 // TODO : unit tests
 
 // Unite merges two key ranges identified by req.BaseKeyRangeId and req.AppendageKeyRangeId into a single key range.
