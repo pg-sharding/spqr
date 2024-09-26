@@ -248,3 +248,12 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 
 	return d
 }
+
+func (rel *DistributedRelation) GetDistributionKeyColumns() []string {
+	res := make([]string, len(rel.DistributionKey))
+	for i, col := range rel.DistributionKey {
+		// TODO: add hash
+		res[i] = col.Column
+	}
+	return res
+}

@@ -1,6 +1,8 @@
 package kr
 
-import "context"
+import (
+	"context"
+)
 
 type SplitKeyRange struct {
 	Bound     [][]byte // KeyRangeBound raw
@@ -17,6 +19,35 @@ type MoveKeyRange struct {
 type UniteKeyRange struct {
 	BaseKeyRangeId      string
 	AppendageKeyRangeId string
+}
+
+type RedistributeType string
+
+const (
+	RedistributeLeft  RedistributeType = "REDISTRIBUTE_LEFT"
+	RedistributeRight RedistributeType = "REDISTRIBUTE_RIGHT"
+)
+
+type RedistributeKeyLimit interface{}
+
+type RedistributeAllKeys struct {
+	RedistributeKeyLimit
+}
+
+type RedistributeKeyAmount struct {
+	RedistributeKeyLimit
+
+	Amount int64
+}
+
+type RedistributeKeyRange struct {
+	KrId      string
+	ShardId   string
+	Limit     RedistributeKeyLimit
+	BatchSize int
+	DestKrId  string
+
+	Type RedistributeType
 }
 
 type KeyRangeMgr interface {

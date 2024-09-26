@@ -85,7 +85,7 @@ func TestGetKRCondition(t *testing.T) {
 		},
 	} {
 		assert.Equal(
-			kr.GetKRCondition(c.ds, c.rel, c.krg, c.upperBound, c.prefix),
+			kr.GetKRCondition(c.rel, c.krg, c.upperBound, c.prefix),
 			c.expected,
 			"test case %d", i,
 		)
