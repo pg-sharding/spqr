@@ -41,9 +41,9 @@ type LocalCoordinator struct {
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 //
 // Returns:
-// - *tasks.TaskGroup: the retrieved task group, or nil if an error occurred.
+// - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	group, err := lc.qdb.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -55,11 +55,11 @@ func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup,
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - taskGroup (*tasks.TaskGroup): the task group to be written to the QDB.
+// - taskGroup (*tasks.MoveTaskGroup): the task group to be written to the QDB.
 //
 // Returns:
 // - error: an error if the write operation fails.
-func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 

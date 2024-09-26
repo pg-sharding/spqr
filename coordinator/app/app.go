@@ -170,7 +170,7 @@ func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
 	protos.RegisterTopologyServiceServer(serv, topServ)
 	protos.RegisterShardServiceServer(serv, shardServ)
 	protos.RegisterDistributionServiceServer(serv, dsServ)
-	protos.RegisterTasksServiceServer(serv, tasksServ)
+	protos.RegisterMoveTasksServiceServer(serv, tasksServ)
 
 	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)
 	listener, err := net.Listen("tcp", address)

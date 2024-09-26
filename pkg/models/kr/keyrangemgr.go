@@ -2,6 +2,7 @@ package kr
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 )
 
 type SplitKeyRange struct {
@@ -20,13 +21,6 @@ type UniteKeyRange struct {
 	BaseKeyRangeId      string
 	AppendageKeyRangeId string
 }
-
-type RedistributeType string
-
-const (
-	RedistributeLeft  RedistributeType = "REDISTRIBUTE_LEFT"
-	RedistributeRight RedistributeType = "REDISTRIBUTE_RIGHT"
-)
 
 type RedistributeKeyLimit interface{}
 
@@ -47,7 +41,7 @@ type RedistributeKeyRange struct {
 	BatchSize int
 	DestKrId  string
 
-	Type RedistributeType
+	Type tasks.SplitType
 }
 
 type KeyRangeMgr interface {

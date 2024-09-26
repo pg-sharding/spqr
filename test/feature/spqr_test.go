@@ -898,7 +898,7 @@ func (tctx *testContext) stepRecordQDBKRMove(body *godog.DocString) error {
 
 func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
-	var taskGroup qdb.TaskGroup
+	var taskGroup qdb.MoveTaskGroup
 	if err := json.Unmarshal([]byte(query), &taskGroup); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("Failed to unmarshal request")
 		return err

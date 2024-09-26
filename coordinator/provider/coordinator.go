@@ -974,6 +974,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
+// TODO check naming when moving the whole range
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	/* Steps:
 	1. Get info about key count
@@ -1039,36 +1040,6 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	}
 }
 
-type moveTaskGroup struct {
-	Tasks     []*moveTask
-	KrIdFrom  string
-	KrIdTo    string
-	ShardIdTo string
-
-	Type kr.RedistributeType
-}
-
-/*
-	moveTaskGroup represents tasks designated to move key range from one shard to another
-
-Pipeline:
- 1. Create dest key range
- 2. Move batches via Split->Move->Unite
-*/
-type moveTask struct {
-	TempKrId string
-	Bound    [][]byte
-	State    moveTaskState
-}
-
-type moveTaskState string
-
-const (
-	moveTaskPlanned = "P"
-	moveTaskSplit   = "S"
-	moveTaskMoved   = "M"
-)
-
 func (*qdbCoordinator) getKeyStats(
 	ctx context.Context,
 	conn *pgx.Conn,
@@ -1107,9 +1078,9 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 	return maxRel, maxCount / float64(totalCount)
 }
 
-func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.RedistributeKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*moveTaskGroup, error) {
+func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.RedistributeKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	id := uuid.New()
-	tasks := make([]*moveTask, 0)
+	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(float64(req.BatchSize)*coeff + 1)
 
 	limit := func() int64 {
@@ -1148,9 +1119,9 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		columns,
 		func() string {
 			switch req.Type {
-			case kr.RedistributeLeft:
+			case tasks.SplitLeft:
 				return "ASC"
-			case kr.RedistributeRight:
+			case tasks.SplitRight:
 				fallthrough
 			default:
 				return "DESC"
@@ -1198,15 +1169,15 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 				binary.PutVarint(bound[i], number)
 			}
 		}
-		tasks = append(tasks, &moveTask{TempKrId: id.String(), State: moveTaskPlanned, Bound: bound})
+		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: id.String(), State: tasks.TaskPlanned, Bound: bound})
 	}
-	tasks[0].TempKrId = req.DestKrId
+	taskList[0].KrIdTemp = req.DestKrId
 
-	return &moveTaskGroup{
-		Tasks:     tasks,
+	return &tasks.MoveTaskGroup{
+		Tasks:     taskList,
 		KrIdFrom:  req.KrId,
 		KrIdTo:    req.DestKrId,
-		ShardIdTo: req.ShardId,
+		ShardToId: req.ShardId,
 		Type:      req.Type,
 	}, nil
 }
@@ -1226,20 +1197,20 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 	return nil, nil
 }
 
-func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *moveTaskGroup) error {
+func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
 		switch task.State {
-		case moveTaskPlanned:
+		case tasks.TaskPlanned:
 			if err := qc.Split(ctx, &kr.SplitKeyRange{
 				Bound:    task.Bound,
 				SourceID: taskGroup.KrIdTo,
-				Krid:     task.TempKrId,
+				Krid:     task.KrIdTemp,
 				SplitLeft: func() bool {
 					switch taskGroup.Type {
-					case kr.RedistributeLeft:
+					case tasks.SplitLeft:
 						return true
-					case kr.RedistributeRight:
+					case tasks.SplitRight:
 						fallthrough
 					default:
 						return false
@@ -1247,26 +1218,31 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *moveT
 				}()}); err != nil {
 				return err
 			}
-			task.State = moveTaskSplit
-			// TODO save tasks state
-		case moveTaskSplit:
-			if err := qc.Move(ctx, &kr.MoveKeyRange{Krid: task.TempKrId, ShardId: taskGroup.ShardIdTo}); err != nil {
+			task.State = tasks.TaskSplit
+			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
 				return err
 			}
-			task.State = moveTaskMoved
-			// TODO save tasks state
-		case moveTaskMoved:
-			if task.TempKrId != taskGroup.KrIdTo {
-				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeId: taskGroup.KrIdTo, AppendageKeyRangeId: task.TempKrId}); err != nil {
+		case tasks.TaskSplit:
+			if err := qc.Move(ctx, &kr.MoveKeyRange{Krid: task.KrIdTemp, ShardId: taskGroup.ShardToId}); err != nil {
+				return err
+			}
+			task.State = tasks.TaskMoved
+			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+				return err
+			}
+		case tasks.TaskMoved:
+			if task.KrIdTemp != taskGroup.KrIdTo {
+				if err := qc.Unite(ctx, &kr.UniteKeyRange{BaseKeyRangeId: taskGroup.KrIdTo, AppendageKeyRangeId: task.KrIdTemp}); err != nil {
 					return err
 				}
 			}
 			taskGroup.Tasks = taskGroup.Tasks[1:]
-			// TODO save tasks state
+			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+				return err
+			}
 		}
 	}
-	// TODO drop task group
-	return nil
+	return qc.RemoveTaskGroup(ctx)
 }
 
 // TODO : unit tests
@@ -1427,7 +1403,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
+func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	group, err := qc.db.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -1435,7 +1411,7 @@ func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, e
 	return tasks.TaskGroupFromDb(group), nil
 }
 
-func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
+func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return qc.db.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 

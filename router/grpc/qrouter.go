@@ -29,7 +29,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBackendConnectionsServiceServer
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
-	protos.UnimplementedTasksServiceServer
+	protos.UnimplementedMoveTasksServiceServer
 	protos.UnimplementedShardServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
@@ -434,22 +434,22 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.Get
 	return reply, err
 }
 
-func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
+func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *protos.GetMoveTaskGroupRequest) (*protos.GetMoveTaskGroupReply, error) {
 	group, err := l.mgr.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &protos.GetTaskGroupReply{
+	return &protos.GetMoveTaskGroupReply{
 		TaskGroup: tasks.TaskGroupToProto(group),
 	}, nil
 }
 
-func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*protos.WriteTaskGroupReply, error) {
-	return &protos.WriteTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*protos.WriteMoveTaskGroupReply, error) {
+	return &protos.WriteMoveTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
-func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
-	return &protos.RemoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
+func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *protos.RemoveMoveTaskGroupRequest) (*protos.RemoveMoveTaskGroupReply, error) {
+	return &protos.RemoveMoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
@@ -470,7 +470,7 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 	protos.RegisterPoolServiceServer(server, lqr)
 	protos.RegisterDistributionServiceServer(server, lqr)
-	protos.RegisterTasksServiceServer(server, lqr)
+	protos.RegisterMoveTasksServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -480,5 +480,5 @@ var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
-var _ protos.TasksServiceServer = &LocalQrouterServer{}
+var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}
