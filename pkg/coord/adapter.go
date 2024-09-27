@@ -391,6 +391,16 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 	return err
 }
 
+func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
+		Id:        req.KrId,
+		ShardId:   req.ShardId,
+		BatchSize: int64(req.BatchSize),
+	})
+	return err
+}
+
 // TODO : unit tests
 
 // DropKeyRange drops a key range using the provided ID.

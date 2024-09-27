@@ -1245,6 +1245,32 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	return qc.RemoveTaskGroup(ctx)
 }
 
+// RedistributeKeyRange moves the whole key range to another shard in batches
+// TODO: persistent task type
+func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	id := uuid.New()
+	tempKrId := id.String()
+	if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
+		KrId:      req.KrId,
+		ShardId:   req.ShardId,
+		BatchSize: req.BatchSize,
+		Limit:     kr.RedistributeAllKeys{},
+		DestKrId:  tempKrId,
+		Type:      tasks.SplitRight,
+	}); err != nil {
+		return err
+	}
+	if err := qc.renameKeyRange(ctx, tempKrId, req.KrId); err != nil {
+		return err
+	}
+	return nil
+}
+
+// TODO: implement
+func (qc *qdbCoordinator) renameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	panic("not implemented")
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().

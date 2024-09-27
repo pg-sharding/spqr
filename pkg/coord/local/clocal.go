@@ -460,6 +460,10 @@ func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMove
 	return ErrNotCoordinator
 }
 
+func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+	return ErrNotCoordinator
+}
+
 // TODO : unit tests
 
 // Unite merges two key ranges identified by req.BaseKeyRangeId and req.AppendageKeyRangeId into a single key range.

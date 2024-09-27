@@ -19,19 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	KeyRangeService_GetKeyRange_FullMethodName       = "/spqr.KeyRangeService/GetKeyRange"
-	KeyRangeService_ListKeyRange_FullMethodName      = "/spqr.KeyRangeService/ListKeyRange"
-	KeyRangeService_ListAllKeyRanges_FullMethodName  = "/spqr.KeyRangeService/ListAllKeyRanges"
-	KeyRangeService_LockKeyRange_FullMethodName      = "/spqr.KeyRangeService/LockKeyRange"
-	KeyRangeService_CreateKeyRange_FullMethodName    = "/spqr.KeyRangeService/CreateKeyRange"
-	KeyRangeService_DropKeyRange_FullMethodName      = "/spqr.KeyRangeService/DropKeyRange"
-	KeyRangeService_DropAllKeyRanges_FullMethodName  = "/spqr.KeyRangeService/DropAllKeyRanges"
-	KeyRangeService_UnlockKeyRange_FullMethodName    = "/spqr.KeyRangeService/UnlockKeyRange"
-	KeyRangeService_SplitKeyRange_FullMethodName     = "/spqr.KeyRangeService/SplitKeyRange"
-	KeyRangeService_MergeKeyRange_FullMethodName     = "/spqr.KeyRangeService/MergeKeyRange"
-	KeyRangeService_MoveKeyRange_FullMethodName      = "/spqr.KeyRangeService/MoveKeyRange"
-	KeyRangeService_ResolveKeyRange_FullMethodName   = "/spqr.KeyRangeService/ResolveKeyRange"
-	KeyRangeService_BatchMoveKeyRange_FullMethodName = "/spqr.KeyRangeService/BatchMoveKeyRange"
+	KeyRangeService_GetKeyRange_FullMethodName          = "/spqr.KeyRangeService/GetKeyRange"
+	KeyRangeService_ListKeyRange_FullMethodName         = "/spqr.KeyRangeService/ListKeyRange"
+	KeyRangeService_ListAllKeyRanges_FullMethodName     = "/spqr.KeyRangeService/ListAllKeyRanges"
+	KeyRangeService_LockKeyRange_FullMethodName         = "/spqr.KeyRangeService/LockKeyRange"
+	KeyRangeService_CreateKeyRange_FullMethodName       = "/spqr.KeyRangeService/CreateKeyRange"
+	KeyRangeService_DropKeyRange_FullMethodName         = "/spqr.KeyRangeService/DropKeyRange"
+	KeyRangeService_DropAllKeyRanges_FullMethodName     = "/spqr.KeyRangeService/DropAllKeyRanges"
+	KeyRangeService_UnlockKeyRange_FullMethodName       = "/spqr.KeyRangeService/UnlockKeyRange"
+	KeyRangeService_SplitKeyRange_FullMethodName        = "/spqr.KeyRangeService/SplitKeyRange"
+	KeyRangeService_MergeKeyRange_FullMethodName        = "/spqr.KeyRangeService/MergeKeyRange"
+	KeyRangeService_MoveKeyRange_FullMethodName         = "/spqr.KeyRangeService/MoveKeyRange"
+	KeyRangeService_ResolveKeyRange_FullMethodName      = "/spqr.KeyRangeService/ResolveKeyRange"
+	KeyRangeService_BatchMoveKeyRange_FullMethodName    = "/spqr.KeyRangeService/BatchMoveKeyRange"
+	KeyRangeService_RedistributeKeyRange_FullMethodName = "/spqr.KeyRangeService/RedistributeKeyRange"
 )
 
 // KeyRangeServiceClient is the client API for KeyRangeService service.
@@ -51,6 +52,7 @@ type KeyRangeServiceClient interface {
 	MoveKeyRange(ctx context.Context, in *MoveKeyRangeRequest, opts ...grpc.CallOption) (*ModifyReply, error)
 	ResolveKeyRange(ctx context.Context, in *ResolveKeyRangeRequest, opts ...grpc.CallOption) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(ctx context.Context, in *BatchMoveKeyRangeRequest, opts ...grpc.CallOption) (*BatchMoveKeyRangeReply, error)
+	RedistributeKeyRange(ctx context.Context, in *RedistributeKeyRangeRequest, opts ...grpc.CallOption) (*RedistributeKeyRangeReply, error)
 }
 
 type keyRangeServiceClient struct {
@@ -178,6 +180,15 @@ func (c *keyRangeServiceClient) BatchMoveKeyRange(ctx context.Context, in *Batch
 	return out, nil
 }
 
+func (c *keyRangeServiceClient) RedistributeKeyRange(ctx context.Context, in *RedistributeKeyRangeRequest, opts ...grpc.CallOption) (*RedistributeKeyRangeReply, error) {
+	out := new(RedistributeKeyRangeReply)
+	err := c.cc.Invoke(ctx, KeyRangeService_RedistributeKeyRange_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyRangeServiceServer is the server API for KeyRangeService service.
 // All implementations must embed UnimplementedKeyRangeServiceServer
 // for forward compatibility
@@ -195,6 +206,7 @@ type KeyRangeServiceServer interface {
 	MoveKeyRange(context.Context, *MoveKeyRangeRequest) (*ModifyReply, error)
 	ResolveKeyRange(context.Context, *ResolveKeyRangeRequest) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(context.Context, *BatchMoveKeyRangeRequest) (*BatchMoveKeyRangeReply, error)
+	RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*RedistributeKeyRangeReply, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -240,6 +252,9 @@ func (UnimplementedKeyRangeServiceServer) ResolveKeyRange(context.Context, *Reso
 }
 func (UnimplementedKeyRangeServiceServer) BatchMoveKeyRange(context.Context, *BatchMoveKeyRangeRequest) (*BatchMoveKeyRangeReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BatchMoveKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*RedistributeKeyRangeReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RedistributeKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}
 
@@ -488,6 +503,24 @@ func _KeyRangeService_BatchMoveKeyRange_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_RedistributeKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedistributeKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).RedistributeKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyRangeService_RedistributeKeyRange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).RedistributeKeyRange(ctx, req.(*RedistributeKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyRangeService_ServiceDesc is the grpc.ServiceDesc for KeyRangeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -546,6 +579,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BatchMoveKeyRange",
 			Handler:    _KeyRangeService_BatchMoveKeyRange_Handler,
+		},
+		{
+			MethodName: "RedistributeKeyRange",
+			Handler:    _KeyRangeService_RedistributeKeyRange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

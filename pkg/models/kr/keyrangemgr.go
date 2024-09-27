@@ -44,6 +44,12 @@ type BatchMoveKeyRange struct {
 	Type tasks.SplitType
 }
 
+type RedistributeKeyRange struct {
+	KrId      string
+	ShardId   string
+	BatchSize int
+}
+
 type KeyRangeMgr interface {
 	GetKeyRange(ctx context.Context, krId string) (*KeyRange, error)
 	ListKeyRanges(ctx context.Context, distribution string) ([]*KeyRange, error)
@@ -57,4 +63,5 @@ type KeyRangeMgr interface {
 	DropKeyRange(ctx context.Context, krid string) error
 	DropKeyRangeAll(ctx context.Context) error
 	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange) error
+	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
 }
