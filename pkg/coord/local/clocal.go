@@ -457,7 +457,7 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
 }
 
-func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
 	return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "local coordinator does not support data moving")
 }
 

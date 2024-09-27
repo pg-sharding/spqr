@@ -34,7 +34,7 @@ type RedistributeKeyAmount struct {
 	Amount int64
 }
 
-type RedistributeKeyRange struct {
+type BatchMoveKeyRange struct {
 	KrId      string
 	ShardId   string
 	Limit     RedistributeKeyLimit
@@ -56,5 +56,5 @@ type KeyRangeMgr interface {
 	Move(ctx context.Context, move *MoveKeyRange) error
 	DropKeyRange(ctx context.Context, krid string) error
 	DropKeyRangeAll(ctx context.Context) error
-	RedistributeKeyRange(ctx context.Context, req *RedistributeKeyRange) error
+	BatchMoveKeyRange(ctx context.Context, req *BatchMoveKeyRange) error
 }

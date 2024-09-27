@@ -165,8 +165,8 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*protos.RedistributeKeyRangeReply, error) {
-	return &protos.RedistributeKeyRangeReply{}, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*protos.BatchMoveKeyRangeReply, error) {
+	return &protos.BatchMoveKeyRangeReply{}, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
 		KrId:     request.Id,
 		DestKrId: request.ToKrId,
 		ShardId:  request.ToShardId,
