@@ -26,7 +26,8 @@ type MemQDB struct {
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
-	TaskGroup            *MoveTaskGroup                      `json:"taskGroup"`
+	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
 
 	backupPath string
 	/* caches */
@@ -713,12 +714,12 @@ func (q *MemQDB) GetTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if q.TaskGroup == nil {
+	if q.MoveTaskGroup == nil {
 		return &MoveTaskGroup{
 			Tasks: []*MoveTask{},
 		}, nil
 	}
-	return q.TaskGroup, nil
+	return q.MoveTaskGroup, nil
 }
 
 func (q *MemQDB) WriteTaskGroup(_ context.Context, group *MoveTaskGroup) error {
@@ -726,7 +727,7 @@ func (q *MemQDB) WriteTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TaskGroup = group
+	q.MoveTaskGroup = group
 	return nil
 }
 
@@ -735,6 +736,32 @@ func (q *MemQDB) RemoveTaskGroup(_ context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TaskGroup = nil
+	q.MoveTaskGroup = nil
+	return nil
+}
+
+func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.RedistributeTask, nil
+}
+
+func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.RedistributeTask = task
+	return nil
+}
+
+func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.RedistributeTask = nil
 	return nil
 }

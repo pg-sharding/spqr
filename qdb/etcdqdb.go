@@ -57,6 +57,7 @@ const (
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
 	taskGroupPath            = "/move_task_group"
+	redistributeTaskPath     = "/redistribute_task/"
 	transactionNamespace     = "/transfer_txs/"
 
 	CoordKeepAliveTtl = 3
@@ -1127,6 +1128,48 @@ func (q *EtcdQDB) RemoveTaskGroup(ctx context.Context) error {
 		Msg("etcdqdb: remove task group")
 
 	_, err := q.cli.Delete(ctx, taskGroupPath)
+	return err
+}
+
+func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get redistribute task")
+
+	resp, err := q.cli.Get(ctx, redistributeTaskPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+
+	var task *RedistributeTask
+	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
+		return nil, err
+	}
+
+	return task, nil
+}
+
+func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write redistribute task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, redistributeTaskPath, string(taskJson))
+	return err
+}
+
+func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: remove redistribute task")
+
+	_, err := q.cli.Delete(ctx, redistributeTaskPath)
 	return err
 }
 
