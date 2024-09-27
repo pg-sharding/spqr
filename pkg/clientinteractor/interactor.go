@@ -1031,6 +1031,26 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 	return nil
 }
 
+// RedistributeKeyRange returns info about 'REDISTRIBUTE KEY RANGE' command to psql client
+//
+// Parameters:
+// - _ (context.Context): The context for the operation.
+// - redistribute (*kr.MoveKeyRange): The key range and shard information for the redistribution operation.
+//
+// Returns:
+// - error: An error if any occurred.
+// TODO : unit tests
+func (pi *PSQLInteractor) RedistributeKeyRange(_ context.Context, stmt *spqrparser.RedistributeKeyRange) error {
+	if err := pi.WriteHeader("redistribute key range"); err != nil {
+		return err
+	}
+	if err := pi.WriteDataRow(fmt.Sprintf("redistribute key range '%s' to shard '%s' by batches of %d", stmt.KeyRangeID, stmt.DestShardID, stmt.BatchSize)); err != nil {
+		return err
+	}
+
+	return pi.CompleteMsg(1)
+}
+
 // TODO : unit tests
 
 // Routers sends information about routers to the PSQL client.
