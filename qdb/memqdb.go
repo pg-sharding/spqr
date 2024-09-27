@@ -398,6 +398,29 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	return nil
 }
 
+func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
+	spqrlog.Zero.Debug().
+		Str("id", krId).
+		Str("new id", krIdNew).
+		Msg("etcdqdb: rename key range")
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	kr, ok := q.Krs[krId]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
+	}
+	if _, ok = q.Krs[krIdNew]; ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	}
+
+	kr.KeyRangeID = krIdNew
+	delete(q.Krs, krId)
+	q.Krs[krIdNew] = kr
+	return nil
+}
+
 // ==============================================================================
 //                           Transfer transactions
 // ==============================================================================

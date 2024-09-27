@@ -1301,9 +1301,38 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 	}
 }
 
-// TODO: implement
 func (qc *qdbCoordinator) renameKeyRange(ctx context.Context, krId, krIdNew string) error {
-	panic("not implemented")
+	_, err := qc.GetKeyRange(ctx, krId)
+	if err != nil {
+		return err
+	}
+
+	_, err = qc.LockKeyRange(ctx, krId)
+	if err != nil {
+		return err
+	}
+
+	newKeyRange, err := qc.GetKeyRange(ctx, krId)
+	if err != nil {
+		return err
+	}
+	if newKeyRange != nil {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	}
+
+	_, err = qc.LockKeyRange(ctx, krIdNew)
+	if err != nil {
+		return err
+	}
+
+	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
+		return err
+	}
+
+	if err = qc.UnlockKeyRange(ctx, krIdNew); err != nil {
+		return err
+	}
+	return qc.UnlockKeyRange(ctx, krId)
 }
 
 // TODO : unit tests
