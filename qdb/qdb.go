@@ -79,6 +79,10 @@ type QDB interface {
 	WriteTaskGroup(ctx context.Context, group *MoveTaskGroup) error
 	RemoveTaskGroup(ctx context.Context) error
 
+	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
+	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	RemoveRedistributeTask(ctx context.Context) error
+
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 }
