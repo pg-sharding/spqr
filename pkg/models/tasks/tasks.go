@@ -42,6 +42,20 @@ type MoveTaskGroup struct {
 	Type      SplitType
 }
 
+type RedistributeTaskState int
+
+const (
+	RedistributeTaskPlanned = iota
+	RedistributeTaskMoved
+)
+
+type RedistributeTask struct {
+	KrId      string
+	ShardId   string
+	BatchSize int
+	State     RedistributeTaskState
+}
+
 // TaskGroupToProto converts a MoveTaskGroup object to its corresponding protobuf representation.
 // It creates a new protos.MoveTaskGroup object and copies the values from the input object to the output object.
 //
@@ -420,5 +434,72 @@ func BalancerTaskStateToProto(state BalancerTaskState) protos.BalancerTaskStatus
 		return protos.BalancerTaskStatus_BalancerTaskMoved
 	default:
 		panic("unknown balancer task status")
+	}
+}
+
+func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
+	return &protos.RedistributeTask{
+		KeyRangeId: task.KrId,
+		ShardId:    task.ShardId,
+		BatchSize:  int64(task.BatchSize),
+		State:      RedistributeTaskStateToProto(task.State),
+	}
+}
+
+func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask {
+	return &RedistributeTask{
+		KrId:      task.KeyRangeId,
+		ShardId:   task.ShardId,
+		BatchSize: int(task.BatchSize),
+		State:     RedistributeTaskStateFromProto(task.State),
+	}
+}
+
+func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
+	return &qdb.RedistributeTask{
+		KrId:      task.KrId,
+		ShardId:   task.ShardId,
+		BatchSize: task.BatchSize,
+		State:     int(task.State),
+	}
+}
+
+func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
+	return &RedistributeTask{
+		KrId:      task.KrId,
+		ShardId:   task.ShardId,
+		BatchSize: task.BatchSize,
+		State: func() RedistributeTaskState {
+			switch task.State {
+			case RedistributeTaskPlanned:
+				return RedistributeTaskPlanned
+			case RedistributeTaskMoved:
+				return RedistributeTaskMoved
+			default:
+				panic("unknown redistribute task type")
+			}
+		}(),
+	}
+}
+
+func RedistributeTaskStateToProto(state RedistributeTaskState) protos.RedistributeTaskState {
+	switch state {
+	case RedistributeTaskPlanned:
+		return protos.RedistributeTaskState_RedistributeTaskPlanned
+	case RedistributeTaskMoved:
+		return protos.RedistributeTaskState_RedistributeTaskMoved
+	default:
+		panic("unknown redistribute task state")
+	}
+}
+
+func RedistributeTaskStateFromProto(state protos.RedistributeTaskState) RedistributeTaskState {
+	switch state {
+	case protos.RedistributeTaskState_RedistributeTaskPlanned:
+		return RedistributeTaskPlanned
+	case protos.RedistributeTaskState_RedistributeTaskMoved:
+		return RedistributeTaskMoved
+	default:
+		panic("unknown redistribute task state")
 	}
 }
