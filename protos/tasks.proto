@@ -79,3 +79,29 @@ service BalancerTaskService {
   rpc WriteBalancerTask(WriteBalancerTaskRequest) returns (google.protobuf.Empty) {}
   rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
+
+enum RedistributeTaskState {
+  RedistributeTaskPlanned = 0;
+  RedistributeTaskMoved = 1;
+}
+
+message RedistributeTask {
+  string keyRangeId = 1;
+  string shardId = 2;
+  int64 batchSize = 3;
+  RedistributeTaskState status = 4;
+}
+
+message GetRedistributeTaskReply {
+    RedistributeTask task = 1;
+} 
+
+message WriteRedistributeTaskRequest {
+    RedistributeTask task = 1;
+}
+
+service RedistributeTaskService {
+  rpc GetRedistributeTask(google.protobuf.Empty) returns (GetRedistributeTaskReply) {}
+  rpc WriteRedistributeTask(WriteRedistributeTaskRequest) returns (google.protobuf.Empty) {}
+  rpc RemoveRedistributeTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
