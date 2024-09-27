@@ -20,7 +20,7 @@ service KeyRangeService {
   rpc MergeKeyRange (MergeKeyRangeRequest) returns (ModifyReply) {}
   rpc MoveKeyRange (MoveKeyRangeRequest) returns (ModifyReply) {}
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
-  rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
+  rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (google.protobuf.Empty) {}
 }
 
 enum KeyRangeStatus {
@@ -107,7 +107,7 @@ enum RedistributeLimitType {
   RedistributeKeysLimit = 1;
 }
 
-message RedistributeKeyRangeRequest {
+message BatchMoveKeyRangeRequest {
   string id = 1;
   string toShardId = 2;
   string toKrId = 3;

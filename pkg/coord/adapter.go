@@ -357,7 +357,7 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
-func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
@@ -370,7 +370,7 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	default:
 		panic("unknown redistribute limit")
 	}
-	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
+	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
 		Id:        req.KrId,
 		ToShardId: req.ShardId,
 		ToKrId:    req.DestKrId,

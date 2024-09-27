@@ -975,16 +975,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 }
 
 // TODO check naming when moving the whole range
-func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
-	/* Steps:
-	1. Get info about key count
-	2. Get info about key placement
-	3. Create move task group
-	4. Launch async execute loop
-	*/
-
-	/* 1. Get info about key count:
-	 */
+func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return err
@@ -1003,6 +994,7 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	}
 
 	// Get connection to source shard's master
+	// TODO may prefer replica connection
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 	if err != nil {
 		return err
@@ -1078,7 +1070,8 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 	return maxRel, maxCount / float64(totalCount)
 }
 
-func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.RedistributeKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
+// TODO possible split by itself with big limit
+func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	id := uuid.New()
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(float64(req.BatchSize)*coeff + 1)
@@ -1175,8 +1168,9 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 
 	_, moveWhole := req.Limit.(kr.RedistributeAllKeys)
 
+	// Avoid splitting key range by its own bound when moving th whole range
 	if moveWhole {
-		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit})
+		taskList[len(taskList)-1] = &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
 	}
 
 	return &tasks.MoveTaskGroup{

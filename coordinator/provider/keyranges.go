@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -166,8 +167,8 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
-func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*protos.RedistributeKeyRangeReply, error) {
-	return &protos.RedistributeKeyRangeReply{}, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
 		KrId:     request.Id,
 		DestKrId: request.ToKrId,
 		ShardId:  request.ToShardId,

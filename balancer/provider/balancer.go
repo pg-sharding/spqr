@@ -665,7 +665,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 	for {
 		switch task.State {
 		case tasks.BalancerTaskPlanned:
-			if _, err := keyRangeService.RedistributeKeyRange(ctx, &protos.RedistributeKeyRangeRequest{
+			if _, err := keyRangeService.BatchMoveKeyRange(ctx, &protos.BatchMoveKeyRangeRequest{
 				Id:        task.KrIdFrom,
 				ToKrId:    task.KrIdTemp,
 				ToShardId: task.ShardIdTo,
