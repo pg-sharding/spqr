@@ -58,6 +58,7 @@ type QDB interface {
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ShareKeyRange(id string) error
+	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)

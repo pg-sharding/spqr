@@ -436,6 +436,28 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 	return fmt.Errorf("implement ShareKeyRange")
 }
 
+func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	spqrlog.Zero.Debug().
+		Str("id", krId).
+		Str("new id", krIdNew).
+		Msg("etcdqdb: rename key range")
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	kr, err := q.fetchKeyRange(ctx, keyRangeNodePath(krId))
+	if err != nil {
+		return err
+	}
+	kr.KeyRangeID = krIdNew
+
+	if _, err = q.cli.Delete(ctx, keyRangeNodePath(krId)); err != nil {
+		return err
+	}
+
+	return q.CreateKeyRange(ctx, kr)
+}
+
 // ==============================================================================
 //                           Transfer transactions
 // ==============================================================================
