@@ -53,6 +53,7 @@ type RedistributeTask struct {
 	KrId      string
 	ShardId   string
 	BatchSize int
+	TempKrId  string
 	State     RedistributeTaskState
 }
 

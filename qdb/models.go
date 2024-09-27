@@ -122,5 +122,6 @@ type RedistributeTask struct {
 	KrId      string `json:"kr_id"`
 	ShardId   string `json:"shard_id"`
 	BatchSize int    `json:"batch_size"`
+	TempKrId  string `json:"temp_kr_id"`
 	State     int    `json:"state"`
 }
