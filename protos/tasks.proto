@@ -89,7 +89,7 @@ message RedistributeTask {
   string keyRangeId = 1;
   string shardId = 2;
   int64 batchSize = 3;
-  RedistributeTaskState status = 4;
+  RedistributeTaskState state = 4;
 }
 
 message GetRedistributeTaskReply {
