@@ -394,6 +394,15 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr, cli)
+	case *spqrparser.RedistributeKeyRange:
+		if err := mgr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+			KrId:      stmt.KeyRangeID,
+			ShardId:   stmt.DestShardID,
+			BatchSize: stmt.BatchSize,
+		}); err != nil {
+			return cli.ReportError(err)
+		}
+		return cli.RedistributeKeyRange(ctx, stmt)
 	default:
 		return unknownCoordinatorCommand
 	}
