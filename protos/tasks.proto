@@ -87,3 +87,34 @@ service BalancerTaskService {
   rpc WriteBalancerTask(WriteBalancerTaskRequest) returns (WriteBalancerTaskReply) {}
   rpc RemoveBalancerTask(RemoveBalancerTaskRequest) returns (RemoveBalancerTaskReply) {}
 }
+
+enum RedistributeTaskState {
+  RedistributeTaskPlanned = 0;
+  RedistributeTaskMoved = 1;
+}
+
+message RedistributeTask {
+  string keyRangeId = 1;
+  string shardId = 2;
+  int64 batchSize = 3;
+  RedistributeTaskState status = 4;
+}
+
+message GetRedistributeTaskRequest {}
+message GetRedistributeTaskReply {
+    RedistributeTask task = 1;
+} 
+
+message WriteRedistributeTaskRequest {
+    RedistributeTask task = 1;
+}
+message WriteRedistributeTaskReply {}
+
+message RemoveRedistributeTaskRequest {}
+message RemoveRedistributeTaskReply {}
+
+service RedistributeTaskService {
+  rpc GetRedistributeTask(GetRedistributeTaskRequest) returns (GetRedistributeTaskReply) {}
+  rpc WriteRedistributeTask(WriteRedistributeTaskRequest) returns (WriteRedistributeTaskReply) {}
+  rpc RemoveRedistributeTask(RemoveRedistributeTaskRequest) returns (RemoveRedistributeTaskReply) {}
+}
