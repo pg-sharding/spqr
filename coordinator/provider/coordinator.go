@@ -1173,6 +1173,12 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
+	_, moveWhole := req.Limit.(kr.RedistributeAllKeys)
+
+	if moveWhole {
+		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit})
+	}
+
 	return &tasks.MoveTaskGroup{
 		Tasks:     taskList,
 		KrIdFrom:  req.KrId,
