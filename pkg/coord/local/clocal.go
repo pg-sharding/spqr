@@ -3,7 +3,6 @@ package local
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
 
@@ -458,7 +457,7 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 }
 
 func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
-	return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "local coordinator does not support data moving")
+	return ErrNotCoordinator
 }
 
 // TODO : unit tests
