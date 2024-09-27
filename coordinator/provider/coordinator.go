@@ -1016,7 +1016,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		return err
 	}
 
-	execCtx := context.Background()
+	execCtx := context.TODO()
 	ch := make(chan error)
 	go func() {
 		ch <- qc.executeMoveTasks(execCtx, tasks)
