@@ -21,6 +21,7 @@ service KeyRangeService {
   rpc MoveKeyRange (MoveKeyRangeRequest) returns (ModifyReply) {}
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
   rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (google.protobuf.Empty) {}
+  rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
 }
 
 enum KeyRangeStatus {
@@ -116,3 +117,10 @@ message BatchMoveKeyRangeRequest {
   int64 batchSize = 6;
   SplitType splitType = 7;
 }
+
+message RedistributeKeyRangeRequest {
+  string id = 1;
+  string shardId = 2;
+  int64 batchSize = 3;
+}
+

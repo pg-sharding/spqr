@@ -196,6 +196,14 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 	})
 }
 
+func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+		KrId:      request.Id,
+		ShardId:   request.ShardId,
+		BatchSize: int(request.BatchSize),
+	})
+}
+
 var _ protos.KeyRangeServiceServer = &CoordinatorService{}
 
 func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {
