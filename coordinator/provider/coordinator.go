@@ -1072,7 +1072,6 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 
 // TODO possible split by itself with big limit
 func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
-	id := uuid.New()
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(float64(req.BatchSize)*coeff + 1)
 
@@ -1162,7 +1161,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 				binary.PutVarint(bound[i], number)
 			}
 		}
-		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: id.String(), State: tasks.TaskPlanned, Bound: bound})
+		taskList = append(taskList, &tasks.MoveTask{KrIdTemp: uuid.NewString(), State: tasks.TaskPlanned, Bound: bound})
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
@@ -1248,22 +1247,58 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 // RedistributeKeyRange moves the whole key range to another shard in batches
 // TODO: persistent task type
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
-	id := uuid.New()
-	tempKrId := id.String()
-	if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
-		KrId:      req.KrId,
-		ShardId:   req.ShardId,
-		BatchSize: req.BatchSize,
-		Limit:     kr.RedistributeAllKeys{},
-		DestKrId:  tempKrId,
-		Type:      tasks.SplitRight,
-	}); err != nil {
-		return err
+	ch := make(chan error)
+	execCtx := context.TODO()
+	go func() {
+		ch <- qc.executeRedistributeTask(execCtx, &tasks.RedistributeTask{
+			KrId:      req.KrId,
+			ShardId:   req.ShardId,
+			BatchSize: req.BatchSize,
+			TempKrId:  uuid.NewString(),
+			State:     tasks.RedistributeTaskPlanned,
+		})
+	}()
+
+	for {
+		select {
+		case err := <-ch:
+			return err
+		case <-ctx.Done():
+			return spqrerror.NewByCode(spqrerror.SPQR_TRANSFER_ERROR)
+		}
 	}
-	if err := qc.renameKeyRange(ctx, tempKrId, req.KrId); err != nil {
-		return err
+}
+
+func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
+	for {
+		switch task.State {
+		case tasks.RedistributeTaskPlanned:
+			if err := qc.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
+				KrId:      task.KrId,
+				ShardId:   task.ShardId,
+				BatchSize: task.BatchSize,
+				Limit:     kr.RedistributeAllKeys{},
+				DestKrId:  task.TempKrId,
+				Type:      tasks.SplitRight,
+			}); err != nil {
+				return err
+			}
+			task.State = tasks.RedistributeTaskMoved
+			if err := qc.db.WriteRedistributeTask(ctx, tasks.RedistributeTaskToDB(task)); err != nil {
+				return err
+			}
+		case tasks.RedistributeTaskMoved:
+			if err := qc.renameKeyRange(ctx, task.TempKrId, task.KrId); err != nil {
+				return err
+			}
+			if err := qc.db.RemoveRedistributeTask(ctx); err != nil {
+				return err
+			}
+			return nil
+		default:
+			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "invalid redistribute task state")
+		}
 	}
-	return nil
 }
 
 // TODO: implement
