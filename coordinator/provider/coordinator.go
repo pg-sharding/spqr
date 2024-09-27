@@ -893,7 +893,7 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	if move == nil {
 		// No key range moves in progress
 		move = &qdb.MoveKeyRange{
-			MoveId:     uuid.New().String(),
+			MoveId:     uuid.NewString(),
 			ShardId:    req.ShardId,
 			KeyRangeID: req.Krid,
 			Status:     qdb.MoveKeyRangePlanned,
@@ -1011,7 +1011,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	totalCount, relCount, err := qc.getKeyStats(ctx, sourceMasterConn, ds.Relations, keyRange, nextBound)
 	biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 	biggestRel := ds.Relations[biggestRelName]
-	tasks, err := qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
+	taskGroup, err := qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
 	if err != nil {
 		return err
 	}
@@ -1019,7 +1019,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	execCtx := context.TODO()
 	ch := make(chan error)
 	go func() {
-		ch <- qc.executeMoveTasks(execCtx, tasks)
+		ch <- qc.executeMoveTasks(execCtx, taskGroup)
 	}()
 
 	for {
