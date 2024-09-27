@@ -240,6 +240,35 @@ func TestGroupBy(t *testing.T) {
 	}
 }
 
+func TestRedistribute(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   spqrparser.Statement
+		err   error
+	}
+
+	for _, tt := range []tcase{
+		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 500",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   500,
+			},
+			err: nil,
+		},
+	} {
+
+		tmp, err := spqrparser.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp, "query %s", tt.query)
+	}
+}
+
 func TestKeyRange(t *testing.T) {
 
 	assert := assert.New(t)
