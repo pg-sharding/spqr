@@ -117,3 +117,10 @@ type MoveTaskGroup struct {
 	KrIdFrom  string      `json:"kr_id_from"`
 	KrIdTo    string      `json:"kr_id_to"`
 }
+
+type RedistributeTask struct {
+	KrId      string `json:"kr_id"`
+	ShardId   string `json:"shard_id"`
+	BatchSize int    `json:"batch_size"`
+	State     int    `json:"state"`
+}
