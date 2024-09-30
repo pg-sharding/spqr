@@ -1009,11 +1009,33 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	}
 
 	totalCount, relCount, err := qc.getKeyStats(ctx, sourceMasterConn, ds.Relations, keyRange, nextBound)
-	biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
-	biggestRel := ds.Relations[biggestRelName]
-	taskGroup, err := qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
 	if err != nil {
 		return err
+	}
+	var taskGroup *tasks.MoveTaskGroup
+	if totalCount != 0 {
+		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
+		biggestRel := ds.Relations[biggestRelName]
+		// TODO process zero relation case
+		taskGroup, err = qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
+		if err != nil {
+			return err
+		}
+	} else {
+		// If no keys, move the whole key range
+		taskGroup = &tasks.MoveTaskGroup{
+			KrIdFrom:  req.KrId,
+			KrIdTo:    req.DestKrId,
+			ShardToId: req.ShardId,
+			Type:      tasks.SplitRight,
+			Tasks: []*tasks.MoveTask{
+				{
+					KrIdTemp: req.DestKrId,
+					State:    tasks.TaskPlanned,
+					Bound:    nil,
+				},
+			},
+		}
 	}
 
 	execCtx := context.TODO()
@@ -1040,14 +1062,30 @@ func (*qdbCoordinator) getKeyStats(
 	nextBound kr.KeyRangeBound,
 ) (totalCount int64, relationCount map[string]int64, err error) {
 	relationCount = make(map[string]int64)
+	// TODO: account for schema?
 	for _, rel := range relations {
+		row := conn.QueryRow(ctx, fmt.Sprintf(`SELECT EXISTS (
+   SELECT FROM pg_catalog.pg_class c
+   JOIN   pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+   WHERE  c.relname = '%s'
+   AND    c.relkind = 'r'    -- only tables
+   );
+`, rel.Name))
+		relExists := false
+		if err = row.Scan(&relExists); err != nil {
+			return 0, nil, err
+		}
+		if !relExists {
+			continue
+		}
+
 		cond := kr.GetKRCondition(rel, keyRange, nextBound, "")
 		query := fmt.Sprintf(`
 				SELECT count(*) 
 				FROM %s as t
 				WHERE %s;
 `, rel.Name, cond)
-		row := conn.QueryRow(ctx, query)
+		row = conn.QueryRow(ctx, query)
 		var count int64
 		if err = row.Scan(&count); err != nil {
 			return 0, nil, err
@@ -1201,9 +1239,19 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 		task := taskGroup.Tasks[0]
 		switch task.State {
 		case tasks.TaskPlanned:
+			if task.Bound == nil && taskGroup.KrIdTo == task.KrIdTemp {
+				if err := qc.RenameKeyRange(ctx, taskGroup.KrIdFrom, task.KrIdTemp); err != nil {
+					return err
+				}
+				task.State = tasks.TaskSplit
+				if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+					return err
+				}
+				break
+			}
 			if err := qc.Split(ctx, &kr.SplitKeyRange{
 				Bound:    task.Bound,
-				SourceID: taskGroup.KrIdTo,
+				SourceID: taskGroup.KrIdFrom,
 				Krid:     task.KrIdTemp,
 				SplitLeft: func() bool {
 					switch taskGroup.Type {
@@ -1288,7 +1336,7 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 				return err
 			}
 		case tasks.RedistributeTaskMoved:
-			if err := qc.renameKeyRange(ctx, task.TempKrId, task.KrId); err != nil {
+			if err := qc.RenameKeyRange(ctx, task.TempKrId, task.KrId); err != nil {
 				return err
 			}
 			if err := qc.db.RemoveRedistributeTask(ctx); err != nil {
@@ -1301,35 +1349,25 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 	}
 }
 
-func (qc *qdbCoordinator) renameKeyRange(ctx context.Context, krId, krIdNew string) error {
-	_, err := qc.GetKeyRange(ctx, krId)
-	if err != nil {
+func (qc *qdbCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	if _, err := qc.GetKeyRange(ctx, krId); err != nil {
 		return err
 	}
-
-	_, err = qc.LockKeyRange(ctx, krId)
-	if err != nil {
+	if _, err := qc.LockKeyRange(ctx, krId); err != nil {
 		return err
 	}
-
-	newKeyRange, err := qc.GetKeyRange(ctx, krId)
-	if err != nil {
-		return err
-	}
-	if newKeyRange != nil {
+	if _, err := qc.GetKeyRange(ctx, krIdNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
 	}
-
-	_, err = qc.LockKeyRange(ctx, krIdNew)
-	if err != nil {
-		return err
-	}
-
 	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
 		return err
 	}
+	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
+		cl := routerproto.NewKeyRangeServiceClient(cc)
+		_, err := cl.RenameKeyRange(ctx, &routerproto.RenameKeyRangeRequest{KeyRangeId: krId, NewKeyRangeId: krIdNew})
 
-	if err = qc.UnlockKeyRange(ctx, krIdNew); err != nil {
+		return err
+	}); err != nil {
 		return err
 	}
 	return qc.UnlockKeyRange(ctx, krId)

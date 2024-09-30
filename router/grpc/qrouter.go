@@ -339,6 +339,10 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*protos.RenameKeyRangeReply, error) {
+	return &protos.RenameKeyRangeReply{}, l.mgr.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+}
+
 // TODO : unit tests
 func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{

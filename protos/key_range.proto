@@ -21,6 +21,7 @@ service KeyRangeService {
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
   rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (BatchMoveKeyRangeReply) {}
   rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (RedistributeKeyRangeReply) {}
+  rpc RenameKeyRange (RenameKeyRangeRequest) returns (RenameKeyRangeReply) {}
 }
 
 enum KeyRangeStatus {
@@ -131,3 +132,10 @@ message RedistributeKeyRangeRequest {
 }
 
 message RedistributeKeyRangeReply {}
+
+message RenameKeyRangeRequest{
+  string keyRangeId = 1;
+  string newKeyRangeId = 2;
+}
+
+message RenameKeyRangeReply {}

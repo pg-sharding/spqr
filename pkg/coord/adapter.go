@@ -401,6 +401,15 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return err
 }
 
+func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{
+		KeyRangeId:    krId,
+		NewKeyRangeId: krIdNew,
+	})
+	return err
+}
+
 // TODO : unit tests
 
 // DropKeyRange drops a key range using the provided ID.
