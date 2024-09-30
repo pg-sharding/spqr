@@ -204,6 +204,10 @@ func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *
 	})
 }
 
+func (c *CoordinatorService) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+}
+
 var _ protos.KeyRangeServiceServer = &CoordinatorService{}
 
 func NewKeyRangeService(impl coordinator.Coordinator) protos.KeyRangeServiceServer {

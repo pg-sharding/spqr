@@ -22,6 +22,7 @@ service KeyRangeService {
   rpc ResolveKeyRange (ResolveKeyRangeRequest) returns (ResolveKeyRangeReply) {}
   rpc BatchMoveKeyRange (BatchMoveKeyRangeRequest) returns (google.protobuf.Empty) {}
   rpc RedistributeKeyRange (RedistributeKeyRangeRequest) returns (google.protobuf.Empty) {}
+  rpc RenameKeyRange (RenameKeyRangeRequest) returns (google.protobuf.Empty) {}
 }
 
 enum KeyRangeStatus {
@@ -124,3 +125,7 @@ message RedistributeKeyRangeRequest {
   int64 batchSize = 3;
 }
 
+message RenameKeyRangeRequest{
+  string keyRangeId = 1;
+  string newKeyRangeId = 2;
+}

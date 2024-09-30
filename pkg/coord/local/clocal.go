@@ -629,6 +629,10 @@ func (lc *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) err
 	return lc.qdb.UnlockKeyRange(ctx, krid)
 }
 
+func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
+}
+
 // TODO : unit tests
 
 // AddDataShard adds a new data shard to the LocalCoordinator.

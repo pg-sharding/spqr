@@ -34,6 +34,7 @@ const (
 	KeyRangeService_ResolveKeyRange_FullMethodName      = "/spqr.KeyRangeService/ResolveKeyRange"
 	KeyRangeService_BatchMoveKeyRange_FullMethodName    = "/spqr.KeyRangeService/BatchMoveKeyRange"
 	KeyRangeService_RedistributeKeyRange_FullMethodName = "/spqr.KeyRangeService/RedistributeKeyRange"
+	KeyRangeService_RenameKeyRange_FullMethodName       = "/spqr.KeyRangeService/RenameKeyRange"
 )
 
 // KeyRangeServiceClient is the client API for KeyRangeService service.
@@ -54,6 +55,7 @@ type KeyRangeServiceClient interface {
 	ResolveKeyRange(ctx context.Context, in *ResolveKeyRangeRequest, opts ...grpc.CallOption) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(ctx context.Context, in *BatchMoveKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RedistributeKeyRange(ctx context.Context, in *RedistributeKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RenameKeyRange(ctx context.Context, in *RenameKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type keyRangeServiceClient struct {
@@ -190,6 +192,15 @@ func (c *keyRangeServiceClient) RedistributeKeyRange(ctx context.Context, in *Re
 	return out, nil
 }
 
+func (c *keyRangeServiceClient) RenameKeyRange(ctx context.Context, in *RenameKeyRangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, KeyRangeService_RenameKeyRange_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KeyRangeServiceServer is the server API for KeyRangeService service.
 // All implementations must embed UnimplementedKeyRangeServiceServer
 // for forward compatibility
@@ -208,6 +219,7 @@ type KeyRangeServiceServer interface {
 	ResolveKeyRange(context.Context, *ResolveKeyRangeRequest) (*ResolveKeyRangeReply, error)
 	BatchMoveKeyRange(context.Context, *BatchMoveKeyRangeRequest) (*emptypb.Empty, error)
 	RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*emptypb.Empty, error)
+	RenameKeyRange(context.Context, *RenameKeyRangeRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedKeyRangeServiceServer()
 }
 
@@ -256,6 +268,9 @@ func (UnimplementedKeyRangeServiceServer) BatchMoveKeyRange(context.Context, *Ba
 }
 func (UnimplementedKeyRangeServiceServer) RedistributeKeyRange(context.Context, *RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RedistributeKeyRange not implemented")
+}
+func (UnimplementedKeyRangeServiceServer) RenameKeyRange(context.Context, *RenameKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameKeyRange not implemented")
 }
 func (UnimplementedKeyRangeServiceServer) mustEmbedUnimplementedKeyRangeServiceServer() {}
 
@@ -522,6 +537,24 @@ func _KeyRangeService_RedistributeKeyRange_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _KeyRangeService_RenameKeyRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameKeyRangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KeyRangeServiceServer).RenameKeyRange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: KeyRangeService_RenameKeyRange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KeyRangeServiceServer).RenameKeyRange(ctx, req.(*RenameKeyRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // KeyRangeService_ServiceDesc is the grpc.ServiceDesc for KeyRangeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -584,6 +617,10 @@ var KeyRangeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RedistributeKeyRange",
 			Handler:    _KeyRangeService_RedistributeKeyRange_Handler,
+		},
+		{
+			MethodName: "RenameKeyRange",
+			Handler:    _KeyRangeService_RenameKeyRange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
