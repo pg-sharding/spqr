@@ -674,7 +674,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 }
 
 var ParseError = fmt.Errorf("parsing stmt error")
-var ErrRuleIntersect = fmt.Errorf("sharding rule intersects with existing one")
 
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 // TODO : unit tests
