@@ -25,7 +25,7 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 		/*
 		* Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableIsRoutable(ctx, node, meta); err != nil {
+		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return cli.ReportError(err)
 		}
 		return cli.ReportStmtRoutedToAllShards(ctx)

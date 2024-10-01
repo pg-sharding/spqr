@@ -63,7 +63,7 @@ type RoutingMetadataContext struct {
 }
 
 func NewRoutingMetadataContext() *RoutingMetadataContext {
-	meta := &RoutingMetadataContext{
+	return &RoutingMetadataContext{
 		rels:          map[RelationFQN]struct{}{},
 		cteNames:      map[string]struct{}{},
 		tableAliases:  map[string]RelationFQN{},
@@ -71,12 +71,10 @@ func NewRoutingMetadataContext() *RoutingMetadataContext {
 		paramRefs:     map[RelationFQN]map[string][]int{},
 		distributions: map[RelationFQN]*distributions.Distribution{},
 	}
-
-	return meta
 }
 
-func (m *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mgr meta.EntityMgr, resolvedRelation RelationFQN) (*distributions.Distribution, error) {
-	if res, ok := m.distributions[resolvedRelation]; ok {
+func (meta *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mgr meta.EntityMgr, resolvedRelation RelationFQN) (*distributions.Distribution, error) {
+	if res, ok := meta.distributions[resolvedRelation]; ok {
 		return res, nil
 	}
 	ds, err := mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
@@ -84,7 +82,7 @@ func (m *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mg
 	if err != nil {
 		return nil, err
 	}
-	m.distributions[resolvedRelation] = ds
+	meta.distributions[resolvedRelation] = ds
 	return ds, nil
 }
 
@@ -150,9 +148,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 var ComplexQuery = fmt.Errorf("too complex query to route")
 var InformationSchemaCombinedQuery = fmt.Errorf("combined information schema and regular relation is not supported")
 var FailedToFindKeyRange = fmt.Errorf("failed to match key with ranges")
-var SkipColumn = fmt.Errorf("skip column for routing")
 var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
-var CrossShardQueryUnsupported = fmt.Errorf("cross shard query unsupported")
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
@@ -173,22 +169,22 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []in
 		Int("key-ranges-count", len(krs)).
 		Msg("checking key with key ranges")
 
-	var matched_krkey *kr.KeyRange = nil
+	var matchedKrkey *kr.KeyRange = nil
 
 	for _, krkey := range krs {
 		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
-			(matched_krkey == nil || kr.CmpRangesLessEqual(matched_krkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
-			matched_krkey = krkey
+			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
+			matchedKrkey = krkey
 		}
 	}
 
-	if matched_krkey != nil {
-		if err := qr.mgr.ShareKeyRange(matched_krkey.ID); err != nil {
+	if matchedKrkey != nil {
+		if err := qr.mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
 			return nil, err
 		}
 		return &routingstate.DataShardRoute{
-			Shkey:     kr.ShardKey{Name: matched_krkey.ShardID},
-			Matchedkr: matched_krkey,
+			Shkey:     kr.ShardKey{Name: matchedKrkey.ShardID},
+			Matchedkr: matchedKrkey,
 		}, nil
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
@@ -677,7 +673,7 @@ var ParseError = fmt.Errorf("parsing stmt error")
 
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 // TODO : unit tests
-func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable, meta *RoutingMetadataContext) error {
+func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable) error {
 	ds, err := qr.mgr.GetRelationDistribution(ctx, node.TableName)
 	if err != nil {
 		return err
@@ -863,7 +859,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
-		if err := qr.CheckTableIsRoutable(ctx, node, meta); err != nil {
+		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return nil, err
 		}
 		return routingstate.MultiMatchState{}, nil
@@ -1028,7 +1024,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 	var route routingstate.RoutingState
 	route = nil
-	var route_err error
+	var routeErr error
 	for rfqn := range meta.rels {
 		// TODO: check by whole RFQN
 		ds, err := qr.mgr.GetRelationDistribution(ctx, rfqn.RelationName)
@@ -1086,8 +1082,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 		currroute, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 		if err != nil {
-			route_err = err
-			spqrlog.Zero.Debug().Err(route_err).Msg("temporarily skip the route error")
+			routeErr = err
+			spqrlog.Zero.Debug().Err(routeErr).Msg("temporarily skip the route error")
 			continue
 		}
 
@@ -1102,8 +1098,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		})
 	}
 
-	if route == nil && route_err != nil {
-		return nil, route_err
+	if route == nil && routeErr != nil {
+		return nil, routeErr
 	}
 
 	// set up this variable if not yet
