@@ -202,7 +202,8 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 
 	lock, ok := q.Locks[id]
 	if !ok {
-		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Locks, id, &sync.RWMutex{})); err != nil {
+		lock = &sync.RWMutex{}
+		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Locks, id, lock)); err != nil {
 			return err
 		}
 	}
