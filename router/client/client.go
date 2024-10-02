@@ -117,6 +117,8 @@ type PsqlClient struct {
 	show_notice_messages bool
 	maintain_params      bool
 
+	idSelf uint
+
 	/* protects server */
 	mu     sync.RWMutex
 	server server.Server
@@ -240,6 +242,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 
 		show_notice_messages: showNoticeMessages,
 	}
+
+	cl.idSelf = spqrlog.GetPointer(cl)
 
 	return cl
 }
@@ -539,7 +543,7 @@ func (cl *PsqlClient) ReplyWarningf(fmtString string, args ...interface{}) error
 }
 
 func (cl *PsqlClient) ID() uint {
-	return spqrlog.GetPointer(cl)
+	return cl.idSelf
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {

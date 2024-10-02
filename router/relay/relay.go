@@ -136,7 +136,7 @@ type RelayStateImpl struct {
 	routingState routingstate.RoutingState
 
 	Qr      qrouter.QueryRouter
-	qp      parser.QParser
+	qp      parser.Parser
 	plainQ  string
 	Cl      client.RouterClient
 	manager poolmgr.PoolMgr
@@ -176,13 +176,14 @@ func (rst *RelayStateImpl) RequestData() {
 	rst.Cl.Server().RequestData()
 }
 
-func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router, parser parser.Parser) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:       nil,
 		txStatus:           txstatus.TXIDLE,
 		msgBuf:             nil,
 		traceMsgs:          false,
 		Qr:                 qr,
+		qp:                 parser,
 		Cl:                 client,
 		manager:            manager,
 		WorldShardFallback: rcfg.WorldShardFallback,
