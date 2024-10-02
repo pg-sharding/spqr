@@ -1306,9 +1306,17 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 }
 
 // RedistributeKeyRange moves the whole key range to another shard in batches
-// TODO: persistent task type
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
-	// TODO: check for key range existence, dest shard existence etc
+	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
+	if err != nil {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
+	}
+	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
+		return spqrerror.Newf("error getting destination shard: %s", err.Error())
+	}
+	if keyRange.ShardID == req.ShardId {
+		return nil
+	}
 	ch := make(chan error)
 	execCtx := context.TODO()
 	go func() {
