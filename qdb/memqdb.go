@@ -200,12 +200,14 @@ func (q *MemQDB) DropKeyRange(_ context.Context, id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	_, ok := q.Krs[id]
+	if !ok {
+		return nil
+	}
+
 	lock, ok := q.Locks[id]
 	if !ok {
-		lock = &sync.RWMutex{}
-		if err := ExecuteCommands(q.DumpState, NewUpdateCommand(q.Locks, id, lock)); err != nil {
-			return err
-		}
+		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("no lock in MemQDB for key range \"%s\"", id))
 	}
 	if !lock.TryLock() {
 		return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range \"%s\" is locked", id)

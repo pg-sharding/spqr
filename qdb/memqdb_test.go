@@ -204,6 +204,7 @@ func TestKeyRanges(t *testing.T) {
 		DistributionId: "dserr",
 	}))
 
+	assert.NoError(memqdb.DropKeyRange(ctx, "nonexistentKeyRange"))
 }
 
 func Test_MemQDB_GetKeyRange(t *testing.T) {
