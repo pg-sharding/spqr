@@ -832,6 +832,27 @@ func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	res, err := tasksService.GetBalancerTask(ctx, &proto.GetBalancerTaskRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.BalancerTaskFromProto(res.Task), nil
+}
+
+func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	_, err := tasksService.WriteBalancerTask(ctx, &proto.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
+	return err
+}
+
+func (a *Adapter) RemoveBalancerTask(ctx context.Context) error {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	_, err := tasksService.RemoveBalancerTask(ctx, &proto.RemoveBalancerTaskRequest{})
+	return err
+}
+
 // TODO : unit tests
 
 // UpdateCoordinator updates the coordinator with the given address.

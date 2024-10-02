@@ -28,6 +28,7 @@ type MemQDB struct {
 	Coordinator          string                              `json:"coordinator"`
 	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
 	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
+	BalancerTask         *BalancerTask                       `json:"balancerTask"`
 
 	backupPath string
 	/* caches */
@@ -785,5 +786,31 @@ func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
 	defer q.mu.Unlock()
 
 	q.RedistributeTask = nil
+	return nil
+}
+
+func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.BalancerTask, nil
+}
+
+func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write balancer task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.BalancerTask = task
+	return nil
+}
+
+func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove balancer task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.BalancerTask = nil
 	return nil
 }

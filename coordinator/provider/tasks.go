@@ -11,6 +11,7 @@ import (
 
 type TasksServer struct {
 	protos.UnimplementedMoveTasksServiceServer
+	protos.UnimplementedBalancerTaskServiceServer
 
 	impl coordinator.Coordinator
 }
@@ -22,6 +23,7 @@ func NewTasksServer(impl coordinator.Coordinator) *TasksServer {
 }
 
 var _ protos.MoveTasksServiceServer = &TasksServer{}
+var _ protos.BalancerTaskServiceServer = &TasksServer{}
 
 func (t TasksServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
 	group, err := t.impl.GetTaskGroup(ctx)
@@ -38,4 +40,20 @@ func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.Wri
 
 func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, t.impl.RemoveTaskGroup(ctx)
+}
+
+func (t TasksServer) GetBalancerTask(ctx context.Context, _ *protos.GetBalancerTaskRequest) (*protos.GetBalancerTaskReply, error) {
+	task, err := t.impl.GetBalancerTask(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetBalancerTaskReply{Task: tasks.BalancerTaskToProto(task)}, nil
+}
+
+func (t TasksServer) WriteBalancerTask(ctx context.Context, request *protos.WriteBalancerTaskRequest) (*protos.WriteBalancerTaskReply, error) {
+	return &protos.WriteBalancerTaskReply{}, t.impl.WriteBalancerTask(ctx, tasks.BalancerTaskFromProto(request.Task))
+}
+
+func (t TasksServer) RemoveBalancerTask(ctx context.Context, _ *protos.RemoveBalancerTaskRequest) (*protos.RemoveBalancerTaskReply, error) {
+	return &protos.RemoveBalancerTaskReply{}, t.impl.RemoveBalancerTask(ctx)
 }

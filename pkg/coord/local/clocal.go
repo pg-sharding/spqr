@@ -75,6 +75,18 @@ func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
 	return lc.qdb.RemoveTaskGroup(ctx)
 }
 
+func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
+	return nil, ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
+	return ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
+	return ErrNotCoordinator
+}
+
 // TODO : unit tests
 
 // ListDistributions retrieves a list of distributions from the local coordinator's QDB.
