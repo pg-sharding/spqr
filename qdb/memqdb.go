@@ -416,9 +416,8 @@ func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	}
 
 	kr.KeyRangeID = krIdNew
-	delete(q.Krs, krId)
-	q.Krs[krIdNew] = kr
-	return nil
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, krId), NewDeleteCommand(q.Locks, krId),
+		NewUpdateCommand(q.Krs, krIdNew, kr), NewUpdateCommand(q.Locks, krIdNew, &sync.RWMutex{}))
 }
 
 // ==============================================================================
