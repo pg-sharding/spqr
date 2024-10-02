@@ -1111,7 +1111,7 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 // TODO possible split by itself with big limit
 func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	taskList := make([]*tasks.MoveTask, 0)
-	step := int64(float64(req.BatchSize)*coeff + 1)
+	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
 
 	limit := func() int64 {
 		switch l := req.Limit.(type) {
@@ -1168,8 +1168,13 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		return nil, err
 	}
 	for rows.Next() {
+
 		values := make([]string, len(columns)+1)
-		if err = rows.Scan(&values); err != nil {
+		links := make([]interface{}, len(values))
+		for i := range values {
+			links[i] = &values[i]
+		}
+		if err = rows.Scan(links...); err != nil {
 			return nil, err
 		}
 
@@ -1205,8 +1210,16 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 
 	_, moveWhole := req.Limit.(kr.RedistributeAllKeys)
 
-	// Avoid splitting key range by its own bound when moving th whole range
-	if moveWhole {
+	if len(taskList) <= 1 {
+		taskList = []*tasks.MoveTask{
+			{
+				KrIdTemp: req.DestKrId,
+				State:    tasks.TaskPlanned,
+				Bound:    nil,
+			},
+		}
+	} else if moveWhole {
+		// Avoid splitting key range by its own bound when moving the whole range
 		taskList[len(taskList)-1] = &tasks.MoveTask{KrIdTemp: req.KrId, Bound: nil, State: tasks.TaskSplit}
 	}
 
@@ -1295,6 +1308,7 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 // RedistributeKeyRange moves the whole key range to another shard in batches
 // TODO: persistent task type
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	// TODO: check for key range existence, dest shard existence etc
 	ch := make(chan error)
 	execCtx := context.TODO()
 	go func() {
