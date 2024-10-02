@@ -125,3 +125,13 @@ type RedistributeTask struct {
 	TempKrId  string `json:"temp_kr_id"`
 	State     int    `json:"state"`
 }
+
+type BalancerTask struct {
+	Type      int    `json:"type"`
+	KrIdFrom  string `json:"krIdFrom"`
+	KrIdTo    string `json:"krIdTo"`
+	KrIdTemp  string `json:"krIdTemp"`
+	ShardIdTo string `json:"shardIdTo"`
+	KeyCount  int64  `json:"keyCount"`
+	State     int    `json:"state"`
+}

@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
@@ -435,6 +436,50 @@ func BalancerTaskStateToProto(state BalancerTaskState) protos.BalancerTaskStatus
 		return protos.BalancerTaskStatus_BalancerTaskMoved
 	default:
 		panic("unknown balancer task status")
+	}
+}
+
+func BalancerTaskToDb(task *BalancerTask) *qdb.BalancerTask {
+	return &qdb.BalancerTask{
+		Type:      int(task.Type),
+		KrIdFrom:  task.KrIdFrom,
+		KrIdTo:    task.KrIdTo,
+		KrIdTemp:  task.KrIdTemp,
+		ShardIdTo: task.ShardIdTo,
+		KeyCount:  task.KeyCount,
+		State:     int(task.State),
+	}
+}
+
+func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
+	return &BalancerTask{
+		Type: func() JoinType {
+			switch task.Type {
+			case JoinLeft:
+				return JoinLeft
+			case JoinRight:
+				return JoinRight
+			case JoinNone:
+				return JoinNone
+			default:
+				panic(fmt.Sprintf("incorrect join type: \"%d\"", task.Type))
+			}
+		}(),
+		KrIdFrom:  task.KrIdFrom,
+		KrIdTo:    task.KrIdTo,
+		KrIdTemp:  task.KrIdTemp,
+		ShardIdTo: task.ShardIdTo,
+		KeyCount:  task.KeyCount,
+		State: func() BalancerTaskState {
+			switch task.State {
+			case BalancerTaskPlanned:
+				return BalancerTaskPlanned
+			case BalancerTaskMoved:
+				return BalancerTaskMoved
+			default:
+				panic(fmt.Sprintf("incorrect balancer task state: \"%d\"", task.State))
+			}
+		}(),
 	}
 }
 

@@ -84,6 +84,10 @@ type QDB interface {
 	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
 	RemoveRedistributeTask(ctx context.Context) error
 
+	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
+	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
+	RemoveBalancerTask(ctx context.Context) error
+
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)
 }

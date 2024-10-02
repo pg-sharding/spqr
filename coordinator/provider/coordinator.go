@@ -1569,6 +1569,22 @@ func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
 	return qc.db.RemoveTaskGroup(ctx)
 }
 
+func (qc *qdbCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
+	taskDb, err := qc.db.GetBalancerTask(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return tasks.BalancerTaskFromDb(taskDb), nil
+}
+
+func (qc *qdbCoordinator) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+	return qc.db.WriteBalancerTask(ctx, tasks.BalancerTaskToDb(task))
+}
+
+func (qc *qdbCoordinator) RemoveBalancerTask(ctx context.Context) error {
+	return qc.db.RemoveBalancerTask(ctx)
+}
+
 // TODO : unit tests
 func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (CoordinatorClient, error) {
 	cl := psqlclient.NewPsqlClient(nconn, pt, "", false, "")

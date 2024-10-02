@@ -58,6 +58,7 @@ const (
 	relationMappingNamespace = "/relation_mappings/"
 	taskGroupPath            = "/move_task_group"
 	redistributeTaskPath     = "/redistribute_task/"
+	balancerTaskPath         = "/balancer_task/"
 	transactionNamespace     = "/transfer_txs/"
 
 	CoordKeepAliveTtl = 3
@@ -1192,6 +1193,48 @@ func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
 		Msg("etcdqdb: remove redistribute task")
 
 	_, err := q.cli.Delete(ctx, redistributeTaskPath)
+	return err
+}
+
+func (q *EtcdQDB) GetBalancerTask(ctx context.Context) (*BalancerTask, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get balancer task")
+
+	resp, err := q.cli.Get(ctx, balancerTaskPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+
+	var task *BalancerTask
+	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
+		return nil, err
+	}
+
+	return task, nil
+}
+
+func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write balancer task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, balancerTaskPath, string(taskJson))
+	return err
+}
+
+func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: remove balancer task")
+
+	_, err := q.cli.Delete(ctx, balancerTaskPath)
 	return err
 }
 

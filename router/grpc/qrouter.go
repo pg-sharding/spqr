@@ -31,6 +31,7 @@ type LocalQrouterServer struct {
 	protos.UnimplementedDistributionServiceServer
 	protos.UnimplementedMoveTasksServiceServer
 	protos.UnimplementedShardServiceServer
+	protos.UnimplementedBalancerTaskServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -454,6 +455,22 @@ func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *pr
 
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *protos.RemoveMoveTaskGroupRequest) (*protos.RemoveMoveTaskGroupReply, error) {
 	return &protos.RemoveMoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
+}
+
+func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *protos.GetBalancerTaskRequest) (*protos.GetBalancerTaskReply, error) {
+	task, err := l.mgr.GetBalancerTask(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetBalancerTaskReply{Task: tasks.BalancerTaskToProto(task)}, nil
+}
+
+func (l *LocalQrouterServer) WriteBalancerTask(ctx context.Context, request *protos.WriteBalancerTaskRequest) (*protos.WriteBalancerTaskReply, error) {
+	return &protos.WriteBalancerTaskReply{}, l.mgr.WriteBalancerTask(ctx, tasks.BalancerTaskFromProto(request.Task))
+}
+
+func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *protos.RemoveBalancerTaskRequest) (*protos.RemoveBalancerTaskReply, error) {
+	return &protos.RemoveBalancerTaskReply{}, l.mgr.RemoveBalancerTask(ctx)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
