@@ -1211,6 +1211,28 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 		return nil
 	}
 
+	msgs := []pgproto3.BackendMessage{
+		&pgproto3.AuthenticationOk{},
+	}
+
+	params := []string{"client_encoding", "standard_conforming_strings"}
+	for _, p := range params {
+		if v, ok := cl.Params()[p]; ok {
+			msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
+		}
+	}
+
+	msgs = append(msgs, []pgproto3.BackendMessage{
+		&pgproto3.ParameterStatus{Name: "client_encoding", Value: "UTF8"},
+	}...)
+
+	for _, msg := range msgs {
+		if err := cl.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
 	ci := grpcConnectionIterator{qdbCoordinator: qc}
 	cli := clientinteractor.NewPSQLInteractor(cl)
 	for {
