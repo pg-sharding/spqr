@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"sort"
 	"strings"
 
@@ -489,7 +490,7 @@ func (b *BalancerImpl) getTasks(shardFrom *ShardMetrics, krId string, shardToId 
 		KrIdTo:    krIdTo,
 		KrIdTemp:  id.String(),
 		ShardIdTo: shardToId,
-		KeyCount:  int64(keyCount),
+		KeyCount:  min(int64(keyCount), int64(config.BalancerConfig().MaxMoveCount*config.BalancerConfig().KeysPerMove)),
 		Type:      join,
 		State:     tasks.BalancerTaskPlanned,
 	}, nil
@@ -660,6 +661,7 @@ func (b *BalancerImpl) removeTaskFromQDB(ctx context.Context) error {
 func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTask) error {
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
+	taskService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
 
 	for {
 		switch task.State {
@@ -687,7 +689,9 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 				return err
 			}
 			task.State = tasks.BalancerTaskMoved
-			// TODO: save task state
+			if _, err := taskService.WriteBalancerTask(ctx, &protos.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)}); err != nil {
+				return err
+			}
 		case tasks.BalancerTaskMoved:
 			var err error
 			switch task.Type {
@@ -706,7 +710,12 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 			if err != nil {
 				return err
 			}
-			// TODO: drop task
+			if _, err = taskService.RemoveBalancerTask(ctx, &protos.RemoveBalancerTaskRequest{}); err != nil {
+				return err
+			}
+			return nil
+		default:
+			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "unknown balancer task state")
 		}
 	}
 	return nil
