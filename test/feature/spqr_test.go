@@ -374,7 +374,7 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	return db, nil
 }
 
-func (tctx *testContext) queryPostgresql(host string, query string, args interface{}) ([]map[string]interface{}, error) {
+func (tctx *testContext) queryPostgresql(host string, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
 	db, err := tctx.getPostgresqlConnection(host)
 	if err != nil {
 		return nil, err
@@ -391,7 +391,7 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 			continue
 		}
 		tctx.sqlQueryResult = nil
-		result, err = tctx.doPostgresqlQuery(db, q, args, postgresqlQueryTimeout)
+		result, err = tctx.doPostgresqlQuery(db, q, args, timeout)
 		tctx.commandRetcode = 0
 		if err != nil {
 			tctx.commandRetcode = 1
@@ -679,7 +679,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
 	for i := 0; i < trials; i++ {
-		_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{})
+		_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
 		if err == nil {
 			return nil
 		}
@@ -745,12 +745,19 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, query, struct{}{})
+	_, err := tctx.queryPostgresql(host, query, struct{}{}, postgresqlQueryTimeout)
+	return err
+}
+
+func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+
+	_, err := tctx.queryPostgresql(host, query, struct{}{}, time.Duration(timeout)*time.Second)
 	return err
 }
 
 func (tctx *testContext) stepIFailSQLOnHost(host string) error {
-	_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{})
+	_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
 	if err == nil {
 		return fmt.Errorf("host is accessible via SQL")
 	}
@@ -1027,6 +1034,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^command return code should be "(\d+)"$`, tctx.stepCommandReturnCodeShouldBe)
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
+	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
 	s.Step(`^sleep$`, func() error {
