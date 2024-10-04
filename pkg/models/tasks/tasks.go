@@ -67,6 +67,9 @@ type RedistributeTask struct {
 // Returns:
 //   - *protos.MoveTaskGroup: The converted protos.MoveTaskGroup object.
 func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
 	return &protos.MoveTaskGroup{
 		Tasks: func() []*protos.MoveTask {
 			res := make([]*protos.MoveTask, len(group.Tasks))
@@ -91,6 +94,9 @@ func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
 // Returns:
 //   - *protos.MoveTask: The converted protos.MoveTask object.
 func TaskToProto(task *MoveTask) *protos.MoveTask {
+	if task == nil {
+		return nil
+	}
 	return &protos.MoveTask{
 		KeyRangeIdTemp: task.KrIdTemp,
 		Bound:          task.Bound,
@@ -193,6 +199,9 @@ func SplitTypeToProto(t SplitType) protos.SplitType {
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
 func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
 	return &MoveTaskGroup{
 		Tasks: func() []*MoveTask {
 			res := make([]*MoveTask, len(group.Tasks))
@@ -217,6 +226,9 @@ func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
 // Returns:
 //   - *MoveTask: The converted MoveTask object.
 func TaskFromProto(task *protos.MoveTask) *MoveTask {
+	if task == nil {
+		return nil
+	}
 	return &MoveTask{
 		KrIdTemp: task.KeyRangeIdTemp,
 		Bound:    task.Bound,
@@ -300,6 +312,9 @@ func SplitTypeFromProto(t protos.SplitType) SplitType {
 // Returns:
 //   - *qdb.MoveTaskGroup: The converted qdb.MoveTaskGroup object.
 func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
 	return &qdb.MoveTaskGroup{
 		Tasks: func() []*qdb.MoveTask {
 			res := make([]*qdb.MoveTask, len(group.Tasks))
@@ -325,6 +340,9 @@ func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
 // Returns:
 //   - *qdb.MoveTask: The converted qdb.MoveTask object.
 func TaskToDb(task *MoveTask) *qdb.MoveTask {
+	if task == nil {
+		return nil
+	}
 	return &qdb.MoveTask{
 		KrIdTemp: task.KrIdTemp,
 		Bound:    task.Bound,
@@ -344,6 +362,9 @@ func TaskToDb(task *MoveTask) *qdb.MoveTask {
 // Returns:
 //   - *MoveTaskGroup: The converted MoveTaskGroup object.
 func TaskGroupFromDb(group *qdb.MoveTaskGroup) *MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
 	return &MoveTaskGroup{
 		Tasks: func() []*MoveTask {
 			res := make([]*MoveTask, len(group.Tasks))
@@ -394,6 +415,9 @@ type BalancerTask struct {
 }
 
 func BalancerTaskFromProto(task *protos.BalancerTask) *BalancerTask {
+	if task == nil {
+		return nil
+	}
 	return &BalancerTask{
 		State:     BalancerTaskStateFromProto(task.State),
 		KrIdFrom:  task.KeyRangeIdFrom,
@@ -406,6 +430,9 @@ func BalancerTaskFromProto(task *protos.BalancerTask) *BalancerTask {
 }
 
 func BalancerTaskToProto(task *BalancerTask) *protos.BalancerTask {
+	if task == nil {
+		return nil
+	}
 	return &protos.BalancerTask{
 		State:          BalancerTaskStateToProto(task.State),
 		KeyRangeIdFrom: task.KrIdFrom,
@@ -440,6 +467,9 @@ func BalancerTaskStateToProto(state BalancerTaskState) protos.BalancerTaskStatus
 }
 
 func BalancerTaskToDb(task *BalancerTask) *qdb.BalancerTask {
+	if task == nil {
+		return nil
+	}
 	return &qdb.BalancerTask{
 		Type:      int(task.Type),
 		KrIdFrom:  task.KrIdFrom,
@@ -452,6 +482,9 @@ func BalancerTaskToDb(task *BalancerTask) *qdb.BalancerTask {
 }
 
 func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
+	if task == nil {
+		return nil
+	}
 	return &BalancerTask{
 		Type: func() JoinType {
 			switch task.Type {
