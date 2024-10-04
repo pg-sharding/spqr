@@ -1016,7 +1016,6 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		biggestRel := ds.Relations[biggestRelName]
-		// TODO process zero relation case
 		taskGroup, err = qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
 		if err != nil {
 			return err
@@ -1070,7 +1069,7 @@ func (*qdbCoordinator) getKeyStats(
    WHERE  c.relname = '%s'
    AND    c.relkind = 'r'    -- only tables
    );
-`, rel.Name))
+`, strings.ToLower(rel.Name)))
 		relExists := false
 		if err = row.Scan(&relExists); err != nil {
 			return 0, nil, err
@@ -1125,13 +1124,27 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 	}()
 
 	columns := strings.Join(rel.GetDistributionKeyColumns(), ", ")
+	orderByClause := columns + " " + func() string {
+		switch req.Type {
+		case tasks.SplitLeft:
+			return "ASC"
+		case tasks.SplitRight:
+			fallthrough
+		default:
+			return "DESC"
+		}
+	}()
 	query := fmt.Sprintf(`
 WITH 
 sub as (
-    SELECT %s, row_number() OVER(ORDER BY i %s) as row_n
-    FROM %s as t
-    WHERE %s
-	LIMIT %d
+    SELECT %s, row_number() OVER(ORDER BY %s) as row_n
+    FROM (
+        SELECT * FROM %s
+        WHERE %s
+		ORDER BY %s
+        LIMIT %d
+        OFFSET %d
+    ) AS t
 ),
 constants AS (
     SELECT %d as row_count, %d as batch_size
@@ -1147,19 +1160,21 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
    OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
 `,
 		columns,
-		func() string {
+		orderByClause,
+		rel.Name,
+		condition,
+		orderByClause,
+		limit,
+		func() int {
 			switch req.Type {
 			case tasks.SplitLeft:
-				return "ASC"
+				return 1
 			case tasks.SplitRight:
 				fallthrough
 			default:
-				return "DESC"
+				return 0
 			}
 		}(),
-		rel.Name,
-		condition,
-		limit,
 		limit,
 		step,
 	)
@@ -1169,12 +1184,13 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 	}
 	for rows.Next() {
 
-		values := make([]string, len(columns)+1)
+		values := make([]string, len(rel.DistributionKey)+1)
 		links := make([]interface{}, len(values))
 		for i := range values {
 			links[i] = &values[i]
 		}
 		if err = rows.Scan(links...); err != nil {
+			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
 		}
 
@@ -1210,7 +1226,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 
 	_, moveWhole := req.Limit.(kr.RedistributeAllKeys)
 
-	if len(taskList) <= 1 {
+	if len(taskList) <= 1 && moveWhole {
 		taskList = []*tasks.MoveTask{
 			{
 				KrIdTemp: req.DestKrId,
