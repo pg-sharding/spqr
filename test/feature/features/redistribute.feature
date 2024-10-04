@@ -1,4 +1,4 @@
-Feature: Balancer test
+Feature: Redistribution test
   Background:
     #
     # Make host "coordinator" take control
