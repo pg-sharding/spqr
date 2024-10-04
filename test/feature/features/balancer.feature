@@ -288,8 +288,11 @@ Feature: Balancer test
       "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
-    },
-    {
+    }]
+    """
+    And SQL result should match json
+    """
+    [{
       "Distribution ID":"ds1",
       "Lower bound":"99970",
       "Shard ID":"sh2"
