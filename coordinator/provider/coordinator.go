@@ -351,6 +351,14 @@ func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool
 		return
 	}
 
+	if err := qc.finishRedistributeTasksInProgress(ctx); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("unable to finish redistribution tasks in progress")
+	}
+
+	if err := qc.finishMoveTasksInProgress(ctx); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("unable to finish move tasks in progress")
+	}
+
 	ranges, err := qc.db.ListAllKeyRanges(context.TODO())
 	if err != nil {
 		spqrlog.Zero.Error().
@@ -1912,4 +1920,26 @@ func (qc *qdbCoordinator) GetShard(ctx context.Context, shardID string) (*datash
 		return nil, err
 	}
 	return datashards.DataShardFromDb(sh), nil
+}
+
+func (qc *qdbCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {
+	task, err := qc.db.GetRedistributeTask(ctx)
+	if err != nil {
+		return err
+	}
+	if task == nil {
+		return nil
+	}
+	return qc.executeRedistributeTask(ctx, tasks.RedistributeTaskFromDB(task))
+}
+
+func (qc *qdbCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
+	taskGroup, err := qc.GetTaskGroup(ctx)
+	if err != nil {
+		return err
+	}
+	if taskGroup != nil {
+		return qc.executeMoveTasks(ctx, taskGroup)
+	}
+	return nil
 }
