@@ -1907,5 +1907,9 @@ func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string
 }
 
 func (qc *qdbCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
-	panic("implement or delete me")
+	sh, err := qc.db.GetShard(ctx, shardID)
+	if err != nil {
+		return nil, err
+	}
+	return datashards.DataShardFromDb(sh), nil
 }
