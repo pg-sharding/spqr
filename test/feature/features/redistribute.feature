@@ -12,6 +12,7 @@ Feature: Redistribution test
     REGISTER ROUTER r1 ADDRESS regress_router:7000;
     CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
     ALTER DISTRIBUTION ds1 ATTACH RELATION xMove DISTRIBUTION KEY w_id;
+    ALTER DISTRIBUTION ds1 ATTACH RELATION xMove2 DISTRIBUTION KEY w_id;
     ADD SHARD sh1 WITH HOSTS 'postgresql://regress@spqr_shard_1:6432/regress';
     ADD SHARD sh2 WITH HOSTS 'postgresql://regress@spqr_shard_2:6432/regress';
     """
@@ -34,7 +35,7 @@ Feature: Redistribution test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
     """
     Then command return code should be "0"
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator" with timeout "150" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
     """
@@ -89,7 +90,7 @@ Feature: Redistribution test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
     """
     Then command return code should be "0"
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator" with timeout "150" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 10000;
     """
@@ -139,7 +140,7 @@ Feature: Redistribution test
     CREATE TABLE xMove(w_id INT, s TEXT);
     """
     Then command return code should be "0"
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator" with timeout "150" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
     """
@@ -186,24 +187,24 @@ Feature: Redistribution test
 
     When I run SQL on host "router"
     """
-    CREATE TABLE xMove1(w_id INT, s TEXT);
+    CREATE TABLE xMove(w_id INT, s TEXT);
     CREATE TABLE xMove2(w_id INT, s TEXT);
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
     """
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
-    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99), 'sample text value';
+    INSERT INTO xMove2 (w_id, s) SELECT generate_series(0, 99), 'sample text value';
     """
     Then command return code should be "0"
-    When I run SQL on host "coordinator"
+    When I run SQL on host "coordinator" with timeout "200" seconds
     """
     REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE 100;
     """
     Then command return code should be "0"
     When I run SQL on host "shard1"
     """
-    SELECT count(*) FROM xMove1
+    SELECT count(*) FROM xMove
     """
     Then command return code should be "0"
     And SQL result should match regexp
@@ -212,7 +213,7 @@ Feature: Redistribution test
     """
     When I run SQL on host "shard2"
     """
-    SELECT count(*) FROM xMove1
+    SELECT count(*) FROM xMove
     """
     Then command return code should be "0"
     And SQL result should match regexp
