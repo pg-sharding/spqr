@@ -345,7 +345,8 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 
 // RunCoordinator side effect: it runs an asynchronous goroutine
 // that checks the availability of the SPQR router
-// TODO : unit tests
+//
+// TODO: unit tests
 func (qc *qdbCoordinator) RunCoordinator(ctx context.Context, initialRouter bool) {
 	if !qc.lockCoordinator(ctx, initialRouter) {
 		return
