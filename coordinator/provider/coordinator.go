@@ -1353,6 +1353,13 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 }
 
 // RedistributeKeyRange moves the whole key range to another shard in batches
+//
+// Parameters:
+//   - ctx: context of the operation
+//   - req: *kr.RedistributeKeyRange request
+//
+// Returns:
+//   - error if any occurred during transfer
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
