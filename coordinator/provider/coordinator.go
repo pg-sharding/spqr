@@ -982,11 +982,24 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
-// TODO check naming when moving the whole range
+// BatchMoveKeyRange moves specified amount of keys from a key range to another shard.
+//
+// Parameters:
+//   - ctx: the context of the operation
+//   - req: BatchMoveKeyRange request
+//
+// Returns:
+//   - error: Any error occurred during transfer.
 func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
 		return err
+	}
+	if keyRange.ShardID == req.ShardId {
+		return nil
+	}
+	if _, err = qc.GetKeyRange(ctx, req.DestKrId); err == nil {
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "key range \"%s\" already exists", req.DestKrId)
 	}
 	ds, err := qc.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
