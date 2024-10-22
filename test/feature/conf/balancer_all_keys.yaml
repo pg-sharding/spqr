@@ -1,0 +1,13 @@
+log_level: debug
+
+coordinator_address: "regress_coordinator:7003"
+
+shards_config: "/spqr/test/feature/conf/shard_data.yaml"
+
+cpu_threshold: 1000
+space_threshold: 10000000
+
+stat_interval_sec: 100000
+
+max_move_count: 1
+keys_per_move: 1000000
