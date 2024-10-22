@@ -1128,7 +1128,6 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 	return maxRel, maxCount / float64(totalCount)
 }
 
-// TODO possible split by itself with big limit
 func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
@@ -1173,9 +1172,14 @@ constants AS (
 max_row AS (
     SELECT count(1) as row_n
     FROM sub
+),
+total_rows AS (
+	SELECT count(1)
+	FROM %s
+	WHERE %s
 )
-SELECT sub.*
-FROM sub JOIN max_row ON true JOIN constants ON true
+SELECT sub.*, total_rows.count <= constants.row_count
+FROM sub JOIN max_row ON true JOIN constants ON true JOIN total_rows ON true
 WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count)
    OR (sub.row_n = constants.row_count)
    OR (max_row.row_n < constants.row_count AND sub.row_n = max_row.row_n);
@@ -1198,18 +1202,22 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 		}(),
 		limit,
 		step,
+		rel.Name,
+		condition,
 	)
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
+	var moveWhole bool
 	for rows.Next() {
-
 		values := make([]string, len(rel.DistributionKey)+1)
-		links := make([]interface{}, len(values))
+		links := make([]interface{}, len(values)+1)
+
 		for i := range values {
 			links[i] = &values[i]
 		}
+		links[len(links)-1] = &moveWhole
 		if err = rows.Scan(links...); err != nil {
 			spqrlog.Zero.Error().Err(err).Str("rel", rel.Name).Msg("error getting move tasks")
 			return nil, err
@@ -1245,7 +1253,8 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
-	_, moveWhole := req.Limit.(kr.RedistributeAllKeys)
+	_, redistributeAll := req.Limit.(kr.RedistributeAllKeys)
+	moveWhole = moveWhole || redistributeAll
 
 	if len(taskList) <= 1 && moveWhole {
 		taskList = []*tasks.MoveTask{
