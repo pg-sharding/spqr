@@ -1608,7 +1608,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 }
 
 func (qc *qdbCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := qc.db.GetTaskGroup(ctx)
+	group, err := qc.db.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1616,11 +1616,11 @@ func (qc *qdbCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTask
 }
 
 func (qc *qdbCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	return qc.db.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+	return qc.db.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
 func (qc *qdbCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	return qc.db.RemoveTaskGroup(ctx)
+	return qc.db.RemoveMoveTaskGroup(ctx)
 }
 
 func (qc *qdbCoordinator) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {

@@ -76,9 +76,9 @@ type QDB interface {
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
-	GetTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
-	WriteTaskGroup(ctx context.Context, group *MoveTaskGroup) error
-	RemoveTaskGroup(ctx context.Context) error
+	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
+	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error
+	RemoveMoveTaskGroup(ctx context.Context) error
 
 	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
 	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error

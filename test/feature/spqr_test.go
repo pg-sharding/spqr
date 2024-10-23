@@ -911,7 +911,7 @@ func (tctx *testContext) stepRecordQDBTaskGroup(body *godog.DocString) error {
 		return err
 	}
 
-	return tctx.qdb.WriteTaskGroup(context.TODO(), &taskGroup)
+	return tctx.qdb.WriteMoveTaskGroup(context.TODO(), &taskGroup)
 }
 
 func (tctx *testContext) stepQDBShouldContainTx(key string) error {
