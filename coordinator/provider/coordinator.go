@@ -1025,12 +1025,12 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
 	sourceShardConn := conns.ShardsData[keyRange.ShardID]
-	sourceMasterConn, err := sourceShardConn.GetMasterConnection(ctx)
+	sourceConn, err := sourceShardConn.GetConnectionPreferReplica(ctx)
 	if err != nil {
 		return err
 	}
 
-	totalCount, relCount, err := qc.getKeyStats(ctx, sourceMasterConn, ds.Relations, keyRange, nextBound)
+	totalCount, relCount, err := qc.getKeyStats(ctx, sourceConn, ds.Relations, keyRange, nextBound)
 	if err != nil {
 		return err
 	}
@@ -1038,7 +1038,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		biggestRel := ds.Relations[biggestRelName]
-		taskGroup, err = qc.getMoveTasks(ctx, sourceMasterConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
+		taskGroup, err = qc.getMoveTasks(ctx, sourceConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
 		if err != nil {
 			return err
 		}
