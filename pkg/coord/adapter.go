@@ -794,7 +794,7 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 // Returns:
 // - *tasks.MoveTaskGroup: The retrieved task group.
 // - error: An error if the retrieval of the task group fails, otherwise nil.
-func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (a *Adapter) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	res, err := tasksService.GetMoveTaskGroup(ctx, &proto.GetMoveTaskGroupRequest{})
 	if err != nil {
@@ -811,7 +811,7 @@ func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error
 //
 // Returns:
 // - error: An error if the writing of the task group fails, otherwise nil.
-func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.WriteMoveTaskGroup(ctx, &proto.WriteMoveTaskGroupRequest{
 		TaskGroup: tasks.TaskGroupToProto(taskGroup),
@@ -826,7 +826,7 @@ func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskG
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
+func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
 	tasksService := proto.NewMoveTasksServiceClient(a.conn)
 	_, err := tasksService.RemoveMoveTaskGroup(ctx, &proto.RemoveMoveTaskGroupRequest{})
 	return err

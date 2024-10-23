@@ -440,7 +440,7 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.Get
 }
 
 func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *protos.GetMoveTaskGroupRequest) (*protos.GetMoveTaskGroupReply, error) {
-	group, err := l.mgr.GetTaskGroup(ctx)
+	group, err := l.mgr.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -450,11 +450,11 @@ func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *protos.Get
 }
 
 func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*protos.WriteMoveTaskGroupReply, error) {
-	return &protos.WriteMoveTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+	return &protos.WriteMoveTaskGroupReply{}, l.mgr.WriteMoveTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *protos.RemoveMoveTaskGroupRequest) (*protos.RemoveMoveTaskGroupReply, error) {
-	return &protos.RemoveMoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
+	return &protos.RemoveMoveTaskGroupReply{}, l.mgr.RemoveMoveTaskGroup(ctx)
 }
 
 func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *protos.GetBalancerTaskRequest) (*protos.GetBalancerTaskReply, error) {

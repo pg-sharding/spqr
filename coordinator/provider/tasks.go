@@ -24,7 +24,7 @@ var _ protos.MoveTasksServiceServer = &TasksServer{}
 var _ protos.BalancerTaskServiceServer = &TasksServer{}
 
 func (t TasksServer) GetMoveTaskGroup(ctx context.Context, _ *protos.GetMoveTaskGroupRequest) (*protos.GetMoveTaskGroupReply, error) {
-	group, err := t.impl.GetTaskGroup(ctx)
+	group, err := t.impl.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,12 +32,12 @@ func (t TasksServer) GetMoveTaskGroup(ctx context.Context, _ *protos.GetMoveTask
 }
 
 func (t TasksServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*protos.WriteMoveTaskGroupReply, error) {
-	err := t.impl.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+	err := t.impl.WriteMoveTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 	return &protos.WriteMoveTaskGroupReply{}, err
 }
 
 func (t TasksServer) RemoveMoveTaskGroup(ctx context.Context, _ *protos.RemoveMoveTaskGroupRequest) (*protos.RemoveMoveTaskGroupReply, error) {
-	return &protos.RemoveMoveTaskGroupReply{}, t.impl.RemoveTaskGroup(ctx)
+	return &protos.RemoveMoveTaskGroupReply{}, t.impl.RemoveMoveTaskGroup(ctx)
 }
 
 func (t TasksServer) GetBalancerTask(ctx context.Context, _ *protos.GetBalancerTaskRequest) (*protos.GetBalancerTaskReply, error) {

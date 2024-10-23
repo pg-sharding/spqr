@@ -146,7 +146,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropShard(stmt.ID)
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveTaskGroup(ctx); err != nil {
+		if err := mngr.RemoveMoveTaskGroup(ctx); err != nil {
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
@@ -538,7 +538,7 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Relations(dsToRels, stmt.Where)
 	case spqrparser.TaskGroupStr:
-		group, err := mngr.GetTaskGroup(ctx)
+		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err
 		}
