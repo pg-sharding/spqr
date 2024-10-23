@@ -44,14 +44,14 @@ type LocalCoordinator struct {
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
 func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
-	group, err := lc.qdb.GetTaskGroup(ctx)
+	group, err := lc.qdb.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return tasks.TaskGroupFromDb(group), nil
 }
 
-// WriteTaskGroup writes the given task group to the local coordinator's QDB.
+// WriteMoveTaskGroup writes the given task group to the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
@@ -60,10 +60,10 @@ func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTa
 // Returns:
 // - error: an error if the write operation fails.
 func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
-	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+	return lc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
-// RemoveTaskGroup removes the task group from the local coordinator's QDB.
+// RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
@@ -71,7 +71,7 @@ func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *t
 // Returns:
 // - error: an error if the removal operation fails.
 func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
-	return lc.qdb.RemoveTaskGroup(ctx)
+	return lc.qdb.RemoveMoveTaskGroup(ctx)
 }
 
 func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {

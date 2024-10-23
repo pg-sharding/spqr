@@ -732,7 +732,7 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 //                                   TASKS
 // ==============================================================================
 
-func (q *MemQDB) GetTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
+func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -745,7 +745,7 @@ func (q *MemQDB) GetTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	return q.MoveTaskGroup, nil
 }
 
-func (q *MemQDB) WriteTaskGroup(_ context.Context, group *MoveTaskGroup) error {
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -754,7 +754,7 @@ func (q *MemQDB) WriteTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	return nil
 }
 
-func (q *MemQDB) RemoveTaskGroup(_ context.Context) error {
+func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()

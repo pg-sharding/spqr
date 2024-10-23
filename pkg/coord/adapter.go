@@ -786,7 +786,7 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 	return distributions.DistributionFromProto(resp.Distribution), nil
 }
 
-// GetTaskGroup retrieves the task group from the system.
+// GetMoveTaskGroup retrieves the task group from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
@@ -803,7 +803,7 @@ func (a *Adapter) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, e
 	return tasks.TaskGroupFromProto(res.TaskGroup), nil
 }
 
-// WriteTaskGroup writes a task group to the system.
+// WriteMoveTaskGroup writes a task group to the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
@@ -819,7 +819,7 @@ func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveT
 	return err
 }
 
-// RemoveTaskGroup removes a task group from the system.
+// RemoveMoveTaskGroup removes a task group from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
