@@ -4,20 +4,18 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"sort"
-	"strings"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"sort"
 )
 
 type BalancerImpl struct {
@@ -329,32 +327,6 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 	return rels, nil
 }
 
-// getKRCondition returns SQL condition for elements of distributed relation between two key ranges
-// TODO support multidimensional key ranges
-func (b *BalancerImpl) getKRCondition(rel *distributions.DistributedRelation, kRange *kr.KeyRange, nextKR *kr.KeyRange, prefix string) (string, error) {
-	buf := make([]string, len(rel.DistributionKey))
-	for i, entry := range rel.DistributionKey {
-		// TODO remove after multidimensional key range support
-		if i > 0 {
-			break
-		}
-		// TODO add hash (depends on col type)
-		hashedCol := ""
-		if prefix != "" {
-			hashedCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
-		} else {
-			hashedCol = entry.Column
-		}
-		// TODO: fix multidim case
-		if nextKR != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendRaw()[0], hashedCol, nextKR.SendRaw()[0])
-		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendRaw()[0])
-		}
-	}
-	return strings.Join(buf, " AND "), nil
-}
-
 // getShardToMoveTo determines where to send keys from specified key range
 // TODO unit tests
 func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
@@ -511,12 +483,6 @@ func (b *BalancerImpl) syncTaskWithQDB(ctx context.Context, group *tasks.Balance
 	return err
 }
 
-func (b *BalancerImpl) removeTaskFromQDB(ctx context.Context) error {
-	tasksService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
-	_, err := tasksService.RemoveBalancerTask(ctx, &protos.RemoveBalancerTaskRequest{})
-	return err
-}
-
 func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTask) error {
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
@@ -577,7 +543,6 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 			return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, "unknown balancer task state")
 		}
 	}
-	return nil
 }
 
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
