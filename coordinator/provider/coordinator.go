@@ -1366,7 +1366,7 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "key range \"%s\" not found", req.KrId)
 	}
 	if _, err = qc.GetShard(ctx, req.ShardId); err != nil {
-		return spqrerror.Newf("error getting destination shard: %s", err.Error())
+		return spqrerror.Newf(spqrerror.SPQR_TRANSFER_ERROR, "error getting destination shard: %s", err.Error())
 	}
 	if keyRange.ShardID == req.ShardId {
 		return nil
