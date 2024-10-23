@@ -3,7 +3,6 @@ package local
 import (
 	"context"
 	"fmt"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"math/rand"
 	"sync"
 
@@ -36,7 +35,7 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 }
 
-// GetTaskGroup retrieves the task group from the local coordinator's QDB.
+// GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
@@ -44,7 +43,7 @@ type LocalCoordinator struct {
 // Returns:
 // - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	group, err := lc.qdb.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGr
 //
 // Returns:
 // - error: an error if the write operation fails.
-func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
@@ -71,7 +70,7 @@ func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
+func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
 	return lc.qdb.RemoveTaskGroup(ctx)
 }
 

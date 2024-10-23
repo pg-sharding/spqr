@@ -1304,7 +1304,7 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 					return err
 				}
 				task.State = tasks.TaskSplit
-				if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+				if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 					return err
 				}
 				break
@@ -1326,7 +1326,7 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskSplit
-			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 				return err
 			}
 		case tasks.TaskSplit:
@@ -1334,7 +1334,7 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				return err
 			}
 			task.State = tasks.TaskMoved
-			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 				return err
 			}
 		case tasks.TaskMoved:
@@ -1344,12 +1344,12 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 				}
 			}
 			taskGroup.Tasks = taskGroup.Tasks[1:]
-			if err := qc.WriteTaskGroup(ctx, taskGroup); err != nil {
+			if err := qc.WriteMoveTaskGroup(ctx, taskGroup); err != nil {
 				return err
 			}
 		}
 	}
-	return qc.RemoveTaskGroup(ctx)
+	return qc.RemoveMoveTaskGroup(ctx)
 }
 
 // RedistributeKeyRange moves the whole key range to another shard in batches
@@ -1607,7 +1607,7 @@ func (qc *qdbCoordinator) UnregisterRouter(ctx context.Context, rID string) erro
 	return qc.db.DeleteRouter(ctx, rID)
 }
 
-func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+func (qc *qdbCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
 	group, err := qc.db.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -1615,11 +1615,11 @@ func (qc *qdbCoordinator) GetTaskGroup(ctx context.Context) (*tasks.MoveTaskGrou
 	return tasks.TaskGroupFromDb(group), nil
 }
 
-func (qc *qdbCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+func (qc *qdbCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	return qc.db.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
-func (qc *qdbCoordinator) RemoveTaskGroup(ctx context.Context) error {
+func (qc *qdbCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
 	return qc.db.RemoveTaskGroup(ctx)
 }
 
@@ -1964,7 +1964,7 @@ func (qc *qdbCoordinator) finishRedistributeTasksInProgress(ctx context.Context)
 }
 
 func (qc *qdbCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
-	taskGroup, err := qc.GetTaskGroup(ctx)
+	taskGroup, err := qc.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return err
 	}
