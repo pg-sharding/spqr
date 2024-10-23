@@ -1968,8 +1968,20 @@ func (qc *qdbCoordinator) finishMoveTasksInProgress(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if taskGroup != nil {
-		return qc.executeMoveTasks(ctx, taskGroup)
+	if taskGroup == nil {
+		return nil
 	}
-	return nil
+	balancerTask, err := qc.GetBalancerTask(ctx)
+	if err != nil {
+		return err
+	}
+	if balancerTask != nil {
+		// If there is currently a balancer task running, we need to advance its state after moving the data
+		if err = qc.executeMoveTasks(ctx, taskGroup); err != nil {
+			return err
+		}
+		balancerTask.State = tasks.BalancerTaskMoved
+		return qc.WriteBalancerTask(ctx, balancerTask)
+	}
+	return qc.executeMoveTasks(ctx, taskGroup)
 }
