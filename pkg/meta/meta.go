@@ -146,7 +146,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropShard(stmt.ID)
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveTaskGroup(ctx); err != nil {
+		if err := mngr.RemoveMoveTaskGroup(ctx); err != nil {
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
@@ -394,6 +394,15 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr, cli)
+	case *spqrparser.RedistributeKeyRange:
+		if err := mgr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+			KrId:      stmt.KeyRangeID,
+			ShardId:   stmt.DestShardID,
+			BatchSize: stmt.BatchSize,
+		}); err != nil {
+			return cli.ReportError(err)
+		}
+		return cli.RedistributeKeyRange(ctx, stmt)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -529,11 +538,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Relations(dsToRels, stmt.Where)
 	case spqrparser.TaskGroupStr:
-		group, err := mngr.GetTaskGroup(ctx)
+		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Tasks(ctx, group.Tasks)
+		return cli.MoveTaskGroup(ctx, group)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor

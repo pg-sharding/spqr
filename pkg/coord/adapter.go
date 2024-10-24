@@ -357,6 +357,59 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
+func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	var limitType proto.RedistributeLimitType
+	limit := int64(0)
+	switch t := req.Limit.(type) {
+	case kr.RedistributeAllKeys:
+		limitType = proto.RedistributeLimitType_RedistributeAllKeys
+	case kr.RedistributeKeyAmount:
+		limit = t.Amount
+		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
+	default:
+		panic("unknown redistribute limit")
+	}
+	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
+		Id:        req.KrId,
+		ToShardId: req.ShardId,
+		ToKrId:    req.DestKrId,
+		LimitType: limitType,
+		Limit:     limit,
+		BatchSize: int64(req.BatchSize),
+		SplitType: func() proto.SplitType {
+			switch req.Type {
+			case tasks.SplitLeft:
+				return proto.SplitType_SplitLeft
+			case tasks.SplitRight:
+				return proto.SplitType_SplitRight
+			default:
+				panic("unknown split type")
+			}
+		}(),
+	})
+	return err
+}
+
+func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
+		Id:        req.KrId,
+		ShardId:   req.ShardId,
+		BatchSize: int64(req.BatchSize),
+	})
+	return err
+}
+
+func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	c := proto.NewKeyRangeServiceClient(a.conn)
+	_, err := c.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{
+		KeyRangeId:    krId,
+		NewKeyRangeId: krIdNew,
+	})
+	return err
+}
+
 // TODO : unit tests
 
 // DropKeyRange drops a key range using the provided ID.
@@ -733,49 +786,70 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 	return distributions.DistributionFromProto(resp.Distribution), nil
 }
 
-// GetTaskGroup retrieves the task group from the system.
+// GetMoveTaskGroup retrieves the task group from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
 //
 // Returns:
-// - *tasks.TaskGroup: The retrieved task group.
+// - *tasks.MoveTaskGroup: The retrieved task group.
 // - error: An error if the retrieval of the task group fails, otherwise nil.
-func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	res, err := tasksService.GetTaskGroup(ctx, &proto.GetTaskGroupRequest{})
+func (a *Adapter) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	res, err := tasksService.GetMoveTaskGroup(ctx, &proto.GetMoveTaskGroupRequest{})
 	if err != nil {
 		return nil, err
 	}
 	return tasks.TaskGroupFromProto(res.TaskGroup), nil
 }
 
-// WriteTaskGroup writes a task group to the system.
+// WriteMoveTaskGroup writes a task group to the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - taskGroup (*tasks.TaskGroup): The task group to be written.
+// - taskGroup (*tasks.MoveTaskGroup): The task group to be written.
 //
 // Returns:
 // - error: An error if the writing of the task group fails, otherwise nil.
-func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	_, err := tasksService.WriteTaskGroup(ctx, &proto.WriteTaskGroupRequest{
+func (a *Adapter) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.WriteMoveTaskGroup(ctx, &proto.WriteMoveTaskGroupRequest{
 		TaskGroup: tasks.TaskGroupToProto(taskGroup),
 	})
 	return err
 }
 
-// RemoveTaskGroup removes a task group from the system.
+// RemoveMoveTaskGroup removes a task group from the system.
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
 //
 // Returns:
 // - error: An error if the removal of the task group fails, otherwise nil.
-func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
-	tasksService := proto.NewTasksServiceClient(a.conn)
-	_, err := tasksService.RemoveTaskGroup(ctx, &proto.RemoveTaskGroupRequest{})
+func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
+	tasksService := proto.NewMoveTasksServiceClient(a.conn)
+	_, err := tasksService.RemoveMoveTaskGroup(ctx, &proto.RemoveMoveTaskGroupRequest{})
+	return err
+}
+
+func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	res, err := tasksService.GetBalancerTask(ctx, &proto.GetBalancerTaskRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return tasks.BalancerTaskFromProto(res.Task), nil
+}
+
+func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	_, err := tasksService.WriteBalancerTask(ctx, &proto.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
+	return err
+}
+
+func (a *Adapter) RemoveBalancerTask(ctx context.Context) error {
+	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
+	_, err := tasksService.RemoveBalancerTask(ctx, &proto.RemoveBalancerTaskRequest{})
 	return err
 }
 

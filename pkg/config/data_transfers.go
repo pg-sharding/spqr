@@ -1,8 +1,11 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"log"
 	"os"
 	"strings"
@@ -96,4 +99,31 @@ func (s *ShardConnect) GetConnStrings() []string {
 		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", s.User, address, port, s.DB, s.Password)
 	}
 	return res
+}
+
+func (s *ShardConnect) GetConnectionPreferReplica(ctx context.Context) (*pgx.Conn, error) {
+	connStrings := s.GetConnStrings()
+	if len(connStrings) == 1 {
+		conn, err := pgx.Connect(ctx, connStrings[0])
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
+	for _, dsn := range connStrings {
+		conn, err := pgx.Connect(ctx, dsn)
+		if err != nil {
+			return nil, err
+		}
+		var isMaster bool
+		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
+		if err = row.Scan(&isMaster); err != nil {
+			return nil, err
+		}
+		if !isMaster {
+			return conn, nil
+		}
+		_ = conn.Close(ctx)
+	}
+	return nil, spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to get connection")
 }

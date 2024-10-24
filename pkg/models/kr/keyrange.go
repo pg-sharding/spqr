@@ -461,7 +461,7 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 //
 // Returns:
 //   - string: The SQL condition for the key range.
-func GetKRCondition(ds *distributions.Distribution, rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) string {
+func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) string {
 	buf := make([]string, len(rel.DistributionKey))
 	for i, entry := range rel.DistributionKey {
 		// TODO remove after multidimensional key range support

@@ -58,6 +58,7 @@ type QDB interface {
 	UnlockKeyRange(ctx context.Context, id string) error
 	CheckLockedKeyRange(ctx context.Context, id string) (*KeyRange, error)
 	ShareKeyRange(id string) error
+	RenameKeyRange(ctx context.Context, krId, ktIdNew string) error
 
 	AddShard(ctx context.Context, shard *Shard) error
 	ListShards(ctx context.Context) ([]*Shard, error)
@@ -75,9 +76,17 @@ type QDB interface {
 	// TODO: fix this by passing FQRN (fully qualified relation name (+schema))
 	GetRelationDistribution(ctx context.Context, relation string) (*Distribution, error)
 
-	GetTaskGroup(ctx context.Context) (*TaskGroup, error)
-	WriteTaskGroup(ctx context.Context, group *TaskGroup) error
-	RemoveTaskGroup(ctx context.Context) error
+	GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error)
+	WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error
+	RemoveMoveTaskGroup(ctx context.Context) error
+
+	GetRedistributeTask(ctx context.Context) (*RedistributeTask, error)
+	WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error
+	RemoveRedistributeTask(ctx context.Context) error
+
+	GetBalancerTask(ctx context.Context) (*BalancerTask, error)
+	WriteBalancerTask(ctx context.Context, task *BalancerTask) error
+	RemoveBalancerTask(ctx context.Context) error
 
 	UpdateCoordinator(ctx context.Context, address string) error
 	GetCoordinator(ctx context.Context) (string, error)

@@ -35,43 +35,55 @@ type LocalCoordinator struct {
 	qdb qdb.QDB
 }
 
-// GetTaskGroup retrieves the task group from the local coordinator's QDB.
+// GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 //
 // Returns:
-// - *tasks.TaskGroup: the retrieved task group, or nil if an error occurred.
+// - *tasks.MoveTaskGroup: the retrieved task group, or nil if an error occurred.
 // - error: an error if the retrieval process fails.
-func (lc *LocalCoordinator) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
-	group, err := lc.qdb.GetTaskGroup(ctx)
+func (lc *LocalCoordinator) GetMoveTaskGroup(ctx context.Context) (*tasks.MoveTaskGroup, error) {
+	group, err := lc.qdb.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return tasks.TaskGroupFromDb(group), nil
 }
 
-// WriteTaskGroup writes the given task group to the local coordinator's QDB.
+// WriteMoveTaskGroup writes the given task group to the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
-// - taskGroup (*tasks.TaskGroup): the task group to be written to the QDB.
+// - taskGroup (*tasks.MoveTaskGroup): the task group to be written to the QDB.
 //
 // Returns:
 // - error: an error if the write operation fails.
-func (lc *LocalCoordinator) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup) error {
-	return lc.qdb.WriteTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
+func (lc *LocalCoordinator) WriteMoveTaskGroup(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
+	return lc.qdb.WriteMoveTaskGroup(ctx, tasks.TaskGroupToDb(taskGroup))
 }
 
-// RemoveTaskGroup removes the task group from the local coordinator's QDB.
+// RemoveMoveTaskGroup removes the task group from the local coordinator's QDB.
 //
 // Parameters:
 // - ctx (context.Context): the context.Context object for managing the request's lifetime.
 //
 // Returns:
 // - error: an error if the removal operation fails.
-func (lc *LocalCoordinator) RemoveTaskGroup(ctx context.Context) error {
-	return lc.qdb.RemoveTaskGroup(ctx)
+func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
+	return lc.qdb.RemoveMoveTaskGroup(ctx)
+}
+
+func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
+	return nil, ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
+	return ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
+	return ErrNotCoordinator
 }
 
 // TODO : unit tests
@@ -457,6 +469,14 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
 }
 
+func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
+	return ErrNotCoordinator
+}
+
+func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
+	return ErrNotCoordinator
+}
+
 // TODO : unit tests
 
 // Unite merges two key ranges identified by req.BaseKeyRangeId and req.AppendageKeyRangeId into a single key range.
@@ -619,6 +639,10 @@ func (lc *LocalCoordinator) LockKeyRange(ctx context.Context, krid string) (*kr.
 // - error: an error if the unlock operation encounters any issues.
 func (lc *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) error {
 	return lc.qdb.UnlockKeyRange(ctx, krid)
+}
+
+func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }
 
 // TODO : unit tests

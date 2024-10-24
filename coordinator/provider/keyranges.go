@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
@@ -162,6 +163,47 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	}
 
 	return &protos.ModifyReply{}, nil
+}
+
+func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*protos.BatchMoveKeyRangeReply, error) {
+	return &protos.BatchMoveKeyRangeReply{}, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
+		KrId:     request.Id,
+		DestKrId: request.ToKrId,
+		ShardId:  request.ToShardId,
+		Limit: func() kr.RedistributeKeyLimit {
+			switch request.LimitType {
+			case protos.RedistributeLimitType_RedistributeAllKeys:
+				return kr.RedistributeAllKeys{}
+			case protos.RedistributeLimitType_RedistributeKeysLimit:
+				return kr.RedistributeKeyAmount{Amount: request.Limit}
+			default:
+				panic("unknown redistribution key limit")
+			}
+		}(),
+		BatchSize: int(request.BatchSize),
+		Type: func() tasks.SplitType {
+			switch request.SplitType {
+			case protos.SplitType_SplitLeft:
+				return tasks.SplitLeft
+			case protos.SplitType_SplitRight:
+				return tasks.SplitRight
+			default:
+				panic("incorrect split type")
+			}
+		}(),
+	})
+}
+
+func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*protos.RedistributeKeyRangeReply, error) {
+	return &protos.RedistributeKeyRangeReply{}, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+		KrId:      request.Id,
+		ShardId:   request.ShardId,
+		BatchSize: int(request.BatchSize),
+	})
+}
+
+func (c *CoordinatorService) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*protos.RenameKeyRangeReply, error) {
+	return &protos.RenameKeyRangeReply{}, c.impl.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
 }
 
 var _ protos.KeyRangeServiceServer = &CoordinatorService{}

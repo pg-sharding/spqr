@@ -3,6 +3,7 @@ package datashards
 import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type DataShard struct {
@@ -51,6 +52,13 @@ func DataShardToProto(shard *DataShard) *proto.Shard {
 //   - *DataShard: The created DataShard instance.
 func DataShardFromProto(shard *proto.Shard) *DataShard {
 	return NewDataShard(shard.Id, &config.Shard{
+		Hosts: shard.Hosts,
+		Type:  config.DataShard,
+	})
+}
+
+func DataShardFromDb(shard *qdb.Shard) *DataShard {
+	return NewDataShard(shard.ID, &config.Shard{
 		Hosts: shard.Hosts,
 		Type:  config.DataShard,
 	})
