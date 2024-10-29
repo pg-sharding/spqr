@@ -4,26 +4,17 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "google/protobuf/empty.proto";
 
 import "protos/router.proto";
 
 service TopologyService {
-  rpc OpenRouter(OpenRouterRequest) returns (OpenRouterReply) {}
-  rpc GetRouterStatus(GetRouterStatusRequest) returns (GetRouterStatusReply) {}
-  rpc CloseRouter(CloseRouterRequest) returns (CloseRouterReply) {}
-  rpc UpdateCoordinator(UpdateCoordinatorRequest) returns (UpdateCoordinatorResponse) {}
-  rpc GetCoordinator(GetCoordinatorRequest) returns (GetCoordinatorResponse) {}
+  rpc OpenRouter(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc GetRouterStatus(google.protobuf.Empty) returns (GetRouterStatusReply) {}
+  rpc CloseRouter(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc UpdateCoordinator(UpdateCoordinatorRequest) returns (google.protobuf.Empty) {}
+  rpc GetCoordinator(google.protobuf.Empty) returns (GetCoordinatorResponse) {}
 }
-
-message OpenRouterRequest {}
-
-message OpenRouterReply {}
-
-message CloseRouterRequest {}
-
-message CloseRouterReply {}
-
-message GetRouterStatusRequest {}
 
 message GetRouterStatusReply {
   RouterStatus status = 1;
@@ -32,10 +23,6 @@ message GetRouterStatusReply {
 message UpdateCoordinatorRequest {
   string address = 1;
 }
-
-message UpdateCoordinatorResponse {}
-
-message GetCoordinatorRequest {}
 
 message GetCoordinatorResponse {
   string address = 1;

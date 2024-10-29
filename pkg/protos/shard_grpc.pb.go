@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -29,9 +30,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardServiceClient interface {
-	ListShards(ctx context.Context, in *ListShardsRequest, opts ...grpc.CallOption) (*ListShardsReply, error)
-	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
-	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error)
+	ListShards(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListShardsReply, error)
+	AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetShard(ctx context.Context, in *ShardRequest, opts ...grpc.CallOption) (*ShardReply, error)
 }
 
@@ -43,7 +44,7 @@ func NewShardServiceClient(cc grpc.ClientConnInterface) ShardServiceClient {
 	return &shardServiceClient{cc}
 }
 
-func (c *shardServiceClient) ListShards(ctx context.Context, in *ListShardsRequest, opts ...grpc.CallOption) (*ListShardsReply, error) {
+func (c *shardServiceClient) ListShards(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListShardsReply, error) {
 	out := new(ListShardsReply)
 	err := c.cc.Invoke(ctx, ShardService_ListShards_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -52,8 +53,8 @@ func (c *shardServiceClient) ListShards(ctx context.Context, in *ListShardsReque
 	return out, nil
 }
 
-func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
-	out := new(AddShardReply)
+func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ShardService_AddDataShard_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -61,8 +62,8 @@ func (c *shardServiceClient) AddDataShard(ctx context.Context, in *AddShardReque
 	return out, nil
 }
 
-func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*AddShardReply, error) {
-	out := new(AddShardReply)
+func (c *shardServiceClient) AddWorldShard(ctx context.Context, in *AddWorldShardRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ShardService_AddWorldShard_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,9 +84,9 @@ func (c *shardServiceClient) GetShard(ctx context.Context, in *ShardRequest, opt
 // All implementations must embed UnimplementedShardServiceServer
 // for forward compatibility
 type ShardServiceServer interface {
-	ListShards(context.Context, *ListShardsRequest) (*ListShardsReply, error)
-	AddDataShard(context.Context, *AddShardRequest) (*AddShardReply, error)
-	AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error)
+	ListShards(context.Context, *emptypb.Empty) (*ListShardsReply, error)
+	AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error)
+	AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error)
 	GetShard(context.Context, *ShardRequest) (*ShardReply, error)
 	mustEmbedUnimplementedShardServiceServer()
 }
@@ -94,13 +95,13 @@ type ShardServiceServer interface {
 type UnimplementedShardServiceServer struct {
 }
 
-func (UnimplementedShardServiceServer) ListShards(context.Context, *ListShardsRequest) (*ListShardsReply, error) {
+func (UnimplementedShardServiceServer) ListShards(context.Context, *emptypb.Empty) (*ListShardsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListShards not implemented")
 }
-func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRequest) (*AddShardReply, error) {
+func (UnimplementedShardServiceServer) AddDataShard(context.Context, *AddShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddDataShard not implemented")
 }
-func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*AddShardReply, error) {
+func (UnimplementedShardServiceServer) AddWorldShard(context.Context, *AddWorldShardRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddWorldShard not implemented")
 }
 func (UnimplementedShardServiceServer) GetShard(context.Context, *ShardRequest) (*ShardReply, error) {
@@ -120,7 +121,7 @@ func RegisterShardServiceServer(s grpc.ServiceRegistrar, srv ShardServiceServer)
 }
 
 func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListShardsRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func _ShardService_ListShards_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: ShardService_ListShards_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShardServiceServer).ListShards(ctx, req.(*ListShardsRequest))
+		return srv.(ShardServiceServer).ListShards(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

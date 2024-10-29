@@ -6,6 +6,7 @@ import (
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
@@ -27,23 +28,23 @@ func NewShardServer(impl coordinator.Coordinator) *ShardServer {
 var _ protos.ShardServiceServer = &ShardServer{}
 
 // TODO : unit tests
-func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
+func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
 	newShard := request.GetShard()
 
 	if err := s.impl.AddDataShard(ctx, datashards.DataShardFromProto(newShard)); err != nil {
 		return nil, err
 	}
 
-	return &protos.AddShardReply{}, nil
+	return nil, nil
 }
 
-func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
+func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	panic("implement me")
 }
 
 // TODO : unit tests
 // TODO: remove ShardRequest.
-func (s *ShardServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
+func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos.ListShardsReply, error) {
 	shardList, err := s.impl.ListShards(ctx)
 	if err != nil {
 		return nil, err

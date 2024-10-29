@@ -175,7 +175,7 @@ func DumpKeyRanges() error {
 
 	rCl := protos.NewKeyRangeServiceClient(cc)
 	dCl := protos.NewDistributionServiceClient(cc)
-	if keys, err := rCl.ListAllKeyRanges(context.Background(), &protos.ListAllKeyRangesRequest{}); err != nil {
+	if keys, err := rCl.ListAllKeyRanges(context.Background(), nil); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint rules")
@@ -204,7 +204,7 @@ func DumpDistributions() error {
 	}
 
 	rCl := protos.NewDistributionServiceClient(cc)
-	if dss, err := rCl.ListDistributions(context.Background(), &protos.ListDistributionsRequest{}); err != nil {
+	if dss, err := rCl.ListDistributions(context.Background(), nil); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Msg("failed to dump endpoint distributions")

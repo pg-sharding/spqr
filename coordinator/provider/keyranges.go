@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -17,7 +18,7 @@ type CoordinatorService struct {
 }
 
 // DropAllKeyRanges implements proto.KeyRangeServiceServer.
-func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
+func (c *CoordinatorService) DropAllKeyRanges(ctx context.Context, request *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
 	err := c.impl.DropKeyRangeAll(ctx)
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func (c *CoordinatorService) ListKeyRange(ctx context.Context, request *protos.L
 	}, nil
 }
 
-func (c *CoordinatorService) ListAllKeyRanges(ctx context.Context, _ *protos.ListAllKeyRangesRequest) (*protos.KeyRangeReply, error) {
+func (c *CoordinatorService) ListAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.KeyRangeReply, error) {
 	krsDb, err := c.impl.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err

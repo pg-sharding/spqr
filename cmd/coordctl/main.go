@@ -109,7 +109,7 @@ var listRouterCmd = &cobra.Command{
 		}
 
 		rCl := protos.NewRouterServiceClient(cc)
-		if resp, err := rCl.ListRouters(context.Background(), &protos.ListRoutersRequest{}); err == nil {
+		if resp, err := rCl.ListRouters(context.Background(), nil); err == nil {
 			fmt.Printf("-------------------------------------\n")
 			fmt.Printf("%d routers found\n", len(resp.Routers))
 
@@ -186,7 +186,7 @@ var listShardCmd = &cobra.Command{
 		}
 
 		rCl := protos.NewShardServiceClient(cc)
-		if resp, err := rCl.ListShards(context.Background(), &protos.ListShardsRequest{}); err == nil {
+		if resp, err := rCl.ListShards(context.Background(), nil); err == nil {
 			fmt.Printf("-------------------------------------\n")
 			fmt.Printf("%d shards found\n", len(resp.Shards))
 

@@ -3,11 +3,10 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-service PoolService {
-  rpc ListPools(ListPoolsRequest) returns (ListPoolsResponse) {}
-}
+import "google/protobuf/empty.proto";
 
-message ListPoolsRequest {
+service PoolService {
+  rpc ListPools(google.protobuf.Empty) returns (ListPoolsResponse) {}
 }
 
 message ListPoolsResponse {

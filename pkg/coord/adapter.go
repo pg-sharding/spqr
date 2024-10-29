@@ -144,7 +144,7 @@ func (a *Adapter) ListKeyRanges(ctx context.Context, distribution string) ([]*kr
 // - error: An error if listing all key ranges was unsuccessful.
 func (a *Adapter) ListAllKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	reply, err := c.ListAllKeyRanges(ctx, &proto.ListAllKeyRangesRequest{})
+	reply, err := c.ListAllKeyRanges(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +386,7 @@ func (a *Adapter) DropKeyRange(ctx context.Context, krid string) error {
 // - error: An error if the key range drop fails, otherwise nil.
 func (a *Adapter) DropKeyRangeAll(ctx context.Context) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
-	_, err := c.DropAllKeyRanges(ctx, &proto.DropAllKeyRangesRequest{})
+	_, err := c.DropAllKeyRanges(ctx, nil)
 	return err
 }
 
@@ -420,7 +420,7 @@ func (a *Adapter) RegisterRouter(ctx context.Context, r *topology.Router) error 
 // - error: An error if listing routers fails, otherwise nil.
 func (a *Adapter) ListRouters(ctx context.Context) ([]*topology.Router, error) {
 	c := proto.NewRouterServiceClient(a.conn)
-	resp, err := c.ListRouters(ctx, &proto.ListRoutersRequest{})
+	resp, err := c.ListRouters(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +541,7 @@ func (a *Adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard
 // - error: An error if the retrieval of shards fails, otherwise nil.
 func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
-	resp, err := c.ListShards(ctx, &proto.ListShardsRequest{})
+	resp, err := c.ListShards(ctx, nil)
 	shards := resp.Shards
 	var ds []*datashards.DataShard
 	for _, shard := range shards {
@@ -586,7 +586,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*datashards.Dat
 func (a *Adapter) ListDistributions(ctx context.Context) ([]*distributions.Distribution, error) {
 	c := proto.NewDistributionServiceClient(a.conn)
 
-	resp, err := c.ListDistributions(ctx, &proto.ListDistributionsRequest{})
+	resp, err := c.ListDistributions(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -743,7 +743,7 @@ func (a *Adapter) GetRelationDistribution(ctx context.Context, id string) (*dist
 // - error: An error if the retrieval of the task group fails, otherwise nil.
 func (a *Adapter) GetTaskGroup(ctx context.Context) (*tasks.TaskGroup, error) {
 	tasksService := proto.NewTasksServiceClient(a.conn)
-	res, err := tasksService.GetTaskGroup(ctx, &proto.GetTaskGroupRequest{})
+	res, err := tasksService.GetTaskGroup(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -775,7 +775,7 @@ func (a *Adapter) WriteTaskGroup(ctx context.Context, taskGroup *tasks.TaskGroup
 // - error: An error if the removal of the task group fails, otherwise nil.
 func (a *Adapter) RemoveTaskGroup(ctx context.Context) error {
 	tasksService := proto.NewTasksServiceClient(a.conn)
-	_, err := tasksService.RemoveTaskGroup(ctx, &proto.RemoveTaskGroupRequest{})
+	_, err := tasksService.RemoveTaskGroup(ctx, nil)
 	return err
 }
 
@@ -807,6 +807,6 @@ func (a *Adapter) UpdateCoordinator(ctx context.Context, address string) error {
 // - error: An error if the retrieval operation fails, otherwise nil.
 func (a *Adapter) GetCoordinator(ctx context.Context) (string, error) {
 	c := proto.NewTopologyServiceClient(a.conn)
-	resp, err := c.GetCoordinator(ctx, &proto.GetCoordinatorRequest{})
+	resp, err := c.GetCoordinator(ctx, nil)
 	return resp.Address, err
 }

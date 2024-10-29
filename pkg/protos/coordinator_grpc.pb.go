@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -30,11 +31,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TopologyServiceClient interface {
-	OpenRouter(ctx context.Context, in *OpenRouterRequest, opts ...grpc.CallOption) (*OpenRouterReply, error)
-	GetRouterStatus(ctx context.Context, in *GetRouterStatusRequest, opts ...grpc.CallOption) (*GetRouterStatusReply, error)
-	CloseRouter(ctx context.Context, in *CloseRouterRequest, opts ...grpc.CallOption) (*CloseRouterReply, error)
-	UpdateCoordinator(ctx context.Context, in *UpdateCoordinatorRequest, opts ...grpc.CallOption) (*UpdateCoordinatorResponse, error)
-	GetCoordinator(ctx context.Context, in *GetCoordinatorRequest, opts ...grpc.CallOption) (*GetCoordinatorResponse, error)
+	OpenRouter(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetRouterStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRouterStatusReply, error)
+	CloseRouter(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UpdateCoordinator(ctx context.Context, in *UpdateCoordinatorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetCoordinator(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetCoordinatorResponse, error)
 }
 
 type topologyServiceClient struct {
@@ -45,8 +46,8 @@ func NewTopologyServiceClient(cc grpc.ClientConnInterface) TopologyServiceClient
 	return &topologyServiceClient{cc}
 }
 
-func (c *topologyServiceClient) OpenRouter(ctx context.Context, in *OpenRouterRequest, opts ...grpc.CallOption) (*OpenRouterReply, error) {
-	out := new(OpenRouterReply)
+func (c *topologyServiceClient) OpenRouter(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, TopologyService_OpenRouter_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (c *topologyServiceClient) OpenRouter(ctx context.Context, in *OpenRouterRe
 	return out, nil
 }
 
-func (c *topologyServiceClient) GetRouterStatus(ctx context.Context, in *GetRouterStatusRequest, opts ...grpc.CallOption) (*GetRouterStatusReply, error) {
+func (c *topologyServiceClient) GetRouterStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetRouterStatusReply, error) {
 	out := new(GetRouterStatusReply)
 	err := c.cc.Invoke(ctx, TopologyService_GetRouterStatus_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -63,8 +64,8 @@ func (c *topologyServiceClient) GetRouterStatus(ctx context.Context, in *GetRout
 	return out, nil
 }
 
-func (c *topologyServiceClient) CloseRouter(ctx context.Context, in *CloseRouterRequest, opts ...grpc.CallOption) (*CloseRouterReply, error) {
-	out := new(CloseRouterReply)
+func (c *topologyServiceClient) CloseRouter(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, TopologyService_CloseRouter_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -72,8 +73,8 @@ func (c *topologyServiceClient) CloseRouter(ctx context.Context, in *CloseRouter
 	return out, nil
 }
 
-func (c *topologyServiceClient) UpdateCoordinator(ctx context.Context, in *UpdateCoordinatorRequest, opts ...grpc.CallOption) (*UpdateCoordinatorResponse, error) {
-	out := new(UpdateCoordinatorResponse)
+func (c *topologyServiceClient) UpdateCoordinator(ctx context.Context, in *UpdateCoordinatorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, TopologyService_UpdateCoordinator_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func (c *topologyServiceClient) UpdateCoordinator(ctx context.Context, in *Updat
 	return out, nil
 }
 
-func (c *topologyServiceClient) GetCoordinator(ctx context.Context, in *GetCoordinatorRequest, opts ...grpc.CallOption) (*GetCoordinatorResponse, error) {
+func (c *topologyServiceClient) GetCoordinator(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetCoordinatorResponse, error) {
 	out := new(GetCoordinatorResponse)
 	err := c.cc.Invoke(ctx, TopologyService_GetCoordinator_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -94,11 +95,11 @@ func (c *topologyServiceClient) GetCoordinator(ctx context.Context, in *GetCoord
 // All implementations must embed UnimplementedTopologyServiceServer
 // for forward compatibility
 type TopologyServiceServer interface {
-	OpenRouter(context.Context, *OpenRouterRequest) (*OpenRouterReply, error)
-	GetRouterStatus(context.Context, *GetRouterStatusRequest) (*GetRouterStatusReply, error)
-	CloseRouter(context.Context, *CloseRouterRequest) (*CloseRouterReply, error)
-	UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*UpdateCoordinatorResponse, error)
-	GetCoordinator(context.Context, *GetCoordinatorRequest) (*GetCoordinatorResponse, error)
+	OpenRouter(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	GetRouterStatus(context.Context, *emptypb.Empty) (*GetRouterStatusReply, error)
+	CloseRouter(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*emptypb.Empty, error)
+	GetCoordinator(context.Context, *emptypb.Empty) (*GetCoordinatorResponse, error)
 	mustEmbedUnimplementedTopologyServiceServer()
 }
 
@@ -106,19 +107,19 @@ type TopologyServiceServer interface {
 type UnimplementedTopologyServiceServer struct {
 }
 
-func (UnimplementedTopologyServiceServer) OpenRouter(context.Context, *OpenRouterRequest) (*OpenRouterReply, error) {
+func (UnimplementedTopologyServiceServer) OpenRouter(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OpenRouter not implemented")
 }
-func (UnimplementedTopologyServiceServer) GetRouterStatus(context.Context, *GetRouterStatusRequest) (*GetRouterStatusReply, error) {
+func (UnimplementedTopologyServiceServer) GetRouterStatus(context.Context, *emptypb.Empty) (*GetRouterStatusReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRouterStatus not implemented")
 }
-func (UnimplementedTopologyServiceServer) CloseRouter(context.Context, *CloseRouterRequest) (*CloseRouterReply, error) {
+func (UnimplementedTopologyServiceServer) CloseRouter(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CloseRouter not implemented")
 }
-func (UnimplementedTopologyServiceServer) UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*UpdateCoordinatorResponse, error) {
+func (UnimplementedTopologyServiceServer) UpdateCoordinator(context.Context, *UpdateCoordinatorRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateCoordinator not implemented")
 }
-func (UnimplementedTopologyServiceServer) GetCoordinator(context.Context, *GetCoordinatorRequest) (*GetCoordinatorResponse, error) {
+func (UnimplementedTopologyServiceServer) GetCoordinator(context.Context, *emptypb.Empty) (*GetCoordinatorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCoordinator not implemented")
 }
 func (UnimplementedTopologyServiceServer) mustEmbedUnimplementedTopologyServiceServer() {}
@@ -135,7 +136,7 @@ func RegisterTopologyServiceServer(s grpc.ServiceRegistrar, srv TopologyServiceS
 }
 
 func _TopologyService_OpenRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OpenRouterRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -147,13 +148,13 @@ func _TopologyService_OpenRouter_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: TopologyService_OpenRouter_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TopologyServiceServer).OpenRouter(ctx, req.(*OpenRouterRequest))
+		return srv.(TopologyServiceServer).OpenRouter(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TopologyService_GetRouterStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRouterStatusRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -165,13 +166,13 @@ func _TopologyService_GetRouterStatus_Handler(srv interface{}, ctx context.Conte
 		FullMethod: TopologyService_GetRouterStatus_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TopologyServiceServer).GetRouterStatus(ctx, req.(*GetRouterStatusRequest))
+		return srv.(TopologyServiceServer).GetRouterStatus(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TopologyService_CloseRouter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CloseRouterRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -183,7 +184,7 @@ func _TopologyService_CloseRouter_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: TopologyService_CloseRouter_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TopologyServiceServer).CloseRouter(ctx, req.(*CloseRouterRequest))
+		return srv.(TopologyServiceServer).CloseRouter(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -207,7 +208,7 @@ func _TopologyService_UpdateCoordinator_Handler(srv interface{}, ctx context.Con
 }
 
 func _TopologyService_GetCoordinator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCoordinatorRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -219,7 +220,7 @@ func _TopologyService_GetCoordinator_Handler(srv interface{}, ctx context.Contex
 		FullMethod: TopologyService_GetCoordinator_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TopologyServiceServer).GetCoordinator(ctx, req.(*GetCoordinatorRequest))
+		return srv.(TopologyServiceServer).GetCoordinator(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

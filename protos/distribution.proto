@@ -4,6 +4,8 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "google/protobuf/empty.proto";
+
 message DistributionKeyEntry {
   string column = 1;
   string hashFunction = 2;
@@ -25,10 +27,6 @@ message CreateDistributionRequest{
   repeated Distribution distributions = 1;
 }
 
-message CreateDistributionReply{}
-
-message ListDistributionsRequest{}
-
 message ListDistributionsReply {
   repeated Distribution distributions = 1;
 }
@@ -37,22 +35,16 @@ message DropDistributionRequest {
   repeated string ids = 1;
 }
 
-message DropDistributionReply{}
-
 message AlterDistributionAttachRequest{
   string id = 1;
   repeated string ColumnNames = 2;
   repeated DistributedRelation relations = 3;
 }
 
-message AlterDistributionAttachReply{}
-
 message AlterDistributionDetachRequest{
   string id = 1;
   repeated string relNames = 2;
 }
-
-message AlterDistributionDetachReply{}
 
 message GetDistributionRequest{
   string id = 1;
@@ -71,12 +63,12 @@ message GetRelationDistributionReply {
 }
 
 service DistributionService {
-  rpc CreateDistribution(CreateDistributionRequest) returns (CreateDistributionReply) {}
-  rpc DropDistribution(DropDistributionRequest) returns (DropDistributionReply) {}
-  rpc ListDistributions(ListDistributionsRequest) returns (ListDistributionsReply) {}
+  rpc CreateDistribution(CreateDistributionRequest) returns (google.protobuf.Empty) {}
+  rpc DropDistribution(DropDistributionRequest) returns (google.protobuf.Empty) {}
+  rpc ListDistributions(google.protobuf.Empty) returns (ListDistributionsReply) {}
 
-  rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (AlterDistributionAttachReply) {}
-  rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (AlterDistributionDetachReply) {}
+  rpc AlterDistributionAttach(AlterDistributionAttachRequest) returns (google.protobuf.Empty) {}
+  rpc AlterDistributionDetach(AlterDistributionDetachRequest) returns (google.protobuf.Empty) {}
 
   rpc GetDistribution(GetDistributionRequest) returns (GetDistributionReply) {}
 

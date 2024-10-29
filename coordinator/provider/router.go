@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type RouterService struct {
@@ -16,7 +17,7 @@ type RouterService struct {
 }
 
 // TODO : unit tests
-func (r RouterService) ListRouters(ctx context.Context, request *protos.ListRoutersRequest) (*protos.ListRoutersReply, error) {
+func (r RouterService) ListRouters(ctx context.Context, _ *emptypb.Empty) (*protos.ListRoutersReply, error) {
 	routers, err := r.impl.ListRouters(ctx)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,7 @@ func (r RouterService) AddRouter(ctx context.Context, request *protos.AddRouterR
 }
 
 // TODO : unit tests
-func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveRouterRequest) (*protos.RemoveRouterReply, error) {
+func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveRouterRequest) (*emptypb.Empty, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", request.Id).
 		Msg("unregister router in coordinator")
@@ -56,11 +57,11 @@ func (r RouterService) RemoveRouter(ctx context.Context, request *protos.RemoveR
 	if err != nil {
 		return nil, err
 	}
-	return &protos.RemoveRouterReply{}, nil
+	return nil, nil
 }
 
 // TODO : unit tests
-func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMetadataRequest) (*protos.SyncMetadataReply, error) {
+func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMetadataRequest) (*emptypb.Empty, error) {
 	spqrlog.Zero.Debug().
 		Str("router-id", request.Router.Id).
 		Msg("sync router metadata in coordinator")
@@ -68,7 +69,7 @@ func (r RouterService) SyncMetadata(ctx context.Context, request *protos.SyncMet
 	if err != nil {
 		return nil, err
 	}
-	return &protos.SyncMetadataReply{}, nil
+	return nil, nil
 }
 
 var _ protos.RouterServiceServer = &RouterService{}

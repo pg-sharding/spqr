@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -26,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackendConnectionsServiceClient interface {
-	ListBackendConnections(ctx context.Context, in *ListBackendConnectionsRequest, opts ...grpc.CallOption) (*ListBackendConntionsReply, error)
+	ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConntionsReply, error)
 }
 
 type backendConnectionsServiceClient struct {
@@ -37,7 +38,7 @@ func NewBackendConnectionsServiceClient(cc grpc.ClientConnInterface) BackendConn
 	return &backendConnectionsServiceClient{cc}
 }
 
-func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Context, in *ListBackendConnectionsRequest, opts ...grpc.CallOption) (*ListBackendConntionsReply, error) {
+func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConntionsReply, error) {
 	out := new(ListBackendConntionsReply)
 	err := c.cc.Invoke(ctx, BackendConnectionsService_ListBackendConnections_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -50,7 +51,7 @@ func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Con
 // All implementations must embed UnimplementedBackendConnectionsServiceServer
 // for forward compatibility
 type BackendConnectionsServiceServer interface {
-	ListBackendConnections(context.Context, *ListBackendConnectionsRequest) (*ListBackendConntionsReply, error)
+	ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConntionsReply, error)
 	mustEmbedUnimplementedBackendConnectionsServiceServer()
 }
 
@@ -58,7 +59,7 @@ type BackendConnectionsServiceServer interface {
 type UnimplementedBackendConnectionsServiceServer struct {
 }
 
-func (UnimplementedBackendConnectionsServiceServer) ListBackendConnections(context.Context, *ListBackendConnectionsRequest) (*ListBackendConntionsReply, error) {
+func (UnimplementedBackendConnectionsServiceServer) ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConntionsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListBackendConnections not implemented")
 }
 func (UnimplementedBackendConnectionsServiceServer) mustEmbedUnimplementedBackendConnectionsServiceServer() {
@@ -76,7 +77,7 @@ func RegisterBackendConnectionsServiceServer(s grpc.ServiceRegistrar, srv Backen
 }
 
 func _BackendConnectionsService_ListBackendConnections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListBackendConnectionsRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func _BackendConnectionsService_ListBackendConnections_Handler(srv interface{}, 
 		FullMethod: BackendConnectionsService_ListBackendConnections_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BackendConnectionsServiceServer).ListBackendConnections(ctx, req.(*ListBackendConnectionsRequest))
+		return srv.(BackendConnectionsServiceServer).ListBackendConnections(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

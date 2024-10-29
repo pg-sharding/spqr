@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/rulerouter"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type LocalQrouterServer struct {
@@ -36,7 +37,7 @@ type LocalQrouterServer struct {
 	rr  rulerouter.RuleRouter
 }
 
-func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *protos.ListShardsRequest) (*protos.ListShardsReply, error) {
+func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos.ListShardsReply, error) {
 	shards, err := l.mgr.ListShards(ctx)
 	if err != nil {
 		return nil, err
@@ -52,14 +53,14 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *protos.ListShard
 	}, nil
 }
 
-func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*protos.AddShardReply, error) {
+func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
 	if err := l.mgr.AddDataShard(ctx, datashards.DataShardFromProto(request.GetShard())); err != nil {
 		return nil, err
 	}
-	return &protos.AddShardReply{}, nil
+	return nil, nil
 }
 
-func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*protos.AddShardReply, error) {
+func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -76,29 +77,29 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 
 // CreateDistribution creates distribution in QDB
 // TODO: unit tests
-func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (l *LocalQrouterServer) CreateDistribution(ctx context.Context, request *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
 	for _, ds := range request.GetDistributions() {
 		if err := l.mgr.CreateDistribution(ctx, distributions.DistributionFromProto(ds)); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.CreateDistributionReply{}, nil
+	return nil, nil
 }
 
 // DropDistribution deletes distribution from QDB
 // TODO: unit tests
-func (l *LocalQrouterServer) DropDistribution(ctx context.Context, request *protos.DropDistributionRequest) (*protos.DropDistributionReply, error) {
+func (l *LocalQrouterServer) DropDistribution(ctx context.Context, request *protos.DropDistributionRequest) (*emptypb.Empty, error) {
 	for _, id := range request.GetIds() {
 		if err := l.mgr.DropDistribution(ctx, id); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.DropDistributionReply{}, nil
+	return nil, nil
 }
 
 // ListDistributions returns all distributions from QDB
 // TODO: unit tests
-func (l *LocalQrouterServer) ListDistributions(ctx context.Context, _ *protos.ListDistributionsRequest) (*protos.ListDistributionsReply, error) {
+func (l *LocalQrouterServer) ListDistributions(ctx context.Context, _ *emptypb.Empty) (*protos.ListDistributionsReply, error) {
 	distrs, err := l.mgr.ListDistributions(ctx)
 	if err != nil {
 		return nil, err
@@ -116,8 +117,8 @@ func (l *LocalQrouterServer) ListDistributions(ctx context.Context, _ *protos.Li
 
 // AlterDistributionAttach attaches relation to distribution
 // TODO: unit tests
-func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, request *protos.AlterDistributionAttachRequest) (*protos.AlterDistributionAttachReply, error) {
-	return &protos.AlterDistributionAttachReply{}, l.mgr.AlterDistributionAttach(
+func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, request *protos.AlterDistributionAttachRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.AlterDistributionAttach(
 		ctx,
 		request.GetId(),
 		func() []*distributions.DistributedRelation {
@@ -132,13 +133,13 @@ func (l *LocalQrouterServer) AlterDistributionAttach(ctx context.Context, reques
 
 // AlterDistributionDetach detaches relation from distribution
 // TODO: unit tests
-func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*protos.AlterDistributionDetachReply, error) {
+func (l *LocalQrouterServer) AlterDistributionDetach(ctx context.Context, request *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, relName := range request.GetRelNames() {
 		if err := l.mgr.AlterDistributionDetach(ctx, request.GetId(), relName); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.AlterDistributionDetachReply{}, nil
+	return nil, nil
 }
 
 // GetDistribution retrieves info about distribution from QDB
@@ -162,13 +163,13 @@ func (l *LocalQrouterServer) GetRelationDistribution(ctx context.Context, reques
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) OpenRouter(ctx context.Context, request *protos.OpenRouterRequest) (*protos.OpenRouterReply, error) {
+func (l *LocalQrouterServer) OpenRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	l.qr.Initialize()
-	return &protos.OpenRouterReply{}, nil
+	return nil, nil
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *protos.GetRouterStatusRequest) (*protos.GetRouterStatusReply, error) {
+func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Empty) (*protos.GetRouterStatusReply, error) {
 	if l.qr.Initialized() {
 		return &protos.GetRouterStatusReply{
 			Status: protos.RouterStatus_OPENED,
@@ -180,7 +181,7 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, request *proto
 }
 
 // TODO : implement, unit tests
-func (l *LocalQrouterServer) CloseRouter(ctx context.Context, request *protos.CloseRouterRequest) (*protos.CloseRouterReply, error) {
+func (l *LocalQrouterServer) CloseRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	//TODO implement me
 	panic("implement me")
 }
@@ -197,7 +198,7 @@ func (l *LocalQrouterServer) DropKeyRange(ctx context.Context, request *protos.D
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *protos.DropAllKeyRangesRequest) (*protos.DropAllKeyRangesResponse, error) {
+func (l *LocalQrouterServer) DropAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.DropAllKeyRangesResponse, error) {
 	if err := l.mgr.DropKeyRangeAll(ctx); err != nil {
 		return nil, err
 	}
@@ -215,7 +216,7 @@ func (l *LocalQrouterServer) MoveKeyRange(ctx context.Context, request *protos.M
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*protos.AddShardingRuleReply, error) {
+func (l *LocalQrouterServer) AddShardingRules(ctx context.Context, request *protos.AddShardingRuleRequest) (*emptypb.Empty, error) {
 	return nil, spqrerror.ShardingRulesRemoved
 }
 
@@ -225,7 +226,7 @@ func (l *LocalQrouterServer) ListShardingRules(ctx context.Context, request *pro
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*protos.DropShardingRuleReply, error) {
+func (l *LocalQrouterServer) DropShardingRules(ctx context.Context, request *protos.DropShardingRuleRequest) (*emptypb.Empty, error) {
 	return nil, spqrerror.ShardingRulesRemoved
 }
 
@@ -278,7 +279,7 @@ func (l *LocalQrouterServer) ListKeyRange(ctx context.Context, request *protos.L
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) ListAllKeyRanges(ctx context.Context, request *protos.ListAllKeyRangesRequest) (*protos.KeyRangeReply, error) {
+func (l *LocalQrouterServer) ListAllKeyRanges(ctx context.Context, _ *emptypb.Empty) (*protos.KeyRangeReply, error) {
 	krsDb, err := l.mgr.ListAllKeyRanges(ctx)
 	if err != nil {
 		return nil, err
@@ -388,7 +389,7 @@ func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsRequest) (*protos.ListClientsReply, error) {
+func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
 	err := l.rr.ClientPoolForeach(func(client client.ClientInfo) error {
@@ -399,7 +400,7 @@ func (l *LocalQrouterServer) ListClients(context.Context, *protos.ListClientsReq
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.ListBackendConnectionsRequest) (*protos.ListBackendConntionsReply, error) {
+func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConntionsReply, error) {
 	reply := &protos.ListBackendConntionsReply{}
 
 	err := l.rr.ForEach(func(sh shard.Shardinfo) error {
@@ -410,7 +411,7 @@ func (l *LocalQrouterServer) ListBackendConnections(context.Context, *protos.Lis
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest) (*protos.ListPoolsResponse, error) {
+func (l *LocalQrouterServer) ListPools(context.Context, *emptypb.Empty) (*protos.ListPoolsResponse, error) {
 	reply := &protos.ListPoolsResponse{}
 
 	err := l.rr.ForEachPool(func(p pool.Pool) error {
@@ -421,20 +422,18 @@ func (l *LocalQrouterServer) ListPools(context.Context, *protos.ListPoolsRequest
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*protos.UpdateCoordinatorResponse, error) {
-	reply := &protos.UpdateCoordinatorResponse{}
-	err := l.mgr.UpdateCoordinator(ctx, req.Address)
-	return reply, err
+func (l *LocalQrouterServer) UpdateCoordinator(ctx context.Context, req *protos.UpdateCoordinatorRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.UpdateCoordinator(ctx, req.Address)
 }
 
-func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, req *protos.GetCoordinatorRequest) (*protos.GetCoordinatorResponse, error) {
+func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, _ *emptypb.Empty) (*protos.GetCoordinatorResponse, error) {
 	reply := &protos.GetCoordinatorResponse{}
 	re, err := l.mgr.GetCoordinator(ctx)
 	reply.Address = re
 	return reply, err
 }
 
-func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *protos.GetTaskGroupRequest) (*protos.GetTaskGroupReply, error) {
+func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetTaskGroupReply, error) {
 	group, err := l.mgr.GetTaskGroup(ctx)
 	if err != nil {
 		return nil, err
@@ -444,12 +443,12 @@ func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *protos.GetTask
 	}, nil
 }
 
-func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*protos.WriteTaskGroupReply, error) {
-	return &protos.WriteTaskGroupReply{}, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
-func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *protos.RemoveTaskGroupRequest) (*protos.RemoveTaskGroupReply, error) {
-	return &protos.RemoveTaskGroupReply{}, l.mgr.RemoveTaskGroup(ctx)
+func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, l.mgr.RemoveTaskGroup(ctx)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {

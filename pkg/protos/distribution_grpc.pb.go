@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -32,11 +33,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DistributionServiceClient interface {
-	CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*CreateDistributionReply, error)
-	DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*DropDistributionReply, error)
-	ListDistributions(ctx context.Context, in *ListDistributionsRequest, opts ...grpc.CallOption) (*ListDistributionsReply, error)
-	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*AlterDistributionAttachReply, error)
-	AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*AlterDistributionDetachReply, error)
+	CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListDistributions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListDistributionsReply, error)
+	AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetDistribution(ctx context.Context, in *GetDistributionRequest, opts ...grpc.CallOption) (*GetDistributionReply, error)
 	GetRelationDistribution(ctx context.Context, in *GetRelationDistributionRequest, opts ...grpc.CallOption) (*GetRelationDistributionReply, error)
 }
@@ -49,8 +50,8 @@ func NewDistributionServiceClient(cc grpc.ClientConnInterface) DistributionServi
 	return &distributionServiceClient{cc}
 }
 
-func (c *distributionServiceClient) CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*CreateDistributionReply, error) {
-	out := new(CreateDistributionReply)
+func (c *distributionServiceClient) CreateDistribution(ctx context.Context, in *CreateDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_CreateDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -58,8 +59,8 @@ func (c *distributionServiceClient) CreateDistribution(ctx context.Context, in *
 	return out, nil
 }
 
-func (c *distributionServiceClient) DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*DropDistributionReply, error) {
-	out := new(DropDistributionReply)
+func (c *distributionServiceClient) DropDistribution(ctx context.Context, in *DropDistributionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_DropDistribution_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -67,7 +68,7 @@ func (c *distributionServiceClient) DropDistribution(ctx context.Context, in *Dr
 	return out, nil
 }
 
-func (c *distributionServiceClient) ListDistributions(ctx context.Context, in *ListDistributionsRequest, opts ...grpc.CallOption) (*ListDistributionsReply, error) {
+func (c *distributionServiceClient) ListDistributions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListDistributionsReply, error) {
 	out := new(ListDistributionsReply)
 	err := c.cc.Invoke(ctx, DistributionService_ListDistributions_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -76,8 +77,8 @@ func (c *distributionServiceClient) ListDistributions(ctx context.Context, in *L
 	return out, nil
 }
 
-func (c *distributionServiceClient) AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*AlterDistributionAttachReply, error) {
-	out := new(AlterDistributionAttachReply)
+func (c *distributionServiceClient) AlterDistributionAttach(ctx context.Context, in *AlterDistributionAttachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_AlterDistributionAttach_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -85,8 +86,8 @@ func (c *distributionServiceClient) AlterDistributionAttach(ctx context.Context,
 	return out, nil
 }
 
-func (c *distributionServiceClient) AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*AlterDistributionDetachReply, error) {
-	out := new(AlterDistributionDetachReply)
+func (c *distributionServiceClient) AlterDistributionDetach(ctx context.Context, in *AlterDistributionDetachRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, DistributionService_AlterDistributionDetach_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -116,11 +117,11 @@ func (c *distributionServiceClient) GetRelationDistribution(ctx context.Context,
 // All implementations must embed UnimplementedDistributionServiceServer
 // for forward compatibility
 type DistributionServiceServer interface {
-	CreateDistribution(context.Context, *CreateDistributionRequest) (*CreateDistributionReply, error)
-	DropDistribution(context.Context, *DropDistributionRequest) (*DropDistributionReply, error)
-	ListDistributions(context.Context, *ListDistributionsRequest) (*ListDistributionsReply, error)
-	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error)
-	AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*AlterDistributionDetachReply, error)
+	CreateDistribution(context.Context, *CreateDistributionRequest) (*emptypb.Empty, error)
+	DropDistribution(context.Context, *DropDistributionRequest) (*emptypb.Empty, error)
+	ListDistributions(context.Context, *emptypb.Empty) (*ListDistributionsReply, error)
+	AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*emptypb.Empty, error)
+	AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*emptypb.Empty, error)
 	GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error)
 	GetRelationDistribution(context.Context, *GetRelationDistributionRequest) (*GetRelationDistributionReply, error)
 	mustEmbedUnimplementedDistributionServiceServer()
@@ -130,19 +131,19 @@ type DistributionServiceServer interface {
 type UnimplementedDistributionServiceServer struct {
 }
 
-func (UnimplementedDistributionServiceServer) CreateDistribution(context.Context, *CreateDistributionRequest) (*CreateDistributionReply, error) {
+func (UnimplementedDistributionServiceServer) CreateDistribution(context.Context, *CreateDistributionRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateDistribution not implemented")
 }
-func (UnimplementedDistributionServiceServer) DropDistribution(context.Context, *DropDistributionRequest) (*DropDistributionReply, error) {
+func (UnimplementedDistributionServiceServer) DropDistribution(context.Context, *DropDistributionRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropDistribution not implemented")
 }
-func (UnimplementedDistributionServiceServer) ListDistributions(context.Context, *ListDistributionsRequest) (*ListDistributionsReply, error) {
+func (UnimplementedDistributionServiceServer) ListDistributions(context.Context, *emptypb.Empty) (*ListDistributionsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListDistributions not implemented")
 }
-func (UnimplementedDistributionServiceServer) AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*AlterDistributionAttachReply, error) {
+func (UnimplementedDistributionServiceServer) AlterDistributionAttach(context.Context, *AlterDistributionAttachRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributionAttach not implemented")
 }
-func (UnimplementedDistributionServiceServer) AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*AlterDistributionDetachReply, error) {
+func (UnimplementedDistributionServiceServer) AlterDistributionDetach(context.Context, *AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AlterDistributionDetach not implemented")
 }
 func (UnimplementedDistributionServiceServer) GetDistribution(context.Context, *GetDistributionRequest) (*GetDistributionReply, error) {
@@ -201,7 +202,7 @@ func _DistributionService_DropDistribution_Handler(srv interface{}, ctx context.
 }
 
 func _DistributionService_ListDistributions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListDistributionsRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -213,7 +214,7 @@ func _DistributionService_ListDistributions_Handler(srv interface{}, ctx context
 		FullMethod: DistributionService_ListDistributions_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DistributionServiceServer).ListDistributions(ctx, req.(*ListDistributionsRequest))
+		return srv.(DistributionServiceServer).ListDistributions(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

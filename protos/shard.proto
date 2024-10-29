@@ -4,6 +4,8 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "google/protobuf/empty.proto";
+
 message Shard {
   string id = 1;
   repeated string hosts = 2;
@@ -15,17 +17,14 @@ message ShardInfo {
 }
 
 service ShardService {
-  rpc ListShards (ListShardsRequest) returns (ListShardsReply) {}
-  rpc AddDataShard (AddShardRequest) returns (AddShardReply) {}
-  rpc AddWorldShard (AddWorldShardRequest) returns (AddShardReply) {}
+  rpc ListShards (google.protobuf.Empty) returns (ListShardsReply) {}
+  rpc AddDataShard (AddShardRequest) returns (google.protobuf.Empty) {}
+  rpc AddWorldShard (AddWorldShardRequest) returns (google.protobuf.Empty) {}
   rpc GetShard (ShardRequest) returns (ShardReply) {}
 }
 
 message ShardReply {
   Shard shard = 1;
-}
-
-message ListShardsRequest {
 }
 
 message ShardRequest {
@@ -38,9 +37,6 @@ message ListShardsReply {
 
 message AddShardRequest {
   Shard shard = 1;
-}
-
-message AddShardReply {
 }
 
 message AddWorldShardRequest {

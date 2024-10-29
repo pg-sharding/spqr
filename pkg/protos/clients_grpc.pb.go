@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -26,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ClientInfoServiceClient interface {
-	ListClients(ctx context.Context, in *ListClientsRequest, opts ...grpc.CallOption) (*ListClientsReply, error)
+	ListClients(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListClientsReply, error)
 }
 
 type clientInfoServiceClient struct {
@@ -37,7 +38,7 @@ func NewClientInfoServiceClient(cc grpc.ClientConnInterface) ClientInfoServiceCl
 	return &clientInfoServiceClient{cc}
 }
 
-func (c *clientInfoServiceClient) ListClients(ctx context.Context, in *ListClientsRequest, opts ...grpc.CallOption) (*ListClientsReply, error) {
+func (c *clientInfoServiceClient) ListClients(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListClientsReply, error) {
 	out := new(ListClientsReply)
 	err := c.cc.Invoke(ctx, ClientInfoService_ListClients_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -50,7 +51,7 @@ func (c *clientInfoServiceClient) ListClients(ctx context.Context, in *ListClien
 // All implementations must embed UnimplementedClientInfoServiceServer
 // for forward compatibility
 type ClientInfoServiceServer interface {
-	ListClients(context.Context, *ListClientsRequest) (*ListClientsReply, error)
+	ListClients(context.Context, *emptypb.Empty) (*ListClientsReply, error)
 	mustEmbedUnimplementedClientInfoServiceServer()
 }
 
@@ -58,7 +59,7 @@ type ClientInfoServiceServer interface {
 type UnimplementedClientInfoServiceServer struct {
 }
 
-func (UnimplementedClientInfoServiceServer) ListClients(context.Context, *ListClientsRequest) (*ListClientsReply, error) {
+func (UnimplementedClientInfoServiceServer) ListClients(context.Context, *emptypb.Empty) (*ListClientsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListClients not implemented")
 }
 func (UnimplementedClientInfoServiceServer) mustEmbedUnimplementedClientInfoServiceServer() {}
@@ -75,7 +76,7 @@ func RegisterClientInfoServiceServer(s grpc.ServiceRegistrar, srv ClientInfoServ
 }
 
 func _ClientInfoService_ListClients_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListClientsRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ func _ClientInfoService_ListClients_Handler(srv interface{}, ctx context.Context
 		FullMethod: ClientInfoService_ListClients_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientInfoServiceServer).ListClients(ctx, req.(*ListClientsRequest))
+		return srv.(ClientInfoServiceServer).ListClients(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
