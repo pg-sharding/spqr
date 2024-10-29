@@ -588,7 +588,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 		client := protos.NewRouterServiceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		_, err = client.ListRouters(ctx, &protos.ListRoutersRequest{})
+		_, err = client.ListRouters(ctx, nil)
 		return err == nil
 	}, time.Minute, time.Second)
 
