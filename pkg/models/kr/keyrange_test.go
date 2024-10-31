@@ -84,8 +84,10 @@ func TestGetKRCondition(t *testing.T) {
 			expected:   "col1 >= 'a' AND col1 < 'b'",
 		},
 	} {
+		cond, err := kr.GetKRCondition(c.rel, c.krg, c.upperBound, c.prefix)
+		assert.NoError(err, "test case %d", i)
 		assert.Equal(
-			kr.GetKRCondition(c.rel, c.krg, c.upperBound, c.prefix),
+			cond,
 			c.expected,
 			"test case %d", i,
 		)
