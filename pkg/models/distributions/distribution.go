@@ -1,6 +1,9 @@
 package distributions
 
 import (
+	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -249,11 +252,25 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	return d
 }
 
-func (rel *DistributedRelation) GetDistributionKeyColumns() []string {
+func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 	res := make([]string, len(rel.DistributionKey))
 	for i, col := range rel.DistributionKey {
-		// TODO: add hash
-		res[i] = col.Column
+		hashedCol, err := GetHashedColumn(col.Column, col.HashFunction)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = hashedCol
 	}
-	return res
+	return res, nil
+}
+
+func GetHashedColumn(col string, hash string) (string, error) {
+	switch hash {
+	case "identity", "ident", "":
+		return col, nil
+	case "murmur", "city":
+		return fmt.Sprintf("hash_string(%s, %s)", col, hash), nil
+	default:
+		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
+	}
 }

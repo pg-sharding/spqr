@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"math"
 	"net"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 
@@ -1038,7 +1039,11 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	if totalCount != 0 {
 		biggestRelName, coeff := qc.getBiggestRelation(relCount, totalCount)
 		biggestRel := ds.Relations[biggestRelName]
-		taskGroup, err = qc.getMoveTasks(ctx, sourceConn, req, biggestRel, kr.GetKRCondition(biggestRel, keyRange, nextBound, ""), coeff, ds)
+		cond, err := kr.GetKRCondition(biggestRel, keyRange, nextBound, "")
+		if err != nil {
+			return err
+		}
+		taskGroup, err = qc.getMoveTasks(ctx, sourceConn, req, biggestRel, cond, coeff, ds)
 		if err != nil {
 			return err
 		}
@@ -1100,7 +1105,10 @@ func (*qdbCoordinator) getKeyStats(
 			continue
 		}
 
-		cond := kr.GetKRCondition(rel, keyRange, nextBound, "")
+		cond, err := kr.GetKRCondition(rel, keyRange, nextBound, "")
+		if err != nil {
+			return 0, nil, err
+		}
 		query := fmt.Sprintf(`
 				SELECT count(*) 
 				FROM %s as t
@@ -1144,7 +1152,11 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 		}
 	}()
 
-	columns := strings.Join(rel.GetDistributionKeyColumns(), ", ")
+	colsArr, err := rel.GetDistributionKeyColumns()
+	if err != nil {
+		return nil, err
+	}
+	columns := strings.Join(colsArr, ", ")
 	orderByClause := columns + " " + func() string {
 		switch req.Type {
 		case tasks.SplitLeft:

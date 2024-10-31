@@ -461,7 +461,7 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 //
 // Returns:
 //   - string: The SQL condition for the key range.
-func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) string {
+func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) (string, error) {
 	buf := make([]string, len(rel.DistributionKey))
 	for i, entry := range rel.DistributionKey {
 		// TODO remove after multidimensional key range support
@@ -469,7 +469,6 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 			break
 		}
 
-		// TODO add hash (depends on col type)
 		fqCol := ""
 		if prefix != "" {
 			fqCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
@@ -477,17 +476,21 @@ func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, up
 			fqCol = entry.Column
 		}
 
-		krTmp := KeyRange{
+		hashedCol, err := distributions.GetHashedColumn(fqCol, entry.HashFunction)
+		if err != nil {
+			return "", err
+		}
 
+		krTmp := KeyRange{
 			LowerBound:  upperBound,
 			ColumnTypes: kRange.ColumnTypes,
 		}
 
 		if upperBound != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", fqCol, kRange.SendFunc(i), fqCol, krTmp.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendFunc(i), hashedCol, krTmp.SendFunc(i))
 		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", fqCol, kRange.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendFunc(i))
 		}
 	}
-	return strings.Join(buf, " AND ")
+	return strings.Join(buf, " AND "), nil
 }
