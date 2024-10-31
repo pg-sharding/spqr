@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -29,10 +30,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RouterServiceClient interface {
-	ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error)
+	ListRouters(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRoutersReply, error)
 	AddRouter(ctx context.Context, in *AddRouterRequest, opts ...grpc.CallOption) (*AddRouterReply, error)
-	RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*RemoveRouterReply, error)
-	SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataReply, error)
+	RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type routerServiceClient struct {
@@ -43,7 +44,7 @@ func NewRouterServiceClient(cc grpc.ClientConnInterface) RouterServiceClient {
 	return &routerServiceClient{cc}
 }
 
-func (c *routerServiceClient) ListRouters(ctx context.Context, in *ListRoutersRequest, opts ...grpc.CallOption) (*ListRoutersReply, error) {
+func (c *routerServiceClient) ListRouters(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRoutersReply, error) {
 	out := new(ListRoutersReply)
 	err := c.cc.Invoke(ctx, RouterService_ListRouters_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -61,8 +62,8 @@ func (c *routerServiceClient) AddRouter(ctx context.Context, in *AddRouterReques
 	return out, nil
 }
 
-func (c *routerServiceClient) RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*RemoveRouterReply, error) {
-	out := new(RemoveRouterReply)
+func (c *routerServiceClient) RemoveRouter(ctx context.Context, in *RemoveRouterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, RouterService_RemoveRouter_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -70,8 +71,8 @@ func (c *routerServiceClient) RemoveRouter(ctx context.Context, in *RemoveRouter
 	return out, nil
 }
 
-func (c *routerServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*SyncMetadataReply, error) {
-	out := new(SyncMetadataReply)
+func (c *routerServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadataRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, RouterService_SyncMetadata_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,10 +84,10 @@ func (c *routerServiceClient) SyncMetadata(ctx context.Context, in *SyncMetadata
 // All implementations must embed UnimplementedRouterServiceServer
 // for forward compatibility
 type RouterServiceServer interface {
-	ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error)
+	ListRouters(context.Context, *emptypb.Empty) (*ListRoutersReply, error)
 	AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error)
-	RemoveRouter(context.Context, *RemoveRouterRequest) (*RemoveRouterReply, error)
-	SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataReply, error)
+	RemoveRouter(context.Context, *RemoveRouterRequest) (*emptypb.Empty, error)
+	SyncMetadata(context.Context, *SyncMetadataRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRouterServiceServer()
 }
 
@@ -94,16 +95,16 @@ type RouterServiceServer interface {
 type UnimplementedRouterServiceServer struct {
 }
 
-func (UnimplementedRouterServiceServer) ListRouters(context.Context, *ListRoutersRequest) (*ListRoutersReply, error) {
+func (UnimplementedRouterServiceServer) ListRouters(context.Context, *emptypb.Empty) (*ListRoutersReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRouters not implemented")
 }
 func (UnimplementedRouterServiceServer) AddRouter(context.Context, *AddRouterRequest) (*AddRouterReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddRouter not implemented")
 }
-func (UnimplementedRouterServiceServer) RemoveRouter(context.Context, *RemoveRouterRequest) (*RemoveRouterReply, error) {
+func (UnimplementedRouterServiceServer) RemoveRouter(context.Context, *RemoveRouterRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRouter not implemented")
 }
-func (UnimplementedRouterServiceServer) SyncMetadata(context.Context, *SyncMetadataRequest) (*SyncMetadataReply, error) {
+func (UnimplementedRouterServiceServer) SyncMetadata(context.Context, *SyncMetadataRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SyncMetadata not implemented")
 }
 func (UnimplementedRouterServiceServer) mustEmbedUnimplementedRouterServiceServer() {}
@@ -120,7 +121,7 @@ func RegisterRouterServiceServer(s grpc.ServiceRegistrar, srv RouterServiceServe
 }
 
 func _RouterService_ListRouters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListRoutersRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func _RouterService_ListRouters_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: RouterService_ListRouters_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RouterServiceServer).ListRouters(ctx, req.(*ListRoutersRequest))
+		return srv.(RouterServiceServer).ListRouters(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

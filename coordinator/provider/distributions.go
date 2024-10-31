@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type DistributionsServer struct {
@@ -21,25 +23,25 @@ func NewDistributionServer(impl coordinator.Coordinator) *DistributionsServer {
 
 var _ protos.DistributionServiceServer = &DistributionsServer{}
 
-func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*protos.CreateDistributionReply, error) {
+func (d *DistributionsServer) CreateDistribution(ctx context.Context, req *protos.CreateDistributionRequest) (*emptypb.Empty, error) {
 	for _, ds := range req.Distributions {
 		if err := d.impl.CreateDistribution(ctx, distributions.DistributionFromProto(ds)); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.CreateDistributionReply{}, nil
+	return nil, nil
 }
 
-func (d *DistributionsServer) DropDistribution(ctx context.Context, req *protos.DropDistributionRequest) (*protos.DropDistributionReply, error) {
+func (d *DistributionsServer) DropDistribution(ctx context.Context, req *protos.DropDistributionRequest) (*emptypb.Empty, error) {
 	for _, id := range req.GetIds() {
 		if err := d.impl.DropDistribution(ctx, id); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.DropDistributionReply{}, nil
+	return nil, nil
 }
 
-func (d *DistributionsServer) ListDistributions(ctx context.Context, req *protos.ListDistributionsRequest) (*protos.ListDistributionsReply, error) {
+func (d *DistributionsServer) ListDistributions(ctx context.Context, _ *emptypb.Empty) (*protos.ListDistributionsReply, error) {
 	dss, err := d.impl.ListDistributions(ctx)
 	if err != nil {
 		return nil, err
@@ -55,8 +57,8 @@ func (d *DistributionsServer) ListDistributions(ctx context.Context, req *protos
 	}, nil
 }
 
-func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *protos.AlterDistributionAttachRequest) (*protos.AlterDistributionAttachReply, error) {
-	return &protos.AlterDistributionAttachReply{}, d.impl.AlterDistributionAttach(ctx, req.GetId(), func() []*distributions.DistributedRelation {
+func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *protos.AlterDistributionAttachRequest) (*emptypb.Empty, error) {
+	return nil, d.impl.AlterDistributionAttach(ctx, req.GetId(), func() []*distributions.DistributedRelation {
 		res := make([]*distributions.DistributedRelation, len(req.GetRelations()))
 		for i, rel := range req.GetRelations() {
 			res[i] = distributions.DistributedRelationFromProto(rel)
@@ -65,13 +67,13 @@ func (d *DistributionsServer) AlterDistributionAttach(ctx context.Context, req *
 	}())
 }
 
-func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*protos.AlterDistributionDetachReply, error) {
+func (d *DistributionsServer) AlterDistributionDetach(ctx context.Context, req *protos.AlterDistributionDetachRequest) (*emptypb.Empty, error) {
 	for _, rel := range req.GetRelNames() {
 		if err := d.impl.AlterDistributionDetach(ctx, req.GetId(), rel); err != nil {
 			return nil, err
 		}
 	}
-	return &protos.AlterDistributionDetachReply{}, nil
+	return nil, nil
 }
 
 func (d *DistributionsServer) GetDistribution(ctx context.Context, req *protos.GetDistributionRequest) (*protos.GetDistributionReply, error) {

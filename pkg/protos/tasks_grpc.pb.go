@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -28,9 +29,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TasksServiceClient interface {
-	GetTaskGroup(ctx context.Context, in *GetTaskGroupRequest, opts ...grpc.CallOption) (*GetTaskGroupReply, error)
-	WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*WriteTaskGroupReply, error)
-	RemoveTaskGroup(ctx context.Context, in *RemoveTaskGroupRequest, opts ...grpc.CallOption) (*RemoveTaskGroupReply, error)
+	GetTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetTaskGroupReply, error)
+	WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type tasksServiceClient struct {
@@ -41,7 +42,7 @@ func NewTasksServiceClient(cc grpc.ClientConnInterface) TasksServiceClient {
 	return &tasksServiceClient{cc}
 }
 
-func (c *tasksServiceClient) GetTaskGroup(ctx context.Context, in *GetTaskGroupRequest, opts ...grpc.CallOption) (*GetTaskGroupReply, error) {
+func (c *tasksServiceClient) GetTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetTaskGroupReply, error) {
 	out := new(GetTaskGroupReply)
 	err := c.cc.Invoke(ctx, TasksService_GetTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -50,8 +51,8 @@ func (c *tasksServiceClient) GetTaskGroup(ctx context.Context, in *GetTaskGroupR
 	return out, nil
 }
 
-func (c *tasksServiceClient) WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*WriteTaskGroupReply, error) {
-	out := new(WriteTaskGroupReply)
+func (c *tasksServiceClient) WriteTaskGroup(ctx context.Context, in *WriteTaskGroupRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, TasksService_WriteTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -59,8 +60,8 @@ func (c *tasksServiceClient) WriteTaskGroup(ctx context.Context, in *WriteTaskGr
 	return out, nil
 }
 
-func (c *tasksServiceClient) RemoveTaskGroup(ctx context.Context, in *RemoveTaskGroupRequest, opts ...grpc.CallOption) (*RemoveTaskGroupReply, error) {
-	out := new(RemoveTaskGroupReply)
+func (c *tasksServiceClient) RemoveTaskGroup(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, TasksService_RemoveTaskGroup_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -72,9 +73,9 @@ func (c *tasksServiceClient) RemoveTaskGroup(ctx context.Context, in *RemoveTask
 // All implementations must embed UnimplementedTasksServiceServer
 // for forward compatibility
 type TasksServiceServer interface {
-	GetTaskGroup(context.Context, *GetTaskGroupRequest) (*GetTaskGroupReply, error)
-	WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*WriteTaskGroupReply, error)
-	RemoveTaskGroup(context.Context, *RemoveTaskGroupRequest) (*RemoveTaskGroupReply, error)
+	GetTaskGroup(context.Context, *emptypb.Empty) (*GetTaskGroupReply, error)
+	WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*emptypb.Empty, error)
+	RemoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedTasksServiceServer()
 }
 
@@ -82,13 +83,13 @@ type TasksServiceServer interface {
 type UnimplementedTasksServiceServer struct {
 }
 
-func (UnimplementedTasksServiceServer) GetTaskGroup(context.Context, *GetTaskGroupRequest) (*GetTaskGroupReply, error) {
+func (UnimplementedTasksServiceServer) GetTaskGroup(context.Context, *emptypb.Empty) (*GetTaskGroupReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTaskGroup not implemented")
 }
-func (UnimplementedTasksServiceServer) WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*WriteTaskGroupReply, error) {
+func (UnimplementedTasksServiceServer) WriteTaskGroup(context.Context, *WriteTaskGroupRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WriteTaskGroup not implemented")
 }
-func (UnimplementedTasksServiceServer) RemoveTaskGroup(context.Context, *RemoveTaskGroupRequest) (*RemoveTaskGroupReply, error) {
+func (UnimplementedTasksServiceServer) RemoveTaskGroup(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveTaskGroup not implemented")
 }
 func (UnimplementedTasksServiceServer) mustEmbedUnimplementedTasksServiceServer() {}
@@ -105,7 +106,7 @@ func RegisterTasksServiceServer(s grpc.ServiceRegistrar, srv TasksServiceServer)
 }
 
 func _TasksService_GetTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTaskGroupRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func _TasksService_GetTaskGroup_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: TasksService_GetTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TasksServiceServer).GetTaskGroup(ctx, req.(*GetTaskGroupRequest))
+		return srv.(TasksServiceServer).GetTaskGroup(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -141,7 +142,7 @@ func _TasksService_WriteTaskGroup_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _TasksService_RemoveTaskGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveTaskGroupRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -153,7 +154,7 @@ func _TasksService_RemoveTaskGroup_Handler(srv interface{}, ctx context.Context,
 		FullMethod: TasksService_RemoveTaskGroup_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TasksServiceServer).RemoveTaskGroup(ctx, req.(*RemoveTaskGroupRequest))
+		return srv.(TasksServiceServer).RemoveTaskGroup(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

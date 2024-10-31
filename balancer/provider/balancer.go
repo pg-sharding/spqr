@@ -608,7 +608,7 @@ func (b *BalancerImpl) getTasks(ctx context.Context, shardFrom *ShardMetrics, kr
 
 func (b *BalancerImpl) getCurrentTaskGroupFromQDB(ctx context.Context) (group *tasks.TaskGroup, err error) {
 	tasksService := protos.NewTasksServiceClient(b.coordinatorConn)
-	resp, err := tasksService.GetTaskGroup(ctx, &protos.GetTaskGroupRequest{})
+	resp, err := tasksService.GetTaskGroup(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -623,7 +623,7 @@ func (b *BalancerImpl) syncTaskGroupWithQDB(ctx context.Context, group *tasks.Ta
 
 func (b *BalancerImpl) removeTaskGroupFromQDB(ctx context.Context) error {
 	tasksService := protos.NewTasksServiceClient(b.coordinatorConn)
-	_, err := tasksService.RemoveTaskGroup(ctx, &protos.RemoveTaskGroupRequest{})
+	_, err := tasksService.RemoveTaskGroup(ctx, nil)
 	return err
 }
 
@@ -709,7 +709,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, group *tasks.TaskGroup)
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
 	distrService := protos.NewDistributionServiceClient(b.coordinatorConn)
-	keyRangesProto, err := keyRangeService.ListAllKeyRanges(ctx, &protos.ListAllKeyRangesRequest{})
+	keyRangesProto, err := keyRangeService.ListAllKeyRanges(ctx, nil)
 	if err != nil {
 		return err
 	}

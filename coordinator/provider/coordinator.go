@@ -87,7 +87,7 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 		rrClient := routerproto.NewClientInfoServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
-		resp, err := rrClient.ListClients(ctx, &routerproto.ListClientsRequest{})
+		resp, err := rrClient.ListClients(ctx, nil)
 		if err != nil {
 			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
 			return err
@@ -128,7 +128,7 @@ func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) erro
 		rrBackConn := routerproto.NewBackendConnectionsServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch clients with grpc")
-		resp, err := rrBackConn.ListBackendConnections(ctx, &routerproto.ListBackendConnectionsRequest{})
+		resp, err := rrBackConn.ListBackendConnections(ctx, nil)
 		if err != nil {
 			spqrlog.Zero.Error().Msg("error fetching clients with grpc")
 			return err
@@ -151,7 +151,7 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 		rrBackConn := routerproto.NewPoolServiceClient(cc)
 
 		spqrlog.Zero.Debug().Msg("fetch pools with grpc")
-		resp, err := rrBackConn.ListPools(ctx, &routerproto.ListPoolsRequest{})
+		resp, err := rrBackConn.ListPools(ctx, nil)
 		if err != nil {
 			spqrlog.Zero.Error().Msg("error fetching pools with grpc")
 			return err
@@ -230,7 +230,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 
 				rrClient := routerproto.NewTopologyServiceClient(cc)
 
-				resp, err := rrClient.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
+				resp, err := rrClient.GetRouterStatus(ctx, nil)
 				if err != nil {
 					return err
 				}
@@ -694,7 +694,7 @@ func (qc *qdbCoordinator) DropKeyRangeAll(ctx context.Context) error {
 
 	if err := qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
 		cl := routerproto.NewKeyRangeServiceClient(cc)
-		resp, err := cl.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{})
+		resp, err := cl.DropAllKeyRanges(ctx, nil)
 		spqrlog.Zero.Debug().Err(err).
 			Interface("response", resp).
 			Msg("drop key range response")
@@ -987,7 +987,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	if err != nil {
 		return err
 	}
-	resp, err := dsCl.ListDistributions(ctx, &routerproto.ListDistributionsRequest{})
+	resp, err := dsCl.ListDistributions(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -1021,7 +1021,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	if err != nil {
 		return err
 	}
-	if _, err = krClient.DropAllKeyRanges(ctx, &routerproto.DropAllKeyRangesRequest{}); err != nil {
+	if _, err = krClient.DropAllKeyRanges(ctx, nil); err != nil {
 		return err
 	}
 
@@ -1051,7 +1051,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 		return err
 	}
 
-	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
+	if resp, err := rCl.OpenRouter(ctx, nil); err != nil {
 		return err
 	} else {
 		spqrlog.Zero.Debug().
@@ -1084,7 +1084,7 @@ func (qc *qdbCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRou
 		return err
 	}
 
-	if resp, err := rCl.OpenRouter(ctx, &routerproto.OpenRouterRequest{}); err != nil {
+	if resp, err := rCl.OpenRouter(ctx, nil); err != nil {
 		return err
 	} else {
 		spqrlog.Zero.Debug().
@@ -1110,7 +1110,7 @@ func (qc *qdbCoordinator) RegisterRouter(ctx context.Context, r *topology.Router
 	}
 	defer conn.Close()
 	cl := routerproto.NewTopologyServiceClient(conn)
-	_, err = cl.GetRouterStatus(ctx, &routerproto.GetRouterStatusRequest{})
+	_, err = cl.GetRouterStatus(ctx, nil)
 	if err != nil {
 		return spqrerror.Newf(spqrerror.SPQR_CONNECTION_ERROR, "failed to ping router: %s", err)
 	}

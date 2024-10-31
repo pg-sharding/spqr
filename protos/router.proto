@@ -4,11 +4,12 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "google/protobuf/empty.proto";
+
 enum RouterStatus {
   CLOSED = 0;
   OPENED = 1;
 }
-
 
 message Router {
   string id = 1;
@@ -17,14 +18,11 @@ message Router {
 }
 
 service RouterService {
-  rpc ListRouters (ListRoutersRequest) returns (ListRoutersReply) {}
+  rpc ListRouters (google.protobuf.Empty) returns (ListRoutersReply) {}
   rpc AddRouter (AddRouterRequest) returns (AddRouterReply) {}
-  rpc RemoveRouter (RemoveRouterRequest) returns (RemoveRouterReply) {}
-  rpc SyncMetadata (SyncMetadataRequest) returns (SyncMetadataReply) {}
+  rpc RemoveRouter (RemoveRouterRequest) returns (google.protobuf.Empty) {}
+  rpc SyncMetadata (SyncMetadataRequest) returns (google.protobuf.Empty) {}
 }
-
-
-message ListRoutersRequest {}
 
 message ListRoutersReply {
 	repeated Router routers = 1;
@@ -42,10 +40,6 @@ message RemoveRouterRequest {
   string id = 1;
 }
 
-message RemoveRouterReply {}
-
 message SyncMetadataRequest {
   Router router = 1;
 }
-
-message SyncMetadataReply {}

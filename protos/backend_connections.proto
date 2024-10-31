@@ -4,12 +4,10 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-service BackendConnectionsService {
-  rpc ListBackendConnections (ListBackendConnectionsRequest) returns (ListBackendConntionsReply) {}
-}
+import "google/protobuf/empty.proto";
 
-message ListBackendConnectionsRequest {
-    
+service BackendConnectionsService {
+  rpc ListBackendConnections (google.protobuf.Empty) returns (ListBackendConntionsReply) {}
 }
 
 message ListBackendConntionsReply {

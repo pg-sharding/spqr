@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -29,9 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShardingRulesServiceClient interface {
 	// Deprecated: Do not use.
-	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error)
+	AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Deprecated: Do not use.
-	DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error)
+	DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Deprecated: Do not use.
 	ListShardingRules(ctx context.Context, in *ListShardingRuleRequest, opts ...grpc.CallOption) (*ListShardingRuleReply, error)
 }
@@ -45,8 +46,8 @@ func NewShardingRulesServiceClient(cc grpc.ClientConnInterface) ShardingRulesSer
 }
 
 // Deprecated: Do not use.
-func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*AddShardingRuleReply, error) {
-	out := new(AddShardingRuleReply)
+func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *AddShardingRuleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ShardingRulesService_AddShardingRules_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -55,8 +56,8 @@ func (c *shardingRulesServiceClient) AddShardingRules(ctx context.Context, in *A
 }
 
 // Deprecated: Do not use.
-func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*DropShardingRuleReply, error) {
-	out := new(DropShardingRuleReply)
+func (c *shardingRulesServiceClient) DropShardingRules(ctx context.Context, in *DropShardingRuleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ShardingRulesService_DropShardingRules_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -79,9 +80,9 @@ func (c *shardingRulesServiceClient) ListShardingRules(ctx context.Context, in *
 // for forward compatibility
 type ShardingRulesServiceServer interface {
 	// Deprecated: Do not use.
-	AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error)
+	AddShardingRules(context.Context, *AddShardingRuleRequest) (*emptypb.Empty, error)
 	// Deprecated: Do not use.
-	DropShardingRules(context.Context, *DropShardingRuleRequest) (*DropShardingRuleReply, error)
+	DropShardingRules(context.Context, *DropShardingRuleRequest) (*emptypb.Empty, error)
 	// Deprecated: Do not use.
 	ListShardingRules(context.Context, *ListShardingRuleRequest) (*ListShardingRuleReply, error)
 	mustEmbedUnimplementedShardingRulesServiceServer()
@@ -91,10 +92,10 @@ type ShardingRulesServiceServer interface {
 type UnimplementedShardingRulesServiceServer struct {
 }
 
-func (UnimplementedShardingRulesServiceServer) AddShardingRules(context.Context, *AddShardingRuleRequest) (*AddShardingRuleReply, error) {
+func (UnimplementedShardingRulesServiceServer) AddShardingRules(context.Context, *AddShardingRuleRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddShardingRules not implemented")
 }
-func (UnimplementedShardingRulesServiceServer) DropShardingRules(context.Context, *DropShardingRuleRequest) (*DropShardingRuleReply, error) {
+func (UnimplementedShardingRulesServiceServer) DropShardingRules(context.Context, *DropShardingRuleRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropShardingRules not implemented")
 }
 func (UnimplementedShardingRulesServiceServer) ListShardingRules(context.Context, *ListShardingRuleRequest) (*ListShardingRuleReply, error) {

@@ -4,6 +4,8 @@ package spqr;
 
 option go_package = "spqr/proto";
 
+import "google/protobuf/empty.proto";
+
 enum TaskStatus {
   Planned = 0;
   Split = 1;
@@ -31,7 +33,6 @@ message TaskGroup {
   JoinType joinType = 2;
 }
 
-message GetTaskGroupRequest{}
 message GetTaskGroupReply {
   TaskGroup taskGroup = 1;
 }
@@ -39,13 +40,9 @@ message GetTaskGroupReply {
 message WriteTaskGroupRequest{
   TaskGroup taskGroup = 1;
 }
-message WriteTaskGroupReply {}
-
-message RemoveTaskGroupRequest{}
-message RemoveTaskGroupReply{}
 
 service TasksService {
-  rpc GetTaskGroup(GetTaskGroupRequest) returns (GetTaskGroupReply) {}
-  rpc WriteTaskGroup(WriteTaskGroupRequest) returns(WriteTaskGroupReply) {}
-  rpc RemoveTaskGroup(RemoveTaskGroupRequest) returns(RemoveTaskGroupReply) {}
+  rpc GetTaskGroup(google.protobuf.Empty) returns (GetTaskGroupReply) {}
+  rpc WriteTaskGroup(WriteTaskGroupRequest) returns(google.protobuf.Empty) {}
+  rpc RemoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
 }

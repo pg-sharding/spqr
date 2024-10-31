@@ -4,12 +4,10 @@ package spqr;
 
 option go_package = "spqr/proto";
 
-service ClientInfoService {
-  rpc ListClients (ListClientsRequest) returns (ListClientsReply) {}
-}
+import "google/protobuf/empty.proto";
 
-message ListClientsRequest {
-    
+service ClientInfoService {
+  rpc ListClients (google.protobuf.Empty) returns (ListClientsReply) {}
 }
 
 message ListClientsReply {
