@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -101,16 +102,8 @@ func (s *ShardConnect) GetConnStrings() []string {
 	return res
 }
 
-func (s *ShardConnect) GetConnectionPreferReplica(ctx context.Context) (*pgx.Conn, error) {
-	connStrings := s.GetConnStrings()
-	if len(connStrings) == 1 {
-		conn, err := pgx.Connect(ctx, connStrings[0])
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	}
-	for _, dsn := range connStrings {
+func (s *ShardConnect) GetMasterConnection(ctx context.Context) (*pgx.Conn, error) {
+	for _, dsn := range s.GetConnStrings() {
 		conn, err := pgx.Connect(ctx, dsn)
 		if err != nil {
 			return nil, err
@@ -120,7 +113,7 @@ func (s *ShardConnect) GetConnectionPreferReplica(ctx context.Context) (*pgx.Con
 		if err = row.Scan(&isMaster); err != nil {
 			return nil, err
 		}
-		if !isMaster {
+		if isMaster {
 			return conn, nil
 		}
 		_ = conn.Close(ctx)

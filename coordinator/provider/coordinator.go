@@ -1026,7 +1026,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 		return spqrerror.New(spqrerror.SPQR_METADATA_CORRUPTION, fmt.Sprintf("shard of key range '%s' does not exist in shard data config", keyRange.ID))
 	}
 	sourceShardConn := conns.ShardsData[keyRange.ShardID]
-	sourceConn, err := sourceShardConn.GetConnectionPreferReplica(ctx)
+	sourceConn, err := sourceShardConn.GetMasterConnection(ctx)
 	if err != nil {
 		return err
 	}
