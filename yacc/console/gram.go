@@ -272,7 +272,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyInitialStackSize = 16
 
-//line gram.y:899
+//line gram.y:902
 
 //line yacctab:1
 var yyExca = [...]int8{
@@ -369,8 +369,8 @@ var yyR1 = [...]int8{
 	25, 25, 28, 28, 30, 32, 32, 33, 33, 35,
 	35, 35, 34, 34, 36, 36, 3, 3, 4, 4,
 	26, 26, 27, 27, 44, 44, 50, 12, 13, 14,
-	14, 54, 18, 18, 55, 56, 57, 53, 52, 58,
-	59, 59,
+	14, 54, 18, 18, 55, 56, 56, 57, 53, 52,
+	58, 59, 59,
 }
 
 var yyR2 = [...]int8{
@@ -386,8 +386,8 @@ var yyR2 = [...]int8{
 	6, 5, 1, 2, 2, 2, 0, 2, 2, 1,
 	1, 1, 3, 0, 3, 0, 1, 1, 1, 3,
 	9, 8, 5, 4, 1, 3, 2, 3, 3, 2,
-	2, 6, 3, 3, 4, 7, 4, 2, 1, 5,
-	3, 3,
+	2, 6, 3, 3, 4, 7, 4, 4, 2, 1,
+	5, 3, 3,
 }
 
 var yyChk = [...]int16{
@@ -422,22 +422,22 @@ var yyDef = [...]int16{
 	0, -2, 2, 4, 5, 6, 7, 8, 9, 10,
 	11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	21, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 128, 0, 0, 0, 0, 0, 0, 0, 1,
+	0, 129, 0, 0, 0, 0, 0, 0, 0, 1,
 	3, 50, 51, 52, 53, 0, 0, 0, 0, 68,
 	69, 70, 71, 0, 0, 42, 0, 44, 0, 41,
 	0, 0, 0, 0, 80, 0, 116, 36, 38, 0,
-	0, 39, 127, 23, 24, 25, 0, 0, 0, 0,
+	0, 39, 128, 23, 24, 25, 0, 0, 0, 0,
 	0, 0, 57, 0, 0, 83, 26, 96, 0, 0,
 	0, 0, 0, 56, 0, 0, 46, 40, 41, 119,
 	48, 49, 120, 0, 78, 0, 122, 22, 123, 0,
-	0, 0, 0, 0, 130, 131, 58, 0, 0, 81,
+	0, 0, 0, 0, 131, 132, 58, 0, 0, 81,
 	0, 96, 0, 0, 0, 0, 0, 0, 54, 55,
 	43, 118, 45, 117, 47, 76, 0, 37, 0, 0,
-	32, 0, 124, 0, 126, 0, 0, 67, 65, 0,
+	32, 0, 124, 126, 127, 0, 0, 67, 65, 0,
 	0, 0, 105, 92, 103, 0, 0, 95, 0, 0,
 	108, 106, 107, 22, 0, 113, 114, 79, 0, 0,
 	0, 27, 28, 29, 0, 0, 30, 31, 0, 0,
-	129, 59, 66, 64, 82, 85, 86, 88, 89, 105,
+	130, 59, 66, 64, 82, 85, 86, 88, 89, 105,
 	91, 93, 0, 94, 0, 97, 98, 0, 0, 0,
 	112, 0, 0, 77, 35, 33, 34, 121, 0, 0,
 	0, 87, 90, 0, 0, 0, 109, 0, 115, 74,
@@ -1630,37 +1630,43 @@ yydefault:
 		}
 	case 126:
 		yyDollar = yyS[yypt-4 : yypt+1]
-//line gram.y:865
+//line gram.y:862
+		{
+			yyVAL.redistribute = &RedistributeKeyRange{KeyRangeID: yyDollar[2].key_range_selector.KeyRangeID, DestShardID: yyDollar[4].str, BatchSize: -1}
+		}
+	case 127:
+		yyDollar = yyS[yypt-4 : yypt+1]
+//line gram.y:868
 		{
 			yyVAL.unite = &UniteKeyRange{KeyRangeIDL: yyDollar[2].key_range_selector.KeyRangeID, KeyRangeIDR: yyDollar[4].str}
 		}
-	case 127:
+	case 128:
 		yyDollar = yyS[yypt-2 : yypt+1]
-//line gram.y:871
+//line gram.y:874
 		{
 			yyVAL.listen = &Listen{addr: yyDollar[2].str}
 		}
-	case 128:
+	case 129:
 		yyDollar = yyS[yypt-1 : yypt+1]
-//line gram.y:877
+//line gram.y:880
 		{
 			yyVAL.shutdown = &Shutdown{}
 		}
-	case 129:
+	case 130:
 		yyDollar = yyS[yypt-5 : yypt+1]
-//line gram.y:885
+//line gram.y:888
 		{
 			yyVAL.register_router = &RegisterRouter{ID: yyDollar[3].str, Addr: yyDollar[5].str}
 		}
-	case 130:
+	case 131:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:891
+//line gram.y:894
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: yyDollar[3].str}
 		}
-	case 131:
+	case 132:
 		yyDollar = yyS[yypt-3 : yypt+1]
-//line gram.y:896
+//line gram.y:899
 		{
 			yyVAL.unregister_router = &UnregisterRouter{ID: `*`}
 		}

@@ -259,11 +259,29 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 BATCH SIZE -1",
+			exp:   nil,
+			err:   fmt.Errorf("syntax error"),
+		},
+		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   -1,
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
 
-		assert.NoError(err, "query %s", tt.query)
+		if err != nil {
+			assert.EqualError(err, tt.err.Error())
+		} else {
+			assert.NoError(err, "query %s", tt.query)
+		}
 
 		assert.Equal(tt.exp, tmp, "query %s", tt.query)
 	}
@@ -289,7 +307,7 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							[]byte{2, 0, 0, 0, 0, 0, 0, 0},
+							{2, 0, 0, 0, 0, 0, 0, 0},
 						},
 					},
 				},
@@ -325,7 +343,7 @@ func TestKeyRange(t *testing.T) {
 					Distribution: "ds1",
 					LowerBound: &spqrparser.KeyRangeBound{
 						Pivots: [][]byte{
-							[]byte{0, 0, 0, 0, 0, 0, 0, 0},
+							{0, 0, 0, 0, 0, 0, 0, 0},
 							[]byte("a"),
 						},
 					},

@@ -858,6 +858,9 @@ redistribute_key_range_stmt:
 	REDISTRIBUTE key_range_stmt TO any_id BATCH SIZE any_uint
 	{
 		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: int($7)}
+	} | REDISTRIBUTE key_range_stmt TO any_id
+	{
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1}
 	}
 
 unite_key_range_stmt:
