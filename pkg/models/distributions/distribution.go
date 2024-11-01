@@ -268,8 +268,10 @@ func GetHashedColumn(col string, hash string) (string, error) {
 	switch hash {
 	case "identity", "ident", "":
 		return col, nil
-	case "murmur", "city":
-		return fmt.Sprintf("hash_string(%s, %s)", col, hash), nil
+	case "city":
+		return fmt.Sprintf("hash_string(%s, 'city')", col), nil
+	case "murmur":
+		return fmt.Sprintf("hash_string(%s, 'murmur3')", col), nil
 	default:
 		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
 	}
