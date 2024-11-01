@@ -1383,6 +1383,9 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	if keyRange.ShardID == req.ShardId {
 		return nil
 	}
+	if req.BatchSize <= 0 {
+		return spqrerror.Newf(spqrerror.SPQR_INVALID_REQUEST, "incorrect batch size %d", req.BatchSize)
+	}
 	ch := make(chan error)
 	execCtx := context.TODO()
 	go func() {
