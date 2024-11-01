@@ -74,14 +74,17 @@ func (lc *LocalCoordinator) RemoveMoveTaskGroup(ctx context.Context) error {
 	return lc.qdb.RemoveMoveTaskGroup(ctx)
 }
 
+// GetBalancerTask is disabled in LocalCoordinator
 func (lc *LocalCoordinator) GetBalancerTask(context.Context) (*tasks.BalancerTask, error) {
 	return nil, ErrNotCoordinator
 }
 
+// WriteBalancerTask is disabled in LocalCoordinator
 func (lc *LocalCoordinator) WriteBalancerTask(context.Context, *tasks.BalancerTask) error {
 	return ErrNotCoordinator
 }
 
+// RemoveBalancerTask is disabled in LocalCoordinator
 func (lc *LocalCoordinator) RemoveBalancerTask(context.Context) error {
 	return ErrNotCoordinator
 }
@@ -469,10 +472,12 @@ func (lc *LocalCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) erro
 	return ops.ModifyKeyRangeWithChecks(ctx, lc.qdb, reqKr)
 }
 
+// BatchMoveKeyRange is disabled in LocalCoordinator
 func (lc *LocalCoordinator) BatchMoveKeyRange(_ context.Context, _ *kr.BatchMoveKeyRange) error {
 	return ErrNotCoordinator
 }
 
+// RedistributeKeyRange is disabled in LocalCoordinator
 func (lc *LocalCoordinator) RedistributeKeyRange(_ context.Context, _ *kr.RedistributeKeyRange) error {
 	return ErrNotCoordinator
 }
@@ -641,6 +646,7 @@ func (lc *LocalCoordinator) UnlockKeyRange(ctx context.Context, krid string) err
 	return lc.qdb.UnlockKeyRange(ctx, krid)
 }
 
+// RenameKeyRange is disabled in LocalCoordinator
 func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	return lc.qdb.RenameKeyRange(ctx, krId, krIdNew)
 }

@@ -127,9 +127,6 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 			return err
 		}
 		ret := make([]string, 0)
-		if err != nil {
-			return err
-		}
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {
@@ -558,7 +555,19 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	}
 }
 
-func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, ci *clientinteractor.PSQLInteractor) error {
+// TODO : unit tests
+
+// processRedistribute processes the REDISTRIUTE KEY RANGE statement and returns an error if any issue occurs.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the operation.
+//   - stmt (*spqrparser.Show): The REDISTRIUTE KEY RANGE statement to process.
+//   - mngr (EntityMgr): The entity manager for performing the redistribution.
+//   - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
+//
+// Returns:
+// - error: An error if the operation encounters any issues.
+func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	if req.BatchSize == -1 {
 		req.BatchSize = defaultBatchSize
 	}
@@ -567,7 +576,7 @@ func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRan
 		ShardId:   req.DestShardID,
 		BatchSize: req.BatchSize,
 	}); err != nil {
-		return ci.ReportError(err)
+		return cli.ReportError(err)
 	}
-	return ci.RedistributeKeyRange(ctx, req)
+	return cli.RedistributeKeyRange(ctx, req)
 }

@@ -252,6 +252,12 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	return d
 }
 
+// GetDistributionKeyColumns returns array of a DistributedRelation column names.
+// Hash functions are added to column names if necessary.
+//
+// Returns:
+//   - []string: Columns with optional hash function.
+//   - error: An error if any occured
 func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 	res := make([]string, len(rel.DistributionKey))
 	for i, col := range rel.DistributionKey {
@@ -264,6 +270,15 @@ func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 	return res, nil
 }
 
+// GetHashedColumn returns column name with optional hash function application
+//
+// Parameters:
+//   - col: The column name
+//   - hash: THe name of the hash function
+//
+// Returns:
+//   - string: The resulting value
+//   - error: An error if hash function's name is invalid
 func GetHashedColumn(col string, hash string) (string, error) {
 	switch hash {
 	case "identity", "ident", "":

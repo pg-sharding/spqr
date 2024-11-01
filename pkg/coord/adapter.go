@@ -357,6 +357,16 @@ func (a *Adapter) Move(ctx context.Context, move *kr.MoveKeyRange) error {
 	return spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "key range with id %s not found", move.Krid)
 }
 
+// TODO : unit tests
+
+// BatchMoveKeyRange moves a specified amount of keys from a key range to another shard.
+//
+// Parameters:
+// - ctx (context.Context): The context for the request.
+// - req (*kr.BatchMoveKeyRange): The move information for moving the data.
+//
+// Returns:
+// - error: An error if moving the data was unsuccessful.
 func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
@@ -391,6 +401,15 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 	return err
 }
 
+// RedistributeKeyRange moves a key range to the specified shard.
+// Data is moved in batches of a given size.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//   - req (*kr.RedistributeKeyRange): The move information for moving the key range.
+//
+// Returns:
+// - error: An error if moving the key range was unsuccessful.
 func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RedistributeKeyRange(ctx, &proto.RedistributeKeyRangeRequest{
@@ -401,6 +420,15 @@ func (a *Adapter) RedistributeKeyRange(ctx context.Context, req *kr.Redistribute
 	return err
 }
 
+// RenameKeyRange renames a key range.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//   - krId (string): The ID of the key range to be renamed.
+//   - krIdNew (string): The new ID for the specified key range.
+//
+// Returns:
+// - error: An error if renaming key range was unsuccessful.
 func (a *Adapter) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	_, err := c.RenameKeyRange(ctx, &proto.RenameKeyRangeRequest{
@@ -832,6 +860,14 @@ func (a *Adapter) RemoveMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+// GetBalancerTask retrieves current balancer task from the system.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//
+// Returns:
+//   - *tasks.BalancerTask: The retrieved balancer task.
+//   - error: An error if the retrieval of the balancer task fails, otherwise nil.
 func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, error) {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	res, err := tasksService.GetBalancerTask(ctx, nil)
@@ -841,12 +877,27 @@ func (a *Adapter) GetBalancerTask(ctx context.Context) (*tasks.BalancerTask, err
 	return tasks.BalancerTaskFromProto(res.Task), nil
 }
 
+// WriteBalancerTask writes a balancer task to the system.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//   - task (*tasks.BalancerTask): The balancer task to be written.
+//
+// Returns:
+//   - error: An error if the writing of the balancer task fails, otherwise nil.
 func (a *Adapter) WriteBalancerTask(ctx context.Context, task *tasks.BalancerTask) error {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	_, err := tasksService.WriteBalancerTask(ctx, &proto.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
 	return err
 }
 
+// RemoveBalancerTask removes a balancer task from the system.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//
+// Returns:
+//   - error: An error if the removal of the balancer task fails, otherwise nil.
 func (a *Adapter) RemoveBalancerTask(ctx context.Context) error {
 	tasksService := proto.NewBalancerTaskServiceClient(a.conn)
 	_, err := tasksService.RemoveBalancerTask(ctx, nil)

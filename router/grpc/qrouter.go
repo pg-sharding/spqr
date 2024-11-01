@@ -341,6 +341,7 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, l.mgr.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
 }
@@ -439,6 +440,7 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, _ *emptypb.Empt
 	return reply, err
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
 	group, err := l.mgr.GetMoveTaskGroup(ctx)
 	if err != nil {
@@ -449,14 +451,17 @@ func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Em
 	}, nil
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*emptypb.Empty, error) {
 	return nil, l.mgr.WriteMoveTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, l.mgr.RemoveMoveTaskGroup(ctx)
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
 	task, err := l.mgr.GetBalancerTask(ctx)
 	if err != nil {
@@ -465,10 +470,12 @@ func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Emp
 	return &protos.GetBalancerTaskReply{Task: tasks.BalancerTaskToProto(task)}, nil
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) WriteBalancerTask(ctx context.Context, request *protos.WriteBalancerTaskRequest) (*emptypb.Empty, error) {
 	return nil, l.mgr.WriteBalancerTask(ctx, tasks.BalancerTaskFromProto(request.Task))
 }
 
+// TODO: unit tests
 func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, l.mgr.RemoveBalancerTask(ctx)
 }

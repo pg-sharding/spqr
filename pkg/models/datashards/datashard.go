@@ -57,6 +57,15 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 	})
 }
 
+// DataShardFromDb creates a new DataShard instance from the given qdb.Shard.
+// It initializes the DataShard with the shard ID and hosts from the qdb.Shard,
+// and sets the shard type to config.DataShard.
+//
+// Parameters:
+//   - shard: The qdb.Shard object to convert.
+//
+// Returns:
+//   - *DataShard: The created DataShard instance.
 func DataShardFromDb(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
 		Hosts: shard.Hosts,

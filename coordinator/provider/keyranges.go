@@ -167,6 +167,7 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO: unit tests
 func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
 		KrId:     request.Id,
@@ -196,6 +197,7 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 	})
 }
 
+// TODO: unit tests
 func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
 		KrId:      request.Id,
@@ -204,6 +206,7 @@ func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *
 	})
 }
 
+// TODO: unit tests
 func (c *CoordinatorService) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
 	return nil, c.impl.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
 }

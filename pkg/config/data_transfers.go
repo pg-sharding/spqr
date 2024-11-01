@@ -102,6 +102,16 @@ func (s *ShardConnect) GetConnStrings() []string {
 	return res
 }
 
+// GetMasterConnection gets a connection to the master host in a shard
+//
+// Parameters:
+//   - ctx: context for connections
+//
+// Returns:
+//   - *pgx.Conn: the connection to master host
+//   - error: error if any occured
+//
+// TODO: unit tests
 func (s *ShardConnect) GetMasterConnection(ctx context.Context) (*pgx.Conn, error) {
 	for _, dsn := range s.GetConnStrings() {
 		conn, err := pgx.Connect(ctx, dsn)

@@ -399,6 +399,7 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
 	spqrlog.Zero.Debug().
 		Str("id", krId).
@@ -732,6 +733,7 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 //                                   TASKS
 // ==============================================================================
 
+// TODO: unit tests
 func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group")
 	q.mu.RLock()
@@ -745,6 +747,7 @@ func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	return q.MoveTaskGroup, nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write task group")
 	q.mu.Lock()
@@ -754,6 +757,7 @@ func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup) err
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
 	q.mu.Lock()
@@ -763,6 +767,7 @@ func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
 	q.mu.RLock()
@@ -771,6 +776,7 @@ func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, erro
 	return q.RedistributeTask, nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write redistribute task")
 	q.mu.Lock()
@@ -780,6 +786,7 @@ func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove redistribute task")
 	q.mu.Lock()
@@ -789,6 +796,7 @@ func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")
 	q.mu.RLock()
@@ -797,6 +805,7 @@ func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
 	return q.BalancerTask, nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write balancer task")
 	q.mu.Lock()
@@ -806,6 +815,7 @@ func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error 
 	return nil
 }
 
+// TODO: unit tests
 func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove balancer task")
 	q.mu.Lock()

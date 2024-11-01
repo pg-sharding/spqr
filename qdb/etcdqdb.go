@@ -437,6 +437,7 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 	return fmt.Errorf("implement ShareKeyRange")
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	spqrlog.Zero.Debug().
 		Str("id", krId).
@@ -1110,6 +1111,7 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 //                                    TASKS
 // ==============================================================================
 
+// TODO: unit tests
 func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get task group")
@@ -1133,6 +1135,7 @@ func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) 
 	return taskGroup, nil
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
@@ -1146,6 +1149,7 @@ func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) 
 	return err
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove task group")
@@ -1154,6 +1158,7 @@ func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	return err
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get redistribute task")
@@ -1175,6 +1180,7 @@ func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, e
 	return task, nil
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write redistribute task")
@@ -1188,6 +1194,7 @@ func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeT
 	return err
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove redistribute task")
@@ -1196,6 +1203,7 @@ func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
 	return err
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) GetBalancerTask(ctx context.Context) (*BalancerTask, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get balancer task")
@@ -1217,6 +1225,7 @@ func (q *EtcdQDB) GetBalancerTask(ctx context.Context) (*BalancerTask, error) {
 	return task, nil
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write balancer task")
@@ -1230,6 +1239,7 @@ func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) err
 	return err
 }
 
+// TODO: unit tests
 func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove balancer task")
