@@ -23,6 +23,10 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+const (
+	defaultBatchSize = 500
+)
+
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
@@ -395,14 +399,7 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.RedistributeKeyRange:
-		if err := mgr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
-			KrId:      stmt.KeyRangeID,
-			ShardId:   stmt.DestShardID,
-			BatchSize: stmt.BatchSize,
-		}); err != nil {
-			return cli.ReportError(err)
-		}
-		return cli.RedistributeKeyRange(ctx, stmt)
+		return processRedistribute(ctx, stmt, mgr, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -559,4 +556,18 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	default:
 		return unknownCoordinatorCommand
 	}
+}
+
+func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, ci *clientinteractor.PSQLInteractor) error {
+	if req.BatchSize == -1 {
+		req.BatchSize = defaultBatchSize
+	}
+	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+		KrId:      req.KeyRangeID,
+		ShardId:   req.DestShardID,
+		BatchSize: req.BatchSize,
+	}); err != nil {
+		return ci.ReportError(err)
+	}
+	return ci.RedistributeKeyRange(ctx, req)
 }
