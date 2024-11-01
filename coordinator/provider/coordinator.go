@@ -1017,7 +1017,6 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	}
 
 	// Get connection to source shard's master
-	// TODO may prefer replica connection
 	conns, err := config.LoadShardDataCfg(config.CoordinatorConfig().ShardDataCfg)
 	if err != nil {
 		return err
