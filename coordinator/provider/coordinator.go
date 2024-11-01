@@ -984,11 +984,13 @@ func (qc *qdbCoordinator) Move(ctx context.Context, req *kr.MoveKeyRange) error 
 	return nil
 }
 
+// TODO : unit tests
+
 // BatchMoveKeyRange moves specified amount of keys from a key range to another shard.
 //
 // Parameters:
-//   - ctx: the context of the operation
-//   - req: BatchMoveKeyRange request
+//   - ctx (context.Context): The context of the operation.
+//   - req (*kr.BatchMoveKeyRange): The request with args for the operation.
 //
 // Returns:
 //   - error: Any error occurred during transfer.
@@ -1079,6 +1081,21 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 	}
 }
 
+// TODO : unit tests
+
+// getKeyStats gets information about the amount of keys belonging to a key range in the specified relations.
+//
+// Parameters:
+//   - ctx (context.Context): The context for queries to the database.
+//   - conn (*pgx.Conn): The connection to the database.
+//   - relations (map[string]*distributions.DistributedRelation): The relations to collect the information about.
+//   - keyRange (*kr.KeyRange): The key range to collect the information about.
+//   - nextBound (kr.KeyRangeBound): THe bound of the next key range. If there's no next key range, must be nil.
+//
+// Returns:
+//   - totalCount (int64): The total amount of keys in all relations.
+//   - relationCount (map[string]int64): The amount of keys by relation name.
+//   - err: An error if any occured.
 func (*qdbCoordinator) getKeyStats(
 	ctx context.Context,
 	conn *pgx.Conn,
@@ -1124,6 +1141,17 @@ func (*qdbCoordinator) getKeyStats(
 	return
 }
 
+// TODO: unit tests
+
+// getBiggestRelation finds the relatively biggest relation and the proportion of it to the total number of keys.
+//
+// Parameters:
+//   - relCount (map[string]int64): The amount of keys by relation name.
+//   - totalCount (int64): The total amount of keys.
+//
+// Returns:
+//   - string: The relation with the largest number of keys.
+//   - float64: The ratio of keys between the biggest relation and the total amount.
 func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount int64) (string, float64) {
 	maxCount := 0.0
 	maxRel := ""
@@ -1136,6 +1164,23 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 	return maxRel, maxCount / float64(totalCount)
 }
 
+// TODO: unit tests
+
+// getMoveTasks forms the move task group. It gets bounds for intermediate data moves from the database, and returns the resulting MoveTaskGroup.
+// Bounds are determined by quering the relation with the biggest amount of keys in the key range.
+//
+// Parameters:
+//   - ctx (context.Context): The context for requests to the database.
+//   - conn (*pgx.Conn): The connection to the database.
+//   - req (*kr.BatchMoveKeyRange): The request, containing transfer information.
+//   - rel (*distributions.DistributedRelation): The relation with the most keys.
+//   - condition (sting): The condition for the key range to move data from.
+//   - coeff (float64): The ratio between the amount of keys in the biggest relation, and the total amount of keys in the key range.
+//   - ds (*distributions.Distribution): The distribution the key range belongs to.
+//
+// Returns:
+//   - *tasks.MoveTaskGroup: The group of data move tasks.
+//   - error: An error if any occured.
 func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
@@ -1290,6 +1335,18 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 	}, nil
 }
 
+// TODO : unit tests
+
+// getNextKeyRange lists key ranges in the distribution and finds the key range next to the given key range.
+// If there's no next key range, nil is returned.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - keyRange (*kr.KeyRange): The key range to find next one to.
+//
+// Returns:
+//   - *kr.KeyRange: The key range next to the given.
+//   - error: An error if any occured.
 func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*kr.KeyRange, error) {
 	krs, err := qc.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
@@ -1305,6 +1362,17 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 	return nil, nil
 }
 
+// TODO : unit tests
+
+// executeMoveTasks executes the given MoveTaskGroup.
+// All intermediary states of the task group are synced with the QDB for reliability.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - taskGroup (*tasks.MoveTaskGroup): Move tasks to execute.
+//
+// Returns:
+//   - error: An error if any occured.
 func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
@@ -1363,14 +1431,16 @@ func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks
 	return qc.RemoveMoveTaskGroup(ctx)
 }
 
+// TODO : unit tests
+
 // RedistributeKeyRange moves the whole key range to another shard in batches
 //
 // Parameters:
-//   - ctx: context of the operation
-//   - req: *kr.RedistributeKeyRange request
+//   - ctx (context.Context): The context of the operation.
+//   - req (*kr.RedistributeKeyRange): The request with args for the operation.
 //
 // Returns:
-//   - error if any occurred during transfer
+//   - error: An error if any occurred during transfer.
 func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.RedistributeKeyRange) error {
 	keyRange, err := qc.GetKeyRange(ctx, req.KrId)
 	if err != nil {
@@ -1407,6 +1477,17 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 	}
 }
 
+// TODO : unit tests
+
+// executeMoveTasks executes the given RedistributeTask.
+// All intermediary states of the task are synced with the QDB for reliability.
+//
+// Parameters:
+//   - ctx (context.Context): The context for QDB operations.
+//   - task (*tasks.RedistributeTask): The redistribute task to execute.
+//
+// Returns:
+//   - error: An error if any occured.
 func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
 	for {
 		switch task.State {
@@ -1439,6 +1520,17 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 	}
 }
 
+// TODO : unit tests
+
+// RenameKeyRange renames a key range.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the request.
+//   - krId (string): The ID of the key range to be renamed.
+//   - krIdNew (string): The new ID for the specified key range.
+//
+// Returns:
+// - error: An error if renaming key range was unsuccessful.
 func (qc *qdbCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
 	if _, err := qc.GetKeyRange(ctx, krId); err != nil {
 		return err
