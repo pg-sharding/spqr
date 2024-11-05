@@ -1280,7 +1280,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 			return nil, err
 		}
 
-		bound := make([][]byte, len(columns))
+		bound := make([][]byte, len(colsArr))
 		for i, t := range ds.ColTypes {
 			switch t {
 			case qdb.ColumnTypeVarcharDeprecated:
