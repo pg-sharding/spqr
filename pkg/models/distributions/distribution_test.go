@@ -43,8 +43,8 @@ func TestGetHashedColumn(t *testing.T) {
 		{
 			col:      "a",
 			hash:     "city",
-			expected: "hash_string(a, 'city')",
-			err:      nil,
+			expected: "",
+			err:      spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations"),
 		},
 		{
 			col:      "a",
@@ -110,8 +110,8 @@ func TestGetDistributionKeyColumns(t *testing.T) {
 					{Column: "b", HashFunction: "city"},
 				},
 			},
-			expected: []string{"hash_string(a, 'murmur3')", "hash_string(b, 'city')"},
-			err:      nil,
+			expected: nil,
+			err:      spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations"),
 		},
 		{
 			rel: &distributions.DistributedRelation{
