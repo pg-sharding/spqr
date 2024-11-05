@@ -50,8 +50,7 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		/* TODO: fix  */
-		n, _ := binary.Varint(raw)
+		n, _ := binary.Uvarint(raw)
 		kr.LowerBound[attribInd] = uint64(n)
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
@@ -310,8 +309,6 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
 
-	// TODO: Fix this! (krdb.LowerBound -> krqb.LowerBound[i])
-	// now this works only for unidim distributions
 	for i := 0; i < len(colTypes); i++ {
 		kr.InFunc(i, krdb.LowerBound[i])
 	}

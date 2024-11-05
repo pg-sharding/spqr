@@ -1287,6 +1287,8 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 				fallthrough
 			case qdb.ColumnTypeVarchar:
 				bound[i] = []byte(values[i])
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
 			case qdb.ColumnTypeUinteger:
 				number, err := strconv.ParseUint(values[i], 10, 64)
 				if err != nil {
@@ -1294,9 +1296,6 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 				}
 				bound[i] = make([]byte, 8)
 				binary.PutUvarint(bound[i], number)
-			case qdb.ColumnTypeVarcharHashed:
-				// or is it?
-				fallthrough
 			case qdb.ColumnTypeInteger:
 				number, err := strconv.ParseInt(values[i], 10, 64)
 				if err != nil {
