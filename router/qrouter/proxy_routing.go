@@ -693,7 +693,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	for _, elt := range node.TableElts {
 		// hashing function name unneeded for sharding rules matching purpose
 		switch q := elt.(type) {
-		case *lyx.ColumnRef:
+		case *lyx.TableElt:
 			entries[q.ColName] = struct{}{}
 		}
 	}
