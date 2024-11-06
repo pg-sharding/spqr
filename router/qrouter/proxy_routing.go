@@ -674,21 +674,33 @@ var ParseError = fmt.Errorf("parsing stmt error")
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 // TODO : unit tests
 func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.CreateTable) error {
-	ds, err := qr.mgr.GetRelationDistribution(ctx, node.TableName)
-	if err != nil {
-		return err
+	var err error
+	var ds *distributions.Distribution
+	var relname string
+	switch q := node.TableRv.(type) {
+	case *lyx.RangeVar:
+		relname = q.RelationName
+		ds, err = qr.mgr.GetRelationDistribution(ctx, relname)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("wrong type of table range var")
 	}
 
 	entries := make(map[string]struct{})
 	/* Collect sharding rule entries list from create statement */
 	for _, elt := range node.TableElts {
 		// hashing function name unneeded for sharding rules matching purpose
-		entries[elt.ColName] = struct{}{}
+		switch q := elt.(type) {
+		case *lyx.TableElt:
+			entries[q.ColName] = struct{}{}
+		}
 	}
 
-	rel, ok := ds.Relations[node.TableName]
+	rel, ok := ds.Relations[relname]
 	if !ok {
-		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", node.TableName, ds.Id)
+		return spqrerror.Newf(spqrerror.SPQR_METADATA_CORRUPTION, "relation \"%s\" not present in distribution \"%s\" it's attached to", relname, ds.Id)
 	}
 	check := true
 	for _, entry := range rel.DistributionKey {
