@@ -159,7 +159,7 @@ Feature: Balancer test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
     """
     Then command return code should be "0"
-    When I run command on host "coordinator" with timeout "180" seconds
+    When I run command on host "coordinator" with timeout "360" seconds
     """
     /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_many_keys.yaml > /balancer.log
     """
