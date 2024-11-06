@@ -42,6 +42,23 @@ func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	return len(bound) < len(key)
 }
 
+func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
+	switch kr.ColumnTypes[attribInd] {
+	case qdb.ColumnTypeInteger:
+		n, _ := binary.Varint(raw)
+		kr.LowerBound[attribInd] = n
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUinteger:
+		n, _ := binary.Varint(raw)
+		kr.LowerBound[attribInd] = uint64(n)
+	case qdb.ColumnTypeVarcharDeprecated:
+		fallthrough
+	case qdb.ColumnTypeVarchar:
+		kr.LowerBound[attribInd] = string(raw)
+	}
+}
+
 func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
@@ -346,7 +363,7 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, colTypes []string) (*
 	}
 
 	for i := 0; i < len(colTypes); i++ {
-		kr.InFunc(i, krsql.LowerBound.Pivots[i])
+		kr.InFuncSQL(i, krsql.LowerBound.Pivots[i])
 	}
 
 	return kr, nil
