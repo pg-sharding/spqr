@@ -79,20 +79,6 @@ func (mr *MockConnectionKepperMockRecorder) IdleConnectionCount() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockConnectionKepper)(nil).IdleConnectionCount))
 }
 
-// List mocks base method.
-func (m *MockConnectionKepper) List() []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// List indicates an expected call of List.
-func (mr *MockConnectionKepperMockRecorder) List() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockConnectionKepper)(nil).List))
-}
-
 // Put mocks base method.
 func (m *MockConnectionKepper) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -255,20 +241,6 @@ func (m *MockPool) IdleConnectionCount() int {
 func (mr *MockPoolMockRecorder) IdleConnectionCount() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockPool)(nil).IdleConnectionCount))
-}
-
-// List mocks base method.
-func (m *MockPool) List() []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// List indicates an expected call of List.
-func (mr *MockPoolMockRecorder) List() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPool)(nil).List))
 }
 
 // Put mocks base method.
@@ -447,20 +419,6 @@ func (m *MockMultiShardPool) IdleConnectionCount() int {
 func (mr *MockMultiShardPoolMockRecorder) IdleConnectionCount() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockMultiShardPool)(nil).IdleConnectionCount))
-}
-
-// List mocks base method.
-func (m *MockMultiShardPool) List() []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// List indicates an expected call of List.
-func (mr *MockMultiShardPoolMockRecorder) List() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockMultiShardPool)(nil).List))
 }
 
 // Put mocks base method.
@@ -688,20 +646,6 @@ func (m *MockDBPool) IdleConnectionCount() int {
 func (mr *MockDBPoolMockRecorder) IdleConnectionCount() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockDBPool)(nil).IdleConnectionCount))
-}
-
-// List mocks base method.
-func (m *MockDBPool) List() []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// List indicates an expected call of List.
-func (mr *MockDBPoolMockRecorder) List() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockDBPool)(nil).List))
 }
 
 // Put mocks base method.

@@ -27,8 +27,6 @@ type ConnectionKepper interface {
 	Hostname() string
 	RouterName() string
 
-	List() []shard.Shard
-
 	Rule() *config.BackendRule
 }
 

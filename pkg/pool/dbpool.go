@@ -317,15 +317,6 @@ func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
 	return s.shardMapping
 }
 
-// List returns a list of shards in the instance pool.
-//
-// Returns:
-//   - []shard.Shard: A list of shards in the instance pool.
-func (s *InstancePoolImpl) List() []shard.Shard {
-	/* mutex? */
-	return s.pool.List()
-}
-
 // ForEach iterates over each shard in the instance pool and calls the provided callback function.
 // It returns an error if the callback function returns an error.
 //

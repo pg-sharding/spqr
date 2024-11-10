@@ -321,19 +321,6 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return nil
 }
 
-// List returns a slice of shards in the shard pool.
-//
-// Returns:
-//   - []shard.Shard: The slice of shards in the shard pool.
-//
-// TODO : unit tests
-func (h *shardPool) List() []shard.Shard {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	return h.pool
-}
-
 /* pool with many hosts */
 
 type cPool struct {
@@ -400,22 +387,6 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	})
 
 	return nil
-}
-
-// List returns a slice of shard.Shard containing all the shards in the cPool.
-//
-// Returns:
-//   - []shard.Shard: The slice of shard.Shard containing all the shards in the cPool.
-//
-// TODO : unit tests
-func (c *cPool) List() []shard.Shard {
-	var ret []shard.Shard
-
-	c.pools.Range(func(key, value any) bool {
-		ret = append(ret, value.(Pool).List()...)
-		return true
-	})
-	return ret
 }
 
 // Connection returns a shard connection for the given client ID, shard key, and host.

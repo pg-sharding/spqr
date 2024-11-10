@@ -128,16 +128,6 @@ func (r *ConnectionKepperData) RouterName() string {
 	return r.Router
 }
 
-// List returns a slice of shard.Shard objects.
-// It is used to retrieve all the shards stored in the connection keeper.
-// Returns an empty slice if no shards are found.
-//
-// Returns:
-//   - []shard.Shard: The list of shards stored in the ConnectionKepperData.
-func (r *ConnectionKepperData) List() []shard.Shard {
-	return nil
-}
-
 // Rule returns a new instance of BackendRule based on the current ConnectionKepperData.
 // It copies the DB and Usr fields from the ConnectionKepperData and returns the new BackendRule.
 // The returned BackendRule is not a reference to the original ConnectionKepperData fields.
