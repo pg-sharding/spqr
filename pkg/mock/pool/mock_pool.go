@@ -379,20 +379,6 @@ func (mr *MockMultiShardPoolMockRecorder) Connection(clid, shardKey, host interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connection", reflect.TypeOf((*MockMultiShardPool)(nil).Connection), clid, shardKey, host)
 }
 
-// Cut mocks base method.
-func (m *MockMultiShardPool) Cut(host string) []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cut", host)
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// Cut indicates an expected call of Cut.
-func (mr *MockMultiShardPoolMockRecorder) Cut(host interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cut", reflect.TypeOf((*MockMultiShardPool)(nil).Cut), host)
-}
-
 // Discard mocks base method.
 func (m *MockMultiShardPool) Discard(sh shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -634,20 +620,6 @@ func (m *MockDBPool) Connection(clid uint, shardKey kr.ShardKey, host string) (s
 func (mr *MockDBPoolMockRecorder) Connection(clid, shardKey, host interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connection", reflect.TypeOf((*MockDBPool)(nil).Connection), clid, shardKey, host)
-}
-
-// Cut mocks base method.
-func (m *MockDBPool) Cut(host string) []shard.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cut", host)
-	ret0, _ := ret[0].([]shard.Shard)
-	return ret0
-}
-
-// Cut indicates an expected call of Cut.
-func (mr *MockDBPoolMockRecorder) Cut(host interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cut", reflect.TypeOf((*MockDBPool)(nil).Cut), host)
 }
 
 // Discard mocks base method.

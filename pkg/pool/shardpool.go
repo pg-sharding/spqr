@@ -109,23 +109,6 @@ func (h *shardPool) Rule() *config.BackendRule {
 	return h.beRule
 }
 
-// Cut removes all shards from the shard pool and returns them as a slice.
-//
-// Parameters:
-//   - host: The host from which to cut the shards.
-//
-// Returns:
-//   - []shard.Shard: The removed shards as a slice.
-func (h *shardPool) Cut(host string) []shard.Shard {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	ret := h.pool
-	h.pool = nil
-
-	return ret
-}
-
 // UsedConnectionCount returns the number of currently used connections in the shard pool.
 //
 // Returns:
@@ -459,21 +442,6 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 		pool = val.(Pool)
 	}
 	return pool.Connection(clid, shardKey)
-}
-
-// Cut removes and returns the shards associated with the specified host.
-// It returns a slice of shard.Shard.
-//
-// Parameters:
-//   - host: The host for which to cut the shards.
-//
-// Returns:
-//   - []shard.Shard: The removed shards as a slice.
-//
-// TODO : unit tests
-func (c *cPool) Cut(host string) []shard.Shard {
-	rt, _ := c.pools.LoadAndDelete(host)
-	return rt.([]shard.Shard)
 }
 
 // Put adds a shard to the pool.

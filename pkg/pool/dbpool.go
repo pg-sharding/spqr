@@ -382,18 +382,6 @@ func (s *InstancePoolImpl) ForEachPool(cb func(pool Pool) error) error {
 	return s.pool.ForEachPool(cb)
 }
 
-// Cut removes a shard from the instance pool based on the provided host.
-// It returns the removed shard.
-//
-// Parameters:
-// - host: The host of the shard to be removed.
-//
-// Returns:
-// - []shard.Shard: The removed shard.
-func (s *InstancePoolImpl) Cut(host string) []shard.Shard {
-	return s.pool.Cut(host)
-}
-
 // Discard removes a shard from the instance pool.
 // It returns an error if the removal fails.
 //
