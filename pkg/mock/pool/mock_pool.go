@@ -449,20 +449,6 @@ func (mr *MockMultiShardPoolMockRecorder) IdleConnectionCount() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockMultiShardPool)(nil).IdleConnectionCount))
 }
 
-// InitRule mocks base method.
-func (m *MockMultiShardPool) InitRule(rule *config.BackendRule) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitRule", rule)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// InitRule indicates an expected call of InitRule.
-func (mr *MockMultiShardPoolMockRecorder) InitRule(rule interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitRule", reflect.TypeOf((*MockMultiShardPool)(nil).InitRule), rule)
-}
-
 // List mocks base method.
 func (m *MockMultiShardPool) List() []shard.Shard {
 	m.ctrl.T.Helper()
@@ -531,6 +517,18 @@ func (m *MockMultiShardPool) Rule() *config.BackendRule {
 func (mr *MockMultiShardPoolMockRecorder) Rule() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockMultiShardPool)(nil).Rule))
+}
+
+// SetRule mocks base method.
+func (m *MockMultiShardPool) SetRule(rule *config.BackendRule) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRule", rule)
+}
+
+// SetRule indicates an expected call of SetRule.
+func (mr *MockMultiShardPoolMockRecorder) SetRule(rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockMultiShardPool)(nil).SetRule), rule)
 }
 
 // UsedConnectionCount mocks base method.
@@ -692,20 +690,6 @@ func (mr *MockDBPoolMockRecorder) IdleConnectionCount() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockDBPool)(nil).IdleConnectionCount))
 }
 
-// InitRule mocks base method.
-func (m *MockDBPool) InitRule(rule *config.BackendRule) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitRule", rule)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// InitRule indicates an expected call of InitRule.
-func (mr *MockDBPoolMockRecorder) InitRule(rule interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitRule", reflect.TypeOf((*MockDBPool)(nil).InitRule), rule)
-}
-
 // List mocks base method.
 func (m *MockDBPool) List() []shard.Shard {
 	m.ctrl.T.Helper()
@@ -774,6 +758,18 @@ func (m *MockDBPool) Rule() *config.BackendRule {
 func (mr *MockDBPoolMockRecorder) Rule() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockDBPool)(nil).Rule))
+}
+
+// SetRule mocks base method.
+func (m *MockDBPool) SetRule(rule *config.BackendRule) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetRule", rule)
+}
+
+// SetRule indicates an expected call of SetRule.
+func (mr *MockDBPoolMockRecorder) SetRule(rule interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockDBPool)(nil).SetRule), rule)
 }
 
 // SetShuffleHosts mocks base method.

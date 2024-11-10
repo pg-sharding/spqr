@@ -484,20 +484,14 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	}
 }
 
-// InitRule initializes the backend rule for the cPool.
+// SetRule initializes the backend rule for the cPool.
 // It takes a pointer to a config.BackendRule as input and sets it as the backend rule for the cPool.
-// Returns an error if any.
 //
 // Parameters:
 //   - rule: The backend rule to be set for the cPool.
-//
-// Returns:
-//   - error: The error that occurred during the initialization of the backend rule.
-//
 // TODO : unit tests
-func (c *cPool) InitRule(rule *config.BackendRule) error {
+func (c *cPool) SetRule(rule *config.BackendRule) {
 	c.beRule = rule
-	return nil
 }
 
 var _ MultiShardPool = &cPool{}

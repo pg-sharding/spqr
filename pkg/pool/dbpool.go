@@ -300,16 +300,13 @@ func (s *InstancePoolImpl) Connection(
 	}
 }
 
-// InitRule initializes the backend rule in the instance pool.
-// It takes a pointer to a BackendRule as a parameter and returns an error.
+// SetRule initializes the backend rule in the instance pool.
+// It takes a pointer to a BackendRule as a parameter and saves it
 //
 // Parameters:
 //   - rule: A pointer to a BackendRule representing the backend rule to be initialized.
-//
-// Returns:
-//   - error: An error if there is an error initializing the backend rule, nil otherwise.
-func (s *InstancePoolImpl) InitRule(rule *config.BackendRule) error {
-	return s.pool.InitRule(rule)
+func (s *InstancePoolImpl) SetRule(rule *config.BackendRule) {
+	s.pool.SetRule(rule)
 }
 
 // ShardMapping returns the shard mapping of the instance pool.

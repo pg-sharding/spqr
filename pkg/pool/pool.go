@@ -47,7 +47,7 @@ type MultiShardPool interface {
 
 	Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
 
-	InitRule(rule *config.BackendRule) error
+	SetRule(rule *config.BackendRule)
 }
 
 type PoolIterator interface {
