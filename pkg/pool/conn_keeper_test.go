@@ -23,15 +23,6 @@ func TestCoordConnectionKepperRule(t *testing.T) {
 	assert.Equal("usr", br.Usr)
 }
 
-// TestCoordConnectionKepperList is a unit test function that tests the List method of the ConnectionKepperData struct.
-func TestCoordConnectionKepperList(t *testing.T) {
-	assert := assert.New(t)
-
-	k := pool.ConnectionKepperData{}
-
-	assert.Nil(k.List())
-}
-
 // TestCoordConnectionKepperHostname is a unit test function that tests the Hostname method of the ConnectionKepperData struct.
 // It asserts that the Hostname method returns the expected hostname value.
 func TestCoordConnectionKepperHostname(t *testing.T) {

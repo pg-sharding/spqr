@@ -27,8 +27,6 @@ type ConnectionKepper interface {
 	Hostname() string
 	RouterName() string
 
-	List() []shard.Shard
-
 	Rule() *config.BackendRule
 }
 
@@ -47,8 +45,7 @@ type MultiShardPool interface {
 
 	Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
 
-	InitRule(rule *config.BackendRule) error
-	Cut(host string) []shard.Shard
+	SetRule(rule *config.BackendRule)
 }
 
 type PoolIterator interface {

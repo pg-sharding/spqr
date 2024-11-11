@@ -300,16 +300,13 @@ func (s *InstancePoolImpl) Connection(
 	}
 }
 
-// InitRule initializes the backend rule in the instance pool.
-// It takes a pointer to a BackendRule as a parameter and returns an error.
+// SetRule initializes the backend rule in the instance pool.
+// It takes a pointer to a BackendRule as a parameter and saves it
 //
 // Parameters:
 //   - rule: A pointer to a BackendRule representing the backend rule to be initialized.
-//
-// Returns:
-//   - error: An error if there is an error initializing the backend rule, nil otherwise.
-func (s *InstancePoolImpl) InitRule(rule *config.BackendRule) error {
-	return s.pool.InitRule(rule)
+func (s *InstancePoolImpl) SetRule(rule *config.BackendRule) {
+	s.pool.SetRule(rule)
 }
 
 // ShardMapping returns the shard mapping of the instance pool.
@@ -318,15 +315,6 @@ func (s *InstancePoolImpl) InitRule(rule *config.BackendRule) error {
 //   - map[string]*config.Shard: The shard mapping of the instance pool.
 func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
 	return s.shardMapping
-}
-
-// List returns a list of shards in the instance pool.
-//
-// Returns:
-//   - []shard.Shard: A list of shards in the instance pool.
-func (s *InstancePoolImpl) List() []shard.Shard {
-	/* mutex? */
-	return s.pool.List()
 }
 
 // ForEach iterates over each shard in the instance pool and calls the provided callback function.
@@ -380,18 +368,6 @@ func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 // - error: An error if the callback function returns an error.
 func (s *InstancePoolImpl) ForEachPool(cb func(pool Pool) error) error {
 	return s.pool.ForEachPool(cb)
-}
-
-// Cut removes a shard from the instance pool based on the provided host.
-// It returns the removed shard.
-//
-// Parameters:
-// - host: The host of the shard to be removed.
-//
-// Returns:
-// - []shard.Shard: The removed shard.
-func (s *InstancePoolImpl) Cut(host string) []shard.Shard {
-	return s.pool.Cut(host)
 }
 
 // Discard removes a shard from the instance pool.

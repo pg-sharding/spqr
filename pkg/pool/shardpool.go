@@ -109,23 +109,6 @@ func (h *shardPool) Rule() *config.BackendRule {
 	return h.beRule
 }
 
-// Cut removes all shards from the shard pool and returns them as a slice.
-//
-// Parameters:
-//   - host: The host from which to cut the shards.
-//
-// Returns:
-//   - []shard.Shard: The removed shards as a slice.
-func (h *shardPool) Cut(host string) []shard.Shard {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	ret := h.pool
-	h.pool = nil
-
-	return ret
-}
-
 // UsedConnectionCount returns the number of currently used connections in the shard pool.
 //
 // Returns:
@@ -338,19 +321,6 @@ func (h *shardPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return nil
 }
 
-// List returns a slice of shards in the shard pool.
-//
-// Returns:
-//   - []shard.Shard: The slice of shards in the shard pool.
-//
-// TODO : unit tests
-func (h *shardPool) List() []shard.Shard {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	return h.pool
-}
-
 /* pool with many hosts */
 
 type cPool struct {
@@ -419,22 +389,6 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 	return nil
 }
 
-// List returns a slice of shard.Shard containing all the shards in the cPool.
-//
-// Returns:
-//   - []shard.Shard: The slice of shard.Shard containing all the shards in the cPool.
-//
-// TODO : unit tests
-func (c *cPool) List() []shard.Shard {
-	var ret []shard.Shard
-
-	c.pools.Range(func(key, value any) bool {
-		ret = append(ret, value.(Pool).List()...)
-		return true
-	})
-	return ret
-}
-
 // Connection returns a shard connection for the given client ID, shard key, and host.
 // If a connection pool for the host does not exist, a new pool is created and stored.
 // Otherwise, the existing pool is retrieved from the cache.
@@ -459,21 +413,6 @@ func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.
 		pool = val.(Pool)
 	}
 	return pool.Connection(clid, shardKey)
-}
-
-// Cut removes and returns the shards associated with the specified host.
-// It returns a slice of shard.Shard.
-//
-// Parameters:
-//   - host: The host for which to cut the shards.
-//
-// Returns:
-//   - []shard.Shard: The removed shards as a slice.
-//
-// TODO : unit tests
-func (c *cPool) Cut(host string) []shard.Shard {
-	rt, _ := c.pools.LoadAndDelete(host)
-	return rt.([]shard.Shard)
 }
 
 // Put adds a shard to the pool.
@@ -516,20 +455,14 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	}
 }
 
-// InitRule initializes the backend rule for the cPool.
+// SetRule initializes the backend rule for the cPool.
 // It takes a pointer to a config.BackendRule as input and sets it as the backend rule for the cPool.
-// Returns an error if any.
 //
 // Parameters:
 //   - rule: The backend rule to be set for the cPool.
-//
-// Returns:
-//   - error: The error that occurred during the initialization of the backend rule.
-//
 // TODO : unit tests
-func (c *cPool) InitRule(rule *config.BackendRule) error {
+func (c *cPool) SetRule(rule *config.BackendRule) {
 	c.beRule = rule
-	return nil
 }
 
 var _ MultiShardPool = &cPool{}

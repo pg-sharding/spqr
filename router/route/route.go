@@ -64,7 +64,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}
-	_ = route.servPool.InitRule(beRule)
+	route.servPool.SetRule(beRule)
 	return route
 }
 
