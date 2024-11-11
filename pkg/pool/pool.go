@@ -29,7 +29,7 @@ type Statistics struct {
 	RouterName        string
 	UsedConnections   int
 	IdleConnections   int
-	QueueResidualSize int // TODO poolsize
+	QueueResidualSize int
 }
 
 /* dedicated host connection pool */
