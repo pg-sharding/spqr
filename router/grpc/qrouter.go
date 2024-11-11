@@ -375,15 +375,16 @@ func ShardToProto(sh shard.Shardinfo) *protos.BackendConnectionsInfo {
 
 // TODO : unit tests
 func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
+	statistics := p.View()
 	poolInfo := &protos.PoolInfo{
 		Id:            fmt.Sprintf("%p", p),
-		DB:            p.Rule().DB,
-		Usr:           p.Rule().Usr,
-		Host:          p.Hostname(),
+		DB:            statistics.DB,
+		Usr:           statistics.Usr,
+		Host:          statistics.Hostname,
 		RouterName:    router,
-		ConnCount:     int64(p.UsedConnectionCount()),
-		IdleConnCount: int64(p.IdleConnectionCount()),
-		QueueSize:     int64(p.QueueResidualSize()),
+		ConnCount:     int64(statistics.UsedConnections),
+		IdleConnCount: int64(statistics.IdleConnections),
+		QueueSize:     int64(statistics.QueueResidualSize),
 	}
 	return poolInfo
 }

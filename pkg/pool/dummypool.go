@@ -5,7 +5,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/config"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 )
@@ -71,80 +70,6 @@ func (r *DummyPool) Discard(sh shard.Shard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DummyPool.Discard not implemented")
 }
 
-// UsedConnectionCount returns the number of used connections in the ConnectionKeeperData.
-// It returns the number of used connections in the ConnectionKeeperData.
-//
-// Returns:
-//   - int: The number of used connections in the ConnectionKeeperData.
-func (r *DummyPool) UsedConnectionCount() int {
-	r.m.Lock()
-	defer r.m.Unlock()
-
-	return int(r.ConnCount)
-}
-
-// IdleConnectionCount returns the number of idle connections in the connection keeper.
-// It returns the number of idle connections in the ConnectionKeeperData.
-//
-// Returns:
-//   - int: The number of idle connections in the ConnectionKeeperData.
-func (r *DummyPool) IdleConnectionCount() int {
-	r.m.Lock()
-	defer r.m.Unlock()
-
-	return int(r.IdleConnCount)
-}
-
-// QueueResidualSize returns the residual size of the queue.
-// It returns the number of elements in the queue.
-//
-// Returns:
-//   - int: The number of elements in the queue.
-func (r *DummyPool) QueueResidualSize() int {
-	r.m.Lock()
-	defer r.m.Unlock()
-
-	return int(r.QueueSize)
-}
-
-// Hostname returns the hostname associated with the DummyPool.
-//
-// Returns:
-//   - string: The hostname associated with the DummyPool.
-func (r *DummyPool) Hostname() string {
-	r.m.Lock()
-	defer r.m.Unlock()
-
-	return r.Host
-}
-
-// RouterName returns the name of the router associated with the ConnectionKeeperData.
-//
-// Returns:
-//   - string: The name of the router associated with the DummyPool.
-func (r *DummyPool) RouterName() string {
-	r.m.Lock()
-	defer r.m.Unlock()
-	return r.Router
-}
-
-// Rule returns a new instance of BackendRule based on the current DummyPool.
-// It copies the DB and Usr fields from the DummyPool and returns the new BackendRule.
-// The returned BackendRule is not a reference to the original DummyPool fields.
-// It is a new instance with the same values.
-//
-// Returns:
-//   - *config.BackendRule: The BackendRule created from the DummyPool.
-func (r *DummyPool) Rule() *config.BackendRule {
-	r.m.Lock()
-	defer r.m.Unlock()
-
-	return &config.BackendRule{
-		DB:  r.DB,
-		Usr: r.Usr,
-	}
-}
-
 // TODO : unit tests
 // TODO : implement
 func (r *DummyPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
@@ -155,4 +80,19 @@ func (r *DummyPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 // TODO : implement
 func (r *DummyPool) ForEach(cb func(p shard.Shardinfo) error) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "DummyPool.ForEach method unimplemented")
+}
+
+func (r *DummyPool) View() Statistics {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	return Statistics{
+		DB:                r.DB,
+		Usr:               r.Usr,
+		Hostname:          r.Host,
+		RouterName:        r.Router,
+		UsedConnections:   int(r.ConnCount),
+		IdleConnections:   int(r.IdleConnCount),
+		QueueResidualSize: int(r.QueueSize),
+	}
 }

@@ -51,34 +51,6 @@ func (mr *MockConnectionKepperMockRecorder) Discard(sh interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discard", reflect.TypeOf((*MockConnectionKepper)(nil).Discard), sh)
 }
 
-// Hostname mocks base method.
-func (m *MockConnectionKepper) Hostname() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hostname")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Hostname indicates an expected call of Hostname.
-func (mr *MockConnectionKepperMockRecorder) Hostname() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hostname", reflect.TypeOf((*MockConnectionKepper)(nil).Hostname))
-}
-
-// IdleConnectionCount mocks base method.
-func (m *MockConnectionKepper) IdleConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IdleConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// IdleConnectionCount indicates an expected call of IdleConnectionCount.
-func (mr *MockConnectionKepperMockRecorder) IdleConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockConnectionKepper)(nil).IdleConnectionCount))
-}
-
 // Put mocks base method.
 func (m *MockConnectionKepper) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -93,60 +65,18 @@ func (mr *MockConnectionKepperMockRecorder) Put(host interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockConnectionKepper)(nil).Put), host)
 }
 
-// QueueResidualSize mocks base method.
-func (m *MockConnectionKepper) QueueResidualSize() int {
+// View mocks base method.
+func (m *MockConnectionKepper) View() pool.Statistics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueueResidualSize")
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
 	return ret0
 }
 
-// QueueResidualSize indicates an expected call of QueueResidualSize.
-func (mr *MockConnectionKepperMockRecorder) QueueResidualSize() *gomock.Call {
+// View indicates an expected call of View.
+func (mr *MockConnectionKepperMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueResidualSize", reflect.TypeOf((*MockConnectionKepper)(nil).QueueResidualSize))
-}
-
-// RouterName mocks base method.
-func (m *MockConnectionKepper) RouterName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouterName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// RouterName indicates an expected call of RouterName.
-func (mr *MockConnectionKepperMockRecorder) RouterName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouterName", reflect.TypeOf((*MockConnectionKepper)(nil).RouterName))
-}
-
-// Rule mocks base method.
-func (m *MockConnectionKepper) Rule() *config.BackendRule {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rule")
-	ret0, _ := ret[0].(*config.BackendRule)
-	return ret0
-}
-
-// Rule indicates an expected call of Rule.
-func (mr *MockConnectionKepperMockRecorder) Rule() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockConnectionKepper)(nil).Rule))
-}
-
-// UsedConnectionCount mocks base method.
-func (m *MockConnectionKepper) UsedConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UsedConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// UsedConnectionCount indicates an expected call of UsedConnectionCount.
-func (mr *MockConnectionKepperMockRecorder) UsedConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsedConnectionCount", reflect.TypeOf((*MockConnectionKepper)(nil).UsedConnectionCount))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockConnectionKepper)(nil).View))
 }
 
 // MockPool is a mock of Pool interface.
@@ -215,34 +145,6 @@ func (mr *MockPoolMockRecorder) ForEach(cb interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEach", reflect.TypeOf((*MockPool)(nil).ForEach), cb)
 }
 
-// Hostname mocks base method.
-func (m *MockPool) Hostname() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hostname")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Hostname indicates an expected call of Hostname.
-func (mr *MockPoolMockRecorder) Hostname() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hostname", reflect.TypeOf((*MockPool)(nil).Hostname))
-}
-
-// IdleConnectionCount mocks base method.
-func (m *MockPool) IdleConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IdleConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// IdleConnectionCount indicates an expected call of IdleConnectionCount.
-func (mr *MockPoolMockRecorder) IdleConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockPool)(nil).IdleConnectionCount))
-}
-
 // Put mocks base method.
 func (m *MockPool) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -257,60 +159,18 @@ func (mr *MockPoolMockRecorder) Put(host interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockPool)(nil).Put), host)
 }
 
-// QueueResidualSize mocks base method.
-func (m *MockPool) QueueResidualSize() int {
+// View mocks base method.
+func (m *MockPool) View() pool.Statistics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueueResidualSize")
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
 	return ret0
 }
 
-// QueueResidualSize indicates an expected call of QueueResidualSize.
-func (mr *MockPoolMockRecorder) QueueResidualSize() *gomock.Call {
+// View indicates an expected call of View.
+func (mr *MockPoolMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueResidualSize", reflect.TypeOf((*MockPool)(nil).QueueResidualSize))
-}
-
-// RouterName mocks base method.
-func (m *MockPool) RouterName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouterName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// RouterName indicates an expected call of RouterName.
-func (mr *MockPoolMockRecorder) RouterName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouterName", reflect.TypeOf((*MockPool)(nil).RouterName))
-}
-
-// Rule mocks base method.
-func (m *MockPool) Rule() *config.BackendRule {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rule")
-	ret0, _ := ret[0].(*config.BackendRule)
-	return ret0
-}
-
-// Rule indicates an expected call of Rule.
-func (mr *MockPoolMockRecorder) Rule() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockPool)(nil).Rule))
-}
-
-// UsedConnectionCount mocks base method.
-func (m *MockPool) UsedConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UsedConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// UsedConnectionCount indicates an expected call of UsedConnectionCount.
-func (mr *MockPoolMockRecorder) UsedConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsedConnectionCount", reflect.TypeOf((*MockPool)(nil).UsedConnectionCount))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockPool)(nil).View))
 }
 
 // MockMultiShardPool is a mock of MultiShardPool interface.
@@ -393,34 +253,6 @@ func (mr *MockMultiShardPoolMockRecorder) ForEachPool(cb interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockMultiShardPool)(nil).ForEachPool), cb)
 }
 
-// Hostname mocks base method.
-func (m *MockMultiShardPool) Hostname() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hostname")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Hostname indicates an expected call of Hostname.
-func (mr *MockMultiShardPoolMockRecorder) Hostname() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hostname", reflect.TypeOf((*MockMultiShardPool)(nil).Hostname))
-}
-
-// IdleConnectionCount mocks base method.
-func (m *MockMultiShardPool) IdleConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IdleConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// IdleConnectionCount indicates an expected call of IdleConnectionCount.
-func (mr *MockMultiShardPoolMockRecorder) IdleConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockMultiShardPool)(nil).IdleConnectionCount))
-}
-
 // Put mocks base method.
 func (m *MockMultiShardPool) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -435,48 +267,6 @@ func (mr *MockMultiShardPoolMockRecorder) Put(host interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockMultiShardPool)(nil).Put), host)
 }
 
-// QueueResidualSize mocks base method.
-func (m *MockMultiShardPool) QueueResidualSize() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueueResidualSize")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// QueueResidualSize indicates an expected call of QueueResidualSize.
-func (mr *MockMultiShardPoolMockRecorder) QueueResidualSize() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueResidualSize", reflect.TypeOf((*MockMultiShardPool)(nil).QueueResidualSize))
-}
-
-// RouterName mocks base method.
-func (m *MockMultiShardPool) RouterName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouterName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// RouterName indicates an expected call of RouterName.
-func (mr *MockMultiShardPoolMockRecorder) RouterName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouterName", reflect.TypeOf((*MockMultiShardPool)(nil).RouterName))
-}
-
-// Rule mocks base method.
-func (m *MockMultiShardPool) Rule() *config.BackendRule {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rule")
-	ret0, _ := ret[0].(*config.BackendRule)
-	return ret0
-}
-
-// Rule indicates an expected call of Rule.
-func (mr *MockMultiShardPoolMockRecorder) Rule() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockMultiShardPool)(nil).Rule))
-}
-
 // SetRule mocks base method.
 func (m *MockMultiShardPool) SetRule(rule *config.BackendRule) {
 	m.ctrl.T.Helper()
@@ -489,18 +279,18 @@ func (mr *MockMultiShardPoolMockRecorder) SetRule(rule interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockMultiShardPool)(nil).SetRule), rule)
 }
 
-// UsedConnectionCount mocks base method.
-func (m *MockMultiShardPool) UsedConnectionCount() int {
+// View mocks base method.
+func (m *MockMultiShardPool) View() pool.Statistics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UsedConnectionCount")
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
 	return ret0
 }
 
-// UsedConnectionCount indicates an expected call of UsedConnectionCount.
-func (mr *MockMultiShardPoolMockRecorder) UsedConnectionCount() *gomock.Call {
+// View indicates an expected call of View.
+func (mr *MockMultiShardPoolMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsedConnectionCount", reflect.TypeOf((*MockMultiShardPool)(nil).UsedConnectionCount))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockMultiShardPool)(nil).View))
 }
 
 // MockPoolIterator is a mock of PoolIterator interface.
@@ -620,34 +410,6 @@ func (mr *MockDBPoolMockRecorder) ForEachPool(cb interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockDBPool)(nil).ForEachPool), cb)
 }
 
-// Hostname mocks base method.
-func (m *MockDBPool) Hostname() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Hostname")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Hostname indicates an expected call of Hostname.
-func (mr *MockDBPoolMockRecorder) Hostname() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hostname", reflect.TypeOf((*MockDBPool)(nil).Hostname))
-}
-
-// IdleConnectionCount mocks base method.
-func (m *MockDBPool) IdleConnectionCount() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IdleConnectionCount")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// IdleConnectionCount indicates an expected call of IdleConnectionCount.
-func (mr *MockDBPoolMockRecorder) IdleConnectionCount() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IdleConnectionCount", reflect.TypeOf((*MockDBPool)(nil).IdleConnectionCount))
-}
-
 // Put mocks base method.
 func (m *MockDBPool) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
@@ -660,48 +422,6 @@ func (m *MockDBPool) Put(host shard.Shard) error {
 func (mr *MockDBPoolMockRecorder) Put(host interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockDBPool)(nil).Put), host)
-}
-
-// QueueResidualSize mocks base method.
-func (m *MockDBPool) QueueResidualSize() int {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueueResidualSize")
-	ret0, _ := ret[0].(int)
-	return ret0
-}
-
-// QueueResidualSize indicates an expected call of QueueResidualSize.
-func (mr *MockDBPoolMockRecorder) QueueResidualSize() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueueResidualSize", reflect.TypeOf((*MockDBPool)(nil).QueueResidualSize))
-}
-
-// RouterName mocks base method.
-func (m *MockDBPool) RouterName() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouterName")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// RouterName indicates an expected call of RouterName.
-func (mr *MockDBPoolMockRecorder) RouterName() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouterName", reflect.TypeOf((*MockDBPool)(nil).RouterName))
-}
-
-// Rule mocks base method.
-func (m *MockDBPool) Rule() *config.BackendRule {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rule")
-	ret0, _ := ret[0].(*config.BackendRule)
-	return ret0
-}
-
-// Rule indicates an expected call of Rule.
-func (mr *MockDBPoolMockRecorder) Rule() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rule", reflect.TypeOf((*MockDBPool)(nil).Rule))
 }
 
 // SetRule mocks base method.
@@ -742,16 +462,16 @@ func (mr *MockDBPoolMockRecorder) ShardMapping() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShardMapping", reflect.TypeOf((*MockDBPool)(nil).ShardMapping))
 }
 
-// UsedConnectionCount mocks base method.
-func (m *MockDBPool) UsedConnectionCount() int {
+// View mocks base method.
+func (m *MockDBPool) View() pool.Statistics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UsedConnectionCount")
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "View")
+	ret0, _ := ret[0].(pool.Statistics)
 	return ret0
 }
 
-// UsedConnectionCount indicates an expected call of UsedConnectionCount.
-func (mr *MockDBPoolMockRecorder) UsedConnectionCount() *gomock.Call {
+// View indicates an expected call of View.
+func (mr *MockDBPoolMockRecorder) View() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsedConnectionCount", reflect.TypeOf((*MockDBPool)(nil).UsedConnectionCount))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "View", reflect.TypeOf((*MockDBPool)(nil).View))
 }

@@ -244,15 +244,16 @@ func (pi *PSQLInteractor) Pools(_ context.Context, ps []pool.Pool) error {
 		return err
 	}
 	for _, p := range ps {
+		statistics := p.View()
 		if err := pi.WriteDataRow(
 			fmt.Sprintf("%p", p),
-			p.RouterName(),
-			p.Rule().DB,
-			p.Rule().Usr,
-			p.Hostname(),
-			fmt.Sprintf("%d", p.UsedConnectionCount()),
-			fmt.Sprintf("%d", p.IdleConnectionCount()),
-			fmt.Sprintf("%d", p.QueueResidualSize())); err != nil {
+			statistics.RouterName,
+			statistics.DB,
+			statistics.Usr,
+			statistics.Hostname,
+			fmt.Sprintf("%d", statistics.UsedConnections),
+			fmt.Sprintf("%d", statistics.IdleConnections),
+			fmt.Sprintf("%d", statistics.QueueResidualSize)); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}

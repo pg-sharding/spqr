@@ -85,6 +85,21 @@ func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.Backend
 	return ret
 }
 
+func (h *shardPool) View() Statistics {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	return Statistics{
+		DB:                h.beRule.DB,
+		Usr:               h.beRule.Usr,
+		Hostname:          h.host,
+		RouterName:        h.RouterName(),
+		UsedConnections:   len(h.active),
+		IdleConnections:   len(h.pool),
+		QueueResidualSize: len(h.queue),
+	}
+}
+
 // Hostname returns the hostname of the shardPool.
 //
 // Returns:
@@ -460,6 +475,7 @@ func (c *cPool) Discard(sh shard.Shard) error {
 //
 // Parameters:
 //   - rule: The backend rule to be set for the cPool.
+//
 // TODO : unit tests
 func (c *cPool) SetRule(rule *config.BackendRule) {
 	c.beRule = rule
