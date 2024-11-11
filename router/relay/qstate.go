@@ -119,8 +119,29 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					rst.Client().SetRouteHint(routeHint)
 				} else {
 					spqrlog.Zero.Debug().Err(err).Msg("failed to deparse routing hint")
+					return err
 				}
 			}
+
+			if val, ok := mp[session.SPQR_AUTO_DISTRIBUTION]; ok {
+				if valDistrib, ok := mp[session.SPQR_DISTRIBUTION_KEY]; ok {
+					_, err = rst.QueryRouter().Mgr().GetDistribution(context.TODO(), val)
+					if err != nil {
+						return err
+					}
+
+					/* This is an ddl query, which creates relation along with attaching to dsitribution */
+					rst.Client().SetAutoDistribution(val)
+					rst.Client().SetDistributionKey(valDistrib)
+
+					/* this is too early to do anything with distribution hint, as we do not yet parsed
+					* DDL of about-to-be-created relation
+					 */
+				} else {
+					return fmt.Errorf("spqr distribution specified, but distribution key omitted.")
+				}
+			}
+
 		}
 
 		return binderQ()

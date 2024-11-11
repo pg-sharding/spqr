@@ -10,6 +10,12 @@ type SessionParamsHolder interface {
 	DefaultRouteBehaviour() string
 	SetDefaultRouteBehaviour(string)
 
+	SetAutoDistribution(string)
+	AutoDistribution() string
+
+	SetDistributionKey(string)
+	DistributionKey() string
+
 	// Get current session distribution
 	Distribution() string
 	SetDistribution(string)
@@ -37,6 +43,8 @@ type SessionParamsHolder interface {
 const (
 	SPQR_DISTRIBUTION            = "__spqr__distribution"
 	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
+	SPQR_AUTO_DISTRIBUTION       = "__spqr__auto_distribution"
+	SPQR_DISTRIBUTION_KEY        = "__spqr__distribution_key"
 	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"
 	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"

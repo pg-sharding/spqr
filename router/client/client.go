@@ -132,6 +132,26 @@ func (cl *PsqlClient) SetDistribution(val string) {
 	cl.activeParamSet[session.SPQR_DISTRIBUTION] = val
 }
 
+// SetAutoDistribution implements RouterClient.
+func (cl *PsqlClient) SetAutoDistribution(val string) {
+	cl.activeParamSet[session.SPQR_AUTO_DISTRIBUTION] = val
+}
+
+// AutoDistribution implements RouterClient.
+func (cl *PsqlClient) AutoDistribution() string {
+	return cl.activeParamSet[session.SPQR_AUTO_DISTRIBUTION]
+}
+
+// SetDistributionKey implements RouterClient.
+func (cl *PsqlClient) SetDistributionKey(val string) {
+	cl.activeParamSet[session.SPQR_DISTRIBUTION_KEY] = val
+}
+
+// DistributionKey implements RouterClient.
+func (cl *PsqlClient) DistributionKey() string {
+	return cl.activeParamSet[session.SPQR_DISTRIBUTION_KEY]
+}
+
 // MaintainParams implements RouterClient.
 func (cl *PsqlClient) MaintainParams() bool {
 	return cl.maintain_params
