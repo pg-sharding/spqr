@@ -74,6 +74,11 @@ func (m *MultiShardServer) Reset() error {
 }
 
 func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) error {
+	for _, piv := range m.activeShards {
+		if piv.SHKey().Name == shkey.Name {
+			return fmt.Errorf("multishard connection already use %v", shkey.Name)
+		}
+	}
 	sh, err := m.pool.Connection(clid, shkey, tsa)
 	if err != nil {
 		return err

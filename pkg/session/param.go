@@ -16,6 +16,9 @@ type SessionParamsHolder interface {
 	SetDistributionKey(string)
 	DistributionKey() string
 
+	AllowMultishard() bool
+	SetAllowMultishard(bool)
+
 	// Get current session distribution
 	Distribution() string
 	SetDistribution(string)
@@ -45,6 +48,7 @@ const (
 	SPQR_DEFAULT_ROUTE_BEHAVIOUR = "__spqr__default_route_behaviour"
 	SPQR_AUTO_DISTRIBUTION       = "__spqr__auto_distribution"
 	SPQR_DISTRIBUTION_KEY        = "__spqr__distribution_key"
+	SPQR_ALLOW_MULTISHARD        = "__spqr__allow_multishard"
 	SPQR_SHARDING_KEY            = "__spqr__sharding_key"
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"
 	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"
