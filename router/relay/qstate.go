@@ -119,7 +119,6 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					rst.Client().SetRouteHint(routeHint)
 				} else {
 					spqrlog.Zero.Debug().Err(err).Msg("failed to deparse routing hint")
-					return err
 				}
 			}
 

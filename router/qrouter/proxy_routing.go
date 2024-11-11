@@ -876,7 +876,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 				/* pre-attach relation to its distribution
 				 * sic! this is not transactional not abortable
 				 */
-				qr.mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
+				if err := qr.mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
 					{
 						Name: q.RelationName,
 						DistributionKey: []distributions.DistributionKeyEntry{
@@ -886,7 +886,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 							},
 						},
 					},
-				})
+				}); err != nil {
+					return nil, err
+				}
 			}
 		}
 		/*
