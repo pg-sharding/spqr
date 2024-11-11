@@ -11,6 +11,26 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 }
 
+// DistributionKey implements SessionParamsHolder.
+func (t *DummySessionParamHandler) DistributionKey() string {
+	return ""
+}
+
+// SetDistributionKey implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetDistributionKey(string) {
+
+}
+
+// AutoDistribution implements SessionParamsHolder.
+func (t *DummySessionParamHandler) AutoDistribution() string {
+	return ""
+}
+
+// SetAutoDistribution implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetAutoDistribution(string) {
+
+}
+
 // MaintainParams implements SessionParamsHolder.
 func (t *DummySessionParamHandler) MaintainParams() bool {
 	panic("unimplemented")

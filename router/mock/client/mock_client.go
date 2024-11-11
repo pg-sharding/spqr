@@ -99,6 +99,20 @@ func (mr *MockRouterClientMockRecorder) Auth(rt interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Auth", reflect.TypeOf((*MockRouterClient)(nil).Auth), rt)
 }
 
+// AutoDistribution mocks base method.
+func (m *MockRouterClient) AutoDistribution() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AutoDistribution")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// AutoDistribution indicates an expected call of AutoDistribution.
+func (mr *MockRouterClientMockRecorder) AutoDistribution() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AutoDistribution", reflect.TypeOf((*MockRouterClient)(nil).AutoDistribution))
+}
+
 // BindParamFormatCodes mocks base method.
 func (m *MockRouterClient) BindParamFormatCodes() []int16 {
 	m.ctrl.T.Helper()
@@ -249,6 +263,20 @@ func (m *MockRouterClient) Distribution() string {
 func (mr *MockRouterClientMockRecorder) Distribution() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Distribution", reflect.TypeOf((*MockRouterClient)(nil).Distribution))
+}
+
+// DistributionKey mocks base method.
+func (m *MockRouterClient) DistributionKey() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DistributionKey")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// DistributionKey indicates an expected call of DistributionKey.
+func (mr *MockRouterClientMockRecorder) DistributionKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockRouterClient)(nil).DistributionKey))
 }
 
 // GetCancelKey mocks base method.
@@ -863,6 +891,18 @@ func (mr *MockRouterClientMockRecorder) SetAuthType(arg0 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAuthType", reflect.TypeOf((*MockRouterClient)(nil).SetAuthType), arg0)
 }
 
+// SetAutoDistribution mocks base method.
+func (m *MockRouterClient) SetAutoDistribution(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetAutoDistribution", arg0)
+}
+
+// SetAutoDistribution indicates an expected call of SetAutoDistribution.
+func (mr *MockRouterClientMockRecorder) SetAutoDistribution(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAutoDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetAutoDistribution), arg0)
+}
+
 // SetBindParams mocks base method.
 func (m *MockRouterClient) SetBindParams(arg0 [][]byte) {
 	m.ctrl.T.Helper()
@@ -897,6 +937,18 @@ func (m *MockRouterClient) SetDistribution(arg0 string) {
 func (mr *MockRouterClientMockRecorder) SetDistribution(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), arg0)
+}
+
+// SetDistributionKey mocks base method.
+func (m *MockRouterClient) SetDistributionKey(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetDistributionKey", arg0)
+}
+
+// SetDistributionKey indicates an expected call of SetDistributionKey.
+func (mr *MockRouterClientMockRecorder) SetDistributionKey(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), arg0)
 }
 
 // SetMaintainParams mocks base method.

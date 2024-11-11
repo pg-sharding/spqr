@@ -868,6 +868,29 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
+		if val := sph.AutoDistribution(); val != "" {
+
+			switch q := node.TableRv.(type) {
+			case *lyx.RangeVar:
+
+				/* pre-attach relation to its distribution
+				 * sic! this is not transactional not abortable
+				 */
+				if err := qr.mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
+					{
+						Name: q.RelationName,
+						DistributionKey: []distributions.DistributionKeyEntry{
+							{
+								Column: sph.DistributionKey(),
+								/* support hash function here */
+							},
+						},
+					},
+				}); err != nil {
+					return nil, err
+				}
+			}
+		}
 		/*
 		 * Disallow to create table which does not contain any sharding column
 		 */
