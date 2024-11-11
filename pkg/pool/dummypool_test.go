@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestCoordConnectionKepperRule tests the Rule method of the ConnectionKepperData struct.
-func TestCoordConnectionKepperRule(t *testing.T) {
+// TestDummyPoolRule tests the Rule method of the DummyPool struct.
+func TestDummyPoolRule(t *testing.T) {
 	assert := assert.New(t)
 
-	k := pool.ConnectionKepperData{
+	k := pool.DummyPool{
 		DB:  "db",
 		Usr: "usr",
 	}
@@ -23,32 +23,32 @@ func TestCoordConnectionKepperRule(t *testing.T) {
 	assert.Equal("usr", br.Usr)
 }
 
-// TestCoordConnectionKepperHostname is a unit test function that tests the Hostname method of the ConnectionKepperData struct.
+// TestDummyPoolHostname is a unit test function that tests the Hostname method of the DummyPool struct.
 // It asserts that the Hostname method returns the expected hostname value.
-func TestCoordConnectionKepperHostname(t *testing.T) {
+func TestDummyPoolHostname(t *testing.T) {
 	assert := assert.New(t)
 
-	k := pool.ConnectionKepperData{
+	k := pool.DummyPool{
 		Host: "host",
 	}
 
 	assert.Equal("host", k.Hostname())
 }
 
-// TestCoordConnectionKepperQueueResidualSize tests the QueueResidualSize method of the ConnectionKepperData struct.
-func TestCoordConnectionKepperQueueResidualSize(t *testing.T) {
+// TestDummyPoolQueueResidualSize tests the QueueResidualSize method of the DummyPool struct.
+func TestDummyPoolQueueResidualSize(t *testing.T) {
 	assert := assert.New(t)
-	k := pool.ConnectionKepperData{
+	k := pool.DummyPool{
 		QueueSize: 3,
 	}
 
 	assert.Equal(3, k.QueueResidualSize())
 }
 
-// TestCoordConnectionKepperConnectionCount is a unit test function that tests the connection count methods of the ConnectionKepperData struct.
-func TestCoordConnectionKepperConnectionCount(t *testing.T) {
+// TestDummyPoolConnectionCount is a unit test function that tests the connection count methods of the DummyPool struct.
+func TestDummyPoolConnectionCount(t *testing.T) {
 	assert := assert.New(t)
-	k := pool.ConnectionKepperData{
+	k := pool.DummyPool{
 		ConnCount:     1,
 		IdleConnCount: 2,
 	}
@@ -57,11 +57,11 @@ func TestCoordConnectionKepperConnectionCount(t *testing.T) {
 	assert.Equal(2, k.IdleConnectionCount())
 }
 
-// TestCoordConnectionKepperControlling is a unit test function that tests the controlling behavior of the CoordConnectionKepper.
-// It verifies that the Put and Discard methods of the ConnectionKepperData struct return errors as expected.
-func TestCoordConnectionKepperControlling(t *testing.T) {
+// TestDummyPoolControlling is a unit test function that tests the controlling behavior of the DummyPool.
+// It verifies that the Put and Discard methods of the DummyPool struct return errors as expected.
+func TestDummyPoolControlling(t *testing.T) {
 	assert := assert.New(t)
-	k := pool.ConnectionKepperData{}
+	k := pool.DummyPool{}
 	err := k.Put(&datashard.Conn{})
 	err1 := k.Discard(&datashard.Conn{})
 
@@ -69,10 +69,10 @@ func TestCoordConnectionKepperControlling(t *testing.T) {
 	assert.Error(err1)
 }
 
-// TestCoordConnectionKepperThreading tests the threading behavior of the CoordConnectionKepper.
-func TestCoordConnectionKepperThreading(t *testing.T) {
+// TestDummyPoolThreading tests the threading behavior of the DummyPool.
+func TestDummyPoolThreading(t *testing.T) {
 	assert := assert.New(t)
-	inf := &pool.ConnectionKepperData{
+	inf := &pool.DummyPool{
 		Id:            "id",
 		DB:            "db",
 		Usr:           "usr",
