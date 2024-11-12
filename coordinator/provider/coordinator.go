@@ -158,7 +158,7 @@ func (ci grpcConnectionIterator) ForEachPool(cb func(p pool.Pool) error) error {
 		}
 
 		for _, p := range resp.Pools {
-			err = cb(pool.NewDummyPool(p))
+			err = cb(pool.NewPoolView(p))
 			if err != nil {
 				return err
 			}

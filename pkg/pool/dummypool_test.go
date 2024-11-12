@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDummyPoolThreading tests the threading behavior of the DummyPool.
-func TestDummyPoolThreading(t *testing.T) {
+// TestPoolViewThreading tests the threading behavior of the PoolView.
+func TestPoolViewThreading(t *testing.T) {
 	assert := assert.New(t)
-	inf := &pool.DummyPool{
+	inf := &pool.PoolView{
 		Id:            "id",
 		DB:            "db",
 		Usr:           "usr",
