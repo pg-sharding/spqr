@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 
@@ -659,7 +661,6 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, expRoute *routingstate.DataShardRoute) ([]byte, error) {
 	var leftOvermsgData []byte = nil
-	valueClause := &lyx.ValueClause{}
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -682,6 +683,50 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 			}
 		}
 	}
+	var relname string
+
+	switch q := stmt.TableRef.(type) {
+	case *lyx.RangeVar:
+		relname = q.RelationName
+	}
+
+	ctx := context.TODO()
+
+	values := make([]interface{}, 0)
+
+	// TODO: check by whole RFQN
+	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
+	if err != nil {
+		return nil, err
+	}
+
+	TargetType := ds.ColTypes[0]
+
+	if len(ds.ColTypes) != 1 {
+		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
+	}
+
+	if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[0].HashFunction); err != nil {
+		return nil, err
+	} else if v != hashfunction.HashFunctionIdent {
+		return nil, fmt.Errorf("multi-column copy HASH based processing is not yet supported")
+	}
+
+	krs, err := rst.Qr.Mgr().ListKeyRanges(ctx, ds.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	colOffset := -1
+	for indx, c := range stmt.Columns {
+		if c == ds.Relations[relname].DistributionKey[0].Column {
+			colOffset = indx
+			break
+		}
+	}
+	if colOffset == -1 {
+		return nil, fmt.Errorf("failed to resolve target copy column offset")
+	}
 
 	rowsMp := map[string][]byte{}
 
@@ -689,13 +734,32 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 	// and decide where to route
 	prevDelimiter := 0
 	prevLine := 0
+	currentAttr := 0
+
 	for i, b := range data.Data {
 		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
 			prevLine = len(data.Data)
 			break
 		}
 		if b == '\n' || b == delimiter {
-			valueClause.Values = append(valueClause.Values, &lyx.AExprSConst{Value: string(data.Data[prevDelimiter:i])})
+
+			if currentAttr == colOffset {
+				switch TargetType {
+				case "varchar":
+					values = append(values, string(data.Data[prevDelimiter:i]))
+				case "integer":
+					n, err := strconv.ParseInt(string(data.Data[prevDelimiter:i]), 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					values = append(values, n)
+
+				default:
+					return nil, fmt.Errorf("copy type%v not supported", TargetType)
+				}
+			}
+
+			currentAttr++
 			prevDelimiter = i + 1
 		}
 		if b != '\n' {
@@ -703,28 +767,28 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 		}
 
 		// check where this tuple should go
-		r, err := rst.QueryRouter().Route(context.TODO(), &lyx.Insert{TableRef: stmt.TableRef, Columns: stmt.Columns, SubSelect: valueClause}, rst.Cl)
+		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(context.TODO(), []interface{}{values[colOffset]}, krs)
 		if err != nil {
 			return nil, err
 		}
 
-		smt, ok := r.(routingstate.ShardMatchState)
-		if !ok {
-			return nil, fmt.Errorf("multishard copy is not supported: %+v - %+v at line number %d %d %v", smt, valueClause.Values[0], prevLine, i, b)
+		if currroute == nil {
+			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
 		}
 
 		if !allow_multishard {
 			if expRoute.Shkey.Name == "" {
-				*expRoute = *smt.Route
+				*expRoute = *currroute
 			}
 		}
 
-		if !allow_multishard && smt.Route.Shkey.Name != expRoute.Shkey.Name {
+		if !allow_multishard && currroute.Shkey.Name != expRoute.Shkey.Name {
 			return nil, fmt.Errorf("multishard copy is not supported")
 		}
 
-		valueClause = &lyx.ValueClause{}
-		rowsMp[smt.Route.Shkey.Name] = append(rowsMp[smt.Route.Shkey.Name], data.Data[prevLine:i+1]...)
+		values = nil
+		rowsMp[currroute.Shkey.Name] = append(rowsMp[currroute.Shkey.Name], data.Data[prevLine:i+1]...)
+		currentAttr = 0
 		prevLine = i + 1
 	}
 
