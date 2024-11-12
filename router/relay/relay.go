@@ -730,7 +730,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 
 	if prevLine != len(data.Data) {
 		if spqrlog.IsDebugLevel() {
-			rst.Client().ReplyNotice(fmt.Sprintf("leftover data saved to next iter %d - %d", prevLine, len(data.Data)))
+			_ = rst.Client().ReplyNotice(fmt.Sprintf("leftover data saved to next iter %d - %d", prevLine, len(data.Data)))
 		}
 		leftOvermsgData = data.Data[prevLine:len(data.Data)]
 	}
