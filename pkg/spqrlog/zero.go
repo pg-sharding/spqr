@@ -87,3 +87,7 @@ func parseLevel(level string) zerolog.Level {
 		return zerolog.InfoLevel
 	}
 }
+
+func IsDebugLevel() bool {
+	return Zero.GetLevel() == zerolog.DebugLevel
+}

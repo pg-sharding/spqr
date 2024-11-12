@@ -354,6 +354,9 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
+	/* this is non-multishard tests */
+	cl.EXPECT().AllowMultishard().Return(false).AnyTimes()
+
 	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
 

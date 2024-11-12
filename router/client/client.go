@@ -142,6 +142,20 @@ func (cl *PsqlClient) AutoDistribution() string {
 	return cl.activeParamSet[session.SPQR_AUTO_DISTRIBUTION]
 }
 
+// SetAllowMultishard implements RouterClient.
+func (cl *PsqlClient) SetAllowMultishard(val bool) {
+	if val {
+		cl.activeParamSet[session.SPQR_ALLOW_MULTISHARD] = "ok"
+	} else {
+		cl.activeParamSet[session.SPQR_ALLOW_MULTISHARD] = "no"
+	}
+}
+
+// AllowMultishard implements RouterClient.
+func (cl *PsqlClient) AllowMultishard() bool {
+	return cl.activeParamSet[session.SPQR_ALLOW_MULTISHARD] == "ok"
+}
+
 // SetDistributionKey implements RouterClient.
 func (cl *PsqlClient) SetDistributionKey(val string) {
 	cl.activeParamSet[session.SPQR_DISTRIBUTION_KEY] = val

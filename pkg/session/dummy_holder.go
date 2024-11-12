@@ -11,6 +11,16 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 }
 
+// AllowMultishard implements SessionParamsHolder.
+func (t *DummySessionParamHandler) AllowMultishard() bool {
+	panic("unimplemented")
+}
+
+// SetAllowMultishard implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetAllowMultishard(bool) {
+	panic("unimplemented")
+}
+
 // DistributionKey implements SessionParamsHolder.
 func (t *DummySessionParamHandler) DistributionKey() string {
 	return ""
