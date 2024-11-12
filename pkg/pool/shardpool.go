@@ -49,15 +49,8 @@ var _ Pool = &shardPool{}
 // Returns:
 //   - Pool: The created instance of shardPool.
 func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
-	connLimit := defaultInstanceConnectionLimit
-	connRetries := defaultInstanceConnectionRetries
-	if beRule.ConnectionLimit != 0 {
-		connLimit = beRule.ConnectionLimit
-	}
-
-	if beRule.ConnectionRetries != 0 {
-		connRetries = beRule.ConnectionRetries
-	}
+	connLimit := config.ValueOrDefaultInt(beRule.ConnectionLimit, defaultInstanceConnectionLimit)
+	connRetries := config.ValueOrDefaultInt(beRule.ConnectionRetries, defaultInstanceConnectionRetries)
 
 	ret := &shardPool{
 		mu:                         sync.Mutex{},
@@ -118,10 +111,7 @@ func (h *shardPool) View() Statistics {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (h *shardPool) Connection(
-	clid uint,
-	shardKey kr.ShardKey) (shard.Shard, error) {
-
+func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
 	if err := func() error {
 		for rep := 0; rep < h.ConnectionRetries; rep++ {
 			select {

@@ -71,8 +71,6 @@ type Shard interface {
 	prepstatement.PreparedStatementHolder
 	Shardinfo
 
-	Cfg() *config.Shard
-
 	Name() string
 	SHKey() kr.ShardKey
 	Send(query pgproto3.FrontendMessage) error
