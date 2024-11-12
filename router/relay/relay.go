@@ -755,7 +755,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 					values = append(values, n)
 
 				default:
-					return nil, fmt.Errorf("copy type%v not supported", TargetType)
+					return nil, fmt.Errorf("copy type %v not supported", TargetType)
 				}
 			}
 
@@ -767,7 +767,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 		}
 
 		// check where this tuple should go
-		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(context.TODO(), []interface{}{values[colOffset]}, krs)
+		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, []interface{}{values[colOffset]}, krs)
 		if err != nil {
 			return nil, err
 		}
@@ -916,8 +916,6 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 					switch newMsg := cpMsg.(type) {
 					case *pgproto3.CopyData:
 						leftOvermsgData = append(leftOvermsgData, newMsg.Data...)
-
-						// leftOvermsgData = append(leftOvermsgData, newMsg.Data...)
 
 						if leftOvermsgData, err = rst.ProcCopy(q, &pgproto3.CopyData{Data: leftOvermsgData}, route); err != nil {
 							return err
