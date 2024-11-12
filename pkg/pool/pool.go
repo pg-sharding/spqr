@@ -19,15 +19,17 @@ const (
 type ConnectionKepper interface {
 	Put(host shard.Shard) error
 	Discard(sh shard.Shard) error
+	View() Statistics
+}
 
-	UsedConnectionCount() int
-	IdleConnectionCount() int
-	QueueResidualSize() int
-
-	Hostname() string
-	RouterName() string
-
-	Rule() *config.BackendRule
+type Statistics struct {
+	DB                string
+	Usr               string
+	Hostname          string
+	RouterName        string
+	UsedConnections   int
+	IdleConnections   int
+	QueueResidualSize int
 }
 
 /* dedicated host connection pool */
@@ -55,8 +57,6 @@ type PoolIterator interface {
 type ConnectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
 
 type DBPool interface {
-	shard.ShardIterator
-	PoolIterator
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
