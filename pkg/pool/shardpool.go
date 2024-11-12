@@ -93,65 +93,11 @@ func (h *shardPool) View() Statistics {
 		DB:                h.beRule.DB,
 		Usr:               h.beRule.Usr,
 		Hostname:          h.host,
-		RouterName:        h.RouterName(),
+		RouterName:        "unknown",
 		UsedConnections:   len(h.active),
 		IdleConnections:   len(h.pool),
 		QueueResidualSize: len(h.queue),
 	}
-}
-
-// Hostname returns the hostname of the shardPool.
-//
-// Returns:
-//   - string: The hostname of the shardPool.
-func (h *shardPool) Hostname() string {
-	return h.host
-}
-
-// RouterName returns the name of the router.
-//
-// Returns:
-//   - string: The name of the router.
-func (h *shardPool) RouterName() string {
-	return "unimplemented"
-}
-
-// Rule returns the backend rule associated with the shard pool.
-//
-// Returns:
-//   - *config.BackendRule: The backend rule associated with the shard pool.
-func (h *shardPool) Rule() *config.BackendRule {
-	return h.beRule
-}
-
-// UsedConnectionCount returns the number of currently used connections in the shard pool.
-//
-// Returns:
-//   - int: The number of currently used connections in the shard pool.
-func (s *shardPool) UsedConnectionCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.active)
-}
-
-// IdleConnectionCount returns the number of idle connections in the shard pool.
-//
-// Returns:
-//   - int: The number of idle connections in the shard pool.
-func (s *shardPool) IdleConnectionCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.pool)
-}
-
-// QueueResidualSize returns the number of elements in the queue of the shard pool.
-//
-// Returns:
-//   - int: The number of elements in the queue of the shard pool.
-func (s *shardPool) QueueResidualSize() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.queue)
 }
 
 // Connection retrieves a connection to a shard based on the provided client ID and shard key.
