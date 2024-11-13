@@ -126,7 +126,8 @@ func (c *PoolImpl) Shutdown() error {
 // ClientPoolForeach iterates over all clients in the client pool and executes the provided function for each client.
 //
 // The provided function should have the following signature:
-//   func(clientID uint, client Client) error
+//
+//	func(clientID uint, client Client) error
 //
 // Parameters:
 //   - f (func): The function to be executed for each client.
@@ -146,7 +147,6 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 	return nil
 }
-
 
 // NewClientPool creates a new instance of the PoolImpl struct, which implements the Pool interface.
 //

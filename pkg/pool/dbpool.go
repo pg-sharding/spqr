@@ -411,7 +411,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 

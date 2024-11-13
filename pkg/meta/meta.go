@@ -122,10 +122,8 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		if err != nil {
 			return err
 		}
+
 		ret := make([]string, 0)
-		if err != nil {
-			return err
-		}
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {

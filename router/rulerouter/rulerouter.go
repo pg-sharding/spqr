@@ -16,7 +16,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
@@ -31,16 +30,9 @@ type RuleRouter interface {
 	Shutdown() error
 	Reload(configPath string) error
 	PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error)
-	PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error)
-	ObsoleteRoute(key route.Key) error
 
-	AddDataShard(key qdb.ShardKey) error
-	AddWorldShard(key qdb.ShardKey) error
-	AddShardInstance(key qdb.ShardKey, host string)
-
-	CancelClient(csm *pgproto3.CancelRequest) error
 	AddClient(cl rclient.RouterClient)
-
+	CancelClient(csm *pgproto3.CancelRequest) error
 	ReleaseClient(cl rclient.RouterClient)
 
 	Config() *config.Router
@@ -59,21 +51,6 @@ type RuleRouterImpl struct {
 	clmp map[uint32]rclient.RouterClient
 
 	notifier *notifier.Notifier
-}
-
-func (r *RuleRouterImpl) AddWorldShard(key qdb.ShardKey) error {
-	spqrlog.Zero.Info().
-		Str("shard name", key.Name).
-		Msg("added world datashard to rrouter")
-	return nil
-}
-
-func (r *RuleRouterImpl) AddShardInstance(key qdb.ShardKey, host string) {
-	panic("implement me")
-}
-
-func (r *RuleRouterImpl) AddDataShard(key qdb.ShardKey) error {
-	return nil
 }
 
 func (r *RuleRouterImpl) Shutdown() error {
@@ -185,7 +162,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	}
 
 	if pt == port.ADMRouterPortType || cl.DB() == "spqr-console" {
-		return r.PreRouteInitializedClientAdm(cl)
+		return r.preRouteInitializedClientAdm(cl)
 	}
 
 	// match client to frontend rule
@@ -235,9 +212,6 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("client auth succeeded")
 
-	if err != nil {
-		return nil, err
-	}
 	if err := cl.AssignRoute(rt); err != nil {
 		return nil, err
 	}
@@ -248,7 +222,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 }
 
 // TODO : unit tests
-func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
+func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (rclient.RouterClient, error) {
 	key := *route.NewRouteKey(cl.Usr(), cl.DB())
 	frRule, err := r.rmgr.MatchKeyFrontend(key)
 	if err != nil {
@@ -272,30 +246,6 @@ func (r *RuleRouterImpl) PreRouteInitializedClientAdm(cl rclient.RouterClient) (
 	}
 
 	return cl, nil
-}
-
-// TODO : unit tests
-func (r *RuleRouterImpl) ListShards() []string {
-	var ret []string
-
-	for _, sh := range r.rcfg.ShardMapping {
-		ret = append(ret, sh.Hosts[0])
-	}
-
-	return ret
-}
-
-// TODO : unit tests
-func (r *RuleRouterImpl) ObsoleteRoute(key route.Key) error {
-	rt := r.routePool.Obsolete(key)
-
-	if err := rt.NofityClients(func(cl client.ClientInfo) error {
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // TODO : unit tests

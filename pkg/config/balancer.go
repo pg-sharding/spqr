@@ -37,7 +37,7 @@ var cfgBalancer Balancer
 // LoadBalancerCfg loads the balancer configuration from the specified file path.
 //
 // Parameters:
-//  - cfgPath (string): The path of the configuration file.
+//   - cfgPath (string): The path of the configuration file.
 //
 // Returns:
 //   - error: an error if any occurred during the loading process.
@@ -70,6 +70,7 @@ func LoadBalancerCfg(cfgPath string) error {
 // Parameters:
 //   - file (*os.File): the file containing the configuration data.
 //   - filepath (string): the path of the configuration file.
+//
 // Returns:
 //   - error: an error if any occurred during the initialization process.
 func initBalancerConfig(file *os.File, filepath string) error {
@@ -85,7 +86,6 @@ func initBalancerConfig(file *os.File, filepath string) error {
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", filepath)
 }
-
 
 // BalancerConfig returns a pointer to the Balancer configuration.
 //
