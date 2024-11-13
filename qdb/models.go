@@ -57,14 +57,14 @@ func (r Router) Addr() string {
 }
 
 type Shard struct {
-	ID    string   `json:"id"`
-	Hosts []string `json:"hosts"`
+	ID       string   `json:"id"`
+	RawHosts []string `json:"hosts"` // format host:port:availability_zone
 }
 
 func NewShard(ID string, hosts []string) *Shard {
 	return &Shard{
-		ID:    ID,
-		Hosts: hosts,
+		ID:       ID,
+		RawHosts: hosts,
 	}
 }
 

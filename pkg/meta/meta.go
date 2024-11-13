@@ -227,7 +227,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		return cli.CreateKeyRange(ctx, req)
 	case *spqrparser.ShardDefinition:
 		dataShard := datashards.NewDataShard(stmt.Id, &config.Shard{
-			Hosts: stmt.Hosts,
+			RawHosts: stmt.Hosts,
 			Type:  config.DataShard,
 		})
 		if err := mngr.AddDataShard(ctx, dataShard); err != nil {

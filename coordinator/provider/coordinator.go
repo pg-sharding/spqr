@@ -1876,7 +1876,7 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 		shards = append(shards, &datashards.DataShard{
 			ID: shard.ID,
 			Cfg: &config.Shard{
-				Hosts: shard.Hosts,
+				RawHosts: shard.RawHosts,
 			},
 		})
 	}

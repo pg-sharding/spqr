@@ -282,7 +282,7 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataS
 		retShards = append(retShards, &datashards.DataShard{
 			ID: sh.ID,
 			Cfg: &config.Shard{
-				Hosts: sh.Hosts,
+				RawHosts: sh.RawHosts,
 			},
 		})
 	}
@@ -670,7 +670,7 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.Dat
 
 	return lc.qdb.AddShard(ctx, &qdb.Shard{
 		ID:    ds.ID,
-		Hosts: ds.Cfg.Hosts,
+		RawHosts: ds.Cfg.RawHosts,
 	})
 }
 

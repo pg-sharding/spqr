@@ -236,7 +236,7 @@ func (s *InstancePoolImpl) ConnectionWithTSA(
 		return nil, fmt.Errorf("shard with name %q not found", key.Name)
 	}
 
-	for _, host := range s.shardMapping[key.Name].Hosts {
+	for _, host := range s.shardMapping[key.Name].RawHosts {
 		tsaKey := TsaKey{
 			Tsa:  targetSessionAttrs,
 			Host: host,

@@ -816,7 +816,7 @@ func (q *EtcdQDB) ListRouters(ctx context.Context) ([]*Router, error) {
 func (q *EtcdQDB) AddShard(ctx context.Context, shard *Shard) error {
 	spqrlog.Zero.Debug().
 		Str("id", shard.ID).
-		Strs("hosts", shard.Hosts).
+		Strs("hosts", shard.RawHosts).
 		Msg("etcdqdb: add shard")
 
 	bytes, err := json.Marshal(shard)
@@ -882,7 +882,7 @@ func (q *EtcdQDB) GetShard(ctx context.Context, id string) (*Shard, error) {
 
 	for _, shard := range resp.Kvs {
 		// The Port field is always for a while.
-		shardInfo.Hosts = append(shardInfo.Hosts, string(shard.Value))
+		shardInfo.RawHosts = append(shardInfo.RawHosts, string(shard.Value))
 	}
 
 	return shardInfo, nil
