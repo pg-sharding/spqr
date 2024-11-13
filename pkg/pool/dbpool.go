@@ -24,12 +24,20 @@ type TsaKey struct {
 	Host string
 }
 
+type HostPickStrategy int
+
+const (
+	NaiveStrategy HostPickStrategy = iota
+	RandomShuffleStrategy
+	SameAvailabilityZoneStrategy
+)
+
 type InstancePoolImpl struct {
 	Pool
 	pool         MultiShardPool
 	shardMapping map[string]*config.Shard
 
-	shuffleHosts bool
+	strategy HostPickStrategy
 
 	cacheTSAchecks sync.Map
 
@@ -48,8 +56,8 @@ func (s *InstancePoolImpl) View() Statistics {
 }
 
 // SetShuffleHosts implements DBPool.
-func (s *InstancePoolImpl) SetShuffleHosts(val bool) {
-	s.shuffleHosts = val
+func (s *InstancePoolImpl) SetHostPickStrategy(val HostPickStrategy) {
+	s.strategy = val
 }
 
 var _ DBPool = &InstancePoolImpl{}
@@ -254,7 +262,7 @@ func (s *InstancePoolImpl) ConnectionWithTSA(
 		}
 	}
 
-	if s.shuffleHosts {
+	if s.strategy == RandomShuffleStrategy {
 		rand.Shuffle(len(posCache), func(i, j int) {
 			posCache[i], posCache[j] = posCache[j], posCache[i]
 		})
@@ -429,17 +437,17 @@ func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPo
 	return &InstancePoolImpl{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		shuffleHosts:   true,
+		strategy:       RandomShuffleStrategy,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
 
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, shuffleHosts bool, tsaRecheckDuration time.Duration) DBPool {
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, strategy HostPickStrategy, tsaRecheckDuration time.Duration) DBPool {
 	return &InstancePoolImpl{
 		pool:           mp,
 		shardMapping:   mapping,
-		shuffleHosts:   shuffleHosts,
+		strategy:       strategy,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}

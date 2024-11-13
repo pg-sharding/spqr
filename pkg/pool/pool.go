@@ -65,5 +65,5 @@ type DBPool interface {
 
 	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error)
 
-	SetShuffleHosts(bool)
+	SetHostPickStrategy(HostPickStrategy)
 }

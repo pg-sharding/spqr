@@ -38,7 +38,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 				"h3",
 			},
 		},
-	}, &startup.StartupParams{}, underyling_pool, false, time.Hour)
+	}, &startup.StartupParams{}, underyling_pool, pool.NaiveStrategy, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
@@ -145,7 +145,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 				"h3",
 			},
 		},
-	}, &startup.StartupParams{}, underyling_pool, false, time.Hour)
+	}, &startup.StartupParams{}, underyling_pool, pool.NaiveStrategy, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
@@ -234,7 +234,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	cnth1 := 0
 	cnth2 := 0
 
-	dbpool.SetShuffleHosts(true)
+	dbpool.SetHostPickStrategy(pool.RandomShuffleStrategy)
 
 	for i := 0; i < repeattimes; i++ {
 		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)

@@ -46,6 +46,7 @@ type Router struct {
 	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
 
 	Host             string `json:"host" toml:"host" yaml:"host"`
+	AvailabilityZone string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
