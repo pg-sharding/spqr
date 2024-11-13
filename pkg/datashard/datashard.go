@@ -406,7 +406,8 @@ func NewShard(
 	key kr.ShardKey,
 	pgi conn.DBInstance,
 	cfg *config.Shard,
-	beRule *config.BackendRule, sp *startup.StartupParams) (shard.Shard, error) {
+	beRule *config.BackendRule,
+	sp *startup.StartupParams) (shard.Shard, error) {
 
 	dtSh := &Conn{
 		cfg:      cfg,

@@ -124,6 +124,20 @@ type Shard struct {
 	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
 }
 
+func ValueOrDefaultInt(value int, def int) int {
+	if value == 0 {
+		return def
+	}
+	return value
+}
+
+func ValueOrDefaultDuration(value time.Duration, def time.Duration) time.Duration {
+	if value == 0 {
+		return def
+	}
+	return value
+}
+
 // LoadRouterCfg loads the router configuration from the specified file path.
 //
 // Parameters:

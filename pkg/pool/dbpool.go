@@ -394,41 +394,25 @@ func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, sp *startup.StartupParams) DBPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams) DBPool {
 	allocator := func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
-		shard := mapping[shardKey.Name]
-
-		addr, _, _ := net.SplitHostPort(host)
-		tlsconfig, err := shard.TLS.Init(addr)
+		shardConfig := mapping[shardKey.Name]
+		hostname, _, _ := net.SplitHostPort(host) // TODO try to remove this
+		tlsconfig, err := shardConfig.TLS.Init(hostname)
 		if err != nil {
 			return nil, err
 		}
 
-		connTimeout := defaultInstanceConnectionTimeout
-		if rule.ConnectionTimeout != 0 {
-			connTimeout = rule.ConnectionTimeout
-		}
-
-		keepAlive := defaultKeepAlive
-		if rule.KeepAlive != 0 {
-			keepAlive = rule.KeepAlive
-		}
-
-		tcpUserTimeout := defaultTcpUserTimeout
-
-		if rule.TcpUserTimeout != 0 {
-			tcpUserTimeout = rule.TcpUserTimeout
-		}
+		connTimeout := config.ValueOrDefaultDuration(rule.ConnectionTimeout, defaultInstanceConnectionTimeout)
+		keepAlive := config.ValueOrDefaultDuration(rule.KeepAlive, defaultKeepAlive)
+		tcpUserTimeout := config.ValueOrDefaultDuration(rule.TcpUserTimeout, defaultTcpUserTimeout)
 
 		pgi, err := conn.NewInstanceConn(host, shardKey.Name, tlsconfig, connTimeout, keepAlive, tcpUserTimeout)
 		if err != nil {
 			return nil, err
 		}
-		shardC, err := datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, sp)
-		if err != nil {
-			return nil, err
-		}
-		return shardC, nil
+		
+		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 
 	return &InstancePoolImpl{
