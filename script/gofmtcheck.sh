@@ -9,5 +9,7 @@ if [[ -n ${gofmt_files} ]]; then
     echo "You can use the command: \`make fmt\` to reformat code."
     exit 1
 fi
+echo "OK"
+
 
 exit 0
