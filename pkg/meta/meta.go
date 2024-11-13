@@ -568,7 +568,12 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 // Returns:
 // - error: An error if the operation encounters any issues.
 func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
-	if req.BatchSize == -1 {
+	spqrlog.Zero.Debug().Str("cmd", stmt.Cmd).Msg("process redistribute")
+	if req.BatchSize <= 0 {
+		spqrlog.Zero.Info().
+			Int("batch-size-got", eq.BatchSize).
+			Int("batch-size-use", defaultBatchSize).
+			Msg("redistribute: using default batch size")
 		req.BatchSize = defaultBatchSize
 	}
 	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
