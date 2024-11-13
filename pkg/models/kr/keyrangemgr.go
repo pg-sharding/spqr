@@ -2,6 +2,7 @@ package kr
 
 import (
 	"context"
+
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 )
 
@@ -22,22 +23,10 @@ type UniteKeyRange struct {
 	AppendageKeyRangeId string
 }
 
-type RedistributeKeyLimit interface{}
-
-type RedistributeAllKeys struct {
-	RedistributeKeyLimit
-}
-
-type RedistributeKeyAmount struct {
-	RedistributeKeyLimit
-
-	Amount int64
-}
-
 type BatchMoveKeyRange struct {
-	KrId    string               // KrId is the source key range id
-	ShardId string               // ShardId is the destination shard id
-	Limit   RedistributeKeyLimit /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
+	KrId    string // KrId is the source key range id
+	ShardId string // ShardId is the destination shard id
+	Limit   int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
 	Can be either kr.RedistributeAllKeys, in which case the whole key range will be moved,
 	or kr.RedistributeKeyAmount, where circa specified amount of keys will be moved. */
 	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.

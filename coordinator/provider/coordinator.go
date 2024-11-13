@@ -1186,14 +1186,10 @@ func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req 
 	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
 
 	limit := func() int64 {
-		switch l := req.Limit.(type) {
-		case kr.RedistributeAllKeys:
+		if req.Limit < 0 {
 			return math.MaxInt64
-		case kr.RedistributeKeyAmount:
-			return l.Amount
-		default:
-			panic(fmt.Sprintf("unexpected RedistributeLimit type %T", l))
 		}
+		return req.Limit
 	}()
 
 	colsArr, err := rel.GetDistributionKeyColumns()
@@ -1309,8 +1305,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 	}
 	taskList[0].KrIdTemp = req.DestKrId
 
-	_, redistributeAll := req.Limit.(kr.RedistributeAllKeys)
-	moveWhole = moveWhole || redistributeAll
+	moveWhole = moveWhole || req.Limit < 0
 
 	if len(taskList) <= 1 && moveWhole {
 		taskList = []*tasks.MoveTask{
@@ -1495,7 +1490,7 @@ func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tas
 				KrId:      task.KrId,
 				ShardId:   task.ShardId,
 				BatchSize: task.BatchSize,
-				Limit:     kr.RedistributeAllKeys{},
+				Limit:     -1,
 				DestKrId:  task.TempKrId,
 				Type:      tasks.SplitRight,
 			}); err != nil {

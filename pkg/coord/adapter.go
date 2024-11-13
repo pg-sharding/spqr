@@ -371,14 +371,11 @@ func (a *Adapter) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMoveKeyRan
 	c := proto.NewKeyRangeServiceClient(a.conn)
 	var limitType proto.RedistributeLimitType
 	limit := int64(0)
-	switch t := req.Limit.(type) {
-	case kr.RedistributeAllKeys:
+	if req.Limit < 0 {
 		limitType = proto.RedistributeLimitType_RedistributeAllKeys
-	case kr.RedistributeKeyAmount:
-		limit = t.Amount
+	} else {
+		limit = req.Limit
 		limitType = proto.RedistributeLimitType_RedistributeKeysLimit
-	default:
-		panic("unknown redistribute limit")
 	}
 	_, err := c.BatchMoveKeyRange(ctx, &proto.BatchMoveKeyRangeRequest{
 		Id:        req.KrId,

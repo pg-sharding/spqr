@@ -173,12 +173,12 @@ func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *pro
 		KrId:     request.Id,
 		DestKrId: request.ToKrId,
 		ShardId:  request.ToShardId,
-		Limit: func() kr.RedistributeKeyLimit {
+		Limit: func() int64 {
 			switch request.LimitType {
 			case protos.RedistributeLimitType_RedistributeAllKeys:
-				return kr.RedistributeAllKeys{}
+				return -1
 			case protos.RedistributeLimitType_RedistributeKeysLimit:
-				return kr.RedistributeKeyAmount{Amount: request.Limit}
+				return request.Limit
 			default:
 				panic("unknown redistribution key limit")
 			}
