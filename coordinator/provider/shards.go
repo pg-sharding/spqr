@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 
-	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -74,7 +73,7 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 }
 
 type CoordShardInfo struct {
-	underlying *routerproto.BackendConnectionsInfo
+	underlying *protos.BackendConnectionsInfo
 	router     string
 }
 
@@ -98,7 +97,7 @@ func (c *CoordShardInfo) ListPreparedStatements() []shard.PreparedStatementsMgrD
 	return nil
 }
 
-func NewCoordShardInfo(conn *routerproto.BackendConnectionsInfo, router string) shard.Shardinfo {
+func NewCoordShardInfo(conn *protos.BackendConnectionsInfo, router string) shard.Shardinfo {
 	return &CoordShardInfo{
 		underlying: conn,
 		router:     router,
