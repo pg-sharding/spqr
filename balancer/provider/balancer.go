@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/pg-sharding/spqr/balancer"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -146,7 +147,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
 	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
-	connStrings := shard.GetConnStrings()
+	connStrings := datatransfers.GetConnStrings(shard)
 	res := NewShardMetrics()
 	res.ShardId = shardId
 	replicaMetrics := NewHostMetrics()

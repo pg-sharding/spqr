@@ -1,15 +1,11 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"strings"
-
-	"github.com/jackc/pgx/v5"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -83,50 +79,4 @@ func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 		return json.NewDecoder(file).Decode(&cfg)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
-}
-
-// GetConnStrings generates connection strings based on the ShardConnect fields.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: a slice of strings containing connection strings.
-func (s *ShardConnect) GetConnStrings() []string {
-	res := make([]string, len(s.Hosts))
-	for i, host := range s.Hosts {
-		address := strings.Split(host, ":")[0]
-		port := strings.Split(host, ":")[1]
-		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", s.User, address, port, s.DB, s.Password)
-	}
-	return res
-}
-
-// GetMasterConnection gets a connection to the master host in a shard
-//
-// Parameters:
-//   - ctx: context for connections
-//
-// Returns:
-//   - *pgx.Conn: the connection to master host
-//   - error: error if any occured
-//
-// TODO: unit tests
-func (s *ShardConnect) GetMasterConnection(ctx context.Context) (*pgx.Conn, error) {
-	for _, dsn := range s.GetConnStrings() {
-		conn, err := pgx.Connect(ctx, dsn)
-		if err != nil {
-			return nil, err
-		}
-		var isMaster bool
-		row := conn.QueryRow(ctx, "SELECT NOT pg_is_in_recovery() as is_master;")
-		if err = row.Scan(&isMaster); err != nil {
-			return nil, err
-		}
-		if isMaster {
-			return conn, nil
-		}
-		_ = conn.Close(ctx)
-	}
-	return nil, spqrerror.New(spqrerror.SPQR_TRANSFER_ERROR, "unable to get connection")
 }
