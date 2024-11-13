@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  tfmtcheck:
+  fmtcheck:
     name: go fmt check
     runs-on: ubuntu-latest
     steps:
