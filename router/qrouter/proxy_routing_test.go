@@ -48,12 +48,8 @@ func TestMultiShardRouting(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{})
 
 	assert.NoError(err)
@@ -177,12 +173,8 @@ func TestComment(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -281,12 +273,8 @@ func TestCTE(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -537,12 +525,8 @@ func TestSingleShard(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -942,12 +926,8 @@ func TestInsertOffsets(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -1153,12 +1133,8 @@ func TestJoins(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{})
 
 	assert.NoError(err)
@@ -1287,12 +1263,8 @@ func TestUnnest(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -1411,12 +1383,8 @@ func TestCopySingleShard(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -1479,12 +1447,8 @@ func TestSetStmt(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -1560,12 +1524,8 @@ func TestMiscRouting(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})
@@ -1664,12 +1624,8 @@ func TestHashRouting(t *testing.T) {
 	lc := local.NewLocalCoordinator(db)
 
 	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
-		"sh1": {
-			Hosts: nil,
-		},
-		"sh2": {
-			Hosts: nil,
-		},
+		"sh1": {},
+		"sh2": {},
 	}, lc, &config.QRouter{
 		DefaultRouteBehaviour: "BLOCK",
 	})

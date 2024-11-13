@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -119,9 +120,51 @@ const (
 )
 
 type Shard struct {
-	Hosts []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type  ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	RawHosts        []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
+	parsedHosts     []Host
+	parsedAddresses []string
+	once            sync.Once
+
+	Type ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+}
+
+type Host struct {
+	Address string // format host:port
+	AZ      string // Availability zone
+}
+
+func (s *Shard) parseHosts() {
+	for _, rawHost := range s.RawHosts {
+		parts := strings.Split(rawHost, ":")
+		if len(parts) < 2 || len(parts) > 3 {
+			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
+			continue
+		}
+
+		host := Host{
+			Address: fmt.Sprintf("%s:%s", parts[0], parts[1]),
+		}
+
+		if len(parts) == 3 {
+			host.AZ = parts[2]
+		}
+
+		s.parsedHosts = append(s.parsedHosts, host)
+		s.parsedAddresses = append(s.parsedAddresses, host.Address)
+	}
+}
+
+func (s *Shard) Hosts() []string {
+	s.once.Do(s.parseHosts)
+
+	return s.parsedAddresses
+}
+
+func (s *Shard) HostsAZ() []Host {
+	s.once.Do(s.parseHosts)
+
+	return s.parsedHosts
 }
 
 func ValueOrDefaultInt(value int, def int) int {
