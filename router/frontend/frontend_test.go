@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -19,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
+	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
 	"github.com/golang/mock/gomock"
@@ -328,6 +330,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	srv := mocksrv.NewMockServer(ctrl)
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
 
 	sh1 := mocksh.NewMockShard(ctrl)
 	sh1.EXPECT().Name().AnyTimes().Return("sh1")
@@ -390,17 +393,48 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	tableref := &lyx.RangeVar{
 		RelationName: "xx",
 	}
+	d := &distributions.Distribution{
+		Id:       "dssd",
+		ColTypes: []string{"integer"},
+		Relations: map[string]*distributions.DistributedRelation{
+			"xx": {
+				Name: "xx",
+				DistributionKey: []distributions.DistributionKeyEntry{
+					{
+						Column:       "i",
+						HashFunction: "identity",
+					},
+				},
+			},
+		},
+	}
+	krs := []*kr.KeyRange{
+		{
+			ID:      "id1",
+			ShardID: "sh1",
+			LowerBound: kr.KeyRangeBound{
+				1,
+			},
+		},
+	}
+
+	mmgr.EXPECT().GetRelationDistribution(gomock.Any(), gomock.Any()).Return(d, nil).AnyTimes()
+	mmgr.EXPECT().ListKeyRanges(gomock.Any(), gomock.Any()).Return(krs, nil).AnyTimes()
+
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+	qr.EXPECT().DeparseKeyWithRangesInternal(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&routingstate.DataShardRoute{
+			Shkey: kr.ShardKey{
+				Name: "sh1",
+			},
+		}, nil).AnyTimes()
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Copy{
 		TableRef: tableref,
 		Where:    &lyx.AExprEmpty{},
 		IsFrom:   true,
+		Columns:  []string{"i"},
 	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
-
-	qr.EXPECT().Route(gomock.Any(), &lyx.Insert{
-		TableRef:  tableref,
-		SubSelect: &lyx.ValueClause{Values: []lyx.Node{&lyx.AExprSConst{Value: "1"}}},
-	}, cl).Times(4).Return(routingstate.ShardMatchState{Route: &routingstate.DataShardRoute{Shkey: sh1.SHKey()}}, nil)
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
 		&routingstate.DataShardRoute{Shkey: sh1.SHKey()},
@@ -409,13 +443,12 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
 		"sh1": {},
-		"sh2": {},
 	})
 
 	cl.EXPECT().Route().AnyTimes().Return(route)
 
 	query := &pgproto3.Query{
-		String: "COPY xx FROM STDIN",
+		String: "COPY xx (i) FROM STDIN",
 	}
 
 	cl.EXPECT().Receive().Times(1).Return(query, nil)
