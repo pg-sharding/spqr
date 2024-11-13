@@ -140,7 +140,14 @@ func (pgi *PostgreSQLInstance) Send(query pgproto3.FrontendMessage) error {
 	pgi.frontend.Send(query)
 
 	switch query.(type) {
-	case *pgproto3.Sync, *pgproto3.Query, *pgproto3.StartupMessage, *pgproto3.PasswordMessage, *pgproto3.SASLResponse, *pgproto3.SASLInitialResponse, *pgproto3.GSSResponse, *pgproto3.GSSEncRequest, *pgproto3.CopyDone, *pgproto3.CopyFail:
+	case
+		*pgproto3.Sync,
+		*pgproto3.Query,
+		*pgproto3.StartupMessage,
+		*pgproto3.PasswordMessage,
+		*pgproto3.SASLResponse, *pgproto3.SASLInitialResponse,
+		*pgproto3.GSSResponse, *pgproto3.GSSEncRequest,
+		*pgproto3.CopyDone, *pgproto3.CopyData, *pgproto3.CopyFail:
 		return pgi.frontend.Flush()
 	default:
 		return nil
