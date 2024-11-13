@@ -19,7 +19,7 @@ var mockShard = &qdb.Shard{
 	Hosts: []string{"host1", "host2"},
 }
 var mockKeyRange = &qdb.KeyRange{
-	LowerBound: [][]byte{[]byte{1, 2}},
+	LowerBound: [][]byte{{1, 2}},
 	ShardID:    mockShard.ID,
 	KeyRangeID: "key_range_id",
 }

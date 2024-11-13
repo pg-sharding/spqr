@@ -10,6 +10,30 @@ permissions:
   contents: read
 
 jobs:
+  govet:
+    name: go vet check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.0'
+          cache: false
+      - name: go vet
+        run: make govet
+  
+  fmtcheck:
+    name: go fmt check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.0'
+          cache: false
+      - name: go fmt check
+        run: make fmtcheck
+
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest

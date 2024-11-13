@@ -31,7 +31,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	clId := uint(1)
 
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: &config.Shard{
+		key.Name: {
 			Hosts: []string{
 				"h1",
 				"h2",
@@ -138,7 +138,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	clId := uint(1)
 
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
-		key.Name: &config.Shard{
+		key.Name: {
 			Hosts: []string{
 				"h1",
 				"h2",

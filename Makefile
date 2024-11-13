@@ -2,6 +2,7 @@ GIT_REVISION=`git rev-parse --short HEAD`
 SPQR_VERSION=`git describe --tags --abbrev=0`
 LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION}"
 GCFLAGS=-gcflags=all="-N -l"
+GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc)
 
 .PHONY : run
 .DEFAULT_GOAL := deps
@@ -136,6 +137,23 @@ feature_test: clean_feature_test build_images
 	rm -rf ./test/feature/logs
 	mkdir ./test/feature/logs
 	(cd test/feature; GODOG_FEATURE_DIR=generatedFeatures go test -timeout 150m)
+
+####################### LINTERS #######################
+
+vet:
+	@echo "go vet ."
+	@go vet $(GOFMT_FILES) ; if [ $$? -eq 1 ]; then \
+		echo ""; \
+		echo "Vet found suspicious constructs. Please check the reported constructs"; \
+		echo "and fix them if necessary before submitting the code for review."; \
+		exit 1; \
+	fi
+
+fmt:
+	gofmt -w $(GOFMT_FILES)
+
+fmtcheck:
+	@sh -c "'$(CURDIR)/script/gofmtcheck.sh'"
 
 lint:
 	golangci-lint run --timeout=10m --out-format=colored-line-number --skip-dirs=yacc/console
