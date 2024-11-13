@@ -100,7 +100,6 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(shardconn, conn)
 
-
 	statistics = shp.View()
 	assert.Equal(0, statistics.IdleConnections)
 	assert.Equal(0, statistics.QueueResidualSize)

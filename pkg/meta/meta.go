@@ -122,7 +122,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		if err != nil {
 			return err
 		}
-		
+
 		ret := make([]string, 0)
 		for _, ds := range dss {
 			if ds.Id != "default" {

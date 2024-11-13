@@ -58,6 +58,7 @@ func LoadCoordinatorCfg(cfgPath string) error {
 // Parameters:
 //   - file (*os.File): the file containing the configuration data.
 //   - filepath (string): the path of the configuration file.
+//
 // Returns:
 //   - error: an error if any occurred during the initialization process.
 func initCoordinatorConfig(file *os.File, filepath string) error {

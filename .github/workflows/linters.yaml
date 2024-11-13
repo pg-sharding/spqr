@@ -20,7 +20,7 @@ jobs:
           go-version: '1.23.0'
           cache: false
       - name: go vet
-        run: make govet
+        run: make vet
   
   fmtcheck:
     name: go fmt check
