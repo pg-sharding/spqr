@@ -27,8 +27,8 @@ type BatchMoveKeyRange struct {
 	KrId    string // KrId is the source key range id
 	ShardId string // ShardId is the destination shard id
 	Limit   int64  /* Limit is kr.RedistributeKeyLimit value specifying the number of keys to transfer.
-	Can be either kr.RedistributeAllKeys, in which case the whole key range will be moved,
-	or kr.RedistributeKeyAmount, where circa specified amount of keys will be moved. */
+	Can be either negative, in which case the whole key range will be moved,
+	or non-negative, where circa specified amount of keys will be moved. */
 	BatchSize int    // BatchSize is the amount of keys to be transferred in every transaction.
 	DestKrId  string /* DestKrId is the destination key range id.
 	If the whole key range is being moved, it's still renamed. */
