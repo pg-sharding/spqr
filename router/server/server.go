@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -17,7 +18,7 @@ type Server interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddDataShard(clid uint, shardKey kr.ShardKey, tsa string) error
+	AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 	Datashards() []shard.Shard
 

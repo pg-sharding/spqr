@@ -122,7 +122,7 @@ func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) er
 
 	for _, shkey := range sh {
 		spqrlog.Zero.Debug().
-			Str("client tsa", client.GetTsa()).
+			Str("client tsa", string(client.GetTsa())).
 			Msg("adding shard with tsa")
 		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
 			return err

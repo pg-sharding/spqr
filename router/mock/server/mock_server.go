@@ -13,6 +13,7 @@ import (
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
+	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -40,7 +41,7 @@ func (m *MockServer) EXPECT() *MockServerMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, tsa string) error {
+func (m *MockServer) AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddDataShard", clid, shardKey, tsa)
 	ret0, _ := ret[0].(error)

@@ -12,6 +12,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -117,7 +118,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) error {
+func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
 	if srv.shard != nil {
@@ -126,7 +127,7 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) e
 	}
 
 	var err error
-	if srv.shard, err = srv.pool.Connection(clid, shkey, tsa); err != nil {
+	if srv.shard, err = srv.pool.ConnectionWithTSA(clid, shkey, tsa); err != nil {
 		return err
 	}
 

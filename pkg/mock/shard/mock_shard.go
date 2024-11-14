@@ -461,20 +461,6 @@ func (mr *MockShardMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockShard)(nil).Cancel))
 }
 
-// Cfg mocks base method.
-func (m *MockShard) Cfg() *config.Shard {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Cfg")
-	ret0, _ := ret[0].(*config.Shard)
-	return ret0
-}
-
-// Cfg indicates an expected call of Cfg.
-func (mr *MockShardMockRecorder) Cfg() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cfg", reflect.TypeOf((*MockShard)(nil).Cfg))
-}
-
 // Cleanup mocks base method.
 func (m *MockShard) Cleanup(rule *config.FrontendRule) error {
 	m.ctrl.T.Helper()

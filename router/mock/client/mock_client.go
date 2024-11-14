@@ -14,6 +14,7 @@ import (
 	config "github.com/pg-sharding/spqr/pkg/config"
 	prepstatement "github.com/pg-sharding/spqr/pkg/prepstatement"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
+	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
 	routehint "github.com/pg-sharding/spqr/router/routehint"
@@ -322,10 +323,10 @@ func (mr *MockRouterClientMockRecorder) GetCancelPid() *gomock.Call {
 }
 
 // GetTsa mocks base method.
-func (m *MockRouterClient) GetTsa() string {
+func (m *MockRouterClient) GetTsa() tsa.TSA {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTsa")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(tsa.TSA)
 	return ret0
 }
 

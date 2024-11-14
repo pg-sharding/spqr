@@ -11,6 +11,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
+type TSA string
+
 type TSAChecker interface {
 	CheckTSA(sh shard.Shard) (bool, string, error)
 }

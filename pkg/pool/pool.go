@@ -6,6 +6,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 const (
@@ -40,12 +41,13 @@ type Pool interface {
 	Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error)
 }
 
+/* Host  */
 type MultiShardPool interface {
 	ConnectionKepper
 	shard.ShardIterator
 	PoolIterator
 
-	Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
+	ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
 
 	SetRule(rule *config.BackendRule)
 }
@@ -60,6 +62,8 @@ type DBPool interface {
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
+
+	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error)
 
 	SetShuffleHosts(bool)
 }

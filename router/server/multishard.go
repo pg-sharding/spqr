@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
@@ -73,13 +74,13 @@ func (m *MultiShardServer) Reset() error {
 	return nil
 }
 
-func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa string) error {
+func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) error {
 	for _, piv := range m.activeShards {
 		if piv.SHKey().Name == shkey.Name {
 			return fmt.Errorf("multishard connection already use %v", shkey.Name)
 		}
 	}
-	sh, err := m.pool.Connection(clid, shkey, tsa)
+	sh, err := m.pool.ConnectionWithTSA(clid, shkey, tsa)
 	if err != nil {
 		return err
 	}

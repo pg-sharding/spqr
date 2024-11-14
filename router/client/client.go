@@ -11,6 +11,7 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/spaolacci/murmur3"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -58,7 +59,7 @@ type RouterClient interface {
 
 	/* Client target-session-attrs policy */
 
-	GetTsa() string
+	GetTsa() tsa.TSA
 	SetTsa(string)
 
 	CancelMsg() *pgproto3.CancelRequest
@@ -101,8 +102,8 @@ type PsqlClient struct {
 	prepStmtsHash map[string]uint64
 
 	/* target-session-attrs */
-	tsa        string
-	defaultTsa string
+	tsa        tsa.TSA
+	defaultTsa tsa.TSA
 
 	/* protects client.Send() (backend) */
 	muBe sync.Mutex
@@ -245,16 +246,16 @@ func (cl *PsqlClient) SetRouteHint(rh routehint.RouteHint) {
 }
 
 func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, intanseDefaultTsa string) *PsqlClient {
-	var tsa string
+	var target_session_attrs tsa.TSA
 	if intanseDefaultTsa != "" {
-		tsa = intanseDefaultTsa
+		target_session_attrs = tsa.TSA(intanseDefaultTsa)
 	} else {
-		tsa = config.TargetSessionAttrsRW
+		target_session_attrs = tsa.TSA(config.TargetSessionAttrsRW)
 	}
 
 	// enforce default port behaviour
 	if pt == port.RORouterPortType {
-		tsa = config.TargetSessionAttrsPS
+		target_session_attrs = config.TargetSessionAttrsPS
 	}
 
 	cl := &PsqlClient{
@@ -266,8 +267,8 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		startupMsg:    &pgproto3.StartupMessage{},
 		prepStmts:     map[string]*prepstatement.PreparedStatementDefinition{},
 		prepStmtsHash: map[string]uint64{},
-		tsa:           tsa,
-		defaultTsa:    tsa,
+		tsa:           target_session_attrs,
+		defaultTsa:    target_session_attrs,
 		activeRh:      routehint.EmptyRouteHint{},
 		beginTxRh:     routehint.EmptyRouteHint{},
 		savepointRh:   map[string]routehint.RouteHint{},
@@ -1063,12 +1064,17 @@ func (cl *PsqlClient) Shutdown() error {
 	return cl.conn.Close()
 }
 
-func (cl *PsqlClient) GetTsa() string {
+func (cl *PsqlClient) GetTsa() tsa.TSA {
 	return cl.tsa
 }
 
 func (cl *PsqlClient) SetTsa(s string) {
-	cl.tsa = s
+	switch s {
+	case config.TargetSessionAttrsAny, config.TargetSessionAttrsPS, config.TargetSessionAttrsRW, config.TargetSessionAttrsRO:
+		cl.tsa = tsa.TSA(s)
+	default:
+
+	}
 }
 
 func (cl *PsqlClient) ResetTsa() {
