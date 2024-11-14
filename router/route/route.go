@@ -58,10 +58,15 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 		sp.SearchPath = frRule.SearchPath
 	}
 
+	var preferAZ string
+	if config.RouterConfig().PreferSameAvailabilityZone {
+		preferAZ = config.RouterConfig().AvailabilityZone
+	}
+
 	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping, sp),
+		servPool: pool.NewDBPool(mapping, sp, preferAZ),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}

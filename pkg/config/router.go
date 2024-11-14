@@ -45,8 +45,10 @@ type Router struct {
 	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
 	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
 
+	AvailabilityZone           string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
+	PreferSameAvailabilityZone bool   `json:"prefer_same_availability_zone" toml:"prefer_same_availability_zone" yaml:"prefer_same_availability_zone"`
+
 	Host             string `json:"host" toml:"host" yaml:"host"`
-	AvailabilityZone string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
 	RouterROPort     string `json:"router_ro_port" toml:"router_ro_port" yaml:"router_ro_port"`
 	AdminConsolePort string `json:"admin_console_port" toml:"admin_console_port" yaml:"admin_console_port"`
@@ -89,16 +91,17 @@ type QRouter struct {
 }
 
 type BackendRule struct {
-	DB                string                     `json:"db" yaml:"db" toml:"db"`
-	Usr               string                     `json:"usr" yaml:"usr" toml:"usr"`
-	AuthRules         map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
-	DefaultAuthRule   *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
-	PoolDefault       bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
-	ConnectionLimit   int                        `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
-	ConnectionRetries int                        `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
-	ConnectionTimeout time.Duration              `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
-	KeepAlive         time.Duration              `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
-	TcpUserTimeout    time.Duration              `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
+	DB              string                     `json:"db" yaml:"db" toml:"db"`
+	Usr             string                     `json:"usr" yaml:"usr" toml:"usr"`
+	AuthRules       map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
+	DefaultAuthRule *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
+	PoolDefault     bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
+
+	ConnectionLimit   int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	ConnectionRetries int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
+	ConnectionTimeout time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
+	KeepAlive         time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
+	TcpUserTimeout    time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
 }
 
 type FrontendRule struct {
