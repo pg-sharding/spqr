@@ -35,9 +35,9 @@ func TestShardPoolConnectionAcquirePut(t *testing.T) {
 	shardconn.EXPECT().ID().AnyTimes().Return(uint(1234))
 	shardconn.EXPECT().TxStatus().AnyTimes().Return(txstatus.TXIDLE)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return shardconn, nil
-	}, "h1", &config.BackendRule{
+	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
 	})
 
@@ -82,9 +82,9 @@ func TestShardPoolConnectionAcquireDiscard(t *testing.T) {
 
 	shardconn.EXPECT().Close().Times(1)
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return shardconn, nil
-	}, "h1", &config.BackendRule{
+	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
 	})
 
@@ -121,9 +121,9 @@ func TestShardPoolAllocFnError(t *testing.T) {
 	ins := mockinst.NewMockDBInstance(ctrl)
 	ins.EXPECT().Hostname().AnyTimes().Return("h1")
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		return nil, errors.New("bad")
-	}, "h1", &config.BackendRule{
+	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit: 1,
 	})
 
@@ -177,7 +177,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	var mu sync.Mutex
 
-	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error) {
+	shp := pool.NewShardPool(func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		mu.Lock()
 		defer mu.Unlock()
 
@@ -191,7 +191,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 		assert.Fail("connection pool overflow")
 
 		return nil, errors.New("bad")
-	}, "h1", &config.BackendRule{
+	}, config.Host{Address: "h1"}, &config.BackendRule{
 		ConnectionLimit:   connLimit,
 		ConnectionRetries: 1,
 	})

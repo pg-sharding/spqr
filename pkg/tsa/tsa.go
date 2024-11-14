@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
+// TSA is stands for target_session_attrs,
 type TSA string
 
 type TSAChecker interface {

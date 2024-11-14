@@ -42,12 +42,15 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShard(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
@@ -68,9 +71,9 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").Times(1).Return(h1, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").Times(1).Return(h2, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).Times(1).Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).Times(1).Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -110,16 +113,18 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 
 	/* next time expect only one call */
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 }
@@ -149,12 +154,15 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShard(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
@@ -175,9 +183,9 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").AnyTimes().Return(h1, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").AnyTimes().Return(h2, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).AnyTimes().Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).AnyTimes().Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -217,11 +225,12 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").MaxTimes(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).MaxTimes(1).Return(h3, nil)
 
 	underyling_pool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 

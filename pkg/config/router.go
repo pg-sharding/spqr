@@ -135,20 +135,22 @@ type Host struct {
 	AZ      string // Availability zone
 }
 
+// parseHosts parses the raw hosts into a slice of Hosts.
+// The format of the RawHost is host:port:availability_zone.
+// If the availability_zone is not provided, it is empty.
+// If the port is not provided, it does not matter
 func (s *Shard) parseHosts() {
 	for _, rawHost := range s.RawHosts {
+		host := Host{}
 		parts := strings.Split(rawHost, ":")
-		if len(parts) < 2 || len(parts) > 3 {
+		if len(parts) > 3 {
 			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
 			continue
-		}
-
-		host := Host{
-			Address: fmt.Sprintf("%s:%s", parts[0], parts[1]),
-		}
-
-		if len(parts) == 3 {
+		} else if len(parts) == 3 {
 			host.AZ = parts[2]
+			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
+		} else {
+			host.Address = rawHost
 		}
 
 		s.parsedHosts = append(s.parsedHosts, host)

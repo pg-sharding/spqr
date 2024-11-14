@@ -15,7 +15,7 @@ var mockDistribution = &qdb.Distribution{
 	ID: "123",
 }
 var mockShard = &qdb.Shard{
-	ID:    "shard_id",
+	ID:       "shard_id",
 	RawHosts: []string{"host1", "host2"},
 }
 var mockKeyRange = &qdb.KeyRange{

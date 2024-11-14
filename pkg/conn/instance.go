@@ -29,6 +29,7 @@ type DBInstance interface {
 	ReqBackendSsl(*tls.Config) error
 
 	Hostname() string
+	AvailabilityZone() string
 	ShardName() string
 
 	Close() error
@@ -45,6 +46,7 @@ type PostgreSQLInstance struct {
 	frontend *pgproto3.Frontend
 
 	hostname  string
+	az        string // availability zone
 	shardname string
 	status    InstanceStatus
 
@@ -118,6 +120,17 @@ func (pgi *PostgreSQLInstance) Hostname() string {
 	return pgi.hostname
 }
 
+// AvailabilityZone returns the availability zone of the PostgreSQLInstance.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - string: The availability zone of the PostgreSQLInstance.
+func (pgi *PostgreSQLInstance) AvailabilityZone() string {
+	return pgi.az
+}
+
 // ShardName returns the shard name of the PostgreSQLInstance.
 //
 // Parameters:
@@ -187,20 +200,26 @@ func setTCPUserTimeout(d time.Duration) func(string, string, syscall.RawConn) er
 // NewInstanceConn creates a new instance connection to a PostgreSQL database.
 //
 // Parameters:
-// - host (string): The host of the PostgreSQL database.
-// - shard (string): The shard name of the PostgreSQL database.
-// - tlsconfig (*tls.Config): The TLS configuration for the connection.
+// - host (string): The hostname of the PostgreSQL instance.
+// - availabilityZone (string): The availability zone of the PostgreSQL instance.
+// - shardname (string): The name of the shard.
+// - tlsconfig (*tls.Config): The TLS configuration to use for the SSL/TLS handshake.
+// - timeout (time.Duration): The timeout for the connection.
+// - keepAlive (time.Duration): The keep alive duration for the connection.
+// - tcpUserTimeout (time.Duration): The TCP user timeout duration for the connection.
 //
-// Return:
-// - (DBInstance, error): The newly created instance connection and any error that occurred.
-func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout time.Duration, keepAlive time.Duration, tcpUserTimeout time.Duration) (DBInstance, error) {
+// Returns:
+// - DBInstance: The new PostgreSQLInstance.
+// - error: An error if there was a problem creating the new PostgreSQLInstance.
+func NewInstanceConn(host string, availabilityZone string, shardname string, tlsconfig *tls.Config, timeout time.Duration, keepAlive time.Duration, tcpUserTimeout time.Duration) (DBInstance, error) {
 	dd := net.Dialer{
-		Timeout:   timout,
+		Timeout:   timeout,
 		KeepAlive: keepAlive,
 
 		Control: setTCPUserTimeout(tcpUserTimeout),
 	}
 
+	// assuming here host is in the form of hostname:port
 	netconn, err := dd.Dial("tcp", host)
 	if err != nil {
 		return nil, err
@@ -208,7 +227,8 @@ func NewInstanceConn(host string, shard string, tlsconfig *tls.Config, timout ti
 
 	instance := &PostgreSQLInstance{
 		hostname:  host,
-		shardname: shard,
+		az:        availabilityZone,
+		shardname: shardname,
 		conn:      netconn,
 		status:    NotInitialized,
 		tlsconfig: tlsconfig,

@@ -47,7 +47,7 @@ type MultiShardPool interface {
 	shard.ShardIterator
 	PoolIterator
 
-	ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
+	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error)
 
 	SetRule(rule *config.BackendRule)
 }
@@ -56,7 +56,7 @@ type PoolIterator interface {
 	ForEachPool(cb func(p Pool) error) error
 }
 
-type ConnectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
+type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error)
 
 type DBPool interface {
 	MultiShardPool

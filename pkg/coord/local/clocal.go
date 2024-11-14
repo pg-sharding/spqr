@@ -669,7 +669,7 @@ func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.Dat
 	lc.DataShardCfgs[ds.ID] = ds.Cfg
 
 	return lc.qdb.AddShard(ctx, &qdb.Shard{
-		ID:    ds.ID,
+		ID:       ds.ID,
 		RawHosts: ds.Cfg.RawHosts,
 	})
 }

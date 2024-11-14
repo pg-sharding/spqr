@@ -29,11 +29,12 @@ type shardPool struct {
 
 	/* dedicated */
 	host string
+	az   string
 
-	ConnectionLimit            int
-	ConnectionRetries          int
-	ConnectionRetrySleepSlice  int
-	ConnectionRetryRandomSleep int
+	connectionLimit            int
+	connectionRetries          int
+	connectionRetrySleepSlice  int
+	connectionRetryRandomSleep int
 }
 
 var _ Pool = &shardPool{}
@@ -49,21 +50,23 @@ var _ Pool = &shardPool{}
 //
 // Returns:
 //   - Pool: The created instance of shardPool.
-func NewShardPool(allocFn ConnectionAllocFn, host string, beRule *config.BackendRule) Pool {
+func NewShardPool(allocFn ConnectionAllocFn, host config.Host, beRule *config.BackendRule) Pool {
 	connLimit := config.ValueOrDefaultInt(beRule.ConnectionLimit, defaultInstanceConnectionLimit)
 	connRetries := config.ValueOrDefaultInt(beRule.ConnectionRetries, defaultInstanceConnectionRetries)
 
 	ret := &shardPool{
-		mu:                         sync.Mutex{},
-		pool:                       nil,
-		active:                     make(map[uint]shard.Shard),
-		alloc:                      allocFn,
-		beRule:                     beRule,
-		host:                       host,
-		ConnectionLimit:            connLimit,
-		ConnectionRetries:          connRetries,
-		ConnectionRetrySleepSlice:  50,
-		ConnectionRetryRandomSleep: 10,
+		mu:     sync.Mutex{},
+		pool:   nil,
+		active: make(map[uint]shard.Shard),
+		alloc:  allocFn,
+		beRule: beRule,
+		host:   host.Address,
+		az:     host.AZ,
+
+		connectionLimit:            connLimit,
+		connectionRetries:          connRetries,
+		connectionRetrySleepSlice:  50,
+		connectionRetryRandomSleep: 10,
 	}
 
 	ret.queue = make(chan struct{}, connLimit)
@@ -114,10 +117,10 @@ func (h *shardPool) View() Statistics {
 // TODO : unit tests
 func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
 	if err := func() error {
-		for rep := 0; rep < h.ConnectionRetries; rep++ {
+		for rep := 0; rep < h.connectionRetries; rep++ {
 			select {
 			// TODO: configure waits using backend rule
-			case <-time.After(time.Duration(h.ConnectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.ConnectionRetryRandomSleep))):
+			case <-time.After(time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))):
 				spqrlog.Zero.Info().
 					Uint("client", clid).
 					Str("host", h.host).
@@ -156,7 +159,7 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 
 	// do not hold lock on poolRW while allocate new connection
 	var err error
-	sh, err = h.alloc(shardKey, h.host, h.beRule)
+	sh, err = h.alloc(shardKey, config.Host{Address: h.host, AZ: h.az}, h.beRule)
 	if err != nil {
 		// return acquired token
 		h.queue <- struct{}{}
@@ -356,7 +359,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
 		pool = NewShardPool(c.alloc, host, c.beRule)

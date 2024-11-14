@@ -198,7 +198,7 @@ func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.Shard)
@@ -355,7 +355,7 @@ func (m *MockDBPool) EXPECT() *MockDBPoolMockRecorder {
 }
 
 // ConnectionHost mocks base method.
-func (m *MockDBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+func (m *MockDBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.Shard)
@@ -440,6 +440,18 @@ func (mr *MockDBPoolMockRecorder) Put(host interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockDBPool)(nil).Put), host)
 }
 
+// SetHostPickStrategy mocks base method.
+func (m *MockDBPool) SetHostPickStrategy(arg0 pool.HostPickStrategy) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetHostPickStrategy", arg0)
+}
+
+// SetHostPickStrategy indicates an expected call of SetHostPickStrategy.
+func (mr *MockDBPoolMockRecorder) SetHostPickStrategy(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHostPickStrategy", reflect.TypeOf((*MockDBPool)(nil).SetHostPickStrategy), arg0)
+}
+
 // SetRule mocks base method.
 func (m *MockDBPool) SetRule(rule *config.BackendRule) {
 	m.ctrl.T.Helper()
@@ -450,18 +462,6 @@ func (m *MockDBPool) SetRule(rule *config.BackendRule) {
 func (mr *MockDBPoolMockRecorder) SetRule(rule interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockDBPool)(nil).SetRule), rule)
-}
-
-// SetShuffleHosts mocks base method.
-func (m *MockDBPool) SetShuffleHosts(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShuffleHosts", arg0)
-}
-
-// SetShuffleHosts indicates an expected call of SetShuffleHosts.
-func (mr *MockDBPoolMockRecorder) SetShuffleHosts(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShuffleHosts", reflect.TypeOf((*MockDBPool)(nil).SetShuffleHosts), arg0)
 }
 
 // ShardMapping mocks base method.
