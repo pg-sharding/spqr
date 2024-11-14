@@ -159,7 +159,7 @@ Feature: Balancer test
     INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
     """
     Then command return code should be "0"
-    When I run command on host "coordinator" with timeout "180" seconds
+    When I run command on host "coordinator" with timeout "360" seconds
     """
     /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_many_keys.yaml > /balancer.log
     """
@@ -288,8 +288,11 @@ Feature: Balancer test
       "Distribution ID":"ds1",
       "Lower bound":"0",
       "Shard ID":"sh1"
-    },
-    {
+    }]
+    """
+    And SQL result should match json
+    """
+    [{
       "Distribution ID":"ds1",
       "Lower bound":"99970",
       "Shard ID":"sh2"
@@ -453,4 +456,90 @@ Feature: Balancer test
       "Lower bound":"10000",
       "Shard ID":"sh2"
     }]
+    """
+
+  Scenario: balancer can move the whole key range
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    CREATE KEY RANGE kr2 FROM 20000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr3 FROM 40000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr4 FROM 60000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr5 FROM 70000 ROUTE TO sh1 FOR DISTRIBUTION ds1; 
+    CREATE KEY RANGE kr6 FROM 100000 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 99999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run command on host "coordinator" with timeout "180" seconds
+    """
+    /spqr/spqr-balancer --config /spqr/test/feature/conf/balancer_all_keys.yaml > /balancer.log
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    30000
+    """
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    70000
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [
+    {
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr2",
+      "Distribution ID":"ds1",
+      "Lower bound":"20000",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr3",
+      "Distribution ID":"ds1",
+      "Lower bound":"40000",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr4",
+      "Distribution ID":"ds1",
+      "Lower bound":"60000",
+      "Shard ID":"sh1"
+    },
+    {
+      "Key range ID":"kr6",
+      "Distribution ID":"ds1",
+      "Lower bound":"70000",
+      "Shard ID":"sh2"
+    }
+    ]
     """

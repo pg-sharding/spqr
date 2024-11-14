@@ -538,15 +538,15 @@ func (pi *PSQLInteractor) UnlockKeyRange(ctx context.Context, krid string) error
 	return pi.CompleteMsg(0)
 }
 
-// Tasks sends the list of move tasks to the client.
+// MoveTaskGroup sends the list of move tasks to the client.
 //
 // Parameters:
 // - ctx (context.Context): The context parameter.
-// - ts ([]*tasks.Task): A slice of *tasks.Task objects representing the move tasks.
+// - ts ([]*tasks.MoveTask): A slice of *tasks.MoveTask objects representing the move tasks.
 //
 // Returns:
 // - error: An error if sending the tasks fails, otherwise nil.
-func (pi *PSQLInteractor) Tasks(_ context.Context, ts []*tasks.Task) error {
+func (pi *PSQLInteractor) MoveTaskGroup(_ context.Context, ts *tasks.MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("listing move tasks")
 
 	for _, msg := range []pgproto3.BackendMessage{
@@ -564,14 +564,21 @@ func (pi *PSQLInteractor) Tasks(_ context.Context, ts []*tasks.Task) error {
 		}
 	}
 
-	for _, task := range ts {
+	for _, task := range ts.Tasks {
 
+		bound := make([]byte, 0)
+		for _, el := range task.Bound {
+			if len(bound) != 0 {
+				bound = append(bound, ';')
+			}
+			bound = append(bound, el...)
+		}
 		if err := pi.cl.Send(&pgproto3.DataRow{
 			Values: [][]byte{
 				[]byte(tasks.TaskStateToStr(task.State)),
-				task.Bound,
-				[]byte(task.KrIdFrom),
-				[]byte(task.KrIdTo),
+				bound,
+				[]byte(ts.KrIdFrom),
+				[]byte(ts.KrIdTo),
 			},
 		}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
@@ -1022,6 +1029,34 @@ func (pi *PSQLInteractor) MoveKeyRange(_ context.Context, move *kr.MoveKeyRange)
 	}
 
 	return nil
+}
+
+// RedistributeKeyRange moves key range to a specified shard in the PSQL client.
+// Data moves are done by batches of the given size.
+//
+// Parameters:
+// - _ (context.Context): The context for the operation.
+// - redistribute (*kr.MoveKeyRange): The key range and shard information for the redistribution operation.
+//
+// Returns:
+// - error: An error if any occurred.
+// TODO : unit tests
+func (pi *PSQLInteractor) RedistributeKeyRange(_ context.Context, stmt *spqrparser.RedistributeKeyRange) error {
+	if err := pi.WriteHeader("redistribute key range"); err != nil {
+		return err
+	}
+
+	for _, row := range []string{
+		fmt.Sprintf("key range id         -> %s", stmt.KeyRangeID),
+		fmt.Sprintf("destination shard id -> %s", stmt.DestShardID),
+		fmt.Sprintf("batch size           -> %d", stmt.BatchSize),
+	} {
+		if err := pi.WriteDataRow(row); err != nil {
+			return err
+		}
+	}
+
+	return pi.CompleteMsg(3)
 }
 
 // TODO : unit tests

@@ -1,5 +1,5 @@
 diff --git a/lib/cucumber-slicer.js b/lib/cucumber-slicer.js
-index 791b40d..6a1357d 100644
+index 791b40d..483d4b4 100644
 --- a/lib/cucumber-slicer.js
 +++ b/lib/cucumber-slicer.js
 @@ -5,11 +5,14 @@ const { extractScenarios,
@@ -23,48 +23,43 @@ index 791b40d..6a1357d 100644
    scenarios = scenarios.concat(getScenariosOfType(parsedFeature, 'ScenarioOutline'));
    output += extractScenarios(scenarios);
 -  return writeFeatureFile(dir, parsedFeature, output);
-+  return writeFeatureFile(dir, parsedFeature, output, escapeString(parsed.feature.name));
++  return writeFeatureFile(dir, parsedFeature, output, escapeString(parsed.feature.name)
  }
  
  function splitFeatureFile(parsed, dir) {
 diff --git a/lib/feature-files.js b/lib/feature-files.js
-index 63b0f9b..8f0643f 100644
+index 8d2e7c3..8c73202 100644
 --- a/lib/feature-files.js
 +++ b/lib/feature-files.js
 @@ -1,8 +1,7 @@
  const fs = require('fs');
  const path = require('path');
--const uuid = require('uuid/v4');
+-const { v4: uuidv4 } = require('uuid');
  
 -function writeFeatureFile(dir, parsed, content) {
 +function writeFeatureFile(dir, parsed, content, filename) {
    if (!fs.existsSync(dir)) {
      fs.mkdirSync(dir);
    }
-@@ -11,9 +10,9 @@ function writeFeatureFile(dir, parsed, content) {
+@@ -11,7 +10,7 @@ function writeFeatureFile(dir, parsed, content) {
    if (!fs.existsSync(directory)) {
      fs.mkdirSync(directory);
    }
--  let filename = directory + uuid() + '.feature';
--  fs.writeFileSync(filename, content);
--  return filename;
-+  let path = directory + filename + '.feature';
-+  fs.writeFileSync(path, content);
-+  return path;
+-  let filename = directory + uuidv4() + '.feature';
++  let filename = directory + filename + '.feature';
+   fs.writeFileSync(filename, content);
+   return filename;
  }
- 
- module.exports = {
 diff --git a/lib/features.js b/lib/features.js
-index 7902167..907d953 100644
+index 7902167..87d0394 100644
 --- a/lib/features.js
 +++ b/lib/features.js
-@@ -27,9 +27,25 @@ function extractExample(table) {
+@@ -27,6 +27,24 @@ function extractExample(table) {
    return result;
  }
  
--function extractDataTableArgument(argument) {
 +function extractArgument(argument) {
-   if (!argument) return '';
++  if (!argument) return '';
 +  if (argument.type === 'DocString') {
 +    return extractDocStringArgument(argument);
 +  } else if (argument.type === 'DataTable') {
@@ -73,7 +68,7 @@ index 7902167..907d953 100644
 +    throw new Error(`Not implemented argument type: ${argument.type}`);
 +  }
 +}
- 
++
 +function extractDocStringArgument(argument) {
 +  result = '"""\n';
 +  result += argument.content + '\n';
@@ -81,11 +76,10 @@ index 7902167..907d953 100644
 +  return result
 +}
 +
-+function extractDataTableArgument(argument) {
-   let rows = argument.rows.map((row) => {
-     let values = row.cells.map((cell) => {
-       return cell.value;
-@@ -51,7 +67,7 @@ function extractScenarios(scenarios) {
+ function extractDataTableArgument(argument) {
+   if (!argument) return '';
+ 
+@@ -51,7 +69,7 @@ function extractScenarios(scenarios) {
      const steps = child.steps;
      for (let step = 0; step < steps.length; step++) {
        result += '  ' + steps[step].keyword.trim() + ' ' + steps[step].text.trim() + '\n';

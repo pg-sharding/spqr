@@ -1,4 +1,3 @@
--- UNREGISTER ROUTER ALL
 REGISTER ROUTER r1 ADDRESS regress_router:7000;
          register router          
 ----------------------------------
@@ -56,4 +55,10 @@ DROP KEY RANGE ALL;
  drop key range 
 ----------------
 (0 rows)
+
+UNREGISTER ROUTER ALL;
+ unregister router 
+-------------------
+ router id -> *
+(1 row)
 

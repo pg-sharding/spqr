@@ -12,14 +12,10 @@ enum TaskStatus {
   Moved = 2;
 }
 
-message Task {
-  string shardIdFrom = 1;
-  string shardIdTo = 2;
-  string keyRangeIdFrom = 3;
-  string keyRangeIdTo = 4;
-  string keyRangeIdTemp = 5;
-  bytes bound = 6;
-  TaskStatus status = 7;
+message MoveTask {
+  string keyRangeIdTemp = 1;
+  repeated bytes bound = 2;
+  TaskStatus status = 3;
 }
 
 enum JoinType {
@@ -28,21 +24,84 @@ enum JoinType {
   JoinRight = 2;
 }
 
-message TaskGroup {
-  repeated Task tasks = 1;
-  JoinType joinType = 2;
+enum SplitType {
+  SplitLeft = 0;
+  SplitRight = 1;
 }
 
-message GetTaskGroupReply {
-  TaskGroup taskGroup = 1;
+message MoveTaskGroup {
+  repeated MoveTask tasks = 1;
+  SplitType type = 2;
+  string shardIdTo = 4;
+  string keyRangeIdFrom = 5;
+  string keyRangeIdTo = 6;
 }
 
-message WriteTaskGroupRequest{
-  TaskGroup taskGroup = 1;
+message GetMoveTaskGroupReply {
+  MoveTaskGroup taskGroup = 1;
 }
 
-service TasksService {
-  rpc GetTaskGroup(google.protobuf.Empty) returns (GetTaskGroupReply) {}
-  rpc WriteTaskGroup(WriteTaskGroupRequest) returns(google.protobuf.Empty) {}
-  rpc RemoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
+message WriteMoveTaskGroupRequest{
+  MoveTaskGroup taskGroup = 1;
+}
+
+service MoveTasksService {
+  rpc GetMoveTaskGroup(google.protobuf.Empty) returns (GetMoveTaskGroupReply) {}
+  rpc WriteMoveTaskGroup(WriteMoveTaskGroupRequest) returns(google.protobuf.Empty) {}
+  rpc RemoveMoveTaskGroup(google.protobuf.Empty) returns(google.protobuf.Empty) {}
+}
+
+enum BalancerTaskStatus {
+  BalancerTaskPlanned = 0;
+  BalancerTaskMoved = 1;
+}
+
+message BalancerTask {
+  JoinType type = 1;
+  string keyRangeIdFrom = 2;
+  string keyRangeIdTo = 3;
+  string keyRangeIdTemp = 4;
+  string shardIdTo = 5;
+  int64 keyCount = 6;
+  BalancerTaskStatus state = 7;
+}
+
+message GetBalancerTaskReply{
+  BalancerTask task = 1;
+}
+
+message WriteBalancerTaskRequest {
+  BalancerTask task = 1;
+}
+
+service BalancerTaskService {
+  rpc GetBalancerTask(google.protobuf.Empty) returns (GetBalancerTaskReply) {}
+  rpc WriteBalancerTask(WriteBalancerTaskRequest) returns (google.protobuf.Empty) {}
+  rpc RemoveBalancerTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+enum RedistributeTaskState {
+  RedistributeTaskPlanned = 0;
+  RedistributeTaskMoved = 1;
+}
+
+message RedistributeTask {
+  string keyRangeId = 1;
+  string shardId = 2;
+  int64 batchSize = 3;
+  RedistributeTaskState state = 4;
+}
+
+message GetRedistributeTaskReply {
+    RedistributeTask task = 1;
+} 
+
+message WriteRedistributeTaskRequest {
+    RedistributeTask task = 1;
+}
+
+service RedistributeTaskService {
+  rpc GetRedistributeTask(google.protobuf.Empty) returns (GetRedistributeTaskReply) {}
+  rpc WriteRedistributeTask(WriteRedistributeTaskRequest) returns (google.protobuf.Empty) {}
+  rpc RemoveRedistributeTask(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }

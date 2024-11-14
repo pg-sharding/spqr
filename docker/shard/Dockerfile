@@ -38,7 +38,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     postgresql-common \
     postgresql-server-dev-$POSTGRES_VERSION \
-    postgresql-${POSTGRES_VERSION}-pg-stat-kcache
+    postgresql-${POSTGRES_VERSION}-pg-stat-kcache \
+    git \
+    python3-docutils
 
 COPY ./docker/shard/bin/ /usr/local/bin/
 
@@ -46,6 +48,9 @@ RUN chmod a+x /usr/local/bin/entrypoint.sh
 
 RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pg_comment_stats && \
+    make && make install && \
+    cd .. && git clone https://github.com/markokr/pghashlib.git && \
+    cd pghashlib && \
     make && make install
 
 ENTRYPOINT /usr/local/bin/entrypoint.sh $POSTGRES_VERSION

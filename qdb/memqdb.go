@@ -26,7 +26,9 @@ type MemQDB struct {
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
 	Coordinator          string                              `json:"coordinator"`
-	TaskGroup            *TaskGroup                          `json:"taskGroup"`
+	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
+	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
+	BalancerTask         *BalancerTask                       `json:"balancerTask"`
 
 	backupPath string
 	/* caches */
@@ -397,6 +399,29 @@ func (q *MemQDB) ShareKeyRange(id string) error {
 	return nil
 }
 
+// TODO: unit tests
+func (q *MemQDB) RenameKeyRange(_ context.Context, krId, krIdNew string) error {
+	spqrlog.Zero.Debug().
+		Str("id", krId).
+		Str("new id", krIdNew).
+		Msg("etcdqdb: rename key range")
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	kr, ok := q.Krs[krId]
+	if !ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' not found", krId))
+	}
+	if _, ok = q.Krs[krIdNew]; ok {
+		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	}
+
+	kr.KeyRangeID = krIdNew
+	return ExecuteCommands(q.DumpState, NewDeleteCommand(q.Krs, krId), NewDeleteCommand(q.Locks, krId),
+		NewUpdateCommand(q.Krs, krIdNew, kr), NewUpdateCommand(q.Locks, krIdNew, &sync.RWMutex{}))
+}
+
 // ==============================================================================
 //                           Transfer transactions
 // ==============================================================================
@@ -708,33 +733,94 @@ func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*D
 //                                   TASKS
 // ==============================================================================
 
-func (q *MemQDB) GetTaskGroup(_ context.Context) (*TaskGroup, error) {
+// TODO: unit tests
+func (q *MemQDB) GetMoveTaskGroup(_ context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().Msg("memqdb: get task group")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
-	if q.TaskGroup == nil {
-		return &TaskGroup{
-			Tasks: []*Task{},
+	if q.MoveTaskGroup == nil {
+		return &MoveTaskGroup{
+			Tasks: []*MoveTask{},
 		}, nil
 	}
-	return q.TaskGroup, nil
+	return q.MoveTaskGroup, nil
 }
 
-func (q *MemQDB) WriteTaskGroup(_ context.Context, group *TaskGroup) error {
+// TODO: unit tests
+func (q *MemQDB) WriteMoveTaskGroup(_ context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().Msg("memqdb: write task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TaskGroup = group
+	q.MoveTaskGroup = group
 	return nil
 }
 
-func (q *MemQDB) RemoveTaskGroup(_ context.Context) error {
+// TODO: unit tests
+func (q *MemQDB) RemoveMoveTaskGroup(_ context.Context) error {
 	spqrlog.Zero.Debug().Msg("memqdb: remove task group")
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.TaskGroup = nil
+	q.MoveTaskGroup = nil
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetRedistributeTask(_ context.Context) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get redistribute task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.RedistributeTask, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) WriteRedistributeTask(_ context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.RedistributeTask = task
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) RemoveRedistributeTask(_ context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove redistribute task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.RedistributeTask = nil
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) GetBalancerTask(_ context.Context) (*BalancerTask, error) {
+	spqrlog.Zero.Debug().Msg("memqdb: get balancer task")
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	return q.BalancerTask, nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) WriteBalancerTask(_ context.Context, task *BalancerTask) error {
+	spqrlog.Zero.Debug().Msg("memqdb: write balancer task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.BalancerTask = task
+	return nil
+}
+
+// TODO: unit tests
+func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
+	spqrlog.Zero.Debug().Msg("memqdb: remove balancer task")
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	q.BalancerTask = nil
 	return nil
 }

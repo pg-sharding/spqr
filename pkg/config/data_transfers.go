@@ -80,20 +80,3 @@ func initShardDataConfig(file *os.File, cfg *DatatransferConnections) error {
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
-
-// GetConnStrings generates connection strings based on the ShardConnect fields.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - []string: a slice of strings containing connection strings.
-func (s *ShardConnect) GetConnStrings() []string {
-	res := make([]string, len(s.Hosts))
-	for i, host := range s.Hosts {
-		address := strings.Split(host, ":")[0]
-		port := strings.Split(host, ":")[1]
-		res[i] = fmt.Sprintf("user=%s host=%s port=%s dbname=%s password=%s", s.User, address, port, s.DB, s.Password)
-	}
-	return res
-}

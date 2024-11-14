@@ -14,7 +14,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MU
 CREATE TABLE xx (col1 varchar);
 INSERT INTO xx (col1) VALUES ('Hello, world!');
 INSERT INTO xx (col1) VALUES ('test');
-INSERT INTO xx (col1) VALUES ('众口难调');
+INSERT INTO xx (col1) VALUES ('0');
 INSERT INTO xx (col1) VALUES ('The quick brown fox jumps over the lazy dog');
 INSERT INTO xx (col1) VALUES ('Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.');
 

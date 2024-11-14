@@ -42,6 +42,23 @@ func CmpRangesLessStringsDeprecated(bound string, key string) bool {
 	return len(bound) < len(key)
 }
 
+func (kr *KeyRange) InFuncSQL(attribInd int, raw []byte) {
+	switch kr.ColumnTypes[attribInd] {
+	case qdb.ColumnTypeInteger:
+		n, _ := binary.Varint(raw)
+		kr.LowerBound[attribInd] = n
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeUinteger:
+		n, _ := binary.Varint(raw)
+		kr.LowerBound[attribInd] = uint64(n)
+	case qdb.ColumnTypeVarcharDeprecated:
+		fallthrough
+	case qdb.ColumnTypeVarchar:
+		kr.LowerBound[attribInd] = string(raw)
+	}
+}
+
 func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	switch kr.ColumnTypes[attribInd] {
 	case qdb.ColumnTypeInteger:
@@ -50,8 +67,7 @@ func (kr *KeyRange) InFunc(attribInd int, raw []byte) {
 	case qdb.ColumnTypeVarcharHashed:
 		fallthrough
 	case qdb.ColumnTypeUinteger:
-		/* TODO: fix  */
-		n, _ := binary.Varint(raw)
+		n, _ := binary.Uvarint(raw)
 		kr.LowerBound[attribInd] = uint64(n)
 	case qdb.ColumnTypeVarcharDeprecated:
 		fallthrough
@@ -310,8 +326,6 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
 
-	// TODO: Fix this! (krdb.LowerBound -> krqb.LowerBound[i])
-	// now this works only for unidim distributions
 	for i := 0; i < len(colTypes); i++ {
 		kr.InFunc(i, krdb.LowerBound[i])
 	}
@@ -349,7 +363,7 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, colTypes []string) (*
 	}
 
 	for i := 0; i < len(colTypes); i++ {
-		kr.InFunc(i, krsql.LowerBound.Pivots[i])
+		kr.InFuncSQL(i, krsql.LowerBound.Pivots[i])
 	}
 
 	return kr, nil
@@ -461,7 +475,7 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 //
 // Returns:
 //   - string: The SQL condition for the key range.
-func GetKRCondition(ds *distributions.Distribution, rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) string {
+func GetKRCondition(rel *distributions.DistributedRelation, kRange *KeyRange, upperBound KeyRangeBound, prefix string) (string, error) {
 	buf := make([]string, len(rel.DistributionKey))
 	for i, entry := range rel.DistributionKey {
 		// TODO remove after multidimensional key range support
@@ -469,7 +483,6 @@ func GetKRCondition(ds *distributions.Distribution, rel *distributions.Distribut
 			break
 		}
 
-		// TODO add hash (depends on col type)
 		fqCol := ""
 		if prefix != "" {
 			fqCol = fmt.Sprintf("%s.%s", prefix, entry.Column)
@@ -477,17 +490,21 @@ func GetKRCondition(ds *distributions.Distribution, rel *distributions.Distribut
 			fqCol = entry.Column
 		}
 
-		krTmp := KeyRange{
+		hashedCol, err := distributions.GetHashedColumn(fqCol, entry.HashFunction)
+		if err != nil {
+			return "", err
+		}
 
+		krTmp := KeyRange{
 			LowerBound:  upperBound,
 			ColumnTypes: kRange.ColumnTypes,
 		}
 
 		if upperBound != nil {
-			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", fqCol, kRange.SendFunc(i), fqCol, krTmp.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s AND %s < %s", hashedCol, kRange.SendFunc(i), hashedCol, krTmp.SendFunc(i))
 		} else {
-			buf[i] = fmt.Sprintf("%s >= %s", fqCol, kRange.SendFunc(i))
+			buf[i] = fmt.Sprintf("%s >= %s", hashedCol, kRange.SendFunc(i))
 		}
 	}
-	return strings.Join(buf, " AND ")
+	return strings.Join(buf, " AND "), nil
 }

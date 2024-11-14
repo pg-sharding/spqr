@@ -543,22 +543,17 @@ Feature: Coordinator show clients, pools and backend_connections
             "tasks":
             [
                 {
-                    "shard_from_id": "sh_from",
-                    "shard_to_id":   "sh_to",
-                    "kr_id_from":    "kr_from",
-                    "kr_id_to":      "kr_to",
-                    "bound":         "MQ==",
+                    "bound":         ["MQ=="],
                     "state":         1
                 },
                 {
-                    "shard_from_id": "sh_from",
-                    "shard_to_id":   "sh_to",
-                    "kr_id_from":    "kr_from",
-                    "kr_id_to":      "kr_to",
-                    "bound":         "MTA=",
+                    "bound":         ["MTA="],
                     "state":         0
                 }
-            ]
+            ],
+            "shard_to_id":   "sh_to",
+            "kr_id_from":    "kr_from",
+            "kr_id_to":      "kr_to"
         }
         """
         Then command return code should be "0"

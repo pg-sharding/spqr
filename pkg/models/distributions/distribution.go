@@ -1,6 +1,9 @@
 package distributions
 
 import (
+	"fmt"
+
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -247,4 +250,46 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 	}
 
 	return d
+}
+
+// GetDistributionKeyColumns returns array of a DistributedRelation column names.
+// Hash functions are added to column names if necessary.
+//
+// Returns:
+//   - []string: Columns with optional hash function.
+//   - error: An error if any occured
+func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
+	res := make([]string, len(rel.DistributionKey))
+	for i, col := range rel.DistributionKey {
+		hashedCol, err := GetHashedColumn(col.Column, col.HashFunction)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = hashedCol
+	}
+	return res, nil
+}
+
+// GetHashedColumn returns column name with optional hash function application
+//
+// Parameters:
+//   - col: The column name
+//   - hash: THe name of the hash function
+//
+// Returns:
+//   - string: The resulting value
+//   - error: An error if hash function's name is invalid
+func GetHashedColumn(col string, hash string) (string, error) {
+	switch hash {
+	case "identity", "ident", "":
+		return col, nil
+	case "city":
+		// TODO: change internal city hashing to 64 bits (32 bit hashing is not supported in postgresql)
+		// return fmt.Sprintf("hash_string(%s, 'city64')", col), nil
+		return "", spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "city hashing is not supported in coordinator operations")
+	case "murmur":
+		return fmt.Sprintf("(hash_string(%s, 'murmur3') + 2147483648)", col), nil
+	default:
+		return "", spqrerror.Newf(spqrerror.SPQR_KEYRANGE_ERROR, "invalid hash function \"%s\"", hash)
+	}
 }

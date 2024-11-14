@@ -30,8 +30,9 @@ type LocalQrouterServer struct {
 	protos.UnimplementedBackendConnectionsServiceServer
 	protos.UnimplementedPoolServiceServer
 	protos.UnimplementedDistributionServiceServer
-	protos.UnimplementedTasksServiceServer
+	protos.UnimplementedMoveTasksServiceServer
 	protos.UnimplementedShardServiceServer
+	protos.UnimplementedBalancerTaskServiceServer
 	qr  qrouter.QueryRouter
 	mgr meta.EntityMgr
 	rr  rulerouter.RuleRouter
@@ -340,6 +341,11 @@ func (l *LocalQrouterServer) MergeKeyRange(ctx context.Context, request *protos.
 	return &protos.ModifyReply{}, nil
 }
 
+// TODO: unit tests
+func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
+}
+
 // TODO : unit tests
 func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{
@@ -434,22 +440,44 @@ func (l *LocalQrouterServer) GetCoordinator(ctx context.Context, _ *emptypb.Empt
 	return reply, err
 }
 
-func (l *LocalQrouterServer) GetTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetTaskGroupReply, error) {
-	group, err := l.mgr.GetTaskGroup(ctx)
+// TODO: unit tests
+func (l *LocalQrouterServer) GetMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*protos.GetMoveTaskGroupReply, error) {
+	group, err := l.mgr.GetMoveTaskGroup(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &protos.GetTaskGroupReply{
+	return &protos.GetMoveTaskGroupReply{
 		TaskGroup: tasks.TaskGroupToProto(group),
 	}, nil
 }
 
-func (l *LocalQrouterServer) WriteTaskGroup(ctx context.Context, request *protos.WriteTaskGroupRequest) (*emptypb.Empty, error) {
-	return nil, l.mgr.WriteTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
+// TODO: unit tests
+func (l *LocalQrouterServer) WriteMoveTaskGroup(ctx context.Context, request *protos.WriteMoveTaskGroupRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.WriteMoveTaskGroup(ctx, tasks.TaskGroupFromProto(request.TaskGroup))
 }
 
-func (l *LocalQrouterServer) RemoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, l.mgr.RemoveTaskGroup(ctx)
+// TODO: unit tests
+func (l *LocalQrouterServer) RemoveMoveTaskGroup(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, l.mgr.RemoveMoveTaskGroup(ctx)
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) GetBalancerTask(ctx context.Context, _ *emptypb.Empty) (*protos.GetBalancerTaskReply, error) {
+	task, err := l.mgr.GetBalancerTask(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &protos.GetBalancerTaskReply{Task: tasks.BalancerTaskToProto(task)}, nil
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) WriteBalancerTask(ctx context.Context, request *protos.WriteBalancerTaskRequest) (*emptypb.Empty, error) {
+	return nil, l.mgr.WriteBalancerTask(ctx, tasks.BalancerTaskFromProto(request.Task))
+}
+
+// TODO: unit tests
+func (l *LocalQrouterServer) RemoveBalancerTask(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, l.mgr.RemoveBalancerTask(ctx)
 }
 
 func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr meta.EntityMgr, rr rulerouter.RuleRouter) {
@@ -470,7 +498,8 @@ func Register(server reflection.GRPCServer, qrouter qrouter.QueryRouter, mgr met
 	protos.RegisterBackendConnectionsServiceServer(server, lqr)
 	protos.RegisterPoolServiceServer(server, lqr)
 	protos.RegisterDistributionServiceServer(server, lqr)
-	protos.RegisterTasksServiceServer(server, lqr)
+	protos.RegisterMoveTasksServiceServer(server, lqr)
+	protos.RegisterBalancerTaskServiceServer(server, lqr)
 }
 
 var _ protos.KeyRangeServiceServer = &LocalQrouterServer{}
@@ -480,5 +509,6 @@ var _ protos.ClientInfoServiceServer = &LocalQrouterServer{}
 var _ protos.BackendConnectionsServiceServer = &LocalQrouterServer{}
 var _ protos.PoolServiceServer = &LocalQrouterServer{}
 var _ protos.DistributionServiceServer = &LocalQrouterServer{}
-var _ protos.TasksServiceServer = &LocalQrouterServer{}
+var _ protos.MoveTasksServiceServer = &LocalQrouterServer{}
+var _ protos.BalancerTaskServiceServer = &LocalQrouterServer{}
 var _ protos.ShardServiceServer = &LocalQrouterServer{}

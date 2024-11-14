@@ -23,6 +23,10 @@ import (
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
+const (
+	defaultBatchSize = 500
+)
+
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
@@ -144,7 +148,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		}
 		return cli.DropShard(stmt.ID)
 	case *spqrparser.TaskGroupSelector:
-		if err := mngr.RemoveTaskGroup(ctx); err != nil {
+		if err := mngr.RemoveMoveTaskGroup(ctx); err != nil {
 			return err
 		}
 		return cli.DropTaskGroup(ctx)
@@ -392,6 +396,8 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return cli.MergeKeyRanges(ctx, uniteKeyRange)
 	case *spqrparser.Alter:
 		return processAlter(ctx, stmt.Element, mgr, cli)
+	case *spqrparser.RedistributeKeyRange:
+		return processRedistribute(ctx, stmt, mgr, cli)
 	default:
 		return unknownCoordinatorCommand
 	}
@@ -527,11 +533,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 		return cli.Relations(dsToRels, stmt.Where)
 	case spqrparser.TaskGroupStr:
-		group, err := mngr.GetTaskGroup(ctx)
+		group, err := mngr.GetMoveTaskGroup(ctx)
 		if err != nil {
 			return err
 		}
-		return cli.Tasks(ctx, group.Tasks)
+		return cli.MoveTaskGroup(ctx, group)
 	case spqrparser.PreparedStatementsStr:
 
 		var resp []shard.PreparedStatementsMgrDescriptor
@@ -548,4 +554,35 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	default:
 		return unknownCoordinatorCommand
 	}
+}
+
+// TODO : unit tests
+
+// processRedistribute processes the REDISTRIUTE KEY RANGE statement and returns an error if any issue occurs.
+//
+// Parameters:
+//   - ctx (context.Context): The context for the operation.
+//   - stmt (*spqrparser.Show): The REDISTRIUTE KEY RANGE statement to process.
+//   - mngr (EntityMgr): The entity manager for performing the redistribution.
+//   - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
+//
+// Returns:
+// - error: An error if the operation encounters any issues.
+func processRedistribute(ctx context.Context, req *spqrparser.RedistributeKeyRange, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
+	spqrlog.Zero.Debug().Str("key range id", req.KeyRangeID).Str("destination shard id", req.DestShardID).Int("batch size", req.BatchSize).Msg("process redistribute")
+	if req.BatchSize <= 0 {
+		spqrlog.Zero.Debug().
+			Int("batch-size-got", req.BatchSize).
+			Int("batch-size-use", defaultBatchSize).
+			Msg("redistribute: using default batch size")
+		req.BatchSize = defaultBatchSize
+	}
+	if err := mngr.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+		KrId:      req.KeyRangeID,
+		ShardId:   req.DestShardID,
+		BatchSize: req.BatchSize,
+	}); err != nil {
+		return cli.ReportError(err)
+	}
+	return cli.RedistributeKeyRange(ctx, req)
 }

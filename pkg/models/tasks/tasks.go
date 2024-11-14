@@ -1,18 +1,15 @@
 package tasks
 
 import (
+	"fmt"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type Task struct {
-	ShardFromId string
-	ShardToId   string
-	KrIdFrom    string
-	KrIdTo      string
-	Bound       []byte
-	KrIdTemp    string
-	State       TaskState
+type MoveTask struct {
+	Bound    [][]byte
+	KrIdTemp string
+	State    TaskState
 }
 
 type TaskState int
@@ -31,46 +28,76 @@ const (
 	JoinRight
 )
 
-type TaskGroup struct {
-	Tasks    []*Task
-	JoinType JoinType
+type SplitType int
+
+const (
+	SplitLeft = iota
+	SplitRight
+)
+
+type MoveTaskGroup struct {
+	ShardToId string
+	KrIdFrom  string
+	KrIdTo    string
+	Tasks     []*MoveTask
+	Type      SplitType
 }
 
-// TaskGroupToProto converts a TaskGroup object to its corresponding protobuf representation.
-// It creates a new protos.TaskGroup object and copies the values from the input object to the output object.
+type RedistributeTaskState int
+
+const (
+	RedistributeTaskPlanned = iota
+	RedistributeTaskMoved
+)
+
+type RedistributeTask struct {
+	KrId      string
+	ShardId   string
+	BatchSize int
+	TempKrId  string
+	State     RedistributeTaskState
+}
+
+// TaskGroupToProto converts a MoveTaskGroup object to its corresponding protobuf representation.
+// It creates a new protos.MoveTaskGroup object and copies the values from the input object to the output object.
 //
 // Parameters:
-//   - group: The TaskGroup object to convert.
+//   - group: The MoveTaskGroup object to convert.
 //
 // Returns:
-//   - *protos.TaskGroup: The converted protos.TaskGroup object.
-func TaskGroupToProto(group *TaskGroup) *protos.TaskGroup {
-	return &protos.TaskGroup{
-		Tasks: func() []*protos.Task {
-			res := make([]*protos.Task, len(group.Tasks))
+//   - *protos.MoveTaskGroup: The converted protos.MoveTaskGroup object.
+func TaskGroupToProto(group *MoveTaskGroup) *protos.MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
+	return &protos.MoveTaskGroup{
+		Tasks: func() []*protos.MoveTask {
+			res := make([]*protos.MoveTask, len(group.Tasks))
 			for i, t := range group.Tasks {
 				res[i] = TaskToProto(t)
 			}
 			return res
 		}(),
-		JoinType: JoinTypeToProto(group.JoinType),
+		Type:           SplitTypeToProto(group.Type),
+		ShardIdTo:      group.ShardToId,
+		KeyRangeIdFrom: group.KrIdFrom,
+		KeyRangeIdTo:   group.KrIdTo,
 	}
 }
 
-// TaskToProto converts a Task struct to a protos.Task struct.
-// It creates a new protos.Task object and copies the values from the input object to the output object.
+// TaskToProto converts a MoveTask struct to a protos.MoveTask struct.
+// It creates a new protos.MoveTask object and copies the values from the input object to the output object.
 //
 // Parameters:
-//   - task: The Task object to convert.
+//   - task: The MoveTask object to convert.
 //
 // Returns:
-//   - *protos.Task: The converted protos.Task object.
-func TaskToProto(task *Task) *protos.Task {
-	return &protos.Task{
-		ShardIdFrom:    task.ShardFromId,
-		ShardIdTo:      task.ShardToId,
-		KeyRangeIdFrom: task.KrIdFrom,
-		KeyRangeIdTo:   task.KrIdTo,
+//   - *protos.MoveTask: The converted protos.MoveTask object.
+func TaskToProto(task *MoveTask) *protos.MoveTask {
+	if task == nil {
+		return nil
+	}
+	return &protos.MoveTask{
 		KeyRangeIdTemp: task.KrIdTemp,
 		Bound:          task.Bound,
 		Status:         TaskStateToProto(task.State),
@@ -143,44 +170,69 @@ func JoinTypeToProto(t JoinType) protos.JoinType {
 	}
 }
 
-// TaskGroupFromProto converts a protos.TaskGroup object to a TaskGroup object.
-// It creates a new TaskGroup object and copies the values from the input object to the output object.
+// SplitTypeToProto converts a SplitType to its corresponding protos.SplitType.
+// It takes a SplitType as input and returns the corresponding protos.SplitType.
+// If the input SplitType is not recognized, it panics with an "incorrect split type" error.
 //
 // Parameters:
-//   - group: The protos.TaskGroup object to convert.
+//   - t: The SplitType value to convert.
 //
 // Returns:
-//   - *TaskGroup: The converted TaskGroup object.
-func TaskGroupFromProto(group *protos.TaskGroup) *TaskGroup {
-	return &TaskGroup{
-		Tasks: func() []*Task {
-			res := make([]*Task, len(group.Tasks))
+//   - protos.SplitType: The converted protos.SplitType value.
+func SplitTypeToProto(t SplitType) protos.SplitType {
+	switch t {
+	case SplitLeft:
+		return protos.SplitType_SplitLeft
+	case SplitRight:
+		return protos.SplitType_SplitRight
+	default:
+		panic("incorrect split type")
+	}
+}
+
+// TaskGroupFromProto converts a protos.MoveTaskGroup object to a MoveTaskGroup object.
+// It creates a new MoveTaskGroup object and copies the values from the input object to the output object.
+//
+// Parameters:
+//   - group: The protos.MoveTaskGroup object to convert.
+//
+// Returns:
+//   - *MoveTaskGroup: The converted MoveTaskGroup object.
+func TaskGroupFromProto(group *protos.MoveTaskGroup) *MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
+	return &MoveTaskGroup{
+		Tasks: func() []*MoveTask {
+			res := make([]*MoveTask, len(group.Tasks))
 			for i, t := range group.Tasks {
 				res[i] = TaskFromProto(t)
 			}
 			return res
 		}(),
-		JoinType: JoinTypeFromProto(group.JoinType),
+		Type:      SplitTypeFromProto(group.Type),
+		ShardToId: group.ShardIdTo,
+		KrIdFrom:  group.KeyRangeIdFrom,
+		KrIdTo:    group.KeyRangeIdTo,
 	}
 }
 
-// TaskFromProto converts a protos.Task object to a Task object.
-// It creates a new Task object and copies the values from the input object to the output object.
+// TaskFromProto converts a protos.MoveTask object to a MoveTask object.
+// It creates a new MoveTask object and copies the values from the input object to the output object.
 //
 // Parameters:
-//   - task: The protos.Task object to convert.
+//   - task: The protos.MoveTask object to convert.
 //
 // Returns:
-//   - *Task: The converted Task object.
-func TaskFromProto(task *protos.Task) *Task {
-	return &Task{
-		ShardFromId: task.ShardIdFrom,
-		ShardToId:   task.ShardIdTo,
-		KrIdFrom:    task.KeyRangeIdFrom,
-		KrIdTo:      task.KeyRangeIdTo,
-		KrIdTemp:    task.KeyRangeIdTemp,
-		Bound:       task.Bound,
-		State:       TaskStateFromProto(task.Status),
+//   - *MoveTask: The converted MoveTask object.
+func TaskFromProto(task *protos.MoveTask) *MoveTask {
+	if task == nil {
+		return nil
+	}
+	return &MoveTask{
+		KrIdTemp: task.KeyRangeIdTemp,
+		Bound:    task.Bound,
+		State:    TaskStateFromProto(task.Status),
 	}
 }
 
@@ -228,92 +280,305 @@ func JoinTypeFromProto(t protos.JoinType) JoinType {
 	}
 }
 
-// TaskGroupToDb converts a TaskGroup object to a qdb.TaskGroup object.
-// It creates a new qdb.TaskGroup object and populates its fields based on the provided TaskGroup object.
-// The Tasks field is populated by converting each Task object in the group.Tasks slice to a qdb.Task object using the TaskToDb function.
-// The JoinType field is set to the integer value of the group.JoinType.
-// The converted qdb.TaskGroup object is returned.
+// SplitTypeFromProto converts a protos.JoinType to a SplitType.
+// It maps the given protos.SplitType to the corresponding SplitType value.
+// If the given protos.SplitType is not recognized, it panics with an "incorrect split type" error.
 //
 // Parameters:
-//   - group: The TaskGroup object to convert.
+//   - t: The protos.SplitType value to convert.
 //
 // Returns:
-//   - *qdb.TaskGroup: The converted qdb.TaskGroup object.
-func TaskGroupToDb(group *TaskGroup) *qdb.TaskGroup {
-	return &qdb.TaskGroup{
-		Tasks: func() []*qdb.Task {
-			res := make([]*qdb.Task, len(group.Tasks))
+//   - SplitType: The converted SplitType value.
+func SplitTypeFromProto(t protos.SplitType) SplitType {
+	switch t {
+	case protos.SplitType_SplitLeft:
+		return SplitLeft
+	case protos.SplitType_SplitRight:
+		return SplitRight
+	default:
+		panic("incorrect split type")
+	}
+}
+
+// TaskGroupToDb converts a MoveTaskGroup object to a qdb.MoveTaskGroup object.
+// It creates a new qdb.MoveTaskGroup object and populates its fields based on the provided MoveTaskGroup object.
+// The Tasks field is populated by converting each MoveTask object in the group.Tasks slice to a qdb.MoveTask object using the TaskToDb function.
+// The JoinType field is set to the integer value of the group.JoinType.
+// The converted qdb.MoveTaskGroup object is returned.
+//
+// Parameters:
+//   - group: The MoveTaskGroup object to convert.
+//
+// Returns:
+//   - *qdb.MoveTaskGroup: The converted qdb.MoveTaskGroup object.
+func TaskGroupToDb(group *MoveTaskGroup) *qdb.MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
+	return &qdb.MoveTaskGroup{
+		Tasks: func() []*qdb.MoveTask {
+			res := make([]*qdb.MoveTask, len(group.Tasks))
 			for i, task := range group.Tasks {
 				res[i] = TaskToDb(task)
 			}
 			return res
 		}(),
-		JoinType: int(group.JoinType),
+		Type:      int(group.Type),
+		ShardToId: group.ShardToId,
+		KrIdFrom:  group.KrIdFrom,
+		KrIdTo:    group.KrIdTo,
 	}
 }
 
-// TaskToDb converts a Task struct to a qdb.Task struct.
-// It takes a pointer to a Task struct as input and returns a pointer to a qdb.Task struct.
-// The function creates a new qdb.Task object and copies the values from the input Task object to the output qdb.Task object.
+// TaskToDb converts a MoveTask struct to a qdb.MoveTask struct.
+// It takes a pointer to a MoveTask struct as input and returns a pointer to a qdb.MoveTask struct.
+// The function creates a new qdb.MoveTask object and copies the values from the input MoveTask object to the output qdb.MoveTask object.
 //
 // Parameters:
-//   - task: The Task object to convert.
+//   - task: The MoveTask object to convert.
 //
 // Returns:
-//   - *qdb.Task: The converted qdb.Task object.
-func TaskToDb(task *Task) *qdb.Task {
-	return &qdb.Task{
-		ShardFromId: task.ShardFromId,
-		ShardToId:   task.ShardToId,
-		KrIdFrom:    task.KrIdFrom,
-		KrIdTo:      task.KrIdTo,
-		KrIdTemp:    task.KrIdTemp,
-		Bound:       task.Bound,
-		State:       int(task.State),
+//   - *qdb.MoveTask: The converted qdb.MoveTask object.
+func TaskToDb(task *MoveTask) *qdb.MoveTask {
+	if task == nil {
+		return nil
+	}
+	return &qdb.MoveTask{
+		KrIdTemp: task.KrIdTemp,
+		Bound:    task.Bound,
+		State:    int(task.State),
 	}
 }
 
-// TaskGroupFromDb converts a database task group to a TaskGroup struct.
-// It takes a pointer to a qdb.TaskGroup as input and returns a pointer to a TaskGroup.
-// The function creates a new TaskGroup object and populates its fields based on the provided qdb.TaskGroup object.
-// The Tasks field is populated by converting each qdb.Task object in the group.Tasks slice to a Task object using the TaskFromDb function.
-// The JoinType field is set to the JoinType value of the qdb.TaskGroup object.
+// TaskGroupFromDb converts a database task group to a MoveTaskGroup struct.
+// It takes a pointer to a qdb.MoveTaskGroup as input and returns a pointer to a MoveTaskGroup.
+// The function creates a new MoveTaskGroup object and populates its fields based on the provided qdb.MoveTaskGroup object.
+// The Tasks field is populated by converting each qdb.MoveTask object in the group.Tasks slice to a MoveTask object using the TaskFromDb function.
+// The JoinType field is set to the JoinType value of the qdb.MoveTaskGroup object.
 //
 // Parameters:
-//   - group: The qdb.TaskGroup object to convert.
+//   - group: The qdb.MoveTaskGroup object to convert.
 //
 // Returns:
-//   - *TaskGroup: The converted TaskGroup object.
-func TaskGroupFromDb(group *qdb.TaskGroup) *TaskGroup {
-	return &TaskGroup{
-		Tasks: func() []*Task {
-			res := make([]*Task, len(group.Tasks))
+//   - *MoveTaskGroup: The converted MoveTaskGroup object.
+func TaskGroupFromDb(group *qdb.MoveTaskGroup) *MoveTaskGroup {
+	if group == nil {
+		return nil
+	}
+	return &MoveTaskGroup{
+		Tasks: func() []*MoveTask {
+			res := make([]*MoveTask, len(group.Tasks))
 			for i, task := range group.Tasks {
 				res[i] = TaskFromDb(task)
 			}
 			return res
 		}(),
-		JoinType: JoinType(group.JoinType),
+		Type:      SplitType(group.Type),
+		ShardToId: group.ShardToId,
+		KrIdFrom:  group.KrIdFrom,
+		KrIdTo:    group.KrIdTo,
 	}
 }
 
-// TaskFromDb converts a qdb.Task object to a Task object.
-// It takes a pointer to a qdb.Task as input and returns a pointer to a Task.
-// The function creates a new Task object and copies the values from the input qdb.Task object to the output Task object.
+// TaskFromDb converts a qdb.MoveTask object to a MoveTask object.
+// It takes a pointer to a qdb.MoveTask as input and returns a pointer to a MoveTask.
+// The function creates a new MoveTask object and copies the values from the input qdb.MoveTask object to the output MoveTask object.
 //
 // Parameters:
-//   - task: The qdb.Task object to convert.
+//   - task: The qdb.MoveTask object to convert.
 //
 // Returns:
-//   - *Task: The converted Task object.
-func TaskFromDb(task *qdb.Task) *Task {
-	return &Task{
-		ShardFromId: task.ShardFromId,
-		ShardToId:   task.ShardToId,
-		KrIdFrom:    task.KrIdFrom,
-		KrIdTo:      task.KrIdTo,
-		KrIdTemp:    task.KrIdTemp,
-		Bound:       task.Bound,
-		State:       TaskState(task.State),
+//   - *MoveTask: The converted MoveTask object.
+func TaskFromDb(task *qdb.MoveTask) *MoveTask {
+	return &MoveTask{
+		KrIdTemp: task.KrIdTemp,
+		Bound:    task.Bound,
+		State:    TaskState(task.State),
+	}
+}
+
+type BalancerTaskState int
+
+const (
+	BalancerTaskPlanned = iota
+	BalancerTaskMoved
+)
+
+type BalancerTask struct {
+	Type      JoinType
+	KrIdFrom  string
+	KrIdTo    string
+	KrIdTemp  string
+	ShardIdTo string
+	KeyCount  int64
+	State     BalancerTaskState
+}
+
+func BalancerTaskFromProto(task *protos.BalancerTask) *BalancerTask {
+	if task == nil {
+		return nil
+	}
+	return &BalancerTask{
+		State:     BalancerTaskStateFromProto(task.State),
+		KrIdFrom:  task.KeyRangeIdFrom,
+		KrIdTo:    task.KeyRangeIdTo,
+		KrIdTemp:  task.KeyRangeIdTemp,
+		ShardIdTo: task.ShardIdTo,
+		KeyCount:  task.KeyCount,
+		Type:      JoinTypeFromProto(task.Type),
+	}
+}
+
+func BalancerTaskToProto(task *BalancerTask) *protos.BalancerTask {
+	if task == nil {
+		return nil
+	}
+	return &protos.BalancerTask{
+		State:          BalancerTaskStateToProto(task.State),
+		KeyRangeIdFrom: task.KrIdFrom,
+		KeyRangeIdTo:   task.KrIdTo,
+		KeyRangeIdTemp: task.KrIdTemp,
+		ShardIdTo:      task.ShardIdTo,
+		KeyCount:       task.KeyCount,
+		Type:           JoinTypeToProto(task.Type),
+	}
+}
+
+func BalancerTaskStateFromProto(state protos.BalancerTaskStatus) BalancerTaskState {
+	switch state {
+	case protos.BalancerTaskStatus_BalancerTaskPlanned:
+		return BalancerTaskPlanned
+	case protos.BalancerTaskStatus_BalancerTaskMoved:
+		return BalancerTaskMoved
+	default:
+		panic("unknown balancer task status")
+	}
+}
+
+func BalancerTaskStateToProto(state BalancerTaskState) protos.BalancerTaskStatus {
+	switch state {
+	case BalancerTaskPlanned:
+		return protos.BalancerTaskStatus_BalancerTaskPlanned
+	case BalancerTaskMoved:
+		return protos.BalancerTaskStatus_BalancerTaskMoved
+	default:
+		panic("unknown balancer task status")
+	}
+}
+
+func BalancerTaskToDb(task *BalancerTask) *qdb.BalancerTask {
+	if task == nil {
+		return nil
+	}
+	return &qdb.BalancerTask{
+		Type:      int(task.Type),
+		KrIdFrom:  task.KrIdFrom,
+		KrIdTo:    task.KrIdTo,
+		KrIdTemp:  task.KrIdTemp,
+		ShardIdTo: task.ShardIdTo,
+		KeyCount:  task.KeyCount,
+		State:     int(task.State),
+	}
+}
+
+func BalancerTaskFromDb(task *qdb.BalancerTask) *BalancerTask {
+	if task == nil {
+		return nil
+	}
+	return &BalancerTask{
+		Type: func() JoinType {
+			switch task.Type {
+			case JoinLeft:
+				return JoinLeft
+			case JoinRight:
+				return JoinRight
+			case JoinNone:
+				return JoinNone
+			default:
+				panic(fmt.Sprintf("incorrect join type: \"%d\"", task.Type))
+			}
+		}(),
+		KrIdFrom:  task.KrIdFrom,
+		KrIdTo:    task.KrIdTo,
+		KrIdTemp:  task.KrIdTemp,
+		ShardIdTo: task.ShardIdTo,
+		KeyCount:  task.KeyCount,
+		State: func() BalancerTaskState {
+			switch task.State {
+			case BalancerTaskPlanned:
+				return BalancerTaskPlanned
+			case BalancerTaskMoved:
+				return BalancerTaskMoved
+			default:
+				panic(fmt.Sprintf("incorrect balancer task state: \"%d\"", task.State))
+			}
+		}(),
+	}
+}
+
+func RedistributeTaskToProto(task *RedistributeTask) *protos.RedistributeTask {
+	return &protos.RedistributeTask{
+		KeyRangeId: task.KrId,
+		ShardId:    task.ShardId,
+		BatchSize:  int64(task.BatchSize),
+		State:      RedistributeTaskStateToProto(task.State),
+	}
+}
+
+func RedistributeTaskFromProto(task *protos.RedistributeTask) *RedistributeTask {
+	return &RedistributeTask{
+		KrId:      task.KeyRangeId,
+		ShardId:   task.ShardId,
+		BatchSize: int(task.BatchSize),
+		State:     RedistributeTaskStateFromProto(task.State),
+	}
+}
+
+func RedistributeTaskToDB(task *RedistributeTask) *qdb.RedistributeTask {
+	return &qdb.RedistributeTask{
+		KrId:      task.KrId,
+		ShardId:   task.ShardId,
+		BatchSize: task.BatchSize,
+		State:     int(task.State),
+	}
+}
+
+func RedistributeTaskFromDB(task *qdb.RedistributeTask) *RedistributeTask {
+	return &RedistributeTask{
+		KrId:      task.KrId,
+		ShardId:   task.ShardId,
+		BatchSize: task.BatchSize,
+		State: func() RedistributeTaskState {
+			switch task.State {
+			case RedistributeTaskPlanned:
+				return RedistributeTaskPlanned
+			case RedistributeTaskMoved:
+				return RedistributeTaskMoved
+			default:
+				panic("unknown redistribute task type")
+			}
+		}(),
+	}
+}
+
+func RedistributeTaskStateToProto(state RedistributeTaskState) protos.RedistributeTaskState {
+	switch state {
+	case RedistributeTaskPlanned:
+		return protos.RedistributeTaskState_RedistributeTaskPlanned
+	case RedistributeTaskMoved:
+		return protos.RedistributeTaskState_RedistributeTaskMoved
+	default:
+		panic("unknown redistribute task state")
+	}
+}
+
+func RedistributeTaskStateFromProto(state protos.RedistributeTaskState) RedistributeTaskState {
+	switch state {
+	case protos.RedistributeTaskState_RedistributeTaskPlanned:
+		return RedistributeTaskPlanned
+	case protos.RedistributeTaskState_RedistributeTaskMoved:
+		return RedistributeTaskMoved
+	default:
+		panic("unknown redistribute task state")
 	}
 }

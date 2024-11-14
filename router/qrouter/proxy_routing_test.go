@@ -1637,10 +1637,10 @@ func TestHashRouting(t *testing.T) {
 		Distribution: distribution1,
 		ID:           "id1",
 		LowerBound: kr.KeyRangeBound{
-			int64(1),
+			uint64(1),
 		},
 		ColumnTypes: []string{
-			qdb.ColumnTypeInteger,
+			qdb.ColumnTypeVarcharHashed,
 		},
 	}).ToDB(),
 	)

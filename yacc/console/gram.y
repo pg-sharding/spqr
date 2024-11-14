@@ -58,6 +58,8 @@ func randomHex(n int) (string, error) {
 	split                  *SplitKeyRange
 	move                   *MoveKeyRange
 	unite                  *UniteKeyRange
+	
+	redistribute           *RedistributeKeyRange
 
 	shutdown               *Shutdown
 	listen                 *Listen
@@ -142,11 +144,12 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
+%token <str> BATCH SIZE
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -216,6 +219,7 @@ func randomHex(n int) (string, error) {
 %type <listen> listen_stmt
 %type <split> split_key_range_stmt
 %type <move> move_key_range_stmt
+%type <redistribute> redistribute_key_range_stmt
 %type <unite> unite_key_range_stmt
 %type <register_router> register_router_stmt
 %type <unregister_router> unregister_router_stmt
@@ -282,6 +286,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| move_key_range_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| redistribute_key_range_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -844,6 +852,15 @@ move_key_range_stmt:
 	MOVE key_range_stmt TO any_id
 	{
 		$$ = &MoveKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4}
+	}
+
+redistribute_key_range_stmt:
+	REDISTRIBUTE key_range_stmt TO any_id BATCH SIZE any_uint
+	{
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: int($7)}
+	} | REDISTRIBUTE key_range_stmt TO any_id
+	{
+		$$ = &RedistributeKeyRange{KeyRangeID: $2.KeyRangeID, DestShardID: $4, BatchSize: -1}
 	}
 
 unite_key_range_stmt:

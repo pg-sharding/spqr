@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
+
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -163,6 +165,50 @@ func (c *CoordinatorService) MergeKeyRange(ctx context.Context, request *protos.
 	}
 
 	return &protos.ModifyReply{}, nil
+}
+
+// TODO: unit tests
+func (c *CoordinatorService) BatchMoveKeyRange(ctx context.Context, request *protos.BatchMoveKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.BatchMoveKeyRange(ctx, &kr.BatchMoveKeyRange{
+		KrId:     request.Id,
+		DestKrId: request.ToKrId,
+		ShardId:  request.ToShardId,
+		Limit: func() int64 {
+			switch request.LimitType {
+			case protos.RedistributeLimitType_RedistributeAllKeys:
+				return -1
+			case protos.RedistributeLimitType_RedistributeKeysLimit:
+				return request.Limit
+			default:
+				panic("unknown redistribution key limit")
+			}
+		}(),
+		BatchSize: int(request.BatchSize),
+		Type: func() tasks.SplitType {
+			switch request.SplitType {
+			case protos.SplitType_SplitLeft:
+				return tasks.SplitLeft
+			case protos.SplitType_SplitRight:
+				return tasks.SplitRight
+			default:
+				panic("incorrect split type")
+			}
+		}(),
+	})
+}
+
+// TODO: unit tests
+func (c *CoordinatorService) RedistributeKeyRange(ctx context.Context, request *protos.RedistributeKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.RedistributeKeyRange(ctx, &kr.RedistributeKeyRange{
+		KrId:      request.Id,
+		ShardId:   request.ShardId,
+		BatchSize: int(request.BatchSize),
+	})
+}
+
+// TODO: unit tests
+func (c *CoordinatorService) RenameKeyRange(ctx context.Context, request *protos.RenameKeyRangeRequest) (*emptypb.Empty, error) {
+	return nil, c.impl.RenameKeyRange(ctx, request.KeyRangeId, request.NewKeyRangeId)
 }
 
 var _ protos.KeyRangeServiceServer = &CoordinatorService{}

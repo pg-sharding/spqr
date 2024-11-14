@@ -57,6 +57,8 @@ const (
 	shardsNamespace          = "/shards/"
 	relationMappingNamespace = "/relation_mappings/"
 	taskGroupPath            = "/move_task_group"
+	redistributeTaskPath     = "/redistribute_task/"
+	balancerTaskPath         = "/balancer_task/"
 	transactionNamespace     = "/transfer_txs/"
 
 	CoordKeepAliveTtl = 3
@@ -433,6 +435,29 @@ func (q *EtcdQDB) ShareKeyRange(id string) error {
 		Str("id", id).
 		Msg("etcdqdb: share key range")
 	return fmt.Errorf("implement ShareKeyRange")
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) RenameKeyRange(ctx context.Context, krId, krIdNew string) error {
+	spqrlog.Zero.Debug().
+		Str("id", krId).
+		Str("new id", krIdNew).
+		Msg("etcdqdb: rename key range")
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	kr, err := q.fetchKeyRange(ctx, keyRangeNodePath(krId))
+	if err != nil {
+		return err
+	}
+	kr.KeyRangeID = krIdNew
+
+	if _, err = q.cli.Delete(ctx, keyRangeNodePath(krId)); err != nil {
+		return err
+	}
+
+	return q.CreateKeyRange(ctx, kr)
 }
 
 // ==============================================================================
@@ -1086,7 +1111,8 @@ func (q *EtcdQDB) GetRelationDistribution(ctx context.Context, relName string) (
 //                                    TASKS
 // ==============================================================================
 
-func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
+// TODO: unit tests
+func (q *EtcdQDB) GetMoveTaskGroup(ctx context.Context) (*MoveTaskGroup, error) {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: get task group")
 
@@ -1096,12 +1122,12 @@ func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
 	}
 
 	if len(resp.Kvs) == 0 {
-		return &TaskGroup{
-			Tasks: []*Task{},
+		return &MoveTaskGroup{
+			Tasks: []*MoveTask{},
 		}, nil
 	}
 
-	var taskGroup *TaskGroup
+	var taskGroup *MoveTaskGroup
 	if err := json.Unmarshal(resp.Kvs[0].Value, &taskGroup); err != nil {
 		return nil, err
 	}
@@ -1109,7 +1135,8 @@ func (q *EtcdQDB) GetTaskGroup(ctx context.Context) (*TaskGroup, error) {
 	return taskGroup, nil
 }
 
-func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
+// TODO: unit tests
+func (q *EtcdQDB) WriteMoveTaskGroup(ctx context.Context, group *MoveTaskGroup) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: write task group")
 
@@ -1122,11 +1149,102 @@ func (q *EtcdQDB) WriteTaskGroup(ctx context.Context, group *TaskGroup) error {
 	return err
 }
 
-func (q *EtcdQDB) RemoveTaskGroup(ctx context.Context) error {
+// TODO: unit tests
+func (q *EtcdQDB) RemoveMoveTaskGroup(ctx context.Context) error {
 	spqrlog.Zero.Debug().
 		Msg("etcdqdb: remove task group")
 
 	_, err := q.cli.Delete(ctx, taskGroupPath)
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetRedistributeTask(ctx context.Context) (*RedistributeTask, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get redistribute task")
+
+	resp, err := q.cli.Get(ctx, redistributeTaskPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+
+	var task *RedistributeTask
+	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
+		return nil, err
+	}
+
+	return task, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) WriteRedistributeTask(ctx context.Context, task *RedistributeTask) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write redistribute task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, redistributeTaskPath, string(taskJson))
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) RemoveRedistributeTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: remove redistribute task")
+
+	_, err := q.cli.Delete(ctx, redistributeTaskPath)
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) GetBalancerTask(ctx context.Context) (*BalancerTask, error) {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: get balancer task")
+
+	resp, err := q.cli.Get(ctx, balancerTaskPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resp.Kvs) == 0 {
+		return nil, nil
+	}
+
+	var task *BalancerTask
+	if err := json.Unmarshal(resp.Kvs[0].Value, &task); err != nil {
+		return nil, err
+	}
+
+	return task, nil
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) WriteBalancerTask(ctx context.Context, task *BalancerTask) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: write balancer task")
+
+	taskJson, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+
+	_, err = q.cli.Put(ctx, balancerTaskPath, string(taskJson))
+	return err
+}
+
+// TODO: unit tests
+func (q *EtcdQDB) RemoveBalancerTask(ctx context.Context) error {
+	spqrlog.Zero.Debug().
+		Msg("etcdqdb: remove balancer task")
+
+	_, err := q.cli.Delete(ctx, balancerTaskPath)
 	return err
 }
 

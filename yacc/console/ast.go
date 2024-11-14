@@ -155,6 +155,12 @@ type MoveKeyRange struct {
 	KeyRangeID  string
 }
 
+type RedistributeKeyRange struct {
+	DestShardID string
+	KeyRangeID  string
+	BatchSize   int
+}
+
 type KeyRangeSelector struct {
 	KeyRangeID string
 }
@@ -302,6 +308,7 @@ func (*Unlock) iStatement()                 {}
 func (*Shutdown) iStatement()               {}
 func (*Listen) iStatement()                 {}
 func (*MoveKeyRange) iStatement()           {}
+func (*RedistributeKeyRange) iStatement()   {}
 func (*SplitKeyRange) iStatement()          {}
 func (*UniteKeyRange) iStatement()          {}
 func (*DistributionDefinition) iStatement() {}

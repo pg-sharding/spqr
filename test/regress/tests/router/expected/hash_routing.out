@@ -41,7 +41,7 @@ INSERT INTO xx (col1) VALUES ('Hello, world!');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (col1) VALUES ('test');
 NOTICE: send query to shard(s) : sh2
-INSERT INTO xx (col1) VALUES ('众口难调');
+INSERT INTO xx (col1) VALUES ('0');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xx (col1) VALUES ('The quick brown fox jumps over the lazy dog');
 NOTICE: send query to shard(s) : sh1
