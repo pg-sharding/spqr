@@ -27,6 +27,7 @@ type shardPool struct {
 
 	beRule *config.BackendRule
 
+	/* dedicated */
 	host string
 
 	ConnectionLimit            int

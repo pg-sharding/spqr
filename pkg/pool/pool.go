@@ -40,6 +40,9 @@ type Pool interface {
 	Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error)
 }
 
+type TSA string
+
+/* Host  */
 type MultiShardPool interface {
 	ConnectionKepper
 	shard.ShardIterator
@@ -60,6 +63,8 @@ type DBPool interface {
 	MultiShardPool
 
 	ShardMapping() map[string]*config.Shard
+
+	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa TSA) (shard.Shard, error)
 
 	SetShuffleHosts(bool)
 }

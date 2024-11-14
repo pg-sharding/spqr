@@ -60,7 +60,7 @@ func NewRoute(beRule *config.BackendRule, frRule *config.FrontendRule, mapping m
 	route := &Route{
 		beRule:   beRule,
 		frRule:   frRule,
-		servPool: pool.NewDBPool(mapping, sp),
+		servPool: pool.NewDBBPool(mapping, sp),
 		clPool:   client.NewClientPool(),
 		params:   shard.ParameterSet{},
 	}
@@ -92,7 +92,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	}
 
 	// maxuint64
-	serv, err := r.servPool.Connection(0xFFFFFFFFFFFFFFFF, anyK, "")
+	serv, err := r.servPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, pool.TSA(config.TargetSessionAttrsAny))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
