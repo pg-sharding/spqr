@@ -625,7 +625,7 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 	for _, shard := range shards {
 		ds = append(ds, &datashards.DataShard{
 			ID:  shard.Id,
-			Cfg: &config.Shard{RawHosts: shard.Hosts}, // TODO Hosts -> RawHosts
+			Cfg: &config.Shard{RawHosts: shard.Hosts},
 		})
 	}
 	return ds, err
@@ -647,7 +647,7 @@ func (a *Adapter) GetShard(ctx context.Context, shardID string) (*datashards.Dat
 	resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID})
 	return &datashards.DataShard{
 		ID:  resp.Shard.Id,
-		Cfg: &config.Shard{RawHosts: resp.Shard.Hosts}, // TODO resp.Shard.Hosts -> resp.Shard.RawHosts
+		Cfg: &config.Shard{RawHosts: resp.Shard.Hosts},
 	}, err
 }
 

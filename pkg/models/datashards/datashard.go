@@ -68,7 +68,7 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 //   - *DataShard: The created DataShard instance.
 func DataShardFromDb(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
-		Hosts: shard.Hosts,
-		Type:  config.DataShard,
+		RawHosts: shard.RawHosts,
+		Type:     config.DataShard,
 	})
 }

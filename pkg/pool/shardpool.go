@@ -361,9 +361,9 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 // TODO : unit tests
 func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
 	var pool Pool
-	if val, ok := c.pools.Load(host); !ok {
+	if val, ok := c.pools.Load(host.Address); !ok {
 		pool = NewShardPool(c.alloc, host, c.beRule)
-		c.pools.Store(host, pool)
+		c.pools.Store(host.Address, pool)
 	} else {
 		pool = val.(Pool)
 	}
@@ -381,12 +381,11 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 //   - error: The error that occurred during the put operation.
 //
 // TODO : unit tests
-func (c *cPool) Put(host shard.Shard) error {
-	if val, ok := c.pools.Load(host.Instance().Hostname()); ok {
-		return val.(Pool).Put(host)
+func (c *cPool) Put(sh shard.Shard) error {
+	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
+		return val.(Pool).Put(sh)
 	} else {
-		/* very bad */
-		panic(host)
+		panic(fmt.Sprintf("cPool.Put failed, hostname %s not found", sh.Instance().Hostname()))
 	}
 }
 
@@ -405,8 +404,7 @@ func (c *cPool) Discard(sh shard.Shard) error {
 	if val, ok := c.pools.Load(sh.Instance().Hostname()); ok {
 		return val.(Pool).Discard(sh)
 	} else {
-		/* very bad */
-		panic(sh)
+		panic(fmt.Sprintf("cPool.Discard failed, hostname %s not found", sh.Instance().Hostname()))
 	}
 }
 
