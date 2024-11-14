@@ -12,6 +12,7 @@ import (
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	pool "github.com/pg-sharding/spqr/pkg/pool"
 	shard "github.com/pg-sharding/spqr/pkg/shard"
+	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 // MockConnectionKepper is a mock of ConnectionKepper interface.
@@ -196,19 +197,19 @@ func (m *MockMultiShardPool) EXPECT() *MockMultiShardPoolMockRecorder {
 	return m.recorder
 }
 
-// Connection mocks base method.
-func (m *MockMultiShardPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+// ConnectionHost mocks base method.
+func (m *MockMultiShardPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Connection", clid, shardKey, host)
+	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.Shard)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Connection indicates an expected call of Connection.
-func (mr *MockMultiShardPoolMockRecorder) Connection(clid, shardKey, host interface{}) *gomock.Call {
+// ConnectionHost indicates an expected call of ConnectionHost.
+func (mr *MockMultiShardPoolMockRecorder) ConnectionHost(clid, shardKey, host interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connection", reflect.TypeOf((*MockMultiShardPool)(nil).Connection), clid, shardKey, host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionHost", reflect.TypeOf((*MockMultiShardPool)(nil).ConnectionHost), clid, shardKey, host)
 }
 
 // Discard mocks base method.
@@ -353,19 +354,34 @@ func (m *MockDBPool) EXPECT() *MockDBPoolMockRecorder {
 	return m.recorder
 }
 
-// Connection mocks base method.
-func (m *MockDBPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+// ConnectionHost mocks base method.
+func (m *MockDBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Connection", clid, shardKey, host)
+	ret := m.ctrl.Call(m, "ConnectionHost", clid, shardKey, host)
 	ret0, _ := ret[0].(shard.Shard)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Connection indicates an expected call of Connection.
-func (mr *MockDBPoolMockRecorder) Connection(clid, shardKey, host interface{}) *gomock.Call {
+// ConnectionHost indicates an expected call of ConnectionHost.
+func (mr *MockDBPoolMockRecorder) ConnectionHost(clid, shardKey, host interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Connection", reflect.TypeOf((*MockDBPool)(nil).Connection), clid, shardKey, host)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionHost", reflect.TypeOf((*MockDBPool)(nil).ConnectionHost), clid, shardKey, host)
+}
+
+// ConnectionWithTSA mocks base method.
+func (m *MockDBPool) ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConnectionWithTSA", clid, shardKey, tsa)
+	ret0, _ := ret[0].(shard.Shard)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConnectionWithTSA indicates an expected call of ConnectionWithTSA.
+func (mr *MockDBPoolMockRecorder) ConnectionWithTSA(clid, shardKey, tsa interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionWithTSA", reflect.TypeOf((*MockDBPool)(nil).ConnectionWithTSA), clid, shardKey, tsa)
 }
 
 // Discard mocks base method.

@@ -27,6 +27,7 @@ type shardPool struct {
 
 	beRule *config.BackendRule
 
+	/* dedicated */
 	host string
 
 	ConnectionLimit            int
@@ -355,7 +356,7 @@ func (c *cPool) ForEachPool(cb func(p Pool) error) error {
 //   - error: The error that occurred during the connection process.
 //
 // TODO : unit tests
-func (c *cPool) Connection(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
+func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error) {
 	var pool Pool
 	if val, ok := c.pools.Load(host); !ok {
 		pool = NewShardPool(c.alloc, host, c.beRule)

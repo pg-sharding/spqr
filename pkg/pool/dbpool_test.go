@@ -68,9 +68,9 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().Connection(clId, key, "h1").Times(1).Return(h1, nil)
-	underyling_pool.EXPECT().Connection(clId, key, "h2").Times(1).Return(h2, nil)
-	underyling_pool.EXPECT().Connection(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").Times(1).Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").Times(1).Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -108,16 +108,16 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.Connection(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
 	assert.Equal(sh, h3)
 
 	assert.NoError(err)
 
 	/* next time expect only one call */
-	underyling_pool.EXPECT().Connection(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
 
-	sh, err = dbpool.Connection(clId, key, config.TargetSessionAttrsRW)
+	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
 	assert.Equal(sh, h3)
 
@@ -175,9 +175,9 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().Connection(clId, key, "h1").AnyTimes().Return(h1, nil)
-	underyling_pool.EXPECT().Connection(clId, key, "h2").AnyTimes().Return(h2, nil)
-	underyling_pool.EXPECT().Connection(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").AnyTimes().Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").AnyTimes().Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -215,13 +215,13 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h.EXPECT().Receive().Return(&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil)
 	}
 
-	sh, err := dbpool.Connection(clId, key, config.TargetSessionAttrsRW)
+	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
 	assert.Equal(sh, h3)
 
 	assert.NoError(err)
 
-	underyling_pool.EXPECT().Connection(clId, key, "h3").MaxTimes(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").MaxTimes(1).Return(h3, nil)
 
 	underyling_pool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 
@@ -237,7 +237,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	dbpool.SetShuffleHosts(true)
 
 	for i := 0; i < repeattimes; i++ {
-		sh, err = dbpool.Connection(clId, key, config.TargetSessionAttrsRO)
+		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
 
 		// assert.NotEqual(sh, h3)
 

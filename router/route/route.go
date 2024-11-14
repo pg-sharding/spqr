@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/startup"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 type Key struct {
@@ -92,7 +93,7 @@ func (r *Route) Params() (shard.ParameterSet, error) {
 	}
 
 	// maxuint64
-	serv, err := r.servPool.Connection(0xFFFFFFFFFFFFFFFF, anyK, "")
+	serv, err := r.servPool.ConnectionWithTSA(0xFFFFFFFFFFFFFFFF, anyK, tsa.TSA(config.TargetSessionAttrsAny))
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return shard.ParameterSet{}, err
