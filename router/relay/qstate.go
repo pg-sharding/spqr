@@ -145,6 +145,16 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					rst.Client().SetAllowMultishard(true)
 				}
 			}
+
+			if val, ok := mp[session.SPQR_EXECUTE_ON]; ok {
+				if _, ok := config.RouterConfig().ShardMapping[val]; !ok {
+					return fmt.Errorf("no such shard: %v", val)
+				}
+				rst.Client().SetExecuteOn(val)
+			} else {
+				/* unset or reset if any */
+				rst.Client().SetExecuteOn("")
+			}
 		}
 
 		return binderQ()

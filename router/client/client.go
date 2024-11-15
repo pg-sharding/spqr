@@ -133,6 +133,16 @@ func (cl *PsqlClient) SetDistribution(val string) {
 	cl.activeParamSet[session.SPQR_DISTRIBUTION] = val
 }
 
+// ExecuteOn implements RouterClient.
+func (cl *PsqlClient) ExecuteOn() string {
+	return cl.activeParamSet[session.SPQR_EXECUTE_ON]
+}
+
+// SetExecuteOn implements RouterClient.
+func (cl *PsqlClient) SetExecuteOn(val string) {
+	cl.activeParamSet[session.SPQR_EXECUTE_ON] = val
+}
+
 // SetAutoDistribution implements RouterClient.
 func (cl *PsqlClient) SetAutoDistribution(val string) {
 	cl.activeParamSet[session.SPQR_AUTO_DISTRIBUTION] = val
