@@ -64,6 +64,4 @@ type DBPool interface {
 	ShardMapping() map[string]*config.Shard
 
 	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error)
-
-	SetShuffleHosts(bool) // This function is used in testing only
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/startup"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
 )
@@ -243,7 +244,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	cnth1 := 0
 	cnth2 := 0
 
-	dbpool.SetShuffleHosts(true)
+	dbpool.ShuffleHosts = true
 
 	for i := 0; i < repeattimes; i++ {
 		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
@@ -266,4 +267,103 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	assert.Less(diff, 90)
 	assert.Equal(repeattimes, cnth1+cnth2)
+}
+
+func TestBuildHostOrder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+
+	key := kr.ShardKey{
+		Name: "sh1",
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
+		key.Name: {
+			RawHosts: []string{
+				"sas-123.db.yandex.net:6432:sas",
+				"sas-234.db.yandex.net:6432:sas",
+				"vla-123.db.yandex.net:6432:vla",
+				"vla-234.db.yandex.net:6432:vla",
+				"klg-123.db.yandex.net:6432:klg",
+				"klg-234.db.yandex.net:6432:klg",
+			},
+		},
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
+
+	tests := []struct {
+		name               string
+		shardKey           kr.ShardKey
+		targetSessionAttrs tsa.TSA
+		shuffleHosts       bool
+		preferAZ           string
+		expectedHosts      []string
+	}{
+		{
+			name:               "No shuffle, no preferred AZ",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       false,
+			preferAZ:           "",
+			expectedHosts: []string{
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+			},
+		},
+		{
+			name:               "Shuffle hosts",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       true,
+			preferAZ:           "",
+			expectedHosts: []string{
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+			},
+		},
+		{
+			name:               "Preferred AZ",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       false,
+			preferAZ:           "klg",
+			expectedHosts: []string{
+				"klg-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbpool.ShuffleHosts = tt.shuffleHosts
+			dbpool.PreferAZ = tt.preferAZ
+
+			hostOrder, err := dbpool.BuildHostOrder(tt.shardKey, tt.targetSessionAttrs)
+			assert.NoError(t, err)
+
+			var hostAddresses []string
+			for _, host := range hostOrder {
+				hostAddresses = append(hostAddresses, host.Address)
+			}
+
+			if tt.shuffleHosts {
+				assert.ElementsMatch(t, tt.expectedHosts, hostAddresses)
+			} else {
+				assert.Equal(t, tt.expectedHosts, hostAddresses)
+			}
+		})
+	}
 }

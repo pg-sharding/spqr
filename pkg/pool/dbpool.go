@@ -33,8 +33,8 @@ type InstancePoolImpl struct {
 	cacheTSAchecks sync.Map
 	checker        tsa.TSAChecker
 
-	shuffleHosts bool
-	preferAZ     string
+	ShuffleHosts bool
+	PreferAZ     string
 }
 
 // ConnectionHost implements DBPool.
@@ -46,11 +46,6 @@ func (s *InstancePoolImpl) ConnectionHost(clid uint, shardKey kr.ShardKey, host 
 // Subtle: this method shadows the method (Pool).View of InstancePoolImpl.Pool.
 func (s *InstancePoolImpl) View() Statistics {
 	panic("unimplemented")
-}
-
-// SetShuffleHosts used for testing purposes only.
-func (s *InstancePoolImpl) SetShuffleHosts(shuffle bool) {
-	s.shuffleHosts = shuffle
 }
 
 var _ DBPool = &InstancePoolImpl{}
@@ -225,7 +220,7 @@ func (s *InstancePoolImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetS
 		Str("tsa", string(targetSessionAttrs)).
 		Msg("acquiring new instance connection for client to shard with target session attrs")
 
-	hostOrder, err := s.buildHostOrder(key, targetSessionAttrs)
+	hostOrder, err := s.BuildHostOrder(key, targetSessionAttrs)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +274,7 @@ func (s *InstancePoolImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetS
 	}
 }
 
-func (s *InstancePoolImpl) buildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
+func (s *InstancePoolImpl) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
 	var hostOrder []config.Host
 	var posCache []config.Host
 	var negCache []config.Host
@@ -307,7 +302,7 @@ func (s *InstancePoolImpl) buildHostOrder(key kr.ShardKey, targetSessionAttrs ts
 		}
 	}
 
-	if s.shuffleHosts {
+	if s.ShuffleHosts {
 		rand.Shuffle(len(posCache), func(i, j int) {
 			posCache[i], posCache[j] = posCache[j], posCache[i]
 		})
@@ -316,12 +311,12 @@ func (s *InstancePoolImpl) buildHostOrder(key kr.ShardKey, targetSessionAttrs ts
 		})
 	}
 
-	if len(s.preferAZ) > 0 {
+	if len(s.PreferAZ) > 0 {
 		sort.Slice(posCache, func(i, j int) bool {
-			return posCache[i].AZ == s.preferAZ
+			return posCache[i].AZ == s.PreferAZ
 		})
 		sort.Slice(negCache, func(i, j int) bool {
-			return negCache[i].AZ == s.preferAZ
+			return negCache[i].AZ == s.PreferAZ
 		})
 	}
 
@@ -447,14 +442,14 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	return &InstancePoolImpl{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		shuffleHosts:   true,
-		preferAZ:       preferAZ,
+		ShuffleHosts:   true,
+		PreferAZ:       preferAZ,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
 
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) DBPool {
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *InstancePoolImpl {
 	return &InstancePoolImpl{
 		pool:           mp,
 		shardMapping:   mapping,

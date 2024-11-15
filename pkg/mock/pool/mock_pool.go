@@ -452,18 +452,6 @@ func (mr *MockDBPoolMockRecorder) SetRule(rule interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRule", reflect.TypeOf((*MockDBPool)(nil).SetRule), rule)
 }
 
-// SetShuffleHosts mocks base method.
-func (m *MockDBPool) SetShuffleHosts(arg0 bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShuffleHosts", arg0)
-}
-
-// SetShuffleHosts indicates an expected call of SetShuffleHosts.
-func (mr *MockDBPoolMockRecorder) SetShuffleHosts(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShuffleHosts", reflect.TypeOf((*MockDBPool)(nil).SetShuffleHosts), arg0)
-}
-
 // ShardMapping mocks base method.
 func (m *MockDBPool) ShardMapping() map[string]*config.Shard {
 	m.ctrl.T.Helper()
