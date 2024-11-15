@@ -102,7 +102,7 @@
                             "group": "Balancing",
                             "pages": [
                                 "sharding/balancing/overview",
-                                "sharding/balancing/internals"
+                                "sharding/balancing/details"
                             ]
                         },
                         {

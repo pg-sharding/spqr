@@ -10,9 +10,9 @@ Hash-based sharding helps to evenly distribute the data and load across all shar
 
 ![hashed](/images/balancing_hashed.png "hash-based approach")
 
-## Setting up
+## How to use it?
 
-To use a hash function as your distribution(sharding), you need to specify it in the administrative router or coordination console:
+To use a hash function as your distribution(sharding) key, you need to specify it in the administrative router or coordination console using the `HASH FUNCTION` keyword:
 
 ```sql
 ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CITY;
