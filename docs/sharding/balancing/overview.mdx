@@ -1,0 +1,9 @@
+---
+title: 'Overview'
+---
+
+Ideally, all the shards within the system should be evenly loaded.  However, at times, one of the shards may become overloaded based on certain criteria, such as CPU usage, free space, or I/O. In such cases, it may be beneficial to move some data from the overloaded shard to another shard with more available resources.
+
+We considered different options for moving data. The most popular way is to make a copy via logical replication, then delete half of the data on one node and delete another half of the data on the other node. We decided that logical replication does not work well enough yet. Instead, the coordinator makes ε-split - cut off a small part of the data. Since it is small, it all works very quickly.
+
+![ε-split](/images/balancing_e-split.png "ε-split")

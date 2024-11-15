@@ -1,5 +1,5 @@
 ---
-title: 'Balancing internals'
+title: 'Internals'
 ---
 
 
@@ -36,18 +36,28 @@ Balancer is a separate binary that executes the algorithm. It executes the algor
 For clarity, here is how it is defined [in the code](https://github.com/pg-sharding/spqr/blob/master/pkg/models/tasks/tasks.go ):
 
 ```golang
-type Task struct {
-	ShardFromId string
-	ShardToId   string
-	KrIdFrom    string
-	KrIdTo      string
-	Bound       []byte
-	KrIdTemp    string
-	State       TaskState // Planned, Split, Moved
+
+type MoveTask struct {
+	Bound    [][]byte
+	KrIdTemp string
+	State    TaskState // Planned, Split, Moved
 }
 
-type TaskGroup struct {
-	Tasks    []*Task
-	JoinType JoinType // JoinNone, JoinLeft, JoinRight
+type MoveTaskGroup struct {
+	ShardToId string
+	KrIdFrom  string
+	KrIdTo    string
+	Tasks     []*MoveTask
+	Type      SplitType // SplitLeft, SplitRight
+}
+
+type BalancerTask struct {
+	Type      JoinType // JoinLeft, JoinRight
+	KrIdFrom  string
+	KrIdTo    string
+	KrIdTemp  string
+	ShardIdTo string
+	KeyCount  int64
+	State     BalancerTaskState // Planned, Moved
 }
 ```
