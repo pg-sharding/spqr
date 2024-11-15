@@ -1,0 +1,36 @@
+---
+title: 'Hash-based sharding'
+---
+
+Hash-based sharding is a method of distributing data across multiple database shards by applying a hash function to a specific key. The hash function generates a hash value, which is then used to determine the shard where the data should be stored. This approach ensures a more uniform distribution of data compared to range-based sharding.
+
+For example, if you are sharding based on user IDs, the hash function will take a user ID as input and produce a hash value. This hash value is then mapped to one of the available shards. The same hash function is used consistently to ensure that the same key always maps to the same shard.
+
+Hash-based sharding helps to evenly distribute the data and load across all shards, reducing the risk of hotspots and ensuring better performance and scalability. However, it can make range queries more complex, as the data for a given range of keys may be spread across multiple shards.
+
+![hashed](/images/balancing_hashed.png "hash-based approach")
+
+## How to use it?
+
+To use a hash function as your distribution(sharding) key, you need to specify it in the administrative router or coordination console using the `HASH FUNCTION` keyword:
+
+```sql
+ALTER DISTRIBUTION ds1 ATTACH RELATION r4 DISTRIBUTION KEY col1 HASH FUNCTION CITY;
+      attach table      
+------------------------
+ relation name   -> r4
+ distribution id -> ds1
+(2 rows)
+```
+
+Then, you create key ranges as usual:
+
+```sql
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO shard01 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+```
+
+For clarity, we recommend you take a look [at this test](https://github.com/pg-sharding/spqr/blob/master/test/regress/tests/console/expected/hash.out).
