@@ -140,10 +140,10 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					return fmt.Errorf("spqr distribution specified, but distribution key omitted.")
 				}
 			}
-			if val, ok := mp[session.SPQR_ALLOW_MULTISHARD]; ok {
-				if val == "true" {
-					rst.Client().SetAllowMultishard(true)
-				}
+			if val, ok := mp[session.SPQR_ALLOW_MULTISHARD]; ok && val == "true" {
+				rst.Client().SetAllowMultishard(true)
+			} else {
+				rst.Client().SetAllowMultishard(false)
 			}
 
 			if val, ok := mp[session.SPQR_EXECUTE_ON]; ok {
