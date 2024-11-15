@@ -673,6 +673,7 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 	return rst.ProcCommand(msg, waitForResp, replyCl)
 }
 
+// TODO: unit tests
 func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
