@@ -94,6 +94,9 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
 
+	cl.EXPECT().AllowMultishard().AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
+
 	cl.EXPECT().RLock().AnyTimes()
 	cl.EXPECT().RUnlock().AnyTimes()
 
@@ -268,6 +271,9 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
 
+	cl.EXPECT().AllowMultishard().AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
+
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
@@ -384,6 +390,9 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+
+	cl.EXPECT().AllowMultishard().AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().RLock().AnyTimes()
 	cl.EXPECT().RUnlock().AnyTimes()
