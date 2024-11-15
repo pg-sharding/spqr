@@ -22,6 +22,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
@@ -70,7 +71,8 @@ type RelayStateMgr interface {
 	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
-	ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, expRoute *routingstate.DataShardRoute) ([]byte, error)
+	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error)
+	ProcCopy(ctx context.Context, data *pgproto3.CopyData, copyState *pgcopy.CopyState) ([]byte, error)
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
@@ -671,14 +673,12 @@ func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitFor
 	return rst.ProcCommand(msg, waitForResp, replyCl)
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, expRoute *routingstate.DataShardRoute) ([]byte, error) {
-	var leftOvermsgData []byte = nil
-
+// TODO: unit tests
+func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Msg("client process copy")
-	_ = rst.Client().ReplyDebugNotice(fmt.Sprintf("executing your query %v", data)) // TODO perfomance issue
+		Msg("client pre-process copy")
+
 	rst.Client().RLock()
 	defer rst.Client().RUnlock()
 
@@ -702,10 +702,6 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 	case *lyx.RangeVar:
 		relname = q.RelationName
 	}
-
-	ctx := context.TODO()
-
-	values := make([]interface{}, 0)
 
 	// TODO: check by whole RFQN
 	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
@@ -741,7 +737,26 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 		return nil, fmt.Errorf("failed to resolve target copy column offset")
 	}
 
+	return &pgcopy.CopyState{
+		Delimiter:       delimiter,
+		ExpRoute:        &routingstate.DataShardRoute{},
+		AllowMultishard: allow_multishard,
+		Krs:             krs,
+		TargetType:      TargetType,
+	}, nil
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error) {
+
+	rst.Client().RLock()
+	defer rst.Client().RUnlock()
+
+	var leftOvermsgData []byte = nil
+
 	rowsMp := map[string][]byte{}
+
+	values := make([]interface{}, 0)
 
 	// Parse data
 	// and decide where to route
@@ -754,10 +769,10 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 			prevLine = len(data.Data)
 			break
 		}
-		if b == '\n' || b == delimiter {
+		if b == '\n' || b == cps.Delimiter {
 
-			if currentAttr == colOffset {
-				switch TargetType {
+			if currentAttr == cps.ColumnOffset {
+				switch cps.TargetType {
 				case "varchar":
 					values = append(values, string(data.Data[prevDelimiter:i]))
 				case "integer":
@@ -768,7 +783,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 					values = append(values, n)
 
 				default:
-					return nil, fmt.Errorf("copy type %v not supported", TargetType)
+					return nil, fmt.Errorf("copy type %v not supported", cps.TargetType)
 				}
 			}
 
@@ -780,7 +795,7 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 		}
 
 		// check where this tuple should go
-		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, []interface{}{values[colOffset]}, krs)
+		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, []interface{}{values[cps.ColumnOffset]}, cps.Krs)
 		if err != nil {
 			return nil, err
 		}
@@ -789,13 +804,17 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
 		}
 
-		if !allow_multishard {
-			if expRoute.Shkey.Name == "" {
-				*expRoute = *currroute
+		if !cps.AllowMultishard {
+			if cps.ExpRoute.Shkey.Name == "" {
+				*cps.ExpRoute = *currroute
 			}
 		}
 
-		if !allow_multishard && currroute.Shkey.Name != expRoute.Shkey.Name {
+		if currroute.Shkey.Name != cps.ExpRoute.Shkey.Name {
+			spqrlog.Zero.Debug().Msg("miss")
+		}
+
+		if !cps.AllowMultishard && currroute.Shkey.Name != cps.ExpRoute.Shkey.Name {
 			return nil, fmt.Errorf("multishard copy is not supported")
 		}
 
@@ -813,8 +832,8 @@ func (rst *RelayStateImpl) ProcCopy(stmt *lyx.Copy, data *pgproto3.CopyData, exp
 	}
 
 	for _, sh := range rst.Client().Server().Datashards() {
-		if !allow_multishard {
-			if expRoute != nil && sh.Name() == expRoute.Shkey.Name {
+		if !cps.AllowMultishard {
+			if cps.ExpRoute != nil && sh.Name() == cps.ExpRoute.Shkey.Name {
 				err := sh.Send(&pgproto3.CopyData{Data: rowsMp[sh.Name()]})
 				return leftOvermsgData, err
 			}
@@ -917,8 +936,13 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			q := rst.qp.Stmt().(*lyx.Copy)
 
 			if err := func() error {
-				route := &routingstate.DataShardRoute{}
 				var leftOvermsgData []byte
+				ctx := context.TODO()
+
+				cps, err := rst.ProcCopyPrepare(ctx, q)
+				if err != nil {
+					return err
+				}
 
 				for {
 					cpMsg, err := rst.Client().Receive()
@@ -930,7 +954,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 					case *pgproto3.CopyData:
 						leftOvermsgData = append(leftOvermsgData, newMsg.Data...)
 
-						if leftOvermsgData, err = rst.ProcCopy(q, &pgproto3.CopyData{Data: leftOvermsgData}, route); err != nil {
+						if leftOvermsgData, err = rst.ProcCopy(ctx, &pgproto3.CopyData{Data: leftOvermsgData}, cps); err != nil {
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:
@@ -939,6 +963,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 						}
 						return nil
 					default:
+						/* panic? */
 					}
 				}
 			}(); err != nil {
