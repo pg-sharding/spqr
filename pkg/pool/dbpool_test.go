@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/startup"
+	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,22 +33,25 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
 		key.Name: {
-			Hosts: []string{
+			RawHosts: []string{
 				"h1",
 				"h2",
 				"h3",
 			},
 		},
-	}, &startup.StartupParams{}, underyling_pool, false, time.Hour)
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShard(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
@@ -68,9 +72,9 @@ func TestDbPoolOrderCaching(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").Times(1).Return(h1, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").Times(1).Return(h2, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).Times(1).Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).Times(1).Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -110,16 +114,18 @@ func TestDbPoolOrderCaching(t *testing.T) {
 
 	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 
 	/* next time expect only one call */
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 }
@@ -139,22 +145,25 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
 		key.Name: {
-			Hosts: []string{
+			RawHosts: []string{
 				"h1",
 				"h2",
 				"h3",
 			},
 		},
-	}, &startup.StartupParams{}, underyling_pool, false, time.Hour)
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
 
 	ins1 := mockinst.NewMockDBInstance(ctrl)
 	ins1.EXPECT().Hostname().AnyTimes().Return("h1")
+	ins1.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins2 := mockinst.NewMockDBInstance(ctrl)
 	ins2.EXPECT().Hostname().AnyTimes().Return("h2")
+	ins2.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	ins3 := mockinst.NewMockDBInstance(ctrl)
 	ins3.EXPECT().Hostname().AnyTimes().Return("h3")
+	ins3.EXPECT().AvailabilityZone().AnyTimes().Return("")
 
 	h1 := mockshard.NewMockShard(ctrl)
 	h1.EXPECT().Instance().AnyTimes().Return(ins1)
@@ -175,9 +184,9 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 		h1, h2, h3,
 	}
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h1").AnyTimes().Return(h1, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h2").AnyTimes().Return(h2, nil)
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).AnyTimes().Return(h1, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).AnyTimes().Return(h2, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
 
 	for ind, h := range hs {
 
@@ -217,11 +226,12 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	sh, err := dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRW)
 
-	assert.Equal(sh, h3)
+	assert.Equal(sh.Instance().Hostname(), h3.Instance().Hostname())
+	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
 
-	underyling_pool.EXPECT().ConnectionHost(clId, key, "h3").MaxTimes(1).Return(h3, nil)
+	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).MaxTimes(1).Return(h3, nil)
 
 	underyling_pool.EXPECT().Put(h3).Return(nil).MaxTimes(1)
 
@@ -234,7 +244,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 	cnth1 := 0
 	cnth2 := 0
 
-	dbpool.SetShuffleHosts(true)
+	dbpool.ShuffleHosts = true
 
 	for i := 0; i < repeattimes; i++ {
 		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
@@ -257,4 +267,103 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	assert.Less(diff, 90)
 	assert.Equal(repeattimes, cnth1+cnth2)
+}
+
+func TestBuildHostOrder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	underyling_pool := mockpool.NewMockMultiShardPool(ctrl)
+
+	key := kr.ShardKey{
+		Name: "sh1",
+	}
+
+	dbpool := pool.NewDBPoolFromMultiPool(map[string]*config.Shard{
+		key.Name: {
+			RawHosts: []string{
+				"sas-123.db.yandex.net:6432:sas",
+				"sas-234.db.yandex.net:6432:sas",
+				"vla-123.db.yandex.net:6432:vla",
+				"vla-234.db.yandex.net:6432:vla",
+				"klg-123.db.yandex.net:6432:klg",
+				"klg-234.db.yandex.net:6432:klg",
+			},
+		},
+	}, &startup.StartupParams{}, underyling_pool, time.Hour)
+
+	tests := []struct {
+		name               string
+		shardKey           kr.ShardKey
+		targetSessionAttrs tsa.TSA
+		shuffleHosts       bool
+		preferAZ           string
+		expectedHosts      []string
+	}{
+		{
+			name:               "No shuffle, no preferred AZ",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       false,
+			preferAZ:           "",
+			expectedHosts: []string{
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+			},
+		},
+		{
+			name:               "Shuffle hosts",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       true,
+			preferAZ:           "",
+			expectedHosts: []string{
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"klg-234.db.yandex.net:6432",
+			},
+		},
+		{
+			name:               "Preferred AZ",
+			shardKey:           kr.ShardKey{Name: "sh1"},
+			targetSessionAttrs: config.TargetSessionAttrsAny,
+			shuffleHosts:       false,
+			preferAZ:           "klg",
+			expectedHosts: []string{
+				"klg-234.db.yandex.net:6432",
+				"klg-123.db.yandex.net:6432",
+				"sas-123.db.yandex.net:6432",
+				"sas-234.db.yandex.net:6432",
+				"vla-123.db.yandex.net:6432",
+				"vla-234.db.yandex.net:6432",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dbpool.ShuffleHosts = tt.shuffleHosts
+			dbpool.PreferAZ = tt.preferAZ
+
+			hostOrder, err := dbpool.BuildHostOrder(tt.shardKey, tt.targetSessionAttrs)
+			assert.NoError(t, err)
+
+			var hostAddresses []string
+			for _, host := range hostOrder {
+				hostAddresses = append(hostAddresses, host.Address)
+			}
+
+			if tt.shuffleHosts {
+				assert.ElementsMatch(t, tt.expectedHosts, hostAddresses)
+			} else {
+				assert.Equal(t, tt.expectedHosts, hostAddresses)
+			}
+		})
+	}
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 const (
@@ -47,7 +46,7 @@ type MultiShardPool interface {
 	shard.ShardIterator
 	PoolIterator
 
-	ConnectionHost(clid uint, shardKey kr.ShardKey, host string) (shard.Shard, error)
+	ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error)
 
 	SetRule(rule *config.BackendRule)
 }
@@ -56,14 +55,4 @@ type PoolIterator interface {
 	ForEachPool(cb func(p Pool) error) error
 }
 
-type ConnectionAllocFn func(shardKey kr.ShardKey, host string, rule *config.BackendRule) (shard.Shard, error)
-
-type DBPool interface {
-	MultiShardPool
-
-	ShardMapping() map[string]*config.Shard
-
-	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error)
-
-	SetShuffleHosts(bool)
-}
+type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error)

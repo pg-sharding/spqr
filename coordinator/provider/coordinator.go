@@ -23,7 +23,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/datatransfers"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
-	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 
 	"github.com/pg-sharding/spqr/qdb/ops"
@@ -1852,7 +1851,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 
 // TODO : unit tests
 func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
-	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.Hosts))
+	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
 }
 
 func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
@@ -1876,7 +1875,7 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 		shards = append(shards, &datashards.DataShard{
 			ID: shard.ID,
 			Cfg: &config.Shard{
-				Hosts: shard.Hosts,
+				RawHosts: shard.RawHosts,
 			},
 		})
 	}
@@ -1887,7 +1886,7 @@ func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataSha
 // TODO : unit tests
 func (qc *qdbCoordinator) UpdateCoordinator(ctx context.Context, address string) error {
 	return qc.traverseRouters(ctx, func(cc *grpc.ClientConn) error {
-		c := proto.NewTopologyServiceClient(cc)
+		c := routerproto.NewTopologyServiceClient(cc)
 		spqrlog.Zero.Debug().Str("address", address).Msg("updating coordinator address")
 		_, err := c.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
 			Address: address,

@@ -36,7 +36,7 @@ func NewDataShard(name string, cfg *config.Shard) *DataShard {
 //   - *proto.Shard: The converted proto.Shard object.
 func DataShardToProto(shard *DataShard) *proto.Shard {
 	return &proto.Shard{
-		Hosts: shard.Cfg.Hosts,
+		Hosts: shard.Cfg.Hosts(),
 		Id:    shard.ID,
 	}
 }
@@ -52,8 +52,8 @@ func DataShardToProto(shard *DataShard) *proto.Shard {
 //   - *DataShard: The created DataShard instance.
 func DataShardFromProto(shard *proto.Shard) *DataShard {
 	return NewDataShard(shard.Id, &config.Shard{
-		Hosts: shard.Hosts,
-		Type:  config.DataShard,
+		RawHosts: shard.Hosts,
+		Type:     config.DataShard,
 	})
 }
 
@@ -68,7 +68,7 @@ func DataShardFromProto(shard *proto.Shard) *DataShard {
 //   - *DataShard: The created DataShard instance.
 func DataShardFromDb(shard *qdb.Shard) *DataShard {
 	return NewDataShard(shard.ID, &config.Shard{
-		Hosts: shard.Hosts,
-		Type:  config.DataShard,
+		RawHosts: shard.RawHosts,
+		Type:     config.DataShard,
 	})
 }

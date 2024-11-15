@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -43,6 +44,9 @@ type Router struct {
 
 	PidFileName string `json:"pid_filename" toml:"pid_filename" yaml:"pid_filename"`
 	LogFileName string `json:"log_filename" toml:"log_filename" yaml:"log_filename"`
+
+	AvailabilityZone           string `json:"availability_zone" toml:"availability_zone" yaml:"availability_zone"`
+	PreferSameAvailabilityZone bool   `json:"prefer_same_availability_zone" toml:"prefer_same_availability_zone" yaml:"prefer_same_availability_zone"`
 
 	Host             string `json:"host" toml:"host" yaml:"host"`
 	RouterPort       string `json:"router_port" toml:"router_port" yaml:"router_port"`
@@ -87,16 +91,17 @@ type QRouter struct {
 }
 
 type BackendRule struct {
-	DB                string                     `json:"db" yaml:"db" toml:"db"`
-	Usr               string                     `json:"usr" yaml:"usr" toml:"usr"`
-	AuthRules         map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
-	DefaultAuthRule   *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
-	PoolDefault       bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
-	ConnectionLimit   int                        `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
-	ConnectionRetries int                        `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
-	ConnectionTimeout time.Duration              `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
-	KeepAlive         time.Duration              `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
-	TcpUserTimeout    time.Duration              `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
+	DB              string                     `json:"db" yaml:"db" toml:"db"`
+	Usr             string                     `json:"usr" yaml:"usr" toml:"usr"`
+	AuthRules       map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
+	DefaultAuthRule *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
+	PoolDefault     bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
+
+	ConnectionLimit   int           `json:"connection_limit" yaml:"connection_limit" toml:"connection_limit"`
+	ConnectionRetries int           `json:"connection_retries" yaml:"connection_retries" toml:"connection_retries"`
+	ConnectionTimeout time.Duration `json:"connection_timeout" yaml:"connection_timeout" toml:"connection_timeout"`
+	KeepAlive         time.Duration `json:"keep_alive" yaml:"keep_alive" toml:"keep_alive"`
+	TcpUserTimeout    time.Duration `json:"tcp_user_timeout" yaml:"tcp_user_timeout" toml:"tcp_user_timeout"`
 }
 
 type FrontendRule struct {
@@ -119,9 +124,53 @@ const (
 )
 
 type Shard struct {
-	Hosts []string   `json:"hosts" toml:"hosts" yaml:"hosts"`
-	Type  ShardType  `json:"type" toml:"type" yaml:"type"`
-	TLS   *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+	RawHosts        []string `json:"hosts" toml:"hosts" yaml:"hosts"` // format host:port:availability_zone
+	parsedHosts     []Host
+	parsedAddresses []string
+	once            sync.Once
+
+	Type ShardType  `json:"type" toml:"type" yaml:"type"`
+	TLS  *TLSConfig `json:"tls" yaml:"tls" toml:"tls"`
+}
+
+type Host struct {
+	Address string // format host:port
+	AZ      string // Availability zone
+}
+
+// parseHosts parses the raw hosts into a slice of Hosts.
+// The format of the RawHost is host:port:availability_zone.
+// If the availability_zone is not provided, it is empty.
+// If the port is not provided, it does not matter
+func (s *Shard) parseHosts() {
+	for _, rawHost := range s.RawHosts {
+		host := Host{}
+		parts := strings.Split(rawHost, ":")
+		if len(parts) > 3 {
+			log.Printf("invalid host format: expected 'host:port:availability_zone', got '%s'", rawHost)
+			continue
+		} else if len(parts) == 3 {
+			host.AZ = parts[2]
+			host.Address = fmt.Sprintf("%s:%s", parts[0], parts[1])
+		} else {
+			host.Address = rawHost
+		}
+
+		s.parsedHosts = append(s.parsedHosts, host)
+		s.parsedAddresses = append(s.parsedAddresses, host.Address)
+	}
+}
+
+func (s *Shard) Hosts() []string {
+	s.once.Do(s.parseHosts)
+
+	return s.parsedAddresses
+}
+
+func (s *Shard) HostsAZ() []Host {
+	s.once.Do(s.parseHosts)
+
+	return s.parsedHosts
 }
 
 func ValueOrDefaultInt(value int, def int) int {

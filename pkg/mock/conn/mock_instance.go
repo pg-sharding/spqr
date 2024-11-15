@@ -36,6 +36,20 @@ func (m *MockDBInstance) EXPECT() *MockDBInstanceMockRecorder {
 	return m.recorder
 }
 
+// AvailabilityZone mocks base method.
+func (m *MockDBInstance) AvailabilityZone() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AvailabilityZone")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// AvailabilityZone indicates an expected call of AvailabilityZone.
+func (mr *MockDBInstanceMockRecorder) AvailabilityZone() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AvailabilityZone", reflect.TypeOf((*MockDBInstance)(nil).AvailabilityZone))
+}
+
 // Cancel mocks base method.
 func (m *MockDBInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	m.ctrl.T.Helper()
