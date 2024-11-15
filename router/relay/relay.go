@@ -415,7 +415,20 @@ func (rst *RelayStateImpl) Reroute() error {
 		Interface("params", rst.Client().BindParams()).
 		Msg("rerouting the client connection, resolving shard")
 
-	routingState, err := rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
+	var routingState routingstate.RoutingState
+	var err error
+
+	if v := rst.Client().ExecuteOn(); v != "" {
+		routingState = routingstate.ShardMatchState{
+			Route: &routingstate.DataShardRoute{
+				Shkey: kr.ShardKey{
+					Name: v,
+				},
+			},
+		}
+	} else {
+		routingState, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
+	}
 
 	if err != nil {
 		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)

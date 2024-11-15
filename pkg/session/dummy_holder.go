@@ -9,16 +9,29 @@ type DummySessionParamHandler struct {
 	behaviour    string
 	key          string
 	rh           routehint.RouteHint
+
+	ms bool
+	eo string
+}
+
+// ExecuteOn implements SessionParamsHolder.
+func (t *DummySessionParamHandler) ExecuteOn() string {
+	return t.eo
+}
+
+// SetExecuteOn implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetExecuteOn(v string) {
+	t.eo = v
 }
 
 // AllowMultishard implements SessionParamsHolder.
 func (t *DummySessionParamHandler) AllowMultishard() bool {
-	panic("unimplemented")
+	return t.ms
 }
 
 // SetAllowMultishard implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetAllowMultishard(bool) {
-	panic("unimplemented")
+func (t *DummySessionParamHandler) SetAllowMultishard(v bool) {
+	t.ms = v
 }
 
 // DistributionKey implements SessionParamsHolder.

@@ -294,6 +294,20 @@ func (mr *MockRouterClientMockRecorder) DistributionKey() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockRouterClient)(nil).DistributionKey))
 }
 
+// ExecuteOn mocks base method.
+func (m *MockRouterClient) ExecuteOn() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecuteOn")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// ExecuteOn indicates an expected call of ExecuteOn.
+func (mr *MockRouterClientMockRecorder) ExecuteOn() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).ExecuteOn))
+}
+
 // GetCancelKey mocks base method.
 func (m *MockRouterClient) GetCancelKey() uint32 {
 	m.ctrl.T.Helper()
@@ -976,6 +990,18 @@ func (m *MockRouterClient) SetDistributionKey(arg0 string) {
 func (mr *MockRouterClientMockRecorder) SetDistributionKey(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), arg0)
+}
+
+// SetExecuteOn mocks base method.
+func (m *MockRouterClient) SetExecuteOn(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetExecuteOn", arg0)
+}
+
+// SetExecuteOn indicates an expected call of SetExecuteOn.
+func (mr *MockRouterClientMockRecorder) SetExecuteOn(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).SetExecuteOn), arg0)
 }
 
 // SetMaintainParams mocks base method.

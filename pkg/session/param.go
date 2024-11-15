@@ -39,6 +39,9 @@ type SessionParamsHolder interface {
 	MaintainParams() bool
 	SetMaintainParams(bool)
 
+	ExecuteOn() string
+	SetExecuteOn(string)
+
 	RouteHint() routehint.RouteHint
 	SetRouteHint(routehint.RouteHint)
 }
@@ -53,4 +56,5 @@ const (
 	SPQR_SCATTER_QUERY           = "__spqr__scatter_query"
 	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS         = "__spqr__maintain_params"
+	SPQR_EXECUTE_ON              = "__spqr__execute_on"
 )

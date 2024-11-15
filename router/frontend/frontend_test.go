@@ -91,6 +91,9 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
+	cl.EXPECT().ExecuteOn().AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+
 	cl.EXPECT().RLock().AnyTimes()
 	cl.EXPECT().RUnlock().AnyTimes()
 
@@ -262,6 +265,9 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().PreparedStatementDefinitionByName("stmtcache_1").AnyTimes().Return(def)
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
+	cl.EXPECT().ExecuteOn().AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+
 	cl.EXPECT().ServerAcquireUse().AnyTimes()
 	cl.EXPECT().ServerReleaseUse().AnyTimes()
 
@@ -375,6 +381,9 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
+
+	cl.EXPECT().ExecuteOn().AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
 
 	cl.EXPECT().RLock().AnyTimes()
 	cl.EXPECT().RUnlock().AnyTimes()
