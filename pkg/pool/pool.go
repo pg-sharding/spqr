@@ -6,7 +6,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
-	"github.com/pg-sharding/spqr/pkg/tsa"
 )
 
 const (
@@ -57,11 +56,3 @@ type PoolIterator interface {
 }
 
 type ConnectionAllocFn func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error)
-
-type DBPool interface {
-	MultiShardPool
-
-	ShardMapping() map[string]*config.Shard
-
-	ConnectionWithTSA(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) (shard.Shard, error)
-}

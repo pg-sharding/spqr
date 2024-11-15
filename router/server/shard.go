@@ -19,7 +19,7 @@ import (
 var ErrShardUnavailable = fmt.Errorf("shard is unavailable, try again later")
 
 type ShardServer struct {
-	pool  pool.DBPool
+	pool  *pool.DBPool
 	shard shard.Shard
 	// protects shard
 	mu sync.RWMutex
@@ -34,7 +34,7 @@ func (srv *ShardServer) RequestData() {
 	srv.shard.RequestData()
 }
 
-func NewShardServer(spool pool.DBPool) *ShardServer {
+func NewShardServer(spool *pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool: spool,
 		mu:   sync.RWMutex{},

@@ -43,11 +43,20 @@ type MultiShardServer struct {
 
 	multistate MultishardState
 
-	pool pool.DBPool
+	pool *pool.DBPool
 
 	status txstatus.TXStatus
 
 	copyBuf []*pgproto3.CopyOutResponse
+}
+
+func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
+	ret := &MultiShardServer{
+		pool:         pool,
+		activeShards: []shard.Shard{},
+	}
+
+	return ret, nil
 }
 
 // HasPrepareStatement implements Server.

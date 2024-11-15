@@ -26,7 +26,7 @@ type TsaKey struct {
 	AZ   string
 }
 
-type InstancePoolImpl struct {
+type DBPool struct {
 	Pool
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
@@ -38,17 +38,15 @@ type InstancePoolImpl struct {
 }
 
 // ConnectionHost implements DBPool.
-func (s *InstancePoolImpl) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
+func (s *DBPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host) (shard.Shard, error) {
 	return s.pool.ConnectionHost(clid, shardKey, host)
 }
 
 // View implements DBPool.
 // Subtle: this method shadows the method (Pool).View of InstancePoolImpl.Pool.
-func (s *InstancePoolImpl) View() Statistics {
+func (s *DBPool) View() Statistics {
 	panic("unimplemented")
 }
-
-var _ DBPool = &InstancePoolImpl{}
 
 // traverseHostsMatchCB traverses the list of hosts and invokes the provided callback function
 // for each host until the callback returns true. It returns the shard that satisfies the callback
@@ -64,7 +62,7 @@ var _ DBPool = &InstancePoolImpl{}
 //   - shard.Shard: The shard that satisfies the callback condition, or nil if no shard satisfies the condition.
 //
 // TODO : unit tests
-func (s *InstancePoolImpl) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.Shard) bool, tsa tsa.TSA) shard.Shard {
+func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config.Host, cb func(shard.Shard) bool, tsa tsa.TSA) shard.Shard {
 	for _, host := range hosts {
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
@@ -110,7 +108,7 @@ func (s *InstancePoolImpl) traverseHostsMatchCB(clid uint, key kr.ShardKey, host
 //   - error: An error if no suitable shard host is found.
 //
 // TODO : unit tests
-func (s *InstancePoolImpl) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
@@ -162,7 +160,7 @@ func (s *InstancePoolImpl) selectReadOnlyShardHost(clid uint, key kr.ShardKey, h
 //   - error: An error if no suitable shard host is found.
 //
 // TODO : unit tests
-func (s *InstancePoolImpl) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
 		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
@@ -213,7 +211,7 @@ func (s *InstancePoolImpl) selectReadWriteShardHost(clid uint, key kr.ShardKey, 
 //   - error: An error if the connection cannot be established.
 //
 // TODO : unit tests
-func (s *InstancePoolImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.Shard, error) {
+func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttrs tsa.TSA) (shard.Shard, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", clid).
 		Str("shard", key.Name).
@@ -274,7 +272,7 @@ func (s *InstancePoolImpl) ConnectionWithTSA(clid uint, key kr.ShardKey, targetS
 	}
 }
 
-func (s *InstancePoolImpl) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
+func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]config.Host, error) {
 	var hostOrder []config.Host
 	var posCache []config.Host
 	var negCache []config.Host
@@ -329,7 +327,7 @@ func (s *InstancePoolImpl) BuildHostOrder(key kr.ShardKey, targetSessionAttrs ts
 //
 // Parameters:
 //   - rule: A pointer to a BackendRule representing the backend rule to be initialized.
-func (s *InstancePoolImpl) SetRule(rule *config.BackendRule) {
+func (s *DBPool) SetRule(rule *config.BackendRule) {
 	s.pool.SetRule(rule)
 }
 
@@ -337,7 +335,7 @@ func (s *InstancePoolImpl) SetRule(rule *config.BackendRule) {
 //
 // Returns:
 //   - map[string]*config.Shard: The shard mapping of the instance pool.
-func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
+func (s *DBPool) ShardMapping() map[string]*config.Shard {
 	return s.shardMapping
 }
 
@@ -349,7 +347,7 @@ func (s *InstancePoolImpl) ShardMapping() map[string]*config.Shard {
 //
 // Returns:
 // - error: An error if the callback function returns an error.
-func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
+func (s *DBPool) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return s.pool.ForEach(cb)
 }
 
@@ -364,7 +362,7 @@ func (s *InstancePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 // - error: An error if the shard is discarded or if there is an error putting the shard into the pool.
 //
 // TODO : unit tests
-func (s *InstancePoolImpl) Put(sh shard.Shard) error {
+func (s *DBPool) Put(sh shard.Shard) error {
 	if sh.Sync() != 0 {
 		spqrlog.Zero.Error().
 			Uint("shard", spqrlog.GetPointer(sh)).
@@ -390,7 +388,7 @@ func (s *InstancePoolImpl) Put(sh shard.Shard) error {
 //
 // Returns:
 // - error: An error if the callback function returns an error.
-func (s *InstancePoolImpl) ForEachPool(cb func(pool Pool) error) error {
+func (s *DBPool) ForEachPool(cb func(pool Pool) error) error {
 	return s.pool.ForEachPool(cb)
 }
 
@@ -402,7 +400,7 @@ func (s *InstancePoolImpl) ForEachPool(cb func(pool Pool) error) error {
 //
 // Returns:
 // - error: An error if the removal fails, nil otherwise.
-func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
+func (s *DBPool) Discard(sh shard.Shard) error {
 	return s.pool.Discard(sh)
 }
 
@@ -418,7 +416,7 @@ func (s *InstancePoolImpl) Discard(sh shard.Shard) error {
 //
 // Returns:
 //   - DBPool: A DBPool interface that represents the created pool.
-func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) DBPool {
+func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupParams, preferAZ string) *DBPool {
 	allocator := func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
 		shardConfig := mapping[shardKey.Name]
 		hostname, _, _ := net.SplitHostPort(host.Address) // TODO try to remove this
@@ -439,7 +437,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		return datashard.NewShard(shardKey, pgi, mapping[shardKey.Name], rule, startupParams)
 	}
 
-	return &InstancePoolImpl{
+	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
 		ShuffleHosts:   true,
@@ -449,8 +447,8 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 }
 
-func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *InstancePoolImpl {
-	return &InstancePoolImpl{
+func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
+	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
 		cacheTSAchecks: sync.Map{},
