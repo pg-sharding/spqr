@@ -810,10 +810,6 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 			}
 		}
 
-		if currroute.Shkey.Name != cps.ExpRoute.Shkey.Name {
-			spqrlog.Zero.Debug().Msg("miss")
-		}
-
 		if !cps.AllowMultishard && currroute.Shkey.Name != cps.ExpRoute.Shkey.Name {
 			return nil, fmt.Errorf("multishard copy is not supported")
 		}
