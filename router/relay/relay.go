@@ -703,6 +703,13 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		relname = q.RelationName
 	}
 
+	if rst.Client().ExecuteOn() != "" {
+		return &pgcopy.CopyState{
+			Delimiter:       delimiter,
+			ExpRoute:        &routingstate.DataShardRoute{},
+			AllowMultishard: allow_multishard,
+		}, nil
+	}
 	// TODO: check by whole RFQN
 	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
 	if err != nil {
@@ -748,9 +755,18 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error) {
-
 	rst.Client().RLock()
 	defer rst.Client().RUnlock()
+
+	if v := rst.Client().ExecuteOn(); v != "" {
+		for _, sh := range rst.Client().Server().Datashards() {
+			if sh.Name() == v {
+				err := sh.Send(data)
+				return nil, err
+			}
+		}
+		return nil, fmt.Errorf("metadata corrutped")
+	}
 
 	var leftOvermsgData []byte = nil
 
