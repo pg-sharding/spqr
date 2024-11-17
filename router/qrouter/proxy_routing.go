@@ -1011,7 +1011,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		has_other_schema := false
 		for rqfn := range meta.rels {
 			/* schema can be omittted here, check for pg_ prefix. */
-			if len(rqfn.RelationName) >= 3 && rqfn.RelationName[0:3] != "pg_" {
+			if len(rqfn.RelationName) < 3 || rqfn.RelationName[0:3] != "pg_" {
 				only_catalog = false
 			}
 			if rqfn.SchemaName == "information_schema" {
