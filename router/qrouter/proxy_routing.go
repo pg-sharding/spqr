@@ -938,6 +938,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 	case *lyx.Select:
+
+		/*
+		* Ugly hack here. Code should be refactored & simplyfied.
+		* We do not error-out immidiately to check some metadata-only rouing cases.
+		 */
+		var err error
+
 		/* We cannot route SQL stmt with no FROM clause provided, but there is still
 		* a few cases to consider
 		 */
@@ -977,35 +984,47 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 				return routingstate.RandomMatchState{}, nil
 			}
 		} else if node.LArg != nil && node.RArg != nil {
-			err := qr.deparseShardingMapping(ctx, node.LArg, meta)
-			if err != nil {
-				return nil, err
+			/* deparse populates FromClause info,
+			* so do recurse into both branches even if error encountered
+			 */
+			l_err := qr.deparseShardingMapping(ctx, node.LArg, meta)
+			r_err := qr.deparseShardingMapping(ctx, node.RArg, meta)
+			if l_err != nil {
+				err = l_err
 			}
-			err = qr.deparseShardingMapping(ctx, node.RArg, meta)
-			if err != nil {
-				return nil, err
+			if r_err != nil {
+				err = r_err
 			}
 		} else {
 			// SELECT stmts, which
 			// would be routed with their WHERE clause
-			err := qr.deparseShardingMapping(ctx, stmt, meta)
-			if err != nil {
-				return nil, err
-			}
+			err = qr.deparseShardingMapping(ctx, stmt, meta)
 		}
 
 		/* immidiately error-out some corner cases, for example, when client
 		* tries to access information schema AND other relation in same TX
 		* as we are unable to serve this properly. Or can we?
+		* On the other hand, immediately route catalog-only queries to any shard.
 		 */
 		has_inf_schema := false
+		only_catalog := true
 		has_other_schema := false
 		for rqfn := range meta.rels {
+			/* schema can be omittted here, check for pg_ prefix. */
+			if len(rqfn.RelationName) < 3 || rqfn.RelationName[0:3] != "pg_" {
+				only_catalog = false
+			}
 			if rqfn.SchemaName == "information_schema" {
 				has_inf_schema = true
 			} else {
 				has_other_schema = true
 			}
+		}
+
+		/* case 1.5.1 */
+		if only_catalog {
+			/* catalog-only relation can actually be routed somewhere */
+			return routingstate.RandomMatchState{}, nil
 		}
 
 		if has_inf_schema && has_other_schema {
@@ -1014,6 +1033,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		if has_inf_schema {
 			/* metadata-only relation can actually be routed somewhere */
 			return routingstate.RandomMatchState{}, nil
+		}
+
+		if err != nil {
+			return nil, err
 		}
 
 	case *lyx.Delete, *lyx.Update:
