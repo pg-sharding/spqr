@@ -8,24 +8,10 @@ import (
 
 type ClientInfo interface {
 	Client
-
-	RAddr() string
 }
 
 type ClientInfoImpl struct {
 	Client
-	rAddr string
-}
-
-// RAddr returns the remote address of the ClientInfoImpl object.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - string: A string representing the remote address.
-func (rci ClientInfoImpl) RAddr() string {
-	return rci.rAddr
 }
 
 type Pool interface {
@@ -140,7 +126,7 @@ func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 	defer c.mu.Unlock()
 
 	for _, cl := range c.pool {
-		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {
+		if err := cb(ClientInfoImpl{Client: cl}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}

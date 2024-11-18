@@ -1164,10 +1164,6 @@ func (c NoopClient) DB() string {
 	return c.dbname
 }
 
-func (c NoopClient) RAddr() string {
-	return c.rAddr
-}
-
 func (c NoopClient) Shards() []shard.Shard {
 	return c.shards
 }

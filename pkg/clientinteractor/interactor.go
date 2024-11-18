@@ -731,13 +731,13 @@ type ClientDesc struct {
 //   - Usr (string): The user of the client.
 //   - DB (string): The database of the client.
 //   - Hostname (string): The hostname.
-//   - RAddr (string): The rAddr.
+//   - RouterAddress (string): The router address.
 //   - Quantiles ([]float64): The quantiles of time statistics for the client.
 //   - TimeQuantileRouter (float64): The time quantile for the router.
 //   - TimeQuantileShard (float64): The time quantile for the shard.
-func (ClientDesc) GetRow(cl client.Client, hostname string, rAddr string) []string {
+func (ClientDesc) GetRow(cl client.Client, hostname string) []string {
 	quantiles := statistics.GetQuantiles()
-	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, rAddr}
+	rowData := []string{fmt.Sprintf("%d", cl.ID()), cl.Usr(), cl.DB(), hostname, "local"} // TODO implement router address
 
 	for _, el := range *quantiles {
 		rowData = append(rowData, fmt.Sprintf("%.2fms", statistics.GetTimeQuantile(statistics.Router, el, cl.ID())))
@@ -820,7 +820,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 				if sh == nil {
 					continue
 				}
-				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
+				row := desc.GetRow(cl, sh.Instance().Hostname())
 
 				match, err := MatchRow(row, rowDesc, condition)
 				if err != nil {
@@ -832,7 +832,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 				data = append(data, row)
 			}
 		} else {
-			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
+			row := desc.GetRow(cl, "no backend connection")
 
 			match, err := MatchRow(row, rowDesc, condition)
 			if err != nil {
