@@ -5,6 +5,7 @@ import (
 
 	"github.com/juju/errors"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -15,7 +16,6 @@ import (
 )
 
 type LocalQrouter struct {
-	QueryRouter
 	ds *datashards.DataShard
 }
 
@@ -71,6 +71,31 @@ func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionPar
 			},
 		},
 	}, nil
+}
+
+// TODO : unit tests
+func (l *LocalQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, _ []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
+	return &routingstate.DataShardRoute{
+		Shkey: kr.ShardKey{
+			Name: l.ds.ID,
+		},
+	}, nil
+}
+
+// TODO : unit tests
+func (l *LocalQrouter) Mgr() meta.EntityMgr {
+	return nil
+}
+
+// TODO : unit tests
+func (l *LocalQrouter) WorldShardsRoutes() []*routingstate.DataShardRoute {
+	return []*routingstate.DataShardRoute{
+		&routingstate.DataShardRoute{Shkey: kr.ShardKey{
+			Name: l.ds.ID,
+			RW:   true,
+		},
+		},
+	}
 }
 
 func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
