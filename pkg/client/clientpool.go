@@ -16,8 +16,6 @@ type Pool interface {
 
 	Put(client Client) error
 	Pop(id uint) (bool, error)
-
-	Shutdown() error
 }
 
 type PoolImpl struct {
@@ -88,32 +86,6 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 	}
 
 	return ok, err
-}
-
-// TODO : unit tests
-
-// Shutdown shuts down the client pool by closing all clients and releasing associated resources.
-//
-// It iterates over all clients in the pool, closes each client, and then clears the pool.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-//   - error: An error if any occurred during the shutdown process.
-func (c *PoolImpl) Shutdown() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for _, cl := range c.pool {
-		go func(cl Client) {
-			if err := cl.Shutdown(); err != nil {
-				spqrlog.Zero.Error().Err(err).Msg("")
-			}
-		}(cl)
-	}
-
-	return nil
 }
 
 // TODO : unit tests
