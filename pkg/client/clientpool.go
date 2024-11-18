@@ -6,16 +6,13 @@ import (
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
-type ClientInfo interface {
-	Client
-}
 
 type ClientInfoImpl struct {
 	Client
 }
 
 type Pool interface {
-	ClientPoolForeach(cb func(client ClientInfo) error) error
+	ClientPoolForeach(cb func(client Client) error) error
 
 	Put(client Client) error
 	Pop(id uint) (bool, error)
@@ -50,6 +47,18 @@ func (c *PoolImpl) Put(client Client) error {
 	c.pool[client.ID()] = client
 
 	return nil
+}
+
+func (c *PoolImpl) ListClients() []Client {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var clients []Client
+	for _, cl := range c.pool {
+		clients = append(clients, cl)
+	}
+
+	return clients
 }
 
 // TODO : unit tests
@@ -120,7 +129,7 @@ func (c *PoolImpl) Shutdown() error {
 //
 // Returns:
 //   - error: An error if any occurred during the iteration.
-func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
+func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()

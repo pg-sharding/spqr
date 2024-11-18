@@ -82,7 +82,7 @@ func (r *RoutePoolImpl) Shutdown() error {
 	for _, rt := range r.pool {
 		rt := rt
 		go func() {
-			_ = rt.NofityClients(func(cl client.ClientInfo) error {
+			_ = rt.NofityClients(func(cl client.Client) error {
 				return cl.Shutdown()
 			})
 		}()

@@ -803,7 +803,7 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, query *spqrparser.Show) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)

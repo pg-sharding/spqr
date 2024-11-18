@@ -87,7 +87,7 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
+func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.Client) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrClient := routerproto.NewClientInfoServiceClient(cc)
