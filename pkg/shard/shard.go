@@ -1,8 +1,6 @@
 package shard
 
 import (
-	"crypto/tls"
-
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -76,7 +74,6 @@ type Shard interface {
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
 
-	AddTLSConf(cfg *tls.Config) error
 	Cleanup(rule *config.FrontendRule) error
 
 	ConstructSM() *pgproto3.StartupMessage

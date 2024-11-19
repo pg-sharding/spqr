@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/tls"
 	"fmt"
 	"sync"
 
@@ -132,16 +131,6 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) 
 	}
 
 	return nil
-}
-
-// TODO : unit tests
-func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
-		return ErrShardUnavailable
-	}
-	return srv.shard.AddTLSConf(cfg)
 }
 
 // TODO : unit tests
