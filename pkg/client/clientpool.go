@@ -6,7 +6,6 @@ import (
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
-
 type ClientInfoImpl struct {
 	Client
 }
@@ -45,18 +44,6 @@ func (c *PoolImpl) Put(client Client) error {
 	c.pool[client.ID()] = client
 
 	return nil
-}
-
-func (c *PoolImpl) ListClients() []Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	var clients []Client
-	for _, cl := range c.pool {
-		clients = append(clients, cl)
-	}
-
-	return clients
 }
 
 // TODO : unit tests
