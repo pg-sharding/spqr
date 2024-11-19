@@ -1059,7 +1059,6 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
 
-
 type FakeClient struct {
 	RouterClient
 }
