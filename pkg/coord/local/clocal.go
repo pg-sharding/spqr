@@ -128,7 +128,7 @@ func (lc *LocalCoordinator) ListDistributions(ctx context.Context) ([]*distribut
 func (lc *LocalCoordinator) CreateDistribution(ctx context.Context, ds *distributions.Distribution) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
-	if len(ds.ColTypes) == 0 {
+	if len(ds.ColTypes) == 0 && ds.Id != distributions.REPLICATED {
 		return fmt.Errorf("empty distributions are disallowed")
 	}
 	return lc.qdb.CreateDistribution(ctx, distributions.DistributionToDB(ds))

@@ -82,6 +82,7 @@ func (meta *RoutingMetadataContext) GetRelationDistribution(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
 	meta.distributions[resolvedRelation] = ds
 	return ds, nil
 }
@@ -95,6 +96,10 @@ func (meta *RoutingMetadataContext) RFQNIsCTE(resolvedRelation RelationFQN) bool
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr interface{}) error {
 	if meta.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
+		return nil
+	}
+	if meta.distributions[resolvedRelation].Id == distributions.REPLICATED {
+		// referencr relation, skip
 		return nil
 	}
 	meta.rels[resolvedRelation] = struct{}{}
@@ -113,6 +118,12 @@ func (meta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation Relation
 		// CTE, skip
 		return nil
 	}
+
+	if meta.distributions[resolvedRelation].Id == distributions.REPLICATED {
+		// referencr relation, skip
+		return nil
+	}
+
 	meta.rels[resolvedRelation] = struct{}{}
 	if _, ok := meta.paramRefs[resolvedRelation]; !ok {
 		meta.paramRefs[resolvedRelation] = map[string][]int{}
@@ -206,31 +217,6 @@ func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *RoutingMetadataContex
 		}
 	}
 	return -1, ""
-}
-
-func (qr *ProxyQrouter) RecordDistributionKeyColumnValueOnRFQN(meta *RoutingMetadataContext, resolvedRelation RelationFQN, colname string, value interface{}) error {
-	/* do not process non-distributed relations or columns not from relation distribution key */
-
-	ds, err := meta.GetRelationDistribution(context.TODO(), qr.Mgr(), resolvedRelation)
-	if err != nil {
-		return err
-	}
-	// TODO: optimize
-	ok := false
-	for _, c := range ds.Relations[resolvedRelation.RelationName].DistributionKey {
-		if c.Column == colname {
-			ok = true
-			break
-		}
-	}
-
-	if !ok {
-		// some junk column
-		return nil
-	}
-
-	// will not work not ints
-	return meta.RecordConstExpr(resolvedRelation, colname, value)
 }
 
 func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, meta *RoutingMetadataContext) error {
@@ -391,7 +377,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 	case *lyx.Select:
 		if clause := s.FromClause; clause != nil {
 			// route `insert into rel select from` stmt
-			if err := qr.deparseFromClauseList(clause, meta); err != nil {
+			if err := qr.deparseFromClauseList(ctx, clause, meta); err != nil {
 				return err
 			}
 		}
@@ -428,7 +414,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 
 // TODO : unit tests
 // deparses from clause
-func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMetadataContext) error {
+func (qr *ProxyQrouter) deparseFromNode(ctx context.Context, node lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	spqrlog.Zero.Debug().
 		Type("node-type", node).
 		Msg("deparsing from node")
@@ -441,6 +427,12 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 			return nil
 		}
 
+		if v, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rqdn); err != nil {
+			return err
+		} else if v.Id == distributions.REPLICATED {
+			return nil
+		}
+
 		if _, ok := meta.rels[rqdn]; !ok {
 			meta.rels[rqdn] = struct{}{}
 		}
@@ -449,10 +441,10 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 			meta.tableAliases[q.Alias] = RelationFQNFromRangeRangeVar(q)
 		}
 	case *lyx.JoinExpr:
-		if err := qr.deparseFromNode(q.Rarg, meta); err != nil {
+		if err := qr.deparseFromNode(ctx, q.Rarg, meta); err != nil {
 			return err
 		}
-		if err := qr.deparseFromNode(q.Larg, meta); err != nil {
+		if err := qr.deparseFromNode(ctx, q.Larg, meta); err != nil {
 			return err
 		}
 	default:
@@ -466,9 +458,10 @@ func (qr *ProxyQrouter) deparseFromNode(node lyx.FromClauseNode, meta *RoutingMe
 
 // TODO : unit tests
 func (qr *ProxyQrouter) deparseFromClauseList(
+	ctx context.Context,
 	clause []lyx.FromClauseNode, meta *RoutingMetadataContext) error {
 	for _, node := range clause {
-		err := qr.deparseFromNode(node, meta)
+		err := qr.deparseFromNode(ctx, node, meta)
 		if err != nil {
 			return err
 		}
@@ -496,7 +489,7 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
-func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert) ([]int, RelationFQN, bool, error) {
+func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *RoutingMetadataContext) ([]int, RelationFQN, bool, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -511,10 +504,15 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 	case *lyx.RangeVar:
 		rfqn = RelationFQNFromRangeRangeVar(q)
 
-		var ds *qdb.Distribution
+		var ds *distributions.Distribution
 		var err error
 
-		if ds, err = qr.Mgr().QDB().GetRelationDistribution(ctx, rfqn.RelationName); err != nil {
+		if ds, err = meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn); err != nil {
+			return nil, RelationFQN{}, false, err
+		}
+
+		/* Omit distributed relations */
+		if ds.Id == distributions.REPLICATED {
 			return nil, RelationFQN{}, false, err
 		}
 
@@ -564,7 +562,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
 			// for single-table queries, process as usual
-			if err := qr.deparseFromClauseList(stmt.FromClause, meta); err != nil {
+			if err := qr.deparseFromClauseList(ctx, stmt.FromClause, meta); err != nil {
 				return err
 			}
 		}
@@ -588,7 +586,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
 				/* this target list for some insert (...) sharding column */
 
-				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
 				if err != nil {
 					return err
 				}
@@ -622,7 +620,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			case *lyx.ValueClause:
 				valList := subS.Values
 				/* record all values from values scan */
-				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt)
+				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
 				if err != nil {
 					return err
 				}
@@ -653,7 +651,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			return nil
 		}
 
-		_ = qr.deparseFromNode(stmt.TableRef, meta)
+		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
 		return qr.routeByClause(ctx, clause, meta)
 	case *lyx.Delete:
 		clause := stmt.Where
@@ -661,7 +659,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			return nil
 		}
 
-		_ = qr.deparseFromNode(stmt.TableRef, meta)
+		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
 
 		return qr.routeByClause(ctx, clause, meta)
 	}
@@ -683,6 +681,9 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		ds, err = qr.mgr.GetRelationDistribution(ctx, relname)
 		if err != nil {
 			return err
+		}
+		if ds.Id == distributions.REPLICATED {
+			return nil
 		}
 	default:
 		return fmt.Errorf("wrong type of table range var")
@@ -1085,7 +1086,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	var routeErr error
 	for rfqn := range meta.rels {
 		// TODO: check by whole RFQN
-		ds, err := qr.mgr.GetRelationDistribution(ctx, rfqn.RelationName)
+		ds, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
 		if err != nil {
 			return nil, err
 		}
