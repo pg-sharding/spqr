@@ -121,12 +121,6 @@ func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
 }
 
-// TODO : implement
-// TODO : unit tests
-func (ci grpcConnectionIterator) Shutdown() error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
-}
-
 // TODO : unit tests
 func (ci grpcConnectionIterator) ForEach(cb func(sh shard.Shardinfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
