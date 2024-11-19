@@ -1154,6 +1154,6 @@ func (dbi MockDBInstance) Hostname() string {
 	return dbi.hostname
 }
 
-var _ client.ClientInfo = &NoopClient{}
+var _ client.Client = &NoopClient{}
 var _ shard.Shard = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}

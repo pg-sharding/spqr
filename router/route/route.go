@@ -126,7 +126,7 @@ func (r *Route) FrRule() *config.FrontendRule {
 	return r.frRule
 }
 
-func (r *Route) NofityClients(cb func(cl client.ClientInfo) error) error {
+func (r *Route) NofityClients(cb func(cl client.Client) error) error {
 	return r.clPool.ClientPoolForeach(cb)
 }
 

@@ -9,8 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"

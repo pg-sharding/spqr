@@ -347,7 +347,7 @@ func (l *LocalQrouterServer) RenameKeyRange(ctx context.Context, request *protos
 }
 
 // TODO : unit tests
-func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
+func ClientToProto(cl client.Client) *protos.ClientInfo {
 	clientInfo := &protos.ClientInfo{
 		ClientId: uint64(cl.ID()),
 		User:     cl.Usr(),
@@ -399,7 +399,7 @@ func PoolToProto(p pool.Pool, router string) *protos.PoolInfo {
 func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*protos.ListClientsReply, error) {
 	reply := &protos.ListClientsReply{}
 
-	err := l.rr.ClientPoolForeach(func(client client.ClientInfo) error {
+	err := l.rr.ClientPoolForeach(func(client client.Client) error {
 		reply.Clients = append(reply.Clients, ClientToProto(client))
 		return nil
 	})
