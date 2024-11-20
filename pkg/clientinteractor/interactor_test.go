@@ -184,30 +184,42 @@ func TestGetColumnsMap(t *testing.T) {
 }
 
 func TestSortableWithContext(t *testing.T) {
-	data := [][]string{{"a", "b"}, {"b", "a"}}
-	rev_data := [][]string{{"b", "a"}, {"a", "b"}}
+	data := [][]string{[]string{"a", "b"}, []string{"b", "a"}}
+	rev_data := [][]string{[]string{"b", "a"}, []string{"a", "b"}}
 	sortable := clientinteractor.SortableWithContext{data, 0, clientinteractor.DESC}
 	sort.Sort(sortable)
 	assert.Equal(t, data, rev_data)
 }
 
 func TestClientsOrderBy(t *testing.T) {
+
 	ctrl := gomock.NewController(t)
 
-	var v3, v4, v5, v6 proto.UsedShardInfo
-	var i3, i4, i5, i6 proto.DBInstaceInfo
+	var v1, v2, v3, v4, v5, v6 proto.UsedShardInfo
+	var i1, i2, i3, i4, i5, i6 proto.DBInstaceInfo
 
+	i1.Hostname = "abracadabra1"
+	i2.Hostname = "abracadabra2"
 	i3.Hostname = "abracadabra14"
 	i4.Hostname = "abracadabra52"
 	i5.Hostname = "abracadabras"
 	i6.Hostname = "abracadabrav"
 
+	v1.Instance = &i1
+	v2.Instance = &i2
 	v3.Instance = &i3
 	v4.Instance = &i4
 	v5.Instance = &i5
 	v6.Instance = &i6
 
-	var b, c proto.ClientInfo
+	var a, b, c proto.ClientInfo
+
+	a.ClientId = 1
+	a.Dbname = "Barnaul"
+	a.Dsname = "Rjaken"
+	a.Shards = []*proto.UsedShardInfo{
+		&v1, &v2,
+	}
 
 	b.ClientId = 2
 	b.Dbname = "Moscow"
@@ -227,7 +239,11 @@ func TestClientsOrderBy(t *testing.T) {
 	cb := client.NewNoopClient(&b, "addr")
 	cc := client.NewNoopClient(&c, "addr")
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ci := []pkgclient.Client{ca, cb, cc}
+	ci := []pkgclient.ClientInfo{
+		pkgclient.ClientInfoImpl{Client: ca},
+		pkgclient.ClientInfoImpl{Client: cb},
+		pkgclient.ClientInfoImpl{Client: cc},
+	}
 
 	ca.EXPECT().Send(gomock.Any()).AnyTimes()
 	ca.EXPECT().Shards().AnyTimes()
