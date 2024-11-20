@@ -1009,10 +1009,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		 */
 		has_inf_schema := false
 		only_catalog := true
+		any_catalog := false
 		has_other_schema := false
 		for rqfn := range meta.rels {
 			/* schema can be omittted here, check for pg_ prefix. */
-			if len(rqfn.RelationName) < 3 || rqfn.RelationName[0:3] != "pg_" {
+			if len(rqfn.RelationName) >= 3 && rqfn.RelationName[0:3] != "pg_" {
+				any_catalog = true
+			} else {
 				only_catalog = false
 			}
 			if rqfn.SchemaName == "information_schema" {
@@ -1023,7 +1026,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		}
 
 		/* case 1.5.1 */
-		if only_catalog {
+		if only_catalog && any_catalog {
 			/* catalog-only relation can actually be routed somewhere */
 			return routingstate.RandomMatchState{}, nil
 		}
