@@ -271,6 +271,7 @@ func processAlter(ctx context.Context, astmt spqrparser.Statement, mngr EntityMg
 func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
 	case *spqrparser.AttachRelation:
+
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
@@ -279,11 +280,31 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 			}
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
+		var selectedDistribId string
 
-		if err := mngr.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels); err != nil {
-			return err
+		if stmt.Distribution.Replicated {
+			selectedDistribId = distributions.REPLICATED
+
+			if _, err := mngr.GetDistribution(ctx, selectedDistribId); err != nil {
+				err := mngr.CreateDistribution(ctx, &distributions.Distribution{
+					Id:       distributions.REPLICATED,
+					ColTypes: nil,
+				})
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+					return cli.ReportError(err)
+				}
+			}
+
+		} else {
+			selectedDistribId = stmt.Distribution.ID
 		}
-		return cli.AlterDistributionAttach(ctx, stmt.Distribution.ID, rels)
+
+		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
+			return cli.ReportError(err)
+		}
+
+		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
 	case *spqrparser.DetachRelation:
 		if err := mngr.AlterDistributionDetach(ctx, stmt.Distribution.ID, stmt.RelationName); err != nil {
 			return err

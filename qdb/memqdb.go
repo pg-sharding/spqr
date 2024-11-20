@@ -703,7 +703,7 @@ func (q *MemQDB) AlterDistributionDetach(_ context.Context, id string, relName s
 
 // TODO : unit tests
 func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get distribution")
+	spqrlog.Zero.Debug().Str("id", id).Msg("memqdb: get distribution")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 

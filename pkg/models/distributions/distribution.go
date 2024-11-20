@@ -20,6 +20,10 @@ type DistributedRelation struct {
 	ReplicatedRelation bool
 }
 
+const (
+	REPLICATED = "REPLICATED"
+)
+
 // DistributedRelationFromDB creates a DistributedRelation object from a qdb.DistributedRelation object.
 //
 // Parameters:
@@ -145,6 +149,7 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 type Distribution struct {
 	Id string
 	// column types to be used
+	// REPLICATED distribution has an empty array here.
 	ColTypes  []string
 	Relations map[string]*DistributedRelation
 }
