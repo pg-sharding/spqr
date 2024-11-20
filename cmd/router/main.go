@@ -49,6 +49,8 @@ var (
 	adminPort    int
 	grpcPort     int
 
+	default_route_behaviour string
+
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
 		Short: "spqr-router",
@@ -80,6 +82,8 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "router read-only PostgreSQL port")
 	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "router Metadata PostgreSQL interface admin port")
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "router Metadata GRPC interface admin port")
+
+	rootCmd.PersistentFlags().StringVarP(&default_route_behaviour, "default-route-behaviour", "", "", "router block or scatters-out failed to route statements")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -211,6 +215,10 @@ var runCmd = &cobra.Command{
 
 		if grpcPort != 0 {
 			rcfg.GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
+		}
+
+		if default_route_behaviour != "" {
+			rcfg.Qr.DefaultRouteBehaviour = default_route_behaviour
 		}
 
 		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
