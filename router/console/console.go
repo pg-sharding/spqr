@@ -9,8 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -25,7 +23,6 @@ type Console interface {
 	Serve(ctx context.Context, cl client.Client) error
 	ProcessQuery(ctx context.Context, q string, cl client.Client) error
 	Qlog() qlog.Qlog
-	Shutdown() error
 	Mgr() meta.EntityMgr
 }
 
@@ -40,10 +37,6 @@ type LocalInstanceConsole struct {
 
 var _ Console = &LocalInstanceConsole{}
 
-func (l *LocalInstanceConsole) Shutdown() error {
-	return nil
-}
-
 func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
 	return l.InstanceMgr
 }
@@ -56,11 +49,6 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 		stchan:      stchan,
 		writer:      writer,
 	}, nil
-}
-
-type TopoCntl interface {
-	kr.KeyRangeMgr
-	datashards.ShardsMgr
 }
 
 // TODO : unit tests

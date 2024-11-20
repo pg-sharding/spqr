@@ -509,8 +509,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 	case spqrparser.ShardingRules:
 		return cli.ReportError(spqrerror.ShardingRulesRemoved)
 	case spqrparser.ClientsStr:
-		var resp []client.ClientInfo
-		if err := ci.ClientPoolForeach(func(client client.ClientInfo) error {
+		var resp []client.Client
+		if err := ci.ClientPoolForeach(func(client client.Client) error {
 			resp = append(resp, client)
 			return nil
 		}); err != nil {

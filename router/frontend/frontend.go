@@ -14,10 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/router/relay"
 )
 
-type Qinteractor interface{}
-
-type QinteractorImpl struct{}
-
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	ph := relay.NewSimpleProtoStateHandler(cmngr)

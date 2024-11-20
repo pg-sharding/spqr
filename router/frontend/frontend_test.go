@@ -218,8 +218,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().Close().Times(1)
 	cl.EXPECT().Rule().AnyTimes().Return(frrule)
 
-	cl.EXPECT().ReplyParseComplete().AnyTimes()
-
 	cl.EXPECT().ReplyDebugNotice(gomock.Any()).AnyTimes().Return(nil)
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
@@ -455,8 +453,8 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
-		&routingstate.DataShardRoute{Shkey: sh1.SHKey()},
-		&routingstate.DataShardRoute{Shkey: sh2.SHKey()}},
+		{Shkey: sh1.SHKey()},
+		{Shkey: sh2.SHKey()}},
 	)
 
 	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
