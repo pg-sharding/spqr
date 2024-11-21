@@ -437,7 +437,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
-	case routingstate.MultiMatchState:
+	case routingstate.MultiMatchState, routingstate.DDLState:
 		if rst.TxActive() {
 			return fmt.Errorf("ddl is forbidden inside multi-shard transition")
 		}

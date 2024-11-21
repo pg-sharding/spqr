@@ -28,9 +28,13 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 		return sh2
 	case RandomMatchState:
 		return sh2
+	case ReferenceRelationState:
+		return sh2
 	case ShardMatchState:
 		switch shq2 := sh2.(type) {
 		case MultiMatchState:
+			return sh1
+		case ReferenceRelationState:
 			return sh1
 		case ShardMatchState:
 			if shq2.Route.Shkey.Name == shq1.Route.Shkey.Name {
@@ -61,6 +65,10 @@ type MultiMatchState struct {
 	RoutingState
 }
 
+type DDLState struct {
+	RoutingState
+}
+
 type SkipRoutingState struct {
 	RoutingState
 }
@@ -70,5 +78,9 @@ type RandomMatchState struct {
 }
 
 type WorldRouteState struct {
+	RoutingState
+}
+
+type ReferenceRelationState struct {
 	RoutingState
 }

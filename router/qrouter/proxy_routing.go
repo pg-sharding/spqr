@@ -73,10 +73,21 @@ func NewRoutingMetadataContext() *RoutingMetadataContext {
 	}
 }
 
+var CatalogDistribution = distributions.Distribution{
+	Relations: nil,
+	Id:        "CATALOG",
+	ColTypes:  nil,
+}
+
 func (meta *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mgr meta.EntityMgr, resolvedRelation RelationFQN) (*distributions.Distribution, error) {
 	if res, ok := meta.distributions[resolvedRelation]; ok {
 		return res, nil
 	}
+
+	if len(resolvedRelation.RelationName) >= 3 && resolvedRelation.RelationName[0:3] == "pg_" {
+		return &CatalogDistribution, nil
+	}
+
 	ds, err := mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
 
 	if err != nil {
@@ -96,10 +107,6 @@ func (meta *RoutingMetadataContext) RFQNIsCTE(resolvedRelation RelationFQN) bool
 func (meta *RoutingMetadataContext) RecordConstExpr(resolvedRelation RelationFQN, colname string, expr interface{}) error {
 	if meta.RFQNIsCTE(resolvedRelation) {
 		// CTE, skip
-		return nil
-	}
-	if meta.distributions[resolvedRelation].Id == distributions.REPLICATED {
-		// referencr relation, skip
 		return nil
 	}
 	meta.rels[resolvedRelation] = struct{}{}
@@ -427,10 +434,8 @@ func (qr *ProxyQrouter) deparseFromNode(ctx context.Context, node lyx.FromClause
 			return nil
 		}
 
-		if v, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rqdn); err != nil {
+		if _, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rqdn); err != nil {
 			return err
-		} else if v.Id == distributions.REPLICATED {
-			return nil
 		}
 
 		if _, ok := meta.rels[rqdn]; !ok {
@@ -898,27 +903,27 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return nil, err
 		}
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 	case *lyx.Analyze:
 		/* Send vacuum to each shard */
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 	case *lyx.Cluster:
 		/* Send vacuum to each shard */
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 		/*
 			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 				 // forbid under separate setting
@@ -926,7 +931,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		*/
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.DDLState{}, nil
 	case *lyx.Insert:
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
@@ -1013,7 +1018,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		has_other_schema := false
 		for rqfn := range meta.rels {
 			/* schema can be omittted here, check for pg_ prefix. */
-			if len(rqfn.RelationName) >= 3 && rqfn.RelationName[0:3] != "pg_" {
+			if len(rqfn.RelationName) >= 3 && rqfn.RelationName[0:3] == "pg_" {
 				any_catalog = true
 			} else {
 				only_catalog = false
@@ -1092,6 +1097,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		ds, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
 		if err != nil {
 			return nil, err
+		} else if ds.Id == distributions.REPLICATED {
+			routingstate.Combine(route, routingstate.ReferenceRelationState{})
+			continue
 		}
 
 		krs, err := qr.mgr.ListKeyRanges(ctx, ds.Id)
@@ -1183,6 +1191,10 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case routingstate.ShardMatchState:
 		return v, nil
 	case routingstate.RandomMatchState:
+		return v, nil
+	case routingstate.ReferenceRelationState:
+		return v, nil
+	case routingstate.DDLState:
 		return v, nil
 	case routingstate.MultiMatchState:
 		switch sph.DefaultRouteBehaviour() {
