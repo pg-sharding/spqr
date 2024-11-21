@@ -44,7 +44,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
       - name: goimports check
-        uses: DarthBenro008/goimports-check-action@v0.1.0
+        uses: DarthBenro008/goimports-check-action@v0.2.0
         with:
           root-path: './' # The relative root path to run goimports
           excludes: "./yacc/"
