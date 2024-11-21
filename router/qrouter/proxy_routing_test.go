@@ -57,12 +57,12 @@ func TestMultiShardRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "create table xx (i int);",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 		{
 			query: " DROP TABLE copy_test;",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 		{
@@ -82,22 +82,22 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "alter table xx  add column i int;",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 		{
 			query: "vacuum xx;",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 		{
 			query: "analyze xx;",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 		{
 			query: "cluster xx;",
-			exp:   routingstate.MultiMatchState{},
+			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
 	} {

@@ -88,6 +88,10 @@ func (meta *RoutingMetadataContext) GetRelationDistribution(ctx context.Context,
 		return &CatalogDistribution, nil
 	}
 
+	if resolvedRelation.SchemaName == "information_schema" {
+		return &CatalogDistribution, nil
+	}
+
 	ds, err := mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
 
 	if err != nil {
