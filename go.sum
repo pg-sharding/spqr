@@ -164,12 +164,8 @@ github.com/opencontainers/image-spec v1.0.2 h1:9yCKha/T5XdGtO0q9Q9a6T5NUCsTn/DrB
 github.com/opencontainers/image-spec v1.0.2/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/pg-sharding/lyx v0.0.0-20241111073134-4da38064149e h1:GerIWkvLp8rkh5YZ2g55sOjnSVZwPzpuQzhf+gsSfzk=
-github.com/pg-sharding/lyx v0.0.0-20241111073134-4da38064149e/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
-github.com/pg-sharding/lyx v0.0.0-20241117073525-0a44766b365a h1:jrVKFxhSEZOs8FdIR88g0wCCTMzx76wjtwrJsnV6BLY=
-github.com/pg-sharding/lyx v0.0.0-20241117073525-0a44766b365a/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
-github.com/pg-sharding/lyx v0.0.0-20241121135427-f85d73cce2b8 h1:ZAtRVIcoHY361nicMSm8Kolq9xLHeu9wDDUQeud8m6Q=
-github.com/pg-sharding/lyx v0.0.0-20241121135427-f85d73cce2b8/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
+github.com/pg-sharding/lyx v0.0.0-20241121162747-96974c4732ca h1:BDLxfrLVBfEUTqmOunYbtYVW0DAiwiArUFuKo1L3fpU=
+github.com/pg-sharding/lyx v0.0.0-20241121162747-96974c4732ca/go.mod h1:2dPBQAhqv/30mhzj2yBXQkXhsGJQ8GhM+oWOfbGua58=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
