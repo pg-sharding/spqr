@@ -61,7 +61,7 @@ func TestMultiShardRouting(t *testing.T) {
 			err:   nil,
 		},
 		{
-			query: " DROP TABLE copy_test;",
+			query: "DROP TABLE copy_test;",
 			exp:   routingstate.DDLState{},
 			err:   nil,
 		},
@@ -99,6 +99,21 @@ func TestMultiShardRouting(t *testing.T) {
 			query: "cluster xx;",
 			exp:   routingstate.DDLState{},
 			err:   nil,
+		},
+		{
+			query: "SELECT * FROM pg_catalog.pg_type",
+			exp:   routingstate.RandomMatchState{},
+			err:   nil,
+		},
+
+		{
+			query: "SELECT * FROM pg_class",
+			exp:   routingstate.RandomMatchState{},
+			err:   nil,
+		},
+		{
+			query: `SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'people' AND table_type = 'BASE TABLE'`,
+			exp:   routingstate.RandomMatchState{},
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)

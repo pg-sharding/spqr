@@ -75,7 +75,7 @@ func NewRoutingMetadataContext() *RoutingMetadataContext {
 
 var CatalogDistribution = distributions.Distribution{
 	Relations: nil,
-	Id:        "CATALOG",
+	Id:        distributions.REPLICATED,
 	ColTypes:  nil,
 }
 
@@ -219,6 +219,8 @@ func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *RoutingMetadataContex
 
 	ds, err := meta.GetRelationDistribution(context.TODO(), qr.Mgr(), resolvedRelation)
 	if err != nil {
+		return -1, ""
+	} else if ds.Id == distributions.REPLICATED {
 		return -1, ""
 	}
 	// TODO: optimize
