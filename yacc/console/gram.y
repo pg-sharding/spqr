@@ -652,6 +652,10 @@ col_types_elem:
 		$$ = "integer"
 	} | INT {
 		$$ = "integer"
+	} | INTEGER HASH {
+		$$ = "uinteger"
+	} | INT HASH {
+		$$ = "uinteger"
 	}
 
 sharding_rule_define_stmt:

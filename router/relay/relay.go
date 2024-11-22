@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"strings"
 	"time"
 
@@ -722,10 +721,12 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
 	}
 
+	var hashFunc hashfunction.HashFunctionType
+
 	if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[0].HashFunction); err != nil {
 		return nil, err
-	} else if v != hashfunction.HashFunctionIdent {
-		return nil, fmt.Errorf("multi-column copy HASH based processing is not yet supported")
+	} else {
+		hashFunc = v
 	}
 
 	krs, err := rst.Qr.Mgr().ListKeyRanges(ctx, ds.Id)
@@ -750,6 +751,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		AllowMultishard: allow_multishard,
 		Krs:             krs,
 		TargetType:      TargetType,
+		HashFunc:        hashFunc,
 	}, nil
 }
 
@@ -788,19 +790,11 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 		if b == '\n' || b == cps.Delimiter {
 
 			if currentAttr == cps.ColumnOffset {
-				switch cps.TargetType {
-				case "varchar":
-					values = append(values, string(data.Data[prevDelimiter:i]))
-				case "integer":
-					n, err := strconv.ParseInt(string(data.Data[prevDelimiter:i]), 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					values = append(values, n)
-
-				default:
-					return nil, fmt.Errorf("copy type %v not supported", cps.TargetType)
+				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.TargetType, cps.HashFunc)
+				if err != nil {
+					return nil, err
 				}
+				values = append(values, tmp)
 			}
 
 			currentAttr++
@@ -811,7 +805,7 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 		}
 
 		// check where this tuple should go
-		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, []interface{}{values[cps.ColumnOffset]}, cps.Krs)
+		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
 		if err != nil {
 			return nil, err
 		}

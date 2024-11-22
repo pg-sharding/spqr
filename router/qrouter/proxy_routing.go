@@ -1056,7 +1056,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 	case *lyx.Copy:
-		return routingstate.MultiMatchState{}, nil
+		return routingstate.CopyState{}, nil
 	default:
 		spqrlog.Zero.Debug().Interface("statement", stmt).Msg("proxy-routing message to all shards")
 	}
@@ -1196,12 +1196,15 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		return v, nil
 	case routingstate.DDLState:
 		return v, nil
+	case routingstate.CopyState:
+		/* temporary */
+		return routingstate.MultiMatchState{}, nil
 	case routingstate.MultiMatchState:
 		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		default:
-			return routingstate.MultiMatchState{}, nil
+			return v, nil
 		}
 	}
 	return routingstate.SkipRoutingState{}, nil
