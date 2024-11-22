@@ -77,6 +77,10 @@ type RandomMatchState struct {
 	RoutingState
 }
 
+type CopyState struct {
+	RoutingState
+}
+
 type WorldRouteState struct {
 	RoutingState
 }
