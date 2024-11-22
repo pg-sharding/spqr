@@ -941,12 +941,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 	case *lyx.Insert:
 		err := qr.deparseShardingMapping(ctx, stmt, meta)
 		if err != nil {
-			if qr.cfg.MulticastUnroutableInsertStatement {
-				switch err {
-				case ShardingKeysMissing:
-					return routingstate.MultiMatchState{}, nil
-				}
-			}
 			return nil, err
 		}
 	case *lyx.Select:
