@@ -721,7 +721,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
 	}
 
-	hashFunc := hashfunction.HashFunctionIdent
+	var hashFunc hashfunction.HashFunctionType
 
 	if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[0].HashFunction); err != nil {
 		return nil, err
