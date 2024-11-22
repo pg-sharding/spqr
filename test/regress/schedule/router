@@ -14,3 +14,4 @@ test: routing_hint
 test: begin
 test: alter_distribution
 test: show_processing
+test: copy_multishard

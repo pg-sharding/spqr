@@ -1,0 +1,114 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+-- SETUP
+CREATE DISTRIBUTION ds1 COLUMN TYPES int hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+-- the set of all unsigned 32-bit integers (0 to 4294967295)
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMUR;
+      attach table      
+------------------------
+ relation name   -> xx
+ distribution id -> ds1
+(2 rows)
+
+-- TEST
+\c regress
+CREATE TABLE xx (i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /* __spqr__allow_multishard: true */;
+NOTICE: send query to shard(s) : sh1,sh2
+INSERT INTO xx (i, j) VALUES(1,1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (i, j) VALUES(2,2);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(3,3);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(4,4);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(5,5);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (i, j) VALUES(6,6);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (i, j) VALUES(7,7);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(8,8);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (i, j) VALUES(9,9);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (i, j) VALUES(10,10);
+NOTICE: send query to shard(s) : sh2
+TABLE xx /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ i | j 
+---+---
+ 2 | 2
+ 3 | 3
+ 5 | 5
+ 6 | 6
+ 7 | 7
+ 9 | 9
+ 1 | 1
+ 5 | 5
+ 6 | 6
+ 9 | 9
+(10 rows)
+
+TABLE xx /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ i  | j  
+----+----
+  1 |  1
+  4 |  4
+  8 |  8
+ 10 | 10
+  2 |  2
+  3 |  3
+  4 |  4
+  7 |  7
+  8 |  8
+ 10 | 10
+(10 rows)
+
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
