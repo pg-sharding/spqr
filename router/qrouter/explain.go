@@ -51,12 +51,6 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 	case *lyx.Insert:
 		err := qr.deparseShardingMapping(ctx, node, meta)
 		if err != nil {
-			if qr.cfg.MulticastUnroutableInsertStatement {
-				switch err {
-				case ShardingKeysMissing:
-					return cli.ReportStmtRoutedToAllShards(ctx)
-				}
-			}
 			return cli.ReportError(err)
 		}
 	default:

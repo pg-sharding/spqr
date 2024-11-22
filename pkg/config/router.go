@@ -86,8 +86,7 @@ type Router struct {
 }
 
 type QRouter struct {
-	MulticastUnroutableInsertStatement bool   `json:"multicast_unroutable_insert_statement" toml:"multicast_unroutable_insert_statement" yaml:"multicast_unroutable_insert_statement"`
-	DefaultRouteBehaviour              string `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	DefaultRouteBehaviour string `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 }
 
 type BackendRule struct {
