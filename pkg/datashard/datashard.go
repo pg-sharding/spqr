@@ -1,6 +1,7 @@
 package datashard
 
 import (
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -178,7 +179,27 @@ func (sh *Conn) Cancel() error {
 	return pgiTmp.Cancel(msg)
 }
 
+// AddTLSConf adds the TLS configuration to the Conn struct.
+//
+// Parameters:
+// - tlsconfig (*tls.Config): The TLS configuration to be added.
+//
+// Returns:
+// - error: An error if the TLS configuration cannot be added.
+func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
+	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
+		spqrlog.Zero.Debug().
+			Err(err).
+			Str("host", sh.dedicated.Hostname()).
+			Uint("shard", sh.ID()).
+			Msg("failed to init ssl on host of datashard")
+		return err
+	}
+	return nil
+}
+
 // TODO : unit tests
+
 // Send sends a FrontendMessage to the shard connection.
 //
 // Parameters:

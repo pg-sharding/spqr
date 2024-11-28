@@ -287,7 +287,7 @@ func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
 }
 
 // TODO : unit tests
-func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.Client) error) error {
+func (rr *RuleRouterImpl) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return rr.routePool.NotifyRoutes(func(route *route.Route) error {
 		return route.NofityClients(cb)
 	})

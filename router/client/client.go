@@ -30,6 +30,8 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
+var NotRouted = fmt.Errorf("client not routed")
+
 type RouterClient interface {
 	client.Client
 	prepstatement.PreparedStatementMapper
@@ -62,6 +64,7 @@ type RouterClient interface {
 
 	CancelMsg() *pgproto3.CancelRequest
 
+	ReplyParseComplete() error
 	ReplyBindComplete() error
 	ReplyCommandComplete(commandTag string) error
 
@@ -119,8 +122,6 @@ type PsqlClient struct {
 	mu     sync.RWMutex
 	server server.Server
 }
-
-var _ RouterClient = &PsqlClient{}
 
 // Distribution implements RouterClient.
 func (cl *PsqlClient) Distribution() string {
@@ -236,6 +237,12 @@ func (cl *PsqlClient) DefaultRouteBehaviour() string {
 // SetDefaultRouteBehaviour implements RouterClient.
 func (cl *PsqlClient) SetDefaultRouteBehaviour(b string) {
 	cl.activeParamSet[session.SPQR_DEFAULT_ROUTE_BEHAVIOUR] = b
+}
+
+// TODO : implement, unit tests
+// ReceiveCtx implements RouterClient.
+func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error) {
+	panic("unimplemented")
 }
 
 // RouteHint implements RouterClient.
@@ -486,8 +493,37 @@ func (cl *PsqlClient) SetParam(name, value string) {
 	}
 }
 
+func (cl *PsqlClient) Reply(msg string) error {
+	for _, msg := range []pgproto3.BackendMessage{
+		&pgproto3.RowDescription{Fields: []pgproto3.FieldDescription{
+			{
+				Name:                 []byte("psql client"),
+				TableOID:             0,
+				TableAttributeNumber: 0,
+				DataTypeOID:          25,
+				DataTypeSize:         -1,
+				TypeModifier:         -1,
+				Format:               0,
+			},
+		}},
+		&pgproto3.DataRow{Values: [][]byte{[]byte(msg)}},
+		&pgproto3.CommandComplete{CommandTag: []byte("SELECT 1")},
+		&pgproto3.ReadyForQuery{},
+	} {
+		if err := cl.Send(msg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cl *PsqlClient) ReplyCommandComplete(commandTag string) error {
 	return cl.Send(&pgproto3.CommandComplete{CommandTag: []byte(commandTag)})
+}
+
+func (cl *PsqlClient) ReplyParseComplete() error {
+	return cl.Send(&pgproto3.ParseComplete{})
 }
 
 func (cl *PsqlClient) ReplyBindComplete() error {
@@ -1059,6 +1095,8 @@ func (cl *PsqlClient) CancelMsg() *pgproto3.CancelRequest {
 	return cl.csm
 }
 
+var _ RouterClient = &PsqlClient{}
+
 type FakeClient struct {
 	RouterClient
 }
@@ -1154,6 +1192,6 @@ func (dbi MockDBInstance) Hostname() string {
 	return dbi.hostname
 }
 
-var _ client.Client = &NoopClient{}
+var _ client.ClientInfo = &NoopClient{}
 var _ shard.Shard = &MockShard{}
 var _ conn.DBInstance = &MockDBInstance{}

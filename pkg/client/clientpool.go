@@ -6,11 +6,35 @@ import (
 	spqrlog "github.com/pg-sharding/spqr/pkg/spqrlog"
 )
 
+type ClientInfo interface {
+	Client
+
+	RAddr() string
+}
+
+type ClientInfoImpl struct {
+	Client
+	rAddr string
+}
+
+// RAddr returns the remote address of the ClientInfoImpl object.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - string: A string representing the remote address.
+func (rci ClientInfoImpl) RAddr() string {
+	return rci.rAddr
+}
+
 type Pool interface {
-	ClientPoolForeach(cb func(client Client) error) error
+	ClientPoolForeach(cb func(client ClientInfo) error) error
 
 	Put(client Client) error
 	Pop(id uint) (bool, error)
+
+	Shutdown() error
 }
 
 type PoolImpl struct {
@@ -72,6 +96,33 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 }
 
 // TODO : unit tests
+
+// Shutdown shuts down the client pool by closing all clients and releasing associated resources.
+//
+// It iterates over all clients in the pool, closes each client, and then clears the pool.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+//   - error: An error if any occurred during the shutdown process.
+func (c *PoolImpl) Shutdown() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, cl := range c.pool {
+		go func(cl Client) {
+			if err := cl.Shutdown(); err != nil {
+				spqrlog.Zero.Error().Err(err).Msg("")
+			}
+		}(cl)
+	}
+
+	return nil
+}
+
+// TODO : unit tests
+
 // ClientPoolForeach iterates over all clients in the client pool and executes the provided function for each client.
 //
 // The provided function should have the following signature:
@@ -83,13 +134,13 @@ func (c *PoolImpl) Pop(id uint) (bool, error) {
 //
 // Returns:
 //   - error: An error if any occurred during the iteration.
-func (c *PoolImpl) ClientPoolForeach(cb func(client Client) error) error {
+func (c *PoolImpl) ClientPoolForeach(cb func(client ClientInfo) error) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	for _, cl := range c.pool {
-		if err := cb(cl); err != nil {
+		if err := cb(ClientInfoImpl{Client: cl, rAddr: "local"}); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 		}
 	}

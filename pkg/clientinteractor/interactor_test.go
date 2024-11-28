@@ -239,7 +239,11 @@ func TestClientsOrderBy(t *testing.T) {
 	cb := client.NewNoopClient(&b, "addr")
 	cc := client.NewNoopClient(&c, "addr")
 	interactor := clientinteractor.NewPSQLInteractor(ca)
-	ci := []pkgclient.Client{ca, cb, cc}
+	ci := []pkgclient.ClientInfo{
+		pkgclient.ClientInfoImpl{Client: ca},
+		pkgclient.ClientInfoImpl{Client: cb},
+		pkgclient.ClientInfoImpl{Client: cc},
+	}
 
 	ca.EXPECT().Send(gomock.Any()).AnyTimes()
 	ca.EXPECT().Shards().AnyTimes()

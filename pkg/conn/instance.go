@@ -37,6 +37,8 @@ type DBInstance interface {
 	SetStatus(status InstanceStatus)
 
 	Cancel(csm *pgproto3.CancelRequest) error
+
+	Tls() *tls.Config
 }
 
 type PostgreSQLInstance struct {
@@ -47,9 +49,9 @@ type PostgreSQLInstance struct {
 	az        string // availability zone
 	shardname string
 	status    InstanceStatus
-}
 
-var _ DBInstance = &PostgreSQLInstance{}
+	tlsconfig *tls.Config
+}
 
 // SetStatus sets the status of the PostgreSQLInstance.
 //
@@ -229,6 +231,7 @@ func NewInstanceConn(host string, availabilityZone string, shardname string, tls
 		shardname: shardname,
 		conn:      netconn,
 		status:    NotInitialized,
+		tlsconfig: tlsconfig,
 	}
 
 	if tlsconfig != nil {
@@ -258,6 +261,19 @@ func (pgi *PostgreSQLInstance) Cancel(csm *pgproto3.CancelRequest) error {
 	pgi.frontend.Send(csm)
 	return pgi.frontend.Flush()
 }
+
+// Tls returns the TLS configuration of the PostgreSQLInstance.
+//
+// Parameters:
+// - None.
+//
+// Returns:
+// - *tls.Config: The TLS configuration of the PostgreSQLInstance.
+func (pgi *PostgreSQLInstance) Tls() *tls.Config {
+	return pgi.tlsconfig
+}
+
+var _ DBInstance = &PostgreSQLInstance{}
 
 // TODO : unit tests
 

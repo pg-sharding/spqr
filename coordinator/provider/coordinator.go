@@ -87,7 +87,7 @@ func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr st
 }
 
 // TODO : unit tests
-func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.Client) error) error {
+func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientInfo) error) error {
 	return ci.IterRouter(func(cc *grpc.ClientConn, addr string) error {
 		ctx := context.TODO()
 		rrClient := routerproto.NewClientInfoServiceClient(cc)
@@ -119,6 +119,12 @@ func (ci grpcConnectionIterator) Put(client client.Client) error {
 // TODO : unit tests
 func (ci grpcConnectionIterator) Pop(id uint) (bool, error) {
 	return true, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator pop not implemented")
+}
+
+// TODO : implement
+// TODO : unit tests
+func (ci grpcConnectionIterator) Shutdown() error {
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "grpcConnectionIterator shutdown not implemented")
 }
 
 // TODO : unit tests

@@ -798,12 +798,12 @@ func GetColumnsMap(desc TableDesc) map[string]int {
 //
 // Parameters:
 // - ctx (context.Context): The context for the operation.
-// - clients ([]client.Client): The list of client information to process.
+// - clients ([]client.ClientInfo): The list of client information to process.
 // - condition (spqrparser.WhereClauseNode): The condition to filter the client information.
 //
 // Returns:
 // - error: An error if any occurred during the operation.
-func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, query *spqrparser.Show) error {
+func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientInfo, query *spqrparser.Show) error {
 	desc := ClientDesc{}
 	header := desc.GetHeader()
 	rowDesc := GetColumnsMap(desc)
@@ -820,7 +820,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 				if sh == nil {
 					continue
 				}
-				row := desc.GetRow(cl, sh.Instance().Hostname(), "local")
+				row := desc.GetRow(cl, sh.Instance().Hostname(), cl.RAddr())
 
 				match, err := MatchRow(row, rowDesc, condition)
 				if err != nil {
@@ -832,7 +832,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.Client, 
 				data = append(data, row)
 			}
 		} else {
-			row := desc.GetRow(cl, "no backend connection", "local")
+			row := desc.GetRow(cl, "no backend connection", cl.RAddr())
 
 			match, err := MatchRow(row, rowDesc, condition)
 			if err != nil {
