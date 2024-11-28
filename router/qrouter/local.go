@@ -80,7 +80,7 @@ func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error
 // TODO : unit tests
 func (l *LocalQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
 	return []*routingstate.DataShardRoute{
-		{Shkey: kr.ShardKey{
+		&routingstate.DataShardRoute{Shkey: kr.ShardKey{
 			Name: l.ds.ID,
 			RW:   false,
 		},

@@ -663,6 +663,20 @@ func (mr *MockRouterClientMockRecorder) ReplyNotice(message interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyNotice", reflect.TypeOf((*MockRouterClient)(nil).ReplyNotice), message)
 }
 
+// ReplyParseComplete mocks base method.
+func (m *MockRouterClient) ReplyParseComplete() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReplyParseComplete")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReplyParseComplete indicates an expected call of ReplyParseComplete.
+func (mr *MockRouterClientMockRecorder) ReplyParseComplete() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplyParseComplete", reflect.TypeOf((*MockRouterClient)(nil).ReplyParseComplete))
+}
+
 // ReplyRFQ mocks base method.
 func (m *MockRouterClient) ReplyRFQ(txstatus txstatus.TXStatus) error {
 	m.ctrl.T.Helper()
