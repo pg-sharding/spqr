@@ -128,6 +128,12 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 	queryStatistics.lock.Lock()
 	defer queryStatistics.lock.Unlock()
 
+	var clientST *startTimes
+	var ok bool
+	if clientST, ok = queryStatistics.TimeData[client]; !ok {
+		panic("finish of unstarted transaction")
+	}
+
 	if queryStatistics.RouterTime[client] == nil {
 		queryStatistics.RouterTime[client], _ = tdigest.New()
 	}
@@ -140,22 +146,27 @@ func RecordFinishedTransaction(t time.Time, client uint) {
 	if queryStatistics.ShardTimeTotal == nil {
 		queryStatistics.ShardTimeTotal, _ = tdigest.New()
 	}
-	routerTime := float64(t.Sub(queryStatistics.TimeData[client].RouterStart).Microseconds()) / 1000
-	shardTime := float64(t.Sub(queryStatistics.TimeData[client].ShardStart).Microseconds()) / 1000
-	err := queryStatistics.RouterTime[client].Add(routerTime)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+
+	if !clientST.RouterStart.IsZero() {
+		routerTime := float64(t.Sub(clientST.RouterStart).Microseconds()) / 1000
+		err := queryStatistics.RouterTime[client].Add(routerTime)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+		}
+		err = queryStatistics.RouterTimeTotal.Add(routerTime)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+		}
 	}
-	err = queryStatistics.ShardTime[client].Add(shardTime)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
-	}
-	err = queryStatistics.RouterTimeTotal.Add(routerTime)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
-	}
-	err = queryStatistics.ShardTimeTotal.Add(shardTime)
-	if err != nil {
-		spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+	if !clientST.ShardStart.IsZero() {
+		shardTime := float64(t.Sub(clientST.ShardStart).Microseconds()) / 1000
+		err := queryStatistics.ShardTime[client].Add(shardTime)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+		}
+		err = queryStatistics.ShardTimeTotal.Add(shardTime)
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("Failed to record transaction duration")
+		}
 	}
 }
