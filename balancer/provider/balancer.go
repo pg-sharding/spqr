@@ -32,6 +32,11 @@ type BalancerImpl struct {
 	krToDs        map[string]string
 }
 
+// NewBalancer creates new instance of BalancerImpl.
+//
+// Returns:
+//   - *BalancerImpl: new balancer instance.
+//   - error: an error if any occured.
 func NewBalancer() (*BalancerImpl, error) {
 	shards, err := loadShardsConfig(config.BalancerConfig().ShardsConfig)
 	if err != nil {
@@ -60,8 +65,14 @@ func NewBalancer() (*BalancerImpl, error) {
 
 var _ balancer.Balancer = &BalancerImpl{}
 
+// RunBalancer is the main function of balancer.Balancer.
+// Firstly, it checks if there is a current unfinished balancer task in QDB.
+// If none is found, it checks the shards and creates a new task if needed.
+// Then, if there's a relevant task, BalancerImpl will move the amount of data specified in the task.
+//
+// Parameters:
+//   - ctx (context.Context): the context of the operation.
 func (b *BalancerImpl) RunBalancer(ctx context.Context) {
-	// TODO: add command to drop task group to coordinator
 	task, err := b.getCurrentTaskFromQDB(ctx)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error getting current tasks")
@@ -87,6 +98,15 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 	}
 }
 
+// generateTasks checks if data movement is needed by checking the state of all shards.
+// If we actually need to move the data, it generates *tasks.BalancerTask describing that movement.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying shards.
+//
+// Returns:
+//   - *tasks.BalancerTask: balancer task describing data movement to be done.
+//   - error: an error if any occured
 func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, error) {
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
@@ -142,9 +162,19 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 	if keyCount == 0 {
 		return &tasks.BalancerTask{}, nil
 	}
-	return b.getTasks(shardFrom, krId, shId, keyCount)
+	return b.getTask(shardFrom, krId, shId, keyCount)
 }
 
+// getShardCurrentState queries the given shard to get metrics from all its hosts.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying shard hosts.
+//   - shardId (string): ID of the shard to get info from.
+//   - shard (*config.ShardConnect): Connection info for all shard hosts.
+//
+// Returns:
+//   - *ShardMetrics: metrics from all hosts of the shard.
+//   - error: an error if any occured.
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
 	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
 	connStrings := datatransfers.GetConnStrings(shard)
@@ -174,6 +204,16 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string,
 	return res, nil
 }
 
+// getHostStatus gets metrics from a host.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying the host.
+//   - dsn (string): connection string to the host.
+//
+// Returns:
+//   - metrics (HostMetrics): the metrics collected from the host.
+//   - isMaster (bool): specifies if host is master/primary or not.
+//   - err (error): an error if any occured.
 func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics HostMetrics, isMaster bool, err error) {
 	spqrlog.Zero.Debug().Str("host", dsn).Msg("getting host state")
 	conn, err := pgx.Connect(ctx, dsn)
@@ -216,7 +256,14 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 	return
 }
 
-// getStatsByKeyRange gets statistics by key range & updates ShardMetrics
+// getStatsByKeyRange gets statistics for key ranges & updates given ShardMetrics.
+//
+// Parameters:
+//   - ctx (context.Context): context for querying the shard.
+//   - shard (*ShardMetrics): the metrics to be complemented.
+//
+// Returns:
+//   - error: an error if any occured.
 func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetrics) error {
 	spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
 
@@ -320,6 +367,15 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 	return nil
 }
 
+// getKRRelations returns all relations of the distribution of the given key range.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying the coordinator.
+//   - kRange (*kr.KeyRange): the key range to get relations of.
+//
+// Returns:
+//   - []*distributions.DistributedRelation: relations belonging to key range's distribution.
+//   - error: an error if any occured.
 func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) ([]*distributions.DistributedRelation, error) {
 	distributionService := protos.NewDistributionServiceClient(b.coordinatorConn)
 	res, err := distributionService.GetDistribution(ctx, &protos.GetDistributionRequest{Id: kRange.Distribution})
@@ -333,7 +389,19 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 	return rels, nil
 }
 
-// getShardToMoveTo determines where to send keys from specified key range
+// getShardToMoveTo determines the shard to send keys to from the specified key range.
+//
+// Parameters:
+//   - shardMetrics ([]*ShardMetrics): metric values for all the shards sorted by criterion(the most relatively loaded metric) ascending.
+//   - shardIdToMetrics (map[string]*ShardMetrics): metric values by shard id.
+//   - krId (string): key range to move data from.
+//   - krShardId (string): shard to which the key range belongs to.
+//   - keyCountToMove (int): key count to move from the key range.
+//
+// Returns:
+//   - string: the ID of the shard to move the data to.
+//   - error: an error if any occured.
+//
 // TODO unit tests
 func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
 	krKeyCount := int(shardIdToMetrics[krShardId].KeyCountKR[krId])
@@ -355,7 +423,18 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 	return "", false
 }
 
-// moveMaxPossible determines where most keys can be sent
+// moveMaxPossible determines the maximal possible amount of keys to be sent, and the shard that can fit them.
+//
+// Parameters:
+//   - shardMetrics ([]*ShardMetrics): metric values for all the shards sorted by criterion(the most relatively loaded metric) ascending.
+//   - shardIdToMetrics (map[string]*ShardMetrics): metric values by shard id.
+//   - krId (string): key range to move data from.
+//   - krShardId (string): shard to which the key range belongs to.
+//
+// Returns:
+//   - shardId (string): the ID of the shard to move the data to.
+//   - maxKeyCount (int): the maximal possble amount of keys to move.
+//
 // TODO unit tests
 func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
 	maxKeyCount = -1
@@ -369,7 +448,18 @@ func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMe
 	return
 }
 
-// fitsOnShard
+// fitsOnShard determines, if the given amount of keys from the specified key range can fit to particular shard without
+// overloading it.
+//
+// Parameters:
+//   - krMetrics ([]float64): metrics of the key range.
+//   - keyCountToMove (int): the amount of keys to move from the key range.
+//   - krKeyCount (int): the amount of keys currently belonging to the key range.
+//   - shard (*ShardMetrics): metrics of the shard to be checked.
+//
+// Returns:
+//   - bool: determines whether keys will overload the shard.
+//
 // TODO unit tests
 func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKeyCount int, shard *ShardMetrics) bool {
 	for kind, metric := range shard.MetricsTotal {
@@ -382,7 +472,16 @@ func (b *BalancerImpl) fitsOnShard(krMetrics []float64, keyCountToMove int, krKe
 	return true
 }
 
-// maxFitOnShard determines how many keys we can fit on shard
+// maxFitOnShard determines how many keys can be fit on the given shard.
+//
+// Parameters:
+//   - krMetrics ([]float64): metrics of the key range to move the data from.
+//   - krKeyCount (int64): the amount of keys currently belonging to the key range.
+//   - shard (*ShardMetrics): metrics of the shard to be checked.
+//
+// Returns:
+//   - maxCount (int): the maximal amount of keys that can be fit on the shard.
+//
 // TODO unit tests
 func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shard *ShardMetrics) (maxCount int) {
 	maxCount = -1
@@ -397,6 +496,13 @@ func (b *BalancerImpl) maxFitOnShard(krMetrics []float64, krKeyCount int64, shar
 	return
 }
 
+// getAdjacentShards returns shards containing key ranges adjacent to the given one.
+//
+// Parameters:
+//   - krId (string): the ID of the key range.
+//
+// Returns:
+//   - map[string]struct{}: set containing IDs of shards containing adjacent key ranges.
 func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
 	res := make(map[string]struct{}, 0)
 	ds := b.krToDs[krId]
@@ -407,11 +513,19 @@ func (b *BalancerImpl) getAdjacentShards(krId string) map[string]struct{} {
 	if krIdx < len(b.dsToKeyRanges)-1 {
 		res[b.dsToKeyRanges[ds][krIdx+1].ShardID] = struct{}{}
 	}
-	// do not include current shard
+	// do not include the shard containing key range itself
 	delete(res, b.dsToKeyRanges[ds][krIdx].ShardID)
 	return res
 }
 
+// getCriterion finds the most relatively loaded metric across all shards.
+//
+// Parameters:
+//   - shards ([]*ShardMetrics): metrics from all shards.
+//
+// Returns:
+//   - value (float64): the value of the most loaded metric relative to the threshold.
+//   - kind (int): the kind of the most loaded metric.
 func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind int) {
 	value = -1
 	kind = -1
@@ -425,6 +539,15 @@ func (b *BalancerImpl) getCriterion(shards []*ShardMetrics) (value float64, kind
 	return
 }
 
+// getMostLoadedKR finds the key range on the given shard with biggest value of the specified metric.
+//
+// Parameters:
+//   - shard (*ShardMetrics): all metrics from the shard.
+//   - kind (int): the kind of metric to look on.
+//
+// Returns:
+//   - value (float64): the greatest value of the metric across all key ranges on the shard.
+//   - krId (string): the key range with the greatest value of the metric.
 func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value float64, krId string) {
 	value = -1
 	for krg := range shard.MetricsKR {
@@ -438,7 +561,19 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 	return
 }
 
-func (b *BalancerImpl) getTasks(shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.BalancerTask, error) {
+// getTask forms the tasks.BalancerTask from the given parameters.
+// It also determines if data to be moved can be joined to another key range, and sets task's JoinType accordingly.
+//
+// Parameters:
+//   - shardFrom (*ShardMetrics): metrics of the shard to move the data from.
+//   - krId (string): the ID of the key range to move the data from.
+//   - shardToId (string): the ID of the shard to move the data to.
+//   - keyCount (int): the amount of keys to move.
+//
+// Returns:
+//   - *tasks.BalancerTask: the resulting balancer task.
+//   - error: an error if any occured.
+func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.BalancerTask, error) {
 	spqrlog.Zero.Debug().
 		Str("shard_from", shardFrom.ShardId).
 		Str("shard_to", shardToId).
@@ -474,7 +609,15 @@ func (b *BalancerImpl) getTasks(shardFrom *ShardMetrics, krId string, shardToId 
 	}, nil
 }
 
-func (b *BalancerImpl) getCurrentTaskFromQDB(ctx context.Context) (group *tasks.BalancerTask, err error) {
+// getCurrentTaskFromQDB retrieves the balancer task from QDB, if there is one. Otherwise, it returns nil.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying the coordinator.
+//
+// Returns:
+//   - *tasks.BalancerTask: balancer task if contained in QDB, nil otherwise.
+//   - error: an error if any occured.
+func (b *BalancerImpl) getCurrentTaskFromQDB(ctx context.Context) (*tasks.BalancerTask, error) {
 	tasksService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
 	resp, err := tasksService.GetBalancerTask(ctx, nil)
 	if err != nil {
@@ -483,12 +626,32 @@ func (b *BalancerImpl) getCurrentTaskFromQDB(ctx context.Context) (group *tasks.
 	return tasks.BalancerTaskFromProto(resp.Task), nil
 }
 
-func (b *BalancerImpl) syncTaskWithQDB(ctx context.Context, group *tasks.BalancerTask) error {
+// syncTaskWithQDB writes the given balancer task to QDB.
+//
+// Parameters:
+//   - ctx (context.Context): the context for coordinator operations.
+//   - task (*tasks.BalancerTask): the balancer task to be written.
+//
+// Returns:
+//   - error: an error if any occured.
+func (b *BalancerImpl) syncTaskWithQDB(ctx context.Context, task *tasks.BalancerTask) error {
 	tasksService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
-	_, err := tasksService.WriteBalancerTask(ctx, &protos.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(group)})
+	_, err := tasksService.WriteBalancerTask(ctx, &protos.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
 	return err
 }
 
+// executeTasks moves the data between shards according to the given BalancerTask.
+// First step is to move the actual data via BatchMoveKeyRange method of the coordinator.
+// Second step is to join the moved data with the adjacent key range, if specified by the balancer task.
+// In between steps the balancer task is synced with the QDB to ensure crash recovery.
+// After the second step the balancer task is removed from the QDB.
+//
+// Parameters:
+//   - ctx (context.Context): the context for coordinator operations.
+//   - task (*tasks.BalancerTask): the balancer task to execute.
+//
+// Returns:
+//   - error: an error if any occured.
 func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTask) error {
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
@@ -551,6 +714,13 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 	}
 }
 
+// updateKeyRanges syncs the information about key ranges with the coordinator.
+//
+// Parameters:
+//   - ctx (context.Context): the context for querying the coordinator.
+//
+// Returns:
+//   - error: an error if any occured.
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
 	distrService := protos.NewDistributionServiceClient(b.coordinatorConn)
@@ -599,6 +769,14 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	return nil
 }
 
+// loadShardsConfig loads connection info for all shards from config.
+//
+// Parameters:
+//   - path (string): path to the config.
+//
+// Returns:
+//   - *config.DatatransferConnections: the connection info for all shards.
+//   - error: an error if any occured.
 func loadShardsConfig(path string) (*config.DatatransferConnections, error) {
 	var err error
 
