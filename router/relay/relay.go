@@ -1824,10 +1824,12 @@ func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
 }
 
 func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, error) {
-	if err := rst.RerouteToRandomRoute(); err != nil {
-		return nil, err
+	if rst.Client().Server() == nil {
+		if err := rst.RerouteToRandomRoute(); err != nil {
+			return nil, err
+		}
+		defer func() { _ = rst.Unroute(rst.activeShards) }()
 	}
-	defer rst.Unroute(rst.activeShards)
 	err := rst.Client().Server().Send(&pgproto3.Query{String: fmt.Sprintf(`SELECT column_name
   												FROM information_schema.columns
 												WHERE table_schema = '%s'
