@@ -1615,15 +1615,34 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	state, comm, err := rst.qp.Parse(query)
-	if err == nil && doCaching {
+
+	if err == nil {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
-		switch stmt.(type) {
-		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
-			rst.parseCache[query] = ParseCacheEntry{
-				ps:   state,
-				comm: comm,
-				stmt: stmt,
+		switch stm := stmt.(type) {
+		case *lyx.Insert:
+			if len(stm.Columns) == 0 {
+				// load columns from information schema
+				// Do not check err here, just keep going
+				switch tableref := stm.TableRef.(type) {
+				case *lyx.RangeVar:
+					stm.Columns, _ = rst.loadColumns(tableref.SchemaName, tableref.RelationName)
+				}
+			}
+			if doCaching {
+				rst.parseCache[query] = ParseCacheEntry{
+					ps:   state,
+					comm: comm,
+					stmt: stmt,
+				}
+			}
+		case *lyx.Select, *lyx.Update, *lyx.Delete:
+			if doCaching {
+				rst.parseCache[query] = ParseCacheEntry{
+					ps:   state,
+					comm: comm,
+					stmt: stmt,
+				}
 			}
 		}
 	}
@@ -1802,4 +1821,39 @@ func (rst *RelayStateImpl) ProcessMessage(
 
 func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
 	return rst.manager
+}
+
+func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, error) {
+	if err := rst.RerouteToRandomRoute(); err != nil {
+		return nil, err
+	}
+	defer rst.Unroute(rst.activeShards)
+	err := rst.Client().Server().Send(&pgproto3.Query{String: fmt.Sprintf(`SELECT column_name
+  												FROM information_schema.columns
+												WHERE table_schema = '%s'
+												AND table_name   = '%s';`, schemaName, tableName)})
+	if err != nil {
+		return nil, err
+	}
+
+	columns := []string{}
+	for {
+		msg, err := rst.Client().Server().Receive()
+		if err != nil {
+			return nil, err
+		}
+
+		switch v := msg.(type) {
+		case *pgproto3.DataRow:
+			for _, value := range v.Values {
+				columns = append(columns, string(value))
+			}
+		case *pgproto3.CommandComplete:
+			return columns, nil
+		case *pgproto3.ErrorResponse:
+			return nil, fmt.Errorf("%s", v.Message)
+		default:
+			continue
+		}
+	}
 }
