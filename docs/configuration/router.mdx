@@ -83,12 +83,12 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 
 ## Feature Flags
 
-| Setting                                 | Description                                     | Possible Values |
-|-----------------------------------------|-------------------------------------------------|-----------------|
-| `maintain_params`                       | Whether to maintain parameters flag.            | `true`, `false` |
-| `query_routing.default_route_behaviour` | Whether to explicitly block multishard queries. | `BLOCK`, ``     |
-| `with_jaeger`                           | Whether to integrate with Jaeger for tracing.   | `true`, `false` |
-| `world_shard_fallback`                  | Whether to enable fallback to world shard.      | `true`, `false` |
+| Setting                                 | Description                                     |  Possible Values |
+|-----------------------------------------|-------------------------------------------------|------------------|
+| `maintain_params`                       | Whether to maintain parameters flag.            | `true`, `false`  |
+| `query_routing.default_route_behaviour` | Whether to explicitly block multishard queries. | `BLOCK`, `ALLOW` |
+| `with_jaeger`                           | Whether to integrate with Jaeger for tracing.   | `true`, `false`  |
+| `world_shard_fallback`                  | Whether to enable fallback to world shard.      | `true`, `false`  |
 
 
 ## Mode Settings
