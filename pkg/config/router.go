@@ -17,6 +17,7 @@ import (
 type PoolMode string
 type ShardType string
 type RouterMode string
+type DefaultRouteBehaviour string
 
 const (
 	PoolModeSession     = PoolMode("SESSION")
@@ -27,6 +28,9 @@ const (
 
 	LocalMode = RouterMode("LOCAL")
 	ProxyMode = RouterMode("PROXY")
+
+	DefaultRouteBehaviourBlock = DefaultRouteBehaviour("BLOCK")
+	DefaultRouteBehaviourAllow = DefaultRouteBehaviour("ALLOW")
 )
 
 var cfgRouter Router
@@ -86,7 +90,7 @@ type Router struct {
 }
 
 type QRouter struct {
-	DefaultRouteBehaviour string `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
+	DefaultRouteBehaviour DefaultRouteBehaviour `json:"default_route_behaviour" toml:"default_route_behaviour" yaml:"default_route_behaviour"`
 }
 
 type BackendRule struct {

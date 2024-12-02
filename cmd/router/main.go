@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -83,7 +84,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "router Metadata PostgreSQL interface admin port")
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "router Metadata GRPC interface admin port")
 
-	rootCmd.PersistentFlags().StringVarP(&default_route_behaviour, "default-route-behaviour", "", "", "router block or scatters-out failed to route statements")
+	rootCmd.PersistentFlags().StringVarP(&default_route_behaviour, "default-route-behaviour", "", "", "The router will either block or scatter-out multishard queries by default")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -218,7 +219,11 @@ var runCmd = &cobra.Command{
 		}
 
 		if default_route_behaviour != "" {
-			rcfg.Qr.DefaultRouteBehaviour = default_route_behaviour
+			if strings.ToLower(default_route_behaviour) == "block" {
+				rcfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
+			} else {
+				rcfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
+			}
 		}
 
 		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)

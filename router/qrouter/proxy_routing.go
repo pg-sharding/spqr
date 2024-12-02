@@ -1203,6 +1203,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+		case "ALLOW":
+			return v, nil
 		default:
 			return v, nil
 		}
