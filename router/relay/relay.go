@@ -1616,33 +1616,27 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 
 	state, comm, err := rst.qp.Parse(query)
 
-	if err == nil {
+	switch stm := rst.qp.Stmt().(type) {
+	case *lyx.Insert:
+		// load columns from information schema
+		// Do not check err here, just keep going
+		if len(stm.Columns) == 0 {
+			switch tableref := stm.TableRef.(type) {
+			case *lyx.RangeVar:
+				stm.Columns, _ = rst.loadColumns(tableref.SchemaName, tableref.RelationName)
+			}
+		}
+	}
+
+	if err == nil && doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
-		switch stm := stmt.(type) {
-		case *lyx.Insert:
-			if len(stm.Columns) == 0 {
-				// load columns from information schema
-				// Do not check err here, just keep going
-				switch tableref := stm.TableRef.(type) {
-				case *lyx.RangeVar:
-					stm.Columns, _ = rst.loadColumns(tableref.SchemaName, tableref.RelationName)
-				}
-			}
-			if doCaching {
-				rst.parseCache[query] = ParseCacheEntry{
-					ps:   state,
-					comm: comm,
-					stmt: stmt,
-				}
-			}
-		case *lyx.Select, *lyx.Update, *lyx.Delete:
-			if doCaching {
-				rst.parseCache[query] = ParseCacheEntry{
-					ps:   state,
-					comm: comm,
-					stmt: stmt,
-				}
+		switch stmt.(type) {
+		case *lyx.Select, *lyx.Insert, *lyx.Update, *lyx.Delete:
+			rst.parseCache[query] = ParseCacheEntry{
+				ps:   state,
+				comm: comm,
+				stmt: stmt,
 			}
 		}
 	}
