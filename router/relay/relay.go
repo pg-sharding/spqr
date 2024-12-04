@@ -1824,32 +1824,50 @@ func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, 
 		}
 		defer func() { _ = rst.Unroute(rst.activeShards) }()
 	}
-	err := rst.Client().Server().Send(&pgproto3.Query{String: fmt.Sprintf(`SELECT column_name
-  												FROM information_schema.columns
-												WHERE table_schema = '%s'
-												AND table_name   = '%s';`, schemaName, tableName)})
-	if err != nil {
-		return nil, err
+
+	if schemaName == "" {
+		schemaName = "public"
+	}
+
+	for _, msg := range []pgproto3.FrontendMessage{
+		&pgproto3.Sync{},
+		&pgproto3.Parse{Query: `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`},
+		&pgproto3.Describe{ObjectType: 'S'},
+		&pgproto3.Bind{Parameters: [][]byte{[]byte(schemaName), []byte(tableName)}},
+		&pgproto3.Execute{},
+		&pgproto3.Close{ObjectType: 'S'},
+		&pgproto3.Sync{},
+	} {
+		if err := rst.Client().Server().Send(msg); err != nil {
+			return nil, err
+		}
 	}
 
 	columns := []string{}
-	for {
+	rfqCount := 0
+	for rfqCount < 2 {
 		msg, err := rst.Client().Server().Receive()
 		if err != nil {
 			return nil, err
 		}
+		spqrlog.Zero.Debug().Interface("msg", msg).Msg("received here")
 
 		switch v := msg.(type) {
+		case *pgproto3.ParseComplete:
+		case *pgproto3.BindComplete:
+		case *pgproto3.ReadyForQuery:
+			rfqCount++
 		case *pgproto3.DataRow:
 			for _, value := range v.Values {
 				columns = append(columns, string(value))
 			}
 		case *pgproto3.CommandComplete:
-			return columns, nil
 		case *pgproto3.ErrorResponse:
 			return nil, fmt.Errorf("%s", v.Message)
 		default:
 			continue
 		}
 	}
+
+	return columns, nil
 }
