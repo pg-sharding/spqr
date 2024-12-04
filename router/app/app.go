@@ -31,12 +31,10 @@ func (app *App) ServeRouter(ctx context.Context) error {
 	var lwg sync.WaitGroup
 
 	listen := map[string]port.RouterPortType{
-		net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterPort):                       port.DefaultRouterPortType,
 		net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort): port.DefaultRouterPortType,
 	}
 
 	if app.spqr.RuleRouter.Config().RouterROPort != "" {
-		listen[net.JoinHostPort("localhost", app.spqr.RuleRouter.Config().RouterROPort)] = port.RORouterPortType
 		listen[net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterROPort)] = port.RORouterPortType
 	}
 
