@@ -13,6 +13,7 @@ import (
 	meta "github.com/pg-sharding/spqr/pkg/meta"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	session "github.com/pg-sharding/spqr/pkg/session"
+	cache "github.com/pg-sharding/spqr/router/cache"
 	routingstate "github.com/pg-sharding/spqr/router/routingstate"
 )
 
@@ -123,6 +124,20 @@ func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, sph session.
 func (mr *MockQueryRouterMockRecorder) Route(ctx, stmt, sph interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockQueryRouter)(nil).Route), ctx, stmt, sph)
+}
+
+// SchemaCache mocks base method.
+func (m *MockQueryRouter) SchemaCache() *cache.SchemaCache {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SchemaCache")
+	ret0, _ := ret[0].(*cache.SchemaCache)
+	return ret0
+}
+
+// SchemaCache indicates an expected call of SchemaCache.
+func (mr *MockQueryRouterMockRecorder) SchemaCache() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SchemaCache", reflect.TypeOf((*MockQueryRouter)(nil).SchemaCache))
 }
 
 // WorldShardsRoutes mocks base method.
