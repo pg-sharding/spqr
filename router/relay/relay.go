@@ -158,7 +158,8 @@ type RelayStateImpl struct {
 	saveBind        *pgproto3.Bind
 	savedPortalDesc map[string]PortalDesc
 
-	parseCache map[string]ParseCacheEntry
+	parseCache        map[string]ParseCacheEntry
+	tableColumnsCache map[string][]string
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -195,6 +196,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		execute:            nil,
 		savedPortalDesc:    map[string]PortalDesc{},
 		parseCache:         map[string]ParseCacheEntry{},
+		tableColumnsCache:  map[string][]string{},
 	}
 }
 
@@ -1818,15 +1820,19 @@ func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
 }
 
 func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, error) {
+	if schemaName == "" {
+		schemaName = "public"
+	}
+
+	if v, ok := rst.tableColumnsCache[fmt.Sprintf("%s.%s", schemaName, tableName)]; ok {
+		return v, nil
+	}
+
 	if rst.Client().Server() == nil {
 		if err := rst.RerouteToRandomRoute(); err != nil {
 			return nil, err
 		}
 		defer func() { _ = rst.Unroute(rst.activeShards) }()
-	}
-
-	if schemaName == "" {
-		schemaName = "public"
 	}
 
 	for _, msg := range []pgproto3.FrontendMessage{
@@ -1850,7 +1856,6 @@ func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, 
 		if err != nil {
 			return nil, err
 		}
-		spqrlog.Zero.Debug().Interface("msg", msg).Msg("received here")
 
 		switch v := msg.(type) {
 		case *pgproto3.ParseComplete:
@@ -1868,6 +1873,8 @@ func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, 
 			continue
 		}
 	}
+
+	rst.tableColumnsCache[fmt.Sprintf("%s.%s", schemaName, tableName)] = columns
 
 	return columns, nil
 }
