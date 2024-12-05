@@ -158,8 +158,7 @@ type RelayStateImpl struct {
 	saveBind        *pgproto3.Bind
 	savedPortalDesc map[string]PortalDesc
 
-	parseCache        map[string]ParseCacheEntry
-	tableColumnsCache map[string][]string
+	parseCache map[string]ParseCacheEntry
 
 	// buffer of messages to process on Sync request
 	xBuf []pgproto3.FrontendMessage
@@ -196,7 +195,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		execute:            nil,
 		savedPortalDesc:    map[string]PortalDesc{},
 		parseCache:         map[string]ParseCacheEntry{},
-		tableColumnsCache:  map[string][]string{},
 	}
 }
 
@@ -1625,7 +1623,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 		if len(stm.Columns) == 0 {
 			switch tableref := stm.TableRef.(type) {
 			case *lyx.RangeVar:
-				stm.Columns, _ = rst.loadColumns(tableref.SchemaName, tableref.RelationName)
+				stm.Columns, _ = rst.Qr.SchemaCache().GetColumns(rst.Cl.Route().BeRule(), tableref.SchemaName, tableref.RelationName)
 			}
 		}
 	}
@@ -1817,64 +1815,4 @@ func (rst *RelayStateImpl) ProcessMessage(
 
 func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
 	return rst.manager
-}
-
-func (rst *RelayStateImpl) loadColumns(schemaName, tableName string) ([]string, error) {
-	if schemaName == "" {
-		schemaName = "public"
-	}
-
-	if v, ok := rst.tableColumnsCache[fmt.Sprintf("%s.%s", schemaName, tableName)]; ok {
-		return v, nil
-	}
-
-	if rst.Client().Server() == nil {
-		if err := rst.RerouteToRandomRoute(); err != nil {
-			return nil, err
-		}
-		defer func() { _ = rst.Unroute(rst.activeShards) }()
-	}
-
-	for _, msg := range []pgproto3.FrontendMessage{
-		&pgproto3.Sync{},
-		&pgproto3.Parse{Query: `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`},
-		&pgproto3.Describe{ObjectType: 'S'},
-		&pgproto3.Bind{Parameters: [][]byte{[]byte(schemaName), []byte(tableName)}},
-		&pgproto3.Execute{},
-		&pgproto3.Close{ObjectType: 'S'},
-		&pgproto3.Sync{},
-	} {
-		if err := rst.Client().Server().Send(msg); err != nil {
-			return nil, err
-		}
-	}
-
-	columns := []string{}
-	rfqCount := 0
-	for rfqCount < 2 {
-		msg, err := rst.Client().Server().Receive()
-		if err != nil {
-			return nil, err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.ParseComplete:
-		case *pgproto3.BindComplete:
-		case *pgproto3.ReadyForQuery:
-			rfqCount++
-		case *pgproto3.DataRow:
-			for _, value := range v.Values {
-				columns = append(columns, string(value))
-			}
-		case *pgproto3.CommandComplete:
-		case *pgproto3.ErrorResponse:
-			return nil, fmt.Errorf("%s", v.Message)
-		default:
-			continue
-		}
-	}
-
-	rst.tableColumnsCache[fmt.Sprintf("%s.%s", schemaName, tableName)] = columns
-
-	return columns, nil
 }
