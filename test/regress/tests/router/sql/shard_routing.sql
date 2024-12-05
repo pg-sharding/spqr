@@ -65,7 +65,7 @@ SELECT * FROM xxtt1 a WHERE a.w_id = 21 and j + i != 0;
 SELECT * FROM xxtt1 a WHERE a.w_id = 21 and w_id <= 30 and j + i != 0;
 
 -- check that `INSERT FROM SELECT` works
-INSERT INTO xx (w_id) SELECT w_id FROM xx a WHERE a.w_id = 20;
+INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 SELECT * FROM xx WHERE w_id >= 20;
 
 -- check that `INSERT FROM SELECT` with constant works
