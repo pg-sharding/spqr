@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -319,7 +320,16 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 			spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
 		}
 
-		if err := qc.UpdateCoordinator(ctx, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort)); err != nil {
+		host := config.CoordinatorConfig().Host
+		if host == "" {
+			var err error
+			host, err = os.Hostname()
+			if err != nil {
+				return false
+			}
+		}
+		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
+		if err := qc.UpdateCoordinator(ctx, coordAddr); err != nil {
 			return false
 		}
 		return true

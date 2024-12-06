@@ -102,55 +102,39 @@ func (app *App) Run(withPsql bool) error {
 func (app *App) ServeCoordinator(wg *sync.WaitGroup) error {
 	defer wg.Done()
 
-	var lwg sync.WaitGroup
-
-	listen := []string{
-		"localhost:7002",
-		net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().CoordinatorPort),
+	address := net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().CoordinatorPort)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		spqrlog.Zero.Error().
+			Err(err).
+			Msg("error serve coordinator console")
+		return err
 	}
+	spqrlog.Zero.Info().
+		Str("address", address).
+		Msg("serve coordinator console")
 
-	lwg.Add(len(listen))
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			continue
+		}
 
-	for _, l := range listen {
-		go func(address string) {
-			defer lwg.Done()
+		if err := app.sem.Acquire(context.Background(), 1); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			continue
+		}
 
-			listener, err := net.Listen("tcp", address)
+		go func() {
+			defer app.sem.Release(1)
+
+			err := app.coordinator.ProcClient(context.TODO(), conn, port.DefaultRouterPortType)
 			if err != nil {
-				spqrlog.Zero.Error().
-					Err(err).
-					Msg("error serve coordinator console")
-				return
+				spqrlog.Zero.Error().Err(err).Msg("failed to serve client")
 			}
-			spqrlog.Zero.Info().
-				Str("address", address).
-				Msg("serve coordinator console")
-
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-					continue
-				}
-
-				if err := app.sem.Acquire(context.Background(), 1); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
-					continue
-				}
-
-				go func() {
-					defer app.sem.Release(1)
-
-					err := app.coordinator.ProcClient(context.TODO(), conn, port.DefaultRouterPortType)
-					if err != nil {
-						spqrlog.Zero.Error().Err(err).Msg("failed to serve client")
-					}
-				}()
-			}
-		}(l)
+		}()
 	}
-	lwg.Wait()
-	return nil
 }
 
 func (app *App) ServeGrpcApi(wg *sync.WaitGroup) error {
