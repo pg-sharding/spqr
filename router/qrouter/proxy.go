@@ -94,7 +94,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 		initialized:    atomic.NewBool(false),
 		cfg:            qcfg,
 		mgr:            mgr,
-		schemaCache:    cache.NewSchemaCache(shardMapping),
+		schemaCache:    cache.NewSchemaCache(shardMapping, config.RouterConfig().SchemaCacheBackendRule),
 	}
 
 	for name, shardCfg := range shardMapping {

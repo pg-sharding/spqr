@@ -10,28 +10,38 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/startup"
+	"github.com/pkg/errors"
 )
 
 type SchemaCache struct {
 	tableColumnsCache sync.Map
 	shardMapping      map[string]*config.Shard
+	be                *config.BackendRule
 
 	pool *pool.DBPool
 }
 
-func NewSchemaCache(shardMapping map[string]*config.Shard) *SchemaCache {
+func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRule) *SchemaCache {
 	var preferAZ string
 	if config.RouterConfig().PreferSameAvailabilityZone {
 		preferAZ = config.RouterConfig().AvailabilityZone
 	}
+	p := pool.NewDBPool(shardMapping, &startup.StartupParams{}, preferAZ)
+	p.SetRule(be)
+
 	return &SchemaCache{
 		shardMapping:      shardMapping,
-		pool:              pool.NewDBPool(shardMapping, &startup.StartupParams{}, preferAZ),
+		pool:              p,
+		be:                be,
 		tableColumnsCache: sync.Map{},
 	}
 }
 
-func (c *SchemaCache) GetColumns(be *config.BackendRule, schemaName, tableName string) ([]string, error) {
+func (c *SchemaCache) GetColumns(schemaName, tableName string) ([]string, error) {
+	if c.be == nil {
+		return nil, errors.Errorf("backend rule was not provided")
+	}
+
 	if schemaName == "" {
 		schemaName = "public"
 	}
@@ -49,17 +59,15 @@ func (c *SchemaCache) GetColumns(be *config.BackendRule, schemaName, tableName s
 		break
 	}
 
-	c.pool.SetRule(be)
 	conn, err := c.pool.ConnectionHost(rand.Uint(), kr.ShardKey{Name: shardName, RW: false}, host)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		_ = c.pool.Discard(conn)
+		_ = c.pool.Put(conn)
 	}()
 
 	for _, msg := range []pgproto3.FrontendMessage{
-		&pgproto3.Sync{},
 		&pgproto3.Parse{Query: `SELECT column_name FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2`},
 		&pgproto3.Bind{Parameters: [][]byte{[]byte(schemaName), []byte(tableName)}},
 		&pgproto3.Execute{},
@@ -72,8 +80,7 @@ func (c *SchemaCache) GetColumns(be *config.BackendRule, schemaName, tableName s
 	}
 
 	columns := []string{}
-	rfqCount := 0
-	for rfqCount < 2 {
+	for {
 		msg, err := conn.Receive()
 		if err != nil {
 			return nil, err
@@ -83,7 +90,8 @@ func (c *SchemaCache) GetColumns(be *config.BackendRule, schemaName, tableName s
 		case *pgproto3.ParseComplete:
 		case *pgproto3.BindComplete:
 		case *pgproto3.ReadyForQuery:
-			rfqCount++
+			c.tableColumnsCache.Store(fmt.Sprintf("%s.%s", schemaName, tableName), columns)
+			return columns, nil
 		case *pgproto3.DataRow:
 			for _, value := range v.Values {
 				columns = append(columns, string(value))
@@ -95,8 +103,4 @@ func (c *SchemaCache) GetColumns(be *config.BackendRule, schemaName, tableName s
 			continue
 		}
 	}
-
-	c.tableColumnsCache.Store(fmt.Sprintf("%s.%s", schemaName, tableName), columns)
-
-	return columns, nil
 }
