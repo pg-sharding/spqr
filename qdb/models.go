@@ -82,9 +82,9 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name               string                 `json:"name"`
-	DistributionKey    []DistributionKeyEntry `json:"column_names"`
-	ReplicatedRelation bool                   `json:"replicated_relation,omitempty"`
+	Name              string                 `json:"name"`
+	DistributionKey   []DistributionKeyEntry `json:"column_names"`
+	ReferenceRelation bool                   `json:"reference_relation,omitempty"`
 }
 
 type Distribution struct {

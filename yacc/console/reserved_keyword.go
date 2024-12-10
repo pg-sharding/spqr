@@ -61,7 +61,7 @@ var reservedWords = map[string]int{
 	"hosts":        HOSTS,
 	"task":         TASK,
 	"group":        GROUP,
-	"replicated":   REPLICATED,
+	"reference":    REFERENCE,
 	"redistribute": REDISTRIBUTE,
 	"batch":        BATCH,
 	"size":         SIZE,

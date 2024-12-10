@@ -591,17 +591,17 @@ func TestAlter(t *testing.T) {
 		},
 
 		{
-			query: "ALTER REPLICATED DISTRIBUTION ATTACH RELATION t;",
+			query: "ALTER REFERENCE DISTRIBUTION ATTACH RELATION t;",
 			exp: &spqrparser.Alter{
 				Element: &spqrparser.AlterDistribution{
 					Element: &spqrparser.AttachRelation{
 						Distribution: &spqrparser.DistributionSelector{
-							Replicated: true,
+							Reference: true,
 						},
 						Relations: []*spqrparser.DistributedRelation{
 							{
 								Name:               "t",
-								ReplicatedRelation: true,
+								ReferenceRelation: true,
 							},
 						},
 					},
@@ -643,10 +643,10 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
-			query: "CREATE REPLICATED DISTRIBUTION",
+			query: "CREATE REFERENCE DISTRIBUTION",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
-					Replicated: true,
+					Reference: true,
 				},
 			},
 			err: nil,

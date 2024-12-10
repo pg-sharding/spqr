@@ -14,7 +14,7 @@ message DistributionKeyEntry {
 message DistributedRelation {
   string name = 1;
   repeated DistributionKeyEntry distributionKey = 2;
-  bool ReplicatedRelation = 3;
+  bool ReferenceRelation = 3;
 }
 
 message Distribution {

@@ -15,13 +15,13 @@ type DistributionKeyEntry struct {
 }
 
 type DistributedRelation struct {
-	Name               string
-	DistributionKey    []DistributionKeyEntry
-	ReplicatedRelation bool
+	Name              string
+	DistributionKey   []DistributionKeyEntry
+	ReferenceRelation bool
 }
 
 const (
-	REPLICATED = "REPLICATED"
+	REFERENCE = "REFERENCE"
 )
 
 // DistributedRelationFromDB creates a DistributedRelation object from a qdb.DistributedRelation object.
@@ -43,7 +43,7 @@ func DistributedRelationFromDB(rel *qdb.DistributedRelation) *DistributedRelatio
 		})
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.ReferenceRelation = rel.ReferenceRelation
 
 	return rdistr
 }
@@ -68,7 +68,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 		})
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.ReferenceRelation = rel.ReferenceRelation
 
 	return rdistr
 }
@@ -93,7 +93,7 @@ func DistributedRelatitonToProto(rel *DistributedRelation) *proto.DistributedRel
 		})
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.ReferenceRelation = rel.ReferenceRelation
 
 	return rdistr
 }
@@ -117,7 +117,7 @@ func DistributedRelationFromProto(rel *proto.DistributedRelation) *DistributedRe
 		})
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.ReferenceRelation = rel.ReferenceRelation
 
 	return rdistr
 }
@@ -141,7 +141,7 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 		})
 	}
 
-	rdistr.ReplicatedRelation = rel.ReplicatedRelation
+	rdistr.ReferenceRelation = rel.ReferenceRelation
 
 	return rdistr
 }
@@ -149,7 +149,7 @@ func DistributedRelationFromSQL(rel *spqrparser.DistributedRelation) *Distribute
 type Distribution struct {
 	Id string
 	// column types to be used
-	// REPLICATED distribution has an empty array here.
+	// REFERENCE distribution has an empty array here.
 	ColTypes  []string
 	Relations map[string]*DistributedRelation
 }

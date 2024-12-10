@@ -178,15 +178,15 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		var distribution *distributions.Distribution
 
-		if stmt.Replicated {
-			if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+		if stmt.Reference {
+			if _, err := mngr.GetDistribution(ctx, distributions.REFERENCE); err != nil {
 				distribution = &distributions.Distribution{
-					Id:       distributions.REPLICATED,
+					Id:       distributions.REFERENCE,
 					ColTypes: nil,
 				}
 				err := mngr.CreateDistribution(ctx, distribution)
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REFERENCE distribution")
 					return cli.ReportError(err)
 				}
 			} else {
@@ -293,23 +293,23 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 		rels := []*distributions.DistributedRelation{}
 
 		for _, drel := range stmt.Relations {
-			if stmt.Distribution.Replicated && !drel.ReplicatedRelation {
-				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non replicated relation should be attached to non replicated distribution")
+			if stmt.Distribution.Reference && !drel.ReferenceRelation {
+				return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "non reference relation should be attached to non reference distribution")
 			}
 			rels = append(rels, distributions.DistributedRelationFromSQL(drel))
 		}
 		var selectedDistribId string
 
-		if stmt.Distribution.Replicated {
-			selectedDistribId = distributions.REPLICATED
+		if stmt.Distribution.Reference {
+			selectedDistribId = distributions.REFERENCE
 
 			if _, err := mngr.GetDistribution(ctx, selectedDistribId); err != nil {
 				err := mngr.CreateDistribution(ctx, &distributions.Distribution{
-					Id:       distributions.REPLICATED,
+					Id:       distributions.REFERENCE,
 					ColTypes: nil,
 				})
 				if err != nil {
-					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REFERENCE distribution")
 					return cli.ReportError(err)
 				}
 			}

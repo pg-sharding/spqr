@@ -76,7 +76,7 @@ func NewRoutingMetadataContext() *RoutingMetadataContext {
 
 var CatalogDistribution = distributions.Distribution{
 	Relations: nil,
-	Id:        distributions.REPLICATED,
+	Id:        distributions.REFERENCE,
 	ColTypes:  nil,
 }
 
@@ -131,7 +131,7 @@ func (meta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation Relation
 		return nil
 	}
 
-	if meta.distributions[resolvedRelation].Id == distributions.REPLICATED {
+	if meta.distributions[resolvedRelation].Id == distributions.REFERENCE {
 		// referencr relation, skip
 		return nil
 	}
@@ -221,7 +221,7 @@ func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *RoutingMetadataContex
 	ds, err := meta.GetRelationDistribution(context.TODO(), qr.Mgr(), resolvedRelation)
 	if err != nil {
 		return -1, ""
-	} else if ds.Id == distributions.REPLICATED {
+	} else if ds.Id == distributions.REFERENCE {
 		return -1, ""
 	}
 	// TODO: optimize
@@ -524,7 +524,7 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 		}
 
 		/* Omit distributed relations */
-		if ds.Id == distributions.REPLICATED {
+		if ds.Id == distributions.REFERENCE {
 			return nil, RelationFQN{}, false, err
 		}
 
@@ -694,7 +694,7 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 		if err != nil {
 			return err
 		}
-		if ds.Id == distributions.REPLICATED {
+		if ds.Id == distributions.REFERENCE {
 			return nil
 		}
 	default:
@@ -1098,7 +1098,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		ds, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
 		if err != nil {
 			return nil, err
-		} else if ds.Id == distributions.REPLICATED {
+		} else if ds.Id == distributions.REFERENCE {
 			routingstate.Combine(route, routingstate.ReferenceRelationState{})
 			continue
 		}
