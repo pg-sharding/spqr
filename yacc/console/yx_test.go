@@ -643,6 +643,15 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE REPLICATED DISTRIBUTION",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.DistributionDefinition{
+					Replicated: true,
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
