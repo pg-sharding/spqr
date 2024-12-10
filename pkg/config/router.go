@@ -68,15 +68,16 @@ type Router struct {
 	/* default  */
 	DefaultTSA string `json:"default_target_session_attrs" toml:"default_target_session_attrs" yaml:"default_target_session_attrs"`
 
-	MemqdbBackupPath string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
-	MemqdbPersistent bool              `json:"memqdb_persistent" toml:"memqdb_persistent" yaml:"memqdb_persistent"`
-	RouterMode       string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
-	JaegerUrl        string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
-	FrontendRules    []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
-	Qr               QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
-	FrontendTLS      *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
-	BackendRules     []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
-	ShardMapping     map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+	MemqdbBackupPath       string            `json:"memqdb_backup_path" toml:"memqdb_backup_path" yaml:"memqdb_backup_path"`
+	MemqdbPersistent       bool              `json:"memqdb_persistent" toml:"memqdb_persistent" yaml:"memqdb_persistent"`
+	RouterMode             string            `json:"router_mode" toml:"router_mode" yaml:"router_mode"`
+	JaegerUrl              string            `json:"jaeger_url" toml:"jaeger_url" yaml:"jaeger_url"`
+	FrontendRules          []*FrontendRule   `json:"frontend_rules" toml:"frontend_rules" yaml:"frontend_rules"`
+	Qr                     QRouter           `json:"query_routing" toml:"query_routing" yaml:"query_routing"`
+	FrontendTLS            *TLSConfig        `json:"frontend_tls" yaml:"frontend_tls" toml:"frontend_tls"`
+	BackendRules           []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
+	ShardMapping           map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
+	SchemaCacheBackendRule *BackendRule      `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
 
 	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
 	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`
