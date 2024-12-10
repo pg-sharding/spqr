@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -681,6 +682,24 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	rst.Client().RLock()
 	defer rst.Client().RUnlock()
 
+	var relname string
+
+	switch q := stmt.TableRef.(type) {
+	case *lyx.RangeVar:
+		relname = q.RelationName
+	}
+
+	// TODO: check by whole RFQN
+	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
+	if err != nil {
+		return nil, err
+	}
+	if ds.Id == distributions.REPLICATED {
+		return &pgcopy.CopyState{
+			Scatter: true,
+		}, nil
+	}
+
 	// Read delimiter from COPY options
 	delimiter := byte('\t')
 	allow_multishard := rst.Client().AllowMultishard()
@@ -695,12 +714,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 			}
 		}
 	}
-	var relname string
-
-	switch q := stmt.TableRef.(type) {
-	case *lyx.RangeVar:
-		relname = q.RelationName
-	}
 
 	if rst.Client().ExecuteOn() != "" {
 		return &pgcopy.CopyState{
@@ -708,11 +721,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 			ExpRoute:        &routingstate.DataShardRoute{},
 			AllowMultishard: allow_multishard,
 		}, nil
-	}
-	// TODO: check by whole RFQN
-	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
-	if err != nil {
-		return nil, err
 	}
 
 	TargetType := ds.ColTypes[0]
@@ -768,6 +776,11 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 			}
 		}
 		return nil, fmt.Errorf("metadata corrutped")
+	}
+
+	/* We dont really need to parse and route tuples for DISTRIBUTED relations */
+	if cps.Scatter {
+		return nil, rst.Client().Server().Send(data)
 	}
 
 	var leftOvermsgData []byte = nil

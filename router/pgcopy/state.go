@@ -7,9 +7,14 @@ import (
 )
 
 type CopyState struct {
-	ExpRoute        *routingstate.DataShardRoute
-	Delimiter       byte
-	TargetType      string
+	ExpRoute   *routingstate.DataShardRoute
+	Delimiter  byte
+	TargetType string
+
+	/* For replicated relations */
+	Scatter bool
+
+	/* For distributed relations */
 	ColumnOffset    int
 	AllowMultishard bool
 	Krs             []*kr.KeyRange

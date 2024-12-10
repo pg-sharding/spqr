@@ -1,0 +1,61 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE REPLICATED DISTRIBUTION;
+       add distribution        
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+ALTER REPLICATED DISTRIBUTION ATTACH RELATION test_ref_rel;
+          attach table           
+---------------------------------
+ relation name   -> test_ref_rel
+ distribution id -> REPLICATED
+(2 rows)
+
+\c regress
+CREATE TABLE test_ref_rel(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2
+COPY test_ref_rel FROM STDIN;
+NOTICE: send query to shard(s) : sh1,sh2
+TABLE test_ref_rel;
+NOTICE: send query to shard(s) : sh1,sh2
+ i | j 
+---+---
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+ 1 | 2
+ 2 | 3
+ 3 | 4
+ 4 | 5
+(8 rows)
+
+DROP TABLE test_ref_rel;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
