@@ -176,22 +176,38 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		if stmt.ID == "default" {
 			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")
 		}
-		distribution := distributions.NewDistribution(stmt.ID, stmt.ColTypes)
+		var distribution *distributions.Distribution
 
-		distributions, err := mngr.ListDistributions(ctx)
-		if err != nil {
-			return err
-		}
-		for _, ds := range distributions {
-			if ds.Id == distribution.Id {
-				spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
-				return fmt.Errorf("attempt to create existing distribution")
+		if stmt.Replicated {
+			if _, err := mngr.GetDistribution(ctx, distributions.REPLICATED); err != nil {
+				distribution = &distributions.Distribution{
+					Id:       distributions.REPLICATED,
+					ColTypes: nil,
+				}
+				err := mngr.CreateDistribution(ctx, distribution)
+				if err != nil {
+					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+					return cli.ReportError(err)
+				}
 			}
-		}
+		} else {
+			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
 
-		err = mngr.CreateDistribution(ctx, distribution)
-		if err != nil {
-			return err
+			dds, err := mngr.ListDistributions(ctx)
+			if err != nil {
+				return err
+			}
+			for _, ds := range dds {
+				if ds.Id == distribution.Id {
+					spqrlog.Zero.Debug().Msg("Attempt to create existing distribution")
+					return fmt.Errorf("attempt to create existing distribution")
+				}
+			}
+
+			err = mngr.CreateDistribution(ctx, distribution)
+			if err != nil {
+				return err
+			}
 		}
 		return cli.AddDistribution(ctx, distribution)
 	case *spqrparser.ShardingRuleDefinition:

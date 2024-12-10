@@ -102,8 +102,9 @@ type DropStmt interface {
 }
 
 type DistributionDefinition struct {
-	ID       string
-	ColTypes []string
+	ID         string
+	ColTypes   []string
+	Replicated bool
 }
 
 type ShardingRuleDefinition struct {

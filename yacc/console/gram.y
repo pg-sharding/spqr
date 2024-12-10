@@ -625,6 +625,13 @@ distribution_define_stmt:
 			ColTypes: $3,
 		}
 	}
+	| REPLICATED DISTRIBUTION
+	{
+		$$ = &DistributionDefinition{
+			Replicated: true,
+		}
+	}
+	;
 
 opt_col_types:
 	COLUMN TYPES col_types_list {
@@ -834,7 +841,7 @@ distribution_select_stmt:
 	{
 		$$ = &DistributionSelector{ID: $2, Replicated: false}
 	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true}
+		$$ = &DistributionSelector{ Replicated: true }
 	}
 
 split_key_range_stmt:
