@@ -10,8 +10,8 @@ GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc)
 #################### DEPENDENCIES ####################
 proto-deps:
 	go get -u google.golang.org/grpc
-	go get -u github.com/golang/protobuf/protoc-gen-go
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	go get -u google.golang.org/protobuf/cmd/protoc-gen-go@v1.35.1
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
 
 yacc-deps:
 	go get -u golang.org/x/tools/cmd/goyacc
