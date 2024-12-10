@@ -189,6 +189,8 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
 					return cli.ReportError(err)
 				}
+			} else {
+				return fmt.Errorf("REPLICATED distribution already exist.")
 			}
 		} else {
 			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)
