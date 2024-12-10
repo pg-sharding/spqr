@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 	"net"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -311,22 +310,22 @@ func (qc *qdbCoordinator) lockCoordinator(ctx context.Context, initialRouter boo
 		if !initialRouter {
 			return true
 		}
+		routerHost, err := config.GetHostOrHostname(config.RouterConfig().Host)
+		if err != nil {
+			return false
+		}
 		router := &topology.Router{
 			ID:      uuid.NewString(),
-			Address: net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort),
+			Address: net.JoinHostPort(routerHost, config.RouterConfig().GrpcApiPort),
 			State:   qdb.OPENED,
 		}
 		if err := qc.RegisterRouter(ctx, router); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("register router when locking coordinator")
 		}
 
-		host := config.CoordinatorConfig().Host
-		if host == "" {
-			var err error
-			host, err = os.Hostname()
-			if err != nil {
-				return false
-			}
+		host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+		if err != nil {
+			return false
 		}
 		coordAddr := net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort)
 		if err := qc.UpdateCoordinator(ctx, coordAddr); err != nil {
@@ -1634,9 +1633,13 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 	}
 	spqrlog.Zero.Debug().Msg("successfully add all key ranges")
 
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
 	rCl := routerproto.NewTopologyServiceClient(cc)
 	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
-		Address: net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort),
+		Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
 	}); err != nil {
 		return err
 	}
@@ -1667,9 +1670,13 @@ func (qc *qdbCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRou
 	/* Update current coordinator address. */
 	/* Todo: check that router metadata is in sync. */
 
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
 	rCl := routerproto.NewTopologyServiceClient(cc)
 	if _, err := rCl.UpdateCoordinator(ctx, &routerproto.UpdateCoordinatorRequest{
-		Address: net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort),
+		Address: net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort),
 	}); err != nil {
 		return err
 	}

@@ -262,3 +262,10 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 func RouterConfig() *Router {
 	return &cfgRouter
 }
+
+func GetHostOrHostname(host string) (string, error) {
+	if host == "" {
+		return os.Hostname()
+	}
+	return host, nil
+}
