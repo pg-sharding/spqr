@@ -529,8 +529,13 @@ func (q *EtcdQDB) RemoveTransferTx(ctx context.Context, key string) error {
 
 // TODO : unit tests
 func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
+	host, err := config.GetHostOrHostname(config.CoordinatorConfig().Host)
+	if err != nil {
+		return err
+	}
+
 	spqrlog.Zero.Debug().
-		Str("address", config.CoordinatorConfig().Host).
+		Str("address", host).
 		Msg("etcdqdb: try coordinator lock")
 
 	leaseGrantResp, err := q.cli.Lease.Grant(ctx, CoordKeepAliveTtl)
@@ -550,7 +555,7 @@ func (q *EtcdQDB) TryCoordinatorLock(ctx context.Context) error {
 		return err
 	}
 
-	op := clientv3.OpPut(coordLockKey, net.JoinHostPort(config.CoordinatorConfig().Host, config.CoordinatorConfig().GrpcApiPort), clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
+	op := clientv3.OpPut(coordLockKey, net.JoinHostPort(host, config.CoordinatorConfig().GrpcApiPort), clientv3.WithLease(clientv3.LeaseID(leaseGrantResp.ID)))
 	tx := q.cli.Txn(ctx).If(clientv3util.KeyMissing(coordLockKey)).Then(op)
 	stat, err := tx.Commit()
 	if err != nil {
