@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/routehint"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/xproto"
@@ -1200,12 +1201,22 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		/* temporary */
 		return routingstate.MultiMatchState{}, nil
 	case routingstate.MultiMatchState:
+		/*
+		* Here we have a chance for advanced multi-shard query processing.
+		* Try to build distributed plan, else scatter-out.
+		 */
 		switch sph.DefaultRouteBehaviour() {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
-			return v, nil
+			fallthrough
 		default:
+			/* TODO: config options for this */
+
+			if qr.cfg.EnhancedMultiShardProcessing {
+				v.DistributedPlan = plan.PlanDistributedQuery(ctx, stmt)
+			}
+
 			return v, nil
 		}
 	}

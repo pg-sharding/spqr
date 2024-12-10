@@ -3,6 +3,7 @@ package routingstate
 import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/plan"
 )
 
 const NOSHARD = ""
@@ -63,6 +64,7 @@ type ShardMatchState struct {
 
 type MultiMatchState struct {
 	RoutingState
+	DistributedPlan plan.Plan
 }
 
 type DDLState struct {
