@@ -26,29 +26,70 @@ CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 (1 row)
 
 -- the set of all unsigned 32-bit integers (0 to 4294967295)
-ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
-      attach table      
-------------------------
- relation name   -> xx
+ALTER DISTRIBUTION ds1 ATTACH RELATION xxhash DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
+       attach table        
+---------------------------
+ relation name   -> xxhash
  distribution id -> ds1
 (2 rows)
 
 -- TEST
 \c regress
-CREATE TABLE xx (col1 varchar);
+CREATE TABLE xxhash (col1 varchar);
 NOTICE: send query to shard(s) : sh1,sh2
-INSERT INTO xx (col1) VALUES ('Hello, world!');
+INSERT INTO xxhash (col1) VALUES ('Hello, world!');
 NOTICE: send query to shard(s) : sh2
-INSERT INTO xx (col1) VALUES ('test');
+INSERT INTO xxhash (col1) VALUES ('test');
 NOTICE: send query to shard(s) : sh2
-INSERT INTO xx (col1) VALUES ('0');
+INSERT INTO xxhash (col1) VALUES ('0');
 NOTICE: send query to shard(s) : sh2
-INSERT INTO xx (col1) VALUES ('The quick brown fox jumps over the lazy dog');
+INSERT INTO xxhash (col1) VALUES ('The quick brown fox jumps over the lazy dog');
 NOTICE: send query to shard(s) : sh1
-INSERT INTO xx (col1) VALUES ('Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.');
+INSERT INTO xxhash (col1) VALUES ('Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.');
 NOTICE: send query to shard(s) : sh1
+SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                                                                                                                                                       col1                                                                                                                                                        
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ The quick brown fox jumps over the lazy dog
+ Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
+(2 rows)
+
+SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+     col1      
+---------------
+ 0
+ Hello, world!
+ test
+(3 rows)
+
+COPY xxhash (col1) FROM STDIN /* __spqr__allow_multishard: true */;
+NOTICE: send query to shard(s) : sh1,sh2
+SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+                                                                                                                                                       col1                                                                                                                                                        
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ The quick brown fox jumps over the lazy dog
+ The quick brown fox jumps over the lazy dog
+ Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
+ Армия — не просто доброе слово, а очень быстрое дело. Так мы выигрывали все войны. Пока противник рисует карты наступления, мы меняем ландшафты, причём вручную. Когда приходит время атаки, противник теряется на незнакомой местности и приходит в полную небоеготовность. В этом смысл, в этом наша стратегия.
+(4 rows)
+
+SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+     col1      
+---------------
+ 0
+ 0
+ Hello, world!
+ Hello, world!
+ test
+ test
+(6 rows)
+
 --TEARDOWN
-DROP TABLE xx;
+DROP TABLE xxhash;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
