@@ -6,17 +6,17 @@
 	You can find documentation here 
 https://github.com/pg-sharding/spqr/tree/master/docs
 
-CREATE REPLICATED DISTRIBUTION;
+CREATE REFERENCE DISTRIBUTION;
        add distribution        
 -------------------------------
- distribution id -> REPLICATED
+ distribution id -> REFERENCE
 (1 row)
 
-ALTER REPLICATED DISTRIBUTION ATTACH RELATION test_ref_rel;
+ALTER REFERENCE DISTRIBUTION ATTACH RELATION test_ref_rel;
           attach table           
 ---------------------------------
  relation name   -> test_ref_rel
- distribution id -> REPLICATED
+ distribution id -> REFERENCE
 (2 rows)
 
 \c regress
@@ -51,7 +51,7 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 DROP DISTRIBUTION ALL CASCADE;
        drop distribution       
 -------------------------------
- distribution id -> REPLICATED
+ distribution id -> REFERENCE
 (1 row)
 
 DROP KEY RANGE ALL;

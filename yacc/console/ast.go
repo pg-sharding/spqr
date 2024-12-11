@@ -104,7 +104,7 @@ type DropStmt interface {
 type DistributionDefinition struct {
 	ID         string
 	ColTypes   []string
-	Replicated bool
+	Reference bool
 }
 
 type ShardingRuleDefinition struct {
@@ -172,7 +172,7 @@ type ShardingRuleSelector struct {
 
 type DistributionSelector struct {
 	ID         string
-	Replicated bool
+	Reference bool
 }
 
 type ShardSelector struct {
@@ -247,7 +247,7 @@ type DistributionKeyEntry struct {
 type DistributedRelation struct {
 	Name               string
 	DistributionKey    []DistributionKeyEntry
-	ReplicatedRelation bool
+	ReferenceRelation bool
 }
 
 type AttachRelation struct {

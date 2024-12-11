@@ -694,7 +694,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	if err != nil {
 		return nil, err
 	}
-	if ds.Id == distributions.REPLICATED {
+	if ds.Id == distributions.REFERENCE {
 		return &pgcopy.CopyState{
 			Scatter: true,
 		}, nil

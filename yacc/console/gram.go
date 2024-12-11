@@ -138,7 +138,7 @@ const KEY = 57385
 const RANGE = 57386
 const DISTRIBUTION = 57387
 const RELATION = 57388
-const REPLICATED = 57389
+const REFERENCE = 57389
 const SHARDS = 57390
 const KEY_RANGES = 57391
 const ROUTERS = 57392
@@ -225,7 +225,7 @@ var yyToknames = [...]string{
 	"RANGE",
 	"DISTRIBUTION",
 	"RELATION",
-	"REPLICATED",
+	"REFERENCE",
 	"SHARDS",
 	"KEY_RANGES",
 	"ROUTERS",
@@ -1216,7 +1216,7 @@ yydefault:
 		{
 			yyVAL.distributed_relation = &DistributedRelation{
 				Name:               yyDollar[2].str,
-				ReplicatedRelation: true,
+				ReferenceRelation: true,
 			}
 		}
 	case 65:
@@ -1329,7 +1329,7 @@ yydefault:
 //line gram.y:629
 		{
 			yyVAL.ds = &DistributionDefinition{
-				Replicated: true,
+				Reference: true,
 			}
 		}
 	case 83:
@@ -1607,13 +1607,13 @@ yydefault:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:841
 		{
-			yyVAL.distribution_selector = &DistributionSelector{ID: yyDollar[2].str, Replicated: false}
+			yyVAL.distribution_selector = &DistributionSelector{ID: yyDollar[2].str, Reference: false}
 		}
 	case 123:
 		yyDollar = yyS[yypt-2 : yypt+1]
 //line gram.y:843
 		{
-			yyVAL.distribution_selector = &DistributionSelector{Replicated: true}
+			yyVAL.distribution_selector = &DistributionSelector{Reference: true}
 		}
 	case 124:
 		yyDollar = yyS[yypt-6 : yypt+1]

@@ -145,7 +145,7 @@ func randomHex(n int) (string, error) {
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
 %token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE
-%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
+%token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REFERENCE
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
@@ -545,7 +545,7 @@ distributed_relation_def:
 	{
 		$$ = &DistributedRelation{
 			Name: 	 $2,
-			ReplicatedRelation: true,
+			ReferenceRelation: true,
 		}
 	}
 
@@ -625,10 +625,10 @@ distribution_define_stmt:
 			ColTypes: $3,
 		}
 	}
-	| REPLICATED DISTRIBUTION
+	| REFERENCE DISTRIBUTION
 	{
 		$$ = &DistributionDefinition{
-			Replicated: true,
+			Reference: true,
 		}
 	}
 	;
@@ -839,9 +839,9 @@ key_range_stmt:
 distribution_select_stmt:
 	DISTRIBUTION any_id
 	{
-		$$ = &DistributionSelector{ID: $2, Replicated: false}
-	} | REPLICATED DISTRIBUTION {
-		$$ = &DistributionSelector{ Replicated: true }
+		$$ = &DistributionSelector{ID: $2, Reference: false}
+	} | REFERENCE DISTRIBUTION {
+		$$ = &DistributionSelector{ Reference: true }
 	}
 
 split_key_range_stmt:
