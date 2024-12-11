@@ -228,11 +228,11 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 	case "":
 		fallthrough
 	case config.TargetSessionAttrsAny:
-		total_msg := ""
+		total_msg := make([]string, 0)
 		for _, host := range hostOrder {
 			shard, err := s.pool.ConnectionHost(clid, key, host)
 			if err != nil {
-				total_msg += fmt.Sprintf("host %s: ", host) + err.Error()
+				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
 				s.cacheTSAchecks.Store(TsaKey{
 					Tsa:  config.TargetSessionAttrsAny,
@@ -256,7 +256,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 
 			return shard, nil
 		}
-		return nil, fmt.Errorf("failed to get connection to any shard host within %s", total_msg)
+		return nil, fmt.Errorf("failed to get connection to any shard host within: %s", strings.Join(total_msg, ", "))
 	case config.TargetSessionAttrsRO:
 		return s.selectReadOnlyShardHost(clid, key, hostOrder, targetSessionAttrs)
 	case config.TargetSessionAttrsPS:
