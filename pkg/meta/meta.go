@@ -190,7 +190,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 					return cli.ReportError(err)
 				}
 			} else {
-				return fmt.Errorf("REPLICATED distribution already exist.")
+				return fmt.Errorf("REFERENCE distribution already exist.")
 			}
 		} else {
 			distribution = distributions.NewDistribution(stmt.ID, stmt.ColTypes)

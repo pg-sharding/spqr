@@ -11,7 +11,7 @@ type CopyState struct {
 	Delimiter  byte
 	TargetType string
 
-	/* For replicated relations */
+	/* For reference relations */
 	Scatter bool
 
 	/* For distributed relations */
