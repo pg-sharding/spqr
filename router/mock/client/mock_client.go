@@ -478,30 +478,6 @@ func (mr *MockRouterClientMockRecorder) PreparedStatementQueryHashByName(name in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PreparedStatementQueryHashByName", reflect.TypeOf((*MockRouterClient)(nil).PreparedStatementQueryHashByName), name)
 }
 
-// RLock mocks base method.
-func (m *MockRouterClient) RLock() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RLock")
-}
-
-// RLock indicates an expected call of RLock.
-func (mr *MockRouterClientMockRecorder) RLock() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RLock", reflect.TypeOf((*MockRouterClient)(nil).RLock))
-}
-
-// RUnlock mocks base method.
-func (m *MockRouterClient) RUnlock() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RUnlock")
-}
-
-// RUnlock indicates an expected call of RUnlock.
-func (mr *MockRouterClientMockRecorder) RUnlock() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RUnlock", reflect.TypeOf((*MockRouterClient)(nil).RUnlock))
-}
-
 // Receive mocks base method.
 func (m *MockRouterClient) Receive() (pgproto3.FrontendMessage, error) {
 	m.ctrl.T.Helper()
@@ -880,30 +856,6 @@ func (m *MockRouterClient) Server() server.Server {
 func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
-}
-
-// ServerAcquireUse mocks base method.
-func (m *MockRouterClient) ServerAcquireUse() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ServerAcquireUse")
-}
-
-// ServerAcquireUse indicates an expected call of ServerAcquireUse.
-func (mr *MockRouterClientMockRecorder) ServerAcquireUse() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerAcquireUse", reflect.TypeOf((*MockRouterClient)(nil).ServerAcquireUse))
-}
-
-// ServerReleaseUse mocks base method.
-func (m *MockRouterClient) ServerReleaseUse() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "ServerReleaseUse")
-}
-
-// ServerReleaseUse indicates an expected call of ServerReleaseUse.
-func (mr *MockRouterClientMockRecorder) ServerReleaseUse() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServerReleaseUse", reflect.TypeOf((*MockRouterClient)(nil).ServerReleaseUse))
 }
 
 // SetAllowMultishard mocks base method.

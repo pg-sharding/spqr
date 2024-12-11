@@ -174,6 +174,34 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 // - error: An error if the creation encounters any issues.
 func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityMgr, cli *clientinteractor.PSQLInteractor) error {
 	switch stmt := astmt.(type) {
+	case *spqrparser.ReferenceRelationDefinition:
+
+		selectedDistribId := distributions.REPLICATED
+
+		if _, err := mngr.GetDistribution(ctx, selectedDistribId); err != nil {
+			err := mngr.CreateDistribution(ctx, &distributions.Distribution{
+				Id:       distributions.REPLICATED,
+				ColTypes: nil,
+			})
+			if err != nil {
+				spqrlog.Zero.Debug().Err(err).Msg("failed to setup REPLICATED distribution")
+				return cli.ReportError(err)
+			}
+		}
+
+		rels := []*distributions.DistributedRelation{
+			{
+				Name:               stmt.TableName,
+				ReplicatedRelation: true,
+			},
+		}
+
+		if err := mngr.AlterDistributionAttach(ctx, selectedDistribId, rels); err != nil {
+			return cli.ReportError(err)
+		}
+
+		return cli.AlterDistributionAttach(ctx, selectedDistribId, rels)
+
 	case *spqrparser.DistributionDefinition:
 		if stmt.ID == "default" {
 			return spqrerror.New(spqrerror.SPQR_INVALID_REQUEST, "You cannot create a \"default\" distribution, \"default\" is a reserved word")

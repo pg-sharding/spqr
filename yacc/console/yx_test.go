@@ -652,6 +652,15 @@ func TestDistribution(t *testing.T) {
 			err: nil,
 		},
 		{
+			query: "CREATE REFERENCE TABLE xtab",
+			exp: &spqrparser.Create{
+				Element: &spqrparser.ReferenceRelationDefinition{
+					TableName: "xtab",
+				},
+			},
+			err: nil,
+		},
+		{
 			query: "CREATE DISTRIBUTION db1 COLUMN TYPES varchar hash;",
 			exp: &spqrparser.Create{
 				Element: &spqrparser.DistributionDefinition{
