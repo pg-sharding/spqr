@@ -23,8 +23,8 @@ var (
 	errUnknownColumnType = func(ctype string, hf HashFunctionType) error {
 		return fmt.Errorf("unknown column type '%s' for hash function '%d'", ctype, hf)
 	}
-	errUnknownValueType = func(v interface{}) error {
-		return fmt.Errorf("unknown type of value that the city's hash will be calculated from: %T", v)
+	errUnknownValueType = func(v interface{}, hf HashFunctionType) error {
+		return fmt.Errorf("unknown type of value that the hash will be calculated from: %T for %d hash type", v, hf)
 	}
 )
 
@@ -66,7 +66,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errUnknownValueType(inp)
+				return nil, errUnknownValueType(inp, hf)
 			}
 		default:
 			return nil, errUnknownColumnType(ctype, hf)
@@ -95,7 +95,7 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errUnknownValueType(inp)
+				return nil, errUnknownValueType(inp, hf)
 			}
 		default:
 			return nil, errUnknownColumnType(ctype, hf)
