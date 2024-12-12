@@ -104,40 +104,36 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 * Apply routing hash function on bytes receieved in their string representation (from COPY).
  */
 func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType) (interface{}, error) {
-	switch hf {
-	case HashFunctionIdent:
-		/* ident is a special case here
-		* We need to convert raw bytes to approrpiate interface
-		* because caller expect data in form compatable with CompareKeyRange
-		 */
-		switch ctype {
-		case qdb.ColumnTypeInteger:
-			n, err := strconv.ParseInt(string(inp), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			return n, err
-		case qdb.ColumnTypeUinteger:
-			n, err := strconv.ParseUint(string(inp), 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			return n, err
-		case qdb.ColumnTypeVarchar:
-			fallthrough
-		case qdb.ColumnTypeVarcharDeprecated:
-			return string(inp), nil
+
+	var parsedInp interface{}
+
+	/*
+	* We need to convert raw bytes to approrpiate interface
+	* because caller expect data in form compatable with CompareKeyRange
+	 */
+	switch ctype {
+	case qdb.ColumnTypeInteger:
+		n, err := strconv.ParseInt(string(inp), 10, 64)
+		if err != nil {
+			return nil, err
 		}
-		return inp, nil
-	case HashFunctionMurmur:
-		h := murmur3.Sum32(inp)
-		return uint64(h), nil
-	case HashFunctionCity:
-		h := city.Hash32(inp)
-		return uint64(h), nil
-	default:
-		return nil, errNoSuchHashFunction
+		parsedInp = n
+	case qdb.ColumnTypeUinteger:
+		n, err := strconv.ParseUint(string(inp), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		parsedInp = n
+
+	case qdb.ColumnTypeVarchar:
+		fallthrough
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
+	case qdb.ColumnTypeVarcharDeprecated:
+		parsedInp = string(inp)
 	}
+
+	return ApplyHashFunction(parsedInp, ctype, hf)
 }
 
 // HashFunctionByName returns the corresponding HashFunctionType based on the given hash function name.

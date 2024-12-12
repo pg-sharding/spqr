@@ -1,0 +1,346 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES INT hash;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 2147483648 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+    add key range    
+---------------------
+ bound -> 2147483648
+(1 row)
+
+-- the set of all unsigned 32-bit integers (0 to 4294967295)
+ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MURMUR;
+      attach table      
+------------------------
+ relation name   -> xx
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+DROP TABLE IF EXISTS xx;
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE xx (col1 INT);
+NOTICE: send query to shard(s) : sh1,sh2
+INSERT INTO xx (col1) VALUES (1);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (2);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (3);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (4);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (5);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (6);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (7);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (8);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (9);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (10);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (11);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (65535);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (65536);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (65537);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (65538);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (65539);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (2147483644);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (2147483645);
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xx (col1) VALUES (2147483646);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xx (col1) VALUES (2147483647);
+NOTICE: send query to shard(s) : sh1
+SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+    col1    
+------------
+          1
+          5
+          6
+          9
+         11
+      65538
+      65539
+ 2147483645
+ 2147483647
+(9 rows)
+
+SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+    col1    
+------------
+          2
+          3
+          4
+          7
+          8
+         10
+      65535
+      65536
+      65537
+ 2147483644
+ 2147483646
+(11 rows)
+
+COPY xx (col1) FROM STDIN /* __spqr__allow_multishard: true */ ;
+NOTICE: send query to shard(s) : sh1,sh2
+SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+    col1    
+------------
+          1
+          1
+          5
+          5
+          6
+          6
+          9
+          9
+         11
+         11
+      65538
+      65538
+      65539
+      65539
+ 2147483645
+ 2147483645
+ 2147483647
+ 2147483647
+(18 rows)
+
+SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+    col1    
+------------
+          2
+          2
+          3
+          3
+          4
+          4
+          7
+          7
+          8
+          8
+         10
+         10
+      65535
+      65535
+      65536
+      65536
+      65537
+      65537
+ 2147483644
+ 2147483644
+ 2147483646
+ 2147483646
+(22 rows)
+
+SELECT * FROM xx WHERE col1 = 1;
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+    1
+    1
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 2;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    2
+    2
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 3;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    3
+    3
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 4;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    4
+    4
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 5;
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+    5
+    5
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 6;
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+    6
+    6
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 7;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    7
+    7
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 8;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+    8
+    8
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 9;
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+    9
+    9
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 10;
+NOTICE: send query to shard(s) : sh2
+ col1 
+------
+   10
+   10
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 11;
+NOTICE: send query to shard(s) : sh1
+ col1 
+------
+   11
+   11
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 65535;
+NOTICE: send query to shard(s) : sh2
+ col1  
+-------
+ 65535
+ 65535
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 65536;
+NOTICE: send query to shard(s) : sh2
+ col1  
+-------
+ 65536
+ 65536
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 65537;
+NOTICE: send query to shard(s) : sh2
+ col1  
+-------
+ 65537
+ 65537
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 65538;
+NOTICE: send query to shard(s) : sh1
+ col1  
+-------
+ 65538
+ 65538
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 65539;
+NOTICE: send query to shard(s) : sh1
+ col1  
+-------
+ 65539
+ 65539
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 2147483644;
+NOTICE: send query to shard(s) : sh2
+    col1    
+------------
+ 2147483644
+ 2147483644
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 2147483645;
+NOTICE: send query to shard(s) : sh1
+    col1    
+------------
+ 2147483645
+ 2147483645
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 2147483646;
+NOTICE: send query to shard(s) : sh2
+    col1    
+------------
+ 2147483646
+ 2147483646
+(2 rows)
+
+SELECT * FROM xx WHERE col1 = 2147483647;
+NOTICE: send query to shard(s) : sh1
+    col1    
+------------
+ 2147483647
+ 2147483647
+(2 rows)
+
+DROP TABLE xx;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

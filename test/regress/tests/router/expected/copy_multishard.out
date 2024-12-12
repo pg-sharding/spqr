@@ -63,24 +63,24 @@ TABLE xx /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
- 2 | 2
- 3 | 3
+ 1 | 1
  5 | 5
  6 | 6
- 7 | 7
  9 | 9
  1 | 1
  5 | 5
  6 | 6
  9 | 9
-(10 rows)
+(8 rows)
 
 TABLE xx /* __spqr__execute_on: sh2 */;
 NOTICE: send query to shard(s) : sh2
  i  | j  
 ----+----
-  1 |  1
+  2 |  2
+  3 |  3
   4 |  4
+  7 |  7
   8 |  8
  10 | 10
   2 |  2
@@ -89,7 +89,7 @@ NOTICE: send query to shard(s) : sh2
   7 |  7
   8 |  8
  10 | 10
-(10 rows)
+(12 rows)
 
 DROP TABLE xx;
 NOTICE: send query to shard(s) : sh1,sh2
