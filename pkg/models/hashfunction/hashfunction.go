@@ -20,7 +20,12 @@ const (
 )
 
 var (
-	errNoSuchHashFunction = fmt.Errorf("no such hash function")
+	errUnknownColumnType = func(ctype string, hf HashFunctionType) error {
+		return fmt.Errorf("unknown column type '%s' for hash function '%d'", ctype, hf)
+	}
+	errUnknownValueType = func(v interface{}, hf HashFunctionType) error {
+		return fmt.Errorf("unknown type of value that the hash will be calculated from: %T for %d hash type", v, hf)
+	}
 )
 
 // ApplyHashFunction applies the specified hash function to the input byte slice.
@@ -61,10 +66,10 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errNoSuchHashFunction
+				return nil, errUnknownValueType(inp, hf)
 			}
 		default:
-			return nil, errNoSuchHashFunction
+			return nil, errUnknownColumnType(ctype, hf)
 		}
 	case HashFunctionCity:
 		switch ctype {
@@ -90,13 +95,13 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 
 				return uint64(h), nil
 			default:
-				return nil, errNoSuchHashFunction
+				return nil, errUnknownValueType(inp, hf)
 			}
 		default:
-			return nil, errNoSuchHashFunction
+			return nil, errUnknownColumnType(ctype, hf)
 		}
 	default:
-		return nil, errNoSuchHashFunction
+		return nil, fmt.Errorf("unknown hash function type: %d", hf)
 	}
 }
 
@@ -155,7 +160,7 @@ func HashFunctionByName(hfn string) (HashFunctionType, error) {
 	case "city":
 		return HashFunctionCity, nil
 	default:
-		return 0, errNoSuchHashFunction
+		return 0, fmt.Errorf("unknown hash function type: %s", hfn)
 	}
 }
 
