@@ -65,4 +65,5 @@ var reservedWords = map[string]int{
 	"redistribute": REDISTRIBUTE,
 	"batch":        BATCH,
 	"size":         SIZE,
+	"reference":    REFERENCE,
 }
