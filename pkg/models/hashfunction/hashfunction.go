@@ -127,6 +127,8 @@ func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType
 
 	case qdb.ColumnTypeVarchar:
 		fallthrough
+	case qdb.ColumnTypeVarcharHashed:
+		fallthrough
 	case qdb.ColumnTypeVarcharDeprecated:
 		parsedInp = string(inp)
 	}
