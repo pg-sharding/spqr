@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/routingstate"
 )
@@ -98,6 +99,9 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 	}
 
 	for name, shardCfg := range shardMapping {
+		if shardCfg == nil {
+			return nil, spqrerror.Newf(spqrerror.SPQR_ROUTER_ERROR, "shard %s is stated in config, but no actual config is specified", name)
+		}
 		switch shardCfg.Type {
 		case config.WorldShard:
 		case config.DataShard:
