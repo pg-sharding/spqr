@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
@@ -26,7 +27,8 @@ type ProxyQrouter struct {
 
 	cfg *config.QRouter
 
-	mgr meta.EntityMgr
+	mgr         meta.EntityMgr
+	schemaCache *cache.SchemaCache
 
 	initialized *atomic.Bool
 }
@@ -43,6 +45,10 @@ func (qr *ProxyQrouter) Initialize() bool {
 
 func (qr *ProxyQrouter) Mgr() meta.EntityMgr {
 	return qr.mgr
+}
+
+func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
+	return qr.schemaCache
 }
 
 // TODO : unit tests
@@ -88,6 +94,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 		initialized:    atomic.NewBool(false),
 		cfg:            qcfg,
 		mgr:            mgr,
+		schemaCache:    cache.NewSchemaCache(shardMapping, config.RouterConfig().SchemaCacheBackendRule),
 	}
 
 	for name, shardCfg := range shardMapping {

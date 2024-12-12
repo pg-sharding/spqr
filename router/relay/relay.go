@@ -1628,6 +1628,19 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 	}
 
 	state, comm, err := rst.qp.Parse(query)
+
+	switch stm := rst.qp.Stmt().(type) {
+	case *lyx.Insert:
+		// load columns from information schema
+		// Do not check err here, just keep going
+		if len(stm.Columns) == 0 {
+			switch tableref := stm.TableRef.(type) {
+			case *lyx.RangeVar:
+				stm.Columns, _ = rst.Qr.SchemaCache().GetColumns(tableref.SchemaName, tableref.RelationName)
+			}
+		}
+	}
+
 	if err == nil && doCaching {
 		stmt := rst.qp.Stmt()
 		/* only cache specific type of queries */
