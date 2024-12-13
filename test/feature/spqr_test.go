@@ -219,14 +219,14 @@ func (tctx *testContext) cleanup() {
 }
 
 // nolint: unparam
-func (tctx *testContext) connectPostgresql(addr string, timeout time.Duration) (*sqlx.DB, error) {
+func (tctx *testContext) connectPostgresql(addr string, user string, timeout time.Duration) (*sqlx.DB, error) {
 	if strings.Contains(addr, strconv.Itoa(spqrConsolePort)) {
-		return tctx.connectRouterConsoleWithCredentials(shardUser, shardPassword, addr, timeout)
+		return tctx.connectRouterConsoleWithCredentials(user, shardPassword, addr, timeout)
 	}
 	if strings.Contains(addr, strconv.Itoa(spqrCoordinatorPort)) {
-		return tctx.connectRouterConsoleWithCredentials(shardUser, coordinatorPassword, addr, timeout)
+		return tctx.connectRouterConsoleWithCredentials(user, coordinatorPassword, addr, timeout)
 	}
-	return tctx.connectPostgresqlWithCredentials(shardUser, shardPassword, addr, timeout)
+	return tctx.connectPostgresqlWithCredentials(user, shardPassword, addr, timeout)
 }
 
 func (tctx *testContext) connectPostgresqlWithCredentials(username string, password string, addr string, timeout time.Duration) (*sqlx.DB, error) {
@@ -294,7 +294,7 @@ func (tctx *testContext) trySetupConnection(service string) (*sqlx.DB, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get shard addr %s: %s", service, err)
 		}
-		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 		}
@@ -308,7 +308,7 @@ func (tctx *testContext) trySetupConnection(service string) (*sqlx.DB, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}
-		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 		}
@@ -346,7 +346,7 @@ func (tctx *testContext) trySetupConnection(service string) (*sqlx.DB, error) {
 	return nil, fmt.Errorf("unrecognised service \"%s\"", service)
 }
 
-func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) {
+func (tctx *testContext) getPostgresqlConnection(host string, user string) (*sqlx.DB, error) {
 	db, ok := tctx.dbs[host]
 	if !ok {
 		var err error
@@ -366,7 +366,7 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get postgresql addr %s: %s", host, err)
 	}
-	db, err = tctx.connectPostgresql(addr, postgresqlConnectTimeout)
+	db, err = tctx.connectPostgresql(addr, user, postgresqlConnectTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgresql %s: %s", host, err)
 	}
@@ -374,8 +374,8 @@ func (tctx *testContext) getPostgresqlConnection(host string) (*sqlx.DB, error) 
 	return db, nil
 }
 
-func (tctx *testContext) queryPostgresql(host string, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
-	db, err := tctx.getPostgresqlConnection(host)
+func (tctx *testContext) queryPostgresql(host, user, query string, args interface{}, timeout time.Duration) ([]map[string]interface{}, error) {
+	db, err := tctx.getPostgresqlConnection(host, user)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +405,7 @@ func (tctx *testContext) queryPostgresql(host string, query string, args interfa
 }
 
 func (tctx *testContext) executePostgresql(host string, query string) error {
-	db, err := tctx.getPostgresqlConnection(host)
+	db, err := tctx.getPostgresqlConnection(host, shardUser)
 	if err != nil {
 		return err
 	}
@@ -485,7 +485,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 			if err != nil {
 				return fmt.Errorf("failed to get shard addr %s: %s", service, err)
 			}
-			db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 			}
@@ -500,7 +500,7 @@ func (tctx *testContext) stepClusterIsUpAndRunning() error {
 			if err != nil {
 				return fmt.Errorf("failed to get router addr %s: %s", service, err)
 			}
-			db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+			db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
 			if err != nil {
 				return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 			}
@@ -607,7 +607,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get shard addr %s: %s", service, err)
 		}
-		db, err := tctx.connectPostgresql(addr, postgresqlInitialConnectTimeout)
+		db, err := tctx.connectPostgresql(addr, shardUser, postgresqlInitialConnectTimeout)
 		if err != nil {
 			return fmt.Errorf("failed to connect to postgresql %s: %s", service, err)
 		}
@@ -621,7 +621,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get router addr %s: %s", service, err)
 		}
-		db, err := tctx.connectPostgresql(addr, 10*postgresqlInitialConnectTimeout)
+		db, err := tctx.connectPostgresql(addr, shardUser, 10*postgresqlInitialConnectTimeout)
 		if err != nil {
 			return fmt.Errorf("failed to connect to SPQR router %s: %s", service, err)
 		}
@@ -679,7 +679,7 @@ func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
 	for i := 0; i < trials; i++ {
-		_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
+		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
 		if err == nil {
 			return nil
 		}
@@ -745,19 +745,26 @@ func (tctx *testContext) stepCommandOutputShouldMatch(matcher string, body *godo
 func (tctx *testContext) stepIRunSQLOnHost(host string, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, query, struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPostgresql(host, shardUser, query, struct{}{}, postgresqlQueryTimeout)
 	return err
 }
 
 func (tctx *testContext) stepIRunSQLOnHostWithTimeout(host string, timeout int, body *godog.DocString) error {
 	query := strings.TrimSpace(body.Content)
 
-	_, err := tctx.queryPostgresql(host, query, struct{}{}, time.Duration(timeout)*time.Second)
+	_, err := tctx.queryPostgresql(host, shardUser, query, struct{}{}, time.Duration(timeout)*time.Second)
+	return err
+}
+
+func (tctx *testContext) stepIRunSQLOnHostAsUser(host string, user string, body *godog.DocString) error {
+	query := strings.TrimSpace(body.Content)
+
+	_, err := tctx.queryPostgresql(host, user, query, struct{}{}, postgresqlQueryTimeout)
 	return err
 }
 
 func (tctx *testContext) stepIFailSQLOnHost(host string) error {
-	_, err := tctx.queryPostgresql(host, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
+	_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
 	if err == nil {
 		return fmt.Errorf("host is accessible via SQL")
 	}
@@ -1035,6 +1042,7 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 	s.Step(`^command output should match (\w+)$`, tctx.stepCommandOutputShouldMatch)
 	s.Step(`^I run SQL on host "([^"]*)"$`, tctx.stepIRunSQLOnHost)
 	s.Step(`^I run SQL on host "([^"]*)" with timeout "(\d+)" seconds$`, tctx.stepIRunSQLOnHostWithTimeout)
+	s.Step(`^I run SQL on host "([^"]*)" as user "([^"]*)"$`, tctx.stepIRunSQLOnHostAsUser)
 	s.Step(`^I execute SQL on host "([^"]*)"$`, tctx.stepIExecuteSql)
 	s.Step(`^SQL result should match (\w+)$`, tctx.stepSQLResultShouldMatch)
 	s.Step(`^sleep$`, func() error {
