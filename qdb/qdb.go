@@ -41,7 +41,14 @@ type DistributedXactKepper interface {
 	RemoveTransferTx(ctx context.Context, key string) error
 }
 
-/* This is a generic interface to be used by both the coordinator and the router.
+type SequenceStateKeeper interface {
+	CreateSeq(name string) error
+	GetVal(name string) (int64, error)
+	NextVal(name string) (int64, error)
+}
+
+/*
+* This is a generic interface to be used by both the coordinator and the router.
 * The router should use a memory-based version of this interface to cache
 * the state of the routing schema, while the coordinator should use an etcd-based
 * implementation to keep the distributed state in sync.
@@ -102,6 +109,9 @@ type XQDB interface {
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKepper
+
+	// sequences
+	SequenceStateKeeper
 
 	TryCoordinatorLock(ctx context.Context) error
 }

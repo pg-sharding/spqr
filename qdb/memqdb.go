@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
@@ -25,10 +26,14 @@ type MemQDB struct {
 	RelationDistribution map[string]string                   `json:"relation_distribution"`
 	Routers              map[string]*Router                  `json:"routers"`
 	Transactions         map[string]*DataTransferTransaction `json:"transactions"`
-	Coordinator          string                              `json:"coordinator"`
-	MoveTaskGroup        *MoveTaskGroup                      `json:"taskGroup"`
-	RedistributeTask     *RedistributeTask                   `json:"redistributeTask"`
-	BalancerTask         *BalancerTask                       `json:"balancerTask"`
+
+	/* seq state *atomic.Int64 */
+	Sequences sync.Map `json:"sequences"`
+
+	Coordinator      string            `json:"coordinator"`
+	MoveTaskGroup    *MoveTaskGroup    `json:"taskGroup"`
+	RedistributeTask *RedistributeTask `json:"redistributeTask"`
+	BalancerTask     *BalancerTask     `json:"balancerTask"`
 
 	backupPath string
 	/* caches */
@@ -46,6 +51,8 @@ func NewMemQDB(backupPath string) (*MemQDB, error) {
 		RelationDistribution: map[string]string{},
 		Routers:              map[string]*Router{},
 		Transactions:         map[string]*DataTransferTransaction{},
+
+		Sequences: sync.Map{},
 
 		backupPath: backupPath,
 	}, nil
@@ -823,4 +830,36 @@ func (q *MemQDB) RemoveBalancerTask(_ context.Context) error {
 
 	q.BalancerTask = nil
 	return nil
+}
+
+/*
+* ====================================================
+* 					Sequences
+* ====================================================
+ */
+
+func (q *MemQDB) CreateSeq(name string) error {
+	if _, ok := q.Sequences.Load(name); ok {
+		return fmt.Errorf("sequence %s already exist", name)
+	}
+
+	q.Sequences.Store(name, &atomic.Int64{})
+
+	return nil
+}
+
+func (q *MemQDB) GetVal(name string) (int64, error) {
+	if v, ok := q.Sequences.Load(name); ok {
+		return 0, fmt.Errorf("sequence %s already exist", name)
+	} else {
+		return v.(*atomic.Int64).Load(), nil
+	}
+}
+
+func (q *MemQDB) NextVal(name string) (int64, error) {
+	if v, ok := q.Sequences.Load(name); ok {
+		return 0, fmt.Errorf("sequence %s already exist", name)
+	} else {
+		return v.(*atomic.Int64).Add(1), nil
+	}
 }

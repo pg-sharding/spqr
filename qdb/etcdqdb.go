@@ -26,6 +26,21 @@ type EtcdQDB struct {
 	mu  sync.Mutex
 }
 
+// CreateSeq implements XQDB.
+func (q *EtcdQDB) CreateSeq(name string) error {
+	panic("unimplemented")
+}
+
+// GetVal implements XQDB.
+func (q *EtcdQDB) GetVal(name string) (int64, error) {
+	panic("unimplemented")
+}
+
+// NextVal implements XQDB.
+func (q *EtcdQDB) NextVal(name string) (int64, error) {
+	panic("unimplemented")
+}
+
 var _ XQDB = &EtcdQDB{}
 
 func NewEtcdQDB(addr string) (*EtcdQDB, error) {
