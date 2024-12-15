@@ -368,13 +368,14 @@ func (tctx *testContext) getPostgresqlConnection(user, host string) (*sqlx.DB, e
 		if err != nil {
 			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
 		}
-	}
-	db, ok = dbs[host]
-	if !ok {
-		var err error
-		db, err = tctx.trySetupConnection(user, host)
-		if err != nil {
-			return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+	} else {
+		db, ok = dbs[host]
+		if !ok {
+			var err error
+			db, err = tctx.trySetupConnection(user, host)
+			if err != nil {
+				return nil, fmt.Errorf("postgresql %s is not in cluster", host)
+			}
 		}
 	}
 	if strings.HasSuffix(host, "admin") || strings.HasPrefix(host, "coordinator") {
