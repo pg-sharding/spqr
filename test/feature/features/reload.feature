@@ -18,12 +18,7 @@ Feature: Config reloading works
     """
     Then command return code should be "0"
     And I wait for host "shard1" to respond
-    
-    When I run SQL on host "router" as user "regress2"
-    """
-    SELECT 1
-    """
-    Then command return code should be "1"
+    When I fail to run SQL on host "router" as user "regress2"
     # Edit config and reload spqr-router
     When I run command on host "router"
     """
