@@ -715,6 +715,9 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 
 			frsm, err := backend.ReceiveStartupMessage()
+			if err != nil {
+				return err
+			}
 
 			switch msg := frsm.(type) {
 			case *pgproto3.StartupMessage:
@@ -722,11 +725,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			default:
 				return fmt.Errorf("received unexpected message type %T", frsm)
 			}
-
-			if err != nil {
-				return err
-			}
-		//
 		case pgproto3.ProtocolVersionNumber:
 			// reuse
 			sm = &pgproto3.StartupMessage{}
