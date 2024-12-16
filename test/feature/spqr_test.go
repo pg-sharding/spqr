@@ -343,7 +343,7 @@ func (tctx *testContext) trySetupConnection(user, service string) (*sqlx.DB, err
 	if strings.HasPrefix(service, spqrCoordinatorName) {
 		addr, err := tctx.composer.GetAddr(service, spqrCoordinatorPort)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get router addr %s: %s", service, err)
+			return nil, fmt.Errorf("failed to get coordinator addr %s: %s", service, err)
 		}
 		db, err := tctx.connectCoordinatorWithCredentials(shardUser, coordinatorPassword, addr, postgresqlInitialConnectTimeout)
 		if err != nil {
@@ -591,7 +591,7 @@ func (tctx *testContext) stepHostIsStopped(service string) error {
 			if err := db.Close(); err != nil {
 				return err
 			}
-			delete(tctx.userDbs, service)
+			delete(dbs, service)
 		}
 	}
 
