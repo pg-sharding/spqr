@@ -202,11 +202,11 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	wg.Add(20)
 
-	for id := 0; id < 20; id++ {
+	for range 20 {
 		go func() {
 			defer wg.Done()
 
-			for it := 0; it < 100; it++ {
+			for range 100 {
 				conn, err := shp.Connection(1, kr.ShardKey{
 					Name: "1",
 				})

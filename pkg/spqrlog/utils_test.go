@@ -11,7 +11,7 @@ import (
 // when formatting the address of a variable.
 func BenchmarkPrintfAddress(b *testing.B) {
 	num := 10
-	for i := range b.N {
+	for range b.N {
 		_ = fmt.Sprintf("%p", &num)
 	}
 }
@@ -21,7 +21,7 @@ func BenchmarkPrintfAddress(b *testing.B) {
 // The benchmark is run by the testing framework.
 func BenchmarkGetPointer(b *testing.B) {
 	num := 10
-	for i := range b.N {
+	for range b.N {
 		_ = GetPointer(&num)
 	}
 }

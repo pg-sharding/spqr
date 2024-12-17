@@ -246,7 +246,7 @@ func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {
 
 	dbpool.ShuffleHosts = true
 
-	for i := range repeattimes {
+	for range repeattimes {
 		sh, err = dbpool.ConnectionWithTSA(clId, key, config.TargetSessionAttrsRO)
 
 		// assert.NotEqual(sh, h3)

@@ -28,10 +28,10 @@ import (
 func TestConnectCreds(t *testing.T) {
 	assert := assert.New(t)
 	var wg sync.WaitGroup
-	for k := 0; k < 100; k++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
-			for i := range 100 {
+			for range 100 {
 				err := LoadConfig("")
 				assert.NoError(err)
 				createConnString("sh1")
