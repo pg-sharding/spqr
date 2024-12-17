@@ -31,7 +31,7 @@ func TestConnectCreds(t *testing.T) {
 	for k := 0; k < 100; k++ {
 		wg.Add(1)
 		go func() {
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				err := LoadConfig("")
 				assert.NoError(err)
 				createConnString("sh1")

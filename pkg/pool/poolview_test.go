@@ -22,7 +22,7 @@ func TestPoolViewThreading(t *testing.T) {
 	for k := 0; k < 100; k++ {
 		go func() {
 			statistics := inf.View()
-			for i := 0; i < 100; i++ {
+			for i := range 100 {
 				assert.Equal("db", statistics.DB)
 				assert.Equal("usr", statistics.Usr)
 				assert.Equal("host", statistics.Hostname)

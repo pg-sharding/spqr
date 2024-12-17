@@ -161,7 +161,7 @@ func TestShardPoolConnectionAcquireLimit(t *testing.T) {
 
 	used := make(map[uint]bool, connLimit)
 
-	for i := 0; i < connLimit; i++ {
+	for i := range connLimit {
 		shardconn := mockshard.NewMockShard(ctrl)
 
 		ins := mockinst.NewMockDBInstance(ctrl)

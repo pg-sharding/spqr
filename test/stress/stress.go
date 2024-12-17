@@ -28,7 +28,7 @@ var (
 func getConn(ctx context.Context, dbname string, retryCnt int) (*sqlx.DB, error) {
 	pgConString := fmt.Sprintf("host=%s port=%d dbname=%s sslmode=%v user=%s", hostname, spqrPort, dbname, sslmode, username)
 	fmt.Printf("using connstring %s\n", pgConString)
-	for i := 0; i < retryCnt; i++ {
+	for i := range retryCnt {
 		db, err := sqlx.ConnectContext(ctx, "postgres", pgConString)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("error while connecting to postgresql")
@@ -81,7 +81,7 @@ var cmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		wg := &sync.WaitGroup{}
 
-		for i := 0; i < par; i++ {
+		for i := range par {
 			wg.Add(1)
 			go func(wg *sync.WaitGroup) {
 				defer wg.Done()

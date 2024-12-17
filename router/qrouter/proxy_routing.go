@@ -1079,13 +1079,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		/* single format specified, use for all columns */
 		queryParamsFormatCodes = make([]int16, paramsLen)
 
-		for i := 0; i < paramsLen; i++ {
+		for i := range paramsLen {
 			queryParamsFormatCodes[i] = paramsFormatCodes[0]
 		}
 	} else {
 		/* use default format for all columns */
 		queryParamsFormatCodes = make([]int16, paramsLen)
-		for i := 0; i < paramsLen; i++ {
+		for i := range paramsLen {
 			queryParamsFormatCodes[i] = xproto.FormatCodeText
 		}
 	}
@@ -1115,7 +1115,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		compositeKey := make([]interface{}, len(distrKey))
 
 		// TODO: multi-column routing. This works only for one-dim routing
-		for i := 0; i < len(distrKey); i++ {
+		for i := range len(distrKey) {
 			hf, err := hashfunction.HashFunctionByName(distrKey[i].HashFunction)
 			if err != nil {
 				ok = false

@@ -139,7 +139,7 @@ func (kr *KeyRange) RecvFunc(attribInd int, val string) error {
 func (kr *KeyRange) Raw() [][]byte {
 	res := make([][]byte, len(kr.ColumnTypes))
 
-	for i := 0; i < len(kr.ColumnTypes); i++ {
+	for i := range len(kr.ColumnTypes) {
 		res[i] = kr.OutFunc(i)
 	}
 
@@ -149,7 +149,7 @@ func (kr *KeyRange) Raw() [][]byte {
 func (kr *KeyRange) SendRaw() []string {
 	res := make([]string, len(kr.ColumnTypes))
 
-	for i := 0; i < len(kr.ColumnTypes); i++ {
+	for i := range len(kr.ColumnTypes) {
 		res[i] = kr.SendFunc(i)
 	}
 
@@ -159,7 +159,7 @@ func (kr *KeyRange) SendRaw() []string {
 func (kr *KeyRange) RecvRaw(vals []string) error {
 	kr.LowerBound = make([]interface{}, len(kr.ColumnTypes))
 
-	for i := 0; i < len(kr.ColumnTypes); i++ {
+	for i := range len(kr.ColumnTypes) {
 		err := kr.RecvFunc(i, vals[i])
 		if err != nil {
 			return err
@@ -201,7 +201,7 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 	// result that data corruption caused by erroreus routing logic.
 	// Big TODO here is to use and check specific error of types mismatch.
 
-	for i := 0; i < len(bound); i++ {
+	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
@@ -255,7 +255,7 @@ func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool 
 }
 
 func CmpRangesEqual(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
-	for i := 0; i < len(bound); i++ {
+	for i := range len(bound) {
 		switch types[i] {
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
@@ -326,7 +326,7 @@ func KeyRangeFromDB(krdb *qdb.KeyRange, colTypes []string) *KeyRange {
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
 
-	for i := 0; i < len(colTypes); i++ {
+	for i := range len(colTypes) {
 		kr.InFunc(i, krdb.LowerBound[i])
 	}
 
@@ -362,7 +362,7 @@ func KeyRangeFromSQL(krsql *spqrparser.KeyRangeDefinition, colTypes []string) (*
 		return nil, fmt.Errorf("number of columns mismatches with distribution")
 	}
 
-	for i := 0; i < len(colTypes); i++ {
+	for i := range len(colTypes) {
 		kr.InFuncSQL(i, krsql.LowerBound.Pivots[i])
 	}
 
@@ -377,7 +377,7 @@ func KeyRangeFromBytes(val [][]byte, colTypes []string) *KeyRange {
 		LowerBound: make(KeyRangeBound, len(colTypes)),
 	}
 
-	for i := 0; i < len(colTypes); i++ {
+	for i := range len(colTypes) {
 		kr.InFunc(i, val[i])
 	}
 
@@ -412,7 +412,7 @@ func KeyRangeFromProto(krproto *proto.KeyRangeInfo, colTypes []string) *KeyRange
 	//	return nil, fmt.Errorf("number of columns mismatches with distribution")
 	//}
 
-	for i := 0; i < len(colTypes); i++ {
+	for i := range len(colTypes) {
 		kr.InFunc(i, krproto.Bound.Values[i])
 	}
 
@@ -433,7 +433,7 @@ func (kr *KeyRange) ToDB() *qdb.KeyRange {
 		KeyRangeID:     kr.ID,
 		DistributionId: kr.Distribution,
 	}
-	for i := 0; i < len(kr.ColumnTypes); i++ {
+	for i := range len(kr.ColumnTypes) {
 		krDb.LowerBound[i] = kr.OutFunc(i)
 	}
 	return krDb
@@ -456,7 +456,7 @@ func (kr *KeyRange) ToProto() *proto.KeyRangeInfo {
 		DistributionId: kr.Distribution,
 	}
 
-	for i := 0; i < len(kr.ColumnTypes); i++ {
+	for i := range len(kr.ColumnTypes) {
 		krProto.Bound.Values[i] = kr.OutFunc(i)
 	}
 

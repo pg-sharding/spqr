@@ -30,7 +30,7 @@ func getC() (net.Conn, error) {
 
 // nolint
 func readCnt(fr *pgproto3.Frontend, count int) error {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if _, err := fr.Receive(); err != nil {
 			return err
 		}
