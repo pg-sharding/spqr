@@ -9,7 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/startup"
 	"github.com/pkg/errors"
 )
@@ -39,10 +38,6 @@ func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRul
 }
 
 func (c *SchemaCache) GetColumns(schemaName, tableName string) ([]string, error) {
-	c.tableColumnsCache.Range(func(key, value any) bool {
-		spqrlog.Zero.Info().Interface("key", key).Interface("value", value).Msg("here")
-		return true
-	})
 	if c.be == nil {
 		return nil, errors.Errorf("backend rule was not provided")
 	}
