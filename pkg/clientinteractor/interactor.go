@@ -864,7 +864,7 @@ func (pi *PSQLInteractor) Clients(ctx context.Context, clients []client.ClientIn
 		sortable := SortableWithContext{data, rowDesc[ord.Col.ColName], asc_desc}
 		sort.Sort(sortable)
 	}
-	for i := 0; i < len(data); i++ {
+	for i := range len(data) {
 		if err := pi.WriteDataRow(data[i]...); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err

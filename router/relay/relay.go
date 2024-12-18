@@ -301,7 +301,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
 
-			for i := 0; i < len(q.Fields); i++ {
+			for i := range len(q.Fields) {
 				s := make([]byte, len(q.Fields[i].Name))
 				copy(s, q.Fields[i].Name)
 
@@ -1513,7 +1513,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 							cachedPd.rd.Fields = make([]pgproto3.FieldDescription, len(qq.Fields))
 
-							for i := 0; i < len(qq.Fields); i++ {
+							for i := range len(qq.Fields) {
 								s := make([]byte, len(qq.Fields[i].Name))
 								copy(s, qq.Fields[i].Name)
 

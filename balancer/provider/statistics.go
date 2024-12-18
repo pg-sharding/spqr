@@ -32,13 +32,13 @@ func NewShardMetrics() *ShardMetrics {
 }
 
 func (m *ShardMetrics) SetMasterMetrics(metrics HostMetrics) {
-	for i := 0; i < metricsCount; i++ {
+	for i := range metricsCount {
 		m.MetricsTotal[i] = metrics[i]
 	}
 }
 
 func (m *ShardMetrics) SetReplicaMetrics(metrics HostMetrics) {
-	for i := 0; i < metricsCount; i++ {
+	for i := range metricsCount {
 		m.MetricsTotal[i+metricsCount] = metrics[i]
 	}
 }

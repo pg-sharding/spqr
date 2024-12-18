@@ -715,7 +715,7 @@ func (tctx *testContext) stepHostIsStarted(service string) error {
 func (tctx *testContext) stepWaitPostgresqlToRespond(host string) error {
 	const trials = 10
 	const timeout = 20 * time.Second
-	for i := 0; i < trials; i++ {
+	for range trials {
 		_, err := tctx.queryPostgresql(host, shardUser, "SELECT 1", struct{}{}, postgresqlQueryTimeout)
 		if err == nil {
 			return nil

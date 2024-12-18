@@ -98,11 +98,11 @@ func TestCheckMultithreading(t *testing.T) {
 	statistics.InitStatistics([]float64{0.5})
 
 	var wg sync.WaitGroup
-	for k := 0; k < 100; k++ {
+	for range 100 {
 		wg.Add(1)
 		go func() {
 			tim := time.Now()
-			for i := 0; i < 1000; i++ {
+			for range 1000 {
 				statistics.RecordStartTime(statistics.Router, tim, 150)
 				statistics.RecordStartTime(statistics.Shard, tim.Add(time.Millisecond), 150)
 				statistics.RecordFinishedTransaction(tim.Add(time.Millisecond*2), 150)

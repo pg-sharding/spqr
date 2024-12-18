@@ -70,7 +70,7 @@ func NewShardPool(allocFn ConnectionAllocFn, host config.Host, beRule *config.Ba
 	}
 
 	ret.queue = make(chan struct{}, connLimit)
-	for tok := 0; tok < connLimit; tok++ {
+	for range connLimit {
 		ret.queue <- struct{}{}
 	}
 
@@ -117,7 +117,8 @@ func (h *shardPool) View() Statistics {
 // TODO : unit tests
 func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
 	if err := func() error {
-		for rep := 0; rep < h.connectionRetries; rep++ {
+		// TODO refactor
+		for range h.connectionRetries {
 			select {
 			// TODO: configure waits using backend rule
 			case <-time.After(time.Duration(h.connectionRetrySleepSlice) * time.Millisecond * time.Duration(1+rand.Int31()%int32(h.connectionRetryRandomSleep))):

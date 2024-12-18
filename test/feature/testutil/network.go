@@ -10,7 +10,7 @@ func GetFreePort() (string, error) {
 	const tries = 3
 	var errs []error
 
-	for i := 0; i < tries; i++ {
+	for range tries {
 		listener, err := net.Listen("tcp", ":0")
 		if err != nil {
 			errs = append(errs, fmt.Errorf("unable to bind on free port at localhost: %w", err))

@@ -19,10 +19,10 @@ func TestPoolViewThreading(t *testing.T) {
 		IdleConnCount: 2,
 		QueueSize:     3,
 	}
-	for k := 0; k < 100; k++ {
+	for range 100 {
 		go func() {
 			statistics := inf.View()
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				assert.Equal("db", statistics.DB)
 				assert.Equal("usr", statistics.Usr)
 				assert.Equal("host", statistics.Hostname)
