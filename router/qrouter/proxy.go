@@ -89,13 +89,13 @@ func (qr *ProxyQrouter) WorldShardsRoutes() []*routingstate.DataShardRoute {
 	return ret
 }
 
-func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter) (*ProxyQrouter, error) {
+func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (*ProxyQrouter, error) {
 	proxy := &ProxyQrouter{
 		WorldShardCfgs: map[string]*config.Shard{},
 		initialized:    atomic.NewBool(false),
 		cfg:            qcfg,
 		mgr:            mgr,
-		schemaCache:    cache.NewSchemaCache(shardMapping, config.RouterConfig().SchemaCacheBackendRule),
+		schemaCache:    cache,
 	}
 
 	for name, shardCfg := range shardMapping {
