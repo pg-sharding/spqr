@@ -75,15 +75,9 @@ type Shard interface {
 	SHKey() kr.ShardKey
 	Send(query pgproto3.FrontendMessage) error
 	Receive() (pgproto3.BackendMessage, error)
-
-	AddTLSConf(cfg *tls.Config) error
 	Cleanup(rule *config.FrontendRule) error
-
-	ConstructSM() *pgproto3.StartupMessage
 	Instance() conn.DBInstance
-
 	Cancel() error
-
 	Params() ParameterSet
 	Close() error
 }

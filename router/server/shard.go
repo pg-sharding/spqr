@@ -135,16 +135,6 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) 
 }
 
 // TODO : unit tests
-func (srv *ShardServer) AddTLSConf(cfg *tls.Config) error {
-	srv.mu.RLock()
-	defer srv.mu.RUnlock()
-	if srv.shard == nil {
-		return ErrShardUnavailable
-	}
-	return srv.shard.AddTLSConf(cfg)
-}
-
-// TODO : unit tests
 func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()

@@ -122,14 +122,6 @@ func (m *MultiShardServer) Name() string {
 	return "multishard"
 }
 
-func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
-	for _, shard := range m.activeShards {
-		_ = shard.AddTLSConf(cfg)
-	}
-
-	return nil
-}
-
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	for _, shard := range m.activeShards {
 		spqrlog.Zero.Debug().
