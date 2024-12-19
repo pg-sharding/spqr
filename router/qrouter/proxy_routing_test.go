@@ -1590,13 +1590,13 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT * FROM information_schema.columns JOIN tt ON true",
 			distribution: distribution.ID,
 			exp:          nil,
-			err:          qrouter.InformationSchemaCombinedQuery,
+			err:          qrouter.ErrInformationSchemaCombinedQuery,
 		},
 		{
 			query:        "SELECT * FROM information_schema.columns JOIN pg_class ON true;",
 			distribution: distribution.ID,
 			exp:          nil,
-			err:          qrouter.InformationSchemaCombinedQuery,
+			err:          qrouter.ErrInformationSchemaCombinedQuery,
 		},
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",

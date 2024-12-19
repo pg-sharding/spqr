@@ -159,7 +159,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 		// TBD: postpone routing from here to root of parsing tree
 		if len(meta.rels) != 1 {
 			// ambiguity in column aliasing
-			return RelationFQN{}, ComplexQuery
+			return RelationFQN{}, ErrComplexQuery
 		}
 		for tbl := range meta.rels {
 			resolvedRelation = tbl
@@ -168,10 +168,8 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 	}
 }
 
-var ComplexQuery = fmt.Errorf("too complex query to route")
-var InformationSchemaCombinedQuery = fmt.Errorf("combined information schema and regular relation is not supported")
-var FailedToFindKeyRange = fmt.Errorf("failed to match key with ranges")
-var ShardingKeysMissing = fmt.Errorf("sharding keys are missing in query")
+var ErrComplexQuery = fmt.Errorf("too complex query to route")
+var ErrInformationSchemaCombinedQuery = fmt.Errorf("combined information schema and regular relation is not supported")
 
 // DeparseExprShardingEntries deparses sharding column entries(column names or aliased column names)
 // e.g {fields:{string:{str:"a"}} fields:{string:{str:"i"}} for `WHERE a.i = 1`
@@ -181,7 +179,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingM
 	case *lyx.ColumnRef:
 		return q.TableAlias, q.ColName, nil
 	default:
-		return "", "", ComplexQuery
+		return "", "", ErrComplexQuery
 	}
 }
 
@@ -212,7 +210,7 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []in
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
-	return nil, FailedToFindKeyRange
+	return nil, fmt.Errorf("failed to match key with ranges")
 }
 
 func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *RoutingMetadataContext, resolvedRelation RelationFQN, colname string) (int, string) {
@@ -225,7 +223,11 @@ func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *RoutingMetadataContex
 		return -1, ""
 	}
 	// TODO: optimize
-	for ind, c := range ds.Relations[resolvedRelation.RelationName].DistributionKey {
+	relation, exists := ds.Relations[resolvedRelation.RelationName]
+	if !exists {
+		return -1, ""
+	}
+	for ind, c := range relation.DistributionKey {
 		if c.Column == colname {
 			return ind, ds.ColTypes[ind]
 		}
@@ -275,7 +277,7 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 			}
 			return meta.RecordConstExpr(resolvedRelation, colname, num)
 		default:
-			return fmt.Errorf("expression with incorrect type")
+			return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
 		}
 	case *lyx.AExprIConst:
 		switch tp {
@@ -284,13 +286,13 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return fmt.Errorf("expression with incorrect type")
+			return fmt.Errorf("varchar type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeInteger:
 			return meta.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
 		case qdb.ColumnTypeUinteger:
 			return meta.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
 		default:
-			return fmt.Errorf("expression with incorrect type")
+			return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
 		}
 	default:
 		return fmt.Errorf("expression is not const")
@@ -379,7 +381,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 		case *lyx.AExprEmpty:
 			/*skip*/
 		default:
-			return ComplexQuery
+			return ErrComplexQuery
 		}
 	}
 	return nil
@@ -423,7 +425,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 		return nil
 	}
 
-	return ComplexQuery
+	return ErrComplexQuery
 }
 
 // TODO : unit tests
@@ -551,7 +553,7 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 
 		return offsets, rfqn, true, nil
 	default:
-		return nil, RelationFQN{}, false, ComplexQuery
+		return nil, RelationFQN{}, false, ErrComplexQuery
 	}
 }
 
@@ -578,12 +580,11 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				return err
 			}
 		}
-		clause := stmt.Where
-		if clause == nil {
+		if stmt.Where == nil {
 			return nil
 		}
 
-		return qr.routeByClause(ctx, clause, meta)
+		return qr.routeByClause(ctx, stmt.Where, meta)
 
 	case *lyx.Insert:
 		if selectStmt := stmt.SubSelect; selectStmt != nil {
@@ -678,8 +679,6 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 	return nil
 }
-
-var ParseError = fmt.Errorf("parsing stmt error")
 
 // CheckTableIsRoutable Given table create statement, check if it is routable with some sharding rule
 // TODO : unit tests
@@ -945,108 +944,75 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 	case *lyx.Select:
-
-		/*
-		* Ugly hack here. Code should be refactored & simplyfied.
-		* We do not error-out immidiately to check some metadata-only rouing cases.
-		 */
-		var err error
-
-		/* We cannot route SQL stmt with no FROM clause provided, but there is still
-		* a few cases to consider
-		 */
+		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(node.FromClause) == 0 && (node.LArg == nil || node.RArg == nil) {
-			/* Step 1.4.8: select a_expr is routable to any shard in case when a_expr is some type of
-			data-independent expr */
-
-			spqrlog.Zero.Debug().Msg("checking any routable")
-
-			any_routable := false
 			for _, expr := range node.TargetList {
 				switch e := expr.(type) {
+				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
-					/* case 1.4.8.1 - SELECT current_schema() special case */
-					if e.Name == "current_schema" {
-						any_routable = true
-						/* case 1.4.8.2 - SELECT set_config(...) special case */
-					} else if e.Name == "set_config" {
-						any_routable = true
-						/* case 1.4.8.3 - SELECT pg_is_in_recovery special case */
-					} else if e.Name == "pg_is_in_recovery" {
-						any_routable = true
+					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" {
+						return routingstate.RandomMatchState{}, nil
 					}
+				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
-					// ok
-					any_routable = true
+					return routingstate.RandomMatchState{}, nil
 
+				/* Special case for SELECT current_schema */
 				case *lyx.ColumnRef:
-					/* Step 1.4.8.4 - SELECT current_schema special case */
 					if e.ColName == "current_schema" {
-						any_routable = true
+						return routingstate.RandomMatchState{}, nil
 					}
-				default:
 				}
 			}
-			if any_routable {
-				return routingstate.RandomMatchState{}, nil
-			}
-		} else if node.LArg != nil && node.RArg != nil {
-			/* deparse populates FromClause info,
-			* so do recurse into both branches even if error encountered
-			 */
-			l_err := qr.deparseShardingMapping(ctx, node.LArg, meta)
-			r_err := qr.deparseShardingMapping(ctx, node.RArg, meta)
-			if l_err != nil {
-				err = l_err
-			}
-			if r_err != nil {
-				err = r_err
-			}
 		} else {
-			// SELECT stmts, which
-			// would be routed with their WHERE clause
-			err = qr.deparseShardingMapping(ctx, stmt, meta)
+			/* Deparse populates FromClause info, so do recurse into both branches if possible */
+			if node.LArg != nil {
+				if err := qr.deparseShardingMapping(ctx, node.LArg, meta); err != nil {
+					return nil, err
+				}
+			}
+			if node.RArg != nil {
+				if err := qr.deparseShardingMapping(ctx, node.RArg, meta); err != nil {
+					return nil, err
+				}
+			}
+			if node.LArg == nil && node.RArg == nil {
+				/* SELECT stmts, which would be routed with their WHERE clause */
+				if err := qr.deparseShardingMapping(ctx, stmt, meta); err != nil {
+					return nil, err
+				}
+			}
 		}
 
-		/* immidiately error-out some corner cases, for example, when client
-		* tries to access information schema AND other relation in same TX
-		* as we are unable to serve this properly. Or can we?
-		* On the other hand, immediately route catalog-only queries to any shard.
+		/*
+		 *  Sometimes we have problems with some cases. For example, if a client
+		 *  tries to access information schema AND other relation in same TX.
+		 *  We are unable to serve this properly.
+		 *  But if this is a catalog-only query, we can route it to any shard.
 		 */
-		has_inf_schema := false
-		only_catalog := true
-		any_catalog := false
-		has_other_schema := false
+		hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
+
 		for rqfn := range meta.rels {
-			/* schema can be omittted here, check for pg_ prefix. */
-			if len(rqfn.RelationName) >= 3 && rqfn.RelationName[0:3] == "pg_" {
-				any_catalog = true
+			if strings.HasPrefix(rqfn.RelationName, "pg_") {
+				anyCatalog = true
 			} else {
-				only_catalog = false
+				onlyCatalog = false
 			}
 			if rqfn.SchemaName == "information_schema" {
-				has_inf_schema = true
+				hasInfSchema = true
 			} else {
-				has_other_schema = true
+				hasOtherSchema = true
 			}
 		}
 
-		/* case 1.5.1 */
-		if only_catalog && any_catalog {
-			/* catalog-only relation can actually be routed somewhere */
+		if onlyCatalog && anyCatalog {
 			return routingstate.RandomMatchState{}, nil
 		}
-
-		if has_inf_schema && has_other_schema {
-			return nil, InformationSchemaCombinedQuery
+		if hasInfSchema && hasOtherSchema {
+			return nil, ErrInformationSchemaCombinedQuery
 		}
-		if has_inf_schema {
-			/* metadata-only relation can actually be routed somewhere */
+		if hasInfSchema {
 			return routingstate.RandomMatchState{}, nil
-		}
-
-		if err != nil {
-			return nil, err
 		}
 
 	case *lyx.Delete, *lyx.Update:
@@ -1108,22 +1074,24 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 
-		distrKey := ds.Relations[rfqn.RelationName].DistributionKey
+		relation, exists := ds.Relations[rfqn.RelationName]
+		if !exists {
+			return nil, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
+		}
 
 		ok := true
-
-		compositeKey := make([]interface{}, len(distrKey))
+		compositeKey := make([]interface{}, len(relation.DistributionKey))
 
 		// TODO: multi-column routing. This works only for one-dim routing
-		for i := range len(distrKey) {
-			hf, err := hashfunction.HashFunctionByName(distrKey[i].HashFunction)
+		for i := range len(relation.DistributionKey) {
+			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
 			if err != nil {
 				ok = false
 				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 				break
 			}
 
-			col := distrKey[i].Column
+			col := relation.DistributionKey[i].Column
 
 			vals, valOk := qr.resolveValue(meta, rfqn, col, sph.BindParams(), queryParamsFormatCodes)
 
