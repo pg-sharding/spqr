@@ -998,7 +998,6 @@ func TestInsertOffsets(t *testing.T) {
 			},
 			err: nil,
 		},
-
 		{
 			query: `
 			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
@@ -1502,7 +1501,7 @@ func TestSetStmt(t *testing.T) {
 	}
 }
 
-func TestMiscRouting(t *testing.T) {
+func TestRouteWithRules_Select(t *testing.T) {
 	assert := assert.New(t)
 
 	type tcase struct {
@@ -1512,24 +1511,50 @@ func TestMiscRouting(t *testing.T) {
 		err          error
 	}
 	db, _ := qdb.NewMemQDB(MemQDBPath)
-	distribution1 := "ds1"
-	distribution2 := "ds2"
+	distribution := &qdb.Distribution{
+		ID:       "ds1",
+		ColTypes: []string{qdb.ColumnTypeVarchar},
+		Relations: map[string]*qdb.DistributedRelation{
+			"users": {
+				Name: "users",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+		},
+	}
+	unusedDistribution := &qdb.Distribution{
+		ID:       "ds2",
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"documents": {
+				Name: "documents",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+		},
+	}
 
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution1, nil)))
-	assert.NoError(db.CreateDistribution(context.TODO(), qdb.NewDistribution(distribution2, nil)))
+	assert.NoError(db.CreateDistribution(context.TODO(), distribution))
+	assert.NoError(db.CreateDistribution(context.TODO(), unusedDistribution))
 
 	err := db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh1",
-		DistributionId: distribution1,
+		DistributionId: distribution.ID,
 		KeyRangeID:     "id1",
-		LowerBound:     [][]byte{[]byte("1")},
+		LowerBound:     [][]byte{[]byte("00000000-0000-0000-0000-000000000000")},
 	})
 
 	assert.NoError(err)
 
 	err = db.CreateKeyRange(context.TODO(), &qdb.KeyRange{
 		ShardID:        "sh2",
-		DistributionId: distribution2,
+		DistributionId: unusedDistribution.ID,
 		KeyRangeID:     "id2",
 		LowerBound:     [][]byte{[]byte("1")},
 	})
@@ -1550,31 +1575,130 @@ func TestMiscRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query:        "SELECT * FROM information_schema.columns;",
-			distribution: distribution1,
+			distribution: distribution.ID,
 			exp:          routingstate.RandomMatchState{},
 			err:          nil,
 		},
 
 		{
 			query:        "SELECT * FROM information_schema.sequences;",
-			distribution: distribution1,
+			distribution: distribution.ID,
 			exp:          routingstate.RandomMatchState{},
 			err:          nil,
 		},
-
 		{
 			query:        "SELECT * FROM information_schema.columns JOIN tt ON true",
-			distribution: distribution1,
+			distribution: distribution.ID,
 			exp:          nil,
 			err:          qrouter.InformationSchemaCombinedQuery,
 		},
-
 		{
-			query:        "select 'Hello, world!'",
-			distribution: distribution1,
+			query:        "SELECT * FROM information_schema.columns JOIN pg_class ON true;",
+			distribution: distribution.ID,
+			exp:          nil,
+			err:          qrouter.InformationSchemaCombinedQuery,
+		},
+		{
+			query:        "SELECT * FROM pg_class JOIN users ON true;",
+			distribution: distribution.ID,
+			exp:          routingstate.MultiMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
+			distribution: distribution.ID,
 			exp:          routingstate.RandomMatchState{},
 			err:          nil,
 		},
+		{
+			query:        "SELECT current_schema;",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT current_schema();",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT pg_is_in_recovery();",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT set_config('log_statement_stats', 'off', false);",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT 1;",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT true;",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT 'Hello, world!'",
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT * FROM users;",
+			distribution: distribution.ID,
+			exp:          routingstate.MultiMatchState{},
+			err:          nil,
+		},
+		{
+			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
+			distribution: distribution.ID,
+			exp: routingstate.ShardMatchState{
+				Route: &routingstate.DataShardRoute{
+					Shkey: kr.ShardKey{
+						Name: "sh1",
+					},
+					Matchedkr: &kr.KeyRange{
+						ID:           "id1",
+						ShardID:      "sh1",
+						Distribution: distribution.ID,
+						LowerBound:   []interface{}{"00000000-0000-0000-0000-000000000000"},
+						ColumnTypes:  []string{qdb.ColumnTypeVarchar},
+					},
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+		// TODO rewrite routeByClause to support this
+		// {
+		// 	query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
+		// 	distribution: distribution.ID,
+		// 	exp: routingstate.ShardMatchState{
+		// 		Route: &routingstate.DataShardRoute{
+		// 			Shkey: kr.ShardKey{
+		// 				Name: "sh1",
+		// 			},
+		// 			Matchedkr: &kr.KeyRange{
+		// 				ID:           "id1",
+		// 				ShardID:      "sh1",
+		// 				Distribution: distribution.ID,
+		// 				LowerBound:   []interface{}{"00000000-0000-0000-0000-000000000000"},
+		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
+		// 			},
+		// 		},
+		// 		TargetSessionAttrs: "any",
+		// 	},
+		// 	err: nil,
+		// },
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
@@ -1583,7 +1707,6 @@ func TestMiscRouting(t *testing.T) {
 		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(tt.distribution))
 		if tt.err == nil {
 			assert.NoError(err, "query %s", tt.query)
-
 			assert.Equal(tt.exp, tmp, tt.query)
 		} else {
 			assert.Error(tt.err, err, tt.query)
