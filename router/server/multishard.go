@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/tls"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
