@@ -137,7 +137,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 					* DDL of about-to-be-created relation
 					 */
 				} else {
-					return fmt.Errorf("spqr distribution specified, but distribution key omitted.")
+					return fmt.Errorf("spqr distribution specified, but distribution key omitted")
 				}
 			}
 			if val, ok := mp[session.SPQR_ALLOW_MULTISHARD]; ok && val == "true" {

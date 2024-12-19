@@ -1232,15 +1232,13 @@ func (rst *RelayStateImpl) AddExtendedProtocMessage(q pgproto3.FrontendMessage) 
 	rst.xBuf = append(rst.xBuf, q)
 }
 
-var MultiShardPrepStmtDeployError = fmt.Errorf("multishard prepared statement deploy is not supported")
-
 // TODO : unit tests
 func (rst *RelayStateImpl) DeployPrepStmt(qname string) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	def := rst.Client().PreparedStatementDefinitionByName(qname)
 	hash := rst.Client().PreparedStatementQueryHashByName(qname)
 
 	if len(rst.Client().Server().Datashards()) != 1 {
-		return nil, nil, MultiShardPrepStmtDeployError
+		return nil, nil, fmt.Errorf("multishard prepared statement deploy is not supported")
 	}
 
 	spqrlog.Zero.Debug().
@@ -1686,9 +1684,6 @@ func (rst *RelayStateImpl) PrepareRelayStep(cmngr poolmgr.PoolMgr) error {
 	case qrouter.MatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
-	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
-		return ErrSkipQuery
 	default:
 		rst.msgBuf = nil
 		return err
@@ -1734,9 +1729,6 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 	case qrouter.MatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
 		return ErrSkipQuery
-	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
-		return ErrSkipQuery
 	default:
 		rst.msgBuf = nil
 		return err
@@ -1773,9 +1765,6 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute(cmngr poolmgr.PoolMgr) (fu
 		return noopCloseRouteFunc, ErrSkipQuery
 	case qrouter.MatchShardError:
 		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_NO_DATASHARD)
-		return noopCloseRouteFunc, ErrSkipQuery
-	case qrouter.ParseError:
-		_ = rst.Client().ReplyErrMsgByCode(spqrerror.SPQR_COMPLEX_QUERY)
 		return noopCloseRouteFunc, ErrSkipQuery
 	default:
 		rst.msgBuf = nil
