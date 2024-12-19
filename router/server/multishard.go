@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/tls"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -120,14 +119,6 @@ func (m *MultiShardServer) UnRouteShard(sh kr.ShardKey, rule *config.FrontendRul
 
 func (m *MultiShardServer) Name() string {
 	return "multishard"
-}
-
-func (m *MultiShardServer) AddTLSConf(cfg *tls.Config) error {
-	for _, shard := range m.activeShards {
-		_ = shard.AddTLSConf(cfg)
-	}
-
-	return nil
 }
 
 func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {

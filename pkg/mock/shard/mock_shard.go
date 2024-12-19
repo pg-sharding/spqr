@@ -5,7 +5,6 @@
 package mock
 
 import (
-	tls "crypto/tls"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -433,20 +432,6 @@ func (m *MockShard) EXPECT() *MockShardMockRecorder {
 	return m.recorder
 }
 
-// AddTLSConf mocks base method.
-func (m *MockShard) AddTLSConf(cfg *tls.Config) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddTLSConf", cfg)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddTLSConf indicates an expected call of AddTLSConf.
-func (mr *MockShardMockRecorder) AddTLSConf(cfg interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddTLSConf", reflect.TypeOf((*MockShard)(nil).AddTLSConf), cfg)
-}
-
 // Cancel mocks base method.
 func (m *MockShard) Cancel() error {
 	m.ctrl.T.Helper()
@@ -487,20 +472,6 @@ func (m *MockShard) Close() error {
 func (mr *MockShardMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockShard)(nil).Close))
-}
-
-// ConstructSM mocks base method.
-func (m *MockShard) ConstructSM() *pgproto3.StartupMessage {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConstructSM")
-	ret0, _ := ret[0].(*pgproto3.StartupMessage)
-	return ret0
-}
-
-// ConstructSM indicates an expected call of ConstructSM.
-func (mr *MockShardMockRecorder) ConstructSM() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConstructSM", reflect.TypeOf((*MockShard)(nil).ConstructSM))
 }
 
 // DB mocks base method.

@@ -2,7 +2,7 @@ GIT_REVISION=`git rev-parse --short HEAD`
 SPQR_VERSION=`git describe --tags --abbrev=0`
 LDFLAGS=-ldflags "-X github.com/pg-sharding/spqr/pkg.GitRevision=${GIT_REVISION} -X github.com/pg-sharding/spqr/pkg.SpqrVersion=${SPQR_VERSION}"
 GCFLAGS=-gcflags=all="-N -l"
-GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc)
+GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor | grep -v yacc | grep -v .git)
 
 .PHONY : run
 .DEFAULT_GOAL := deps

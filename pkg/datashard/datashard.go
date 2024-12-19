@@ -1,7 +1,6 @@
 package datashard
 
 import (
-	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -18,36 +17,8 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 )
 
-// TODO : unit tests
-
-// ConstructSM constructs and returns a pgproto3.StartupMessage based on the Conn struct's configuration.
-//
-// Parameters:
-// - None.
-//
-// Returns:
-// - *pgproto3.StartupMessage: The constructed StartupMessage.
-func (sh *Conn) ConstructSM() *pgproto3.StartupMessage {
-	sm := &pgproto3.StartupMessage{
-		ProtocolVersion: pgproto3.ProtocolVersionNumber,
-		Parameters: map[string]string{
-			"application_name": "app",
-			"client_encoding":  "UTF8",
-			"user":             sh.Usr(),
-			"database":         sh.beRule.DB,
-		},
-	}
-
-	if sh.sp.SearchPath != "" {
-		sm.Parameters["search_path"] = sh.sp.SearchPath
-	}
-
-	return sm
-}
-
 type Conn struct {
 	beRule             *config.BackendRule
-	sp                 *startup.StartupParams
 	cfg                *config.Shard
 	name               string
 	dedicated          conn.DBInstance
@@ -177,25 +148,6 @@ func (sh *Conn) Cancel() error {
 		Msg("sendind cancel msg")
 
 	return pgiTmp.Cancel(msg)
-}
-
-// AddTLSConf adds the TLS configuration to the Conn struct.
-//
-// Parameters:
-// - tlsconfig (*tls.Config): The TLS configuration to be added.
-//
-// Returns:
-// - error: An error if the TLS configuration cannot be added.
-func (sh *Conn) AddTLSConf(tlsconfig *tls.Config) error {
-	if err := sh.dedicated.ReqBackendSsl(tlsconfig); err != nil {
-		spqrlog.Zero.Debug().
-			Err(err).
-			Str("host", sh.dedicated.Hostname()).
-			Uint("shard", sh.ID()).
-			Msg("failed to init ssl on host of datashard")
-		return err
-	}
-	return nil
 }
 
 // TODO : unit tests
@@ -411,21 +363,19 @@ func NewShard(
 	sp *startup.StartupParams) (shard.Shard, error) {
 
 	dtSh := &Conn{
-		cfg:      cfg,
-		name:     key.Name,
-		beRule:   beRule,
-		sp:       sp,
-		ps:       shard.ParameterSet{},
-		sync_in:  1, /* +1 for startup message */
-		sync_out: 0,
-		stmtDef:  map[uint64]*prepstatement.PreparedStatementDefinition{},
-		stmtDesc: map[uint64]*prepstatement.PreparedStatementDescriptor{},
+		cfg:       cfg,
+		name:      key.Name,
+		beRule:    beRule,
+		ps:        shard.ParameterSet{},
+		sync_in:   1, /* +1 for startup message */
+		sync_out:  0,
+		stmtDef:   map[uint64]*prepstatement.PreparedStatementDefinition{},
+		stmtDesc:  map[uint64]*prepstatement.PreparedStatementDescriptor{},
+		dedicated: pgi,
 	}
 
-	dtSh.dedicated = pgi
-
 	if dtSh.dedicated.Status() == conn.NotInitialized {
-		if err := dtSh.Auth(dtSh.ConstructSM()); err != nil {
+		if err := dtSh.Auth(sp); err != nil {
 			return nil, err
 		}
 		dtSh.dedicated.SetStatus(conn.ACQUIRED)
@@ -443,11 +393,26 @@ func NewShard(
 //   - error: An error if authentication fails.
 
 // TODO : unit tests
-func (sh *Conn) Auth(sm *pgproto3.StartupMessage) error {
+func (sh *Conn) Auth(sp *startup.StartupParams) error {
+	sm := &pgproto3.StartupMessage{
+		ProtocolVersion: pgproto3.ProtocolVersionNumber,
+		Parameters: map[string]string{
+			"application_name": "app",
+			"client_encoding":  "UTF8",
+			"user":             sh.Usr(),
+			"database":         sh.beRule.DB,
+		},
+	}
+
+	if sp.SearchPath != "" {
+		sm.Parameters["search_path"] = sp.SearchPath
+	}
+
 	spqrlog.Zero.Debug().
 		Uint("shard", sh.ID()).
 		Interface("msg", sm).
 		Msg("shard connection startup message")
+
 	if err := sh.dedicated.Send(sm); err != nil {
 		return err
 	}
