@@ -205,6 +205,8 @@ type Kill struct {
 	Target uint
 }
 
+type InvalidateCache struct{}
+
 // coordinator
 
 type RegisterRouter struct {
@@ -320,6 +322,7 @@ func (*Kill) iStatement()                   {}
 func (*WhereClauseLeaf) iStatement()        {}
 func (*WhereClauseEmpty) iStatement()       {}
 func (*WhereClauseOp) iStatement()          {}
+func (*InvalidateCache) iStatement()        {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/router/cache"
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -45,6 +46,10 @@ func NewAdapter(conn *grpc.ClientConn) *Adapter {
 // Returns:
 // - qdb.QDB: The QDB object.
 func (a *Adapter) QDB() qdb.QDB {
+	panic("implement me?")
+}
+
+func (a *Adapter) Cache() *cache.SchemaCache {
 	panic("implement me?")
 }
 

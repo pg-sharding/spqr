@@ -13,6 +13,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/console"
 	"github.com/pg-sharding/spqr/router/frontend"
 	"github.com/pg-sharding/spqr/router/poolmgr"
@@ -90,7 +91,8 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		}
 	}
 
-	lc := local.NewLocalCoordinator(db)
+	cache := cache.NewSchemaCache(rcfg.ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	lc := local.NewLocalCoordinator(db, cache)
 
 	var notifier *sdnotifier.Notifier
 	if rcfg.UseSystemdNotifier {
@@ -109,7 +111,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
 
-	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr)
+	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr, cache)
 	if err != nil {
 		return nil, err
 	}

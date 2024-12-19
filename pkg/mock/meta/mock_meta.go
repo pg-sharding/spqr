@@ -15,6 +15,7 @@ import (
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
+	cache "github.com/pg-sharding/spqr/router/cache"
 )
 
 // MockEntityMgr is a mock of EntityMgr interface.
@@ -108,6 +109,20 @@ func (m *MockEntityMgr) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMove
 func (mr *MockEntityMgrMockRecorder) BatchMoveKeyRange(ctx, req interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchMoveKeyRange", reflect.TypeOf((*MockEntityMgr)(nil).BatchMoveKeyRange), ctx, req)
+}
+
+// Cache mocks base method.
+func (m *MockEntityMgr) Cache() *cache.SchemaCache {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cache")
+	ret0, _ := ret[0].(*cache.SchemaCache)
+	return ret0
+}
+
+// Cache indicates an expected call of Cache.
+func (mr *MockEntityMgrMockRecorder) Cache() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cache", reflect.TypeOf((*MockEntityMgr)(nil).Cache))
 }
 
 // CreateDistribution mocks base method.

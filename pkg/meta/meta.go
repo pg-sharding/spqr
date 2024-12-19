@@ -16,6 +16,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/cache"
 
 	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -37,6 +38,7 @@ type EntityMgr interface {
 	ShareKeyRange(id string) error
 
 	QDB() qdb.QDB
+	Cache() *cache.SchemaCache
 }
 
 var unknownCoordinatorCommand = fmt.Errorf("unknown coordinator cmd")
@@ -437,6 +439,9 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 		return processAlter(ctx, stmt.Element, mgr, cli)
 	case *spqrparser.RedistributeKeyRange:
 		return processRedistribute(ctx, stmt, mgr, cli)
+	case *spqrparser.InvalidateCache:
+		mgr.Cache().Reset()
+		return cli.CompleteMsg(0)
 	default:
 		return unknownCoordinatorCommand
 	}

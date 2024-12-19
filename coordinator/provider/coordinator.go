@@ -43,6 +43,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/cache"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
@@ -192,6 +193,7 @@ type CoordinatorClient interface {
 type qdbCoordinator struct {
 	tlsconfig *tls.Config
 	db        qdb.XQDB
+	cache     *cache.SchemaCache
 }
 
 func (qc *qdbCoordinator) ShareKeyRange(id string) error {
@@ -200,6 +202,10 @@ func (qc *qdbCoordinator) ShareKeyRange(id string) error {
 
 func (qc *qdbCoordinator) QDB() qdb.QDB {
 	return qc.db
+}
+
+func (qc *qdbCoordinator) Cache() *cache.SchemaCache {
+	return qc.cache
 }
 
 var _ coordinator.Coordinator = &qdbCoordinator{}

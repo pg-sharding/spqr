@@ -61,6 +61,8 @@ func randomHex(n int) (string, error) {
 	
 	redistribute           *RedistributeKeyRange
 
+	invalidate_cache       *InvalidateCache
+
 	shutdown               *Shutdown
 	listen                 *Listen
 
@@ -150,6 +152,7 @@ func randomHex(n int) (string, error) {
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
 %token <str> CLIENT
 %token <str> BATCH SIZE
+%token <str> INVALIDATE CACHE
 
 %token <str> IDENTITY MURMUR CITY 
 
@@ -198,6 +201,8 @@ func randomHex(n int) (string, error) {
 
 %type<alter> alter_stmt
 %type<alter_distribution> distribution_alter_stmt
+
+%type<invalidate_cache> invalidate_cache_stmt
 
 %type<relations> relation_attach_stmt
 %type<relations> distributed_relation_list_def
@@ -306,6 +311,10 @@ command:
 		setParseTree(yylex, $1)
 	}
 	| alter_stmt
+	{
+		setParseTree(yylex, $1)
+	}
+	| invalidate_cache_stmt
 	{
 		setParseTree(yylex, $1)
 	}
@@ -890,6 +899,12 @@ shutdown_stmt:
 	SHUTDOWN
 	{
 		$$ = &Shutdown{}
+	}
+
+invalidate_cache_stmt:
+	INVALIDATE CACHE
+	{
+		$$ = &InvalidateCache{}
 	}
 
 // coordinator

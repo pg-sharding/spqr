@@ -51,3 +51,8 @@ backend_rules:
     db: db1
     pool_discard: true
     pool_rollback: true
+schema_cache_backend_rule:
+  usr: user1
+  db: db1
+  pool_discard: true
+  pool_rollback: true

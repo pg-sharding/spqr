@@ -104,3 +104,7 @@ func (c *SchemaCache) GetColumns(schemaName, tableName string) ([]string, error)
 		}
 	}
 }
+
+func (c *SchemaCache) Reset() {
+	c.tableColumnsCache.Clear()
+}
