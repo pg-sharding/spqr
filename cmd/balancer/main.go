@@ -37,8 +37,20 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+var testCmd = &cobra.Command{
+	Use:   "test-config {path-to-config | -c path-to-config}",
+	Short: "Load, validate and print the given config file",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 2 {
+			cfgPath = args[1]
+		}
+		return config.LoadBalancerCfg(cfgPath)
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/balancer.yaml", "path to config file")
+	rootCmd.AddCommand(testCmd)
 }
 
 func main() {

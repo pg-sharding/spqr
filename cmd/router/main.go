@@ -88,6 +88,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(testCmd)
 }
 
 var runCmd = &cobra.Command{
@@ -395,6 +396,17 @@ var runCmd = &cobra.Command{
 		wg.Wait()
 
 		return nil
+	},
+}
+
+var testCmd = &cobra.Command{
+	Use:   "test-config {path-to-config | -c path-to-config}",
+	Short: "Load, validate and print the given config file",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 2 {
+			rcfgPath = args[1]
+		}
+		return config.LoadRouterCfg(rcfgPath)
 	},
 }
 
