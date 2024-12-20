@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"gopkg.in/yaml.v2"
 )
@@ -98,7 +99,7 @@ type QRouter struct {
 type BackendRule struct {
 	DB              string                     `json:"db" yaml:"db" toml:"db"`
 	Usr             string                     `json:"usr" yaml:"usr" toml:"usr"`
-	AuthRules       map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"` // TODO validate
+	AuthRules       map[string]*AuthBackendCfg `json:"auth_rules" yaml:"auth_rules" toml:"auth_rules"`
 	DefaultAuthRule *AuthBackendCfg            `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 	PoolDefault     bool                       `json:"pool_default" yaml:"pool_default" toml:"pool_default"`
 
@@ -113,7 +114,7 @@ type FrontendRule struct {
 	DB                    string   `json:"db" yaml:"db" toml:"db"`
 	Usr                   string   `json:"usr" yaml:"usr" toml:"usr"`
 	SearchPath            string   `json:"search_path" yaml:"search_path" toml:"search_path"`
-	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"` // TODO validate
+	AuthRule              *AuthCfg `json:"auth_rule" yaml:"auth_rule" toml:"auth_rule"`
 	PoolMode              PoolMode `json:"pool_mode" yaml:"pool_mode" toml:"pool_mode"`
 	PoolDiscard           bool     `json:"pool_discard" yaml:"pool_discard" toml:"pool_discard"`
 	PoolRollback          bool     `json:"pool_rollback" yaml:"pool_rollback" toml:"pool_rollback"`
@@ -218,6 +219,11 @@ func LoadRouterCfg(cfgPath string) error {
 		return err
 	}
 
+	if err := validateRouterConfig(&rcfg); err != nil {
+		cfgRouter = rcfg
+		return err
+	}
+
 	statistics.InitStatistics(rcfg.TimeQuantiles)
 
 	configBytes, err := json.MarshalIndent(rcfg, "", "  ")
@@ -245,12 +251,47 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 		return err
 	}
 	if strings.HasSuffix(file.Name(), ".yaml") {
-		return yaml.NewDecoder(file).Decode(&cfgRouter)
+		return yaml.NewDecoder(file).Decode(cfgRouter)
 	}
 	if strings.HasSuffix(file.Name(), ".json") {
-		return json.NewDecoder(file).Decode(&cfgRouter)
+		return json.NewDecoder(file).Decode(cfgRouter)
 	}
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
+}
+
+func validateRouterConfig(cfg *Router) error {
+	for sh, shCfg := range cfg.ShardMapping {
+		if shCfg == nil {
+			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "shard \"%s\" is stated in config, but no actual config is provided", sh)
+		}
+	}
+	for _, rule := range cfg.BackendRules {
+		for name, authRule := range rule.AuthRules {
+			if authRule == nil {
+				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "user \"%s\" is stated in backend rule \"%s.%s\", but no auth config is provided", name, rule.Usr, rule.DB)
+			}
+		}
+	}
+	for _, rule := range cfg.FrontendRules {
+		if rule.AuthRule == nil {
+			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "No auth rule provided for frontend rule \"%s.%s\"", rule.Usr, rule.DB)
+		}
+		switch rule.AuthRule.Method {
+		case AuthGSS:
+			if rule.AuthRule.GssConfig == nil {
+				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "Frontend rule \"%s.%s\" has auth method GSS, but no GSS config is provided", rule.Usr, rule.DB)
+			}
+		case AuthLDAP:
+			if rule.AuthRule.LDAPConfig == nil {
+				return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "Frontend rule \"%s.%s\" has auth method LDAP, but no LDAP config is provided", rule.Usr, rule.DB)
+			}
+		case AuthNotOK, AuthOK, AuthClearText, AuthMD5, AuthSCRAM:
+			continue
+		default:
+			return spqrerror.Newf(spqrerror.SPQR_CONFIG_ERROR, "invalid auth method \"%s\"", rule.AuthRule.Method)
+		}
+	}
+	return nil
 }
 
 // RouterConfig returns the router configuration.
