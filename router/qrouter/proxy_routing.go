@@ -379,8 +379,12 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			/* should not happend */
 		case *lyx.AExprEmpty:
 			/*skip*/
+		case *lyx.Select:
+			/* select inside select case, skip*/
+		case *lyx.FuncApplication:
+			/* function application case, skip */
 		default:
-			/*skip*/
+			return fmt.Errorf("%w: unexpected node type %T", ErrComplexQuery, texpr)
 		}
 	}
 	return nil
