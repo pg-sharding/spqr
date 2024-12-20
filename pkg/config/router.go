@@ -259,6 +259,13 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 	return fmt.Errorf("unknown config format type: %s. Use .toml, .yaml or .json suffix in filename", file.Name())
 }
 
+// validateRouterConfig checks the validity of the router configuration.
+//
+// Parameters:
+//   - cfg (*Router): the router config to check
+//
+// Returns:
+//   - error: an error if config is invaild, nil otherwise
 func validateRouterConfig(cfg *Router) error {
 	for sh, shCfg := range cfg.ShardMapping {
 		if shCfg == nil {
