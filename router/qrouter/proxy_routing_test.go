@@ -1658,8 +1658,28 @@ func TestRouteWithRules_Select(t *testing.T) {
 			exp:          routingstate.MultiMatchState{},
 			err:          nil,
 		},
+		// {
+		// 	query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
+		// 	distribution: distribution.ID,
+		// 	exp: routingstate.ShardMatchState{
+		// 		Route: &routingstate.DataShardRoute{
+		// 			Shkey: kr.ShardKey{
+		// 				Name: "sh1",
+		// 			},
+		// 			Matchedkr: &kr.KeyRange{
+		// 				ID:           "id1",
+		// 				ShardID:      "sh1",
+		// 				Distribution: distribution.ID,
+		// 				LowerBound:   []interface{}{"00000000-0000-0000-0000-000000000000"},
+		// 				ColumnTypes:  []string{qdb.ColumnTypeVarchar},
+		// 			},
+		// 		},
+		// 		TargetSessionAttrs: "any",
+		// 	},
+		// 	err: nil,
+		// },
 		{
-			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
+			query:        "SELECT * FROM users WHERE user_is_visible('5f57cd31-806f-4789-a6fa-1d959ec4c64a');",
 			distribution: distribution.ID,
 			exp: routingstate.ShardMatchState{
 				Route: &routingstate.DataShardRoute{

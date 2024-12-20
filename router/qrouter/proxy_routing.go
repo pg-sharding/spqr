@@ -380,9 +380,12 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 		case *lyx.AExprEmpty:
 			/*skip*/
 		case *lyx.Select:
-			/* select inside select case, skip*/
+			queue = append(queue, texpr.Where)
 		case *lyx.FuncApplication:
-			/* function application case, skip */
+			for _, i := range texpr.Args {
+				panic(i)
+			}
+			queue = append(queue, texpr.Args...)
 		default:
 			return fmt.Errorf("%w: unexpected node type %T", ErrComplexQuery, texpr)
 		}
