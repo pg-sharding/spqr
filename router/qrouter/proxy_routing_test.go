@@ -1678,6 +1678,19 @@ func TestRouteWithRules_Select(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: `
+			SELECT c.relname, NULL::pg_catalog.text FROM pg_catalog.pg_class c WHERE c.relkind IN ('r', 'p') AND (c.relname) LIKE 'x%' AND pg_catalog.pg_table_is_visible(c.oid) AND c.relnamespace <> (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = 'pg_catalog')
+UNION ALL
+SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.nspname LIKE 'x%' AND n.nspname NOT LIKE E'pg\\_%'
+LIMIT 1000
+`,
+			distribution: distribution.ID,
+			exp:          routingstate.RandomMatchState{},
+			err:          nil,
+		},
+
 		// TODO rewrite routeByClause to support this
 		// {
 		// 	query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",

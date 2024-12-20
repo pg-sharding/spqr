@@ -956,6 +956,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, err
 		}
 	case *lyx.Select:
+
+		var deparseError error
+
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(node.FromClause) == 0 && (node.LArg == nil || node.RArg == nil) {
 			for _, expr := range node.TargetList {
@@ -976,24 +979,19 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 					}
 				}
 			}
+		} else if node.LArg != nil && node.RArg != nil {
+			/* deparse populates the FromClause info,
+			 * so it do recurse into both branches, even if an error is encountered
+			 */
+			if err := qr.deparseShardingMapping(ctx, node.LArg, meta); err != nil {
+				deparseError = err
+			}
+			if err := qr.deparseShardingMapping(ctx, node.RArg, meta); err != nil {
+				deparseError = err
+			}
 		} else {
-			/* Deparse populates FromClause info, so do recurse into both branches if possible */
-			if node.LArg != nil {
-				if err := qr.deparseShardingMapping(ctx, node.LArg, meta); err != nil {
-					return nil, err
-				}
-			}
-			if node.RArg != nil {
-				if err := qr.deparseShardingMapping(ctx, node.RArg, meta); err != nil {
-					return nil, err
-				}
-			}
-			if node.LArg == nil && node.RArg == nil {
-				/* SELECT stmts, which would be routed with their WHERE clause */
-				if err := qr.deparseShardingMapping(ctx, stmt, meta); err != nil {
-					return nil, err
-				}
-			}
+			/*  SELECT stmts, which would be routed with their WHERE clause */
+			deparseError = qr.deparseShardingMapping(ctx, stmt, meta)
 		}
 
 		/*
@@ -1025,6 +1023,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		}
 		if hasInfSchema {
 			return routingstate.RandomMatchState{}, nil
+		}
+
+		if deparseError != nil {
+			return nil, deparseError
 		}
 
 	case *lyx.Delete, *lyx.Update:
