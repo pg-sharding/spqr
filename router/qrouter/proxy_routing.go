@@ -158,8 +158,7 @@ func (meta *RoutingMetadataContext) ResolveRelationByAlias(alias string) (Relati
 	} else {
 		// TBD: postpone routing from here to root of parsing tree
 		if len(meta.rels) != 1 {
-			// ambiguity in column aliasing
-			return RelationFQN{}, ErrComplexQuery
+			return RelationFQN{}, fmt.Errorf("%w: ambiguity in column aliasing", ErrComplexQuery)
 		}
 		for tbl := range meta.rels {
 			resolvedRelation = tbl
@@ -179,7 +178,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *RoutingM
 	case *lyx.ColumnRef:
 		return q.TableAlias, q.ColName, nil
 	default:
-		return "", "", ErrComplexQuery
+		return "", "", fmt.Errorf("%w: unknown expression type %T", ErrComplexQuery, expr)
 	}
 }
 
@@ -381,7 +380,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 		case *lyx.AExprEmpty:
 			/*skip*/
 		default:
-			return ErrComplexQuery
+			/*skip*/
 		}
 	}
 	return nil
