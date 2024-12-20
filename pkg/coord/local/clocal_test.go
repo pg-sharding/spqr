@@ -18,7 +18,7 @@ func TestListKeyRangesCaches(t *testing.T) {
 
 	db := mock.NewMockQDB(ctrl)
 
-	lc := local.NewLocalCoordinator(db)
+	lc := local.NewLocalCoordinator(db, nil)
 
 	krs := []*qdb.KeyRange{
 		{

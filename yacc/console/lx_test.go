@@ -180,6 +180,13 @@ func TestSimpleLex(t *testing.T) {
 				spqrparser.GROUP,
 			},
 		},
+		{
+			query: "INVALIDATE CACHE",
+			exp: []int{
+				spqrparser.INVALIDATE,
+				spqrparser.CACHE,
+			},
+		},
 	} {
 		tmp := spqrparser.NewStringTokenizer(tt.query)
 

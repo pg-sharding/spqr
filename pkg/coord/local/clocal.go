@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
+	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
@@ -33,6 +34,8 @@ type LocalCoordinator struct {
 
 	// not extended QDB, since the router does not need to track the installation topology
 	qdb qdb.QDB
+
+	cache *cache.SchemaCache
 }
 
 // GetMoveTaskGroup retrieves the MoveTask group from the local coordinator's QDB.
@@ -929,6 +932,10 @@ func (lc *LocalCoordinator) QDB() qdb.QDB {
 	return lc.qdb
 }
 
+func (lc *LocalCoordinator) Cache() *cache.SchemaCache {
+	return lc.cache
+}
+
 // NewLocalCoordinator creates a new LocalCoordinator instance.
 //
 // Parameters:
@@ -936,10 +943,11 @@ func (lc *LocalCoordinator) QDB() qdb.QDB {
 //
 // Returns:
 // - meta.EntityMgr: The newly created LocalCoordinator instance.
-func NewLocalCoordinator(db qdb.QDB) meta.EntityMgr {
+func NewLocalCoordinator(db qdb.QDB, cache *cache.SchemaCache) meta.EntityMgr {
 	return &LocalCoordinator{
 		DataShardCfgs:  map[string]*config.Shard{},
 		WorldShardCfgs: map[string]*config.Shard{},
 		qdb:            db,
+		cache:          cache,
 	}
 }

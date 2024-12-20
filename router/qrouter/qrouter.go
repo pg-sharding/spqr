@@ -33,12 +33,12 @@ type QueryRouter interface {
 	SchemaCache() *cache.SchemaCache
 }
 
-func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter) (QueryRouter, error) {
+func NewQrouter(qtype config.RouterMode, shardMapping map[string]*config.Shard, mgr meta.EntityMgr, qcfg *config.QRouter, cache *cache.SchemaCache) (QueryRouter, error) {
 	switch qtype {
 	case config.LocalMode:
 		return NewLocalQrouter(shardMapping)
 	case config.ProxyMode:
-		return NewProxyRouter(shardMapping, mgr, qcfg)
+		return NewProxyRouter(shardMapping, mgr, qcfg, cache)
 	default:
 		return nil, errors.Errorf("unknown qrouter type: %v", qtype)
 	}
