@@ -157,13 +157,12 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 }
 
 func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
+	defer netconn.Close()
+
 	routerClient, err := r.RuleRouter.PreRoute(netconn, pt)
 	if err != nil {
-		_ = netconn.Close()
 		return err
 	}
-
-	defer netconn.Close()
 
 	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
