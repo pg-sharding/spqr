@@ -21,6 +21,7 @@ const (
 	SPQR_ROUTER_ERROR        = "SPQRL"
 	SPQR_METADATA_CORRUPTION = "SPQRZ"
 	SPQR_INVALID_REQUEST     = "SPQRJ"
+	SPQR_CONFIG_ERROR        = "SPQRM"
 )
 
 var existingErrorCodeMap = map[string]string{
