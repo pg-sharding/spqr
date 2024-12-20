@@ -686,6 +686,18 @@ func (qr *ProxyQrouter) CheckTableIsRoutable(ctx context.Context, node *lyx.Crea
 	var err error
 	var ds *distributions.Distribution
 	var relname string
+
+	if node.PartitionOf != nil {
+		switch q := node.PartitionOf.(type) {
+		case *lyx.RangeVar:
+			relname = q.RelationName
+			_, err = qr.mgr.GetRelationDistribution(ctx, relname)
+			return err
+		default:
+			return fmt.Errorf("Partition of is not a range var")
+		}
+	}
+
 	switch q := node.TableRv.(type) {
 	case *lyx.RangeVar:
 		relname = q.RelationName
