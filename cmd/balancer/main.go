@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/pg-sharding/spqr/balancer/app"
 	"github.com/pg-sharding/spqr/balancer/provider"
 	"github.com/pg-sharding/spqr/pkg"
@@ -24,9 +27,11 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  false,
 	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.LoadBalancerCfg(cfgPath); err != nil {
+		cfgStr, err := config.LoadBalancerCfg(cfgPath)
+		if err != nil {
 			return err
 		}
+		log.Println("Running config:", cfgStr)
 
 		balancer, err := provider.NewBalancer()
 		if err != nil {
@@ -41,10 +46,15 @@ var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 2 {
-			cfgPath = args[1]
+		if len(args) > 0 {
+			cfgPath = args[0]
 		}
-		return config.LoadBalancerCfg(cfgPath)
+		cfgStr, err := config.LoadBalancerCfg(cfgPath)
+		if err != nil {
+			return err
+		}
+		fmt.Println(cfgStr)
+		return nil
 	},
 }
 
