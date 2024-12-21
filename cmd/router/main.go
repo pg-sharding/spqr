@@ -243,9 +243,11 @@ var runCmd = &cobra.Command{
 		if config.RouterConfig().WithCoordinator {
 			go func() {
 				if err := func() error {
-					if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+					cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
+					if err != nil {
 						return err
 					}
+					log.Println("Running coordinator config:", cfgStr)
 
 					db, err := qdb.NewXQDB(qdbImpl)
 					if err != nil {
@@ -344,7 +346,8 @@ var runCmd = &cobra.Command{
 			}
 		} else if rcfg.UseCoordinatorInit {
 			/* load config if not yet */
-			if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+			_, err := config.LoadCoordinatorCfg(ccfgPath)
+			if err != nil {
 				return err
 			}
 			e := instance.NewEtcdMetadataBootstraper(config.CoordinatorConfig().QdbAddr)
