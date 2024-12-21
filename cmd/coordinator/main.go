@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"runtime"
 
 	"github.com/pg-sharding/spqr/coordinator/app"
@@ -30,9 +31,11 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  false,
 	SilenceErrors: false,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.LoadCoordinatorCfg(cfgPath); err != nil {
+		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
+		if err != nil {
 			return err
 		}
+		log.Println("Running config:", cfgStr)
 
 		if gomaxprocs > 0 {
 			runtime.GOMAXPROCS(gomaxprocs)
@@ -59,10 +62,28 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+var testCmd = &cobra.Command{
+	Use:   "test-config {path-to-config | -c path-to-config}",
+	Short: "Load, validate and print the given config file",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			cfgPath = args[0]
+		}
+		cfgStr, err := config.LoadCoordinatorCfg(cfgPath)
+		if err != nil {
+			return err
+		}
+		fmt.Println(cfgStr)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "/etc/spqr/coordinator.yaml", "path to config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
+
+	rootCmd.AddCommand(testCmd)
 }
 
 func main() {

@@ -88,16 +88,18 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(testCmd)
 }
 
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := config.LoadRouterCfg(rcfgPath)
+		cfgStr, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
+		log.Println("Running config:", cfgStr)
 		rcfg := config.RouterConfig()
 
 		spqrlog.ReloadLogger(rcfg.LogFileName)
@@ -241,9 +243,11 @@ var runCmd = &cobra.Command{
 		if config.RouterConfig().WithCoordinator {
 			go func() {
 				if err := func() error {
-					if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+					cfgStr, err := config.LoadCoordinatorCfg(ccfgPath)
+					if err != nil {
 						return err
 					}
+					log.Println("Running coordinator config:", cfgStr)
 
 					db, err := qdb.NewXQDB(qdbImpl)
 					if err != nil {
@@ -342,7 +346,8 @@ var runCmd = &cobra.Command{
 			}
 		} else if rcfg.UseCoordinatorInit {
 			/* load config if not yet */
-			if err := config.LoadCoordinatorCfg(ccfgPath); err != nil {
+			_, err := config.LoadCoordinatorCfg(ccfgPath)
+			if err != nil {
 				return err
 			}
 			e := instance.NewEtcdMetadataBootstraper(config.CoordinatorConfig().QdbAddr)
@@ -394,6 +399,22 @@ var runCmd = &cobra.Command{
 
 		wg.Wait()
 
+		return nil
+	},
+}
+
+var testCmd = &cobra.Command{
+	Use:   "test-config {path-to-config | -c path-to-config}",
+	Short: "Load, validate and print the given config file",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			rcfgPath = args[0]
+		}
+		cfgStr, err := config.LoadRouterCfg(rcfgPath)
+		if err != nil {
+			return err
+		}
+		fmt.Println(cfgStr)
 		return nil
 	},
 }

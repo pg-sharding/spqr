@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -40,16 +39,17 @@ var cfgBalancer Balancer
 //   - cfgPath (string): The path of the configuration file.
 //
 // Returns:
+//   - string: JSON-formatted config
 //   - error: an error if any occurred during the loading process.
-func LoadBalancerCfg(cfgPath string) error {
+func LoadBalancerCfg(cfgPath string) (string, error) {
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() { _ = file.Close() }()
 
 	if err := initBalancerConfig(file, cfgPath); err != nil {
-		return err
+		return "", err
 	}
 
 	if cfgBalancer.TimeoutSec == 0 {
@@ -58,11 +58,10 @@ func LoadBalancerCfg(cfgPath string) error {
 
 	configBytes, err := json.MarshalIndent(cfgBalancer, "", "  ")
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	log.Println("Running config:", string(configBytes))
-	return nil
+	return string(configBytes), nil
 }
 
 // initBalancerConfig initializes the balancer configuration based on the file content and file format.

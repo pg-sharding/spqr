@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -32,25 +31,25 @@ type Coordinator struct {
 //   - cfgPath (string): The path of the configuration file.
 //
 // Returns:
+//   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
-func LoadCoordinatorCfg(cfgPath string) error {
+func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	file, err := os.Open(cfgPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	if err := initCoordinatorConfig(file, cfgPath); err != nil {
-		return err
+		return "", err
 	}
 
 	configBytes, err := json.MarshalIndent(&cfgCoordinator, "", "  ")
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	log.Println("Running config:", string(configBytes))
-	return nil
+	return string(configBytes), nil
 }
 
 // initCoordinatorConfig initializes the coordinator configuration based on the file content and file format.
