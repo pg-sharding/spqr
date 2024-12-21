@@ -31,6 +31,7 @@ type Coordinator struct {
 //   - cfgPath (string): The path of the configuration file.
 //
 // Returns:
+//   - string: JSON-formatted config
 //   - error: An error if any occurred during the loading process.
 func LoadCoordinatorCfg(cfgPath string) (string, error) {
 	file, err := os.Open(cfgPath)

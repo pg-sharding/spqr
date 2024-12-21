@@ -39,6 +39,7 @@ var cfgBalancer Balancer
 //   - cfgPath (string): The path of the configuration file.
 //
 // Returns:
+//   - string: JSON-formatted config
 //   - error: an error if any occurred during the loading process.
 func LoadBalancerCfg(cfgPath string) (string, error) {
 	file, err := os.Open(cfgPath)
