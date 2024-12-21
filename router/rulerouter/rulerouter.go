@@ -108,7 +108,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 		}
 	}
 
-	err := config.LoadRouterCfg(configPath)
+	_, err := config.LoadRouterCfg(configPath)
 	if err != nil {
 		return err
 	}

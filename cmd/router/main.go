@@ -95,10 +95,11 @@ var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "run router",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		err := config.LoadRouterCfg(rcfgPath)
+		cfgStr, err := config.LoadRouterCfg(rcfgPath)
 		if err != nil {
 			return err
 		}
+		log.Println("Running config:", cfgStr)
 		rcfg := config.RouterConfig()
 
 		spqrlog.ReloadLogger(rcfg.LogFileName)
@@ -403,10 +404,15 @@ var testCmd = &cobra.Command{
 	Use:   "test-config {path-to-config | -c path-to-config}",
 	Short: "Load, validate and print the given config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 2 {
-			rcfgPath = args[1]
+		if len(args) > 0 {
+			rcfgPath = args[0]
 		}
-		return config.LoadRouterCfg(rcfgPath)
+		cfgStr, err := config.LoadRouterCfg(rcfgPath)
+		if err != nil {
+			return err
+		}
+		fmt.Println(cfgStr)
+		return nil
 	},
 }
 
