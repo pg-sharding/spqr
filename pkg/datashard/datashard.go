@@ -29,8 +29,6 @@ type Conn struct {
 	sync_in  int64
 	sync_out int64
 
-	dataPending bool
-
 	tx_served int64
 
 	id string
@@ -94,14 +92,6 @@ func (sh *Conn) Sync() int64 {
 	return sh.sync_out - sh.sync_in
 }
 
-func (sh *Conn) DataPending() bool {
-	return sh.dataPending
-}
-
-func (sh *Conn) RequestData() {
-	sh.dataPending = true
-}
-
 // TxServed returns the number of transactions served by the Conn struct.
 //
 // Parameters:
@@ -162,8 +152,6 @@ func (sh *Conn) Cancel() error {
 func (sh *Conn) Send(query pgproto3.FrontendMessage) error {
 	/* handle copy properly */
 
-	sh.dataPending = true
-
 	switch query.(type) {
 	case *pgproto3.Query:
 		sh.sync_in++
@@ -197,7 +185,6 @@ func (sh *Conn) Receive() (pgproto3.BackendMessage, error) {
 	}
 	switch v := msg.(type) {
 	case *pgproto3.ReadyForQuery:
-		sh.dataPending = false
 		sh.sync_out++
 		sh.status = txstatus.TXStatus(v.TxStatus)
 		if sh.status == txstatus.TXIDLE {

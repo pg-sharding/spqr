@@ -17,3 +17,4 @@ test: show_processing
 test: copy_multishard
 test: copy_reference_table
 test: part_table
+test: ddl

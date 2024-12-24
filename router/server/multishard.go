@@ -68,16 +68,6 @@ func (m *MultiShardServer) StorePrepareStatement(hash uint64, d *prepstatement.P
 
 }
 
-// RequestData implements Server.
-func (m *MultiShardServer) RequestData() {
-
-}
-
-// DataPending implements Server.
-func (m *MultiShardServer) DataPending() bool {
-	panic("MultiShardServer.DataPending not implemented")
-}
-
 func (m *MultiShardServer) Reset() error {
 	return nil
 }
@@ -453,7 +443,11 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 }
 
 func (m *MultiShardServer) Sync() int64 {
-	panic("MultiShardServer.Sync not implemented")
+	var syncCount int64
+	for _, shard := range m.activeShards {
+		syncCount += shard.Sync()
+	}
+	return syncCount
 }
 
 func (m *MultiShardServer) Cancel() error {
