@@ -448,7 +448,11 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 }
 
 func (m *MultiShardServer) Sync() int64 {
-	panic("MultiShardServer.Sync not implemented")
+	var syncCount int64
+	for _, shard := range m.activeShards {
+		syncCount += shard.Sync()
+	}
+	return syncCount
 }
 
 func (m *MultiShardServer) Cancel() error {
