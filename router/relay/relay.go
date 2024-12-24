@@ -438,6 +438,9 @@ func (rst *RelayStateImpl) Reroute() error {
 	rst.routingState = routingState
 	switch v := routingState.(type) {
 	case routingstate.MultiMatchState:
+		if rst.TxActive() {
+			return fmt.Errorf("cannot route in an active transaction")
+		}
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Err(err).
