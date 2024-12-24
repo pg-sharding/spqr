@@ -242,7 +242,7 @@ func (cl *PsqlClient) SetDefaultRouteBehaviour(b string) {
 // TODO : implement, unit tests
 // ReceiveCtx implements RouterClient.
 func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error) {
-	panic("unimplemented")
+	panic("PsqClient.ReceiveCtx not implemented")
 }
 
 // RouteHint implements RouterClient.

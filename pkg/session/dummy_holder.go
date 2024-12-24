@@ -56,22 +56,22 @@ func (t *DummySessionParamHandler) SetAutoDistribution(string) {
 
 // MaintainParams implements SessionParamsHolder.
 func (t *DummySessionParamHandler) MaintainParams() bool {
-	panic("unimplemented")
+	panic("DummySessionParamHandler.MaintainParams not implemented")
 }
 
 // SetMaintainParams implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetMaintainParams(bool) {
-	panic("unimplemented")
+	panic("DummySessionParamHandler.SetMaintainParams not implemented")
 }
 
 // SetShowNoticeMsg implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetShowNoticeMsg(bool) {
-	panic("unimplemented")
+	panic("DummySessionParamHandler.SetShowNoticeMsg not implemented")
 }
 
 // ShowNoticeMsg implements SessionParamsHolder.
 func (t *DummySessionParamHandler) ShowNoticeMsg() bool {
-	panic("unimplemented")
+	panic("DummySessionParamHandler.ShowNoticeMsg not implemented")
 }
 
 // BindParamFormatCodes implements SessionParamsHolder.
