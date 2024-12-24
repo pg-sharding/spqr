@@ -18,17 +18,17 @@ type TopologyService struct {
 
 // TODO : implement
 func (r *TopologyService) OpenRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "OpenRouter method unimplemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "OpenRouter method not implemented")
 }
 
 // TODO : implement
 func (r *TopologyService) CloseRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "CloseRouter method unimplemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "CloseRouter method not implemented")
 }
 
 // TODO : implement
 func (r *TopologyService) UpdateCoordinator(ctx context.Context, in *protos.UpdateCoordinatorRequest) (*emptypb.Empty, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator method unimplemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "UpdateCoordinator method not implemented")
 }
 
 func NewTopologyService(impl coordinator.Coordinator) *TopologyService {

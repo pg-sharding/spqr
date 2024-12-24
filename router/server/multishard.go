@@ -60,7 +60,7 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 
 // HasPrepareStatement implements Server.
 func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
-	panic("unimplemented")
+	panic("MultiShardServer.HasPrepareStatement not implemented")
 }
 
 // StorePrepareStatement implements Server.
@@ -75,7 +75,7 @@ func (m *MultiShardServer) RequestData() {
 
 // DataPending implements Server.
 func (m *MultiShardServer) DataPending() bool {
-	panic("unimplemented")
+	panic("MultiShardServer.DataPending not implemented")
 }
 
 func (m *MultiShardServer) Reset() error {

@@ -49,11 +49,11 @@ func (r *PoolView) Discard(sh shard.Shard) error {
 }
 
 func (r *PoolView) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, error) {
-	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Connection method unimplemented")
+	return nil, spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.Connection method not implemented")
 }
 
 func (r *PoolView) ForEach(cb func(p shard.Shardinfo) error) error {
-	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.ForEach method unimplemented")
+	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "PoolView.ForEach method not implemented")
 }
 
 func (r *PoolView) View() Statistics {

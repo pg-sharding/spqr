@@ -79,12 +79,12 @@ type CoordShardInfo struct {
 
 // RequestData implements shard.Shardinfo.
 func (c *CoordShardInfo) RequestData() {
-	panic("unimplemented")
+	panic("CoordShardInfo.RequestData not implemented")
 }
 
 // DataPending implements shard.Shardinfo.
 func (c *CoordShardInfo) DataPending() bool {
-	panic("unimplemented")
+	panic("CoordShardInfo.DataPending not implemented")
 }
 
 // Pid implements shard.Shardinfo.
