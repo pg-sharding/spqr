@@ -70,7 +70,12 @@ func (m *MultiShardServer) StorePrepareStatement(hash uint64, d *prepstatement.P
 
 // DataPending implements Server.
 func (m *MultiShardServer) DataPending() bool {
-	panic("MultiShardServer.DataPending not implemented")
+	for _, shard := range m.activeShards {
+		if shard.DataPending() {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *MultiShardServer) Reset() error {
