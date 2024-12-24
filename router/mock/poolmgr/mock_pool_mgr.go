@@ -77,20 +77,6 @@ func (mr *MockConnectionKeeperMockRecorder) Client() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Client", reflect.TypeOf((*MockConnectionKeeper)(nil).Client))
 }
 
-// DataPending mocks base method.
-func (m *MockConnectionKeeper) DataPending() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataPending")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataPending indicates an expected call of DataPending.
-func (mr *MockConnectionKeeperMockRecorder) DataPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockConnectionKeeper)(nil).DataPending))
-}
-
 // SetTxStatus mocks base method.
 func (m *MockConnectionKeeper) SetTxStatus(status txstatus.TXStatus) {
 	m.ctrl.T.Helper()

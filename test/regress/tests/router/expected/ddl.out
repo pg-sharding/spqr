@@ -24,22 +24,35 @@ CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  bound -> 101
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION table_2 DISTRIBUTION KEY id;
-       attach table        
----------------------------
- relation name   -> table_2
+ALTER DISTRIBUTION ds1 ATTACH RELATION table_1 DISTRIBUTION KEY id;
+        attach table        
+----------------------------
+ relation name   -> table_1
  distribution id -> ds1
 (2 rows)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION delivery DISTRIBUTION KEY table_2;
-        attach table         
------------------------------
+ALTER DISTRIBUTION ds1 ATTACH RELATION table_2 DISTRIBUTION KEY id;
+        attach table        
+----------------------------
  relation name   -> table_2
  distribution id -> ds1
 (2 rows)
 
 \c regress
-
+CREATE TABLE table_1(id INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2
+CREATE TABLE table_2(id INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2
+BEGIN;
+ALTER TABLE "table_1" RENAME TO "tmp";
+NOTICE: send query to shard(s) : sh1,sh2
+ALTER TABLE "table_2" RENAME TO "table_1";
+ALTER TABLE "tmp" RENAME TO "table_2";
+COMMIT;
+DROP TABLE table_1 CASCADE;
+NOTICE: send query to shard(s) : sh1,sh2
+DROP TABLE table_2;
+NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
 
 		SPQR router admin console

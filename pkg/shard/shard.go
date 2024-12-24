@@ -49,7 +49,6 @@ type Shardinfo interface {
 	Usr() string
 	DB() string
 	Sync() int64
-	DataPending() bool
 
 	TxServed() int64
 	TxStatus() txstatus.TXStatus

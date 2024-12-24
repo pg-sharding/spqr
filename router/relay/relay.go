@@ -201,14 +201,6 @@ func (rst *RelayStateImpl) SyncCount() int64 {
 	return rst.Cl.Server().Sync()
 }
 
-func (rst *RelayStateImpl) DataPending() bool {
-	if rst.Cl.Server() == nil {
-		return false
-	}
-
-	return rst.Cl.Server().DataPending()
-}
-
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 	return rst.Qr
 }

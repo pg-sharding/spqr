@@ -21,8 +21,6 @@ type ConnectionKeeper interface {
 
 	SyncCount() int64
 
-	DataPending() bool
-
 	Client() client.RouterClient
 }
 
@@ -142,10 +140,9 @@ func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 		Uint("client", rst.Client().ID()).
 		Int("shards", len(rst.ActiveShards())).
 		Int64("sync-count", rst.SyncCount()).
-		Bool("data pending", rst.DataPending()).
 		Msg("client validate rerouting of TX")
 
-	if rst.SyncCount() != 0 || rst.DataPending() {
+	if rst.SyncCount() != 0 {
 		return false
 	}
 

@@ -24,11 +24,6 @@ type ShardServer struct {
 	mu sync.RWMutex
 }
 
-// DataPending implements Server.
-func (srv *ShardServer) DataPending() bool {
-	return srv.shard.DataPending()
-}
-
 func NewShardServer(spool *pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool: spool,

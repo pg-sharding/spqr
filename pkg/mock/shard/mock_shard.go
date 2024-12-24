@@ -54,20 +54,6 @@ func (mr *MockShardinfoMockRecorder) DB() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShardinfo)(nil).DB))
 }
 
-// DataPending mocks base method.
-func (m *MockShardinfo) DataPending() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataPending")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataPending indicates an expected call of DataPending.
-func (mr *MockShardinfoMockRecorder) DataPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShardinfo)(nil).DataPending))
-}
-
 // ID mocks base method.
 func (m *MockShardinfo) ID() uint {
 	m.ctrl.T.Helper()
@@ -229,20 +215,6 @@ func (m *MockCoordShardinfo) DB() string {
 func (mr *MockCoordShardinfoMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockCoordShardinfo)(nil).DB))
-}
-
-// DataPending mocks base method.
-func (m *MockCoordShardinfo) DataPending() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataPending")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataPending indicates an expected call of DataPending.
-func (mr *MockCoordShardinfoMockRecorder) DataPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockCoordShardinfo)(nil).DataPending))
 }
 
 // ID mocks base method.
@@ -462,20 +434,6 @@ func (m *MockShard) DB() string {
 func (mr *MockShardMockRecorder) DB() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DB", reflect.TypeOf((*MockShard)(nil).DB))
-}
-
-// DataPending mocks base method.
-func (m *MockShard) DataPending() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataPending")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataPending indicates an expected call of DataPending.
-func (mr *MockShardMockRecorder) DataPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockShard)(nil).DataPending))
 }
 
 // HasPrepareStatement mocks base method.

@@ -68,20 +68,6 @@ func (mr *MockServerMockRecorder) Cancel() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockServer)(nil).Cancel))
 }
 
-// DataPending mocks base method.
-func (m *MockServer) DataPending() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DataPending")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// DataPending indicates an expected call of DataPending.
-func (mr *MockServerMockRecorder) DataPending() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataPending", reflect.TypeOf((*MockServer)(nil).DataPending))
-}
-
 // Datashards mocks base method.
 func (m *MockServer) Datashards() []shard.Shard {
 	m.ctrl.T.Helper()
