@@ -437,11 +437,17 @@ func (rst *RelayStateImpl) Reroute() error {
 	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
-	case routingstate.MultiMatchState, routingstate.DDLState:
+	case routingstate.MultiMatchState:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Err(err).
-			Msgf("parsed multi-shard routing state")
+			Msgf("parsed MultiMatchState")
+		return rst.procRoutes(rst.Qr.DataShardsRoutes())
+	case routingstate.DDLState:
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Err(err).
+			Msgf("parsed DDLState")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:
 		// TBD: do it better
