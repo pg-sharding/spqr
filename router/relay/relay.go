@@ -175,11 +175,6 @@ func (rst *RelayStateImpl) UnholdRouting() {
 	rst.holdRouting = false
 }
 
-// RequestData implements RelayStateMgr.
-func (rst *RelayStateImpl) RequestData() {
-	rst.Cl.Server().RequestData()
-}
-
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:       nil,
@@ -438,9 +433,6 @@ func (rst *RelayStateImpl) Reroute() error {
 	rst.routingState = routingState
 	switch v := routingState.(type) {
 	case routingstate.MultiMatchState, routingstate.DDLState:
-		if rst.TxActive() {
-			return fmt.Errorf("ddl is forbidden inside multi-shard transition")
-		}
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Err(err).
@@ -1399,9 +1391,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 						return fmt.Errorf("failed to deploy prepared statement")
 					}
 				}
-
-				// /* do not unroute after bind was send */
-				// rst.RequestData()
 
 				rst.execute = func() error {
 					err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)

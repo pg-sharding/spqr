@@ -28,5 +28,4 @@ type Server interface {
 	Sync() int64
 
 	DataPending() bool
-	RequestData()
 }

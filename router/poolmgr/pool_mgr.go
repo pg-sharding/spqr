@@ -22,7 +22,6 @@ type ConnectionKeeper interface {
 	SyncCount() int64
 
 	DataPending() bool
-	RequestData()
 
 	Client() client.RouterClient
 }
