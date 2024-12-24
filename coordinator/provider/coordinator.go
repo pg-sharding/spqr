@@ -1878,7 +1878,7 @@ func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.Da
 }
 
 func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
-	panic("implement me")
+	panic("qdbCoordinator.AddWorldShard not implemented")
 }
 
 func (qc *qdbCoordinator) DropShard(ctx context.Context, shardId string) error {
