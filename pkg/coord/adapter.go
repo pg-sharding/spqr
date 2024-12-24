@@ -46,11 +46,11 @@ func NewAdapter(conn *grpc.ClientConn) *Adapter {
 // Returns:
 // - qdb.QDB: The QDB object.
 func (a *Adapter) QDB() qdb.QDB {
-	panic("implement me?")
+	panic("Adapter.QDB not implemented")
 }
 
 func (a *Adapter) Cache() *cache.SchemaCache {
-	panic("implement me?")
+	panic("Adapter.Cache not implemented")
 }
 
 // TODO : unit tests

@@ -38,7 +38,7 @@ func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShard
 }
 
 func (s *ShardServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
-	panic("implement me")
+	panic("ShardServer.AddWorldShard not implemented")
 }
 
 // TODO : unit tests

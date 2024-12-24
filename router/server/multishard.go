@@ -453,8 +453,7 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 }
 
 func (m *MultiShardServer) Sync() int64 {
-	//TODO implement me
-	panic("implement me")
+	panic("MultiShardServer.Sync not implemented")
 }
 
 func (m *MultiShardServer) Cancel() error {

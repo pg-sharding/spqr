@@ -62,8 +62,7 @@ func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.A
 }
 
 func (l *LocalQrouterServer) AddWorldShard(ctx context.Context, request *protos.AddWorldShardRequest) (*emptypb.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("LocalQrouterServer.AddWorldShard not implemented")
 }
 
 func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.ShardRequest) (*protos.ShardReply, error) {
@@ -183,8 +182,7 @@ func (l *LocalQrouterServer) GetRouterStatus(ctx context.Context, _ *emptypb.Emp
 
 // TODO : implement, unit tests
 func (l *LocalQrouterServer) CloseRouter(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("LocalQrouterServer.CloseRouter not implemented")
 }
 
 // TODO : unit tests
