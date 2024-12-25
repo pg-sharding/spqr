@@ -26,7 +26,4 @@ type Server interface {
 
 	Reset() error
 	Sync() int64
-
-	DataPending() bool
-	RequestData()
 }

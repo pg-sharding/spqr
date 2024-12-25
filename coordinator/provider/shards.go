@@ -77,16 +77,6 @@ type CoordShardInfo struct {
 	router     string
 }
 
-// RequestData implements shard.Shardinfo.
-func (c *CoordShardInfo) RequestData() {
-	panic("CoordShardInfo.RequestData not implemented")
-}
-
-// DataPending implements shard.Shardinfo.
-func (c *CoordShardInfo) DataPending() bool {
-	panic("CoordShardInfo.DataPending not implemented")
-}
-
 // Pid implements shard.Shardinfo.
 func (c *CoordShardInfo) Pid() uint32 {
 	return 0

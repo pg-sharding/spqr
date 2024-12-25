@@ -175,11 +175,6 @@ func (rst *RelayStateImpl) UnholdRouting() {
 	rst.holdRouting = false
 }
 
-// RequestData implements RelayStateMgr.
-func (rst *RelayStateImpl) RequestData() {
-	rst.Cl.Server().RequestData()
-}
-
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:       nil,
@@ -204,14 +199,6 @@ func (rst *RelayStateImpl) SyncCount() int64 {
 		return 0
 	}
 	return rst.Cl.Server().Sync()
-}
-
-func (rst *RelayStateImpl) DataPending() bool {
-	if rst.Cl.Server() == nil {
-		return false
-	}
-
-	return rst.Cl.Server().DataPending()
 }
 
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
@@ -1405,9 +1392,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 						return fmt.Errorf("failed to deploy prepared statement")
 					}
 				}
-
-				// /* do not unroute after bind was send */
-				// rst.RequestData()
 
 				rst.execute = func() error {
 					err := rst.PrepareRelayStepOnHintRoute(cmngr, rst.bindRoute)
