@@ -72,7 +72,12 @@ services:
   regress:
     build:
       context: https://github.com/pg-sharding/jdbc-spqr.git
-    entrypoint: mvn test -DpgHost="regress_router" -DpgPort=6432 -DpgDb=regress -DpgUser=regress -DpgPassword=12345678
+    environment:
+      - PG_HOST=regress_router
+      - PG_PORT=6432
+      - PG_USER=regress
+      - PG_DATABASE=regress
+      - PGPASSWORD=12345678
     hostname: regress_tests
     container_name: regress_tests
     depends_on:
