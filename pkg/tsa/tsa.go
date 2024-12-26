@@ -113,7 +113,7 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 	}
 
 	res := false
-	reason := "zero datarow recieved"
+	reason := "zero datarow received"
 
 	for {
 		msg, err := sh.Receive()
@@ -121,14 +121,14 @@ func CheckTSA(sh shard.Shard) (bool, string, error) {
 			spqrlog.Zero.Debug().
 				Uint("shard", sh.ID()).
 				Err(err).
-				Msg("shard recieved error during check rw")
+				Msg("shard received error during check rw")
 			return false, reason, err
 		}
 
 		spqrlog.Zero.Debug().
 			Uint("shard", sh.ID()).
 			Interface("message", msg).
-			Msg("shard recieved msg during check rw")
+			Msg("shard received msg during check rw")
 		switch qt := msg.(type) {
 		case *pgproto3.DataRow:
 			spqrlog.Zero.Debug().
