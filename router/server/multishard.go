@@ -209,7 +209,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 				spqrlog.Zero.Debug().
 					Interface("message", msg).
 					Uint("shard", m.activeShards[i].ID()).
-					Msg("multishard server init: recieved message from shard")
+					Msg("multishard server init: received message from shard")
 
 				switch retMsg := msg.(type) {
 				case *pgproto3.CopyOutResponse:
