@@ -76,11 +76,6 @@ func (w *WorldMock) serv(netconn net.Conn) error {
 		return err
 	}
 
-	spqrlog.Zero.Info().
-		Str("user", cl.Usr()).
-		Str("db", cl.DB()).
-		Msg("initialized client connection")
-
 	if err := cl.AssignRule(&config.FrontendRule{
 		AuthRule: &config.AuthCfg{
 			Method: config.AuthOK,

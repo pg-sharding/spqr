@@ -654,10 +654,6 @@ func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
 
 // startup + ssl/cancel
 func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
-	spqrlog.Zero.Info().
-		Bool("ssl", tlsconfig != nil).
-		Msg("init client connection")
-
 	for {
 		var backend *pgproto3.Backend
 
