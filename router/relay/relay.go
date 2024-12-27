@@ -216,15 +216,22 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
+	var rd *prepstatement.PreparedStatementDescriptor
+	var retMsg pgproto3.BackendMessage
+	anyShard := false
+
 	shards := serv.Datashards()
 	if len(shards) == 0 {
 		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
 	}
-	shardId := shards[0].ID()
+	for _, shard := range shards {
+		shardId := shard.ID()
 
-	if ok, rd := serv.HasPrepareStatement(hash, shardId); ok {
-		return rd, &pgproto3.ParseComplete{}, nil
+		ok := false
+		if ok, rd = serv.HasPrepareStatement(hash, shardId); ok {
+			continue
 	}
+		anyShard = true
 
 	// Do not wait for result
 	// simply fire backend msg
@@ -251,13 +258,11 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		return nil, nil, err
 	}
 
-	rd := &prepstatement.PreparedStatementDescriptor{
+		rd = &prepstatement.PreparedStatementDescriptor{
 		NoData:    false,
 		RowDesc:   nil,
 		ParamDesc: nil,
 	}
-
-	var retMsg pgproto3.BackendMessage
 
 	deployed := false
 
@@ -298,6 +303,10 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
 			return nil, nil, err
 		}
+		}
+	}
+	if !anyShard {
+		return rd, &pgproto3.ParseComplete{}, nil
 	}
 	return rd, retMsg, nil
 }
