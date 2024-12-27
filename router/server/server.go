@@ -16,6 +16,7 @@ type Server interface {
 
 	Name() string
 	Send(query pgproto3.FrontendMessage) error
+	SendShard(query pgproto3.FrontendMessage, shardId uint) error
 	Receive() (pgproto3.BackendMessage, error)
 
 	AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
