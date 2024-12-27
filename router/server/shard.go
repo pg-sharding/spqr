@@ -41,8 +41,8 @@ func NewShardServer(spool *pool.DBPool) *ShardServer {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
-	b, rd := srv.shard.HasPrepareStatement(hash)
+func (srv *ShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	b, rd := srv.shard.HasPrepareStatement(hash, shardId)
 	return b, rd
 }
 
@@ -57,8 +57,8 @@ func (srv *ShardServer) Name() string {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) StorePrepareStatement(hash uint64, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
-	srv.shard.StorePrepareStatement(hash, def, rd)
+func (srv *ShardServer) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	return srv.shard.StorePrepareStatement(hash, shardId, def, rd)
 }
 
 // TODO : unit tests
