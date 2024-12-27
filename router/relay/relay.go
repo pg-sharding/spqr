@@ -236,9 +236,6 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
-	rst.Cl.ServerAcquireUse()
-	defer rst.Cl.ServerReleaseUse()
-
 	serv := rst.Client().Server()
 
 	if ok, rd := serv.HasPrepareStatement(hash); ok {
@@ -617,8 +614,6 @@ func (rst *RelayStateImpl) ConnectWorld() error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
@@ -684,9 +679,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("client pre-process copy")
-
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
 
 	var relname string
 
@@ -771,9 +763,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error) {
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
-
 	if v := rst.Client().ExecuteOn(); v != "" {
 		for _, sh := range rst.Client().Server().Datashards() {
 			if sh.Name() == v {
@@ -883,8 +872,7 @@ func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) err
 		Uint("client", rst.Client().ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
+
 	if err := rst.Client().Server().Send(*query); err != nil {
 		return err
 	}
@@ -907,9 +895,6 @@ func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) err
 
 // TODO : unit tests
 func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error) {
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
-
 	server := rst.Client().Server()
 
 	if server == nil {
