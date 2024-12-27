@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -147,6 +148,29 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 		}
 	}
 
+	return nil
+}
+
+func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shardId uint) error {
+	anyShard := false
+	for _, shard := range m.activeShards {
+		if shard.ID() != shardId {
+			continue
+		}
+		anyShard = true
+		spqrlog.Zero.Debug().
+			Uint("shard", shard.ID()).
+			Interface("message", msg).
+			Msg("sending message to shard")
+		if err := shard.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	if !anyShard {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%d\"", shardId)
+	}
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -143,6 +144,14 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 		return ErrShardUnavailable
 	}
 	return srv.shard.Send(query)
+}
+
+// TODO : unit tests
+func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shardId uint) error {
+	if srv.shard.ID() != shardId {
+		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+	return srv.Send(query)
 }
 
 // TODO : unit tests
