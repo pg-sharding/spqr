@@ -276,7 +276,11 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		savepointRh:   map[string]routehint.RouteHint{},
 
 		show_notice_messages: showNoticeMessages,
+
+		serverP: atomic.Pointer[server.Server]{},
 	}
+
+	cl.serverP.Store(nil)
 
 	return cl
 }
@@ -589,7 +593,11 @@ func (cl *PsqlClient) Rule() *config.FrontendRule {
 concurrent Unroute() is impossible */
 
 func (cl *PsqlClient) Server() server.Server {
-	return *cl.serverP.Load()
+	serv := cl.serverP.Load()
+	if serv == nil {
+		return nil
+	}
+	return *serv
 }
 
 /* This method can be called concurrently with Cancel() */
@@ -932,14 +940,10 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
 
-	var expSrv server.Server
-	expSrv = nil
-
-	swp := cl.serverP.CompareAndSwap(&expSrv, &srv)
-
-	if !swp {
+	if cl.serverP.Load() != nil {
 		return fmt.Errorf("client already has active connection")
 	}
+	cl.serverP.Store(&srv)
 	return nil
 }
 
