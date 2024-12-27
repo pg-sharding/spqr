@@ -8,6 +8,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -556,7 +557,10 @@ func (sh *Conn) TxStatus() txstatus.TXStatus {
 // Returns:
 // - bool: true if the prepared statement exists, false otherwise.
 // - *shard.PreparedStatementDescriptor: the prepared statement descriptor, or nil if it does not exist.
-func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
+func (srv *Conn) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	if shardId != srv.ID() {
+		return false, nil
+	}
 	rd, ok := srv.stmtDesc[hash]
 	return ok, rd
 }
@@ -571,9 +575,14 @@ func (srv *Conn) HasPrepareStatement(hash uint64) (bool, *prepstatement.Prepared
 //
 // Returns:
 // - None.
-func (srv *Conn) StorePrepareStatement(hash uint64, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+func (srv *Conn) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	id := srv.ID()
+	if shardId != id {
+		return spqrerror.Newf(spqrerror.SPQR_ROUTING_ERROR, "Cannot store stmt for shard \"%d\" in shard \"%d\"", shardId, id)
+	}
 	srv.stmtDef[hash] = def
 	srv.stmtDesc[hash] = rd
+	return nil
 }
 
 // AuthRule returns the backend auth configuration of the Conn object.

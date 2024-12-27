@@ -17,8 +17,8 @@ type PreparedStatementDescriptor struct {
 }
 
 type PreparedStatementHolder interface {
-	HasPrepareStatement(hash uint64) (bool, *PreparedStatementDescriptor)
-	StorePrepareStatement(hash uint64, d *PreparedStatementDefinition, rd *PreparedStatementDescriptor)
+	HasPrepareStatement(hash uint64, shardId uint) (bool, *PreparedStatementDescriptor)
+	StorePrepareStatement(hash uint64, shardId uint, d *PreparedStatementDefinition, rd *PreparedStatementDescriptor) error
 }
 
 type PreparedStatementMapper interface {

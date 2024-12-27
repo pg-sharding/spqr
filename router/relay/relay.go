@@ -216,7 +216,13 @@ func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
 func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error) {
 	serv := rst.Client().Server()
 
-	if ok, rd := serv.HasPrepareStatement(hash); ok {
+	shards := serv.Datashards()
+	if len(shards) == 0 {
+		return nil, nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+	}
+	shardId := shards[0].ID()
+
+	if ok, rd := serv.HasPrepareStatement(hash, shardId); ok {
 		return rd, &pgproto3.ParseComplete{}, nil
 	}
 
@@ -289,7 +295,9 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	if deployed {
 		// dont need to complete relay because tx state didt changed
-		rst.Cl.Server().StorePrepareStatement(hash, d, rd)
+		if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
+			return nil, nil, err
+		}
 	}
 	return rd, retMsg, nil
 }

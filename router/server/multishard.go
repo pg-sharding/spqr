@@ -59,13 +59,13 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 }
 
 // HasPrepareStatement implements Server.
-func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
+func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
 	panic("MultiShardServer.HasPrepareStatement not implemented")
 }
 
 // StorePrepareStatement implements Server.
-func (m *MultiShardServer) StorePrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
-
+func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	return nil
 }
 
 // DataPending implements Server.
