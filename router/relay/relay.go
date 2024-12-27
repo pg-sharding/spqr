@@ -1308,6 +1308,37 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
+				_, ok := rst.routingState.(routingstate.DDLState)
+				if ok {
+					routes := rst.Qr.DataShardsRoutes()
+					if err := rst.procRoutes(routes); err != nil {
+						return err
+					}
+
+					pstmt := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
+					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
+
+					_, _, err := rst.PrepareStatement(hash, pstmt)
+					if err != nil {
+						return err
+					}
+
+					rst.execute = func() error {
+						rst.AddQuery(msg)
+						rst.AddQuery(&pgproto3.Execute{})
+						rst.AddQuery(&pgproto3.Sync{})
+
+						if _, _, err := rst.RelayFlush(true, true); err != nil {
+							return err
+						}
+
+						// do not complete relay here yet
+						return nil
+					}
+
+					return nil
+				}
+
 				// TODO: multi-shard statements
 				if rst.bindRoute == nil {
 					routes := rst.CurrentRoutes()
