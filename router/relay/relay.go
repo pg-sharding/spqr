@@ -230,79 +230,79 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		ok := false
 		if ok, rd = serv.HasPrepareStatement(hash, shardId); ok {
 			continue
-	}
+		}
 		anyShard = true
 
-	// Do not wait for result
-	// simply fire backend msg
-	if err := serv.Send(&pgproto3.Parse{
-		Name:          d.Name,
-		Query:         d.Query,
-		ParameterOIDs: d.ParameterOIDs,
-	}); err != nil {
-		return nil, nil, err
-	}
-
-	err := serv.Send(&pgproto3.Describe{
-		ObjectType: 'S',
-		Name:       d.Name,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
-
-	_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
-	if err != nil {
-		return nil, nil, err
-	}
-
-		rd = &prepstatement.PreparedStatementDescriptor{
-		NoData:    false,
-		RowDesc:   nil,
-		ParamDesc: nil,
-	}
-
-	deployed := false
-
-	for _, msg := range unreplied {
-		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
-		switch q := msg.(type) {
-		case *pgproto3.ParseComplete:
-			// skip
-			retMsg = msg
-			deployed = true
-		case *pgproto3.ErrorResponse:
-			retMsg = msg
-		case *pgproto3.NoData:
-			rd.NoData = true
-		case *pgproto3.ParameterDescription:
-			// copy
-			cp := *q
-			rd.ParamDesc = &cp
-		case *pgproto3.RowDescription:
-			// copy
-			rd.RowDesc = &pgproto3.RowDescription{}
-
-			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
-
-			for i := range len(q.Fields) {
-				s := make([]byte, len(q.Fields[i].Name))
-				copy(s, q.Fields[i].Name)
-
-				rd.RowDesc.Fields[i] = q.Fields[i]
-				rd.RowDesc.Fields[i].Name = s
-			}
-		default:
-		}
-	}
-
-	if deployed {
-		// dont need to complete relay because tx state didt changed
-		if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
+		// Do not wait for result
+		// simply fire backend msg
+		if err := serv.Send(&pgproto3.Parse{
+			Name:          d.Name,
+			Query:         d.Query,
+			ParameterOIDs: d.ParameterOIDs,
+		}); err != nil {
 			return nil, nil, err
 		}
+
+		err := serv.Send(&pgproto3.Describe{
+			ObjectType: 'S',
+			Name:       d.Name,
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
+
+		_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rd = &prepstatement.PreparedStatementDescriptor{
+			NoData:    false,
+			RowDesc:   nil,
+			ParamDesc: nil,
+		}
+
+		deployed := false
+
+		for _, msg := range unreplied {
+			spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Interface("type", msg).Msg("unreplied msg in prepare")
+			switch q := msg.(type) {
+			case *pgproto3.ParseComplete:
+				// skip
+				retMsg = msg
+				deployed = true
+			case *pgproto3.ErrorResponse:
+				retMsg = msg
+			case *pgproto3.NoData:
+				rd.NoData = true
+			case *pgproto3.ParameterDescription:
+				// copy
+				cp := *q
+				rd.ParamDesc = &cp
+			case *pgproto3.RowDescription:
+				// copy
+				rd.RowDesc = &pgproto3.RowDescription{}
+
+				rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+
+				for i := range len(q.Fields) {
+					s := make([]byte, len(q.Fields[i].Name))
+					copy(s, q.Fields[i].Name)
+
+					rd.RowDesc.Fields[i] = q.Fields[i]
+					rd.RowDesc.Fields[i].Name = s
+				}
+			default:
+			}
+		}
+
+		if deployed {
+			// dont need to complete relay because tx state didt changed
+			if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	if !anyShard {
