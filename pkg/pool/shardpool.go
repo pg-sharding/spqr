@@ -236,8 +236,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
-		// double free
-		panic(sh)
+		panic(fmt.Sprintf("data corruption: connection already put: %v", sh))
 	}
 
 	/* acquired tok, release it */
