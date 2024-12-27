@@ -35,6 +35,11 @@ const (
 	CopyInState
 )
 
+type multishardPStmtKey struct {
+	ShardId uint
+	Hash    uint64
+}
+
 type MultiShardServer struct {
 	activeShards []shard.Shard
 
@@ -47,12 +52,17 @@ type MultiShardServer struct {
 	status txstatus.TXStatus
 
 	copyBuf []*pgproto3.CopyOutResponse
+
+	stmtDefByShard  map[multishardPStmtKey]*prepstatement.PreparedStatementDefinition
+	stmtDescByShard map[multishardPStmtKey]*prepstatement.PreparedStatementDescriptor
 }
 
 func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 	ret := &MultiShardServer{
-		pool:         pool,
-		activeShards: []shard.Shard{},
+		pool:            pool,
+		activeShards:    []shard.Shard{},
+		stmtDefByShard:  make(map[multishardPStmtKey]*prepstatement.PreparedStatementDefinition),
+		stmtDescByShard: make(map[multishardPStmtKey]*prepstatement.PreparedStatementDescriptor),
 	}
 
 	return ret, nil
@@ -60,11 +70,15 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 
 // HasPrepareStatement implements Server.
 func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	panic("MultiShardServer.HasPrepareStatement not implemented")
+	desc, ok := m.stmtDescByShard[multishardPStmtKey{ShardId: shardId, Hash: hash}]
+	return ok, desc
 }
 
 // StorePrepareStatement implements Server.
 func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	key := multishardPStmtKey{Hash: hash, ShardId: shardId}
+	m.stmtDescByShard[key] = rd
+	m.stmtDefByShard[key] = d
 	return nil
 }
 
@@ -207,6 +221,12 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					Msg("multishard server init: received message from shard")
 
 				switch retMsg := msg.(type) {
+				case *pgproto3.ParseComplete:
+					// that's ok
+					continue
+				case *pgproto3.BindComplete:
+					// that's also ok
+					continue
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
 						return nil, MultiShardSyncBroken
