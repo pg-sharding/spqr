@@ -47,8 +47,7 @@ type RuleRouterImpl struct {
 	mu   sync.Mutex
 	rcfg *config.Router
 
-	clmu sync.Mutex
-	clmp map[uint32]rclient.RouterClient
+	clmp sync.Map
 
 	notifier *notifier.Notifier
 }
@@ -140,7 +139,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 		rcfg:      rcfg,
 		rmgr:      rule.NewMgr(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule),
 		tlsconfig: tlsconfig,
-		clmp:      map[uint32]rclient.RouterClient{},
+		clmp:      sync.Map{},
 		notifier:  notifier,
 	}
 }
@@ -259,24 +258,18 @@ func (r *RuleRouterImpl) Config() *config.Router {
 
 // TODO : unit tests
 func (r *RuleRouterImpl) AddClient(cl rclient.RouterClient) {
-	r.clmu.Lock()
-	defer r.clmu.Unlock()
-	r.clmp[cl.GetCancelPid()] = cl
+	r.clmp.Store(cl.GetCancelPid(), cl)
 }
 
 // TODO : unit tests
 func (r *RuleRouterImpl) ReleaseClient(cl rclient.RouterClient) {
-	r.clmu.Lock()
-	defer r.clmu.Unlock()
-	delete(r.clmp, cl.GetCancelPid())
+	r.clmp.Delete(cl.GetCancelPid())
 }
 
 // TODO : unit tests
 func (r *RuleRouterImpl) CancelClient(csm *pgproto3.CancelRequest) error {
-	r.clmu.Lock()
-	defer r.clmu.Unlock()
-
-	if cl, ok := r.clmp[csm.ProcessID]; ok {
+	if v, ok := r.clmp.Load(csm.ProcessID); ok {
+		cl := v.(rclient.RouterClient)
 		if cl.GetCancelKey() != csm.SecretKey {
 			return fmt.Errorf("cancel secret does not match")
 		}
