@@ -133,7 +133,7 @@ func (srv *ShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA) 
 }
 
 // TODO : unit tests
-func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
+func (srv *ShardServer) Send(query pgproto3.FrontendMessage, _ uint64) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
 	spqrlog.Zero.Debug().
@@ -151,7 +151,7 @@ func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shardId uint) 
 	if srv.shard.ID() != shardId {
 		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 	}
-	return srv.Send(query)
+	return srv.Send(query, 0)
 }
 
 // TODO : unit tests

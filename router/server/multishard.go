@@ -136,8 +136,15 @@ func (m *MultiShardServer) Name() string {
 	return "multishard"
 }
 
-func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
+func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage, pstmtHash uint64) error {
 	for _, shard := range m.activeShards {
+		_, ok := msg.(*pgproto3.Parse)
+		if ok {
+			if ok, _ := m.HasPrepareStatement(pstmtHash, shard.ID()); ok {
+				// Already prepared, ignore
+				return nil
+			}
+		}
 		spqrlog.Zero.Debug().
 			Uint("shard", shard.ID()).
 			Interface("message", msg).
@@ -480,7 +487,7 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 	if rule.PoolRollback {
 		if err := m.Send(&pgproto3.Query{
 			String: "ROLLBACK",
-		}); err != nil {
+		}, 0); err != nil {
 			return err
 		}
 	}
@@ -488,7 +495,7 @@ func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 	if rule.PoolDiscard {
 		if err := m.Send(&pgproto3.Query{
 			String: "DISCARD ALL",
-		}); err != nil {
+		}, 0); err != nil {
 			return err
 		}
 	}
