@@ -237,7 +237,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 
 	if _, ok := h.active[sh.ID()]; !ok {
 		// double free
-		panic(sh)
+		return nil
 	}
 
 	/* acquired tok, release it */
