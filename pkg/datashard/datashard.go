@@ -98,10 +98,6 @@ func (sh *Conn) DataPending() bool {
 	return sh.dataPending
 }
 
-func (sh *Conn) RequestData() {
-	sh.dataPending = true
-}
-
 // TxServed returns the number of transactions served by the Conn struct.
 //
 // Parameters:

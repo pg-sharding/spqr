@@ -124,18 +124,6 @@ func (mr *MockShardinfoMockRecorder) Pid() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockShardinfo)(nil).Pid))
 }
 
-// RequestData mocks base method.
-func (m *MockShardinfo) RequestData() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestData")
-}
-
-// RequestData indicates an expected call of RequestData.
-func (mr *MockShardinfoMockRecorder) RequestData() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockShardinfo)(nil).RequestData))
-}
-
 // ShardKeyName mocks base method.
 func (m *MockShardinfo) ShardKeyName() string {
 	m.ctrl.T.Helper()
@@ -311,18 +299,6 @@ func (m *MockCoordShardinfo) Pid() uint32 {
 func (mr *MockCoordShardinfoMockRecorder) Pid() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Pid", reflect.TypeOf((*MockCoordShardinfo)(nil).Pid))
-}
-
-// RequestData mocks base method.
-func (m *MockCoordShardinfo) RequestData() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestData")
-}
-
-// RequestData indicates an expected call of RequestData.
-func (mr *MockCoordShardinfoMockRecorder) RequestData() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockCoordShardinfo)(nil).RequestData))
 }
 
 // Router mocks base method.
@@ -628,18 +604,6 @@ func (m *MockShard) Receive() (pgproto3.BackendMessage, error) {
 func (mr *MockShardMockRecorder) Receive() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockShard)(nil).Receive))
-}
-
-// RequestData mocks base method.
-func (m *MockShard) RequestData() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestData")
-}
-
-// RequestData indicates an expected call of RequestData.
-func (mr *MockShardMockRecorder) RequestData() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockShard)(nil).RequestData))
 }
 
 // SHKey mocks base method.

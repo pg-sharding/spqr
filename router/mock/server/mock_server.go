@@ -140,18 +140,6 @@ func (mr *MockServerMockRecorder) Receive() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Receive", reflect.TypeOf((*MockServer)(nil).Receive))
 }
 
-// RequestData mocks base method.
-func (m *MockServer) RequestData() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "RequestData")
-}
-
-// RequestData indicates an expected call of RequestData.
-func (mr *MockServerMockRecorder) RequestData() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestData", reflect.TypeOf((*MockServer)(nil).RequestData))
-}
-
 // Reset mocks base method.
 func (m *MockServer) Reset() error {
 	m.ctrl.T.Helper()

@@ -29,10 +29,6 @@ func (srv *ShardServer) DataPending() bool {
 	return srv.shard.DataPending()
 }
 
-func (srv *ShardServer) RequestData() {
-	srv.shard.RequestData()
-}
-
 func NewShardServer(spool *pool.DBPool) *ShardServer {
 	return &ShardServer{
 		pool: spool,
