@@ -3073,6 +3073,27 @@ func TestDDL(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_1",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Describe{ObjectType: byte('P'), Name: ""},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
