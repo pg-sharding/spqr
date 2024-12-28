@@ -483,6 +483,15 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	return nil, nil
 }
 
+func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.Receive()
+		}
+	}
+	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
+}
+
 func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {
 	if rule.PoolRollback {
 		if err := m.Send(&pgproto3.Query{

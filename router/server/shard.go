@@ -170,6 +170,14 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 }
 
 // TODO : unit tests
+func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+	if srv.shard.ID() != shardId {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+	return srv.Receive()
+}
+
+// TODO : unit tests
 func (srv *ShardServer) Cleanup(rule *config.FrontendRule) error {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
