@@ -67,4 +67,5 @@ var reservedWords = map[string]int{
 	"size":         SIZE,
 	"invalidate":   INVALIDATE,
 	"cache":        CACHE,
+	"reference":    REFERENCE,
 }

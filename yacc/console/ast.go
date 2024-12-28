@@ -119,6 +119,10 @@ type ShardingRuleEntry struct {
 	HashFunction string
 }
 
+type ReferenceRelationDefinition struct {
+	TableName string
+}
+
 type KeyRangeBound struct {
 	Pivots [][]byte
 }
@@ -135,10 +139,11 @@ type ShardDefinition struct {
 	Hosts []string
 }
 
-func (*KeyRangeDefinition) iCreate()     {}
-func (*ShardDefinition) iCreate()        {}
-func (*DistributionDefinition) iCreate() {}
-func (*ShardingRuleDefinition) iCreate() {}
+func (*KeyRangeDefinition) iCreate()          {}
+func (*ShardDefinition) iCreate()             {}
+func (*DistributionDefinition) iCreate()      {}
+func (*ShardingRuleDefinition) iCreate()      {}
+func (*ReferenceRelationDefinition) iCreate() {}
 
 type SplitKeyRange struct {
 	Border         *KeyRangeBound
@@ -299,30 +304,31 @@ type Statement interface {
 	iStatement()
 }
 
-func (*Show) iStatement()                   {}
-func (*Set) iStatement()                    {}
-func (*KeyRangeSelector) iStatement()       {}
-func (*ShardingRuleSelector) iStatement()   {}
-func (*DistributionSelector) iStatement()   {}
-func (*ShardSelector) iStatement()          {}
-func (*TaskGroupSelector) iStatement()      {}
-func (*Lock) iStatement()                   {}
-func (*Unlock) iStatement()                 {}
-func (*Shutdown) iStatement()               {}
-func (*Listen) iStatement()                 {}
-func (*MoveKeyRange) iStatement()           {}
-func (*RedistributeKeyRange) iStatement()   {}
-func (*SplitKeyRange) iStatement()          {}
-func (*UniteKeyRange) iStatement()          {}
-func (*DistributionDefinition) iStatement() {}
-func (*ShardingRuleDefinition) iStatement() {}
-func (*KeyRangeDefinition) iStatement()     {}
-func (*ShardDefinition) iStatement()        {}
-func (*Kill) iStatement()                   {}
-func (*WhereClauseLeaf) iStatement()        {}
-func (*WhereClauseEmpty) iStatement()       {}
-func (*WhereClauseOp) iStatement()          {}
-func (*InvalidateCache) iStatement()        {}
+func (*Show) iStatement()                        {}
+func (*Set) iStatement()                         {}
+func (*KeyRangeSelector) iStatement()            {}
+func (*ShardingRuleSelector) iStatement()        {}
+func (*DistributionSelector) iStatement()        {}
+func (*ShardSelector) iStatement()               {}
+func (*TaskGroupSelector) iStatement()           {}
+func (*Lock) iStatement()                        {}
+func (*Unlock) iStatement()                      {}
+func (*Shutdown) iStatement()                    {}
+func (*Listen) iStatement()                      {}
+func (*MoveKeyRange) iStatement()                {}
+func (*RedistributeKeyRange) iStatement()        {}
+func (*SplitKeyRange) iStatement()               {}
+func (*UniteKeyRange) iStatement()               {}
+func (*DistributionDefinition) iStatement()      {}
+func (*ReferenceRelationDefinition) iStatement() {}
+func (*ShardingRuleDefinition) iStatement()      {}
+func (*KeyRangeDefinition) iStatement()          {}
+func (*ShardDefinition) iStatement()             {}
+func (*Kill) iStatement()                        {}
+func (*WhereClauseLeaf) iStatement()             {}
+func (*WhereClauseEmpty) iStatement()            {}
+func (*WhereClauseOp) iStatement()               {}
+func (*InvalidateCache) iStatement()             {}
 
 func (*RegisterRouter) iStatement()   {}
 func (*UnregisterRouter) iStatement() {}

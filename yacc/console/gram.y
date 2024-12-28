@@ -146,7 +146,7 @@ func randomHex(n int) (string, error) {
 // routers
 %token <str> SHUTDOWN LISTEN REGISTER UNREGISTER ROUTER ROUTE
 
-%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE
+%token <str> CREATE ADD DROP LOCK UNLOCK SPLIT MOVE COMPOSE SET CASCADE ATTACH ALTER DETACH REDISTRIBUTE REFERENCE
 %token <str> SHARDING COLUMN TABLE HASH FUNCTION KEY RANGE DISTRIBUTION RELATION REPLICATED
 %token <str> SHARDS KEY_RANGES ROUTERS SHARD HOST SHARDING_RULES RULE COLUMNS VERSION HOSTS
 %token <str> BY FROM TO WITH UNITE ALL ADDRESS FOR
@@ -586,10 +586,20 @@ create_stmt:
 	CREATE key_range_define_stmt
 	{
 		$$ = &Create{Element: $2}
-	}|
+	}
+	|
 	CREATE shard_define_stmt
 	{
 		$$ = &Create{Element: $2}
+	}
+	|
+	CREATE REFERENCE TABLE any_id
+	{
+		$$ = &Create{
+			Element: &ReferenceRelationDefinition{
+				TableName: $4,
+			},
+		}
 	}
 
 
