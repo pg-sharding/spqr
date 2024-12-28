@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -36,15 +37,8 @@ type RouterClient interface {
 	client.Client
 	prepstatement.PreparedStatementMapper
 
-	RLock()
-	RUnlock()
-
-	/* only call this function while holding lock */
 	Server() server.Server
 	/* functions for operation with client's server */
-
-	ServerAcquireUse()
-	ServerReleaseUse()
 
 	Unroute() error
 
@@ -118,9 +112,7 @@ type PsqlClient struct {
 	show_notice_messages bool
 	maintain_params      bool
 
-	/* protects server */
-	mu     sync.RWMutex
-	server server.Server
+	serverP atomic.Pointer[server.Server]
 }
 
 // Distribution implements RouterClient.
@@ -284,17 +276,13 @@ func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBeha
 		savepointRh:   map[string]routehint.RouteHint{},
 
 		show_notice_messages: showNoticeMessages,
+
+		serverP: atomic.Pointer[server.Server]{},
 	}
 
+	cl.serverP.Store(nil)
+
 	return cl
-}
-
-func (cl *PsqlClient) RLock() {
-	cl.mu.RLock()
-}
-
-func (cl *PsqlClient) RUnlock() {
-	cl.mu.RUnlock()
 }
 
 func (cl *PsqlClient) GetCancelPid() uint32 {
@@ -531,13 +519,12 @@ func (cl *PsqlClient) ReplyBindComplete() error {
 }
 
 func (cl *PsqlClient) Reset() error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
+	serv := cl.serverP.Load()
 
-	if cl.server == nil {
+	if serv == nil || *serv == nil {
 		return nil
 	}
-	return cl.server.Reset()
+	return (*serv).Reset()
 }
 
 func (cl *PsqlClient) ReplyNotice(message string) error {
@@ -588,12 +575,14 @@ func (cl *PsqlClient) ID() uint {
 }
 
 func (cl *PsqlClient) Shards() []shard.Shard {
-	cl.mu.RLock()
-	defer cl.mu.RUnlock()
-	if cl.server != nil {
-		return cl.server.Datashards()
+
+	serv := cl.serverP.Load()
+
+	if serv == nil || *serv == nil {
+		return nil
 	}
-	return nil
+
+	return (*serv).Datashards()
 }
 
 func (cl *PsqlClient) Rule() *config.FrontendRule {
@@ -604,43 +593,38 @@ func (cl *PsqlClient) Rule() *config.FrontendRule {
 concurrent Unroute() is impossible */
 
 func (cl *PsqlClient) Server() server.Server {
-	return cl.server
+	serv := cl.serverP.Load()
+	if serv == nil {
+		return nil
+	}
+	return *serv
 }
 
 /* This method can be called concurrently with Cancel() */
 func (cl *PsqlClient) Unroute() error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
+	serv := cl.serverP.Load()
 
-	if cl.server == nil {
+	if serv == nil || *serv == nil {
 		/* TBD: raise error here sometimes? */
 		return nil
 	}
-	cl.server = nil
+
+	cl.serverP.Store(nil)
 	cl.ResetTsa()
 	return nil
 }
 
 /* This method can be called concurrently with Unroute() */
 func (cl *PsqlClient) Cancel() error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
+	serv := cl.serverP.Load()
 
-	if cl.server == nil {
+	if serv == nil || *serv == nil {
 		/* TBD: raise error here sometimes? */
 		return nil
 	}
+
 	/* server is locked,  */
-	return cl.server.Cancel()
-}
-
-/* This method can be called concurrently with Unroute() */
-func (cl *PsqlClient) ServerAcquireUse() {
-	cl.mu.RLock()
-}
-
-func (cl *PsqlClient) ServerReleaseUse() {
-	cl.mu.RUnlock()
+	return (*serv).Cancel()
 }
 
 func (cl *PsqlClient) AssignRule(rule *config.FrontendRule) error {
@@ -955,13 +939,11 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
-	cl.mu.Lock()
-	defer cl.mu.Unlock()
-	if cl.server != nil {
+
+	if cl.serverP.Load() != nil {
 		return fmt.Errorf("client already has active connection")
 	}
-	cl.server = srv
-
+	cl.serverP.Store(&srv)
 	return nil
 }
 
