@@ -302,6 +302,89 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	return rd, retMsg, nil
 }
 
+func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
+	rst.Cl.ServerAcquireUse()
+	defer rst.Cl.ServerReleaseUse()
+
+	serv := rst.Client().Server()
+
+	shards := serv.Datashards()
+	if len(shards) == 0 {
+		return spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+	}
+
+	for _, shard := range shards {
+		shardId := shard.ID()
+
+		if ok, _ := serv.HasPrepareStatement(hash, shardId); ok {
+			return nil
+		}
+
+		if err := serv.SendShard(&pgproto3.Parse{
+			Name:          d.Name,
+			Query:         d.Query,
+			ParameterOIDs: d.ParameterOIDs,
+		}, shardId); err != nil {
+			return err
+		}
+
+		if err := serv.SendShard(&pgproto3.Sync{}, shardId); err != nil {
+			return err
+		}
+
+		rd := &prepstatement.PreparedStatementDescriptor{
+			NoData:    false,
+			RowDesc:   nil,
+			ParamDesc: nil,
+		}
+		parsed := false
+		finished := false
+		for !finished {
+			msg, err := serv.ReceiveShard(shardId)
+			if err != nil {
+				return err
+			}
+			switch q := msg.(type) {
+			case *pgproto3.ParseComplete:
+				parsed = true
+			case *pgproto3.ReadyForQuery:
+				finished = true
+			case *pgproto3.ErrorResponse:
+				return fmt.Errorf("error preparing DDL statement: \"%s\"", q.Message)
+			case *pgproto3.NoData:
+				rd.NoData = true
+			case *pgproto3.ParameterDescription:
+				// copy
+				cp := *q
+				rd.ParamDesc = &cp
+			case *pgproto3.RowDescription:
+				// copy
+				rd.RowDesc = &pgproto3.RowDescription{}
+
+				rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+
+				for i := range len(q.Fields) {
+					s := make([]byte, len(q.Fields[i].Name))
+					copy(s, q.Fields[i].Name)
+
+					rd.RowDesc.Fields[i] = q.Fields[i]
+					rd.RowDesc.Fields[i].Name = s
+				}
+			default:
+				return fmt.Errorf("received unexpected message type %T", msg)
+			}
+		}
+
+		if !parsed {
+			return fmt.Errorf("statement parsing not finished")
+		}
+		if err := serv.StorePrepareStatement(hash, shardId, d, rd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (rst *RelayStateImpl) Close() error {
 	defer rst.Cl.Close()
 	defer rst.ActiveShardsReset()
@@ -1309,7 +1392,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 					pstmt := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
-					_, _, err := rst.PrepareStatement(hash, pstmt)
+					err := rst.multishardPrepareDDL(hash, pstmt)
 					if err != nil {
 						return err
 					}
