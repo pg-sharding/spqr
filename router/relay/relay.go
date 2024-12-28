@@ -342,7 +342,7 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 		shardId := shard.ID()
 
 		if ok, _ := serv.HasPrepareStatement(hash, shardId); ok {
-			return nil
+			continue
 		}
 
 		if err := serv.SendShard(&pgproto3.Parse{
@@ -1496,6 +1496,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 
 					pstmt := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 					hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
+					pstmt.Name = fmt.Sprintf("%d", hash)
+					q.PreparedStatement = pstmt.Name
 					err := rst.multishardPrepareDDL(hash, pstmt)
 					if err != nil {
 						return err
