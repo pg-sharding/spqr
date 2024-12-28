@@ -26,8 +26,8 @@ type RoutePool interface {
 }
 
 type RoutePoolImpl struct {
-	mu           sync.Mutex
-	pool         map[route.Key]*route.Route
+	/*  route.Key -> *route.Route */
+	pool         sync.Map
 	shardMapping map[string]*config.Shard
 }
 
@@ -36,7 +36,7 @@ var _ RoutePool = &RoutePoolImpl{}
 func NewRouterPoolImpl(shardMapping map[string]*config.Shard) *RoutePoolImpl {
 	return &RoutePoolImpl{
 		shardMapping: shardMapping,
-		pool:         map[route.Key]*route.Route{},
+		pool:         sync.Map{},
 	}
 }
 
@@ -49,44 +49,45 @@ func (r *RoutePoolImpl) ForEach(cb func(sh shard.Shardinfo) error) error {
 
 // TODO : unit tests
 func (r *RoutePoolImpl) NotifyRoutes(cb func(route *route.Route) error) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	var err error
 
-	for _, rt := range r.pool {
-		if err := cb(rt); err != nil {
+	r.pool.Range(func(key, value any) bool {
+		rt := value.(*route.Route)
+
+		if err = cb(rt); err != nil {
 			spqrlog.Zero.Info().
 				Err(err).
 				Msg("error while notifying route")
-			return err
+			return false
 		}
+		return true
+	})
+
+	return err
+}
+
+// TODO : unit tests
+func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
+	ret, ok := r.pool.LoadAndDelete(key)
+	if ok {
+		return ret.(*route.Route)
 	}
 
 	return nil
 }
 
 // TODO : unit tests
-func (r *RoutePoolImpl) Obsolete(key route.Key) *route.Route {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	ret := r.pool[key]
-
-	delete(r.pool, key)
-	return ret
-}
-
-// TODO : unit tests
 func (r *RoutePoolImpl) Shutdown() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, rt := range r.pool {
-		rt := rt
+
+	r.pool.Range(func(k, v any) bool {
+		rt := v.(*route.Route)
 		go func() {
 			_ = rt.NofityClients(func(cl client.ClientInfo) error {
 				return cl.Shutdown()
 			})
 		}()
-	}
+		return true
+	})
 
 	return nil
 }
@@ -96,33 +97,31 @@ func (r *RoutePoolImpl) MatchRoute(key route.Key,
 	beRule *config.BackendRule,
 	frRule *config.FrontendRule) (*route.Route, error) {
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if nroute, ok := r.pool[key]; ok {
+	if nroute, ok := r.pool.Load(key); ok {
 		spqrlog.Zero.Info().
 			Str("user", key.Usr()).
 			Str("db", key.DB()).
 			Msg("match route")
-		return nroute, nil
+		return nroute.(*route.Route), nil
 	}
 
 	spqrlog.Zero.Debug().
 		Str("user", key.Usr()).
 		Str("db", key.DB()).
 		Msg("allocate route")
-	nroute := route.NewRoute(beRule, frRule, r.shardMapping)
 
-	r.pool[key] = nroute
-	return nroute, nil
+	nroute := route.NewRoute(beRule, frRule, r.shardMapping)
+	act, _ := r.pool.LoadOrStore(key, nroute)
+	return act.(*route.Route), nil
 }
 
 // TODO : unit tests
 func (r *RoutePoolImpl) ForEachPool(cb func(pool.Pool) error) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, route := range r.pool {
+
+	r.pool.Range(func(k, v any) bool {
+		route := v.(*route.Route)
 		_ = route.ForEachPool(cb)
-	}
+		return true
+	})
 	return nil
 }
