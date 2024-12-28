@@ -36,11 +36,6 @@ const (
 	CopyInState
 )
 
-type multishardPStmtKey struct {
-	ShardId uint
-	Hash    uint64
-}
-
 type MultiShardServer struct {
 	activeShards []shard.Shard
 
@@ -53,17 +48,12 @@ type MultiShardServer struct {
 	status txstatus.TXStatus
 
 	copyBuf []*pgproto3.CopyOutResponse
-
-	stmtDefByShard  map[multishardPStmtKey]*prepstatement.PreparedStatementDefinition
-	stmtDescByShard map[multishardPStmtKey]*prepstatement.PreparedStatementDescriptor
 }
 
 func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 	ret := &MultiShardServer{
-		pool:            pool,
-		activeShards:    []shard.Shard{},
-		stmtDefByShard:  make(map[multishardPStmtKey]*prepstatement.PreparedStatementDefinition),
-		stmtDescByShard: make(map[multishardPStmtKey]*prepstatement.PreparedStatementDescriptor),
+		pool:         pool,
+		activeShards: []shard.Shard{},
 	}
 
 	return ret, nil
@@ -71,16 +61,22 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 
 // HasPrepareStatement implements Server.
 func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
-	desc, ok := m.stmtDescByShard[multishardPStmtKey{ShardId: shardId, Hash: hash}]
-	return ok, desc
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.HasPrepareStatement(hash, shardId)
+		}
+	}
+	return false, nil
 }
 
 // StorePrepareStatement implements Server.
 func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
-	key := multishardPStmtKey{Hash: hash, ShardId: shardId}
-	m.stmtDescByShard[key] = rd
-	m.stmtDefByShard[key] = d
-	return nil
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.StorePrepareStatement(hash, shardId, d, rd)
+		}
+	}
+	return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%d\" not found", shardId)
 }
 
 // DataPending implements Server.
