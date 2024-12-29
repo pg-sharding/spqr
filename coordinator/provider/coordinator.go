@@ -190,6 +190,8 @@ type CoordinatorClient interface {
 	CancelMsg() *pgproto3.CancelRequest
 }
 
+const defaultWatchRouterTimeout = time.Second
+
 type qdbCoordinator struct {
 	tlsconfig *tls.Config
 	db        qdb.XQDB
@@ -214,9 +216,9 @@ var _ coordinator.Coordinator = &qdbCoordinator{}
 // for clients. If not, initialize metadata and open router
 // TODO : unit tests
 func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
+	spqrlog.Zero.Debug().Msg("start routers watch iteration")
 	for {
-		/* check we are still coordinator */
-		spqrlog.Zero.Debug().Msg("start routers watch iteration")
+		// TODO check we are still coordinator
 
 		// TODO: lock router
 		rtrs, err := qc.db.ListRouters(ctx)
@@ -226,6 +228,9 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 			continue
 		}
 
+		// TODO we have to rewrite this code
+		// instead of opening new connections to each router
+		// we have to open it ones, keep and update before the iteration
 		for _, r := range rtrs {
 			if err := func() error {
 				internalR := &topology.Router{
@@ -279,12 +284,11 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 				spqrlog.Zero.Error().
 					Str("router id", r.ID).
 					Err(err).
-					Msg("router watchdog coroutine failed")
+					Msg("watch routers iteration failed on router")
 			}
 		}
 
-		// TODO: configure sleep
-		time.Sleep(time.Second)
+		time.Sleep(config.ValueOrDefaultDuration(config.CoordinatorConfig().IterationTimeout, defaultWatchRouterTimeout))
 	}
 }
 
