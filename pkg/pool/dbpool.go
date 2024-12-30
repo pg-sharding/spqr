@@ -111,7 +111,10 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+		ch, reason, err := s.checker.CheckTSA(shard)
+		spqrlog.Zero.Debug().Uint("id", shard.ID()).Bool("result", ch).Msg("checking for read-only")
+
+		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
@@ -122,21 +125,21 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			}, false)
 
 			return false
-		} else {
-			s.cacheTSAchecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, !ch)
-
-			if ch {
-				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
-				_ = s.Put(shard)
-				return false
-			}
-
-			return true
 		}
+
+		s.cacheTSAchecks.Store(TsaKey{
+			Tsa:  tsa,
+			Host: shard.Instance().Hostname(),
+			AZ:   shard.Instance().AvailabilityZone(),
+		}, !ch)
+
+		if ch {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-only check fail: %s ", shard.Instance().Hostname(), reason))
+			_ = s.Put(shard)
+			return false
+		}
+
+		return true
 	}, tsa)
 	if sh != nil {
 		return sh, nil
@@ -163,7 +166,9 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []config.Host, tsa tsa.TSA) (shard.Shard, error) {
 	totalMsg := make([]string, 0)
 	sh := s.traverseHostsMatchCB(clid, key, hosts, func(shard shard.Shard) bool {
-		if ch, reason, err := s.checker.CheckTSA(shard); err != nil {
+		ch, reason, err := s.checker.CheckTSA(shard)
+
+		if err != nil {
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
@@ -174,21 +179,21 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			}, false)
 
 			return false
-		} else {
-			s.cacheTSAchecks.Store(TsaKey{
-				Tsa:  tsa,
-				Host: shard.Instance().Hostname(),
-				AZ:   shard.Instance().AvailabilityZone(),
-			}, ch)
-
-			if !ch {
-				totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
-				_ = s.Put(shard)
-				return false
-			}
-
-			return true
 		}
+		s.cacheTSAchecks.Store(TsaKey{
+			Tsa:  tsa,
+			Host: shard.Instance().Hostname(),
+			AZ:   shard.Instance().AvailabilityZone(),
+		}, ch)
+
+		if !ch {
+			totalMsg = append(totalMsg, fmt.Sprintf("host %s: read-write check fail: %s ", shard.Instance().Hostname(), reason))
+			_ = s.Put(shard)
+			return false
+		}
+
+		return true
+
 	}, tsa)
 	if sh != nil {
 		return sh, nil
@@ -295,7 +300,6 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 				negCache = append(negCache, host)
 			}
 		} else {
-
 			posCache = append(posCache, host)
 		}
 	}
@@ -451,7 +455,18 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
+		ShuffleHosts:   true,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
+	}
+}
+
+func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
+	return &DBPool{
+		pool:           NewPool(allocator),
+		shardMapping:   mapping,
+		ShuffleHosts:   true,
+		cacheTSAchecks: sync.Map{},
+		checker:        tsa.NewTSAChecker(),
 	}
 }
