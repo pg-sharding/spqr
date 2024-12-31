@@ -1,6 +1,9 @@
 package pool_test
 
 import (
+	"context"
+	"math/rand"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,10 +15,13 @@ import (
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
+	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/startup"
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/semaphore"
 )
 
 func TestDbPoolOrderCaching(t *testing.T) {
@@ -75,6 +81,7 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h1"}).Times(1).Return(h1, nil)
 	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h2"}).Times(1).Return(h2, nil)
 	underyling_pool.EXPECT().ConnectionHost(clId, key, config.Host{Address: "h3"}).Times(1).Return(h3, nil)
+	underyling_pool.EXPECT().ID().Return(uint(17)).AnyTimes()
 
 	for ind, h := range hs {
 
@@ -128,6 +135,125 @@ func TestDbPoolOrderCaching(t *testing.T) {
 	assert.Equal(sh.Instance().AvailabilityZone(), h3.Instance().AvailabilityZone())
 
 	assert.NoError(err)
+}
+
+func TestDbPoolRaces(t *testing.T) {
+	assert := assert.New(t)
+
+	ctrl := gomock.NewController(t)
+
+	sz := 50
+
+	mp := map[string]map[string][]shard.Shard{}
+	var mu sync.Mutex
+
+	hosts := []string{
+		"h1",
+		"h2",
+		"h3",
+	}
+
+	shrds := []string{
+		"sh1",
+		"sh2",
+		"sh3",
+	}
+
+	for i, shname := range shrds {
+		mp[shname] = map[string][]shard.Shard{}
+
+		for hi, hst := range hosts {
+
+			for j := 0; j < sz; j++ {
+				sh := mockshard.NewMockShard(ctrl)
+
+				ins1 := mockinst.NewMockDBInstance(ctrl)
+				ins1.EXPECT().Hostname().Return(hst).AnyTimes()
+				ins1.EXPECT().AvailabilityZone().Return("").AnyTimes()
+
+				sh.EXPECT().Send(gomock.Any()).AnyTimes()
+
+				sh.EXPECT().Sync().Return(int64(0)).AnyTimes()
+				sh.EXPECT().TxStatus().Return(txstatus.TXIDLE).AnyTimes()
+
+				sh.EXPECT().ShardKeyName().Return(shname).AnyTimes()
+
+				counter := 0
+
+				sh.EXPECT().Receive().DoAndReturn(func() (pgproto3.BackendMessage, error) {
+					if counter == 0 {
+						counter = 1
+						if rand.Intn(100)%2 == 0 {
+							return &pgproto3.DataRow{
+								Values: [][]byte{
+									{'o', 'n'},
+								},
+							}, nil
+						} else {
+							return &pgproto3.DataRow{
+								Values: [][]byte{
+									{'o', 'f', 'f'},
+								},
+							}, nil
+						}
+					}
+					counter = 0
+					return &pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)}, nil
+				}).AnyTimes()
+
+				sh.EXPECT().InstanceHostname().Return(hst).AnyTimes()
+
+				sh.EXPECT().ID().Return(uint((3*i+hi)*sz + j)).AnyTimes()
+				sh.EXPECT().Instance().Return(ins1).AnyTimes()
+				mp[shname][hst] = append(mp[shname][hst], sh)
+			}
+		}
+	}
+
+	cfg := map[string]*config.Shard{}
+
+	for _, sh := range shrds {
+		cfg[sh] = &config.Shard{
+			RawHosts: hosts,
+		}
+	}
+
+	dbpool := pool.NewDBPoolWithAllocator(cfg, &startup.StartupParams{}, func(shardKey kr.ShardKey, host config.Host, rule *config.BackendRule) (shard.Shard, error) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		if len(mp[shardKey.Name][host.Address]) == 0 {
+			panic("exeeded!")
+		}
+		var sh shard.Shard
+		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
+
+		spqrlog.Zero.Debug().Str("shard", shardKey.Name).Str("host", host.Address).Uint("id", sh.ID()).Msg("test allocation")
+
+		return sh, nil
+	})
+
+	dbpool.SetRule(&config.BackendRule{
+		ConnectionLimit: sz,
+	})
+
+	sem := semaphore.NewWeighted(25)
+
+	for i := range 10 {
+		for range 200 {
+			assert.NoError(sem.Acquire(context.TODO(), 1))
+
+			go func() {
+				defer sem.Release(1)
+
+				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shrds[i%3]}, config.TargetSessionAttrsPS)
+				assert.NoError(err)
+				err = dbpool.Put(sh)
+				assert.NoError(err)
+			}()
+		}
+
+	}
 }
 
 func TestDbPoolReadOnlyOrderDistribution(t *testing.T) {

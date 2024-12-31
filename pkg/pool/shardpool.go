@@ -147,10 +147,13 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 			sh, h.pool = h.pool[0], h.pool[1:]
 			h.active[sh.ID()] = sh
 			h.mu.Unlock()
+
 			spqrlog.Zero.Debug().
+				Uint("pool", spqrlog.GetPointer(h)).
 				Uint("client", clid).
 				Uint("shard", sh.ID()).
 				Str("host", sh.Instance().Hostname()).
+				Uint("id", sh.ID()).
 				Msg("connection pool for client: reuse cached shard connection to instance")
 			return sh, nil
 		}
@@ -166,6 +169,12 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 		h.queue <- struct{}{}
 		return nil, err
 	}
+
+	spqrlog.Zero.Debug().
+		Uint("pool", spqrlog.GetPointer(h)).
+		Str("key", shardKey.Name).
+		Str("host", h.host).Uint("id", sh.ID()).
+		Msg("allocated new connections")
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -186,7 +195,7 @@ func (h *shardPool) Connection(clid uint, shardKey kr.ShardKey) (shard.Shard, er
 //
 // TODO : unit tests
 func (h *shardPool) Discard(sh shard.Shard) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("discard connection to hostname from pool")
@@ -199,7 +208,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 
 	if _, ok := h.active[sh.ID()]; !ok {
 		// double free
-		return nil
+		panic(fmt.Sprintf("data corruption: connection already discarded: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
 
 	/* acquired tok, release it */
@@ -223,7 +232,7 @@ func (h *shardPool) Discard(sh shard.Shard) error {
 //
 // TODO : unit tests
 func (h *shardPool) Put(sh shard.Shard) error {
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Debug().Uint("pool", spqrlog.GetPointer(h)).
 		Uint("shard", sh.ID()).
 		Str("host", sh.Instance().Hostname()).
 		Msg("put connection back to pool")
@@ -236,7 +245,7 @@ func (h *shardPool) Put(sh shard.Shard) error {
 	defer h.mu.Unlock()
 
 	if _, ok := h.active[sh.ID()]; !ok {
-		panic(fmt.Sprintf("data corruption: connection already put: %v", sh))
+		panic(fmt.Sprintf("data corruption: connection already put: %v, hostname: %s, shard %s", sh.ID(), sh.InstanceHostname(), sh.ShardKeyName()))
 	}
 
 	/* acquired tok, release it */
@@ -286,7 +295,14 @@ type cPool struct {
 
 	alloc ConnectionAllocFn
 
+	id uint
+
 	beRule *config.BackendRule
+}
+
+// ID implements MultiShardPool.
+func (c *cPool) ID() uint {
+	return c.id
 }
 
 // NewPool creates a new MultiShardPool with the given connection allocation function.
@@ -299,10 +315,13 @@ type cPool struct {
 // Returns:
 //   - MultiShardPool: The created MultiShardPool.
 func NewPool(allocFn ConnectionAllocFn) MultiShardPool {
-	return &cPool{
+	rt := &cPool{
 		pools: sync.Map{},
 		alloc: allocFn,
 	}
+
+	rt.id = spqrlog.GetPointer(rt)
+	return rt
 }
 
 // ForEach iterates over each shard in the shard pool and calls the provided callback function.
@@ -363,7 +382,9 @@ func (c *cPool) ConnectionHost(clid uint, shardKey kr.ShardKey, host config.Host
 	var pool Pool
 	if val, ok := c.pools.Load(host.Address); !ok {
 		pool = NewShardPool(c.alloc, host, c.beRule)
-		c.pools.Store(host.Address, pool)
+		v, _ := c.pools.LoadOrStore(host.Address, pool)
+
+		pool = v.(Pool)
 	} else {
 		pool = val.(Pool)
 	}

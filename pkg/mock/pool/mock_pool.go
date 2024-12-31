@@ -253,6 +253,20 @@ func (mr *MockMultiShardPoolMockRecorder) ForEachPool(cb interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForEachPool", reflect.TypeOf((*MockMultiShardPool)(nil).ForEachPool), cb)
 }
 
+// ID mocks base method.
+func (m *MockMultiShardPool) ID() uint {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ID")
+	ret0, _ := ret[0].(uint)
+	return ret0
+}
+
+// ID indicates an expected call of ID.
+func (mr *MockMultiShardPoolMockRecorder) ID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockMultiShardPool)(nil).ID))
+}
+
 // Put mocks base method.
 func (m *MockMultiShardPool) Put(host shard.Shard) error {
 	m.ctrl.T.Helper()
