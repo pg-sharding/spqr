@@ -1773,6 +1773,13 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 	if pt == port.UnixSocketPortType {
 		tlsconfig = nil
 	}
+
+	spqrlog.Zero.Info().
+		Str("user", cl.Usr()).
+		Str("db", cl.DB()).
+		Bool("ssl", tlsconfig != nil).
+		Msg("init client connection...")
+
 	if err := cl.Init(tlsconfig); err != nil {
 		return nil, err
 	}
@@ -1784,7 +1791,8 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
-		Msg("initialized client connection")
+		Bool("ssl", tlsconfig != nil).
+		Msg("init client connection OK")
 
 	var authRule *config.AuthCfg
 	if config.CoordinatorConfig().Auth != nil {
