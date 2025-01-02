@@ -455,7 +455,6 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
-		ShuffleHosts:   true,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
@@ -465,7 +464,6 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		ShuffleHosts:   true,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
