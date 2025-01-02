@@ -451,21 +451,21 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 	}
 }
 
+// TODO: add shuffle host support here
 func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.StartupParams, mp MultiShardPool, tsaRecheckDuration time.Duration) *DBPool {
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
-		ShuffleHosts:   true,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
 
+// TODO: add shuffle host support here
 func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *startup.StartupParams, allocator ConnectionAllocFn) *DBPool {
 	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		ShuffleHosts:   true,
 		cacheTSAchecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
