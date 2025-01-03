@@ -38,6 +38,7 @@ var endpoint string
 var proto string
 var passwd string
 var logLevel string
+var insecureSkipVerify bool
 
 // TODO : unit tests
 func waitRFQ(fr *pgproto3.Frontend) error {
@@ -85,7 +86,8 @@ func getconn() (*pgproto3.Frontend, error) {
 		Bytes("response", resp).
 		Msg("startup got bytes")
 	cc = tls.Client(cc, &tls.Config{
-		InsecureSkipVerify: true,
+		// codeql[go/disabled-certificate-verification]
+		InsecureSkipVerify: insecureSkipVerify,
 	})
 
 	frontend = pgproto3.NewFrontend(cc, cc)
@@ -309,6 +311,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&passwd, "passwd", "p", "", "password to use for communication")
 
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "error", "log level")
+
+	rootCmd.PersistentFlags().BoolVar(&insecureSkipVerify, "insecure-skip-verify", false, "skip TLS certificate verification")
 
 	rootCmd.AddCommand(dump)
 }
