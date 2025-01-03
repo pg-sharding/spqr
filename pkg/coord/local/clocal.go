@@ -6,14 +6,12 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -236,14 +234,14 @@ func (lc *LocalCoordinator) GetRelationDistribution(ctx context.Context, relatio
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
 //
 // Returns:
-// - []*datashards.DataShard: A slice of datashards.DataShard objects representing the list of data shards.
-func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*datashards.DataShard {
+// - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
+func (lc *LocalCoordinator) ListDataShards(ctx context.Context) []*topology.DataShard {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*datashards.DataShard
+	var ret []*topology.DataShard
 	for id, cfg := range lc.DataShardCfgs {
-		ret = append(ret, datashards.NewDataShard(id, cfg))
+		ret = append(ret, topology.NewDataShard(id, cfg))
 	}
 	return ret
 }
@@ -272,17 +270,17 @@ func (lc *LocalCoordinator) DropDistribution(ctx context.Context, id string) err
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
 //
 // Returns:
-// - []*datashards.DataShard: A slice of datashards.DataShard objects representing the list of data shards.
+// - []*topology.DataShard: A slice of topology.DataShard objects representing the list of data shards.
 // - error: An error if the retrieval operation fails.
-func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	resp, err := lc.qdb.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var retShards []*datashards.DataShard
+	var retShards []*topology.DataShard
 
 	for _, sh := range resp {
-		retShards = append(retShards, &datashards.DataShard{
+		retShards = append(retShards, &topology.DataShard{
 			ID: sh.ID,
 			Cfg: &config.Shard{
 				RawHosts: sh.RawHosts,
@@ -296,11 +294,11 @@ func (lc *LocalCoordinator) ListShards(ctx context.Context) ([]*datashards.DataS
 //
 // Parameters:
 // - ctx (context.Context): The context.Context object for managing the request's lifetime.
-// - ds (*datashards.DataShard): The datashards.DataShard object representing the world shard to be added.
+// - ds (*topology.DataShard): The topology.DataShard object representing the world shard to be added.
 //
 // Returns:
 // - error: An error if the addition of the world shard fails.
-func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *datashards.DataShard) error {
+func (lc *LocalCoordinator) AddWorldShard(ctx context.Context, ds *topology.DataShard) error {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
@@ -664,7 +662,7 @@ func (lc *LocalCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew st
 //
 // Returns:
 // - error: an error if the operation encounters any issues.
-func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *datashards.DataShard) error {
+func (lc *LocalCoordinator) AddDataShard(ctx context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Info().
 		Str("node", ds.ID).
 		Msg("adding node")
@@ -904,9 +902,9 @@ func (lc *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) 
 // - shardID (string): The ID of the DataShard to retrieve.
 //
 // Returns:
-// - *datashards.DataShard: The retrieved DataShard, or nil if it doesn't exist.
+// - *topology.DataShard: The retrieved DataShard, or nil if it doesn't exist.
 // - error: An error indicating the retrieval status, or ErrNotCoordinator if the operation is not supported by the LocalCoordinator.
-func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (lc *LocalCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	return nil, ErrNotCoordinator
 }
 

@@ -5,14 +5,13 @@ import (
 	"math/rand"
 	"sync"
 
-	"go.uber.org/atomic"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/routingstate"
+	"go.uber.org/atomic"
 )
 
 type ProxyQrouter struct {
@@ -103,7 +102,7 @@ func NewProxyRouter(shardMapping map[string]*config.Shard, mgr meta.EntityMgr, q
 		case config.DataShard:
 			fallthrough // default is datashard
 		default:
-			if err := mgr.AddDataShard(context.TODO(), &datashards.DataShard{
+			if err := mgr.AddDataShard(context.TODO(), &topology.DataShard{
 				ID:  name,
 				Cfg: shardCfg,
 			}); err != nil {
