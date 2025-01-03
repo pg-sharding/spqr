@@ -86,6 +86,7 @@ func getconn() (*pgproto3.Frontend, error) {
 		Bytes("response", resp).
 		Msg("startup got bytes")
 	cc = tls.Client(cc, &tls.Config{
+		// codeql[go/disabled-certificate-verification]
 		InsecureSkipVerify: insecureSkipVerify,
 	})
 
