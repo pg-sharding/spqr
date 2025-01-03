@@ -3,19 +3,16 @@ package coord
 import (
 	"context"
 
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
-	"github.com/pg-sharding/spqr/router/cache"
-
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/cache"
 	"google.golang.org/grpc"
 )
 
@@ -574,11 +571,11 @@ func (a *Adapter) SyncRouterCoordinatorAddress(ctx context.Context, router *topo
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - shard (*datashards.DataShard): The datashards.DataShard instance to add.
+// - shard (*topology.DataShard): The topology.DataShard instance to add.
 //
 // Returns:
 // - error: An error if the data shard addition fails, otherwise nil.
-func (a *Adapter) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+func (a *Adapter) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addDataShard not implemented")
 }
 
@@ -604,11 +601,11 @@ func (a *Adapter) DropShard(ctx context.Context, shardId string) error {
 //
 // Parameters:
 // - ctx (context.Context): The context for the request.
-// - shard (*datashards.DataShard): The datashards.DataShard instance to add.
+// - shard (*topology.DataShard): The topology.DataShard instance to add.
 //
 // Returns:
 // - error: An error if the world shard addition fails, otherwise nil.
-func (a *Adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
+func (a *Adapter) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
 	return spqrerror.New(spqrerror.SPQR_NOT_IMPLEMENTED, "addWorldShard not implemented")
 }
 
@@ -620,15 +617,15 @@ func (a *Adapter) AddWorldShard(ctx context.Context, shard *datashards.DataShard
 // - ctx (context.Context): The context for the request.
 //
 // Returns:
-// - []*datashards.DataShard: A list of data shards.
+// - []*topology.DataShard: A list of data shards.
 // - error: An error if the retrieval of shards fails, otherwise nil.
-func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+func (a *Adapter) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.ListShards(ctx, nil)
 	shards := resp.Shards
-	var ds []*datashards.DataShard
+	var ds []*topology.DataShard
 	for _, shard := range shards {
-		ds = append(ds, &datashards.DataShard{
+		ds = append(ds, &topology.DataShard{
 			ID:  shard.Id,
 			Cfg: &config.Shard{RawHosts: shard.Hosts},
 		})
@@ -645,12 +642,12 @@ func (a *Adapter) ListShards(ctx context.Context) ([]*datashards.DataShard, erro
 // - shardId (string): The ID of the data shard to retrieve.
 //
 // Returns:
-// - *datashards.DataShard: The retrieved data shard.
+// - *topology.DataShard: The retrieved data shard.
 // - error: An error if the retrieval of the shard fails, otherwise nil.
-func (a *Adapter) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (a *Adapter) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	c := proto.NewShardServiceClient(a.conn)
 	resp, err := c.GetShard(ctx, &proto.ShardRequest{Id: shardID})
-	return &datashards.DataShard{
+	return &topology.DataShard{
 		ID:  resp.Shard.Id,
 		Cfg: &config.Shard{RawHosts: resp.Shard.Hosts},
 	}, err

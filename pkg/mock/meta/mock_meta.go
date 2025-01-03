@@ -9,10 +9,10 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	datashards "github.com/pg-sharding/spqr/pkg/models/datashards"
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
+	datashards "github.com/pg-sharding/spqr/pkg/models/topology"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"

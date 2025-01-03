@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
-
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -47,7 +46,7 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 		Shards: func() []*protos.Shard {
 			res := make([]*protos.Shard, len(shards))
 			for i, sh := range shards {
-				res[i] = datashards.DataShardToProto(sh)
+				res[i] = topology.DataShardToProto(sh)
 			}
 			return res
 		}(),
@@ -55,7 +54,7 @@ func (l *LocalQrouterServer) ListShards(ctx context.Context, _ *emptypb.Empty) (
 }
 
 func (l *LocalQrouterServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
-	if err := l.mgr.AddDataShard(ctx, datashards.DataShardFromProto(request.GetShard())); err != nil {
+	if err := l.mgr.AddDataShard(ctx, topology.DataShardFromProto(request.GetShard())); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -71,7 +70,7 @@ func (l *LocalQrouterServer) GetShard(ctx context.Context, request *protos.Shard
 		return nil, err
 	}
 	return &protos.ShardReply{
-		Shard: datashards.DataShardToProto(sh),
+		Shard: topology.DataShardToProto(sh),
 	}, nil
 }
 

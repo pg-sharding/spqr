@@ -4,19 +4,18 @@ import (
 	"context"
 
 	"github.com/juju/errors"
+	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/router/routingstate"
-
-	"github.com/pg-sharding/lyx/lyx"
 )
 
 type LocalQrouter struct {
 	QueryRouter
-	ds *datashards.DataShard
+	ds *topology.DataShard
 }
 
 var _ QueryRouter = &LocalQrouter{}
@@ -39,7 +38,7 @@ func NewLocalQrouter(shardMapping map[string]*config.Shard) (*LocalQrouter, erro
 		cfg = v
 	}
 
-	l.ds = &datashards.DataShard{
+	l.ds = &topology.DataShard{
 		ID:  name,
 		Cfg: cfg,
 	}
@@ -56,7 +55,7 @@ func (l *LocalQrouter) Initialized() bool {
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) AddDataShard(_ context.Context, ds *datashards.DataShard) error {
+func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) error {
 	spqrlog.Zero.Debug().Str("shard", ds.ID).Msg("adding data shard")
 	l.ds = ds
 	return nil

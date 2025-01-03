@@ -3,13 +3,12 @@ package provider
 import (
 	"context"
 
+	"github.com/pg-sharding/spqr/coordinator"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
+	protos "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/pg-sharding/spqr/coordinator"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	protos "github.com/pg-sharding/spqr/pkg/protos"
 )
 
 type ShardServer struct {
@@ -30,7 +29,7 @@ var _ protos.ShardServiceServer = &ShardServer{}
 func (s *ShardServer) AddDataShard(ctx context.Context, request *protos.AddShardRequest) (*emptypb.Empty, error) {
 	newShard := request.GetShard()
 
-	if err := s.impl.AddDataShard(ctx, datashards.DataShardFromProto(newShard)); err != nil {
+	if err := s.impl.AddDataShard(ctx, topology.DataShardFromProto(newShard)); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +51,7 @@ func (s *ShardServer) ListShards(ctx context.Context, _ *emptypb.Empty) (*protos
 	protoShards := make([]*protos.Shard, 0, len(shardList))
 
 	for _, sh := range shardList {
-		protoShards = append(protoShards, datashards.DataShardToProto(sh))
+		protoShards = append(protoShards, topology.DataShardToProto(sh))
 	}
 
 	return &protos.ListShardsReply{
@@ -68,7 +67,7 @@ func (s *ShardServer) GetShard(ctx context.Context, shardRequest *protos.ShardRe
 	}
 
 	return &protos.ShardReply{
-		Shard: datashards.DataShardToProto(sh),
+		Shard: topology.DataShardToProto(sh),
 	}, nil
 }
 

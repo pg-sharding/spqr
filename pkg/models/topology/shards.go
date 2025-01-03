@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/qdb"
 )
 
 type DataShard struct {
@@ -18,7 +20,6 @@ type ShardsMgr interface {
 	GetShard(ctx context.Context, shardID string) (*DataShard, error)
 	DropShard(ctx context.Context, id string) error
 }
-
 
 // NewDataShard creates a new DataShard instance with the given name and configuration.
 //

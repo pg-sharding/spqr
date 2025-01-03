@@ -12,42 +12,33 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/pg-sharding/spqr/pkg/models/distributions"
-
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-
 	"github.com/google/uuid"
-
-	"github.com/pg-sharding/spqr/pkg/datatransfers"
-	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
-	"github.com/pg-sharding/spqr/pkg/shard"
-
-	"github.com/pg-sharding/spqr/qdb/ops"
-
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
-	"github.com/jackc/pgx/v5/pgproto3"
-	"google.golang.org/grpc"
-
-	"github.com/pg-sharding/spqr/coordinator"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
+	"github.com/pg-sharding/spqr/pkg/datatransfers"
+	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
+	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	routerproto "github.com/pg-sharding/spqr/pkg/protos"
+	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
 	psqlclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
+	"google.golang.org/grpc"
 )
 
 type grpcConnectionIterator struct {
@@ -1885,11 +1876,11 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+func (qc *qdbCoordinator) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	return qc.db.AddShard(ctx, qdb.NewShard(shard.ID, shard.Cfg.RawHosts))
 }
 
-func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *datashards.DataShard) error {
+func (qc *qdbCoordinator) AddWorldShard(_ context.Context, _ *topology.DataShard) error {
 	panic("qdbCoordinator.AddWorldShard not implemented")
 }
 
@@ -1898,16 +1889,16 @@ func (qc *qdbCoordinator) DropShard(ctx context.Context, shardId string) error {
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+func (qc *qdbCoordinator) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	shardList, err := qc.db.ListShards(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	shards := make([]*datashards.DataShard, 0, len(shardList))
+	shards := make([]*topology.DataShard, 0, len(shardList))
 
 	for _, shard := range shardList {
-		shards = append(shards, &datashards.DataShard{
+		shards = append(shards, &topology.DataShard{
 			ID: shard.ID,
 			Cfg: &config.Shard{
 				RawHosts: shard.RawHosts,
@@ -2078,12 +2069,12 @@ func (qc *qdbCoordinator) AlterDistributionDetach(ctx context.Context, id string
 	})
 }
 
-func (qc *qdbCoordinator) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (qc *qdbCoordinator) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	sh, err := qc.db.GetShard(ctx, shardID)
 	if err != nil {
 		return nil, err
 	}
-	return datashards.DataShardFromDb(sh), nil
+	return topology.DataShardFromDb(sh), nil
 }
 
 func (qc *qdbCoordinator) finishRedistributeTasksInProgress(ctx context.Context) error {

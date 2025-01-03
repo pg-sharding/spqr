@@ -9,18 +9,16 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
-
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -31,7 +29,7 @@ const (
 type EntityMgr interface {
 	kr.KeyRangeMgr
 	topology.RouterMgr
-	datashards.ShardsMgr
+	topology.ShardsMgr
 	distributions.DistributionMgr
 	tasks.TaskMgr
 
@@ -274,7 +272,7 @@ func processCreate(ctx context.Context, astmt spqrparser.Statement, mngr EntityM
 		}
 		return cli.CreateKeyRange(ctx, req)
 	case *spqrparser.ShardDefinition:
-		dataShard := datashards.NewDataShard(stmt.Id, &config.Shard{
+		dataShard := topology.NewDataShard(stmt.Id, &config.Shard{
 			RawHosts: stmt.Hosts,
 			Type:     config.DataShard,
 		})
@@ -537,9 +535,9 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		if err != nil {
 			return err
 		}
-		var resp []*datashards.DataShard
+		var resp []*topology.DataShard
 		for _, sh := range shards {
-			resp = append(resp, &datashards.DataShard{
+			resp = append(resp, &topology.DataShard{
 				ID: sh.ID,
 			})
 		}

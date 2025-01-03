@@ -8,29 +8,22 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pg-sharding/spqr/pkg/models/tasks"
-
-	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
-
-	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
-
+	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
+	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/models/tasks"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/shard"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/statistics"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
-
-	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/spqrlog"
-
-	"github.com/jackc/pgx/v5/pgproto3"
-
-	"github.com/pg-sharding/spqr/pkg/models/datashards"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 )
 
 type Interactor interface {
@@ -323,11 +316,11 @@ func (pi *PSQLInteractor) Quantiles(_ context.Context) error {
 // indicating the creation of the specified data shard, and completes the message.
 //
 // Parameters:
-// - shard (*datashards.DataShard): The datashards.DataShard object to be added.
+// - shard (*topology.DataShard): The topology.DataShard object to be added.
 //
 // Returns:
 //   - error: An error if sending the messages fails, otherwise nil.
-func (pi *PSQLInteractor) AddShard(shard *datashards.DataShard) error {
+func (pi *PSQLInteractor) AddShard(shard *topology.DataShard) error {
 	if err := pi.WriteHeader("add shard"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
@@ -619,11 +612,11 @@ func (pi *PSQLInteractor) DropTaskGroup(_ context.Context) error {
 //
 // Parameters:
 // - ctx (context.Context): The context parameter.
-// - shards ([]*datashards.DataShard): The list of data shards to be listed.
+// - shards ([]*topology.DataShard): The list of data shards to be listed.
 //
 // Returns:
 // - error: An error if there was a problem listing the data shards.
-func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*datashards.DataShard) error {
+func (pi *PSQLInteractor) Shards(ctx context.Context, shards []*topology.DataShard) error {
 	if err := pi.WriteHeader("listing data shards"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
