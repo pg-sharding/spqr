@@ -45,7 +45,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 	case "disable":
 		return nil, nil
 	case "allow", "prefer":
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true // because https://github.com/jackc/pgx/blob/a968ce3437eefc4168b39bbc4b1ea685f4c8ae66/pgconn/config.go#L633
 	case "require":
 		// According to PostgreSQL documentation, if a root CA file exists,
 		// the behavior of sslmode=require should be the same as that of verify-ca
@@ -54,7 +54,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 		if c.RootCertFile != "" {
 			goto nextCase
 		}
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true // because https://github.com/jackc/pgx/blob/a968ce3437eefc4168b39bbc4b1ea685f4c8ae66/pgconn/config.go#L642
 		break
 	nextCase:
 		fallthrough
@@ -68,7 +68,7 @@ func (c *TLSConfig) Init(host string) (*tls.Config, error) {
 		// See https://github.com/golang/go/issues/21971#issuecomment-332693931
 		// and https://pkg.go.dev/crypto/tls?tab=doc#example-Config-VerifyPeerCertificate
 		// for more info.
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true // because https://github.com/jackc/pgx/blob/a968ce3437eefc4168b39bbc4b1ea685f4c8ae66/pgconn/config.go#L656
 		tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, _ [][]*x509.Certificate) error {
 			certs := make([]*x509.Certificate, len(certificates))
 			for i, asn1Data := range certificates {
