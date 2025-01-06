@@ -22,7 +22,7 @@ import (
 )
 
 func AdvancedPoolModeNeeded(rst RelayStateMgr) bool {
-	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || rst.RouterMode() == config.ProxyMode
+	return rst.Client().Rule().PoolMode == config.PoolModeTransaction && rst.Client().Rule().PoolPreparedStatement || config.RouterMode(config.RouterConfig().RouterMode) == config.ProxyMode
 }
 
 func deparseRouteHint(rst RelayStateMgr, params map[string]string) (routehint.RouteHint, error) {
