@@ -32,11 +32,14 @@ import (
 )
 
 type RelayStateMgr interface {
-	poolmgr.ConnectionKeeper
+	poolmgr.ConnectionKeeper // TODO denchick: remove this interface?
 
 	QueryRouter() qrouter.QueryRouter
+	Client() client.RouterClient
+
 	Reset() error
-	Flush()
+	Flush() // TODO why not error?
+	Close() error
 
 	// TODO refactor it. This method and all caching logic should be part of the QueryRouter?
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
@@ -47,18 +50,14 @@ type RelayStateMgr interface {
 	// TODO denchick: replyCl is always true
 	CompleteRelay(replyCl bool) error
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
-	Close() error
-	Client() client.RouterClient
 
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
-
-	// TODO denchick: concurrent-safe
+	// TODO denchick: concurrent-safe ?
 	UnholdRouting()
 
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool, cmngr poolmgr.PoolMgr) error
 	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool, cmngr poolmgr.PoolMgr) (bool, error)
-
-	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error
+	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 }
 
 type BufferedMessageType int
