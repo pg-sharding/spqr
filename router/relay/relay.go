@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -149,7 +150,7 @@ type RelayStateImpl struct {
 
 	msgBuf []BufferedMessage
 
-	holdRouting bool
+	holdRouting atomic.Bool
 
 	bindRoute    *routingstate.DataShardRoute
 	lastBindName string
@@ -167,12 +168,12 @@ type RelayStateImpl struct {
 
 // HoldRouting implements RelayStateMgr.
 func (rst *RelayStateImpl) HoldRouting() {
-	rst.holdRouting = true
+	rst.holdRouting.Store(true)
 }
 
 // UnholdRouting implements RelayStateMgr.
 func (rst *RelayStateImpl) UnholdRouting() {
-	rst.holdRouting = false
+	rst.holdRouting.Store(false)
 }
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
