@@ -25,7 +25,6 @@ import (
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
-	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -34,7 +33,7 @@ import (
 
 type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
-	route.RouteMgr
+
 	QueryRouter() qrouter.QueryRouter
 	Reset() error
 	Flush()
@@ -47,6 +46,7 @@ type RelayStateMgr interface {
 
 	// TODO denchick: replyCl is always true
 	CompleteRelay(replyCl bool) error
+	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
 	Close() error
 	Client() client.RouterClient
 
