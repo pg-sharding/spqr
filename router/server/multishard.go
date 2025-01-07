@@ -461,11 +461,16 @@ func (m *MultiShardServer) Sync() int64 {
 }
 
 func (m *MultiShardServer) Cancel() error {
-	var err error
+	var errs []error
 	for _, sh := range m.activeShards {
-		err = sh.Cancel()
+		if err := sh.Cancel(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return err
+	if len(errs) > 0 {
+		return fmt.Errorf("errors occurred during cancel: %w", fmt.Errorf("%v", errs))
+	}
+	return nil
 }
 
 func (m *MultiShardServer) SetTxStatus(tx txstatus.TXStatus) {
