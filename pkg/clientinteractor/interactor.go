@@ -1140,7 +1140,7 @@ func (pi *PSQLInteractor) StartTraceMessages(ctx context.Context) error {
 		return err
 	}
 
-	if err := pi.WriteDataRow("START TRASCE MESSAGES"); err != nil {
+	if err := pi.WriteDataRow("START TRACE MESSAGES"); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return err
 	}
