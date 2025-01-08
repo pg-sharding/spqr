@@ -14,6 +14,10 @@ type TxStatusMgr interface {
 	TxStatus() TXStatus
 }
 
+func (s TXStatus) Active() bool {
+	return s == TXACT
+}
+
 // String returns the string representation of the TXStatus value.
 // It maps the TXStatus value to its corresponding string representation.
 func (s TXStatus) String() string {
