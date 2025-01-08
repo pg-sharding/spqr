@@ -1693,7 +1693,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 	}
 
 	// txactive == 0 || activeSh == nil
-	// alreasy has route, no need for any hint
+	// already has route, no need for any hint
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
 	}
