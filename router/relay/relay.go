@@ -452,18 +452,6 @@ func (rst *RelayStateImpl) Reroute() error {
 		return ErrSkipQuery
 	case routingstate.RandomMatchState:
 		return rst.RerouteToRandomRoute()
-	case routingstate.WorldRouteState:
-		if !rst.WorldShardFallback {
-			return err
-		}
-
-		// fallback to execute query on world datashard (s)
-		_, _ = rst.RerouteWorld()
-		if err := rst.ConnectWorld(); err != nil {
-			return err
-		}
-
-		return nil
 	default:
 		return fmt.Errorf("unexpected route state %T", v)
 	}
@@ -527,30 +515,6 @@ func (rst *RelayStateImpl) CurrentRoutes() []*routingstate.DataShardRoute {
 	}
 }
 
-func (rst *RelayStateImpl) RerouteWorld() ([]*routingstate.DataShardRoute, error) {
-	span := opentracing.StartSpan("reroute to world")
-	defer span.Finish()
-	span.SetTag("user", rst.Cl.Usr())
-	span.SetTag("db", rst.Cl.DB())
-
-	shardRoutes := rst.Qr.WorldShardsRoutes()
-
-	if len(shardRoutes) == 0 {
-		_ = rst.manager.UnRouteWithError(rst.Cl, nil, qrouter.MatchShardError)
-		return nil, qrouter.MatchShardError
-	}
-
-	if err := rst.Unroute(rst.activeShards); err != nil {
-		return nil, err
-	}
-
-	for _, shr := range shardRoutes {
-		rst.activeShards = append(rst.activeShards, shr.Shkey)
-	}
-
-	return shardRoutes, nil
-}
-
 // TODO : unit tests
 func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) error {
 	var serv server.Server
@@ -590,22 +554,6 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 		_, _, _, err = rst.ProcQuery(query, true, false)
 	}
 	return err
-}
-
-func (rst *RelayStateImpl) ConnectWorld() error {
-	_ = rst.Cl.ReplyDebugNotice("open a connection to the single data shard")
-
-	serv := server.NewShardServer(rst.Cl.Route().ServPool())
-	if err := rst.Cl.AssignServerConn(serv); err != nil {
-		return err
-	}
-
-	spqrlog.Zero.Debug().
-		Str("user", rst.Cl.Usr()).
-		Str("db", rst.Cl.DB()).
-		Msg("route client to world datashard")
-
-	return rst.manager.RouteCB(rst.Cl, rst.activeShards)
 }
 
 // TODO : unit tests

@@ -83,10 +83,6 @@ type CopyState struct {
 	RoutingState
 }
 
-type WorldRouteState struct {
-	RoutingState
-}
-
 type ReferenceRelationState struct {
 	RoutingState
 }
