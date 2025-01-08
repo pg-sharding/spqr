@@ -39,8 +39,6 @@ type RelayStateMgr interface {
 	Reset() error
 	Flush()
 
-	ConnMgr() poolmgr.PoolMgr
-
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
