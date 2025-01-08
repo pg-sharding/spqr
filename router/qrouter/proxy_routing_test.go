@@ -1601,7 +1601,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          routingstate.MultiMatchState{},
+			exp:          routingstate.RandomMatchState{},
 			err:          nil,
 		},
 		{
