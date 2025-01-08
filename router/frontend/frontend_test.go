@@ -94,6 +94,8 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
 
+	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
+
 	cl.EXPECT().AllowMultishard().AnyTimes()
 	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
 
@@ -382,6 +384,8 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
 
+	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
+
 	cl.EXPECT().AllowMultishard().AnyTimes()
 	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
 
@@ -443,8 +447,8 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
-		&routingstate.DataShardRoute{Shkey: sh1.SHKey()},
-		&routingstate.DataShardRoute{Shkey: sh2.SHKey()}},
+		{Shkey: sh1.SHKey()},
+		{Shkey: sh2.SHKey()}},
 	)
 
 	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{

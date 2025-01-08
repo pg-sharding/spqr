@@ -407,6 +407,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Interface("params", rst.Client().BindParams()).
+		Interface("drb", rst.Client().DefaultRouteBehaviour()).
 		Msg("rerouting the client connection, resolving shard")
 
 	var routingState routingstate.RoutingState
