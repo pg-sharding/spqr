@@ -89,4 +89,5 @@ type WorldRouteState struct {
 
 type ReferenceRelationState struct {
 	RoutingState
+	DistributedPlan plan.Plan
 }

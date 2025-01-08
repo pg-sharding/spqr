@@ -8,3 +8,15 @@ type Scan struct {
 	Projection      []lyx.Node
 	GroupingColumns []string
 }
+
+type SimpleQueryScan struct {
+	Plan
+	Query string
+}
+
+type ModifyTable struct {
+	Plan
+	Relation *lyx.RangeVar
+
+	Source Plan
+}
