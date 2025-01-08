@@ -20,7 +20,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 COPY test_ref_rel FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2
 set __spqr__default_route_behaviour to allow;
-TABLE test_ref_rel;
+TABLE test_ref_rel /*__spqr__execute_on: sh1*/;
 NOTICE: send query to shard(s) : sh1
  i | j 
 ---+---
@@ -31,7 +31,7 @@ NOTICE: send query to shard(s) : sh1
 (4 rows)
 
 set __spqr__default_route_behaviour to block;
-TABLE test_ref_rel;
+TABLE test_ref_rel /*__spqr__execute_on: sh2*/;
 NOTICE: send query to shard(s) : sh2
  i | j 
 ---+---

@@ -16,10 +16,12 @@ COPY test_ref_rel FROM STDIN;
 
 
 set __spqr__default_route_behaviour to allow;
-TABLE test_ref_rel;
+
+TABLE test_ref_rel /*__spqr__execute_on: sh1*/;
 
 set __spqr__default_route_behaviour to block;
-TABLE test_ref_rel;
+
+TABLE test_ref_rel /*__spqr__execute_on: sh2*/;
 
 INSERT INTO test_ref_rel VALUES(1);
 INSERT INTO test_ref_rel SELECT 1;
