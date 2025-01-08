@@ -503,7 +503,7 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
-func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *RoutingMetadataContext) ([]int, RelationFQN, bool, error) {
+func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *RoutingMetadataContext) ([]int, RelationFQN, routingstate.RoutingState, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -516,18 +516,24 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 
 	switch q := stmt.TableRef.(type) {
 	case *lyx.RangeVar:
+
+		spqrlog.Zero.Debug().
+			Str("relname", q.RelationName).
+			Str("schemaname", q.SchemaName).
+			Msg("deparsed insert statement table ref")
+
 		rfqn = RelationFQNFromRangeRangeVar(q)
 
 		var ds *distributions.Distribution
 		var err error
 
 		if ds, err = meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn); err != nil {
-			return nil, RelationFQN{}, false, err
+			return nil, RelationFQN{}, nil, err
 		}
 
 		/* Omit distributed relations */
 		if ds.Id == distributions.REPLICATED {
-			return nil, RelationFQN{}, false, err
+			return nil, RelationFQN{}, routingstate.ReferenceRelationState{}, nil
 		}
 
 		insertColsPos := map[string]int{}
@@ -545,15 +551,15 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 				* we have no insert cols specified, but still able to route on select
 				 */
-				return nil, RelationFQN{}, false, nil
+				return nil, RelationFQN{}, routingstate.ShardMatchState{}, nil
 			} else {
 				offsets = append(offsets, val)
 			}
 		}
 
-		return offsets, rfqn, true, nil
+		return offsets, rfqn, routingstate.ShardMatchState{}, nil
 	default:
-		return nil, RelationFQN{}, false, ErrComplexQuery
+		return nil, RelationFQN{}, nil, ErrComplexQuery
 	}
 }
 
@@ -591,6 +597,8 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 			insertCols := stmt.Columns
 
+			var routingList []lyx.Node
+
 			switch subS := selectStmt.(type) {
 			case *lyx.Select:
 				spqrlog.Zero.Debug().Msg("routing insert stmt on select clause")
@@ -599,24 +607,31 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
 				/* this target list for some insert (...) sharding column */
 
-				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
-				if err != nil {
-					return err
-				}
-				if !success {
-					break
-				}
-
-				targetList := subS.TargetList
+				routingList = subS.TargetList
 				/* record all values from tl */
+
+			case *lyx.ValueClause:
+				/* record all values from values scan */
+				routingList = subS.Values
+			default:
+				return nil
+			}
+
+			offsets, rfqn, state, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
+			if err != nil {
+				return err
+			}
+
+			switch state.(type) {
+			case routingstate.ShardMatchState:
 
 				tlUsable := true
 				for i := range offsets {
-					if offsets[i] >= len(targetList) {
+					if offsets[i] >= len(routingList) {
 						tlUsable = false
 						break
 					} else {
-						switch targetList[offsets[i]].(type) {
+						switch routingList[offsets[i]].(type) {
 						case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
 						default:
 							tlUsable = false
@@ -626,34 +641,11 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 
 				if tlUsable {
 					for i := range offsets {
-						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], targetList[offsets[i]], meta)
+						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], routingList[offsets[i]], meta)
 					}
 				}
-
-			case *lyx.ValueClause:
-				valList := subS.Values
-				/* record all values from values scan */
-				offsets, rfqn, success, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
-				if err != nil {
-					return err
-				}
-				if !success {
-					break
-				}
-
-				vlUsable := true
-				for i := range offsets {
-					if offsets[i] >= len(valList) {
-						vlUsable = false
-						break
-					}
-				}
-
-				if vlUsable {
-					for i := range offsets {
-						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], valList[offsets[i]], meta)
-					}
-				}
+			case routingstate.ReferenceRelationState:
+				return fmt.Errorf("feature unsupported for reference relations")
 			}
 		}
 
@@ -1079,7 +1071,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		if err != nil {
 			return nil, err
 		} else if ds.Id == distributions.REPLICATED {
-			routingstate.Combine(route, routingstate.ReferenceRelationState{})
+			route = routingstate.Combine(route, routingstate.ReferenceRelationState{})
 			continue
 		}
 
@@ -1176,7 +1168,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case routingstate.RandomMatchState:
 		return v, nil
 	case routingstate.ReferenceRelationState:
-		return v, nil
+		/* check for unroutable here - TODO */
+		return routingstate.RandomMatchState{}, nil
 	case routingstate.DDLState:
 		return v, nil
 	case routingstate.CopyState:
@@ -1187,7 +1180,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		* Here we have a chance for advanced multi-shard query processing.
 		* Try to build distributed plan, else scatter-out.
 		 */
-		switch sph.DefaultRouteBehaviour() {
+		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
 		case "BLOCK":
 			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
