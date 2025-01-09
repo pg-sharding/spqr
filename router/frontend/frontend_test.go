@@ -72,14 +72,15 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
+	cl.EXPECT().CleanupLocalSet().AnyTimes()
+
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
-	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -92,12 +93,12 @@ func TestFrontendSimple(t *testing.T) {
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
 	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
@@ -206,11 +207,12 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
-	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
+	cl.EXPECT().CleanupLocalSet().AnyTimes()
+
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -265,10 +267,10 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().PreparedStatementQueryHashByName("stmtcache_1").AnyTimes().Return(uint64(17731273590378676854))
 
 	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
 
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
@@ -362,14 +364,15 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
 
+	cl.EXPECT().CleanupLocalSet().AnyTimes()
+
 	/* this is non-multishard tests */
 	cl.EXPECT().AllowMultishard().Return(false).AnyTimes()
 
-	cl.EXPECT().SetRouteHint(gomock.Any()).AnyTimes()
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
-	cl.EXPECT().SetShardingKey(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetShardingKey(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().ID().AnyTimes()
 
@@ -382,12 +385,12 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().AssignServerConn(gomock.Any()).AnyTimes().Return(nil)
 
 	cl.EXPECT().ExecuteOn().AnyTimes()
-	cl.EXPECT().SetExecuteOn(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
 	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any()).AnyTimes()
+	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)

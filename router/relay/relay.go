@@ -215,6 +215,8 @@ func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	rst.txStatus = status
+	/* handle implicit transactions - rollback all local state for params */
+	rst.Client().CleanupLocalSet()
 }
 
 func (rst *RelayStateImpl) PgprotoDebug() bool {
@@ -406,8 +408,8 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Interface("params", rst.Client().BindParams()).
-		Interface("drb", rst.Client().DefaultRouteBehaviour()).
+		Str("drb", rst.Client().DefaultRouteBehaviour()).
+		Str("exec_on", rst.Client().ExecuteOn()).
 		Msg("rerouting the client connection, resolving shard")
 
 	var routingState routingstate.RoutingState

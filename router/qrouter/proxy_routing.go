@@ -830,14 +830,64 @@ func (qr *ProxyQrouter) resolveValue(meta *RoutingMetadataContext, rfqn Relation
 	return nil, false
 }
 
+func (qr *ProxyQrouter) resolveRouteHint(sph session.SessionParamsHolder) (routehint.RouteHint, error) {
+	if sph.ScatterQuery() {
+		return &routehint.ScatterRouteHint{}, nil
+	}
+	if val := sph.ShardingKey(); val != "" {
+		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
+
+		dsId := sph.Distribution()
+		if dsId == "" {
+			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "sharding key in comment without distribution")
+		}
+
+		ctx := context.TODO()
+		krs, err := qr.Mgr().ListKeyRanges(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+
+		distrib, err := qr.Mgr().GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: fix this
+		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
+
+		if err != nil {
+			return nil, err
+		}
+
+		ds, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+		if err != nil {
+			return nil, err
+		}
+		return &routehint.TargetRouteHint{
+			State: routingstate.ShardMatchState{
+				Route: ds,
+			},
+		}, nil
+	}
+
+	return &routehint.EmptyRouteHint{}, nil
+}
+
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	if stmt == nil {
 		// empty statement
 		return routingstate.RandomMatchState{}, nil
 	}
 
+	rh, err := qr.resolveRouteHint(sph)
+
+	if err != nil {
+		return nil, err
+	}
+
 	// if route hint forces us to route on particular route, do it
-	switch v := sph.RouteHint().(type) {
+	switch v := rh.(type) {
 	case *routehint.EmptyRouteHint:
 		// nothing
 	case *routehint.TargetRouteHint:

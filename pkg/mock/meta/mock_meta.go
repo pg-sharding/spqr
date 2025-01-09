@@ -12,7 +12,6 @@ import (
 	distributions "github.com/pg-sharding/spqr/pkg/models/distributions"
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	tasks "github.com/pg-sharding/spqr/pkg/models/tasks"
-	datashards "github.com/pg-sharding/spqr/pkg/models/topology"
 	topology "github.com/pg-sharding/spqr/pkg/models/topology"
 	qdb "github.com/pg-sharding/spqr/qdb"
 	cache "github.com/pg-sharding/spqr/router/cache"
@@ -42,7 +41,7 @@ func (m *MockEntityMgr) EXPECT() *MockEntityMgrMockRecorder {
 }
 
 // AddDataShard mocks base method.
-func (m *MockEntityMgr) AddDataShard(ctx context.Context, shard *datashards.DataShard) error {
+func (m *MockEntityMgr) AddDataShard(ctx context.Context, shard *topology.DataShard) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddDataShard", ctx, shard)
 	ret0, _ := ret[0].(error)
@@ -56,7 +55,7 @@ func (mr *MockEntityMgrMockRecorder) AddDataShard(ctx, shard interface{}) *gomoc
 }
 
 // AddWorldShard mocks base method.
-func (m *MockEntityMgr) AddWorldShard(ctx context.Context, shard *datashards.DataShard) error {
+func (m *MockEntityMgr) AddWorldShard(ctx context.Context, shard *topology.DataShard) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddWorldShard", ctx, shard)
 	ret0, _ := ret[0].(error)
@@ -300,10 +299,10 @@ func (mr *MockEntityMgrMockRecorder) GetRelationDistribution(ctx, relation_name 
 }
 
 // GetShard mocks base method.
-func (m *MockEntityMgr) GetShard(ctx context.Context, shardID string) (*datashards.DataShard, error) {
+func (m *MockEntityMgr) GetShard(ctx context.Context, shardID string) (*topology.DataShard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetShard", ctx, shardID)
-	ret0, _ := ret[0].(*datashards.DataShard)
+	ret0, _ := ret[0].(*topology.DataShard)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -375,10 +374,10 @@ func (mr *MockEntityMgrMockRecorder) ListRouters(ctx interface{}) *gomock.Call {
 }
 
 // ListShards mocks base method.
-func (m *MockEntityMgr) ListShards(ctx context.Context) ([]*datashards.DataShard, error) {
+func (m *MockEntityMgr) ListShards(ctx context.Context) ([]*topology.DataShard, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListShards", ctx)
-	ret0, _ := ret[0].([]*datashards.DataShard)
+	ret0, _ := ret[0].([]*topology.DataShard)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

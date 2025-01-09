@@ -170,7 +170,8 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	if err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: err.Error(),
+				Severity: "ERROR",
+				Message:  err.Error(),
 			},
 		} {
 			if err := cl.Send(msg); err != nil {
@@ -184,7 +185,8 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	if err != nil {
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
-				Message: err.Error(),
+				Severity: "ERROR",
+				Message:  err.Error(),
 			},
 		} {
 			if err := cl.Send(msg); err != nil {

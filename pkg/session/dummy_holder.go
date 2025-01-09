@@ -20,7 +20,7 @@ func (t *DummySessionParamHandler) ExecuteOn() string {
 }
 
 // SetExecuteOn implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetExecuteOn(v string) {
+func (t *DummySessionParamHandler) SetExecuteOn(l bool, v string) {
 	t.eo = v
 }
 
@@ -30,7 +30,7 @@ func (t *DummySessionParamHandler) AllowMultishard() bool {
 }
 
 // SetAllowMultishard implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetAllowMultishard(v bool) {
+func (t *DummySessionParamHandler) SetAllowMultishard(l bool, v bool) {
 	t.ms = v
 }
 
@@ -40,7 +40,7 @@ func (t *DummySessionParamHandler) DistributionKey() string {
 }
 
 // SetDistributionKey implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetDistributionKey(string) {
+func (t *DummySessionParamHandler) SetDistributionKey(bool, string) {
 
 }
 
@@ -50,28 +50,26 @@ func (t *DummySessionParamHandler) AutoDistribution() string {
 }
 
 // SetAutoDistribution implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetAutoDistribution(string) {
+func (t *DummySessionParamHandler) SetAutoDistribution(bool, string) {
 
 }
 
 // MaintainParams implements SessionParamsHolder.
 func (t *DummySessionParamHandler) MaintainParams() bool {
-	panic("DummySessionParamHandler.MaintainParams not implemented")
+	return false
 }
 
 // SetMaintainParams implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetMaintainParams(bool) {
-	panic("DummySessionParamHandler.SetMaintainParams not implemented")
 }
 
 // SetShowNoticeMsg implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetShowNoticeMsg(bool) {
-	panic("DummySessionParamHandler.SetShowNoticeMsg not implemented")
 }
 
 // ShowNoticeMsg implements SessionParamsHolder.
 func (t *DummySessionParamHandler) ShowNoticeMsg() bool {
-	panic("DummySessionParamHandler.ShowNoticeMsg not implemented")
+	return false
 }
 
 // BindParamFormatCodes implements SessionParamsHolder.
@@ -114,10 +112,10 @@ func (t *DummySessionParamHandler) DefaultRouteBehaviour() string {
 	return t.behaviour
 }
 
-// RouteHint implements session.SessionParamsHolder.
-// RouteHint returns the route hint associated with the DummySessionParamHandler.
-func (t *DummySessionParamHandler) RouteHint() routehint.RouteHint {
-	return t.rh
+// ScatterQuery implements session.SessionParamsHolder.
+// ScatterQuery returns the route hint associated with the DummySessionParamHandler.
+func (t *DummySessionParamHandler) ScatterQuery() bool {
+	return false
 }
 
 // SetBindParams implements session.SessionParamsHolder.
@@ -129,7 +127,7 @@ func (t *DummySessionParamHandler) SetBindParams(b [][]byte) {
 
 // SetDistribution implements session.SessionParamsHolder.
 // SetDistribution sets the distribution for the DummySessionParamHandler.
-func (t *DummySessionParamHandler) SetDistribution(d string) {
+func (t *DummySessionParamHandler) SetDistribution(l bool, d string) {
 	t.distribution = d
 }
 
@@ -142,21 +140,20 @@ func (t *DummySessionParamHandler) DistributionIsDefault() bool {
 // SetDefaultRouteBehaviour implements session.SessionParamsHolder.
 // SetDefaultRouteBehaviour sets the default route behaviour for the DummySessionParamHandler.
 // It takes a string parameter `b` representing the behaviour and assigns it to the `behaviour` field of the DummySessionParamHandler struct.
-func (t *DummySessionParamHandler) SetDefaultRouteBehaviour(b string) {
+func (t *DummySessionParamHandler) SetDefaultRouteBehaviour(l bool, b string) {
 	t.behaviour = b
 }
 
-// SetRouteHint implements session.SessionParamsHolder.
-// SetRouteHint sets the route hint for the DummySessionParamHandler.
+// SetScatterQuery implements session.SessionParamsHolder.
+// SetScatterQuery sets the route hint for the DummySessionParamHandler.
 // It takes a route hint as a parameter and assigns it to the `rh` field of the DummySessionParamHandler.
-func (t *DummySessionParamHandler) SetRouteHint(rh routehint.RouteHint) {
-	t.rh = rh
+func (t *DummySessionParamHandler) SetScatterQuery(bool) {
 }
 
 // SetShardingKey implements session.SessionParamsHolder.
 // SetShardingKey sets the sharding key for the DummySessionParamHandler.
 // The sharding key is used to determine the partition or shard where the data will be stored.
-func (t *DummySessionParamHandler) SetShardingKey(k string) {
+func (t *DummySessionParamHandler) SetShardingKey(l bool, k string) {
 	t.key = k
 }
 
