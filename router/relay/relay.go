@@ -430,9 +430,23 @@ func (rst *RelayStateImpl) Reroute() error {
 	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
+	case routingstate.ReferenceRelationState:
+		if rst.TxActive() {
+			return fmt.Errorf("cannot execute this query in an active shard transaction")
+		}
+
+		spqrlog.Zero.Debug().
+			Uint("client", rst.Client().ID()).
+			Err(err).
+			Msgf("parsed ReferenceRelationState")
+
+		/* create execution slices. */
+
+		/* run slices */
+
 	case routingstate.MultiMatchState:
 		if rst.TxActive() {
-			return fmt.Errorf("cannot route in an active transaction")
+			return fmt.Errorf("cannot route in an active shard transaction")
 		}
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).

@@ -1,7 +1,10 @@
 package plan
 
+/* Distinguish planner from executor? */
 type Plan interface {
 	iPlan()
+
+	Run()
 }
 
 type ShardPlan struct {

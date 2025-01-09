@@ -85,4 +85,5 @@ type CopyState struct {
 
 type ReferenceRelationState struct {
 	RoutingState
+	DistributedPlan plan.Plan
 }

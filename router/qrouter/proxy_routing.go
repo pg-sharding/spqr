@@ -1167,8 +1167,15 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		return v, nil
 	case routingstate.RandomMatchState:
 		return v, nil
+	/* query contains only select for reference relations, or moidfies reference relations */
 	case routingstate.ReferenceRelationState:
 		/* check for unroutable here - TODO */
+
+		if qr.cfg.EnhancedMultiShardProcessing {
+			v.DistributedPlan = plan.PlanDistributedQuery(ctx, stmt)
+			return v, nil
+		}
+
 		return routingstate.RandomMatchState{}, nil
 	case routingstate.DDLState:
 		return v, nil
