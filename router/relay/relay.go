@@ -120,6 +120,7 @@ type RelayStateImpl struct {
 	txStatus   txstatus.TXStatus
 	CopyActive bool
 
+	traceMsgs    bool
 	activeShards []kr.ShardKey
 
 	routingState routingstate.RoutingState
@@ -169,10 +170,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Qr:                 qr,
 		Cl:                 client,
 		poolMgr:            manager,
-		WorldShardFallback: rcfg.WorldShardFallback,
-		routerMode:         config.RouterMode(rcfg.RouterMode),
 		maintain_params:    rcfg.MaintainParams,
-		pgprotoDebug:       rcfg.PgprotoDebug,
 		execute:            nil,
 		savedPortalDesc:    map[string]PortalDesc{},
 		parseCache:         map[string]ParseCacheEntry{},
@@ -323,6 +321,7 @@ func (rst *RelayStateImpl) Reset() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) Flush() {
 	rst.msgBuf = nil
+	rst.traceMsgs = false
 }
 
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
