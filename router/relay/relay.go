@@ -143,7 +143,7 @@ type RelayStateImpl struct {
 	qp      parser.QParser
 	plainQ  string
 	Cl      client.RouterClient
-	manager poolmgr.PoolMgr
+	poolMgr poolmgr.PoolMgr
 
 	maintain_params bool
 
@@ -183,7 +183,7 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		traceMsgs:          false,
 		Qr:                 qr,
 		Cl:                 client,
-		manager:            manager,
+		poolMgr:            manager,
 		WorldShardFallback: rcfg.WorldShardFallback,
 		routerMode:         config.RouterMode(rcfg.RouterMode),
 		maintain_params:    rcfg.MaintainParams,
@@ -318,7 +318,7 @@ func (rst *RelayStateImpl) RouterMode() config.RouterMode {
 func (rst *RelayStateImpl) Close() error {
 	defer rst.Cl.Close()
 	defer rst.ActiveShardsReset()
-	return rst.manager.UnRouteCB(rst.Cl, rst.activeShards)
+	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
 }
 
 func (rst *RelayStateImpl) TxActive() bool {
@@ -540,7 +540,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) e
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 
-	if err := rst.manager.RouteCB(rst.Cl, rst.activeShards); err != nil {
+	if err := rst.poolMgr.RouteCB(rst.Cl, rst.activeShards); err != nil {
 		return err
 	}
 
@@ -605,7 +605,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
 	if !rst.TxActive() {
-		if err := rst.manager.TXBeginCB(rst); err != nil {
+		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 			return err
 		}
 		rst.txStatus = txstatus.TXACT
@@ -973,7 +973,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 
 		for len(buff) > 0 {
 			if !rst.TxActive() {
-				if err := rst.manager.TXBeginCB(rst); err != nil {
+				if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 					return 0, err
 				}
 			}
@@ -1021,7 +1021,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error) {
 	if !rst.TxActive() {
-		if err := rst.manager.TXBeginCB(rst); err != nil {
+		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 			return 0, nil, err
 		}
 	}
@@ -1055,7 +1055,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Zero.Debug().Msg("unroute multishard route")
 
-		if err := rst.manager.TXEndCB(rst); err != nil {
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
 			return nil
 		}
 
@@ -1080,7 +1080,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		if err := rst.manager.TXEndCB(rst); err != nil {
+		if err := rst.poolMgr.TXEndCB(rst); err != nil {
 			return err
 		}
 
@@ -1114,7 +1114,7 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 			newActiveShards = append(newActiveShards, el)
 		}
 	}
-	if err := rst.manager.UnRouteCB(rst.Cl, shkey); err != nil {
+	if err := rst.poolMgr.UnRouteCB(rst.Cl, shkey); err != nil {
 		return err
 	}
 	if len(newActiveShards) > 0 {
@@ -1138,7 +1138,7 @@ func (rst *RelayStateImpl) UnrouteRoutes(routes []*routingstate.DataShardRoute) 
 
 // TODO : unit tests
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
-	_ = rst.manager.UnRouteWithError(rst.Cl, shkey, errmsg)
+	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
 }
 
@@ -1285,7 +1285,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 			// However, to execute commit, rollbacks, etc., we need to wait for the next query
 			// or process it locally (set statement)
 
-			phx := NewSimpleProtoStateHandler(rst.manager)
+			phx := NewSimpleProtoStateHandler(rst.poolMgr)
 
 			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
@@ -1641,7 +1641,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(cmngr poolmgr.PoolMgr, ro
 	}
 
 	// txactive == 0 || activeSh == nil
-	// alreasy has route, no need for any hint
+	// already has route, no need for any hint
 	if !cmngr.ValidateReRoute(rst) {
 		return nil
 	}
@@ -1748,5 +1748,5 @@ func (rst *RelayStateImpl) ProcessMessage(
 }
 
 func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
-	return rst.manager
+	return rst.poolMgr
 }

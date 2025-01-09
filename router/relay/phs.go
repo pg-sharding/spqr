@@ -17,6 +17,7 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 	if !s.cmngr.ConnectionActive(rst) {
 		rst.Client().CommitActiveSet()
 		rst.SetTxStatus(txstatus.TXIDLE)
+		/* empty message buf */
 		rst.Flush()
 		return nil
 	}
@@ -36,6 +37,7 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 	if !s.cmngr.ConnectionActive(rst) {
 		rst.Client().Rollback()
 		rst.SetTxStatus(txstatus.TXIDLE)
+		/* empty message buf */
 		rst.Flush()
 		return nil
 	}
