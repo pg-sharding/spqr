@@ -318,6 +318,10 @@ func (rst *RelayStateImpl) Reset() error {
 	return rst.Cl.Unroute()
 }
 
+func (rst *RelayStateImpl) StartTrace() {
+	rst.traceMsgs = true
+}
+
 // TODO : unit tests
 func (rst *RelayStateImpl) Flush() {
 	rst.msgBuf = nil
