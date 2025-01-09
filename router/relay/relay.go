@@ -163,17 +163,17 @@ func (rst *RelayStateImpl) UnholdRouting() {
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards:       nil,
-		txStatus:           txstatus.TXIDLE,
-		msgBuf:             nil,
-		traceMsgs:          false,
-		Qr:                 qr,
-		Cl:                 client,
-		poolMgr:            manager,
-		maintain_params:    rcfg.MaintainParams,
-		execute:            nil,
-		savedPortalDesc:    map[string]PortalDesc{},
-		parseCache:         map[string]ParseCacheEntry{},
+		activeShards:    nil,
+		txStatus:        txstatus.TXIDLE,
+		msgBuf:          nil,
+		traceMsgs:       false,
+		Qr:              qr,
+		Cl:              client,
+		poolMgr:         manager,
+		maintain_params: rcfg.MaintainParams,
+		execute:         nil,
+		savedPortalDesc: map[string]PortalDesc{},
+		parseCache:      map[string]ParseCacheEntry{},
 	}
 }
 
