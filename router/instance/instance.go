@@ -179,8 +179,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
-	// TODO renmove r.RuleRouter.Config() from MatchConnectionPooler
-	cmngr, err := poolmgr.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
+	cmngr, err := poolmgr.MatchConnectionPooler(routerClient)
 	if err != nil {
 		return err
 	}
