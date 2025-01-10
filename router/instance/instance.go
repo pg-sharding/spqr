@@ -179,6 +179,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
+	// TODO renmove r.RuleRouter.Config() from MatchConnectionPooler
 	cmngr, err := poolmgr.MatchConnectionPooler(routerClient, r.RuleRouter.Config())
 	if err != nil {
 		return err
@@ -190,7 +191,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	return frontend.Frontend(r.Qrouter, routerClient, cmngr, r.RuleRouter.Config(), r.Writer)
+	return frontend.Frontend(r.Qrouter, routerClient, cmngr, r.Writer)
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
