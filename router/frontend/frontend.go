@@ -157,10 +157,11 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
+	// TODO use config.RouterConfig().PgprotoDebug instead
 	if rcfg.PgprotoDebug {
 		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	}
-	rst := relay.NewRelayState(qr, cl, cmngr, rcfg)
+	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	defer rst.Close()
 
