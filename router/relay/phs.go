@@ -4,17 +4,15 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
-	"github.com/pg-sharding/spqr/router/poolmgr"
 )
 
 type SimpleProtoStateHandler struct {
-	cmngr poolmgr.PoolMgr
 }
 
 // query in commit query. maybe commit or commit `name`
 func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !s.cmngr.ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst) {
 		rst.Client().CommitActiveSet()
 		rst.SetTxStatus(txstatus.TXIDLE)
 		/* empty message buf */
@@ -24,7 +22,7 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, false)
 	if ok {
 		rst.Client().CommitActiveSet()
 	}
@@ -34,7 +32,7 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 /* TODO: proper support for rollback to savepoint */
 func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
-	if !s.cmngr.ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst) {
 		rst.Client().Rollback()
 		rst.SetTxStatus(txstatus.TXIDLE)
 		/* empty message buf */
@@ -44,7 +42,7 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
+	ok, err := rst.ProcessMessageBuf(true, true, false)
 	if ok {
 		rst.Client().Rollback()
 	}
@@ -56,13 +54,13 @@ func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name,
 		// some session characteristic, ignore
 		return rst.Client().ReplyCommandComplete("SET")
 	}
-	if !s.cmngr.ConnectionActive(rst) {
+	if !rst.PoolMgr().ConnectionActive(rst) {
 		rst.Client().SetParam(name, value)
 		return rst.Client().ReplyCommandComplete("SET")
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
 	rst.AddQuery(&pgproto3.Query{String: query})
-	if ok, err := rst.ProcessMessageBuf(true, true, false, s.cmngr); err != nil {
+	if ok, err := rst.ProcessMessageBuf(true, true, false); err != nil {
 		return err
 	} else if ok {
 		rst.Client().SetParam(name, value)
@@ -71,19 +69,18 @@ func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name,
 }
 
 func (s *SimpleProtoStateHandler) ExecReset(rst RelayStateMgr, query, setting string) error {
-	if s.cmngr.ConnectionActive(rst) {
-		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, s.cmngr)
+	if rst.PoolMgr().ConnectionActive(rst) {
+		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false)
 	}
 	return nil
 }
 
 func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, query string, setting string) error {
-	if !s.cmngr.ConnectionActive(rst) {
-
+	if !rst.PoolMgr().ConnectionActive(rst) {
 		return nil
 	}
 	rst.AddQuery(&pgproto3.Query{String: query})
-	_, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
+	_, err := rst.ProcessMessageBuf(true, true, false)
 	if err != nil {
 		return err
 	}
@@ -96,9 +93,9 @@ func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, query str
 }
 
 func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
-	if s.cmngr.ConnectionActive(rst) {
+	if rst.PoolMgr().ConnectionActive(rst) {
 		rst.AddQuery(&pgproto3.Query{String: query})
-		_, err := rst.ProcessMessageBuf(true, true, false, s.cmngr)
+		_, err := rst.ProcessMessageBuf(true, true, false)
 		return err
 	}
 	return nil
@@ -106,8 +103,6 @@ func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, query, name, v
 
 var _ ProtoStateHandler = &SimpleProtoStateHandler{}
 
-func NewSimpleProtoStateHandler(cmngr poolmgr.PoolMgr) ProtoStateHandler {
-	return &SimpleProtoStateHandler{
-		cmngr: cmngr,
-	}
+func NewSimpleProtoStateHandler() ProtoStateHandler {
+	return &SimpleProtoStateHandler{}
 }

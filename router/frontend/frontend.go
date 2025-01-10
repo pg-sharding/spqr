@@ -15,8 +15,8 @@ import (
 )
 
 // ProcessMessage: process client iteration, until next transaction status idle
-func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	ph := relay.NewSimpleProtoStateHandler(cmngr)
+func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
+	ph := relay.NewSimpleProtoStateHandler()
 
 	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
 		switch q := msg.(type) {
@@ -26,19 +26,19 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true)
 		case *pgproto3.FunctionCall:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, true, true, cmngr)
+			return rst.ProcessMessage(q, true, true)
 		case *pgproto3.Parse:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
 			if err := relay.ProcQueryAdvanced(rst, q.Query, ph, func() error {
 				rst.AddQuery(q)
-				_, err := rst.ProcessMessageBuf(true, true, false, cmngr)
+				_, err := rst.ProcessMessageBuf(true, true, false)
 				return err
 			}, true); err != nil {
 				return err
@@ -49,17 +49,17 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true)
 		case *pgproto3.Bind:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true)
 		case *pgproto3.Describe:
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			return rst.ProcessMessage(q, false, true, cmngr)
+			return rst.ProcessMessage(q, false, true)
 		case *pgproto3.Query:
 			// copy interface
 			cpQ := *q
@@ -67,7 +67,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 			if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 				rst.AddQuery(q)
 
-				_, err := rst.ProcessMessageBuf(true, true, false, cmngr)
+				_, err := rst.ProcessMessageBuf(true, true, false)
 				return err
 			}, false); err != nil {
 				return err
@@ -83,7 +83,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	case *pgproto3.Terminate:
 		return nil
 	case *pgproto3.Sync:
-		if err := rst.ProcessExtendedBuffer(cmngr); err != nil {
+		if err := rst.ProcessExtendedBuffer(); err != nil {
 			return err
 		}
 
@@ -112,7 +112,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msg("client function call: simply fire parse stmt to connection")
-		return rst.ProcessMessage(q, false, true, cmngr)
+		return rst.ProcessMessage(q, false, true)
 	case *pgproto3.Execute:
 		// copy interface
 		cpQ := *q
@@ -134,7 +134,7 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 		if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 			rst.AddQuery(q)
 			// this call compeletes relay, sends RFQ
-			_, err := rst.ProcessMessageBuf(true, true, false, cmngr)
+			_, err := rst.ProcessMessageBuf(true, true, false)
 			return err
 		}, false); err != nil {
 			return err
@@ -188,7 +188,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			}
 		}
 
-		if err := ProcessMessage(qr, cmngr, rst, msg); err != nil {
+		if err := ProcessMessage(qr, rst, msg); err != nil {
 			switch err {
 			case io.ErrUnexpectedEOF:
 				fallthrough
