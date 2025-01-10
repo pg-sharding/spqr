@@ -116,8 +116,7 @@ type ParseCacheEntry struct {
 }
 
 type RelayStateImpl struct {
-	txStatus   txstatus.TXStatus
-	CopyActive bool
+	txStatus txstatus.TXStatus
 
 	traceMsgs    bool
 	activeShards []kr.ShardKey
@@ -129,8 +128,6 @@ type RelayStateImpl struct {
 	plainQ  string
 	Cl      client.RouterClient
 	poolMgr poolmgr.PoolMgr
-
-	maintain_params bool
 
 	msgBuf []BufferedMessage
 
@@ -160,7 +157,7 @@ func (rst *RelayStateImpl) UnholdRouting() {
 	rst.holdRouting = false
 }
 
-func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
+func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:    nil,
 		txStatus:        txstatus.TXIDLE,
@@ -169,7 +166,6 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 		Qr:              qr,
 		Cl:              client,
 		poolMgr:         manager,
-		maintain_params: rcfg.MaintainParams,
 		execute:         nil,
 		savedPortalDesc: map[string]PortalDesc{},
 		parseCache:      map[string]ParseCacheEntry{},
@@ -1009,9 +1005,6 @@ func (rst *RelayStateImpl) ShouldRetry(err error) bool {
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
-	if rst.CopyActive {
-		return nil
-	}
 	statistics.RecordFinishedTransaction(time.Now(), rst.Client().ID())
 
 	spqrlog.Zero.Debug().

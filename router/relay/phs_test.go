@@ -24,7 +24,7 @@ func TestTxSimpleCommit(t *testing.T) {
 	cl.EXPECT().CleanupLocalSet().AnyTimes()
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
-	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{})
+	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	ph := relay.NewSimpleProtoStateHandler(cmngr)
 
@@ -49,7 +49,7 @@ func TestTxSimpleRollback(t *testing.T) {
 
 	qr := mockqr.NewMockQueryRouter(ctrl)
 
-	rst := relay.NewRelayState(qr, cl, cmngr, &config.Router{})
+	rst := relay.NewRelayState(qr, cl, cmngr)
 
 	ph := relay.NewSimpleProtoStateHandler(cmngr)
 
