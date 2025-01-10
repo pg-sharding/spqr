@@ -63,11 +63,26 @@ DROP KEY RANGE <keyRangeID>
 
 ### MOVE KEY RANGE
 
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
 This command is used to move an existing key range to a different shard.
 
 ```sql
 MOVE KEY RANGE <keyRangeID> TO <shardID>
 ```
+
+### REDISTRIBUTE KEY RANGE
+
+<Warning>This command is not available for installations without SPQR coordinator.</Warning>
+
+`REDISTRIBUTE KEY RANGE` command is similar to `MOVE KEY RANGE`, but with one key difference: `REDISTRIBUTE` moves the key range in smaller chunks to minimize downtime for write operations.
+
+`BATCH SIZE` is an integer value that controls the number of keys moved in each batch during redistribution.
+
+```sql
+REDISTRIBUTE KEY RANGE <keyRangeID> TO <shardID> BATCH SIZE <batchSize>;
+```
+
 ### SPLIT KEY RANGE
 
 This command is used to split an existing key range into two separate key ranges.
