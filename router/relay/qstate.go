@@ -285,7 +285,6 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateResetAllStmt:
 		rst.Client().ResetAll()
-
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateSetLocalStmt:
 		if err := ph.ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
