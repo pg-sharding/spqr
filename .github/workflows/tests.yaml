@@ -16,7 +16,10 @@ jobs:
   gh-docker-logs:
      name: Collect Docker Logs on failure
      if: failure()
-     uses: jwalton/gh-docker-logs@v2.2.2
+     runs-on: ubuntu-latest
+     steps:
+       - name: Collect Docker Logs
+         uses: jwalton/gh-docker-logs@v2.2.2
 
   unit:
      name: unit
