@@ -43,7 +43,6 @@ type RelayStateMgr interface {
 
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
-	TxActive() bool
 
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error)
 
@@ -298,10 +297,6 @@ func (rst *RelayStateImpl) Close() error {
 	return rst.poolMgr.UnRouteCB(rst.Cl, rst.activeShards)
 }
 
-func (rst *RelayStateImpl) TxActive() bool {
-	return rst.txStatus == txstatus.TXACT
-}
-
 func (rst *RelayStateImpl) ActiveShardsReset() {
 	rst.activeShards = nil
 }
@@ -407,7 +402,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	rst.routingState = routingState
 	switch v := routingState.(type) {
 	case routingstate.MultiMatchState:
-		if rst.TxActive() {
+		if rst.txStatus == txstatus.TXACT {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
 		spqrlog.Zero.Debug().
@@ -578,7 +573,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	if !rst.TxActive() {
+	if rst.txStatus != txstatus.TXACT {
 		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 			return err
 		}
@@ -946,7 +941,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 		var txok bool
 
 		for len(buff) > 0 {
-			if !rst.TxActive() {
+			if rst.txStatus != txstatus.TXACT {
 				if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 					return 0, err
 				}
@@ -994,7 +989,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error) {
-	if !rst.TxActive() {
+	if rst.txStatus != txstatus.TXACT {
 		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 			return 0, nil, err
 		}
