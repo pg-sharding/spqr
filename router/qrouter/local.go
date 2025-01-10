@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/cache"
 	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
@@ -74,6 +75,10 @@ func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionPar
 
 func (l *LocalQrouter) ListKeyRanges(ctx context.Context) ([]*kr.KeyRange, error) {
 	return nil, nil
+}
+
+func (l *LocalQrouter) SchemaCache() *cache.SchemaCache {
+	return nil
 }
 
 // TODO : unit tests
