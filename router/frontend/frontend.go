@@ -14,10 +14,6 @@ import (
 	"github.com/pg-sharding/spqr/router/relay"
 )
 
-type Qinteractor interface{}
-
-type QinteractorImpl struct{}
-
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
 	ph := relay.NewSimpleProtoStateHandler(cmngr)
@@ -150,15 +146,14 @@ func ProcessMessage(qr qrouter.QueryRouter, cmngr poolmgr.PoolMgr, rst relay.Rel
 	}
 }
 
-func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, rcfg *config.Router, writer workloadlog.WorkloadLog) error {
+func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.PoolMgr, writer workloadlog.WorkloadLog) error {
 	spqrlog.Zero.Info().
 		Str("user", cl.Usr()).
 		Str("db", cl.DB()).
 		Uint("client", spqrlog.GetPointer(cl)).
 		Msg("process frontend for route")
 
-	// TODO use config.RouterConfig().PgprotoDebug instead
-	if rcfg.PgprotoDebug {
+	if config.RouterConfig().PgprotoDebug {
 		_ = cl.ReplyDebugNoticef("process frontend for route %s %s", cl.Usr(), cl.DB())
 	}
 	rst := relay.NewRelayState(qr, cl, cmngr)
