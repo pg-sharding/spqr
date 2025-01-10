@@ -52,8 +52,6 @@ func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.Sha
 	return unRouteWithError(t, client, sh, errmsg)
 }
 
-var unsyncConnection = fmt.Errorf("failed to unroute client from connection with active TX")
-
 // TODO : unit tests
 func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
@@ -68,7 +66,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 		if err := cl.Server().Reset(); err != nil {
 			return err
 		}
-		return unsyncConnection
+		return fmt.Errorf("failed to unroute client from connection with active TX")
 	}
 
 	for _, shkey := range sh {
@@ -87,7 +85,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	return anyerr
 }
 
-func NewTxConnManager(rcfg *config.Router) *TxConnManager {
+func NewTxConnManager() *TxConnManager {
 	return &TxConnManager{}
 }
 
@@ -169,17 +167,13 @@ func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.S
 
 // TODO : unit tests
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-	var anyerr error
-	anyerr = nil
-
 	for _, shkey := range sh {
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
-			//
-			anyerr = err
+			return err
 		}
 	}
 
-	return anyerr
+	return nil
 }
 
 func (s *SessConnManager) TXBeginCB(rst ConnectionKeeper) error {
@@ -217,17 +211,17 @@ func (s *SessConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil
 }
 
-func NewSessConnManager(rcfg *config.Router) *SessConnManager {
+func NewSessConnManager() *SessConnManager {
 	return &SessConnManager{}
 }
 
 // TODO : unit tests
-func MatchConnectionPooler(client client.RouterClient, rcfg *config.Router) (PoolMgr, error) {
+func MatchConnectionPooler(client client.RouterClient) (PoolMgr, error) {
 	switch client.Rule().PoolMode {
 	case config.PoolModeSession:
-		return NewSessConnManager(rcfg), nil
+		return NewSessConnManager(), nil
 	case config.PoolModeTransaction:
-		return NewTxConnManager(rcfg), nil
+		return NewTxConnManager(), nil
 	default:
 		for _, msg := range []pgproto3.BackendMessage{
 			&pgproto3.ErrorResponse{
