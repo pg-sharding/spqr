@@ -56,7 +56,7 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binderQ func() error, doCaching bool) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
-	/* !!! Do not compelete relay here (no txstatus management) !! */
+	/* !!! Do not complete relay here (no TX status management) !!! */
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
 	state, comment, err := rst.Parse(query, doCaching)
