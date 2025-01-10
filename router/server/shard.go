@@ -76,6 +76,8 @@ func (srv *ShardServer) Reset() error {
 		return ErrShardUnavailable
 	}
 
+	defer func() { srv.shard = nil }()
+
 	return srv.pool.Put(srv.shard)
 }
 

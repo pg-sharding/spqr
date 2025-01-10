@@ -198,6 +198,8 @@ func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	rst.txStatus = status
+	/* handle implicit transactions - rollback all local state for params */
+	rst.Client().CleanupLocalSet()
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
@@ -380,12 +382,11 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Interface("params", rst.Client().BindParams()).
-		Interface("drb", rst.Client().DefaultRouteBehaviour()).
+		Str("drb", rst.Client().DefaultRouteBehaviour()).
+		Str("exec_on", rst.Client().ExecuteOn()).
 		Msg("rerouting the client connection, resolving shard")
 
 	var routingState routingstate.RoutingState
-	var err error
 
 	if v := rst.Client().ExecuteOn(); v != "" {
 		routingState = routingstate.ShardMatchState{
@@ -396,12 +397,13 @@ func (rst *RelayStateImpl) Reroute() error {
 			},
 		}
 	} else {
+		var err error
 		routingState, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
+		if err != nil {
+			return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+		}
 	}
 
-	if err != nil {
-		return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
-	}
 	rst.routingState = routingState
 	switch v := routingState.(type) {
 	case routingstate.MultiMatchState:
@@ -410,13 +412,11 @@ func (rst *RelayStateImpl) Reroute() error {
 		}
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
-			Err(err).
 			Msgf("parsed MultiMatchState")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.DDLState:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
-			Err(err).
 			Msgf("parsed DDLState")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:

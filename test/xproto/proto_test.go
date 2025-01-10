@@ -463,7 +463,9 @@ func TestHintRoutingXproto(t *testing.T) {
 	for _, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
-
+				&pgproto3.Query{
+					String: "RESET ALL",
+				},
 				&pgproto3.Query{
 					String: "INSERT INTO t (id) VALUES(1)",
 				},
@@ -495,6 +497,10 @@ func TestHintRoutingXproto(t *testing.T) {
 				},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("RESET")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
 
 				&pgproto3.CommandComplete{CommandTag: []byte("INSERT 0 1")},
 				&pgproto3.ReadyForQuery{
@@ -527,9 +533,8 @@ func TestHintRoutingXproto(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
-
 				&pgproto3.Query{
-					String: "INSERT INTO t (id) VALUES(1)",
+					String: "RESET ALL",
 				},
 
 				&pgproto3.Query{
@@ -538,6 +543,10 @@ func TestHintRoutingXproto(t *testing.T) {
 
 				&pgproto3.Query{
 					String: "SET __spqr__distribution = 'ds1'",
+				},
+
+				&pgproto3.Query{
+					String: "INSERT INTO t (id) VALUES(1)",
 				},
 
 				&pgproto3.Parse{
@@ -561,17 +570,23 @@ func TestHintRoutingXproto(t *testing.T) {
 				},
 			},
 			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("RESET")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				/* TODO: fix order here */
 
 				&pgproto3.CommandComplete{CommandTag: []byte("INSERT 0 1")},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-
-				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
-				&pgproto3.CommandComplete{CommandTag: []byte("SET")},
 				&pgproto3.ReadyForQuery{
 					TxStatus: byte(txstatus.TXIDLE),
 				},

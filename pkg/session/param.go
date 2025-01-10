@@ -1,49 +1,46 @@
 package session
 
-import (
-	"github.com/pg-sharding/spqr/router/routehint"
-)
-
 type SessionParamsHolder interface {
 
 	// Get current session DRB
 	DefaultRouteBehaviour() string
-	SetDefaultRouteBehaviour(string)
+	SetDefaultRouteBehaviour(local bool, val string)
 
-	SetAutoDistribution(string)
+	SetAutoDistribution(local bool, val string)
 	AutoDistribution() string
 
-	SetDistributionKey(string)
+	SetDistributionKey(local bool, val string)
 	DistributionKey() string
 
-	AllowMultishard() bool
-	SetAllowMultishard(bool)
-
 	// Get current session distribution
+	SetDistribution(local bool, val string)
 	Distribution() string
-	SetDistribution(string)
+
+	SetExecuteOn(local bool, val string)
+	ExecuteOn() string
 
 	// ShardingKey
+	SetShardingKey(local bool, val string)
 	ShardingKey() string
-	SetShardingKey(string)
+
+	SetAllowMultishard(local bool, val bool)
+	AllowMultishard() bool
+
+	SetShowNoticeMsg(val bool)
+	ShowNoticeMsg() bool
+
+	SetMaintainParams(val bool)
+	MaintainParams() bool
+
+	/* route hint always local */
+	SetScatterQuery(val bool)
+	ScatterQuery() bool
 
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
 	BindParamFormatCodes() []int16
 	SetParamFormatCodes([]int16)
-
-	ShowNoticeMsg() bool
-	SetShowNoticeMsg(bool)
-
-	MaintainParams() bool
-	SetMaintainParams(bool)
-
-	ExecuteOn() string
-	SetExecuteOn(string)
-
-	RouteHint() routehint.RouteHint
-	SetRouteHint(routehint.RouteHint)
 }
 
 const (

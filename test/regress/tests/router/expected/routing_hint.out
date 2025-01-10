@@ -41,9 +41,17 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30, __spqr__di
 NOTICE: send query to shard(s) : sh2
 INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 3000, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh2
--- test tranasction support for route-local variables;
+-- test transaction support for route-local variables;
 SET __spqr__distribution = 'ds1';
+SHOW __spqr__distribution;
+ERROR:  parameter "__spqr__distribution" isn't user accessible
 SET __spqr__sharding_key = 1;
+SHOW __spqr__sharding_key;
+ sharding key 
+--------------
+ 1
+(1 row)
+
 SELECT * FROM test;
 NOTICE: send query to shard(s) : sh1
   id  | age 
@@ -70,13 +78,131 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 ROLLBACK;
--- should return to previous value, so select from first shard
+-- should return to previous value, so select from second shard
 SELECT * FROM test;
 NOTICE: send query to shard(s) : sh2
  id | age 
 ----+-----
  10 |  16
  10 |  16
+(2 rows)
+
+RESET __spqr__sharding_key;
+\c regress
+-- cleanup test relation to avoid confusion
+TRUNCATE test;
+NOTICE: send query to shard(s) : sh1,sh2
+COPY test (id, age) FROM STDIN /* __spqr__allow_multishard: true */;
+NOTICE: send query to shard(s) : sh1,sh2
+-- SELECT here with order to avoid flaps
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+  1 |   1
+  5 |   5
+ 10 |  10
+(3 rows)
+
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+ 15 |  15
+ 20 |  20
+ 25 |  25
+(3 rows)
+
+SET __spqr__execute_on TO sh1;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ sh1
+(1 row)
+
+SELECT * FROM test ORDER BY id;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+  1 |   1
+  5 |   5
+ 10 |  10
+(3 rows)
+
+SET __spqr__execute_on TO sh2;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ sh2
+(1 row)
+
+SELECT * FROM test ORDER BY id;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+ 15 |  15
+ 20 |  20
+ 25 |  25
+(3 rows)
+
+SET __spqr__execute_on TO sh1;
+-- overrides prev set
+SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id | age 
+----+-----
+ 15 |  15
+ 20 |  20
+ 25 |  25
+(3 rows)
+
+-- After stmt select from sh1, not sh2
+SELECT * FROM test ORDER BY id;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+  1 |   1
+  5 |   5
+ 10 |  10
+(3 rows)
+
+SHOW __spqr__scatter_query; -- error
+ERROR:  parameter "__spqr__scatter_query" isn't user accessible
+SHOW __spqr__default_route_behaviour;
+ default route behaviour 
+-------------------------
+ 
+(1 row)
+
+RESET __spqr__execute_on;
+SHOW __spqr__execute_on;
+ execute on 
+------------
+ 
+(1 row)
+
+SET __spqr__default_route_behaviour to 'BLOCK';
+SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
+NOTICE: send query to shard(s) : sh1,sh2
+ ?column? 
+----------
+        1
+        1
+(2 rows)
+
+SET __spqr__default_route_behaviour to 'ALLOW';
+SHOW __spqr__default_route_behaviour;
+ default route behaviour 
+-------------------------
+ ALLOW
+(1 row)
+
+SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
+NOTICE: send query to shard(s) : sh1,sh2
+ ?column? 
+----------
+        1
+        1
 (2 rows)
 
 -- restart session, reset all params

@@ -549,6 +549,15 @@ func TestSingleShard(t *testing.T) {
 	assert.NoError(err)
 
 	for _, tt := range []tcase{
+
+		/* TODO: fix */
+		// /* should not be routed to one shard */
+		// {
+		// 	query: "SELECT * FROM xxtt1 a WHERE i IN (1,11,111)",
+		// 	exp:   routingstate.MultiMatchState{},
+		// 	err:   nil,
+		// },
+
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
 			exp: routingstate.ShardMatchState{

@@ -17,7 +17,6 @@ import (
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
 	route "github.com/pg-sharding/spqr/router/route"
-	routehint "github.com/pg-sharding/spqr/router/routehint"
 	server "github.com/pg-sharding/spqr/router/server"
 )
 
@@ -182,6 +181,18 @@ func (m *MockRouterClient) CancelMsg() *pgproto3.CancelRequest {
 func (mr *MockRouterClientMockRecorder) CancelMsg() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelMsg", reflect.TypeOf((*MockRouterClient)(nil).CancelMsg))
+}
+
+// CleanupLocalSet mocks base method.
+func (m *MockRouterClient) CleanupLocalSet() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CleanupLocalSet")
+}
+
+// CleanupLocalSet indicates an expected call of CleanupLocalSet.
+func (mr *MockRouterClientMockRecorder) CleanupLocalSet() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupLocalSet", reflect.TypeOf((*MockRouterClient)(nil).CleanupLocalSet))
 }
 
 // Close mocks base method.
@@ -776,20 +787,6 @@ func (mr *MockRouterClientMockRecorder) Route() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Route", reflect.TypeOf((*MockRouterClient)(nil).Route))
 }
 
-// RouteHint mocks base method.
-func (m *MockRouterClient) RouteHint() routehint.RouteHint {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouteHint")
-	ret0, _ := ret[0].(routehint.RouteHint)
-	return ret0
-}
-
-// RouteHint indicates an expected call of RouteHint.
-func (mr *MockRouterClientMockRecorder) RouteHint() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouteHint", reflect.TypeOf((*MockRouterClient)(nil).RouteHint))
-}
-
 // Rule mocks base method.
 func (m *MockRouterClient) Rule() *config.FrontendRule {
 	m.ctrl.T.Helper()
@@ -814,6 +811,20 @@ func (m *MockRouterClient) Savepoint(arg0 string) {
 func (mr *MockRouterClientMockRecorder) Savepoint(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Savepoint", reflect.TypeOf((*MockRouterClient)(nil).Savepoint), arg0)
+}
+
+// ScatterQuery mocks base method.
+func (m *MockRouterClient) ScatterQuery() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ScatterQuery")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// ScatterQuery indicates an expected call of ScatterQuery.
+func (mr *MockRouterClientMockRecorder) ScatterQuery() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).ScatterQuery))
 }
 
 // Send mocks base method.
@@ -859,15 +870,15 @@ func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 }
 
 // SetAllowMultishard mocks base method.
-func (m *MockRouterClient) SetAllowMultishard(arg0 bool) {
+func (m *MockRouterClient) SetAllowMultishard(local, val bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetAllowMultishard", arg0)
+	m.ctrl.Call(m, "SetAllowMultishard", local, val)
 }
 
 // SetAllowMultishard indicates an expected call of SetAllowMultishard.
-func (mr *MockRouterClientMockRecorder) SetAllowMultishard(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetAllowMultishard(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowMultishard", reflect.TypeOf((*MockRouterClient)(nil).SetAllowMultishard), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowMultishard", reflect.TypeOf((*MockRouterClient)(nil).SetAllowMultishard), local, val)
 }
 
 // SetAuthType mocks base method.
@@ -885,15 +896,15 @@ func (mr *MockRouterClientMockRecorder) SetAuthType(arg0 interface{}) *gomock.Ca
 }
 
 // SetAutoDistribution mocks base method.
-func (m *MockRouterClient) SetAutoDistribution(arg0 string) {
+func (m *MockRouterClient) SetAutoDistribution(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetAutoDistribution", arg0)
+	m.ctrl.Call(m, "SetAutoDistribution", local, val)
 }
 
 // SetAutoDistribution indicates an expected call of SetAutoDistribution.
-func (mr *MockRouterClientMockRecorder) SetAutoDistribution(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetAutoDistribution(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAutoDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetAutoDistribution), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAutoDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetAutoDistribution), local, val)
 }
 
 // SetBindParams mocks base method.
@@ -909,63 +920,63 @@ func (mr *MockRouterClientMockRecorder) SetBindParams(arg0 interface{}) *gomock.
 }
 
 // SetDefaultRouteBehaviour mocks base method.
-func (m *MockRouterClient) SetDefaultRouteBehaviour(arg0 string) {
+func (m *MockRouterClient) SetDefaultRouteBehaviour(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDefaultRouteBehaviour", arg0)
+	m.ctrl.Call(m, "SetDefaultRouteBehaviour", local, val)
 }
 
 // SetDefaultRouteBehaviour indicates an expected call of SetDefaultRouteBehaviour.
-func (mr *MockRouterClientMockRecorder) SetDefaultRouteBehaviour(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetDefaultRouteBehaviour(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).SetDefaultRouteBehaviour), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultRouteBehaviour", reflect.TypeOf((*MockRouterClient)(nil).SetDefaultRouteBehaviour), local, val)
 }
 
 // SetDistribution mocks base method.
-func (m *MockRouterClient) SetDistribution(arg0 string) {
+func (m *MockRouterClient) SetDistribution(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistribution", arg0)
+	m.ctrl.Call(m, "SetDistribution", local, val)
 }
 
 // SetDistribution indicates an expected call of SetDistribution.
-func (mr *MockRouterClientMockRecorder) SetDistribution(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetDistribution(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistribution", reflect.TypeOf((*MockRouterClient)(nil).SetDistribution), local, val)
 }
 
 // SetDistributionKey mocks base method.
-func (m *MockRouterClient) SetDistributionKey(arg0 string) {
+func (m *MockRouterClient) SetDistributionKey(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetDistributionKey", arg0)
+	m.ctrl.Call(m, "SetDistributionKey", local, val)
 }
 
 // SetDistributionKey indicates an expected call of SetDistributionKey.
-func (mr *MockRouterClientMockRecorder) SetDistributionKey(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetDistributionKey(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), local, val)
 }
 
 // SetExecuteOn mocks base method.
-func (m *MockRouterClient) SetExecuteOn(arg0 string) {
+func (m *MockRouterClient) SetExecuteOn(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetExecuteOn", arg0)
+	m.ctrl.Call(m, "SetExecuteOn", local, val)
 }
 
 // SetExecuteOn indicates an expected call of SetExecuteOn.
-func (mr *MockRouterClientMockRecorder) SetExecuteOn(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetExecuteOn(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).SetExecuteOn), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetExecuteOn", reflect.TypeOf((*MockRouterClient)(nil).SetExecuteOn), local, val)
 }
 
 // SetMaintainParams mocks base method.
-func (m *MockRouterClient) SetMaintainParams(arg0 bool) {
+func (m *MockRouterClient) SetMaintainParams(val bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetMaintainParams", arg0)
+	m.ctrl.Call(m, "SetMaintainParams", val)
 }
 
 // SetMaintainParams indicates an expected call of SetMaintainParams.
-func (mr *MockRouterClientMockRecorder) SetMaintainParams(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetMaintainParams(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMaintainParams", reflect.TypeOf((*MockRouterClient)(nil).SetMaintainParams), val)
 }
 
 // SetParam mocks base method.
@@ -992,40 +1003,40 @@ func (mr *MockRouterClientMockRecorder) SetParamFormatCodes(arg0 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetParamFormatCodes", reflect.TypeOf((*MockRouterClient)(nil).SetParamFormatCodes), arg0)
 }
 
-// SetRouteHint mocks base method.
-func (m *MockRouterClient) SetRouteHint(arg0 routehint.RouteHint) {
+// SetScatterQuery mocks base method.
+func (m *MockRouterClient) SetScatterQuery(val bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetRouteHint", arg0)
+	m.ctrl.Call(m, "SetScatterQuery", val)
 }
 
-// SetRouteHint indicates an expected call of SetRouteHint.
-func (mr *MockRouterClientMockRecorder) SetRouteHint(arg0 interface{}) *gomock.Call {
+// SetScatterQuery indicates an expected call of SetScatterQuery.
+func (mr *MockRouterClientMockRecorder) SetScatterQuery(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRouteHint", reflect.TypeOf((*MockRouterClient)(nil).SetRouteHint), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetScatterQuery", reflect.TypeOf((*MockRouterClient)(nil).SetScatterQuery), val)
 }
 
 // SetShardingKey mocks base method.
-func (m *MockRouterClient) SetShardingKey(arg0 string) {
+func (m *MockRouterClient) SetShardingKey(local bool, val string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShardingKey", arg0)
+	m.ctrl.Call(m, "SetShardingKey", local, val)
 }
 
 // SetShardingKey indicates an expected call of SetShardingKey.
-func (mr *MockRouterClientMockRecorder) SetShardingKey(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetShardingKey(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockRouterClient)(nil).SetShardingKey), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShardingKey", reflect.TypeOf((*MockRouterClient)(nil).SetShardingKey), local, val)
 }
 
 // SetShowNoticeMsg mocks base method.
-func (m *MockRouterClient) SetShowNoticeMsg(arg0 bool) {
+func (m *MockRouterClient) SetShowNoticeMsg(val bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetShowNoticeMsg", arg0)
+	m.ctrl.Call(m, "SetShowNoticeMsg", val)
 }
 
 // SetShowNoticeMsg indicates an expected call of SetShowNoticeMsg.
-func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(arg0 interface{}) *gomock.Call {
+func (mr *MockRouterClientMockRecorder) SetShowNoticeMsg(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetShowNoticeMsg", reflect.TypeOf((*MockRouterClient)(nil).SetShowNoticeMsg), val)
 }
 
 // SetTsa mocks base method.

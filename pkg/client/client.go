@@ -20,6 +20,7 @@ type Pmgr interface {
 
 	StartTx()
 	CommitActiveSet()
+	CleanupLocalSet()
 	Savepoint(string)
 	Rollback()
 	RollbackToSP(string)
