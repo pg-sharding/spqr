@@ -37,19 +37,13 @@ type RelayStateMgr interface {
 	route.RouteMgr
 	QueryRouter() qrouter.QueryRouter
 	Reset() error
-	StartTrace()
 	Flush()
 
-	ConnMgr() poolmgr.PoolMgr
-
-	ShouldRetry(err error) bool
 	Parse(query string, doCaching bool) (parser.ParseState, string, error)
 
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
 	TxActive() bool
-
-	PgprotoDebug() bool
 
 	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error)
 
@@ -77,8 +71,6 @@ type RelayStateMgr interface {
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
 	ProcCopyComplete(query *pgproto3.FrontendMessage) error
-
-	RouterMode() config.RouterMode
 
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error
@@ -128,14 +120,8 @@ type RelayStateImpl struct {
 	txStatus   txstatus.TXStatus
 	CopyActive bool
 
-	activeShards   []kr.ShardKey
-	TargetKeyRange kr.KeyRange
-
-	traceMsgs          bool
-	WorldShardFallback bool
-	routerMode         config.RouterMode
-
-	pgprotoDebug bool
+	traceMsgs    bool
+	activeShards []kr.ShardKey
 
 	routingState routingstate.RoutingState
 
@@ -177,20 +163,17 @@ func (rst *RelayStateImpl) UnholdRouting() {
 
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr, rcfg *config.Router) RelayStateMgr {
 	return &RelayStateImpl{
-		activeShards:       nil,
-		txStatus:           txstatus.TXIDLE,
-		msgBuf:             nil,
-		traceMsgs:          false,
-		Qr:                 qr,
-		Cl:                 client,
-		poolMgr:            manager,
-		WorldShardFallback: rcfg.WorldShardFallback,
-		routerMode:         config.RouterMode(rcfg.RouterMode),
-		maintain_params:    rcfg.MaintainParams,
-		pgprotoDebug:       rcfg.PgprotoDebug,
-		execute:            nil,
-		savedPortalDesc:    map[string]PortalDesc{},
-		parseCache:         map[string]ParseCacheEntry{},
+		activeShards:    nil,
+		txStatus:        txstatus.TXIDLE,
+		msgBuf:          nil,
+		traceMsgs:       false,
+		Qr:              qr,
+		Cl:              client,
+		poolMgr:         manager,
+		maintain_params: rcfg.MaintainParams,
+		execute:         nil,
+		savedPortalDesc: map[string]PortalDesc{},
+		parseCache:      map[string]ParseCacheEntry{},
 	}
 }
 
@@ -215,10 +198,6 @@ func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 
 func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
 	rst.txStatus = status
-}
-
-func (rst *RelayStateImpl) PgprotoDebug() bool {
-	return rst.pgprotoDebug
 }
 
 func (rst *RelayStateImpl) Client() client.RouterClient {
@@ -311,10 +290,6 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	return rd, retMsg, nil
 }
 
-func (rst *RelayStateImpl) RouterMode() config.RouterMode {
-	return rst.routerMode
-}
-
 func (rst *RelayStateImpl) Close() error {
 	defer rst.Cl.Close()
 	defer rst.ActiveShardsReset()
@@ -343,7 +318,6 @@ func (rst *RelayStateImpl) Reset() error {
 	return rst.Cl.Unroute()
 }
 
-// TODO : unit tests
 func (rst *RelayStateImpl) StartTrace() {
 	rst.traceMsgs = true
 }
@@ -376,7 +350,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*routingstate.DataShardRoute) err
 		rst.activeShards = append(rst.activeShards, shr.Shkey)
 	}
 
-	if rst.PgprotoDebug() {
+	if config.RouterConfig().PgprotoDebug {
 		if err := rst.Cl.ReplyDebugNoticef("matched datashard routes %+v", routes); err != nil {
 			return err
 		}
@@ -1243,7 +1217,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer(cmngr poolmgr.PoolMgr) error {
 				Uint("client", rst.Client().ID()).
 				Msg("Parsing prepared statement")
 
-			if rst.PgprotoDebug() {
+			if config.RouterConfig().PgprotoDebug {
 				if err := rst.Client().ReplyDebugNoticef("name %v, query %v, hash %d", q.Name, q.Query, hash); err != nil {
 					return err
 				}
@@ -1745,8 +1719,4 @@ func (rst *RelayStateImpl) ProcessMessage(
 	}
 
 	return rst.CompleteRelay(replyCl)
-}
-
-func (rst *RelayStateImpl) ConnMgr() poolmgr.PoolMgr {
-	return rst.poolMgr
 }
