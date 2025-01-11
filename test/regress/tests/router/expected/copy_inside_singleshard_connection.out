@@ -1,0 +1,114 @@
+\c regress
+CREATE TABLE copy_test (id int)  /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
+NOTICE: send query to shard(s) : sh1,sh2
+SET __spqr__execute_on TO sh1;
+INSERT INTO copy_test VALUES(1);
+NOTICE: send query to shard(s) : sh1
+SELECT id FROM copy_test ORDER BY id;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+(1 row)
+
+COPY copy_test(id) FROM STDIN WHERE id <= 10;
+NOTICE: send query to shard(s) : sh1
+SELECT id FROM copy_test ORDER BY id;
+NOTICE: send query to shard(s) : sh1
+ id 
+----
+  1
+  1
+  2
+  3
+  4
+  5
+(6 rows)
+
+RESET __spqr__execute_on;
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES int;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 30
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION copy_test DISTRIBUTION KEY id;
+         attach table         
+------------------------------
+ relation name   -> copy_test
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+BEGIN;
+SELECT FROM copy_test WHERE id = 29;
+NOTICE: send query to shard(s) : sh1
+--
+(0 rows)
+
+COPY copy_test(id) FROM STDIN;
+COMMIT;
+SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id  
+-----
+   1
+   1
+   2
+   3
+   4
+   5
+  10
+ 112
+ 113
+ 114
+ 115
+(11 rows)
+
+SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id 
+----
+(0 rows)
+
+DROP TABLE IF EXISTS copy_test;
+NOTICE: send query to shard(s) : sh1,sh2
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

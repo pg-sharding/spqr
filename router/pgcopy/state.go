@@ -14,6 +14,9 @@ type CopyState struct {
 	/* For replicated relations */
 	Scatter bool
 
+	/* execute on/in explicit tx */
+	Attached bool
+
 	/* For distributed relations */
 	ColumnOffset    int
 	AllowMultishard bool

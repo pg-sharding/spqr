@@ -25,7 +25,7 @@ func TestTxSimpleCommit(t *testing.T) {
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	ph := relay.NewSimpleProtoStateHandler(cmngr)
+	ph := relay.NewSimpleProtoStateHandler()
 
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
@@ -50,7 +50,7 @@ func TestTxSimpleRollback(t *testing.T) {
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	ph := relay.NewSimpleProtoStateHandler(cmngr)
+	ph := relay.NewSimpleProtoStateHandler()
 
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
