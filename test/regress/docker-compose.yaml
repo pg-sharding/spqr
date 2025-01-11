@@ -91,3 +91,4 @@ services:
         depends_on:
             - router
             - coordinator
+            - pooler
