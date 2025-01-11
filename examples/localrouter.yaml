@@ -34,7 +34,7 @@ frontend_rules:
     auth_rule:
       auth_method: ok
       password: strong
-  - pool_mode: SESSION
+  - pool_mode: TRANSACTION
     pool_default: true
     pool_prepared_statement: false
     auth_rule:

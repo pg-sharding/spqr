@@ -82,6 +82,9 @@ coordinator_run:
 pooler_run:
 	./spqr-router run --config ./examples/localrouter.yaml
 
+pooler_d_run:
+	./spqr-router run --config ./examples/localrouter.yaml -d
+
 ####################### TESTS #######################
 
 unittest:
@@ -90,6 +93,12 @@ unittest:
 
 regress_local: proxy_2sh_run
 	./script/regress_local.sh
+
+regress_pooler_local: pooler_d_run
+	./script/regress_pooler_local.sh
+
+regress_pooler: build_images
+	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
 regress: build_images
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress

@@ -27,6 +27,20 @@ services:
             interval: 10s
             timeout: 3s
             retries: 50
+    pooler:
+        build:
+            dockerfile: ./docker/router/Dockerfile
+            context: ../../
+        ports:
+            - "6433:6432"
+        environment:
+            - ROUTER_CONFIG=/spqr/test/regress/conf/localrouter.yaml
+            - ROUTER_LOG=/var/log/spqr-router.log
+        hostname: regress_pooler
+        container_name: regress_pooler
+        depends_on:
+            shard1:
+                condition: service_healthy
     router:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -77,3 +91,4 @@ services:
         depends_on:
             - router
             - coordinator
+            - pooler
