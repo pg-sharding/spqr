@@ -1,0 +1,17 @@
+
+BEGIN;
+
+CREATE TABLE copy_test(id INTEGER);
+
+SELECT FROM copy_test WHERE id = 29;
+
+COPY copy_test(id) FROM STDIN;
+10
+112
+113
+114
+115
+\.
+
+ROLLBACK;
+
