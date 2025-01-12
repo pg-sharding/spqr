@@ -181,7 +181,7 @@ type CoordinatorClient interface {
 	CancelMsg() *pgproto3.CancelRequest
 }
 
-const defaultWatchRouterTimeout = time.Second
+const defaultWatchRouterTimeout = 10 * time.Second
 
 type qdbCoordinator struct {
 	tlsconfig *tls.Config
@@ -214,7 +214,7 @@ func (qc *qdbCoordinator) watchRouters(ctx context.Context) {
 		// TODO: lock router
 		rtrs, err := qc.db.ListRouters(ctx)
 		if err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
+			spqrlog.Zero.Error().Err(err).Msg("retry list routers")
 			time.Sleep(time.Second)
 			continue
 		}
