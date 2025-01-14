@@ -158,25 +158,25 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool
 	return r, nil
 }
 
-func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
+func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, error) {
 	defer netconn.Close()
 
 	routerClient, err := r.RuleRouter.PreRoute(netconn, pt)
 	if err != nil {
-		return err
+		return routerClient.ID(), err
 	}
 
 	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
 		if config.RouterConfig().IgnoreCancel {
-			return nil
+			return routerClient.ID(), nil
 		}
 
-		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
+		return routerClient.ID(), r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
 
 	if pt == port.ADMRouterPortType || routerClient.DB() == "spqr-console" {
-		return r.AdmConsole.Serve(context.Background(), routerClient)
+		return routerClient.ID(), r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
 	spqrlog.Zero.Debug().
@@ -185,7 +185,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 
 	cmngr, err := poolmgr.MatchConnectionPooler(routerClient)
 	if err != nil {
-		return err
+		return routerClient.ID(), err
 	}
 
 	r.RuleRouter.AddClient(routerClient)
@@ -194,7 +194,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 		_, _ = routerClient.Route().ReleaseClient(routerClient.ID())
 	}()
 
-	return frontend.Frontend(r.Qrouter, routerClient, cmngr, r.Writer)
+	return routerClient.ID(), frontend.Frontend(r.Qrouter, routerClient, cmngr, r.Writer)
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
@@ -247,8 +247,8 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 				_ = conn.Close()
 			} else {
 				go func() {
-					if err := r.serv(conn, pt); err != nil {
-						spqrlog.Zero.Error().Err(err).Msg("error serving client")
+					if id, err := r.serv(conn, pt); err != nil {
+						spqrlog.Zero.Error().Uint("client id", id).Err(err).Msg("error serving client")
 					}
 				}()
 			}
@@ -289,8 +289,8 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 			return nil
 		case conn := <-cChan:
 			go func() {
-				if err := r.serv(conn, port.ADMRouterPortType); err != nil {
-					spqrlog.Zero.Error().Err(err).Msg("")
+				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
+					spqrlog.Zero.Error().Uint("id", id).Err(err).Msg("")
 				}
 			}()
 		}
