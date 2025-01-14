@@ -168,6 +168,10 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) error {
 
 	/* If cancel, procced and return, close connection */
 	if routerClient.CancelMsg() != nil {
+		if config.RouterConfig().IgnoreCancel {
+			return nil
+		}
+
 		return r.RuleRouter.CancelClient(routerClient.CancelMsg())
 	}
 

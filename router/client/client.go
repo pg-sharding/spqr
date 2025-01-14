@@ -745,10 +745,6 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			}
 			backend = pgproto3.NewBackend(bufio.NewReader(cl.conn), cl.conn)
 		case conn.CANCELREQ:
-			if config.RouterConfig().IgnoreCancel {
-				return nil
-			}
-
 			cl.csm = &pgproto3.CancelRequest{}
 			if err = cl.csm.Decode(msg); err != nil {
 				return err
