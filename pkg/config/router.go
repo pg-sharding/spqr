@@ -87,6 +87,8 @@ type Router struct {
 
 	WithCoordinator bool `json:"with_coordinator" toml:"with_coordinator" yaml:"with_coordinator"`
 
+	IgnoreCancel bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
+
 	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
 	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }

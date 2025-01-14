@@ -690,7 +690,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 		protoVer := binary.BigEndian.Uint32(msg)
 
-		spqrlog.Zero.Debug().
+		spqrlog.Zero.Info().
 			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
 			Msg("received protocol version")
@@ -706,6 +706,9 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 			continue
 
 		case conn.SSLREQ:
+			if config.RouterConfig().IgnoreCancel {
+				return nil
+			}
 			if tlsconfig == nil {
 				_, err := cl.conn.Write([]byte{'N'})
 				if err != nil {
