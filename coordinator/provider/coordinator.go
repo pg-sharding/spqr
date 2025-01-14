@@ -1660,7 +1660,7 @@ func (qc *qdbCoordinator) SyncRouterMetadata(ctx context.Context, qRouter *topol
 func (qc *qdbCoordinator) SyncRouterCoordinatorAddress(ctx context.Context, qRouter *topology.Router) error {
 	spqrlog.Zero.Debug().
 		Str("address", qRouter.Address).
-		Msg("qdb coordinator: sync router metadata")
+		Msg("qdb coordinator: sync coordinator address")
 
 	cc, err := DialRouter(qRouter)
 	if err != nil {
