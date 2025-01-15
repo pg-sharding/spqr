@@ -9,6 +9,15 @@ type ShardPlan struct {
 	Query string
 }
 
+type ScatterPlan struct {
+	Plan
+	SubPlan Plan
+}
+
+type ModifyTable struct {
+	Plan
+}
+
 type DummyPlan struct {
 	Plan
 }

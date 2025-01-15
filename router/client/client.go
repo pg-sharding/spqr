@@ -159,6 +159,20 @@ func (cl *PsqlClient) ExecuteOn() string {
 	return cl.resolveVirtualStringParam(session.SPQR_EXECUTE_ON)
 }
 
+// SetExecuteOn implements RouterClient.
+func (cl *PsqlClient) SetEnhancedMultiShardProcessing(local bool, val bool) {
+	if val {
+		cl.recordVirtualParam(local, session.SPQR_ENGINE_V2, "ok")
+	} else {
+		cl.recordVirtualParam(local, session.SPQR_ENGINE_V2, "no")
+	}
+}
+
+// ExecuteOn implements RouterClient.
+func (cl *PsqlClient) EnhancedMultiShardProcessing() bool {
+	return cl.resolveVirtualBoolParam(session.SPQR_ENGINE_V2)
+}
+
 // SetAutoDistribution implements RouterClient.
 func (cl *PsqlClient) SetAutoDistribution(local bool, val string) {
 	cl.recordVirtualParam(local, session.SPQR_AUTO_DISTRIBUTION, val)

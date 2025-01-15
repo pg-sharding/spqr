@@ -123,6 +123,10 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 				}
 				rst.Client().SetExecuteOn(true, val)
 			}
+
+			if val, ok := mp[session.SPQR_ENGINE_V2]; ok && val == "true" {
+				rst.Client().SetEnhancedMultiShardProcessing(true, true)
+			}
 		}
 
 		return binderQ()

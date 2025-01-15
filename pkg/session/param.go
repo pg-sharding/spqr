@@ -36,6 +36,10 @@ type SessionParamsHolder interface {
 	SetScatterQuery(val bool)
 	ScatterQuery() bool
 
+	/* Check if we apply engive v2 routing for query */
+	SetEnhancedMultiShardProcessing(bool, bool)
+	EnhancedMultiShardProcessing() bool
+
 	BindParams() [][]byte
 	SetBindParams([][]byte)
 
@@ -54,4 +58,5 @@ const (
 	SPQR_REPLY_NOTICE            = "__spqr__reply_notice"
 	SPQR_MAINTAIN_PARAMS         = "__spqr__maintain_params"
 	SPQR_EXECUTE_ON              = "__spqr__execute_on"
+	SPQR_ENGINE_V2               = "__spqr__engine_v2"
 )
