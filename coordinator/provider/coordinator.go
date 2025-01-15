@@ -45,6 +45,7 @@ type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
 
+// TODO implement it
 // ActiveTcpCount implements connectiterator.ConnectIterator.
 func (ci grpcConnectionIterator) ActiveTcpCount() int64 {
 	return 0
