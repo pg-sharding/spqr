@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg"
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/connectiterator"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -32,6 +33,25 @@ type Interactor interface {
 
 type PSQLInteractor struct {
 	cl client.Client
+}
+
+func (pi *PSQLInteractor) Instance(ctx context.Context, ci connectiterator.ConnectIterator) error {
+	if err := pi.WriteHeader(
+		"total tcp connection count",
+		"total cancel requests",
+		"active tcp connections"); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+	if err := pi.WriteDataRow(
+		fmt.Sprintf("%v", ci.TotalTcpCount()),
+		fmt.Sprintf("%v", ci.TotalCancelCount()),
+		fmt.Sprintf("%v", ci.ActiveTcpCount())); err != nil {
+		spqrlog.Zero.Error().Err(err).Msg("")
+		return err
+	}
+
+	return pi.CompleteMsg(1)
 }
 
 // NewPSQLInteractor creates a new instance of the PSQLInteractor struct.

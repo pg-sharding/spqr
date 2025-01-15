@@ -577,6 +577,8 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 		}
 
 		return cli.Pools(ctx, respPools)
+	case spqrparser.InstanceStr:
+		return cli.Instance(ctx, ci)
 	case spqrparser.VersionStr:
 		return cli.Version(ctx)
 	case spqrparser.DistributionsStr:

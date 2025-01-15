@@ -10,4 +10,9 @@ type ConnectIterator interface {
 	client.Pool
 	shard.ShardIterator
 	pool.PoolIterator
+
+	/* user-facing connection stat callbacks */
+	TotalTcpCount() int64
+	ActiveTcpCount() int64
+	TotalCancelCount() int64
 }
