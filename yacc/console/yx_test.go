@@ -90,6 +90,16 @@ func TestSimpleShow(t *testing.T) {
 			},
 			err: nil,
 		},
+
+		{
+			query: "ShOw instance",
+			exp: &spqrparser.Show{
+				Cmd:     spqrparser.InstanceStr,
+				Where:   spqrparser.WhereClauseEmpty{},
+				GroupBy: spqrparser.GroupByClauseEmpty{},
+			},
+			err: nil,
+		},
 		{
 			query: "ShOw clients",
 			exp: &spqrparser.Show{

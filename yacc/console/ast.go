@@ -285,6 +285,7 @@ const (
 	KeyRangesStr          = "key_ranges"
 	ClientsStr            = "clients"
 	PoolsStr              = "pools"
+	InstanceStr           = "instance"
 	BackendConnectionsStr = "backend_connections"
 	StatusStr             = "status"
 	VersionStr            = "version"

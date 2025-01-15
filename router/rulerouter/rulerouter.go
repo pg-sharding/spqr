@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 
@@ -34,6 +35,8 @@ type RuleRouter interface {
 	AddClient(cl rclient.RouterClient)
 	CancelClient(csm *pgproto3.CancelRequest) error
 	ReleaseClient(cl rclient.RouterClient)
+
+	ReleaseConnection()
 }
 
 type RuleRouterImpl struct {
@@ -48,6 +51,30 @@ type RuleRouterImpl struct {
 	clmp sync.Map
 
 	notifier *notifier.Notifier
+
+	tcpConnCount    atomic.Int64
+	activeTcpCount  atomic.Int64
+	cancelConnCount atomic.Int64
+}
+
+// ReleaseConnection implements RuleRouter.
+func (r *RuleRouterImpl) ReleaseConnection() {
+	r.activeTcpCount.Add(-1)
+}
+
+// ActiveTcpCount implements RuleRouter.
+func (r *RuleRouterImpl) ActiveTcpCount() int64 {
+	return r.activeTcpCount.Load()
+}
+
+// TotalCancelCount implements RuleRouter.
+func (r *RuleRouterImpl) TotalCancelCount() int64 {
+	return r.cancelConnCount.Load()
+}
+
+// TotalTcpCount implements RuleRouter.
+func (r *RuleRouterImpl) TotalTcpCount() int64 {
+	return r.tcpConnCount.Load()
 }
 
 func (r *RuleRouterImpl) Shutdown() error {
@@ -144,17 +171,22 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
+	r.tcpConnCount.Add(1)
+	r.activeTcpCount.Add(1)
+
 	cl := rclient.NewPsqlClient(conn, pt, string(config.RouterConfig().Qr.DefaultRouteBehaviour), config.RouterConfig().ShowNoticeMessages, config.RouterConfig().DefaultTSA)
 
 	tlsConfig := r.tlsconfig
 	if pt == port.UnixSocketPortType {
 		tlsConfig = nil
 	}
+
 	if err := cl.Init(tlsConfig); err != nil {
 		return cl, err
 	}
 
 	if cl.CancelMsg() != nil {
+		r.cancelConnCount.Add(1)
 		return cl, nil
 	}
 

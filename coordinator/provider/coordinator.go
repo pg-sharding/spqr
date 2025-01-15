@@ -45,6 +45,24 @@ type grpcConnectionIterator struct {
 	*qdbCoordinator
 }
 
+// TODO implement it
+// ActiveTcpCount implements connectiterator.ConnectIterator.
+func (ci grpcConnectionIterator) ActiveTcpCount() int64 {
+	return 0
+}
+
+// TODO implement it
+// TotalCancelCount implements connectiterator.ConnectIterator.
+func (ci grpcConnectionIterator) TotalCancelCount() int64 {
+	return 0
+}
+
+// TODO implement it
+// TotalTcpCount implements connectiterator.ConnectIterator.
+func (ci grpcConnectionIterator) TotalTcpCount() int64 {
+	return 0
+}
+
 // TODO : unit tests
 func (ci grpcConnectionIterator) IterRouter(cb func(cc *grpc.ClientConn, addr string) error) error {
 	ctx := context.TODO()

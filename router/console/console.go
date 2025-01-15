@@ -30,10 +30,10 @@ type Console interface {
 }
 
 type LocalInstanceConsole struct {
-	InstanceMgr meta.EntityMgr
-	RRouter     rulerouter.RuleRouter
-	qlogger     qlog.Qlog
-	writer      workloadlog.WorkloadLog
+	EntityMgr meta.EntityMgr
+	RRouter   rulerouter.RuleRouter
+	qlogger   qlog.Qlog
+	writer    workloadlog.WorkloadLog
 
 	stchan chan struct{}
 }
@@ -45,16 +45,16 @@ func (l *LocalInstanceConsole) Shutdown() error {
 }
 
 func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
-	return l.InstanceMgr
+	return l.EntityMgr
 }
 
 func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		InstanceMgr: mgr,
-		RRouter:     rrouter,
-		qlogger:     qlogprovider.NewLocalQlog(),
-		stchan:      stchan,
-		writer:      writer,
+		EntityMgr: mgr,
+		RRouter:   rrouter,
+		qlogger:   qlogprovider.NewLocalQlog(),
+		stchan:    stchan,
+		writer:    writer,
 	}, nil
 }
 
@@ -81,7 +81,7 @@ func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *cl
 
 // TODO : unit tests
 func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr = l.InstanceMgr
+	var mgr = l.EntityMgr
 
 	if !config.RouterConfig().WithCoordinator {
 		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
@@ -91,7 +91,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			coordAddr, err := l.InstanceMgr.GetCoordinator(ctx)
+			coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
 			if err != nil {
 				return err
 			}
@@ -103,7 +103,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		coordAddr, err := l.InstanceMgr.GetCoordinator(ctx)
+		coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
 		if err != nil {
 			return err
 		}
