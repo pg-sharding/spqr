@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -252,7 +253,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 			} else {
 				go func() {
 					if id, err := r.serv(conn, pt); err != nil {
-						if err == io.EOF || err == io.ErrUnexpectedEOF {
+						if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 							spqrlog.Zero.Info().Uint("client id", id).Err(err).Msg("error serving client")
 						} else {
 							spqrlog.Zero.Error().Uint("client id", id).Err(err).Msg("error serving client")
