@@ -192,9 +192,13 @@ func TestReferenceRelationRouting(t *testing.T) {
 		dh.SetEnhancedMultiShardProcessing(false, true)
 		tmp, err := pr.Route(context.TODO(), parserRes, dh)
 
-		assert.NoError(err, "query %s", tt.query)
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
 
-		assert.Equal(tt.exp, tmp)
+			assert.Equal(tt.exp, tmp)
+		} else {
+			assert.Equal(err, tt.err)
+		}
 	}
 }
 
