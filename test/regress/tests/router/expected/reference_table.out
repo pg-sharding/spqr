@@ -42,9 +42,13 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 INSERT INTO test_ref_rel VALUES(1);
-ERROR:  client processing error: error processing query 'INSERT INTO test_ref_rel VALUES(1);': feature unsupported for reference relations, tx status IDLE
+ERROR:  client processing error: error processing query 'INSERT INTO test_ref_rel VALUES(1);': Not implemented., tx status IDLE
 INSERT INTO test_ref_rel SELECT 1;
-ERROR:  client processing error: error processing query 'INSERT INTO test_ref_rel SELECT 1;': feature unsupported for reference relations, tx status IDLE
+ERROR:  client processing error: error processing query 'INSERT INTO test_ref_rel SELECT 1;': Not implemented., tx status IDLE
+UPDATE test_ref_rel SET i = i + 1;
+ERROR:  client processing error: error processing query 'UPDATE test_ref_rel SET i = i + 1;': Not implemented., tx status IDLE
+DELETE FROM test_ref_rel WHERE i = 2;
+ERROR:  client processing error: error processing query 'DELETE FROM test_ref_rel WHERE i = 2;': Not implemented., tx status IDLE
 DROP TABLE test_ref_rel;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console

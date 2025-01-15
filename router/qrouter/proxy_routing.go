@@ -645,7 +645,7 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 					}
 				}
 			case routingstate.ReferenceRelationState:
-				return fmt.Errorf("feature unsupported for reference relations")
+				return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
 		}
 
@@ -656,12 +656,40 @@ func (qr *ProxyQrouter) deparseShardingMapping(
 			return nil
 		}
 
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			rqdn := RelationFQNFromRangeRangeVar(q)
+
+			if d, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rqdn); err != nil {
+				return err
+			} else if d.Id == distributions.REPLICATED {
+				return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+		}
+
 		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
 		return qr.routeByClause(ctx, clause, meta)
 	case *lyx.Delete:
 		clause := stmt.Where
 		if clause == nil {
 			return nil
+		}
+
+		switch q := stmt.TableRef.(type) {
+		case *lyx.RangeVar:
+
+			rqdn := RelationFQNFromRangeRangeVar(q)
+
+			if d, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rqdn); err != nil {
+				return err
+			} else if d.Id == distributions.REPLICATED {
+				return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
+			}
+		default:
+			return spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 		}
 
 		_ = qr.deparseFromNode(ctx, stmt.TableRef, meta)
