@@ -34,8 +34,6 @@ type RuleRouter interface {
 	AddClient(cl rclient.RouterClient)
 	CancelClient(csm *pgproto3.CancelRequest) error
 	ReleaseClient(cl rclient.RouterClient)
-
-	Config() *config.Router
 }
 
 type RuleRouterImpl struct {
@@ -146,7 +144,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 
 // TODO : unit tests
 func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
-	cl := rclient.NewPsqlClient(conn, pt, string(r.Config().Qr.DefaultRouteBehaviour), r.Config().ShowNoticeMessages, r.Config().DefaultTSA)
+	cl := rclient.NewPsqlClient(conn, pt, string(config.RouterConfig().Qr.DefaultRouteBehaviour), config.RouterConfig().ShowNoticeMessages, config.RouterConfig().DefaultTSA)
 
 	tlsConfig := r.tlsconfig
 	if pt == port.UnixSocketPortType {
@@ -248,14 +246,6 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 	}
 
 	return cl, nil
-}
-
-// TODO : unit tests
-func (r *RuleRouterImpl) Config() *config.Router {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.rcfg
 }
 
 // TODO : unit tests

@@ -31,11 +31,11 @@ func (app *App) ServeRouter(ctx context.Context) error {
 	var lwg sync.WaitGroup
 
 	listen := map[string]port.RouterPortType{
-		net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterPort): port.DefaultRouterPortType,
+		net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().RouterPort): port.DefaultRouterPortType,
 	}
 
-	if app.spqr.RuleRouter.Config().RouterROPort != "" {
-		listen[net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().RouterROPort)] = port.RORouterPortType
+	if config.RouterConfig().RouterROPort != "" {
+		listen[net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().RouterROPort)] = port.RORouterPortType
 	}
 
 	lwg.Add(len(listen))
@@ -46,7 +46,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 			var listener net.Listener
 			var err error
 
-			if app.spqr.RuleRouter.Config().ReusePort {
+			if config.RouterConfig().ReusePort {
 				listener, err = reuse.Listen("tcp", address)
 				if err != nil {
 					spqrlog.Zero.Info().Err(err).Msg("failed to listen psql")
@@ -75,7 +75,7 @@ func (app *App) ServeRouter(ctx context.Context) error {
 }
 
 func (app *App) ServeAdminConsole(ctx context.Context) error {
-	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().AdminConsolePort)
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().AdminConsolePort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 }
 
 func (app *App) ServeGrpcApi(ctx context.Context) error {
-	address := net.JoinHostPort(app.spqr.RuleRouter.Config().Host, app.spqr.RuleRouter.Config().GrpcApiPort)
+	address := net.JoinHostPort(config.RouterConfig().Host, config.RouterConfig().GrpcApiPort)
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
