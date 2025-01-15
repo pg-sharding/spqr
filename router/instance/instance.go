@@ -214,7 +214,7 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 		}
 	}
 
-	cChan := make(chan net.Conn)
+	cChan := make(chan net.Conn, max(config.RouterConfig().AcceptorBufferSize, 1))
 
 	accept := func(l net.Listener, cChan chan net.Conn) {
 		for {
