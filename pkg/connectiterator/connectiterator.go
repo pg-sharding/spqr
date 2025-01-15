@@ -12,11 +12,11 @@ type ConnectIterator interface {
 	pool.PoolIterator
 
 	/*
-	user-facing connection stat callbacks.
-	TODO: Refactor it, add:
-	- handshake counter
-	- connect start time
-	- unexpected eof error counter 
+		user-facing connection stat callbacks.
+		TODO: Refactor it, add:
+		- handshake counter
+		- connect start time
+		- unexpected eof error counter
 	*/
 	TotalTcpCount() int64
 	ActiveTcpCount() int64
