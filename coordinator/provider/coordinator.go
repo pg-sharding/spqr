@@ -51,6 +51,7 @@ func (ci grpcConnectionIterator) ActiveTcpCount() int64 {
 	return 0
 }
 
+// TODO implement it
 // TotalCancelCount implements connectiterator.ConnectIterator.
 func (ci grpcConnectionIterator) TotalCancelCount() int64 {
 	return 0
