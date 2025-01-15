@@ -17,18 +17,29 @@ COPY test_ref_rel FROM STDIN;
 
 set __spqr__default_route_behaviour to allow;
 
-TABLE test_ref_rel /*__spqr__execute_on: sh1*/;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+
 
 set __spqr__default_route_behaviour to block;
 
-TABLE test_ref_rel /*__spqr__execute_on: sh2*/;
-
-INSERT INTO test_ref_rel VALUES(1);
-INSERT INTO test_ref_rel SELECT 1;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 
 
-UPDATE test_ref_rel SET i = i + 1;
-DELETE FROM test_ref_rel WHERE i = 2;
+INSERT INTO test_ref_rel VALUES(1) /* __spqr__engine_v2: true */;
+INSERT INTO test_ref_rel SELECT 1 /* __spqr__engine_v2: true */;
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+
+UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
+
+DELETE FROM test_ref_rel WHERE i = 2 /* __spqr__engine_v2: true */;
+
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
+SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 
 DROP TABLE test_ref_rel;
 

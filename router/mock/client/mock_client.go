@@ -305,6 +305,20 @@ func (mr *MockRouterClientMockRecorder) DistributionKey() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DistributionKey", reflect.TypeOf((*MockRouterClient)(nil).DistributionKey))
 }
 
+// EnhancedMultiShardProcessing mocks base method.
+func (m *MockRouterClient) EnhancedMultiShardProcessing() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnhancedMultiShardProcessing")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// EnhancedMultiShardProcessing indicates an expected call of EnhancedMultiShardProcessing.
+func (mr *MockRouterClientMockRecorder) EnhancedMultiShardProcessing() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnhancedMultiShardProcessing", reflect.TypeOf((*MockRouterClient)(nil).EnhancedMultiShardProcessing))
+}
+
 // ExecuteOn mocks base method.
 func (m *MockRouterClient) ExecuteOn() string {
 	m.ctrl.T.Helper()
@@ -953,6 +967,18 @@ func (m *MockRouterClient) SetDistributionKey(local bool, val string) {
 func (mr *MockRouterClientMockRecorder) SetDistributionKey(local, val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDistributionKey", reflect.TypeOf((*MockRouterClient)(nil).SetDistributionKey), local, val)
+}
+
+// SetEnhancedMultiShardProcessing mocks base method.
+func (m *MockRouterClient) SetEnhancedMultiShardProcessing(arg0, arg1 bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetEnhancedMultiShardProcessing", arg0, arg1)
+}
+
+// SetEnhancedMultiShardProcessing indicates an expected call of SetEnhancedMultiShardProcessing.
+func (mr *MockRouterClientMockRecorder) SetEnhancedMultiShardProcessing(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEnhancedMultiShardProcessing", reflect.TypeOf((*MockRouterClient)(nil).SetEnhancedMultiShardProcessing), arg0, arg1)
 }
 
 // SetExecuteOn mocks base method.

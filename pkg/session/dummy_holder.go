@@ -10,8 +10,19 @@ type DummySessionParamHandler struct {
 	key          string
 	rh           routehint.RouteHint
 
-	ms bool
-	eo string
+	engiveV2 bool
+	ms       bool
+	eo       string
+}
+
+// EnhancedMultiShardProcessing implements SessionParamsHolder.
+func (t *DummySessionParamHandler) EnhancedMultiShardProcessing() bool {
+	return t.engiveV2
+}
+
+// SetEnhancedMultiShardProcessing implements SessionParamsHolder.
+func (t *DummySessionParamHandler) SetEnhancedMultiShardProcessing(l bool, v bool) {
+	t.engiveV2 = v
 }
 
 // ExecuteOn implements SessionParamsHolder.
@@ -91,6 +102,7 @@ func NewDummyHandler(distribution string) SessionParamsHolder {
 	return &DummySessionParamHandler{
 		distribution: distribution,
 		rh:           routehint.EmptyRouteHint{},
+		engiveV2:     false,
 	}
 }
 
