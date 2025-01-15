@@ -35,6 +35,7 @@ type PSQLInteractor struct {
 	cl client.Client
 }
 
+// TODO refactor it to make more user-friendly
 func (pi *PSQLInteractor) Instance(ctx context.Context, ci connectiterator.ConnectIterator) error {
 	if err := pi.WriteHeader(
 		"total tcp connection count",
