@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/client"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
@@ -419,7 +420,7 @@ func (l *LocalQrouterServer) ListPools(context.Context, *emptypb.Empty) (*protos
 	reply := &protos.ListPoolsResponse{}
 
 	err := l.rr.ForEachPool(func(p pool.Pool) error {
-		reply.Pools = append(reply.Pools, PoolToProto(p, l.rr.Config().Host))
+		reply.Pools = append(reply.Pools, PoolToProto(p, config.RouterConfig().Host))
 		return nil
 	})
 	return reply, err
