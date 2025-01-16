@@ -3,6 +3,7 @@ Feature: Redistribution test
     Given cluster environment is
     """
     ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
+    COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator_three_shards.yaml
     """
 
     #
