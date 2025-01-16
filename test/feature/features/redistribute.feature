@@ -374,3 +374,72 @@ Feature: Redistribution test
       "Shard ID":"sh2"
     }]
     """
+
+  Scenario: REDISTRIBUTE KEY RANGE works with newly added shard
+    When I execute SQL on host "coordinator"
+    """
+    ADD SHARD sh3 WITH HOSTS 'postgresql://regress@spqr_shard_3:6432/regress';
+    """
+    Then command return code should be "0"
+    When I execute SQL on host "coordinator"
+    """
+    CREATE KEY RANGE kr1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+    """
+    Then command return code should be "0"
+
+    When I run SQL on host "router"
+    """
+    CREATE TABLE xMove(w_id INT, s TEXT);
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    INSERT INTO xMove (w_id, s) SELECT generate_series(0, 999), 'sample text value';
+    """
+    Then command return code should be "0"
+    When I run SQL on host "coordinator" with timeout "1500000" seconds
+    """
+    REDISTRIBUTE KEY RANGE kr1 TO sh3 BATCH SIZE 10000;
+    """
+    Then command return code should be "0"
+    When I run SQL on host "shard1"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard2"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    0
+    """
+    When I run SQL on host "shard3"
+    """
+    SELECT count(*) FROM xMove
+    """
+    Then command return code should be "0"
+    And SQL result should match regexp
+    """
+    1000
+    """
+    When I run SQL on host "coordinator"
+    """
+    SHOW key_ranges;
+    """
+    Then command return code should be "0"
+    And SQL result should match json_exactly
+    """
+    [{
+      "Key range ID":"kr1",
+      "Distribution ID":"ds1",
+      "Lower bound":"0",
+      "Shard ID":"sh3"
+    }]
+    """
