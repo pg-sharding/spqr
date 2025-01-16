@@ -1,5 +1,10 @@
 Feature: Redistribution test
   Background:
+    Given cluster environment is
+    """
+    ROUTER_CONFIG=/spqr/test/feature/conf/router_three_shards.yaml
+    """
+
     #
     # Make host "coordinator" take control
     #
