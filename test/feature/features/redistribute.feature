@@ -375,6 +375,7 @@ Feature: Redistribution test
     }]
     """
 
+
   Scenario: REDISTRIBUTE KEY RANGE works with newly added shard
     When I execute SQL on host "coordinator"
     """
