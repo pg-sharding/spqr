@@ -245,61 +245,66 @@ func (qr *ProxyQrouter) processConstExpr(alias, colname string, expr lyx.Node, m
 		return nil
 	}
 
-	return qr.processConstExprOnRFQN(resolvedRelation, colname, expr, meta)
+	return qr.processConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr}, meta)
 }
 
-func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, colname string, expr lyx.Node, meta *RoutingMetadataContext) error {
+func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, colname string, exprs []lyx.Node, meta *RoutingMetadataContext) error {
 	off, tp := qr.GetDistributionKeyOffsetType(meta, resolvedRelation, colname)
 	if off == -1 {
 		// column not from distr key
 		return nil
 	}
 
-	/* simple key-value pair */
-	switch rght := expr.(type) {
-	case *lyx.ParamRef:
-		return meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
-	case *lyx.AExprSConst:
-		switch tp {
-		case qdb.ColumnTypeVarcharDeprecated:
-			fallthrough
-		case qdb.ColumnTypeVarcharHashed:
-			fallthrough
-		case qdb.ColumnTypeVarchar:
-			return meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
-		case qdb.ColumnTypeInteger:
-			num, err := strconv.ParseInt(rght.Value, 10, 64)
-			if err != nil {
-				return err
+	for _, expr := range exprs {
+
+		/* simple key-value pair */
+		switch rght := expr.(type) {
+		case *lyx.ParamRef:
+			return meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
+		case *lyx.AExprSConst:
+			switch tp {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				return meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
+			case qdb.ColumnTypeInteger:
+				num, err := strconv.ParseInt(rght.Value, 10, 64)
+				if err != nil {
+					return err
+				}
+				return meta.RecordConstExpr(resolvedRelation, colname, num)
+			case qdb.ColumnTypeUinteger:
+				num, err := strconv.ParseUint(rght.Value, 10, 64)
+				if err != nil {
+					return err
+				}
+				return meta.RecordConstExpr(resolvedRelation, colname, num)
+			default:
+				return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
 			}
-			return meta.RecordConstExpr(resolvedRelation, colname, num)
-		case qdb.ColumnTypeUinteger:
-			num, err := strconv.ParseUint(rght.Value, 10, 64)
-			if err != nil {
-				return err
+		case *lyx.AExprIConst:
+			switch tp {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				return fmt.Errorf("varchar type is not supported for AExprIConst expression")
+			case qdb.ColumnTypeInteger:
+				return meta.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
+			case qdb.ColumnTypeUinteger:
+				return meta.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
+			default:
+				return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
 			}
-			return meta.RecordConstExpr(resolvedRelation, colname, num)
 		default:
-			return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
+			return fmt.Errorf("expression is not const")
 		}
-	case *lyx.AExprIConst:
-		switch tp {
-		case qdb.ColumnTypeVarcharDeprecated:
-			fallthrough
-		case qdb.ColumnTypeVarcharHashed:
-			fallthrough
-		case qdb.ColumnTypeVarchar:
-			return fmt.Errorf("varchar type is not supported for AExprIConst expression")
-		case qdb.ColumnTypeInteger:
-			return meta.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
-		case qdb.ColumnTypeUinteger:
-			return meta.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
-		default:
-			return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
-		}
-	default:
-		return fmt.Errorf("expression is not const")
 	}
+
+	return nil
 }
 
 // routeByClause de-parses sharding column-value pair from Where clause of the query
@@ -566,6 +571,15 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 	}
 }
 
+/* find this a better place */
+func projectionList(l [][]lyx.Node, prjIndx int) []lyx.Node {
+	var rt []lyx.Node
+	for _, el := range l {
+		rt = append(rt, el[prjIndx])
+	}
+	return rt
+}
+
 // TODO : unit tests
 // May return nil routing state here - thats ok
 func (qr *ProxyQrouter) resolveRoutingState(
@@ -601,7 +615,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 
 			insertCols := stmt.Columns
 
-			var routingList []lyx.Node
+			var routingList [][]lyx.Node
 
 			switch subS := selectStmt.(type) {
 			case *lyx.Select:
@@ -611,7 +625,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				spqrlog.Zero.Debug().Msg("routing insert stmt on target list")
 				/* this target list for some insert (...) sharding column */
 
-				routingList = subS.TargetList
+				routingList = [][]lyx.Node{subS.TargetList}
 				/* record all values from tl */
 
 			case *lyx.ValueClause:
@@ -630,22 +644,25 @@ func (qr *ProxyQrouter) resolveRoutingState(
 			case routingstate.ShardMatchState:
 
 				tlUsable := true
-				for i := range offsets {
-					if offsets[i] >= len(routingList) {
-						tlUsable = false
-						break
-					} else {
-						switch routingList[offsets[i]].(type) {
-						case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
-						default:
+				if len(routingList) > 0 {
+					/* check first tuple only */
+					for i := range offsets {
+						if offsets[i] >= len(routingList) {
 							tlUsable = false
+							break
+						} else {
+							switch routingList[0][offsets[i]].(type) {
+							case *lyx.AExprIConst, *lyx.AExprBConst, *lyx.AExprSConst, *lyx.ParamRef, *lyx.AExprNConst:
+							default:
+								tlUsable = false
+							}
 						}
 					}
 				}
 
 				if tlUsable {
 					for i := range offsets {
-						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], routingList[offsets[i]], meta)
+						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], projectionList(routingList, offsets[i]), meta)
 					}
 				}
 			case routingstate.ReferenceRelationState:
