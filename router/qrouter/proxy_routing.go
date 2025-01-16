@@ -256,7 +256,6 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation RelationFQN, col
 	}
 
 	for _, expr := range exprs {
-
 		/* simple key-value pair */
 		switch rght := expr.(type) {
 		case *lyx.ParamRef:
@@ -647,7 +646,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				if len(routingList) > 0 {
 					/* check first tuple only */
 					for i := range offsets {
-						if offsets[i] >= len(routingList) {
+						if offsets[i] >= len(routingList[0]) {
 							tlUsable = false
 							break
 						} else {
