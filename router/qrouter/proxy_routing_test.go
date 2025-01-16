@@ -6,9 +6,11 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
@@ -125,6 +127,78 @@ func TestMultiShardRouting(t *testing.T) {
 		assert.NoError(err, "query %s", tt.query)
 
 		assert.Equal(tt.exp, tmp)
+	}
+}
+
+func TestReferenceRelationRouting(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   routingstate.RoutingState
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distributions.REPLICATED,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"test_ref_rel": {
+				Name: "test_ref_rel",
+			},
+		},
+	})
+
+	lc := local.NewLocalCoordinator(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{}, nil)
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
+			exp: routingstate.MultiMatchState{
+				DistributedPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
+			},
+		},
+		{
+			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
+			exp: routingstate.MultiMatchState{
+				DistributedPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
+			},
+		},
+		{
+			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
+			exp: routingstate.MultiMatchState{
+				DistributedPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
+			},
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+		dh := session.NewDummyHandler("dd")
+		dh.SetEnhancedMultiShardProcessing(false, true)
+		tmp, err := pr.Route(context.TODO(), parserRes, dh)
+
+		if tt.err == nil {
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp)
+		} else {
+			assert.Equal(err, tt.err)
+		}
 	}
 }
 

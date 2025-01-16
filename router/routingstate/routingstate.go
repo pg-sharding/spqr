@@ -26,7 +26,7 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 		Msg("combine two routes")
 	switch shq1 := sh1.(type) {
 	case MultiMatchState:
-		return sh2
+		return sh1
 	case RandomMatchState:
 		return sh2
 	case ReferenceRelationState:
@@ -34,7 +34,7 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 	case ShardMatchState:
 		switch shq2 := sh2.(type) {
 		case MultiMatchState:
-			return sh1
+			return sh2
 		case ReferenceRelationState:
 			return sh1
 		case ShardMatchState:
