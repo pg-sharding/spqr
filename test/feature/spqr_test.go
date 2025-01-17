@@ -1027,7 +1027,8 @@ func InitializeScenario(s *godog.ScenarioContext, t *testing.T, debug bool) {
 		tctx.composerEnv = []string{
 			"ROUTER_CONFIG=/spqr/test/feature/conf/router.yaml",
 			"COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
-			"COORDINATOR_CONFIG_2=/spqr/test/feature/conf/coordinator.yaml",
+			"ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
+			"ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/coordinator.yaml",
 		}
 		tctx.variables = make(map[string]interface{})
 		return ctx, nil

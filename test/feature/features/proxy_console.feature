@@ -7,8 +7,8 @@ Feature: Proxy console
         Given cluster environment is
         """
         ROUTER_CONFIG=/spqr/test/feature/conf/router_with_coordinator.yaml
-        COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator.yaml
-        COORDINATOR_CONFIG_2=/spqr/test/feature/conf/router_coordinator_2.yaml
+        ROUTER_COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator.yaml
+        ROUTER_2_COORDINATOR_CONFIG=/spqr/test/feature/conf/router_coordinator_2.yaml
         """
         Given cluster is up and running
         And host "coordinator" is stopped
