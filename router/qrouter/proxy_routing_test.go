@@ -8,10 +8,12 @@ import (
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/routingstate"
 
 	"github.com/stretchr/testify/assert"
@@ -196,19 +198,44 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
-			exp:   routingstate.MultiMatchState{},
-			err:   nil,
+			exp: routingstate.MultiMatchState{
+				DistributedPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "DELETE FROM distrr_mm_test WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
+			exp: routingstate.MultiMatchState{
+				DistributedPlan: plan.ScatterPlan{
+					SubPlan: plan.ModifyTable{},
+				},
+			},
+			err: nil,
+		},
+		{
+			query: "INSERT INTO distrr_mm_test VALUES (3), (34) /* __spqr__engine_v2: true */;",
+			exp:   nil,
+			err:   spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD),
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
+		dh := session.NewDummyHandler(distribution)
+		dh.SetEnhancedMultiShardProcessing(false, true)
 
-		assert.NoError(err, "query %s", tt.query)
+		tmp, err := pr.Route(context.TODO(), parserRes, dh)
+		if tt.err != nil {
+			assert.Error(err)
+		} else {
 
-		assert.Equal(tt.exp, tmp)
+			assert.NoError(err, "query %s", tt.query)
+
+			assert.Equal(tt.exp, tmp)
+		}
 	}
 }
 
@@ -1581,7 +1608,93 @@ func TestCopySingleShard(t *testing.T) {
 
 		assert.NoError(err, "query %s", tt.query)
 
-		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
+		dh := session.NewDummyHandler(distribution)
+		dh.SetDefaultRouteBehaviour(false, "BLOCK")
+
+		tmp, err := pr.Route(context.TODO(), parserRes, dh)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp)
+	}
+}
+
+func TestCopyMultiShard(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   routingstate.RoutingState
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "dd"
+
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"xx": {
+				Name: "xx",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "i",
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound:   []interface{}{int64(1)},
+
+		ColumnTypes: []string{qdb.ColumnTypeInteger},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound:   []interface{}{int64(11)},
+
+		ColumnTypes: []string{qdb.ColumnTypeInteger},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{
+		DefaultRouteBehaviour: "BLOCK",
+	}, nil)
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: "COPY xx FROM STDIN",
+			exp:   routingstate.MultiMatchState{},
+			err:   nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		dh := session.NewDummyHandler(distribution)
+		dh.SetDefaultRouteBehaviour(false, "BLOCK")
+		dh.SetScatterQuery(false)
+
+		tmp, err := pr.Route(context.TODO(), parserRes, dh)
 
 		assert.NoError(err, "query %s", tt.query)
 
@@ -1755,13 +1868,13 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT * FROM information_schema.columns JOIN tt ON true",
 			distribution: distribution.ID,
 			exp:          nil,
-			err:          qrouter.ErrInformationSchemaCombinedQuery,
+			err:          rerrors.ErrInformationSchemaCombinedQuery,
 		},
 		{
 			query:        "SELECT * FROM information_schema.columns JOIN pg_class ON true;",
 			distribution: distribution.ID,
 			exp:          nil,
-			err:          qrouter.ErrInformationSchemaCombinedQuery,
+			err:          rerrors.ErrInformationSchemaCombinedQuery,
 		},
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",

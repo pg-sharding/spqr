@@ -62,6 +62,33 @@ NOTICE: send query to shard(s) : sh2
  35 | 'u'
 (5 rows)
 
+DELETE FROM distrr_mm_test  WHERE id IN (2, 35) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2
+SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
+NOTICE: send query to shard(s) : sh1
+ id |  t  
+----+-----
+  1 | 'u'
+  3 | m
+  4 | 'u'
+  5 | 'u'
+(4 rows)
+
+SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
+NOTICE: send query to shard(s) : sh2
+ id |  t  
+----+-----
+ 31 | 'u'
+ 32 | 'u'
+ 33 | 'u'
+ 34 | m
+(4 rows)
+
+-- insert should fail even with engine V2
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx');
+ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx');': failed to match any datashard., tx status IDLE
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;
+ERROR:  client processing error: error processing query 'INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;': failed to match any datashard., tx status IDLE
 DROP TABLE distrr_mm_test;
 NOTICE: send query to shard(s) : sh1,sh2
 \c spqr-console
