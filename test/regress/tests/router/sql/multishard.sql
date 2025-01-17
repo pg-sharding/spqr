@@ -25,9 +25,8 @@ INSERT INTO xxmixed (id) VALUES(30);
 
 SELECT * FROM xxmixed ORDER BY id;
 
-UPDATE xxmixed SET id = -1;
-DELETE FROM xxmixed;
-
+UPDATE xxmixed SET id = -1 /* __spqr__engine_v2: true */;;
+DELETE FROM xxmixed /* __spqr__engine_v2: true */;;
 
 DROP TABLE xxmixed;
 

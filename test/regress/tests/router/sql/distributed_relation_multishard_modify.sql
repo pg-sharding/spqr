@@ -30,6 +30,15 @@ UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
 SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
 
+DELETE FROM distrr_mm_test  WHERE id IN (2, 35) /* __spqr__engine_v2: true */;
+
+SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh1 */;
+SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
+
+-- insert should fail even with engine V2
+
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx');
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;
 
 DROP TABLE distrr_mm_test;
 

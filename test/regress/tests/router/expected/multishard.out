@@ -77,9 +77,9 @@ NOTICE: send query to shard(s) : sh1,sh2
  30
 (12 rows)
 
-UPDATE xxmixed SET id = -1;
+UPDATE xxmixed SET id = -1 /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2
-DELETE FROM xxmixed;
+DELETE FROM xxmixed /* __spqr__engine_v2: true */;;
 NOTICE: send query to shard(s) : sh1,sh2
 DROP TABLE xxmixed;
 NOTICE: send query to shard(s) : sh1,sh2
