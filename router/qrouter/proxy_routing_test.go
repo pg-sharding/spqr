@@ -130,6 +130,88 @@ func TestMultiShardRouting(t *testing.T) {
 	}
 }
 
+func TestScatterQueryRoutingEngineV2(t *testing.T) {
+	assert := assert.New(t)
+
+	type tcase struct {
+		query string
+		exp   routingstate.RoutingState
+		err   error
+	}
+	/* TODO: fix by adding configurable setting */
+	db, _ := qdb.NewMemQDB(MemQDBPath)
+	distribution := "ds1"
+	_ = db.CreateDistribution(context.TODO(), &qdb.Distribution{
+		ID:       distribution,
+		ColTypes: []string{qdb.ColumnTypeInteger},
+		Relations: map[string]*qdb.DistributedRelation{
+			"distrr_mm_test": {
+				Name: "distrr_mm_test",
+				DistributionKey: []qdb.DistributionKeyEntry{
+					{
+						Column: "id",
+					},
+				},
+			},
+		},
+	})
+
+	err := db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh1",
+		Distribution: distribution,
+		ID:           "id1",
+		LowerBound: kr.KeyRangeBound{
+			int64(1),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	err = db.CreateKeyRange(context.TODO(), (&kr.KeyRange{
+		ShardID:      "sh2",
+		Distribution: distribution,
+		ID:           "id2",
+		LowerBound: kr.KeyRangeBound{
+			int64(11),
+		},
+		ColumnTypes: []string{
+			qdb.ColumnTypeInteger,
+		},
+	}).ToDB())
+
+	assert.NoError(err)
+
+	lc := local.NewLocalCoordinator(db, nil)
+
+	pr, err := qrouter.NewProxyRouter(map[string]*config.Shard{
+		"sh1": {},
+		"sh2": {},
+	}, lc, &config.QRouter{}, nil)
+
+	assert.NoError(err)
+
+	for _, tt := range []tcase{
+		{
+			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
+			exp:   routingstate.MultiMatchState{},
+			err:   nil,
+		},
+	} {
+		parserRes, err := lyx.Parse(tt.query)
+
+		assert.NoError(err, "query %s", tt.query)
+
+		tmp, err := pr.Route(context.TODO(), parserRes, session.NewDummyHandler(distribution))
+
+		assert.NoError(err, "query %s", tt.query)
+
+		assert.Equal(tt.exp, tmp)
+	}
+}
+
 func TestReferenceRelationRouting(t *testing.T) {
 	assert := assert.New(t)
 

@@ -318,6 +318,26 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 		curr, queue = queue[len(queue)-1], queue[:len(queue)-1]
 
 		switch texpr := curr.(type) {
+		case *lyx.AExprIn:
+
+			switch lft := texpr.Expr.(type) {
+			case *lyx.ColumnRef:
+
+				alias, colname := lft.TableAlias, lft.ColName
+
+				switch q := texpr.SubLink.(type) {
+				case *lyx.AExprList:
+					for _, expr := range q.List {
+						if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
+							return err
+						}
+					}
+				case *lyx.Select:
+					/* TODO support subquery here */
+					/* SELECT * FROM t WHERE id IN (SELECT 1, 2) */
+				}
+			}
+
 		case *lyx.AExprOp:
 
 			switch lft := texpr.Left.(type) {
@@ -337,8 +357,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 					}
 
 				case *lyx.AExprList:
-					if len(rght.List) != 0 {
-						expr := rght.List[0]
+					for _, expr := range rght.List {
 						if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
 							return err
 						}
@@ -1205,7 +1224,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 		}
 	}
 
-	var routeErr error
 	for rfqn := range meta.rels {
 		// TODO: check by whole RFQN
 		ds, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
@@ -1226,14 +1244,12 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			return nil, fmt.Errorf("relation %s not found in distribution %s", rfqn.RelationName, ds.Id)
 		}
 
-		ok := true
 		compositeKey := make([]interface{}, len(relation.DistributionKey))
 
 		// TODO: multi-column routing. This works only for one-dim routing
 		for i := range len(relation.DistributionKey) {
 			hf, err := hashfunction.HashFunctionByName(relation.DistributionKey[i].HashFunction)
 			if err != nil {
-				ok = false
 				spqrlog.Zero.Debug().Err(err).Msg("failed to resolve hash function")
 				break
 			}
@@ -1243,49 +1259,37 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, stmt lyx.Node, sph s
 			vals, valOk := qr.resolveValue(meta, rfqn, col, sph.BindParams(), queryParamsFormatCodes)
 
 			if !valOk {
-				ok = false
 				break
 			}
 
-			for i, val := range vals {
+			/* TODO: correct support for composite keys here */
+
+			for _, val := range vals {
 				compositeKey[i], err = hashfunction.ApplyHashFunction(val, ds.ColTypes[i], hf)
 				spqrlog.Zero.Debug().Interface("key", val).Interface("hashed key", compositeKey[i]).Msg("applying hash function on key")
 
 				if err != nil {
 					spqrlog.Zero.Debug().Err(err).Msg("failed to apply hash function")
-					ok = false
-					break
+					return nil, err
 				}
-				// only works for one value
-				break
+
+				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+				if err != nil {
+					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encoutered the route error")
+					return nil, err
+				}
+
+				spqrlog.Zero.Debug().
+					Interface("currroute", currroute).
+					Str("table", rfqn.RelationName).
+					Msg("calculated route for table/cols")
+
+				route = routingstate.Combine(route, routingstate.ShardMatchState{
+					Route:              currroute,
+					TargetSessionAttrs: tsa,
+				})
 			}
 		}
-
-		if !ok {
-			// skip this relation
-			continue
-		}
-
-		currroute, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-		if err != nil {
-			routeErr = err
-			spqrlog.Zero.Debug().Err(routeErr).Msg("temporarily skip the route error")
-			continue
-		}
-
-		spqrlog.Zero.Debug().
-			Interface("currroute", currroute).
-			Str("table", rfqn.RelationName).
-			Msg("calculated route for table/cols")
-
-		route = routingstate.Combine(route, routingstate.ShardMatchState{
-			Route:              currroute,
-			TargetSessionAttrs: tsa,
-		})
-	}
-
-	if route == nil && routeErr != nil {
-		return nil, routeErr
 	}
 
 	// set up this variable if not yet

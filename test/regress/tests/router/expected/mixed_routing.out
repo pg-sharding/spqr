@@ -94,12 +94,16 @@ NOTICE: send query to shard(s) : sh2
 (6 rows)
 
 SELECT * FROM xxmixed WHERE id BETWEEN 1 AND 25 ORDER BY id;
-NOTICE: send query to shard(s) : sh1
+NOTICE: send query to shard(s) : sh1,sh2
  id 
 ----
   1
  10
-(2 rows)
+ 11
+ 20
+ 21
+ 22
+(6 rows)
 
 SELECT * FROM xxmixed WHERE id BETWEEN 13 AND 18 ORDER BY id;
 NOTICE: send query to shard(s) : sh2

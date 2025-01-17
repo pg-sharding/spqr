@@ -33,6 +33,8 @@ SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 
 UPDATE test_ref_rel SET i = i + 1 /* __spqr__engine_v2: true */;
 
+UPDATE test_ref_rel SET i = - i WHERE i IN (3, 4) /* __spqr__engine_v2: true */;
+
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh1 */;
 SELECT * FROM test_ref_rel ORDER BY i, j /*__spqr__execute_on: sh2 */;
 

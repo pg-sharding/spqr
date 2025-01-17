@@ -43,7 +43,7 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 			}
 		}
 	}
-	return &MultiMatchState{}
+	return MultiMatchState{}
 }
 
 type RoutingState interface {
