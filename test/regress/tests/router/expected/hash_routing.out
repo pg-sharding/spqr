@@ -36,7 +36,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxhash DISTRIBUTION KEY col1 HASH FUNCTIO
 -- TEST
 \c regress
 CREATE TABLE xxhash (col1 varchar);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxhash (col1) VALUES ('Hello, world!');
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxhash (col1) VALUES ('test');
@@ -65,7 +65,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 COPY xxhash (col1) FROM STDIN /* __spqr__allow_multishard: true */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
                                                                                                                                                        col1                                                                                                                                                        
@@ -90,7 +90,7 @@ NOTICE: send query to shard(s) : sh2
 
 --TEARDOWN
 DROP TABLE xxhash;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -53,11 +53,11 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxtt1 DISTRIBUTION KEY w_id;
 
 \c regress
 CREATE TABLE xx (w_id int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xxerr (i int);
 ERROR:  client processing error: error processing query 'CREATE TABLE xxerr (i int);': create table stmt ignored: no sharding rule columns found, tx status IDLE
 CREATE TABLE xxtt1 (i int, j int, w_id int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (w_id) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (w_id) VALUES (10);
@@ -279,11 +279,11 @@ NOTICE: send query to shard(s) : sh1
 (1 row)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxtt1;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE xxerr;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ERROR:  table "xxerr" does not exist
 \c spqr-console
 

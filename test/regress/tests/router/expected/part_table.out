@@ -36,13 +36,13 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxhash_part DISTRIBUTION KEY i HASH FUNCT
 
 \c regress
 CREATE TABLE xxhash_part (i uuid, d date) partition by range (d);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 create table xxhash_part_1 partition of xxhash_part for values from ('2024-12-01') to ('2024-12-31');
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 create table xxhash_part_2 partition of xxhash_part for values from ('2024-11-01') to ('2024-11-30');
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 create table xxhash_part_3 partition of xxhash_part for values from ('2024-10-01') to ('2024-10-31');
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 insert into xxhash_part (i,d ) values ('b37da10c-25a0-4473-96fd-c3871bd81d00', '2024-12-23');
 NOTICE: send query to shard(s) : sh2
 insert into xxhash_part (i,d ) values ('b1569ed9-4029-495f-8d7c-02b216528c0a', '2024-12-21');
@@ -93,7 +93,7 @@ NOTICE: send query to shard(s) : sh2
 
 --TEARDOWN
 DROP TABLE xxhash_part;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

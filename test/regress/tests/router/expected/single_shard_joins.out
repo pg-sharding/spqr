@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION sshjt1 DISTRIBUTION KEY i;
 
 \c regress
 CREATE TABLE sshjt1(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO sshjt1 (i, j) VALUES(1, 12);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO sshjt1 (i, j) VALUES(12, 12);
@@ -75,7 +75,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 DROP TABLE sshjt1;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

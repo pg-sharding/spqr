@@ -1,6 +1,6 @@
 \c regress
 CREATE TABLE copy_test (id int)  /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SET __spqr__execute_on TO sh1;
 INSERT INTO copy_test VALUES(1);
 NOTICE: send query to shard(s) : sh1
@@ -92,7 +92,7 @@ NOTICE: send query to shard(s) : sh2
 (0 rows)
 
 DROP TABLE IF EXISTS copy_test;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

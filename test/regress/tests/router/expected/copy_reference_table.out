@@ -29,13 +29,13 @@ CREATE REFERENCE TABLE test_ref_rel_2;
 
 \c regress
 CREATE TABLE test_ref_rel(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE test_ref_rel_2(i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test_ref_rel_2 FROM STDIN;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 TABLE test_ref_rel /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
  i | j 
@@ -77,9 +77,9 @@ NOTICE: send query to shard(s) : sh2
 (4 rows)
 
 DROP TABLE test_ref_rel;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 DROP TABLE test_ref_rel_2;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

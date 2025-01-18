@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test_beg DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE test_beg(id int, age int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
@@ -193,7 +193,7 @@ INSERT INTO test_beg(id, age) VALUES (10, 16);
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
 DROP TABLE test_beg;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
