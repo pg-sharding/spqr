@@ -383,19 +383,8 @@ func TestComment(t *testing.T) {
 		{
 			query: "select /* oiwejow--23**/ * from  xx where i = 4;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -493,20 +482,8 @@ func TestCTE(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -521,19 +498,8 @@ func TestCTE(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -552,19 +518,8 @@ func TestCTE(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -598,18 +553,8 @@ func TestCTE(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound:   []interface{}{int64(1)},
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -744,22 +689,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						Distribution: distribution,
-						ID:           "id2",
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -769,22 +700,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						Distribution: distribution,
-						ID:           "id2",
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -802,23 +719,8 @@ func TestSingleShard(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-
-							int64(1),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -835,23 +737,8 @@ func TestSingleShard(t *testing.T) {
 			`,
 			err: nil,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-
-							int64(1),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -859,22 +746,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "select * from  xx where i = 4;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -884,22 +757,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -908,22 +767,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "select * from  xx where i = 11;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -933,22 +778,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "Insert into xx (i) values (1), (2)",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -961,22 +792,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "Insert into xx (i) select * from yy a where a.i = 8",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(1),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -986,22 +803,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1011,20 +814,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM t WHERE i = 12 AND j = 1;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound:   []interface{}{int64(11)},
-
-						ColumnTypes: []string{
-							qdb.ColumnTypeInteger,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1033,20 +824,8 @@ func TestSingleShard(t *testing.T) {
 		{
 			query: "SELECT * FROM t WHERE i = 12 UNION ALL SELECT * FROM xxmixed WHERE i = 22;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-
-						LowerBound: []interface{}{
-							int64(11),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1146,20 +925,8 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-						LowerBound: []interface{}{
-							int64(11),
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1171,20 +938,8 @@ func TestInsertOffsets(t *testing.T) {
 			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 			`,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-						LowerBound: []interface{}{
-							int64(11),
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1194,20 +949,8 @@ func TestInsertOffsets(t *testing.T) {
 			query: `
 			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-						LowerBound: []interface{}{
-							int64(1),
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1218,20 +961,8 @@ func TestInsertOffsets(t *testing.T) {
 			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
 			`,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-						LowerBound: []interface{}{
-							int64(11),
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1241,20 +972,8 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh1",
-						ID:           "id1",
-						Distribution: distribution,
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-						LowerBound: []interface{}{
-							int64(1),
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1349,19 +1068,8 @@ func TestJoins(t *testing.T) {
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1371,19 +1079,8 @@ func TestJoins(t *testing.T) {
 		{
 			query: "SELECT * FROM sshjt1 join sshjt1 ON TRUE WHERE sshjt1.i = 12 AND sshjt1.j = sshjt1.j;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1482,20 +1179,8 @@ func TestUnnest(t *testing.T) {
 		{
 			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1505,20 +1190,8 @@ func TestUnnest(t *testing.T) {
 		{
 			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh2",
-					},
-					Matchedkr: &kr.KeyRange{
-						ShardID:      "sh2",
-						ID:           "id2",
-						Distribution: distribution,
-						LowerBound: []interface{}{
-							int64(11),
-						},
-
-						ColumnTypes: []string{qdb.ColumnTypeInteger},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -1940,17 +1613,8 @@ func TestRouteWithRules_Select(t *testing.T) {
 			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
 			distribution: distribution.ID,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ID:           "id1",
-						ShardID:      "sh1",
-						Distribution: distribution.ID,
-						LowerBound:   []interface{}{"00000000-0000-0000-0000-000000000000"},
-						ColumnTypes:  []string{qdb.ColumnTypeVarchar},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},
@@ -2066,21 +1730,8 @@ func TestHashRouting(t *testing.T) {
 			query:        "INSERT INTO xx (col1) VALUES ('Hello, world!');",
 			distribution: distribution1,
 			exp: routingstate.ShardMatchState{
-				Route: &routingstate.DataShardRoute{
-					Shkey: kr.ShardKey{
-						Name: "sh1",
-					},
-					Matchedkr: &kr.KeyRange{
-						ID: "id1",
-						LowerBound: kr.KeyRangeBound{
-							uint64(1),
-						},
-						ShardID:      "sh1",
-						Distribution: "ds1",
-						ColumnTypes: []string{
-							qdb.ColumnTypeVarcharHashed,
-						},
-					},
+				Route: &kr.ShardKey{
+					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
 			},

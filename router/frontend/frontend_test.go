@@ -117,10 +117,8 @@ func TestFrontendSimple(t *testing.T) {
 		},
 		Where: &lyx.AExprEmpty{},
 	}, gomock.Any()).Return(routingstate.ShardMatchState{
-		Route: &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: "sh1",
-			},
+		Route: &kr.ShardKey{
+			Name: "sh1",
 		},
 	}, nil).Times(1)
 
@@ -193,11 +191,9 @@ func TestFrontendXProto(t *testing.T) {
 
 	/* query Router */
 
-	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
-		{
-			Shkey: kr.ShardKey{
-				Name: "sh1",
-			},
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{
+		&kr.ShardKey{
+			Name: "sh1",
 		},
 	})
 
@@ -436,10 +432,8 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 	qr.EXPECT().DeparseKeyWithRangesInternal(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: "sh1",
-			},
+		&kr.ShardKey{
+			Name: "sh1",
 		}, nil).AnyTimes()
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Copy{
@@ -449,10 +443,12 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		Columns:  []string{"i"},
 	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
 
-	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*routingstate.DataShardRoute{
-		{Shkey: sh1.SHKey()},
-		{Shkey: sh2.SHKey()}},
-	)
+	k1 := sh1.SHKey()
+	k2 := sh2.SHKey()
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{
+		&k1,
+		&k2,
+	})
 
 	route := route.NewRoute(beRule, frrule, map[string]*config.Shard{
 		"sh1": {},

@@ -58,7 +58,7 @@ type RelayStateMgr interface {
 
 	PrepareRelayStep() error
 	PrepareRelayStepOnAnyRoute() (func() error, error)
-	PrepareRelayStepOnHintRoute(route *routingstate.DataShardRoute) error
+	PrepareRelayStepOnHintRoute(route *kr.ShardKey) error
 
 	HoldRouting()
 	UnholdRouting()
@@ -136,7 +136,7 @@ type RelayStateImpl struct {
 
 	holdRouting bool
 
-	bindRoute    *routingstate.DataShardRoute
+	bindRoute    *kr.ShardKey
 	lastBindName string
 
 	execute func() error
@@ -331,7 +331,7 @@ func (rst *RelayStateImpl) Flush() {
 var ErrSkipQuery = fmt.Errorf("wait for a next query")
 
 // TODO : unit tests
-func (rst *RelayStateImpl) procRoutes(routes []*routingstate.DataShardRoute) error {
+func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	// if there is no routes configurted, there is nowhere to route to
 	if len(routes) == 0 {
 		return qrouter.MatchShardError
@@ -347,7 +347,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*routingstate.DataShardRoute) err
 
 	rst.activeShards = nil
 	for _, shr := range routes {
-		rst.activeShards = append(rst.activeShards, shr.Shkey)
+		rst.activeShards = append(rst.activeShards, *shr)
 	}
 
 	if config.RouterConfig().PgprotoDebug {
@@ -388,10 +388,8 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	if v := rst.Client().ExecuteOn(); v != "" {
 		routingState = routingstate.ShardMatchState{
-			Route: &routingstate.DataShardRoute{
-				Shkey: kr.ShardKey{
-					Name: v,
-				},
+			Route: &kr.ShardKey{
+				Name: v,
 			},
 		}
 	} else {
@@ -419,7 +417,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case routingstate.ShardMatchState:
 		// TBD: do it better
-		return rst.procRoutes([]*routingstate.DataShardRoute{v.Route})
+		return rst.procRoutes([]*kr.ShardKey{v.Route})
 	case routingstate.SkipRoutingState:
 		return ErrSkipQuery
 	case routingstate.RandomMatchState:
@@ -452,11 +450,11 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	}
 	rst.routingState = routingState
 
-	return rst.procRoutes([]*routingstate.DataShardRoute{routingState.Route})
+	return rst.procRoutes([]*kr.ShardKey{routingState.Route})
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRoute) error {
+func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -474,21 +472,21 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *routingstate.DataShardRou
 	}
 	rst.routingState = routingState
 
-	return rst.procRoutes([]*routingstate.DataShardRoute{route})
+	return rst.procRoutes([]*kr.ShardKey{route})
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CurrentRoutes() []*routingstate.DataShardRoute {
+func (rst *RelayStateImpl) CurrentRoutes() []*kr.ShardKey {
 	switch q := rst.routingState.(type) {
 	case routingstate.ShardMatchState:
-		return []*routingstate.DataShardRoute{q.Route}
+		return []*kr.ShardKey{q.Route}
 	default:
 		return nil
 	}
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Connect(shardRoutes []*routingstate.DataShardRoute) error {
+func (rst *RelayStateImpl) Connect(shardRoutes []*kr.ShardKey) error {
 	var serv server.Server
 	var err error
 
@@ -621,7 +619,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
 			Attached:  true,
-			ExpRoute:  &routingstate.DataShardRoute{},
+			ExpRoute:  &kr.ShardKey{},
 		}, nil
 	}
 
@@ -670,7 +668,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 
 	return &pgcopy.CopyState{
 		Delimiter:       delimiter,
-		ExpRoute:        &routingstate.DataShardRoute{},
+		ExpRoute:        &kr.ShardKey{},
 		AllowMultishard: allow_multishard,
 		Krs:             krs,
 		TargetType:      TargetType,
@@ -738,17 +736,17 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 		}
 
 		if !cps.AllowMultishard {
-			if cps.ExpRoute.Shkey.Name == "" {
+			if cps.ExpRoute.Name == "" {
 				*cps.ExpRoute = *currroute
 			}
 		}
 
-		if !cps.AllowMultishard && currroute.Shkey.Name != cps.ExpRoute.Shkey.Name {
+		if !cps.AllowMultishard && currroute.Name != cps.ExpRoute.Name {
 			return nil, fmt.Errorf("multishard copy is not supported")
 		}
 
 		values = nil
-		rowsMp[currroute.Shkey.Name] = append(rowsMp[currroute.Shkey.Name], data.Data[prevLine:i+1]...)
+		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
 		currentAttr = 0
 		prevLine = i + 1
 	}
@@ -762,7 +760,7 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 
 	for _, sh := range rst.Client().Server().Datashards() {
 		if !cps.AllowMultishard {
-			if cps.ExpRoute != nil && sh.Name() == cps.ExpRoute.Shkey.Name {
+			if cps.ExpRoute != nil && sh.Name() == cps.ExpRoute.Name {
 				err := sh.Send(&pgproto3.CopyData{Data: rowsMp[sh.Name()]})
 				return leftOvermsgData, err
 			}
@@ -1095,10 +1093,10 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) UnrouteRoutes(routes []*routingstate.DataShardRoute) error {
+func (rst *RelayStateImpl) UnrouteRoutes(routes []*kr.ShardKey) error {
 	keys := make([]kr.ShardKey, len(routes))
 	for ind, r := range routes {
-		keys[ind] = r.Shkey
+		keys[ind] = *r
 	}
 
 	return rst.Unroute(keys)
@@ -1598,7 +1596,7 @@ var noopCloseRouteFunc = func() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *routingstate.DataShardRoute) error {
+func (rst *RelayStateImpl) PrepareRelayStepOnHintRoute(route *kr.ShardKey) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Str("user", rst.Client().Usr()).

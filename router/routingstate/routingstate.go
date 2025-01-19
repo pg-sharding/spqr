@@ -38,7 +38,7 @@ func Combine(sh1, sh2 RoutingState) RoutingState {
 		case ReferenceRelationState:
 			return sh1
 		case ShardMatchState:
-			if shq2.Route.Shkey.Name == shq1.Route.Shkey.Name {
+			if shq2.Route.Name == shq1.Route.Name {
 				return sh1
 			}
 		}
@@ -50,15 +50,10 @@ type RoutingState interface {
 	iState()
 }
 
-type DataShardRoute struct {
-	Shkey     kr.ShardKey
-	Matchedkr *kr.KeyRange
-}
-
 type ShardMatchState struct {
 	RoutingState
 
-	Route              *DataShardRoute
+	Route              *kr.ShardKey
 	TargetSessionAttrs string
 }
 

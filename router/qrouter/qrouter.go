@@ -21,10 +21,10 @@ var MatchShardError = fmt.Errorf("failed to match datashard")
 type QueryRouter interface {
 	Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error)
 
-	WorldShardsRoutes() []*routingstate.DataShardRoute
-	DataShardsRoutes() []*routingstate.DataShardRoute
+	WorldShardsRoutes() []*kr.ShardKey
+	DataShardsRoutes() []*kr.ShardKey
 
-	DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error)
+	DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error)
 
 	Initialized() bool
 	Initialize() bool

@@ -2,7 +2,6 @@ package route
 
 import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type RouteMgr interface {
@@ -12,11 +11,11 @@ type RouteMgr interface {
 	// Acquire (prepare) connection to any random shard route
 	// Without any user query analysis
 	RerouteToRandomRoute() error
-	RerouteToTargetRoute(route *routingstate.DataShardRoute) error
+	RerouteToTargetRoute(route *kr.ShardKey) error
 
-	CurrentRoutes() []*routingstate.DataShardRoute
+	CurrentRoutes() []*kr.ShardKey
 	/* Unroute Routines */
 	UnRouteWithError(shkey []kr.ShardKey, errmsg error) error
 	Unroute(shkey []kr.ShardKey) error
-	UnrouteRoutes(routes []*routingstate.DataShardRoute) error
+	UnrouteRoutes(routes []*kr.ShardKey) error
 }

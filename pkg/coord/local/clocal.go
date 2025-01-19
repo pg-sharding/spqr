@@ -17,7 +17,6 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
-	"github.com/pg-sharding/spqr/router/routingstate"
 )
 
 type LocalCoordinator struct {
@@ -374,18 +373,16 @@ func (lc *LocalCoordinator) DropKeyRangeAll(ctx context.Context) error {
 //
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the data shards routes.
-func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
+func (lc *LocalCoordinator) DataShardsRoutes() []*kr.ShardKey {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*routingstate.DataShardRoute
+	var ret []*kr.ShardKey
 
 	for name := range lc.DataShardCfgs {
-		ret = append(ret, &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: name,
-				RW:   true,
-			},
+		ret = append(ret, &kr.ShardKey{
+			Name: name,
+			RW:   true,
 		})
 	}
 
@@ -401,18 +398,16 @@ func (lc *LocalCoordinator) DataShardsRoutes() []*routingstate.DataShardRoute {
 //
 // Returns:
 // - []*routingstate.DataShardRoute: A slice of DataShardRoute objects representing the world shards routes after applying round-robin.
-func (lc *LocalCoordinator) WorldShardsRoutes() []*routingstate.DataShardRoute {
+func (lc *LocalCoordinator) WorldShardsRoutes() []*kr.ShardKey {
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 
-	var ret []*routingstate.DataShardRoute
+	var ret []*kr.ShardKey
 
 	for name := range lc.WorldShardCfgs {
-		ret = append(ret, &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: name,
-				RW:   true,
-			},
+		ret = append(ret, &kr.ShardKey{
+			Name: name,
+			RW:   true,
 		})
 	}
 
