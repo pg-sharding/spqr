@@ -1,6 +1,6 @@
 package routehint
 
-import "github.com/pg-sharding/spqr/router/routingstate"
+import "github.com/pg-sharding/spqr/router/plan"
 
 type RouteHint interface {
 	iRouteHint()
@@ -12,7 +12,7 @@ type EmptyRouteHint struct {
 
 type TargetRouteHint struct {
 	RouteHint
-	State routingstate.RoutingState
+	State plan.Plan
 }
 
 type ScatterRouteHint struct {

@@ -14,7 +14,7 @@ import (
 	kr "github.com/pg-sharding/spqr/pkg/models/kr"
 	session "github.com/pg-sharding/spqr/pkg/session"
 	cache "github.com/pg-sharding/spqr/router/cache"
-	routingstate "github.com/pg-sharding/spqr/router/routingstate"
+	plan "github.com/pg-sharding/spqr/router/plan"
 )
 
 // MockQueryRouter is a mock of QueryRouter interface.
@@ -112,10 +112,10 @@ func (mr *MockQueryRouterMockRecorder) Mgr() *gomock.Call {
 }
 
 // Route mocks base method.
-func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
+func (m *MockQueryRouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Route", ctx, stmt, sph)
-	ret0, _ := ret[0].(routingstate.RoutingState)
+	ret0, _ := ret[0].(plan.Plan)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
