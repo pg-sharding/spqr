@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION tsa_test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE tsa_test (id int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO tsa_test (id) VALUES (22);
 NOTICE: send query to shard(s) : sh1
 -- you could specify target-session-attrs anywhere in your query
@@ -63,7 +63,7 @@ NOTICE: send query to shard(s) : sh1
 -- NOTICE: send query to shard(s) : sh1
 -- ERROR:  failed to find replica
 DROP TABLE tsa_test;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

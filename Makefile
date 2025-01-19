@@ -73,6 +73,9 @@ run: build_images
 proxy_2sh_run:
 	./spqr-router run --config ./examples/2shardproxy.yaml -d --proto-debug
 
+proxy_4sh_run:
+	./spqr-router run --config ./examples/4shardproxy.yaml -d --proto-debug
+
 proxy_run:
 	./spqr-router run --config ./examples/router.yaml
 
@@ -92,6 +95,9 @@ unittest:
 	go test -race -count 20 -timeout 30s ./qdb/...
 
 regress_local: proxy_2sh_run
+	./script/regress_local.sh
+
+regress_local_4sh: proxy_4sh_run
 	./script/regress_local.sh
 
 regress_pooler_local: pooler_d_run

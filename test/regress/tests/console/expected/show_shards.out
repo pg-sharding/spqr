@@ -10,5 +10,7 @@ SHOW shards;
 ---------------------
  shard id -> sh1
  shard id -> sh2
-(2 rows)
+ shard id -> sh3
+ shard id -> sh4
+(4 rows)
 

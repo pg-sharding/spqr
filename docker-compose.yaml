@@ -27,6 +27,24 @@ services:
             - "7433:6432"
         hostname: spqr_shard_2
         container_name: spqr_shard_2
+    shard3:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+        ports:
+            - "7434:6432"
+        hostname: spqr_shard_3
+        container_name: spqr_shard_3
+    shard4:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=user1
+            - POSTGRES_DB=db1
+        ports:
+            - "7435:6432"
+        hostname: spqr_shard_4
+        container_name: spqr_shard_4
     coordinator:
         build:
             dockerfile: ./docker/coordinator/Dockerfile

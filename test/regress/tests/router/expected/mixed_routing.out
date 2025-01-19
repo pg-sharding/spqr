@@ -34,7 +34,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xxmixed DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE xxmixed(id int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxmixed (id) VALUES(1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxmixed (id) VALUES(10);
@@ -52,7 +52,7 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xxmixed (id) VALUES(30);
 NOTICE: send query to shard(s) : sh2
 SELECT * FROM xxmixed ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 
 ----
   1
@@ -94,7 +94,7 @@ NOTICE: send query to shard(s) : sh2
 (6 rows)
 
 SELECT * FROM xxmixed WHERE id BETWEEN 1 AND 25 ORDER BY id;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id 
 ----
   1
@@ -140,7 +140,7 @@ NOTICE: send query to shard(s) : sh2
 (3 rows)
 
 DROP TABLE xxmixed;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
@@ -177,7 +177,7 @@ ALTER DISTRIBUTION ds2 ATTACH RELATION xxmixeduuid DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE xxmixeduuid(id uuid);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xxmixeduuid (id) VALUES('00000000-0000-0EA0-0FAB-AB031389FF09');
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xxmixeduuid (id) VALUES('FA98123B-0000-0EA0-0FAB-AB031389FF09');
@@ -222,7 +222,7 @@ NOTICE: send query to shard(s) : sh2
 (2 rows)
 
 DROP TABLE xxmixeduuid;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

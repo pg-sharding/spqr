@@ -36,9 +36,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 -- TEST
 \c regress
 CREATE TABLE xx (i int, j int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /* __spqr__allow_multishard: true */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (i, j) VALUES(1,1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (i, j) VALUES(2,2);
@@ -92,7 +92,7 @@ NOTICE: send query to shard(s) : sh2
 (12 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

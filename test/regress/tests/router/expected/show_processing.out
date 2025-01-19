@@ -107,7 +107,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 DROP TABLE xxtest_sw;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

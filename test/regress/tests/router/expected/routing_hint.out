@@ -33,7 +33,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION test DISTRIBUTION KEY id;
 
 \c regress
 CREATE TABLE test(id int, age int);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- TODO: specify distribution as well as sharding_key
 INSERT INTO test(id, age) VALUES (1210, 16) /*__spqr__sharding_key: 1, __spqr__distribution: ds1  */;
 NOTICE: send query to shard(s) : sh1
@@ -91,9 +91,9 @@ RESET __spqr__sharding_key;
 \c regress
 -- cleanup test relation to avoid confusion
 TRUNCATE test;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 COPY test (id, age) FROM STDIN /* __spqr__allow_multishard: true */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 -- SELECT here with order to avoid flaps
 SELECT * FROM test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
@@ -183,7 +183,7 @@ SHOW __spqr__execute_on;
 
 SET __spqr__default_route_behaviour to 'BLOCK';
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true, __spqr__default_route_behaviour: allow */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  ?column? 
 ----------
         1
@@ -198,7 +198,7 @@ SHOW __spqr__default_route_behaviour;
 (1 row)
 
 SELECT 1 FROM test WHERE id IN (5, 25) /* __spqr__scatter_query: true */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  ?column? 
 ----------
         1
@@ -208,7 +208,7 @@ NOTICE: send query to shard(s) : sh1,sh2
 -- restart session, reset all params
 \c regress
 DROP TABLE test;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

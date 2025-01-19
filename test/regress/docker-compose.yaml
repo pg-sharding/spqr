@@ -27,6 +27,34 @@ services:
             interval: 10s
             timeout: 3s
             retries: 50
+    shard3:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=regress
+            - POSTGRES_DB=regress
+        ports:
+            - "7434:6432"
+        hostname: spqr_shard_3
+        container_name: spqr_shard_3
+        healthcheck:
+            test: psql -h spqr_shard_3 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
+    shard4:
+        image: spqr-shard-image
+        environment:
+            - POSTGRES_USER=regress
+            - POSTGRES_DB=regress
+        ports:
+            - "7435:6432"
+        hostname: spqr_shard_4
+        container_name: spqr_shard_4
+        healthcheck:
+            test: psql -h spqr_shard_4 -p 6432 -U regress -d regress
+            interval: 10s
+            timeout: 3s
+            retries: 50
     pooler:
         build:
             dockerfile: ./docker/router/Dockerfile
@@ -56,6 +84,10 @@ services:
             shard1:
                 condition: service_healthy
             shard2:
+                condition: service_healthy
+            shard3:
+                condition: service_healthy
+            shard4:
                 condition: service_healthy
 
     coordinator:

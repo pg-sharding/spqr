@@ -34,9 +34,9 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY col1 HASH FUNCTION MU
 
 \c regress
 DROP TABLE IF EXISTS xx;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 CREATE TABLE xx (col1 INT);
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (col1) VALUES (1);
 NOTICE: send query to shard(s) : sh1
 INSERT INTO xx (col1) VALUES (2);
@@ -110,7 +110,7 @@ NOTICE: send query to shard(s) : sh2
 (11 rows)
 
 COPY xx (col1) FROM STDIN /* __spqr__allow_multishard: true */ ;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
     col1    
@@ -324,7 +324,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 DROP TABLE xx;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console
