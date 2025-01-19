@@ -23,7 +23,6 @@ import (
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/routehint"
-	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/xproto"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -377,7 +376,7 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
-func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, routingstate.RoutingState, error) {
+func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, plan.Plan, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -407,7 +406,7 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 
 		/* Omit distributed relations */
 		if ds.Id == distributions.REPLICATED {
-			return nil, rfqn.RelationFQN{}, routingstate.ReferenceRelationState{}, nil
+			return nil, rfqn.RelationFQN{}, plan.ReferenceRelationState{}, nil
 		}
 
 		insertColsPos := map[string]int{}
@@ -425,13 +424,13 @@ func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt
 				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 				* we have no insert cols specified, but still able to route on select
 				 */
-				return nil, rfqn.RelationFQN{}, routingstate.ShardMatchState{}, nil
+				return nil, rfqn.RelationFQN{}, plan.ShardMatchState{}, nil
 			} else {
 				offsets = append(offsets, val)
 			}
 		}
 
-		return offsets, curr_rfqn, routingstate.ShardMatchState{}, nil
+		return offsets, curr_rfqn, plan.ShardMatchState{}, nil
 	default:
 		return nil, rfqn.RelationFQN{}, nil, rerrors.ErrComplexQuery
 	}
@@ -451,7 +450,7 @@ func projectionList(l [][]lyx.Node, prjIndx int) []lyx.Node {
 func (qr *ProxyQrouter) resolveRoutingState(
 	ctx context.Context,
 	qstmt lyx.Node,
-	meta *rmeta.RoutingMetadataContext) (routingstate.RoutingState, error) {
+	meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
 	switch stmt := qstmt.(type) {
 	case *lyx.Select:
 		if stmt.WithClause != nil {
@@ -507,7 +506,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 			}
 
 			switch state.(type) {
-			case routingstate.ShardMatchState:
+			case plan.ShardMatchState:
 
 				tlUsable := true
 				if len(routingList) > 0 {
@@ -531,14 +530,14 @@ func (qr *ProxyQrouter) resolveRoutingState(
 						_ = qr.processConstExprOnRFQN(rfqn, insertCols[offsets[i]], projectionList(routingList, offsets[i]), meta)
 					}
 				}
-			case routingstate.ReferenceRelationState:
+			case plan.ReferenceRelationState:
 				if meta.SPH.EnhancedMultiShardProcessing() {
 					dplan := planner.PlanDistributedQuery(ctx, meta, stmt)
 
 					switch dplan.(type) {
 					case plan.ScatterPlan:
 
-						return routingstate.MultiMatchState{
+						return plan.MultiMatchState{
 							DistributedPlan: dplan,
 						}, nil
 					default:
@@ -570,7 +569,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 					switch dplan.(type) {
 					case plan.ScatterPlan:
 
-						return routingstate.MultiMatchState{
+						return plan.MultiMatchState{
 							DistributedPlan: dplan,
 						}, nil
 					default:
@@ -605,7 +604,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 					switch dplan.(type) {
 					case plan.ScatterPlan:
 
-						return routingstate.MultiMatchState{
+						return plan.MultiMatchState{
 							DistributedPlan: dplan,
 						}, nil
 					default:
@@ -819,7 +818,7 @@ func (qr *ProxyQrouter) resolveRouteHint(sph session.SessionParamsHolder) (route
 			return nil, err
 		}
 		return &routehint.TargetRouteHint{
-			State: routingstate.ShardMatchState{
+			State: plan.ShardMatchState{
 				Route: ds,
 			},
 		}, nil
@@ -829,10 +828,10 @@ func (qr *ProxyQrouter) resolveRouteHint(sph session.SessionParamsHolder) (route
 }
 
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingMetadataContext, stmt lyx.Node) (routingstate.RoutingState, bool, error) {
+func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
-		return routingstate.RandomMatchState{}, false, nil
+		return plan.RandomMatchState{}, false, nil
 	}
 
 	rh, err := qr.resolveRouteHint(meta.SPH)
@@ -850,7 +849,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 	case *routehint.ScatterRouteHint:
 		// still, need to check config settings (later)
 		/* XXX: we return true for RO here to fool DRB */
-		return routingstate.MultiMatchState{}, true, nil
+		return plan.MultiMatchState{}, true, nil
 	}
 
 	/*
@@ -861,7 +860,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 	tsa := config.TargetSessionAttrsAny
 
-	var route routingstate.RoutingState
+	var route plan.Plan
 	route = nil
 
 	/*
@@ -882,14 +881,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		/*
 		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
-		return routingstate.RandomMatchState{}, true, nil
+		return plan.RandomMatchState{}, true, nil
 
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
 		 XXX: support intelegent show support, without direct query dispatch
 		*/
-		return routingstate.RandomMatchState{}, true, nil
+		return plan.RandomMatchState{}, true, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
@@ -922,27 +921,27 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
 			return nil, false, err
 		}
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 	case *lyx.Vacuum:
 		/* Send vacuum to each shard */
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 	case *lyx.Analyze:
 		/* Send vacuum to each shard */
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 	case *lyx.Cluster:
 		/* Send vacuum to each shard */
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 	case *lyx.Index:
 		/*
 		 * Disallow to index on table which does not contain any sharding column
 		 */
 		// XXX: do it
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 
 	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
 		// support simple ddl commands, route them to every chard
 		// this is not fully ACID (not atomic at least)
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 		/*
 			 case *pgquery.Node_DropdbStmt, *pgquery.Node_DropRoleStmt:
 				 // forbid under separate setting
@@ -950,7 +949,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		*/
 	case *lyx.CreateRole, *lyx.CreateDatabase:
 		// forbid under separate setting
-		return routingstate.DDLState{}, false, nil
+		return plan.DDLState{}, false, nil
 	case *lyx.Insert:
 		rs, err := qr.resolveRoutingState(ctx, stmt, meta)
 		if err != nil {
@@ -959,7 +958,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 		ro = false
 
-		route = routingstate.Combine(route, rs)
+		route = plan.Combine(route, rs)
 	case *lyx.Select:
 
 		var deparseError error
@@ -971,16 +970,16 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
 					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" {
-						return routingstate.RandomMatchState{}, ro, nil
+						return plan.RandomMatchState{}, ro, nil
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
-					return routingstate.RandomMatchState{}, ro, nil
+					return plan.RandomMatchState{}, ro, nil
 
 				/* Special case for SELECT current_schema */
 				case *lyx.ColumnRef:
 					if e.ColName == "current_schema" {
-						return routingstate.RandomMatchState{}, ro, nil
+						return plan.RandomMatchState{}, ro, nil
 					}
 				}
 			}
@@ -1021,13 +1020,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		}
 
 		if onlyCatalog && anyCatalog {
-			return routingstate.RandomMatchState{}, ro, nil
+			return plan.RandomMatchState{}, ro, nil
 		}
 		if hasInfSchema && hasOtherSchema {
 			return nil, false, rerrors.ErrInformationSchemaCombinedQuery
 		}
 		if hasInfSchema {
-			return routingstate.RandomMatchState{}, ro, nil
+			return plan.RandomMatchState{}, ro, nil
 		}
 
 		if deparseError != nil {
@@ -1042,9 +1041,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 			return nil, false, err
 		}
 		ro = false
-		route = routingstate.Combine(route, rs)
+		route = plan.Combine(route, rs)
 	case *lyx.Copy:
-		return routingstate.CopyState{}, false, nil
+		return plan.CopyState{}, false, nil
 	default:
 		return nil, false, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
@@ -1083,7 +1082,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		if err != nil {
 			return nil, false, err
 		} else if ds.Id == distributions.REPLICATED {
-			route = routingstate.Combine(route, routingstate.ReferenceRelationState{})
+			route = plan.Combine(route, plan.ReferenceRelationState{})
 			continue
 		}
 
@@ -1137,7 +1136,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 					Str("table", rfqn.RelationName).
 					Msg("calculated route for table/cols")
 
-				route = routingstate.Combine(route, routingstate.ShardMatchState{
+				route = plan.Combine(route, plan.ShardMatchState{
 					Route:              currroute,
 					TargetSessionAttrs: tsa,
 				})
@@ -1147,14 +1146,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 	// set up this variable if not yet
 	if route == nil {
-		route = routingstate.MultiMatchState{}
+		route = plan.MultiMatchState{}
 	}
 
 	return route, ro, nil
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (routingstate.RoutingState, error) {
+func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
 
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
 	route, ro, err := qr.routeWithRules(ctx, meta, stmt)
@@ -1163,26 +1162,26 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	}
 
 	switch v := route.(type) {
-	case routingstate.ShardMatchState:
+	case plan.ShardMatchState:
 		return v, nil
-	case routingstate.RandomMatchState:
+	case plan.RandomMatchState:
 		return v, nil
-	case routingstate.ReferenceRelationState:
+	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
-		return routingstate.RandomMatchState{}, nil
-	case routingstate.DDLState:
+		return plan.RandomMatchState{}, nil
+	case plan.DDLState:
 		return v, nil
-	case routingstate.CopyState:
+	case plan.CopyState:
 		/* temporary */
-		return routingstate.MultiMatchState{}, nil
-	case routingstate.MultiMatchState:
+		return plan.MultiMatchState{}, nil
+	case plan.MultiMatchState:
 		if sph.EnhancedMultiShardProcessing() {
 			if v.DistributedPlan == nil {
 				v.DistributedPlan = planner.PlanDistributedQuery(ctx, meta, stmt)
 			}
 			switch v.DistributedPlan.(type) {
 			case plan.DummyPlan:
-				return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+				return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 			}
 			return v, nil
 		}
@@ -1192,7 +1191,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		 */
 		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
 			fallthrough
 		default:
@@ -1200,8 +1199,8 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 				/* TODO: config options for this */
 				return v, nil
 			}
-			return routingstate.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
 	}
-	return routingstate.SkipRoutingState{}, nil
+	return plan.SkipRoutingState{}, nil
 }

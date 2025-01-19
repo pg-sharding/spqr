@@ -23,10 +23,10 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
 	"github.com/pg-sharding/spqr/router/route"
-	"github.com/pg-sharding/spqr/router/routingstate"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
 	"golang.org/x/exp/slices"
@@ -124,7 +124,7 @@ type RelayStateImpl struct {
 	traceMsgs    bool
 	activeShards []kr.ShardKey
 
-	routingState routingstate.RoutingState
+	routingState plan.Plan
 
 	Qr      qrouter.QueryRouter
 	qp      parser.QParser
@@ -384,25 +384,25 @@ func (rst *RelayStateImpl) Reroute() error {
 		Str("exec_on", rst.Client().ExecuteOn()).
 		Msg("rerouting the client connection, resolving shard")
 
-	var routingState routingstate.RoutingState
+	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
-		routingState = routingstate.ShardMatchState{
+		queryPlan = plan.ShardMatchState{
 			Route: &kr.ShardKey{
 				Name: v,
 			},
 		}
 	} else {
 		var err error
-		routingState, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
+		queryPlan, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 		if err != nil {
 			return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 	}
 
-	rst.routingState = routingState
-	switch v := routingState.(type) {
-	case routingstate.MultiMatchState:
+	rst.routingState = queryPlan
+	switch v := queryPlan.(type) {
+	case plan.MultiMatchState:
 		if rst.txStatus == txstatus.TXACT {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
@@ -410,17 +410,17 @@ func (rst *RelayStateImpl) Reroute() error {
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed MultiMatchState")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
-	case routingstate.DDLState:
+	case plan.DDLState:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed DDLState")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
-	case routingstate.ShardMatchState:
+	case plan.ShardMatchState:
 		// TBD: do it better
 		return rst.procRoutes([]*kr.ShardKey{v.Route})
-	case routingstate.SkipRoutingState:
+	case plan.SkipRoutingState:
 		return ErrSkipQuery
-	case routingstate.RandomMatchState:
+	case plan.RandomMatchState:
 		return rst.RerouteToRandomRoute()
 	default:
 		return fmt.Errorf("unexpected route state %T", v)
@@ -445,7 +445,7 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 		return fmt.Errorf("no routes configured")
 	}
 
-	routingState := routingstate.ShardMatchState{
+	routingState := plan.ShardMatchState{
 		Route: routes[rand.Int()%len(routes)],
 	}
 	rst.routingState = routingState
@@ -467,7 +467,7 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	routingState := routingstate.ShardMatchState{
+	routingState := plan.ShardMatchState{
 		Route: route,
 	}
 	rst.routingState = routingState
@@ -478,7 +478,7 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 // TODO : unit tests
 func (rst *RelayStateImpl) CurrentRoutes() []*kr.ShardKey {
 	switch q := rst.routingState.(type) {
-	case routingstate.ShardMatchState:
+	case plan.ShardMatchState:
 		return []*kr.ShardKey{q.Route}
 	default:
 		return nil
@@ -1017,7 +1017,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		Msg("complete relay iter")
 
 	switch rst.routingState.(type) {
-	case routingstate.MultiMatchState:
+	case plan.MultiMatchState:
 		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Zero.Debug().Msg("unroute multishard route")
 

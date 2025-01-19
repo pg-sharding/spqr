@@ -17,8 +17,8 @@ import (
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"
 	mocksrv "github.com/pg-sharding/spqr/router/mock/server"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/route"
-	"github.com/pg-sharding/spqr/router/routingstate"
 
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
@@ -116,7 +116,7 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprIConst{Value: 1},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, gomock.Any()).Return(routingstate.ShardMatchState{
+	}, gomock.Any()).Return(plan.ShardMatchState{
 		Route: &kr.ShardKey{
 			Name: "sh1",
 		},
@@ -441,7 +441,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		Where:    &lyx.AExprEmpty{},
 		IsFrom:   true,
 		Columns:  []string{"i"},
-	}, gomock.Any()).Return(routingstate.MultiMatchState{}, nil).Times(1)
+	}, gomock.Any()).Return(plan.MultiMatchState{}, nil).Times(1)
 
 	k1 := sh1.SHKey()
 	k2 := sh2.SHKey()
