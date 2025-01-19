@@ -532,7 +532,10 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				}
 			case plan.ReferenceRelationState:
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan := planner.PlanDistributedQuery(ctx, meta, stmt)
+					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
+					if err != nil {
+						return nil, err
+					}
 
 					switch dplan.(type) {
 					case plan.ScatterPlan:
@@ -564,7 +567,10 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan := planner.PlanDistributedQuery(ctx, meta, stmt)
+					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
+					if err != nil {
+						return nil, err
+					}
 
 					switch dplan.(type) {
 					case plan.ScatterPlan:
@@ -599,7 +605,10 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan := planner.PlanDistributedQuery(ctx, meta, stmt)
+					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
+					if err != nil {
+						return nil, err
+					}
 
 					switch dplan.(type) {
 					case plan.ScatterPlan:
@@ -1177,11 +1186,10 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	case plan.MultiMatchState:
 		if sph.EnhancedMultiShardProcessing() {
 			if v.DistributedPlan == nil {
-				v.DistributedPlan = planner.PlanDistributedQuery(ctx, meta, stmt)
-			}
-			switch v.DistributedPlan.(type) {
-			case plan.DummyPlan:
-				return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+				v.DistributedPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
+				if err != nil {
+					return nil, err
+				}
 			}
 			return v, nil
 		}
@@ -1202,5 +1210,5 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
 	}
-	return plan.SkipRoutingState{}, nil
+	return nil, rerrors.ErrComplexQuery
 }

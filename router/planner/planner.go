@@ -6,22 +6,23 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/router/plan"
+	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/rmeta"
 )
 
-func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) plan.Plan {
+func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
 	case *lyx.ValueClause:
-		return plan.ScatterPlan{}
+		return plan.ScatterPlan{}, nil
 	case *lyx.Select:
 		/* Should be single-relation scan or values. Join to be supported */
 		if len(v.FromClause) == 0 {
-			return plan.ScatterPlan{}
+			return plan.ScatterPlan{}, nil
 		}
 		if len(v.FromClause) > 1 {
-			return plan.DummyPlan{}
+			return nil, rerrors.ErrComplexQuery
 		}
 
 		s := plan.Scan{}
@@ -29,7 +30,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		case *lyx.RangeVar:
 			s.Relation = q
 		default:
-			return plan.DummyPlan{}
+			return nil, rerrors.ErrComplexQuery
 		}
 
 		s.Projection = v.TargetList
@@ -37,7 +38,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		/* Todo: support grouping columns */
 		return plan.ScatterPlan{
 			SubPlan: s,
-		}
+		}, nil
 	case *lyx.Insert:
 
 		switch q := v.TableRef.(type) {
@@ -48,33 +49,37 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 			}
 
 			if ds, err := rm.GetRelationDistribution(ctx, rm.Mgr, rfqn); err != nil {
-				return plan.DummyPlan{}
+				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
-
-				return plan.DummyPlan{}
+				return nil, rerrors.ErrComplexQuery
 			}
 			/* Plan sub-select here. TODO: check that modified relation is a ref relation */
-			subPlan := PlanDistributedQuery(ctx, rm, v.SubSelect)
+			subPlan, err := PlanDistributedQuery(ctx, rm, v.SubSelect)
+			if err != nil {
+				return nil, err
+			}
 			switch subPlan.(type) {
 			case plan.ScatterPlan:
 				return plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
-				}
+				}, nil
+			default:
+				return nil, rerrors.ErrComplexQuery
 			}
 		default:
-			return plan.DummyPlan{}
+			return nil, rerrors.ErrComplexQuery
 		}
 	case *lyx.Update:
 		/* Plan sub-select here. TODO: check that modified relation is a ref relation */
 		return plan.ScatterPlan{
 			SubPlan: plan.ModifyTable{},
-		}
+		}, nil
 	case *lyx.Delete:
 		/* Plan sub-select here. TODO: check that modified relation is a ref relation */
 		return plan.ScatterPlan{
 			SubPlan: plan.ModifyTable{},
-		}
+		}, nil
 	}
 
-	return plan.DummyPlan{}
+	return nil, rerrors.ErrComplexQuery
 }

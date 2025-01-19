@@ -423,7 +423,7 @@ func (rst *RelayStateImpl) Reroute() error {
 	case plan.RandomMatchState:
 		return rst.RerouteToRandomRoute()
 	default:
-		return fmt.Errorf("unexpected route state %T", v)
+		return fmt.Errorf("unexpected query plan %T", v)
 	}
 }
 

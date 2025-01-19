@@ -23,10 +23,6 @@ type ModifyTable struct {
 	Plan
 }
 
-type DummyPlan struct {
-	Plan
-}
-
 const NOSHARD = ""
 
 // TODO : unit tests
