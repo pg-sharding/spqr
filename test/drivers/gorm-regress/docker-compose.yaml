@@ -33,7 +33,7 @@ services:
       - POSTGRES_USER=regress
       - POSTGRES_DB=regress
     ports:
-      - "7432:6432"
+      - "7434:6432"
     hostname: spqr_shard_3
     container_name: spqr_shard_3
     healthcheck:
@@ -47,7 +47,7 @@ services:
       - POSTGRES_USER=regress
       - POSTGRES_DB=regress
     ports:
-      - "7433:6432"
+      - "7435:6432"
     hostname: spqr_shard_4
     container_name: spqr_shard_4
     healthcheck:
