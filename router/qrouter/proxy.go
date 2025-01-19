@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/router/cache"
-	"github.com/pg-sharding/spqr/router/routingstate"
 	"go.uber.org/atomic"
 )
 
@@ -51,31 +50,29 @@ func (qr *ProxyQrouter) SchemaCache() *cache.SchemaCache {
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
+func (qr *ProxyQrouter) DataShardsRoutes() []*kr.ShardKey {
 	rc, _ := qr.mgr.ListShards(context.TODO())
-	rv := make([]*routingstate.DataShardRoute, 0, len(rc))
+	rv := make([]*kr.ShardKey, 0, len(rc))
 	for _, el := range rc {
-		rv = append(rv, &routingstate.DataShardRoute{Shkey: kr.ShardKey{
+		rv = append(rv, &kr.ShardKey{
 			Name: el.ID,
 			RW:   false,
-		}})
+		})
 	}
 	return rv
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) WorldShardsRoutes() []*routingstate.DataShardRoute {
+func (qr *ProxyQrouter) WorldShardsRoutes() []*kr.ShardKey {
 	qr.mu.Lock()
 	defer qr.mu.Unlock()
 
-	var ret []*routingstate.DataShardRoute
+	var ret []*kr.ShardKey
 
 	for name := range qr.WorldShardCfgs {
-		ret = append(ret, &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: name,
-				RW:   true,
-			},
+		ret = append(ret, &kr.ShardKey{
+			Name: name,
+			RW:   true,
 		})
 	}
 

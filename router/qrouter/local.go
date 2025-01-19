@@ -65,10 +65,8 @@ func (l *LocalQrouter) AddDataShard(_ context.Context, ds *topology.DataShard) e
 // TODO : unit tests
 func (l *LocalQrouter) Route(_ context.Context, _ lyx.Node, _ session.SessionParamsHolder) (routingstate.RoutingState, error) {
 	return routingstate.ShardMatchState{
-		Route: &routingstate.DataShardRoute{
-			Shkey: kr.ShardKey{
-				Name: l.ds.ID,
-			},
+		Route: &kr.ShardKey{
+			Name: l.ds.ID,
 		},
 	}, nil
 }
@@ -82,12 +80,11 @@ func (l *LocalQrouter) SchemaCache() *cache.SchemaCache {
 }
 
 // TODO : unit tests
-func (l *LocalQrouter) DataShardsRoutes() []*routingstate.DataShardRoute {
-	return []*routingstate.DataShardRoute{
-		&routingstate.DataShardRoute{Shkey: kr.ShardKey{
+func (l *LocalQrouter) DataShardsRoutes() []*kr.ShardKey {
+	return []*kr.ShardKey{
+		{
 			Name: l.ds.ID,
 			RW:   false,
-		},
 		},
 	}
 }

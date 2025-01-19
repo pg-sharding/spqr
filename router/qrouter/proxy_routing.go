@@ -42,7 +42,7 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.Ro
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (*routingstate.DataShardRoute, error) {
+func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
 	spqrlog.Zero.Debug().
 		Interface("key", key[0]).
 		Int("key-ranges-count", len(krs)).
@@ -61,10 +61,7 @@ func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []in
 		if err := qr.mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
 			return nil, err
 		}
-		return &routingstate.DataShardRoute{
-			Shkey:     kr.ShardKey{Name: matchedKrkey.ShardID},
-			Matchedkr: matchedKrkey,
-		}, nil
+		return &kr.ShardKey{Name: matchedKrkey.ShardID}, nil
 	}
 	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
 
