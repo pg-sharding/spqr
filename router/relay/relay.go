@@ -402,13 +402,13 @@ func (rst *RelayStateImpl) Reroute() error {
 
 	rst.routingState = queryPlan
 	switch v := queryPlan.(type) {
-	case plan.MultiMatchState:
+	case plan.ScatterPlan:
 		if rst.txStatus == txstatus.TXACT {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
-			Msgf("parsed MultiMatchState")
+			Msgf("parsed ScatterPlan")
 		return rst.procRoutes(rst.Qr.DataShardsRoutes())
 	case plan.DDLState:
 		spqrlog.Zero.Debug().
@@ -1017,7 +1017,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		Msg("complete relay iter")
 
 	switch rst.routingState.(type) {
-	case plan.MultiMatchState:
+	case plan.ScatterPlan:
 		// TODO: explicitly forbid transaction, or hadnle it properly
 		spqrlog.Zero.Debug().Msg("unroute multishard route")
 

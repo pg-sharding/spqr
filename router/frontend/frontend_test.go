@@ -441,7 +441,7 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 		Where:    &lyx.AExprEmpty{},
 		IsFrom:   true,
 		Columns:  []string{"i"},
-	}, gomock.Any()).Return(plan.MultiMatchState{}, nil).Times(1)
+	}, gomock.Any()).Return(plan.ScatterPlan{}, nil).Times(1)
 
 	k1 := sh1.SHKey()
 	k2 := sh2.SHKey()
