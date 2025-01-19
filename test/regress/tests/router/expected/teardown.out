@@ -1,4 +1,4 @@
 DROP DATABASE regress;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh1,sh2
 ERROR:  database "regress" is being accessed by other users
 DETAIL:  There is 1 other session using the database.
