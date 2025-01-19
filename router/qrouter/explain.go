@@ -50,14 +50,14 @@ func (qr *ProxyQrouter) Explain(ctx context.Context, stmt *lyx.Explain, cli *cli
 		return cli.ReportStmtRoutedToAllShards(ctx)
 
 	case *lyx.Insert:
-		_, err := qr.resolveRoutingState(ctx, node, meta)
+		_, err := qr.planQueryV1(ctx, node, meta)
 		if err != nil {
 			return cli.ReportError(err)
 		}
 	default:
 		// SELECT, UPDATE and/or DELETE stmts, which
 		// would be routed with their WHERE clause
-		_, err := qr.resolveRoutingState(ctx, node, meta)
+		_, err := qr.planQueryV1(ctx, node, meta)
 		if err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return cli.ReportError(err)

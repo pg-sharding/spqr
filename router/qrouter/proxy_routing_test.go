@@ -197,8 +197,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "UPDATE distrr_mm_test SET t = 'm' WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
-			exp: plan.MultiMatchState{
-				DistributedPlan: plan.ScatterPlan{
+			exp: plan.ScatterPlan{
+				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
 				},
 			},
@@ -206,8 +206,8 @@ func TestScatterQueryRoutingEngineV2(t *testing.T) {
 		},
 		{
 			query: "DELETE FROM distrr_mm_test WHERE id IN (3, 34) /* __spqr__engine_v2: true */;",
-			exp: plan.MultiMatchState{
-				DistributedPlan: plan.ScatterPlan{
+			exp: plan.ScatterPlan{
+				SubPlan: plan.ScatterPlan{
 					SubPlan: plan.ModifyTable{},
 				},
 			},
@@ -270,26 +270,20 @@ func TestReferenceRelationRouting(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: `INSERT INTO test_ref_rel VALUES(1) ;`,
-			exp: plan.MultiMatchState{
-				DistributedPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
-				},
+			exp: plan.ScatterPlan{
+				SubPlan: plan.ModifyTable{},
 			},
 		},
 		{
 			query: `UPDATE test_ref_rel SET i = i + 1 ;`,
-			exp: plan.MultiMatchState{
-				DistributedPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
-				},
+			exp: plan.ScatterPlan{
+				SubPlan: plan.ModifyTable{},
 			},
 		},
 		{
 			query: `DELETE FROM test_ref_rel WHERE i = 2;`,
-			exp: plan.MultiMatchState{
-				DistributedPlan: plan.ScatterPlan{
-					SubPlan: plan.ModifyTable{},
-				},
+			exp: plan.ScatterPlan{
+				SubPlan: plan.ModifyTable{},
 			},
 		},
 	} {
@@ -1088,14 +1082,14 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where w_idx = 15 ORDER BY id;",
-			exp:   plan.MultiMatchState{},
+			exp:   plan.ScatterPlan{},
 			err:   nil,
 		},
 
 		// sharding columns, but unparsed
 		{
 			query: "SELECT * FROM xjoin JOIN yjoin on id=w_id where i = 15 ORDER BY id;",
-			exp:   plan.MultiMatchState{},
+			exp:   plan.ScatterPlan{},
 			err:   nil,
 		},
 	} {
@@ -1272,7 +1266,7 @@ func TestCopySingleShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN WHERE i = 1;",
-			exp:   plan.MultiMatchState{},
+			exp:   plan.ScatterPlan{},
 			err:   nil,
 		},
 	} {
@@ -1354,7 +1348,7 @@ func TestCopyMultiShard(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "COPY xx FROM STDIN",
-			exp:   plan.MultiMatchState{},
+			exp:   plan.ScatterPlan{},
 			err:   nil,
 		},
 	} {
@@ -1605,7 +1599,7 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM users;",
 			distribution: distribution.ID,
-			exp:          plan.MultiMatchState{},
+			exp:          plan.ScatterPlan{},
 			err:          nil,
 		},
 		{

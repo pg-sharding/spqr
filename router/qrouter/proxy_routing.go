@@ -266,7 +266,7 @@ func (qr *ProxyQrouter) DeparseSelectStmt(ctx context.Context, selectStmt lyx.No
 	case *lyx.Select:
 		if clause := s.FromClause; clause != nil {
 			// route `insert into rel select from` stmt
-			if err := qr.deparseFromClauseList(ctx, clause, meta); err != nil {
+			if err := qr.processFromClauseList(ctx, clause, meta); err != nil {
 				return err
 			}
 		}
@@ -344,7 +344,7 @@ func (qr *ProxyQrouter) deparseFromNode(ctx context.Context, node lyx.FromClause
 }
 
 // TODO : unit tests
-func (qr *ProxyQrouter) deparseFromClauseList(
+func (qr *ProxyQrouter) processFromClauseList(
 	ctx context.Context,
 	clause []lyx.FromClauseNode, meta *rmeta.RoutingMetadataContext) error {
 	for _, node := range clause {
@@ -376,7 +376,7 @@ func (r RelationList) iRelation()     {}
 var _ StatementRelation = AnyRelation{}
 var _ StatementRelation = SpecificRelation{}
 
-func (qr *ProxyQrouter) deparseInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, plan.Plan, error) {
+func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, plan.Plan, error) {
 	insertCols := stmt.Columns
 
 	spqrlog.Zero.Debug().
@@ -447,7 +447,7 @@ func projectionList(l [][]lyx.Node, prjIndx int) []lyx.Node {
 
 // TODO : unit tests
 // May return nil routing state here - thats ok
-func (qr *ProxyQrouter) resolveRoutingState(
+func (qr *ProxyQrouter) planQueryV1(
 	ctx context.Context,
 	qstmt lyx.Node,
 	meta *rmeta.RoutingMetadataContext) (plan.Plan, error) {
@@ -456,7 +456,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 		if stmt.WithClause != nil {
 			for _, cte := range stmt.WithClause {
 				meta.CteNames[cte.Name] = struct{}{}
-				if _, err := qr.resolveRoutingState(ctx, cte.SubQuery, meta); err != nil {
+				if _, err := qr.planQueryV1(ctx, cte.SubQuery, meta); err != nil {
 					return nil, err
 				}
 			}
@@ -465,7 +465,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 		if stmt.FromClause != nil {
 			// collect table alias names, if any
 			// for single-table queries, process as usual
-			if err := qr.deparseFromClauseList(ctx, stmt.FromClause, meta); err != nil {
+			if err := qr.processFromClauseList(ctx, stmt.FromClause, meta); err != nil {
 				return nil, err
 			}
 		}
@@ -500,7 +500,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				return nil, nil
 			}
 
-			offsets, rfqn, state, err := qr.deparseInsertFromSelectOffsets(ctx, stmt, meta)
+			offsets, rfqn, state, err := qr.processInsertFromSelectOffsets(ctx, stmt, meta)
 			if err != nil {
 				return nil, err
 			}
@@ -532,20 +532,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				}
 			case plan.ReferenceRelationState:
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
-					if err != nil {
-						return nil, err
-					}
-
-					switch dplan.(type) {
-					case plan.ScatterPlan:
-
-						return plan.MultiMatchState{
-							DistributedPlan: dplan,
-						}, nil
-					default:
-						return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
-					}
+					return planner.PlanDistributedQuery(ctx, meta, stmt)
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
@@ -567,20 +554,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
-					if err != nil {
-						return nil, err
-					}
-
-					switch dplan.(type) {
-					case plan.ScatterPlan:
-
-						return plan.MultiMatchState{
-							DistributedPlan: dplan,
-						}, nil
-					default:
-						return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
-					}
+					return planner.PlanDistributedQuery(ctx, meta, stmt)
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
@@ -605,20 +579,7 @@ func (qr *ProxyQrouter) resolveRoutingState(
 				return nil, err
 			} else if d.Id == distributions.REPLICATED {
 				if meta.SPH.EnhancedMultiShardProcessing() {
-					dplan, err := planner.PlanDistributedQuery(ctx, meta, stmt)
-					if err != nil {
-						return nil, err
-					}
-
-					switch dplan.(type) {
-					case plan.ScatterPlan:
-
-						return plan.MultiMatchState{
-							DistributedPlan: dplan,
-						}, nil
-					default:
-						return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
-					}
+					return planner.PlanDistributedQuery(ctx, meta, stmt)
 				}
 				return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 			}
@@ -858,7 +819,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 	case *routehint.ScatterRouteHint:
 		// still, need to check config settings (later)
 		/* XXX: we return true for RO here to fool DRB */
-		return plan.MultiMatchState{}, true, nil
+		return plan.ScatterPlan{}, true, nil
 	}
 
 	/*
@@ -960,7 +921,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		// forbid under separate setting
 		return plan.DDLState{}, false, nil
 	case *lyx.Insert:
-		rs, err := qr.resolveRoutingState(ctx, stmt, meta)
+		rs, err := qr.planQueryV1(ctx, stmt, meta)
 		if err != nil {
 			return nil, false, err
 		}
@@ -996,15 +957,15 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 			/* deparse populates the FromClause info,
 			 * so it do recurse into both branches, even if an error is encountered
 			 */
-			if _, err := qr.resolveRoutingState(ctx, node.LArg, meta); err != nil {
+			if _, err := qr.planQueryV1(ctx, node.LArg, meta); err != nil {
 				deparseError = err
 			}
-			if _, err := qr.resolveRoutingState(ctx, node.RArg, meta); err != nil {
+			if _, err := qr.planQueryV1(ctx, node.RArg, meta); err != nil {
 				deparseError = err
 			}
 		} else {
 			/*  SELECT stmts, which would be routed with their WHERE clause */
-			_, deparseError = qr.resolveRoutingState(ctx, stmt, meta)
+			_, deparseError = qr.planQueryV1(ctx, stmt, meta)
 		}
 
 		/*
@@ -1045,7 +1006,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
-		rs, err := qr.resolveRoutingState(ctx, stmt, meta)
+		rs, err := qr.planQueryV1(ctx, stmt, meta)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1155,7 +1116,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 	// set up this variable if not yet
 	if route == nil {
-		route = plan.MultiMatchState{}
+		route = plan.ScatterPlan{}
 	}
 
 	return route, ro, nil
@@ -1182,11 +1143,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		return v, nil
 	case plan.CopyState:
 		/* temporary */
-		return plan.MultiMatchState{}, nil
-	case plan.MultiMatchState:
+		return plan.ScatterPlan{}, nil
+	case plan.ScatterPlan:
 		if sph.EnhancedMultiShardProcessing() {
-			if v.DistributedPlan == nil {
-				v.DistributedPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
+			if v.SubPlan == nil {
+				v.SubPlan, err = planner.PlanDistributedQuery(ctx, meta, stmt)
 				if err != nil {
 					return nil, err
 				}

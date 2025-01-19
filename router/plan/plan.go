@@ -17,6 +17,8 @@ type ShardPlan struct {
 type ScatterPlan struct {
 	Plan
 	SubPlan Plan
+	/* Empty means execute everywhere */
+	ExecutionTargets []*kr.ShardKey
 }
 
 type ModifyTable struct {
@@ -43,7 +45,7 @@ func Combine(p1, p2 Plan) Plan {
 		Msg("combine two plans")
 
 	switch shq1 := p1.(type) {
-	case MultiMatchState:
+	case ScatterPlan:
 		return p1
 	case RandomMatchState:
 		return p2
@@ -51,7 +53,7 @@ func Combine(p1, p2 Plan) Plan {
 		return p2
 	case ShardMatchState:
 		switch shq2 := p2.(type) {
-		case MultiMatchState:
+		case ScatterPlan:
 			return p2
 		case ReferenceRelationState:
 			return p1
@@ -61,7 +63,9 @@ func Combine(p1, p2 Plan) Plan {
 			}
 		}
 	}
-	return MultiMatchState{}
+
+	/* execute on all shards */
+	return ScatterPlan{}
 }
 
 type ShardMatchState struct {
@@ -69,11 +73,6 @@ type ShardMatchState struct {
 
 	Route              *kr.ShardKey
 	TargetSessionAttrs string
-}
-
-type MultiMatchState struct {
-	Plan
-	DistributedPlan Plan
 }
 
 type DDLState struct {
