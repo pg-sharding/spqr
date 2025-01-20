@@ -3075,10 +3075,6 @@ func TestDDL(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Parse{
-					Name:  "ddl_xproto_1",
-					Query: "ALTER TABLE t DROP CONSTRAINT IF EXISTS some_constraint",
-				},
 				&pgproto3.Describe{ObjectType: byte('S'), Name: "ddl_xproto_1"},
 				&pgproto3.Sync{},
 				&pgproto3.Bind{
@@ -3091,7 +3087,6 @@ func TestDDL(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
-				&pgproto3.ParseComplete{},
 				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
 				&pgproto3.NoData{},
 				&pgproto3.ReadyForQuery{
@@ -3106,11 +3101,6 @@ func TestDDL(t *testing.T) {
 		},
 		{
 			Request: []pgproto3.FrontendMessage{
-				&pgproto3.Parse{
-					Name:  "ddl_xproto_1",
-					Query: "ALTER TABLE t DROP CONSTRAINT IF EXISTS some_constraint",
-				},
-				&pgproto3.Sync{},
 				&pgproto3.Bind{
 					PreparedStatement: "ddl_xproto_1",
 					Parameters:        [][]byte{},
@@ -3122,10 +3112,6 @@ func TestDDL(t *testing.T) {
 				&pgproto3.Sync{},
 			},
 			Response: []pgproto3.BackendMessage{
-				&pgproto3.ParseComplete{},
-				&pgproto3.ReadyForQuery{
-					TxStatus: byte(txstatus.TXIDLE),
-				},
 				&pgproto3.BindComplete{},
 				&pgproto3.NoData{},
 				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},

@@ -303,9 +303,6 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 }
 
 func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.PreparedStatementDefinition) error {
-	rst.Cl.ServerAcquireUse()
-	defer rst.Cl.ServerReleaseUse()
-
 	serv := rst.Client().Server()
 
 	shards := serv.Datashards()
@@ -386,9 +383,6 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 }
 
 func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*prepstatement.PreparedStatementDescriptor, error) {
-	rst.Cl.ServerAcquireUse()
-	defer rst.Cl.ServerReleaseUse()
-
 	serv := rst.Client().Server()
 
 	shards := serv.Datashards()
@@ -958,8 +952,6 @@ func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) err
 		Uint("client", rst.Client().ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	rst.Client().RLock()
-	defer rst.Client().RUnlock()
 	if err := rst.Client().Server().Send(*query, 0); err != nil {
 		return err
 	}
@@ -1465,7 +1457,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.HoldRouting()
 				}
 
-				_, ok := rst.routingState.(routingstate.DDLState)
+				_, ok := rst.routingState.(plan.DDLState)
 				if ok {
 					routes := rst.Qr.DataShardsRoutes()
 					if err := rst.procRoutes(routes); err != nil {
@@ -1572,7 +1564,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					_, isDDL := rst.routingState.(routingstate.DDLState)
+					_, isDDL := rst.routingState.(plan.DDLState)
 					if isDDL {
 						// TODO remove this log
 						spqrlog.Zero.Info().Msg("Describe DDL")
