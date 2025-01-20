@@ -183,7 +183,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		return routerClient.ID(), r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Info().
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
@@ -299,7 +299,7 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 		case conn := <-cChan:
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
-					spqrlog.Zero.Error().Uint("id", id).Err(err).Msg("")
+					spqrlog.Zero.Error().Uint("id", id).Time("ms", time.Now()).Err(err).Msg("")
 				}
 			}()
 		}
