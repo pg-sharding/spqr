@@ -15,7 +15,7 @@ type Server interface {
 	txstatus.TxStatusMgr
 
 	Name() string
-	Send(query pgproto3.FrontendMessage, pstmtHash uint64) error
+	Send(query pgproto3.FrontendMessage) error
 	SendShard(query pgproto3.FrontendMessage, shardId uint) error
 	Receive() (pgproto3.BackendMessage, error)
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)

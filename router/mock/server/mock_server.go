@@ -170,17 +170,17 @@ func (mr *MockServerMockRecorder) Reset() *gomock.Call {
 }
 
 // Send mocks base method.
-func (m *MockServer) Send(query pgproto3.FrontendMessage, pstmtHash uint64) error {
+func (m *MockServer) Send(query pgproto3.FrontendMessage) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Send", query, pstmtHash)
+	ret := m.ctrl.Call(m, "Send", query)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Send indicates an expected call of Send.
-func (mr *MockServerMockRecorder) Send(query, pstmtHash interface{}) *gomock.Call {
+func (mr *MockServerMockRecorder) Send(query interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockServer)(nil).Send), query, pstmtHash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockServer)(nil).Send), query)
 }
 
 // SendShard mocks base method.

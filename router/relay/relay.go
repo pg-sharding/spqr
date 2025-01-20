@@ -232,14 +232,14 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 		Name:          d.Name,
 		Query:         d.Query,
 		ParameterOIDs: d.ParameterOIDs,
-	}, hash); err != nil {
+	}); err != nil {
 		return nil, nil, err
 	}
 
 	err := serv.Send(&pgproto3.Describe{
 		ObjectType: 'S',
 		Name:       d.Name,
-	}, 0)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -705,7 +705,7 @@ func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForRe
 		ReplyDebugNotice(
 			fmt.Sprintf("executing your query %v", query)) // TODO performance issue
 
-	if err := rst.Client().Server().Send(query, 0); err != nil {
+	if err := rst.Client().Server().Send(query); err != nil {
 		return err
 	}
 
@@ -855,7 +855,7 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 
 	/* We dont really need to parse and route tuples for DISTRIBUTED relations */
 	if cps.Scatter {
-		return nil, rst.Client().Server().Send(data, 0)
+		return nil, rst.Client().Server().Send(data)
 	}
 
 	var leftOvermsgData []byte = nil
@@ -952,7 +952,7 @@ func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) err
 		Uint("client", rst.Client().ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	if err := rst.Client().Server().Send(*query, 0); err != nil {
+	if err := rst.Client().Server().Send(*query); err != nil {
 		return err
 	}
 
@@ -985,7 +985,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 		Type("query-type", query).
 		Msg("relay process query")
 
-	if err := server.Send(query, 0); err != nil {
+	if err := server.Send(query); err != nil {
 		return txstatus.TXERR, nil, false, err
 	}
 

@@ -191,11 +191,7 @@ func TestFrontendXProto(t *testing.T) {
 
 	/* query Router */
 
-	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{
-		&kr.ShardKey{
-			Name: "sh1",
-		},
-	})
+	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{{Name: "sh1"}})
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -271,8 +267,8 @@ func TestFrontendXProto(t *testing.T) {
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
-	srv.EXPECT().HasPrepareStatement(gomock.Any()).DoAndReturn(func(interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
-	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}, interface{}) {
+	srv.EXPECT().HasPrepareStatement(gomock.Any(), gomock.Any()).DoAndReturn(func(interface{}, interface{}) (interface{}, interface{}) { return res, rd }).AnyTimes()
+	srv.EXPECT().StorePrepareStatement(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Do(func(interface{}, interface{}, interface{}, interface{}) {
 		res = true
 		rd.ParamDesc = &pgproto3.ParameterDescription{}
 		rd.RowDesc = &pgproto3.RowDescription{}
