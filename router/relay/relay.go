@@ -1474,7 +1474,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					rst.execute = func() error {
-						// rst.AddQuery(&pgproto3.Parse{Name: pstmt.Name, Query: pstmt.Query, ParameterOIDs: pstmt.ParameterOIDs})
 						rst.AddQuery(msg)
 						rst.AddQuery(&pgproto3.Execute{})
 						rst.AddQuery(&pgproto3.Sync{})
@@ -1566,9 +1565,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 					_, isDDL := rst.routingState.(plan.DDLState)
 					if isDDL {
-						// TODO remove this log
-						spqrlog.Zero.Info().Msg("Describe DDL")
-
 						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
 						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
 						pstmt.Name = fmt.Sprintf("%d", hash)
