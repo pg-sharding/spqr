@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -37,8 +38,8 @@ func NewShardServer(spool *pool.DBPool) *ShardServer {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
-	b, rd := srv.shard.HasPrepareStatement(hash)
+func (srv *ShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	b, rd := srv.shard.HasPrepareStatement(hash, shardId)
 	return b, rd
 }
 
@@ -53,8 +54,8 @@ func (srv *ShardServer) Name() string {
 }
 
 // TODO : unit tests
-func (srv *ShardServer) StorePrepareStatement(hash uint64, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
-	srv.shard.StorePrepareStatement(hash, def, rd)
+func (srv *ShardServer) StorePrepareStatement(hash uint64, shardId uint, def *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	return srv.shard.StorePrepareStatement(hash, shardId, def, rd)
 }
 
 // TODO : unit tests
@@ -146,6 +147,14 @@ func (srv *ShardServer) Send(query pgproto3.FrontendMessage) error {
 }
 
 // TODO : unit tests
+func (srv *ShardServer) SendShard(query pgproto3.FrontendMessage, shardId uint) error {
+	if srv.shard.ID() != shardId {
+		return spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+	return srv.Send(query)
+}
+
+// TODO : unit tests
 func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 	srv.mu.RLock()
 	defer srv.mu.RUnlock()
@@ -158,6 +167,14 @@ func (srv *ShardServer) Receive() (pgproto3.BackendMessage, error) {
 		Err(err).
 		Msg("single-shard receiving msg from server")
 	return msg, err
+}
+
+// TODO : unit tests
+func (srv *ShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+	if srv.shard.ID() != shardId {
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+	}
+	return srv.Receive()
 }
 
 // TODO : unit tests

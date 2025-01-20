@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/pool"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
 	"github.com/pg-sharding/spqr/pkg/shard"
@@ -33,6 +34,7 @@ const (
 	CommandCompleteState
 	CopyOutState
 	CopyInState
+	DDLState
 )
 
 type MultiShardServer struct {
@@ -59,13 +61,23 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 }
 
 // HasPrepareStatement implements Server.
-func (m *MultiShardServer) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
-	panic("MultiShardServer.HasPrepareStatement not implemented")
+func (m *MultiShardServer) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.HasPrepareStatement(hash, shardId)
+		}
+	}
+	return false, nil
 }
 
 // StorePrepareStatement implements Server.
-func (m *MultiShardServer) StorePrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
-
+func (m *MultiShardServer) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.StorePrepareStatement(hash, shardId, d, rd)
+		}
+	}
+	return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "shard \"%d\" not found", shardId)
 }
 
 // DataPending implements Server.
@@ -133,6 +145,29 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 		}
 	}
 
+	return nil
+}
+
+func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shardId uint) error {
+	anyShard := false
+	for _, shard := range m.activeShards {
+		if shard.ID() != shardId {
+			continue
+		}
+		anyShard = true
+		spqrlog.Zero.Debug().
+			Uint("shard", shard.ID()).
+			Interface("message", msg).
+			Msg("sending message to shard")
+		if err := shard.Send(msg); err != nil {
+			spqrlog.Zero.Error().Err(err).Msg("")
+			return err
+		}
+	}
+
+	if !anyShard {
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%d\"", shardId)
+	}
 	return nil
 }
 
@@ -207,6 +242,12 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 					Msg("multishard server init: received message from shard")
 
 				switch retMsg := msg.(type) {
+				case *pgproto3.ParseComplete:
+					// that's ok
+					continue
+				case *pgproto3.BindComplete:
+					// that's also ok
+					continue
 				case *pgproto3.CopyOutResponse:
 					if m.multistate != InitialState && m.multistate != CopyOutState {
 						return nil, MultiShardSyncBroken
@@ -346,7 +387,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			CommandTag: []byte{},
 		}, nil
 	case RunningState:
-		/* Step two: fetch all datarow ms	gs */
+		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
 			// some shards may be in cc state
 
@@ -430,6 +471,15 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 	}
 
 	return nil, nil
+}
+
+func (m *MultiShardServer) ReceiveShard(shardId uint) (pgproto3.BackendMessage, error) {
+	for _, shard := range m.activeShards {
+		if shard.ID() == shardId {
+			return shard.Receive()
+		}
+	}
+	return nil, spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "cannot find shard \"%d\"", shardId)
 }
 
 func (m *MultiShardServer) Cleanup(rule config.FrontendRule) error {

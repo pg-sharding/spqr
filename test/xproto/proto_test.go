@@ -2967,3 +2967,191 @@ func TestPrepStmtBinaryFormat(t *testing.T) {
 		}
 	}
 }
+
+func TestDDL(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "ddl_xproto_1",
+					Query: "ALTER TABLE t DROP CONSTRAINT IF EXISTS some_constraint",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_1",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+
+				&pgproto3.Parse{
+					Name:  "ddl_xproto_2",
+					Query: "ALTER TABLE t DROP CONSTRAINT IF EXISTS other_constraint",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_2",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{TxStatus: 73},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_1",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Describe{ObjectType: byte('S'), Name: "ddl_xproto_1"},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_1",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.NoData{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_1",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Describe{ObjectType: byte('P'), Name: ""},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.BindComplete{},
+				&pgproto3.NoData{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.NoticeResponse:
+				retMsg, err = frontend.Receive()
+				assert.NoError(t, err)
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
+		}
+	}
+}
