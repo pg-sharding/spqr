@@ -3122,7 +3122,7 @@ func TestDDL(t *testing.T) {
 		},
 	} {
 		for _, msg := range msgroup.Request {
-		frontend.Send(msg)
+			frontend.Send(msg)
 		}
 		_ = frontend.Flush()
 		backendFinished := false
