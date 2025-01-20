@@ -1,6 +1,8 @@
 package plan
 
 import (
+	"sort"
+
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 )
@@ -27,6 +29,27 @@ type ModifyTable struct {
 
 const NOSHARD = ""
 
+func CombineExecutionTargets(p1, p2 []*kr.ShardKey) []*kr.ShardKey {
+	res := append(p1, p2...)
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].Name < res[j].Name
+	})
+
+	var ret []*kr.ShardKey
+	for i := range res {
+		if i == 0 {
+			ret = append(ret, res[i])
+			continue
+		}
+		if res[i].Name != res[i-1].Name {
+
+			ret = append(ret, res[i])
+		}
+	}
+
+	return ret
+}
+
 // TODO : unit tests
 func Combine(p1, p2 Plan) Plan {
 	if p1 == nil && p2 == nil {
@@ -47,7 +70,7 @@ func Combine(p1, p2 Plan) Plan {
 	switch shq1 := p1.(type) {
 	case ScatterPlan:
 		return p1
-	case RandomMatchState:
+	case RandomShardScan:
 		return p2
 	case ReferenceRelationState:
 		return p2
@@ -83,7 +106,7 @@ type SkipRoutingState struct {
 	Plan
 }
 
-type RandomMatchState struct {
+type RandomShardScan struct {
 	Plan
 }
 

@@ -2,12 +2,19 @@ package rmeta
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type RoutingMetadataContext struct {
@@ -58,7 +65,7 @@ var CatalogDistribution = distributions.Distribution{
 	ColTypes:  nil,
 }
 
-func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mgr meta.EntityMgr, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
+func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
 	if res, ok := rm.Distributions[resolvedRelation]; ok {
 		return res, nil
 	}
@@ -71,7 +78,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, m
 		return &CatalogDistribution, nil
 	}
 
-	ds, err := mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
+	ds, err := rm.Mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
 
 	if err != nil {
 		return nil, err
@@ -144,4 +151,120 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (rfqn.Rel
 		}
 		return resolvedRelation, nil
 	}
+}
+
+// TODO : unit tests
+func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
+	spqrlog.Zero.Debug().
+		Interface("key", key[0]).
+		Int("key-ranges-count", len(krs)).
+		Msg("checking key with key ranges")
+
+	var matchedKrkey *kr.KeyRange = nil
+
+	for _, krkey := range krs {
+		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
+			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
+			matchedKrkey = krkey
+		}
+	}
+
+	if matchedKrkey != nil {
+		if err := rm.Mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
+			return nil, err
+		}
+		return &kr.ShardKey{Name: matchedKrkey.ShardID}, nil
+	}
+
+	return nil, fmt.Errorf("failed to match key with ranges")
+}
+
+func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation rfqn.RelationFQN, colname string) (int, string) {
+	/* do not process non-distributed relations or columns not from relation distribution key */
+
+	ds, err := rm.GetRelationDistribution(context.TODO(), resolvedRelation)
+	if err != nil {
+		return -1, ""
+	} else if ds.Id == distributions.REPLICATED {
+		return -1, ""
+	}
+	// TODO: optimize
+	relation, exists := ds.Relations[resolvedRelation.RelationName]
+	if !exists {
+		return -1, ""
+	}
+	for ind, c := range relation.DistributionKey {
+		if c.Column == colname {
+			return ind, ds.ColTypes[ind]
+		}
+	}
+	return -1, ""
+}
+
+func (rm *RoutingMetadataContext) ProcessConstExpr(alias, colname string, expr lyx.Node) error {
+	resolvedRelation, err := rm.ResolveRelationByAlias(alias)
+	if err != nil {
+		// failed to resolve relation, skip column
+		return nil
+	}
+
+	return rm.ProcessConstExprOnRFQN(resolvedRelation, colname, []lyx.Node{expr})
+}
+
+func (rm *RoutingMetadataContext) ProcessConstExprOnRFQN(resolvedRelation rfqn.RelationFQN, colname string, exprs []lyx.Node) error {
+	off, tp := rm.GetDistributionKeyOffsetType(resolvedRelation, colname)
+	if off == -1 {
+		// column not from distr key
+		return nil
+	}
+
+	for _, expr := range exprs {
+		/* simple key-value pair */
+		switch rght := expr.(type) {
+		case *lyx.ParamRef:
+			return rm.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
+		case *lyx.AExprSConst:
+			switch tp {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				return rm.RecordConstExpr(resolvedRelation, colname, rght.Value)
+			case qdb.ColumnTypeInteger:
+				num, err := strconv.ParseInt(rght.Value, 10, 64)
+				if err != nil {
+					return err
+				}
+				return rm.RecordConstExpr(resolvedRelation, colname, num)
+			case qdb.ColumnTypeUinteger:
+				num, err := strconv.ParseUint(rght.Value, 10, 64)
+				if err != nil {
+					return err
+				}
+				return rm.RecordConstExpr(resolvedRelation, colname, num)
+			default:
+				return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
+			}
+		case *lyx.AExprIConst:
+			switch tp {
+			case qdb.ColumnTypeVarcharDeprecated:
+				fallthrough
+			case qdb.ColumnTypeVarcharHashed:
+				fallthrough
+			case qdb.ColumnTypeVarchar:
+				return fmt.Errorf("varchar type is not supported for AExprIConst expression")
+			case qdb.ColumnTypeInteger:
+				return rm.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
+			case qdb.ColumnTypeUinteger:
+				return rm.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
+			default:
+				return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
+			}
+		default:
+			return fmt.Errorf("expression is not const")
+		}
+	}
+
+	return nil
 }

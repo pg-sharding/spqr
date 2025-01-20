@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -594,7 +595,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		return rst.procRoutes([]*kr.ShardKey{v.Route})
 	case plan.SkipRoutingState:
 		return ErrSkipQuery
-	case plan.RandomMatchState:
+	case plan.RandomShardScan:
 		return rst.RerouteToRandomRoute()
 	default:
 		return fmt.Errorf("unexpected query plan %T", v)
@@ -839,6 +840,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	}
 
 	return &pgcopy.CopyState{
+		RM:         rmeta.NewRoutingMetadataContext(nil, rst.QueryRouter().Mgr()),
 		Delimiter:  delimiter,
 		ExpRoute:   &kr.ShardKey{},
 		Krs:        krs,
@@ -897,7 +899,7 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 		}
 
 		// check where this tuple should go
-		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
+		currroute, err := cps.RM.DeparseKeyWithRangesInternal(values, cps.Krs)
 		if err != nil {
 			return nil, err
 		}
