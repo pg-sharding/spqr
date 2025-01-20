@@ -34,6 +34,7 @@ const (
 	CommandCompleteState
 	CopyOutState
 	CopyInState
+	DDLState
 )
 
 type MultiShardServer struct {
@@ -393,7 +394,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			CommandTag: []byte{},
 		}, nil
 	case RunningState:
-		/* Step two: fetch all datarow ms	gs */
+		/* Step two: fetch all datarow messages */
 		for i := range m.activeShards {
 			// some shards may be in cc state
 

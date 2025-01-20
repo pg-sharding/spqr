@@ -385,6 +385,88 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 	return nil
 }
 
+func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*prepstatement.PreparedStatementDescriptor, error) {
+	rst.Cl.ServerAcquireUse()
+	defer rst.Cl.ServerReleaseUse()
+
+	serv := rst.Client().Server()
+
+	shards := serv.Datashards()
+	if len(shards) == 0 {
+		return nil, spqrerror.New(spqrerror.SPQR_NO_DATASHARD, "No active shards")
+	}
+
+	shard := shards[0]
+	shardId := shard.ID()
+
+	if err := serv.SendShard(bind, shardId); err != nil {
+		return nil, err
+	}
+
+	if err := serv.SendShard(&pgproto3.Describe{
+		ObjectType: byte('P'),
+	}, shardId); err != nil {
+		return nil, err
+	}
+
+	if err := serv.SendShard(&pgproto3.Close{ObjectType: byte('P')}, shardId); err != nil {
+		return nil, err
+	}
+
+	if err := serv.SendShard(&pgproto3.Sync{}, shardId); err != nil {
+		return nil, err
+	}
+
+	rd := &prepstatement.PreparedStatementDescriptor{
+		NoData:    false,
+		RowDesc:   nil,
+		ParamDesc: nil,
+	}
+	var saveCloseComplete *pgproto3.CloseComplete
+	finished := false
+	for !finished {
+		msg, err := serv.ReceiveShard(shardId)
+		if err != nil {
+			return nil, err
+		}
+		switch q := msg.(type) {
+		case *pgproto3.BindComplete:
+			// that's ok
+			continue
+		case *pgproto3.ReadyForQuery:
+			finished = true
+		case *pgproto3.ErrorResponse:
+			return nil, fmt.Errorf("error describing DDL portal: \"%s\"", q.Message)
+		case *pgproto3.NoData:
+			rd.NoData = true
+		case *pgproto3.CloseComplete:
+			saveCloseComplete = q
+			continue
+		case *pgproto3.RowDescription:
+			// copy
+			rd.RowDesc = &pgproto3.RowDescription{}
+
+			rd.RowDesc.Fields = make([]pgproto3.FieldDescription, len(q.Fields))
+
+			for i := range len(q.Fields) {
+				s := make([]byte, len(q.Fields[i].Name))
+				copy(s, q.Fields[i].Name)
+
+				rd.RowDesc.Fields[i] = q.Fields[i]
+				rd.RowDesc.Fields[i].Name = s
+			}
+		default:
+			return nil, fmt.Errorf("received unexpected message type %T", msg)
+		}
+	}
+
+	if saveCloseComplete == nil {
+		return nil, fmt.Errorf("portal was not closed after describe")
+	}
+
+	return rd, nil
+}
+
 func (rst *RelayStateImpl) Close() error {
 	defer rst.Cl.Close()
 	defer rst.ActiveShardsReset()
@@ -1483,7 +1565,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						}
 					}
 				} else {
-
 					cachedPd = PortalDesc{}
 
 					err := rst.PrepareRelayStepOnHintRoute(rst.bindRoute)
@@ -1491,10 +1572,37 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
-						return err
-					}
+					_, isDDL := rst.routingState.(routingstate.DDLState)
+					if isDDL {
+						// TODO remove this log
+						spqrlog.Zero.Info().Msg("Describe DDL")
 
+						pstmt := rst.Client().PreparedStatementDefinitionByName(rst.lastBindName)
+						hash := rst.Client().PreparedStatementQueryHashByName(pstmt.Name)
+						pstmt.Name = fmt.Sprintf("%d", hash)
+
+						pd, err := rst.multishardDescribePortal(rst.saveBind)
+						if err != nil {
+							return err
+						}
+						if pd.RowDesc != nil {
+							// send to the client
+							if err := rst.Client().Send(pd.RowDesc); err != nil {
+								return err
+							}
+						}
+						if pd.NoData {
+							// send to the client
+							if err := rst.Client().Send(&pgproto3.NoData{}); err != nil {
+								return err
+							}
+						}
+						break
+					} else {
+						if _, _, err := rst.DeployPrepStmt(rst.lastBindName); err != nil {
+							return err
+						}
+					}
 					// do not send saved bind twice
 					if rst.saveBind == nil {
 						// wtf?
