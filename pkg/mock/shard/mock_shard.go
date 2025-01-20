@@ -479,18 +479,18 @@ func (mr *MockShardMockRecorder) DataPending() *gomock.Call {
 }
 
 // HasPrepareStatement mocks base method.
-func (m *MockShard) HasPrepareStatement(hash uint64) (bool, *prepstatement.PreparedStatementDescriptor) {
+func (m *MockShard) HasPrepareStatement(hash uint64, shardId uint) (bool, *prepstatement.PreparedStatementDescriptor) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasPrepareStatement", hash)
+	ret := m.ctrl.Call(m, "HasPrepareStatement", hash, shardId)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(*prepstatement.PreparedStatementDescriptor)
 	return ret0, ret1
 }
 
 // HasPrepareStatement indicates an expected call of HasPrepareStatement.
-func (mr *MockShardMockRecorder) HasPrepareStatement(hash interface{}) *gomock.Call {
+func (mr *MockShardMockRecorder) HasPrepareStatement(hash, shardId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPrepareStatement", reflect.TypeOf((*MockShard)(nil).HasPrepareStatement), hash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasPrepareStatement", reflect.TypeOf((*MockShard)(nil).HasPrepareStatement), hash, shardId)
 }
 
 // ID mocks base method.
@@ -661,15 +661,17 @@ func (mr *MockShardMockRecorder) ShardKeyName() *gomock.Call {
 }
 
 // StorePrepareStatement mocks base method.
-func (m *MockShard) StorePrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) {
+func (m *MockShard) StorePrepareStatement(hash uint64, shardId uint, d *prepstatement.PreparedStatementDefinition, rd *prepstatement.PreparedStatementDescriptor) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StorePrepareStatement", hash, d, rd)
+	ret := m.ctrl.Call(m, "StorePrepareStatement", hash, shardId, d, rd)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // StorePrepareStatement indicates an expected call of StorePrepareStatement.
-func (mr *MockShardMockRecorder) StorePrepareStatement(hash, d, rd interface{}) *gomock.Call {
+func (mr *MockShardMockRecorder) StorePrepareStatement(hash, shardId, d, rd interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePrepareStatement", reflect.TypeOf((*MockShard)(nil).StorePrepareStatement), hash, d, rd)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePrepareStatement", reflect.TypeOf((*MockShard)(nil).StorePrepareStatement), hash, shardId, d, rd)
 }
 
 // Sync mocks base method.
