@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/prepstatement"
@@ -707,6 +708,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		spqrlog.Zero.Info().
 			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
+			Int64("ms", time.Now().UnixMilli()).
 			Msg("received protocol version")
 
 		switch protoVer {
@@ -740,8 +742,13 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 
 			frsm, err := backend.ReceiveStartupMessage()
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to receive continuation startup message: %w", err)
 			}
+
+			spqrlog.Zero.Info().
+				Uint("client", cl.ID()).
+				Uint32("proto-version", protoVer).
+				Msg("completed TLS setup")
 
 			switch msg := frsm.(type) {
 			case *pgproto3.StartupMessage:
@@ -932,7 +939,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
-		Msg("client received message")
+		Msg("received message from client")
 	return msg, err
 }
 

@@ -183,7 +183,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 		return routerClient.ID(), r.AdmConsole.Serve(context.Background(), routerClient)
 	}
 
-	spqrlog.Zero.Debug().
+	spqrlog.Zero.Info().
 		Uint("client", routerClient.ID()).
 		Msg("prerouting phase succeeded")
 
@@ -254,10 +254,12 @@ func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.R
 				go func() {
 					if id, err := r.serv(conn, pt); err != nil {
 						if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-							spqrlog.Zero.Info().Uint("client id", id).Err(err).Msg("error serving client")
+							spqrlog.Zero.Info().Uint("client id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("error serving client")
 						} else {
-							spqrlog.Zero.Error().Uint("client id", id).Err(err).Msg("error serving client")
+							spqrlog.Zero.Error().Uint("client id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("error serving client")
 						}
+					} else {
+						spqrlog.Zero.Info().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Msg("client disconnected")
 					}
 				}()
 			}
@@ -299,7 +301,9 @@ func (r *InstanceImpl) RunAdm(ctx context.Context, listener net.Listener) error 
 		case conn := <-cChan:
 			go func() {
 				if id, err := r.serv(conn, port.ADMRouterPortType); err != nil {
-					spqrlog.Zero.Error().Uint("id", id).Err(err).Msg("")
+					spqrlog.Zero.Error().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Err(err).Msg("")
+				} else {
+					spqrlog.Zero.Info().Uint("id", id).Int64("ms", time.Now().UnixMilli()).Msg("client disconnected")
 				}
 			}()
 		}
