@@ -708,7 +708,7 @@ func (cl *PsqlClient) Init(tlsconfig *tls.Config) error {
 		spqrlog.Zero.Info().
 			Uint("client", cl.ID()).
 			Uint32("proto-version", protoVer).
-			Time("ms", time.Now()).
+			Int64("ms", time.Now().UnixMilli()).
 			Msg("received protocol version")
 
 		switch protoVer {
@@ -939,7 +939,7 @@ func (cl *PsqlClient) Receive() (pgproto3.FrontendMessage, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", cl.ID()).
 		Interface("message", msg).
-		Msg("client received message")
+		Msg("received message from client")
 	return msg, err
 }
 
