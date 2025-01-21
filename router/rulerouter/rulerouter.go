@@ -1,6 +1,7 @@
 package rulerouter
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -189,9 +190,13 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		tlsConfig = nil
 	}
 
+	r.initSem.Acquire(context.TODO(), 1)
+
 	if err := cl.Init(tlsConfig); err != nil {
 		return cl, err
 	}
+
+	r.initSem.Release(1)
 
 	if cl.CancelMsg() != nil {
 		r.cancelConnCount.Add(1)
