@@ -1,6 +1,7 @@
 package rulerouter
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"golang.org/x/sync/semaphore"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"
@@ -23,6 +25,10 @@ import (
 	"github.com/pg-sharding/spqr/router/rule"
 	notifier "github.com/pg-sharding/spqr/router/sdnotifier"
 	"github.com/pkg/errors"
+)
+
+const (
+	defaultInstanceClientInitMax int64 = 200
 )
 
 type RuleRouter interface {
@@ -51,6 +57,8 @@ type RuleRouterImpl struct {
 	clmp sync.Map
 
 	notifier *notifier.Notifier
+
+	initSem semaphore.Weighted
 
 	tcpConnCount    atomic.Int64
 	activeTcpCount  atomic.Int64
@@ -166,6 +174,7 @@ func NewRouter(tlsconfig *tls.Config, rcfg *config.Router, notifier *notifier.No
 		tlsconfig: tlsconfig,
 		clmp:      sync.Map{},
 		notifier:  notifier,
+		initSem:   *semaphore.NewWeighted(config.ValueOrDefaultInt64(rcfg.ClientInitMax, defaultInstanceClientInitMax)),
 	}
 }
 
@@ -181,9 +190,14 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 		tlsConfig = nil
 	}
 
+	r.initSem.Acquire(context.TODO(), 1)
+
 	if err := cl.Init(tlsConfig); err != nil {
+		r.initSem.Release(1)
 		return cl, err
 	}
+
+	r.initSem.Release(1)
 
 	if cl.CancelMsg() != nil {
 		r.cancelConnCount.Add(1)

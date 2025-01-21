@@ -90,6 +90,8 @@ type Router struct {
 	IgnoreCancel       bool `json:"ignore_cancel" toml:"ignore_cancel" yaml:"ignore_cancel"`
 	AcceptorBufferSize int  `json:"acceptor_buffer_size" toml:"acceptor_buffer_size" yaml:"acceptor_buffer_size"`
 
+	ClientInitMax int64 `json:"client_init_max" toml:"client_init_max" yaml:"client_init_max"`
+
 	UseSystemdNotifier   bool `json:"use_systemd_notifier" toml:"use_systemd_notifier" yaml:"use_systemd_notifier"`
 	SystemdNotifierDebug bool `json:"systemd_notifier_debug" toml:"systemd_notifier_debug" yaml:"systemd_notifier_debug"`
 }
@@ -183,6 +185,13 @@ func (s *Shard) HostsAZ() []Host {
 }
 
 func ValueOrDefaultInt(value int, def int) int {
+	if value == 0 {
+		return def
+	}
+	return value
+}
+
+func ValueOrDefaultInt64(value int64, def int64) int64 {
 	if value == 0 {
 		return def
 	}
