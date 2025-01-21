@@ -193,6 +193,7 @@ func (r *RuleRouterImpl) PreRoute(conn net.Conn, pt port.RouterPortType) (rclien
 	r.initSem.Acquire(context.TODO(), 1)
 
 	if err := cl.Init(tlsConfig); err != nil {
+		r.initSem.Release(1)
 		return cl, err
 	}
 
