@@ -325,6 +325,13 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 			return err
 		}
 
+		if err := serv.SendShard(&pgproto3.Describe{
+			ObjectType: byte('S'),
+			Name:       d.Name,
+		}, shardId); err != nil {
+			return err
+		}
+
 		if err := serv.SendShard(&pgproto3.Sync{}, shardId); err != nil {
 			return err
 		}
