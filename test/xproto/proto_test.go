@@ -3120,6 +3120,41 @@ func TestDDL(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "ddl_xproto_3",
+					Query: "ALTER TABLE t DROP CONSTRAINT IF EXISTS some_constraint",
+				},
+				&pgproto3.Sync{},
+				&pgproto3.Bind{
+					PreparedStatement: "ddl_xproto_3",
+					Parameters:        [][]byte{},
+					//  xproto.FormatCodeText = 0
+					ParameterFormatCodes: []int16{},
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+				&pgproto3.Describe{ObjectType: byte('S'), Name: "ddl_xproto_3"},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ALTER TABLE")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.ParameterDescription{ParameterOIDs: []uint32{}},
+				&pgproto3.NoData{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
