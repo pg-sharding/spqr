@@ -44,10 +44,12 @@ jobs:
 
       - name: regress tests
         run: |
-          POSTGRES_VERSION=12 make regress
-          POSTGRES_VERSION=13 make regress
-          POSTGRES_VERSION=14 make regress
-          POSTGRES_VERSION=15 make regress
+          make POSTGRES_VERSION=12 regress
+          make POSTGRES_VERSION=13 regress
+          make POSTGRES_VERSION=14 regress
+          make POSTGRES_VERSION=15 regress
+          make POSTGRES_VERSION=16 regress
+          make POSTGRES_VERSION=17 regress
 
   gorm-regress:
     name: drivers_gorm
