@@ -106,8 +106,10 @@ regress_pooler_local: pooler_d_run
 regress_pooler: build_images
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
+POSTGRES_VERSION ?= 13
+
 regress: build_images
-	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
+	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
