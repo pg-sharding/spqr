@@ -11,7 +11,6 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 
 	engiveV2 bool
-	ms       bool
 	eo       string
 }
 

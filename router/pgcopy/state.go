@@ -17,7 +17,7 @@ type CopyState struct {
 	Attached bool
 
 	/* For distributed relations */
-	ColumnOffset    int
-	Krs             []*kr.KeyRange
-	HashFunc        hashfunction.HashFunctionType
+	ColumnOffset int
+	Krs          []*kr.KeyRange
+	HashFunc     hashfunction.HashFunctionType
 }

@@ -839,11 +839,11 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	}
 
 	return &pgcopy.CopyState{
-		Delimiter:       delimiter,
-		ExpRoute:        &kr.ShardKey{},
-		Krs:             krs,
-		TargetType:      TargetType,
-		HashFunc:        hashFunc,
+		Delimiter:  delimiter,
+		ExpRoute:   &kr.ShardKey{},
+		Krs:        krs,
+		TargetType: TargetType,
+		HashFunc:   hashFunc,
 	}, nil
 }
 
