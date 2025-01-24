@@ -12,10 +12,10 @@ router_mode: LOCAL
 time_quantiles:
   - 0.5
 
-frontend_tls:
-  key_file: /etc/spqr/ssl/server.key
-  cert_file: /etc/spqr/ssl/server.crt
-  sslmode: require
+# frontend_tls:
+#   key_file: /etc/spqr/ssl/server.key
+#   cert_file: /etc/spqr/ssl/server.crt
+#   sslmode: require
 frontend_rules:
   - db: regress
     usr: regress
