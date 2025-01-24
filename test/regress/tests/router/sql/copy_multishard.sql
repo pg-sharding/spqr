@@ -12,7 +12,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 \c regress
 CREATE TABLE xx (i int, j int);
 
-COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /* __spqr__allow_multishard: true */;
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 1|1
 2|2
 3|3

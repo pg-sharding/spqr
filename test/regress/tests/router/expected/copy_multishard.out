@@ -37,7 +37,7 @@ ALTER DISTRIBUTION ds1 ATTACH RELATION xx DISTRIBUTION KEY i HASH FUNCTION MURMU
 \c regress
 CREATE TABLE xx (i int, j int);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-COPY xx (i, j) FROM STDIN WITH DELIMITER '|' /* __spqr__allow_multishard: true */;
+COPY xx (i, j) FROM STDIN WITH DELIMITER '|';
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 INSERT INTO xx (i, j) VALUES(1,1);
 NOTICE: send query to shard(s) : sh1
