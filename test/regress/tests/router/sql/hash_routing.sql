@@ -21,7 +21,7 @@ INSERT INTO xxhash (col1) VALUES ('Армия — не просто доброе
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh1 */;
 SELECT * FROM xxhash ORDER BY col1 /* __spqr__execute_on: sh2 */;
 
-COPY xxhash (col1) FROM STDIN/;
+COPY xxhash (col1) FROM STDIN;
 Hello, world!
 test
 0
