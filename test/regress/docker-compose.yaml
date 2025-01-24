@@ -124,7 +124,7 @@ services:
     regress-mdb-image:
         image: regress-mdb-image
         build:
-            context: https://github.com/pg-sharding/cpg.git#MDB_16_6_no_aqo
+            context: https://github.com/pg-sharding/cpg.git#${MDB_BRANCH:-MDB_16_6_no_aqo}
             dockerfile: docker/regress/Dockerfile
 
     regress:

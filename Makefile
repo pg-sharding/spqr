@@ -108,9 +108,11 @@ regress_pooler: build_images
 
 POSTGRES_VERSION ?= 13
 image ?= regress-base-image
+codename ?= focal
+mdb-branch ?= MDB_16_6_no_aqo
 
 regress: build_images
-	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg image=${image} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
+	MDB_BRANCH=${mdb-branch}; docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg image=${image} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01
