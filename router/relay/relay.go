@@ -797,8 +797,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		}, nil
 	}
 
-	allow_multishard := rst.Client().AllowMultishard()
-
 	// TODO: check by whole RFQN
 	ds, err := rst.Qr.Mgr().GetRelationDistribution(ctx, relname)
 	if err != nil {
@@ -843,7 +841,6 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	return &pgcopy.CopyState{
 		Delimiter:       delimiter,
 		ExpRoute:        &kr.ShardKey{},
-		AllowMultishard: allow_multishard,
 		Krs:             krs,
 		TargetType:      TargetType,
 		HashFunc:        hashFunc,
@@ -909,16 +906,6 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
 		}
 
-		if !cps.AllowMultishard {
-			if cps.ExpRoute.Name == "" {
-				*cps.ExpRoute = *currroute
-			}
-		}
-
-		if !cps.AllowMultishard && currroute.Name != cps.ExpRoute.Name {
-			return nil, fmt.Errorf("multishard copy is not supported")
-		}
-
 		values = nil
 		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
 		currentAttr = 0
@@ -933,18 +920,10 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 	}
 
 	for _, sh := range rst.Client().Server().Datashards() {
-		if !cps.AllowMultishard {
-			if cps.ExpRoute != nil && sh.Name() == cps.ExpRoute.Name {
-				err := sh.Send(&pgproto3.CopyData{Data: rowsMp[sh.Name()]})
-				return leftOvermsgData, err
-			}
-		} else {
-			bts, ok := rowsMp[sh.Name()]
-			if ok {
-				err := sh.Send(&pgproto3.CopyData{Data: bts})
-				if err != nil {
-					return nil, err
-				}
+		if bts, ok := rowsMp[sh.Name()]; ok {
+			err := sh.Send(&pgproto3.CopyData{Data: bts})
+			if err != nil {
+				return nil, err
 			}
 		}
 	}

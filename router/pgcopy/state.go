@@ -18,7 +18,6 @@ type CopyState struct {
 
 	/* For distributed relations */
 	ColumnOffset    int
-	AllowMultishard bool
 	Krs             []*kr.KeyRange
 	HashFunc        hashfunction.HashFunctionType
 }
