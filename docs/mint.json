@@ -112,7 +112,8 @@
                                 "sharding/console/concepts",
                                 "sharding/console/sql_commands"
                             ]
-                        }
+                        },
+                        "sharding/copy"
                     ]
                 },
                 "welcome/design"
