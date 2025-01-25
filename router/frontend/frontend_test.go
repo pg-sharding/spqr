@@ -97,9 +97,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
 
-	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
-
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
 
@@ -261,9 +258,6 @@ func TestFrontendXProto(t *testing.T) {
 	cl.EXPECT().ExecuteOn().AnyTimes()
 	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
-	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
-
 	res := false
 	rd := &prepstatement.PreparedStatementDescriptor{}
 
@@ -358,9 +352,6 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	cl.EXPECT().CleanupLocalSet().AnyTimes()
 
-	/* this is non-multishard tests */
-	cl.EXPECT().AllowMultishard().Return(false).AnyTimes()
-
 	cl.EXPECT().BindParams().AnyTimes()
 
 	cl.EXPECT().ShardingKey().AnyTimes()
@@ -380,9 +371,6 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cl.EXPECT().SetExecuteOn(gomock.Any(), gomock.Any()).AnyTimes()
 
 	cl.EXPECT().DefaultRouteBehaviour().Return("ALLOW").AnyTimes()
-
-	cl.EXPECT().AllowMultishard().AnyTimes()
-	cl.EXPECT().SetAllowMultishard(gomock.Any(), gomock.Any()).AnyTimes()
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)

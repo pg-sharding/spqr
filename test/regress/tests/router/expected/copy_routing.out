@@ -49,35 +49,58 @@ NOTICE: send query to shard(s) : sh1
 
 COPY copy_test(id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  client processing error: multishard copy is not supported, tx status IDLE
 SELECT * FROM copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
- id 
-----
-  1
-  2
-  3
-  4
-  5
-(5 rows)
+  id  
+------
+    1
+    2
+    3
+    4
+    5
+    1
+    2
+    3
+    4
+    5
+   12
+   23
+   22
+   32
+   42
+ 3434
+   43
+(17 rows)
 
 COPY copy_test(id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT * FROM copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
- id 
-----
-  1
-  2
-  3
-  4
-  5
- 41
- 42
- 43
- 44
- 45
-(10 rows)
+  id  
+------
+    1
+    2
+    3
+    4
+    5
+    1
+    2
+    3
+    4
+    5
+   12
+   23
+   22
+   32
+   42
+ 3434
+   43
+   41
+   42
+   43
+   44
+   45
+(22 rows)
 
 DROP TABLE copy_test;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

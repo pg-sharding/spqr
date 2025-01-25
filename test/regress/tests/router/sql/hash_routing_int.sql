@@ -39,7 +39,7 @@ INSERT INTO xx (col1) VALUES (2147483647);
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh2 */;
 
-COPY xx (col1) FROM STDIN /* __spqr__allow_multishard: true */ ;
+COPY xx (col1) FROM STDIN ;
 1
 2
 3

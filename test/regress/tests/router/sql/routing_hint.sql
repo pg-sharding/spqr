@@ -46,7 +46,7 @@ RESET __spqr__sharding_key;
 -- cleanup test relation to avoid confusion
 TRUNCATE test;
 
-COPY test (id, age) FROM STDIN /* __spqr__allow_multishard: true */;
+COPY test (id, age) FROM STDIN;
 1	1
 5	5
 10	10

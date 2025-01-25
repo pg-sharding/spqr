@@ -31,8 +31,6 @@ import (
 	"github.com/pg-sharding/spqr/router/server"
 )
 
-var NotRouted = fmt.Errorf("client not routed")
-
 type RouterClient interface {
 	client.Client
 	prepstatement.PreparedStatementMapper
@@ -182,20 +180,6 @@ func (cl *PsqlClient) SetAutoDistribution(local bool, val string) {
 // AutoDistribution implements RouterClient.
 func (cl *PsqlClient) AutoDistribution() string {
 	return cl.resolveVirtualStringParam(session.SPQR_AUTO_DISTRIBUTION)
-}
-
-// SetAllowMultishard implements RouterClient.
-func (cl *PsqlClient) SetAllowMultishard(local bool, val bool) {
-	if val {
-		cl.recordVirtualParam(local, session.SPQR_ALLOW_MULTISHARD, "ok")
-	} else {
-		cl.recordVirtualParam(local, session.SPQR_ALLOW_MULTISHARD, "no")
-	}
-}
-
-// AllowMultishard implements RouterClient.
-func (cl *PsqlClient) AllowMultishard() bool {
-	return cl.resolveVirtualBoolParam(session.SPQR_ALLOW_MULTISHARD)
 }
 
 // SetDistributionKey implements RouterClient.

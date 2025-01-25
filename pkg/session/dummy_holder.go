@@ -11,7 +11,6 @@ type DummySessionParamHandler struct {
 	rh           routehint.RouteHint
 
 	engiveV2 bool
-	ms       bool
 	eo       string
 }
 
@@ -33,16 +32,6 @@ func (t *DummySessionParamHandler) ExecuteOn() string {
 // SetExecuteOn implements SessionParamsHolder.
 func (t *DummySessionParamHandler) SetExecuteOn(l bool, v string) {
 	t.eo = v
-}
-
-// AllowMultishard implements SessionParamsHolder.
-func (t *DummySessionParamHandler) AllowMultishard() bool {
-	return t.ms
-}
-
-// SetAllowMultishard implements SessionParamsHolder.
-func (t *DummySessionParamHandler) SetAllowMultishard(l bool, v bool) {
-	t.ms = v
 }
 
 // DistributionKey implements SessionParamsHolder.

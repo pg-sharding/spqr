@@ -43,20 +43,6 @@ func (m *MockRouterClient) EXPECT() *MockRouterClientMockRecorder {
 	return m.recorder
 }
 
-// AllowMultishard mocks base method.
-func (m *MockRouterClient) AllowMultishard() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AllowMultishard")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// AllowMultishard indicates an expected call of AllowMultishard.
-func (mr *MockRouterClientMockRecorder) AllowMultishard() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AllowMultishard", reflect.TypeOf((*MockRouterClient)(nil).AllowMultishard))
-}
-
 // AssignRoute mocks base method.
 func (m *MockRouterClient) AssignRoute(r *route.Route) error {
 	m.ctrl.T.Helper()
@@ -881,18 +867,6 @@ func (m *MockRouterClient) Server() server.Server {
 func (mr *MockRouterClientMockRecorder) Server() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Server", reflect.TypeOf((*MockRouterClient)(nil).Server))
-}
-
-// SetAllowMultishard mocks base method.
-func (m *MockRouterClient) SetAllowMultishard(local, val bool) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetAllowMultishard", local, val)
-}
-
-// SetAllowMultishard indicates an expected call of SetAllowMultishard.
-func (mr *MockRouterClientMockRecorder) SetAllowMultishard(local, val interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAllowMultishard", reflect.TypeOf((*MockRouterClient)(nil).SetAllowMultishard), local, val)
 }
 
 // SetAuthType mocks base method.
