@@ -26,6 +26,7 @@ import (
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/poolmgr"
 	"github.com/pg-sharding/spqr/router/qrouter"
+	"github.com/pg-sharding/spqr/router/rmeta"
 	"github.com/pg-sharding/spqr/router/route"
 	"github.com/pg-sharding/spqr/router/server"
 	"github.com/pg-sharding/spqr/router/statistics"
@@ -842,6 +843,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 		Delimiter:  delimiter,
 		ExpRoute:   &kr.ShardKey{},
 		Krs:        krs,
+		RM:         rmeta.NewRoutingMetadataContext(rst.Cl, rst.Qr.Mgr()),
 		TargetType: TargetType,
 		HashFunc:   hashFunc,
 	}, nil
@@ -897,7 +899,7 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 		}
 
 		// check where this tuple should go
-		currroute, err := rst.Qr.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
+		currroute, err := cps.RM.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
 		if err != nil {
 			return nil, err
 		}

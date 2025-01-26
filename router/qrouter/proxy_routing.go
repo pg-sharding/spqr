@@ -13,7 +13,6 @@ import (
 
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/qdb"
@@ -38,33 +37,6 @@ func (qr *ProxyQrouter) DeparseExprShardingEntries(expr lyx.Node, meta *rmeta.Ro
 	default:
 		return "", "", rerrors.ErrComplexQuery
 	}
-}
-
-// TODO : unit tests
-func (qr *ProxyQrouter) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
-	spqrlog.Zero.Debug().
-		Interface("key", key[0]).
-		Int("key-ranges-count", len(krs)).
-		Msg("checking key with key ranges")
-
-	var matchedKrkey *kr.KeyRange = nil
-
-	for _, krkey := range krs {
-		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
-			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
-			matchedKrkey = krkey
-		}
-	}
-
-	if matchedKrkey != nil {
-		if err := qr.mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
-			return nil, err
-		}
-		return &kr.ShardKey{Name: matchedKrkey.ShardID}, nil
-	}
-	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
-
-	return nil, fmt.Errorf("failed to match key with ranges")
 }
 
 func (qr *ProxyQrouter) GetDistributionKeyOffsetType(meta *rmeta.RoutingMetadataContext, resolvedRelation rfqn.RelationFQN, colname string) (int, string) {
@@ -753,58 +725,14 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 	return nil, false
 }
 
-func (qr *ProxyQrouter) resolveRouteHint(sph session.SessionParamsHolder) (routehint.RouteHint, error) {
-	if sph.ScatterQuery() {
-		return &routehint.ScatterRouteHint{}, nil
-	}
-	if val := sph.ShardingKey(); val != "" {
-		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
-
-		dsId := sph.Distribution()
-		if dsId == "" {
-			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "sharding key in comment without distribution")
-		}
-
-		ctx := context.TODO()
-		krs, err := qr.Mgr().ListKeyRanges(ctx, dsId)
-		if err != nil {
-			return nil, err
-		}
-
-		distrib, err := qr.Mgr().GetDistribution(ctx, dsId)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO: fix this
-		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
-
-		if err != nil {
-			return nil, err
-		}
-
-		ds, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
-		if err != nil {
-			return nil, err
-		}
-		return &routehint.TargetRouteHint{
-			State: plan.ShardMatchState{
-				Route: ds,
-			},
-		}, nil
-	}
-
-	return &routehint.EmptyRouteHint{}, nil
-}
-
 // Returns state, is read-only flag and err if any
-func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
+func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
 		return plan.RandomMatchState{}, false, nil
 	}
 
-	rh, err := qr.resolveRouteHint(meta.SPH)
+	rh, err := rm.ResolveRouteHint()
 
 	if err != nil {
 		return nil, false, err
@@ -862,7 +790,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
-		if val := meta.SPH.AutoDistribution(); val != "" {
+		if val := rm.SPH.AutoDistribution(); val != "" {
 
 			switch q := node.TableRv.(type) {
 			case *lyx.RangeVar:
@@ -875,7 +803,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 						Name: q.RelationName,
 						DistributionKey: []distributions.DistributionKeyEntry{
 							{
-								Column: meta.SPH.DistributionKey(),
+								Column: rm.SPH.DistributionKey(),
 								/* support hash function here */
 							},
 						},
@@ -921,7 +849,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		// forbid under separate setting
 		return plan.DDLState{}, false, nil
 	case *lyx.Insert:
-		rs, err := qr.planQueryV1(ctx, stmt, meta)
+		rs, err := qr.planQueryV1(ctx, stmt, rm)
 		if err != nil {
 			return nil, false, err
 		}
@@ -957,15 +885,15 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 			/* deparse populates the FromClause info,
 			 * so it do recurse into both branches, even if an error is encountered
 			 */
-			if _, err := qr.planQueryV1(ctx, node.LArg, meta); err != nil {
+			if _, err := qr.planQueryV1(ctx, node.LArg, rm); err != nil {
 				deparseError = err
 			}
-			if _, err := qr.planQueryV1(ctx, node.RArg, meta); err != nil {
+			if _, err := qr.planQueryV1(ctx, node.RArg, rm); err != nil {
 				deparseError = err
 			}
 		} else {
 			/*  SELECT stmts, which would be routed with their WHERE clause */
-			_, deparseError = qr.planQueryV1(ctx, stmt, meta)
+			_, deparseError = qr.planQueryV1(ctx, stmt, rm)
 		}
 
 		/*
@@ -976,7 +904,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		 */
 		hasInfSchema, onlyCatalog, anyCatalog, hasOtherSchema := false, true, false, false
 
-		for rqfn := range meta.Rels {
+		for rqfn := range rm.Rels {
 			if strings.HasPrefix(rqfn.RelationName, "pg_") {
 				anyCatalog = true
 			} else {
@@ -1006,7 +934,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 	case *lyx.Delete, *lyx.Update:
 		// UPDATE and/or DELETE, COPY stmts, which
 		// would be routed with their WHERE clause
-		rs, err := qr.planQueryV1(ctx, stmt, meta)
+		rs, err := qr.planQueryV1(ctx, stmt, rm)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1022,10 +950,10 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 	 * Step 2: traverse all aggregated relation distribution tuples and route on them.
 	 */
 
-	paramsFormatCodes := meta.SPH.BindParamFormatCodes()
+	paramsFormatCodes := rm.SPH.BindParamFormatCodes()
 	var queryParamsFormatCodes []int16
 
-	paramsLen := len(meta.SPH.BindParams())
+	paramsLen := len(rm.SPH.BindParams())
 
 	// https://github.com/postgres/postgres/blob/master/src/backend/tcop/pquery.c#L635-L658
 	if len(paramsFormatCodes) > 1 {
@@ -1046,9 +974,9 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 		}
 	}
 
-	for rfqn := range meta.Rels {
+	for rfqn := range rm.Rels {
 		// TODO: check by whole RFQN
-		ds, err := meta.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
+		ds, err := rm.GetRelationDistribution(ctx, qr.Mgr(), rfqn)
 		if err != nil {
 			return nil, false, err
 		} else if ds.Id == distributions.REPLICATED {
@@ -1078,7 +1006,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 
 			col := relation.DistributionKey[i].Column
 
-			vals, valOk := qr.resolveValue(meta, rfqn, col, meta.SPH.BindParams(), queryParamsFormatCodes)
+			vals, valOk := qr.resolveValue(rm, rfqn, col, rm.SPH.BindParams(), queryParamsFormatCodes)
 
 			if !valOk {
 				break
@@ -1095,7 +1023,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, meta *rmeta.RoutingM
 					return nil, false, err
 				}
 
-				currroute, err := qr.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 				if err != nil {
 					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encoutered the route error")
 					return nil, false, err
