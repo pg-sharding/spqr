@@ -69,10 +69,10 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		/* Send vacuum to each shard */
 		return plan.DDLState{}, nil
 	case *lyx.Analyze:
-		/* Send vacuum to each shard */
+		/* Send analyze to each shard */
 		return plan.DDLState{}, nil
 	case *lyx.Cluster:
-		/* Send vacuum to each shard */
+		/* Send cluster to each shard */
 		return plan.DDLState{}, nil
 	case *lyx.Index:
 		/*
