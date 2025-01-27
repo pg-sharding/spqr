@@ -5,6 +5,7 @@ import (
 
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
@@ -14,6 +15,83 @@ import (
 func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, error) {
 
 	switch v := stmt.(type) {
+	/* TDB: comments? */
+
+	case *lyx.VariableSetStmt:
+		/* TBD: maybe skip all set stmts? */
+		/*
+		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
+		 */
+		return plan.RandomMatchState{}, nil
+
+	case *lyx.VariableShowStmt:
+		/*
+		 if we want to reroute to execute this stmt, route to random shard
+		 XXX: support intelegent show support, without direct query dispatch
+		*/
+		return plan.RandomMatchState{}, nil
+
+	// XXX: need alter table which renames sharding column to non-sharding column check
+	case *lyx.CreateTable:
+		if val := rm.SPH.AutoDistribution(); val != "" {
+
+			switch q := v.TableRv.(type) {
+			case *lyx.RangeVar:
+
+				/* pre-attach relation to its distribution
+				 * sic! this is not transactional not abortable
+				 */
+				if err := rm.Mgr.AlterDistributionAttach(ctx, val, []*distributions.DistributedRelation{
+					{
+						Name: q.RelationName,
+						DistributionKey: []distributions.DistributionKeyEntry{
+							{
+								Column: rm.SPH.DistributionKey(),
+								/* support hash function here */
+							},
+						},
+					},
+				}); err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		/* TODO: support */
+		// /*
+		//  * Disallow to create table which does not contain any sharding column
+		//  */
+		// if err := qr.CheckTableIsRoutable(ctx, node); err != nil {
+		// 	return nil, false, err
+		// }
+		return plan.DDLState{}, nil
+	case *lyx.Vacuum:
+		/* Send vacuum to each shard */
+		return plan.DDLState{}, nil
+	case *lyx.Analyze:
+		/* Send vacuum to each shard */
+		return plan.DDLState{}, nil
+	case *lyx.Cluster:
+		/* Send vacuum to each shard */
+		return plan.DDLState{}, nil
+	case *lyx.Index:
+		/*
+		 * Disallow to index on table which does not contain any sharding column
+		 */
+		// XXX: do it
+		return plan.DDLState{}, nil
+
+	case *lyx.Alter, *lyx.Drop, *lyx.Truncate:
+		// support simple ddl commands, route them to every chard
+		// this is not fully ACID (not atomic at least)
+		return plan.DDLState{}, nil
+
+	case *lyx.CreateRole, *lyx.CreateDatabase:
+		/* XXX: should we forbid under separate setting?  */
+		return plan.DDLState{}, nil
+	case *lyx.Copy:
+		return plan.CopyState{}, nil
+
 	case *lyx.ValueClause:
 		return plan.ScatterPlan{}, nil
 	case *lyx.Select:
@@ -79,7 +157,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		return plan.ScatterPlan{
 			SubPlan: plan.ModifyTable{},
 		}, nil
+	default:
+		return nil, spqrerror.NewByCode(spqrerror.SPQR_NOT_IMPLEMENTED)
 	}
-
-	return nil, rerrors.ErrComplexQuery
 }
