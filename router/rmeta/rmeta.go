@@ -3,6 +3,7 @@ package rmeta
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -10,10 +11,13 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
 	"github.com/pg-sharding/spqr/router/routehint"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type RoutingMetadataContext struct {
@@ -243,4 +247,51 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 		}
 	}
 	return -1, ""
+}
+
+func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
+	switch rght := expr.(type) {
+	case *lyx.ParamRef:
+		return rm.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
+	case *lyx.AExprSConst:
+		switch tp {
+		case qdb.ColumnTypeVarcharDeprecated:
+			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeVarchar:
+			return rm.RecordConstExpr(resolvedRelation, colname, rght.Value)
+		case qdb.ColumnTypeInteger:
+			num, err := strconv.ParseInt(rght.Value, 10, 64)
+			if err != nil {
+				return err
+			}
+			return rm.RecordConstExpr(resolvedRelation, colname, num)
+		case qdb.ColumnTypeUinteger:
+			num, err := strconv.ParseUint(rght.Value, 10, 64)
+			if err != nil {
+				return err
+			}
+			return rm.RecordConstExpr(resolvedRelation, colname, num)
+		default:
+			return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
+		}
+	case *lyx.AExprIConst:
+		switch tp {
+		case qdb.ColumnTypeVarcharDeprecated:
+			fallthrough
+		case qdb.ColumnTypeVarcharHashed:
+			fallthrough
+		case qdb.ColumnTypeVarchar:
+			return fmt.Errorf("varchar type is not supported for AExprIConst expression")
+		case qdb.ColumnTypeInteger:
+			return rm.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
+		case qdb.ColumnTypeUinteger:
+			return rm.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
+		default:
+			return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
+		}
+	default:
+		return fmt.Errorf("expression is not const")
+	}
 }

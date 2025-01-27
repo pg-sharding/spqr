@@ -3,7 +3,6 @@ package qrouter
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
@@ -13,7 +12,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/session"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
-	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/planner"
 	"github.com/pg-sharding/spqr/router/rerrors"
@@ -56,49 +54,8 @@ func (qr *ProxyQrouter) processConstExprOnRFQN(resolvedRelation rfqn.RelationFQN
 
 	for _, expr := range exprs {
 		/* simple key-value pair */
-		switch rght := expr.(type) {
-		case *lyx.ParamRef:
-			return meta.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
-		case *lyx.AExprSConst:
-			switch tp {
-			case qdb.ColumnTypeVarcharDeprecated:
-				fallthrough
-			case qdb.ColumnTypeVarcharHashed:
-				fallthrough
-			case qdb.ColumnTypeVarchar:
-				return meta.RecordConstExpr(resolvedRelation, colname, rght.Value)
-			case qdb.ColumnTypeInteger:
-				num, err := strconv.ParseInt(rght.Value, 10, 64)
-				if err != nil {
-					return err
-				}
-				return meta.RecordConstExpr(resolvedRelation, colname, num)
-			case qdb.ColumnTypeUinteger:
-				num, err := strconv.ParseUint(rght.Value, 10, 64)
-				if err != nil {
-					return err
-				}
-				return meta.RecordConstExpr(resolvedRelation, colname, num)
-			default:
-				return fmt.Errorf("incorrect key-offset type for AExprSConst expression: %s", tp)
-			}
-		case *lyx.AExprIConst:
-			switch tp {
-			case qdb.ColumnTypeVarcharDeprecated:
-				fallthrough
-			case qdb.ColumnTypeVarcharHashed:
-				fallthrough
-			case qdb.ColumnTypeVarchar:
-				return fmt.Errorf("varchar type is not supported for AExprIConst expression")
-			case qdb.ColumnTypeInteger:
-				return meta.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
-			case qdb.ColumnTypeUinteger:
-				return meta.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
-			default:
-				return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
-			}
-		default:
-			return fmt.Errorf("expression is not const")
+		if err := meta.ProcessSingleExpr(resolvedRelation, tp, colname, expr); err != nil {
+			return err
 		}
 	}
 
