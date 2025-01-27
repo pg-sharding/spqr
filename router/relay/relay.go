@@ -64,14 +64,13 @@ type RelayStateMgr interface {
 	HoldRouting()
 	UnholdRouting()
 
+	/* process extended proto */
 	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) (bool, error)
-	RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
 
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, copyState *pgcopy.CopyState) ([]byte, error)
-	ProcCopyComplete(query *pgproto3.FrontendMessage) error
+	ProcCopyComplete(query pgproto3.FrontendMessage) error
 
 	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
 
@@ -759,10 +758,6 @@ func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp 
 	return rst.ProcCommand(v, waitForResp, replyCl)
 }
 
-func (rst *RelayStateImpl) RelayRunCommand(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	return rst.ProcCommand(msg, waitForResp, replyCl)
-}
-
 // TODO: unit tests
 func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
@@ -935,12 +930,12 @@ func (rst *RelayStateImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcCopyComplete(query *pgproto3.FrontendMessage) error {
+func (rst *RelayStateImpl) ProcCopyComplete(query pgproto3.FrontendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	if err := rst.Client().Server().Send(*query); err != nil {
+	if err := rst.Client().Server().Send(query); err != nil {
 		return err
 	}
 
@@ -1035,7 +1030,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if err := rst.ProcCopyComplete(&cpMsg); err != nil {
+						if err := rst.ProcCopyComplete(cpMsg); err != nil {
 							return err
 						}
 						return nil
@@ -1058,7 +1053,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 				unreplied = append(unreplied, msg)
 			}
 			ok = false
-		// never resend this msgs
+		// never resend these msgs
 		case *pgproto3.ParseComplete:
 			unreplied = append(unreplied, msg)
 		case *pgproto3.BindComplete:
