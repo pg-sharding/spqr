@@ -2,12 +2,18 @@ package rmeta
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
 	"github.com/pg-sharding/spqr/pkg/session"
+	"github.com/pg-sharding/spqr/pkg/spqrlog"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/rerrors"
 	"github.com/pg-sharding/spqr/router/rfqn"
+	"github.com/pg-sharding/spqr/router/routehint"
 )
 
 type RoutingMetadataContext struct {
@@ -144,4 +150,75 @@ func (rm *RoutingMetadataContext) ResolveRelationByAlias(alias string) (rfqn.Rel
 		}
 		return resolvedRelation, nil
 	}
+}
+
+// TODO : unit tests
+func (rm *RoutingMetadataContext) DeparseKeyWithRangesInternal(_ context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
+	spqrlog.Zero.Debug().
+		Interface("key", key[0]).
+		Int("key-ranges-count", len(krs)).
+		Msg("checking key with key ranges")
+
+	var matchedKrkey *kr.KeyRange = nil
+
+	for _, krkey := range krs {
+		if kr.CmpRangesLessEqual(krkey.LowerBound, key, krkey.ColumnTypes) &&
+			(matchedKrkey == nil || kr.CmpRangesLessEqual(matchedKrkey.LowerBound, krkey.LowerBound, krkey.ColumnTypes)) {
+			matchedKrkey = krkey
+		}
+	}
+
+	if matchedKrkey != nil {
+		if err := rm.Mgr.ShareKeyRange(matchedKrkey.ID); err != nil {
+			return nil, err
+		}
+		return &kr.ShardKey{Name: matchedKrkey.ShardID}, nil
+	}
+	spqrlog.Zero.Debug().Msg("failed to match key with ranges")
+
+	return nil, fmt.Errorf("failed to match key with ranges")
+}
+
+func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error) {
+	if rm.SPH.ScatterQuery() {
+		return &routehint.ScatterRouteHint{}, nil
+	}
+	if val := rm.SPH.ShardingKey(); val != "" {
+		spqrlog.Zero.Debug().Str("sharding key", val).Msg("checking hint key")
+
+		dsId := rm.SPH.Distribution()
+		if dsId == "" {
+			return nil, spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "sharding key in comment without distribution")
+		}
+
+		ctx := context.TODO()
+		krs, err := rm.Mgr.ListKeyRanges(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+
+		distrib, err := rm.Mgr.GetDistribution(ctx, dsId)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: fix this
+		compositeKey, err := kr.KeyRangeBoundFromStrings(distrib.ColTypes, []string{val})
+
+		if err != nil {
+			return nil, err
+		}
+
+		ds, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
+		if err != nil {
+			return nil, err
+		}
+		return &routehint.TargetRouteHint{
+			State: plan.ShardMatchState{
+				Route: ds,
+			},
+		}, nil
+	}
+
+	return &routehint.EmptyRouteHint{}, nil
 }

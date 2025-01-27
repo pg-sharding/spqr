@@ -406,19 +406,18 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 			ID:      "id1",
 			ShardID: "sh1",
 			LowerBound: kr.KeyRangeBound{
-				1,
+				int64(1),
 			},
+			ColumnTypes: []string{"integer"},
 		},
 	}
 
 	mmgr.EXPECT().GetRelationDistribution(gomock.Any(), gomock.Any()).Return(d, nil).AnyTimes()
 	mmgr.EXPECT().ListKeyRanges(gomock.Any(), gomock.Any()).Return(krs, nil).AnyTimes()
 
+	mmgr.EXPECT().ShareKeyRange(gomock.Any()).AnyTimes()
+
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
-	qr.EXPECT().DeparseKeyWithRangesInternal(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&kr.ShardKey{
-			Name: "sh1",
-		}, nil).AnyTimes()
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Copy{
 		TableRef: tableref,

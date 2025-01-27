@@ -24,8 +24,6 @@ type QueryRouter interface {
 	WorldShardsRoutes() []*kr.ShardKey
 	DataShardsRoutes() []*kr.ShardKey
 
-	DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error)
-
 	Initialized() bool
 	Initialize() bool
 

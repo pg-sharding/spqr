@@ -54,21 +54,6 @@ func (mr *MockQueryRouterMockRecorder) DataShardsRoutes() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DataShardsRoutes", reflect.TypeOf((*MockQueryRouter)(nil).DataShardsRoutes))
 }
 
-// DeparseKeyWithRangesInternal mocks base method.
-func (m *MockQueryRouter) DeparseKeyWithRangesInternal(ctx context.Context, key []interface{}, krs []*kr.KeyRange) (*kr.ShardKey, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeparseKeyWithRangesInternal", ctx, key, krs)
-	ret0, _ := ret[0].(*kr.ShardKey)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// DeparseKeyWithRangesInternal indicates an expected call of DeparseKeyWithRangesInternal.
-func (mr *MockQueryRouterMockRecorder) DeparseKeyWithRangesInternal(ctx, key, krs interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeparseKeyWithRangesInternal", reflect.TypeOf((*MockQueryRouter)(nil).DeparseKeyWithRangesInternal), ctx, key, krs)
-}
-
 // Initialize mocks base method.
 func (m *MockQueryRouter) Initialize() bool {
 	m.ctrl.T.Helper()
