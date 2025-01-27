@@ -305,25 +305,6 @@ func (qr *ProxyQrouter) processFromClauseList(
 	return nil
 }
 
-type StatementRelation interface {
-	iRelation()
-}
-
-type AnyRelation struct{}
-type SpecificRelation struct {
-	Name string
-}
-type RelationList struct {
-	Relations []string
-}
-
-func (r AnyRelation) iRelation()      {}
-func (r SpecificRelation) iRelation() {}
-func (r RelationList) iRelation()     {}
-
-var _ StatementRelation = AnyRelation{}
-var _ StatementRelation = SpecificRelation{}
-
 func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt *lyx.Insert, meta *rmeta.RoutingMetadataContext) ([]int, rfqn.RelationFQN, plan.Plan, error) {
 	insertCols := stmt.Columns
 
