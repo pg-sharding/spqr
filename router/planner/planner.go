@@ -126,7 +126,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 				SchemaName:   q.SchemaName,
 			}
 
-			if ds, err := rm.GetRelationDistribution(ctx, rm.Mgr, rfqn); err != nil {
+			if ds, err := rm.GetRelationDistribution(ctx, rfqn); err != nil {
 				return nil, rerrors.ErrComplexQuery
 			} else if ds.Id != distributions.REPLICATED {
 				return nil, rerrors.ErrComplexQuery
