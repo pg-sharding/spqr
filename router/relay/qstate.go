@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
@@ -136,25 +135,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
 			return rst.Client().ReplyCommandComplete("BEGIN")
 		}
-		// explicitly set silent query message, as it can differ from query begin in xporot
-		rst.AddSilentQuery(&pgproto3.Query{
-			String: query,
-		})
-
-		rst.SetTxStatus(txstatus.TXACT)
-		rst.Client().StartTx()
-
-		spqrlog.Zero.Debug().Msg("start new transaction")
-
-		for _, opt := range st.Options {
-			switch opt {
-			case lyx.TransactionReadOnly:
-				rst.Client().SetTsa(config.TargetSessionAttrsPS)
-			case lyx.TransactionReadWrite:
-				rst.Client().SetTsa(config.TargetSessionAttrsRW)
-			}
-		}
-		return rst.Client().ReplyCommandComplete("BEGIN")
+		return ph.ExecBegin(rst, query, &st)
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")

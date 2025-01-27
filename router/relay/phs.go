@@ -2,11 +2,38 @@ package relay
 
 import (
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/parser"
+
+	"github.com/pg-sharding/lyx/lyx"
 )
 
 type SimpleProtoStateHandler struct {
+}
+
+func (s *SimpleProtoStateHandler) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
+	// explicitly set silent query message, as it can differ from query begin in xporot
+	rst.AddSilentQuery(&pgproto3.Query{
+		String: query,
+	})
+
+	rst.SetTxStatus(txstatus.TXACT)
+	rst.Client().StartTx()
+
+	spqrlog.Zero.Debug().Msg("start new transaction")
+
+	for _, opt := range st.Options {
+		switch opt {
+		case lyx.TransactionReadOnly:
+			rst.Client().SetTsa(config.TargetSessionAttrsPS)
+		case lyx.TransactionReadWrite:
+			rst.Client().SetTsa(config.TargetSessionAttrsRW)
+		}
+	}
+	return rst.Client().ReplyCommandComplete("BEGIN")
+
 }
 
 // query in commit query. maybe commit or commit `name`

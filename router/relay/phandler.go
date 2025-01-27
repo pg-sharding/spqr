@@ -1,8 +1,11 @@
 package relay
 
+import "github.com/pg-sharding/spqr/router/parser"
+
 // Execute requered command via
 // some protoc-specific logic
 type ProtoStateHandler interface {
+	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error
 
