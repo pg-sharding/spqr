@@ -64,7 +64,7 @@ var CatalogDistribution = distributions.Distribution{
 	ColTypes:  nil,
 }
 
-func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, mgr meta.EntityMgr, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
+func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, resolvedRelation rfqn.RelationFQN) (*distributions.Distribution, error) {
 	if res, ok := rm.Distributions[resolvedRelation]; ok {
 		return res, nil
 	}
@@ -77,7 +77,7 @@ func (rm *RoutingMetadataContext) GetRelationDistribution(ctx context.Context, m
 		return &CatalogDistribution, nil
 	}
 
-	ds, err := mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
+	ds, err := rm.Mgr.GetRelationDistribution(ctx, resolvedRelation.RelationName)
 
 	if err != nil {
 		return nil, err
@@ -221,4 +221,26 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 	}
 
 	return &routehint.EmptyRouteHint{}, nil
+}
+
+func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation rfqn.RelationFQN, colname string) (int, string) {
+	/* do not process non-distributed relations or columns not from relation distribution key */
+
+	ds, err := rm.GetRelationDistribution(context.TODO(), resolvedRelation)
+	if err != nil {
+		return -1, ""
+	} else if ds.Id == distributions.REPLICATED {
+		return -1, ""
+	}
+	// TODO: optimize
+	relation, exists := ds.Relations[resolvedRelation.RelationName]
+	if !exists {
+		return -1, ""
+	}
+	for ind, c := range relation.DistributionKey {
+		if c.Column == colname {
+			return ind, ds.ColTypes[ind]
+		}
+	}
+	return -1, ""
 }
