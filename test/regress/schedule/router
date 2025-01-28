@@ -9,6 +9,7 @@ test: with_tables
 test: single_shard_joins
 test: multishard
 test: error
+test: error2
 test: routing_hint
 test: begin
 test: alter_distribution
