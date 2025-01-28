@@ -1851,9 +1851,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 		return noopCloseRouteFunc, nil
 	}
 
-	_, err := rst.RerouteToRandomRoute()
-
-	switch err {
+	switch _, err := rst.RerouteToRandomRoute(); err {
 	case nil:
 		routes := rst.CurrentRoutes()
 		return func() error {
