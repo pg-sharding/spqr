@@ -54,7 +54,7 @@ type RelayStateMgr interface {
 	Close() error
 	Client() client.RouterClient
 
-	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl bool) error
+	ProcessMessage(msg pgproto3.FrontendMessage, waitForResp, replyCl, completeRelay bool) error
 	PrepareStatement(hash uint64, d *prepstatement.PreparedStatementDefinition) (*prepstatement.PreparedStatementDescriptor, pgproto3.BackendMessage, error)
 
 	PrepareRelayStep() error
@@ -65,7 +65,6 @@ type RelayStateMgr interface {
 	UnholdRouting()
 
 	/* process extended proto */
-	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) error
 	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error)
 
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error)
@@ -1133,6 +1132,7 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
+	/* move this logic to executor */
 	if rst.txStatus != txstatus.TXACT {
 		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
 			return nil, err
@@ -1869,29 +1869,9 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) error {
-	if err := rst.PrepareRelayStep(); err != nil {
-		return err
-	}
-
-	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
-
-	if err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		return err
-	} else {
-		if completeRelay {
-			if err := rst.CompleteRelay(replyCl); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
-// TODO : unit tests
 func (rst *RelayStateImpl) ProcessMessage(
 	msg pgproto3.FrontendMessage,
-	waitForResp, replyCl bool) error {
+	waitForResp, replyCl, completeRelay bool) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("relay step: process message for client")
@@ -1899,13 +1879,15 @@ func (rst *RelayStateImpl) ProcessMessage(
 		return err
 	}
 
-	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
+	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
+
+	_, err := rst.RelayStep(msg, waitForResp, replyCl)
+
+	if completeRelay {
 		if err := rst.CompleteRelay(replyCl); err != nil {
-			spqrlog.Zero.Error().Err(err).Msg("")
-			return err
+			spqrlog.Zero.Error().Uint("cleint-id", rst.Client().ID()).Err(err).Msg("failed to compelte relay")
 		}
-		return err
 	}
 
-	return rst.CompleteRelay(replyCl)
+	return err
 }

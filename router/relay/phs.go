@@ -15,6 +15,7 @@ type SimpleProtoStateHandler struct {
 
 func (s *SimpleProtoStateHandler) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
 	// explicitly set silent query message, as it can differ from query begin in xporot
+	/* XXX: remove this, delegate begintx/expand tx mgmnt to exectutor */
 	rst.AddSilentQuery(&pgproto3.Query{
 		String: query,
 	})
@@ -33,7 +34,6 @@ func (s *SimpleProtoStateHandler) ExecBegin(rst RelayStateMgr, query string, st 
 		}
 	}
 	return rst.Client().ReplyCommandComplete("BEGIN")
-
 }
 
 // query in commit query. maybe commit or commit `name`
@@ -46,10 +46,9 @@ func (s *SimpleProtoStateHandler) ExecCommit(rst RelayStateMgr, query string) er
 		rst.Flush()
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{
+	err := rst.ProcessMessage(&pgproto3.Query{
 		String: query,
-	})
-	err := rst.ProcessMessageBuf(true, true, false)
+	}, true, true, false)
 	if err == nil {
 		rst.Client().CommitActiveSet()
 	}
@@ -66,10 +65,9 @@ func (s *SimpleProtoStateHandler) ExecRollback(rst RelayStateMgr, query string) 
 		rst.Flush()
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{
+	err := rst.ProcessMessage(&pgproto3.Query{
 		String: query,
-	})
-	err := rst.ProcessMessageBuf(true, true, false)
+	}, true, true, false)
 	if err == nil {
 		rst.Client().Rollback()
 	}
@@ -86,8 +84,7 @@ func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name,
 		return rst.Client().ReplyCommandComplete("SET")
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
-	rst.AddQuery(&pgproto3.Query{String: query})
-	if err := rst.ProcessMessageBuf(true, true, false); err != nil {
+	if err := rst.ProcessMessage(&pgproto3.Query{String: query}, true, true, false); err != nil {
 		return err
 	}
 	rst.Client().SetParam(name, value)
@@ -97,7 +94,7 @@ func (s *SimpleProtoStateHandler) ExecSet(rst RelayStateMgr, query string, name,
 
 func (s *SimpleProtoStateHandler) ExecReset(rst RelayStateMgr, query, setting string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
-		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false)
+		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false, true)
 	}
 	return nil
 }
@@ -106,9 +103,7 @@ func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, query str
 	if !rst.PoolMgr().ConnectionActive(rst) {
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{String: query})
-
-	if err := rst.ProcessMessageBuf(true, true, false); err != nil {
+	if err := rst.ProcessMessage(&pgproto3.Query{String: query}, true, true, false); err != nil {
 		return err
 	}
 
@@ -121,9 +116,7 @@ func (s *SimpleProtoStateHandler) ExecResetMetadata(rst RelayStateMgr, query str
 
 func (s *SimpleProtoStateHandler) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
-		rst.AddQuery(&pgproto3.Query{String: query})
-		return rst.ProcessMessageBuf(true, true, false)
-
+		return rst.ProcessMessage(&pgproto3.Query{String: query}, true, true, false)
 	}
 	return nil
 }
