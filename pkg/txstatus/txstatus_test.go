@@ -14,7 +14,6 @@ func TestString(t *testing.T) {
 		TXStatus(73): "IDLE",
 		TXStatus(69): "ERROR",
 		TXStatus(84): "ACTIVE",
-		TXStatus(1):  "INTERNAL STATE",
 		TXStatus(0):  "invalid",
 	}
 	for status, except := range cases {

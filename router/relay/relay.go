@@ -48,7 +48,7 @@ type RelayStateMgr interface {
 	AddQuery(q pgproto3.FrontendMessage)
 	AddSilentQuery(q pgproto3.FrontendMessage)
 
-	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error)
+	RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
 
 	CompleteRelay(replyCl bool) error
 	Close() error
@@ -65,8 +65,8 @@ type RelayStateMgr interface {
 	UnholdRouting()
 
 	/* process extended proto */
-	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) (bool, error)
-	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error)
+	ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) error
+	ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error)
 
 	ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, copyState *pgcopy.CopyState) ([]byte, error)
@@ -246,7 +246,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 
 	spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Msg("syncing connection")
 
-	_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+	unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -695,7 +695,7 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*kr.ShardKey) error {
 			Uint("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
-		_, _, _, err = rst.ProcQuery(query, true, false)
+		_, _, err = rst.ProcQuery(query, true, false)
 	}
 	return err
 }
@@ -956,11 +956,13 @@ func (rst *RelayStateImpl) ProcCopyComplete(query pgproto3.FrontendMessage) erro
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, bool, error) {
+/* second param indicates if we should continue relay. */
+func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error) {
 	server := rst.Client().Server()
 
 	if server == nil {
-		return txstatus.TXERR, nil, false, fmt.Errorf("client %p is out of transaction sync with router", rst.Client())
+		rst.SetTxStatus(txstatus.TXERR)
+		return nil, false, fmt.Errorf("client %p is out of transaction sync with router", rst.Client())
 	}
 
 	spqrlog.Zero.Debug().
@@ -969,7 +971,8 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 		Msg("relay process query")
 
 	if err := server.Send(query); err != nil {
-		return txstatus.TXERR, nil, false, err
+		rst.SetTxStatus(txstatus.TXERR)
+		return nil, false, err
 	}
 
 	waitForRespLocal := waitForResp
@@ -984,7 +987,8 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 	}
 
 	if !waitForRespLocal {
-		return txstatus.TXCONT, nil, true, nil
+		/* we do not alter txstatus here */
+		return nil, true, nil
 	}
 
 	ok := true
@@ -994,7 +998,8 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 	for {
 		msg, err := server.Receive()
 		if err != nil {
-			return txstatus.TXERR, nil, false, err
+			rst.SetTxStatus(txstatus.TXERR)
+			return nil, false, err
 		}
 
 		switch v := msg.(type) {
@@ -1002,7 +1007,8 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			// handle replyCl somehow
 			err = rst.Client().Send(msg)
 			if err != nil {
-				return txstatus.TXERR, nil, false, err
+				rst.SetTxStatus(txstatus.TXERR)
+				return nil, false, err
 			}
 
 			q := rst.qp.Stmt().(*lyx.Copy)
@@ -1039,15 +1045,18 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 					}
 				}
 			}(); err != nil {
-				return txstatus.TXERR, nil, false, err
+				rst.SetTxStatus(txstatus.TXERR)
+				return nil, false, err
 			}
 		case *pgproto3.ReadyForQuery:
-			return txstatus.TXStatus(v.TxStatus), unreplied, ok, nil
+			rst.SetTxStatus(txstatus.TXStatus(v.TxStatus))
+			return unreplied, ok, nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = rst.Client().Send(msg)
 				if err != nil {
-					return txstatus.TXERR, nil, false, err
+					rst.SetTxStatus(txstatus.TXERR)
+					return nil, false, err
 				}
 			} else {
 				unreplied = append(unreplied, msg)
@@ -1066,7 +1075,8 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			if replyCl {
 				err = rst.Client().Send(msg)
 				if err != nil {
-					return txstatus.TXERR, nil, false, err
+					rst.SetTxStatus(txstatus.TXERR)
+					return nil, false, err
 				}
 			} else {
 				unreplied = append(unreplied, msg)
@@ -1076,23 +1086,16 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.TXStatus, bool, error) {
+func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("flushing message buffer")
 
-	ok := true
-
-	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) (txstatus.TXStatus, error) {
-
-		var txst txstatus.TXStatus
-		var err error
-		var txok bool
-
+	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
 		for len(buff) > 0 {
 			if rst.txStatus != txstatus.TXACT {
 				if err := rst.poolMgr.TXBeginCB(rst); err != nil {
-					return 0, err
+					return err
 				}
 			}
 
@@ -1110,47 +1113,37 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) (txstatus.
 				resolvedReplyCl = false
 			}
 
-			if txst, _, txok, err = rst.ProcQuery(v.msg, waitForResp, resolvedReplyCl); err != nil {
-				ok = false
-				return txstatus.TXERR, err
-			} else {
-				ok = ok && txok
+			if _, _, err := rst.ProcQuery(v.msg, waitForResp, resolvedReplyCl); err != nil {
+				return err
 			}
 
-			rst.SetTxStatus(txst)
 		}
 
-		return txst, nil
+		return nil
 	}
-
-	var txst txstatus.TXStatus
-	var err error
-
 	buf := rst.msgBuf
 	rst.msgBuf = nil
 
-	if txst, err = flusher(buf, waitForResp, replyCl); err != nil {
-		return txst, false, err
+	if err := flusher(buf, waitForResp, replyCl); err != nil {
+		return err
 	}
 
-	return txst, ok, nil
+	return nil
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) (txstatus.TXStatus, []pgproto3.BackendMessage, error) {
+func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	if rst.txStatus != txstatus.TXACT {
 		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
-			return 0, nil, err
+			return nil, err
 		}
 	}
 
-	bt, unreplied, _, err := rst.ProcQuery(msg, waitForResp, replyCl)
+	unreplied, _, err := rst.ProcQuery(msg, waitForResp, replyCl)
 	if err != nil {
-		rst.SetTxStatus(txstatus.TXERR)
-		return txstatus.TXERR, unreplied, err
+		return unreplied, err
 	}
-	rst.SetTxStatus(bt)
-	return rst.txStatus, unreplied, nil
+	return unreplied, nil
 }
 
 func (rst *RelayStateImpl) ShouldRetry(err error) bool {
@@ -1210,8 +1203,6 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 				return err
 			}
 		}
-		return nil
-	case txstatus.TXCONT:
 		return nil
 	default:
 		err := fmt.Errorf("unknown tx status %v", rst.txStatus)
@@ -1461,7 +1452,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						rst.AddQuery(&pgproto3.Execute{})
 						rst.AddQuery(&pgproto3.Sync{})
 
-						if _, _, err := rst.RelayFlush(true, true); err != nil {
+						if err := rst.RelayFlush(true, true); err != nil {
 							return err
 						}
 
@@ -1502,7 +1493,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.AddQuery(&pgproto3.Execute{})
 
 					rst.AddQuery(&pgproto3.Sync{})
-					if _, _, err := rst.RelayFlush(true, true); err != nil {
+					if err := rst.RelayFlush(true, true); err != nil {
 						return err
 					}
 
@@ -1580,25 +1571,25 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return fmt.Errorf("failed to describe statement, stmt was never deployed")
 					}
 
-					_, _, err = rst.RelayStep(rst.saveBind, false, false)
+					_, err = rst.RelayStep(rst.saveBind, false, false)
 					if err != nil {
 						return err
 					}
 
-					_, _, err = rst.RelayStep(q, false, false)
+					_, err = rst.RelayStep(q, false, false)
 					if err != nil {
 						return err
 					}
 
 					/* Here we close portal, so other clients can reuse it */
-					_, _, err = rst.RelayStep(&pgproto3.Close{
+					_, err = rst.RelayStep(&pgproto3.Close{
 						ObjectType: 'P',
 					}, false, false)
 					if err != nil {
 						return err
 					}
 
-					_, unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
+					unreplied, err := rst.RelayStep(&pgproto3.Sync{}, true, false)
 					if err != nil {
 						return err
 					}
@@ -1707,7 +1698,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 	} else {
 		if len(rst.msgBuf) != 0 {
 			rst.AddQuery(&pgproto3.Sync{})
-			if _, _, err := rst.RelayFlush(true, true); err != nil {
+			if err := rst.RelayFlush(true, true); err != nil {
 				return err
 			}
 		}
@@ -1878,22 +1869,22 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) (bool, error) {
+func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl, completeRelay bool) error {
 	if err := rst.PrepareRelayStep(); err != nil {
-		return false, err
+		return err
 	}
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
-	if _, ok, err := rst.RelayFlush(waitForResp, replyCl); err != nil {
-		return false, err
+	if err := rst.RelayFlush(waitForResp, replyCl); err != nil {
+		return err
 	} else {
 		if completeRelay {
 			if err := rst.CompleteRelay(replyCl); err != nil {
-				return false, err
+				return err
 			}
 		}
-		return ok, nil
+		return nil
 	}
 }
 
@@ -1908,7 +1899,7 @@ func (rst *RelayStateImpl) ProcessMessage(
 		return err
 	}
 
-	if _, _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
+	if _, err := rst.RelayStep(msg, waitForResp, replyCl); err != nil {
 		if err := rst.CompleteRelay(replyCl); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
