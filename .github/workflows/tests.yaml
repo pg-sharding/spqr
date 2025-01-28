@@ -36,7 +36,7 @@ jobs:
         run: make stress
 
   regress-pgdg:
-    name: regress
+    name: regress-pgdg
     runs-on: ubuntu-latest
     steps:
 
@@ -47,7 +47,7 @@ jobs:
         run: ./test/regress/run_tests_CI_pgdg.sh
 
   regress-mdb:
-    name: regress
+    name: regress-mdb
     runs-on: ubuntu-latest
     steps:
 
