@@ -1,4 +1,5 @@
-FROM ubuntu:focal
+ARG codename=focal
+FROM ubuntu:${codename}
 
 ENV POSTGRES_USER $POSTGRES_USER
 ENV POSTGRES_DB $POSTGRES_DB
