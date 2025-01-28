@@ -79,10 +79,6 @@ type DDLState struct {
 	Plan
 }
 
-type SkipRoutingState struct {
-	Plan
-}
-
 type RandomMatchState struct {
 	Plan
 }

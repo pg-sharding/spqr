@@ -931,7 +931,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		 */
 		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
 			fallthrough
 		default:
@@ -939,7 +939,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 				/* TODO: config options for this */
 				return v, nil
 			}
-			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
 	}
 	return nil, rerrors.ErrComplexQuery
