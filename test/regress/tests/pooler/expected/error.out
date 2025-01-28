@@ -19,3 +19,4 @@ TABLE tt;
 ---
 (0 rows)
 
+DROP TABLE tt;

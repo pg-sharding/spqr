@@ -46,7 +46,6 @@ CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
 \c regress
 CREATE TABLE tt(i INT) /*  */;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ERROR:  relation "tt" already exists
 BEGIN;
 INSERT INTO tt (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1
@@ -69,6 +68,8 @@ NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 ---
 (0 rows)
 
+DROP TABLE tt;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 
 		SPQR router admin console

@@ -14,3 +14,5 @@ INSERT INTO tt VALUES(1);
 ROLLBACK;
 /* should exists */
 TABLE tt;
+
+DROP TABLE tt;

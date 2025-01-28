@@ -28,6 +28,7 @@ ROLLBACK;
 
 -- should exists 
 TABLE tt;
+DROP TABLE tt;
 
 \c spqr-console
 DROP DISTRIBUTION ALL CASCADE;
