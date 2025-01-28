@@ -34,7 +34,8 @@ jobs:
 
       - name: stress tests
         run: make stress
-  regress:
+
+  regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +44,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: regress tests
-        run: ./test/regress/run_tests_CI.sh
+        run: ./test/regress/run_tests_CI_pgdg.sh
+
+  regress-mdb:
+    name: regress
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: regress tests
+        run: ./test/regress/run_tests_CI_mdb.sh
 
   gorm-regress:
     name: drivers_gorm
