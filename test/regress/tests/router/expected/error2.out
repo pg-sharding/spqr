@@ -1,0 +1,91 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES INTEGER;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION tt DISTRIBUTION KEY i;
+      attach table      
+------------------------
+ relation name   -> tt
+ distribution id -> ds1
+(2 rows)
+
+CREATE KEY RANGE krid1 FROM 0 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 0
+(1 row)
+
+CREATE KEY RANGE krid2 FROM 30 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 30
+(1 row)
+
+CREATE KEY RANGE krid3 FROM 70 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 70
+(1 row)
+
+CREATE KEY RANGE krid4 FROM 100 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 100
+(1 row)
+
+\c regress
+CREATE TABLE tt(i INT) /*  */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+BEGIN;
+INSERT INTO tt (i) VALUES(1);
+NOTICE: send query to shard(s) : sh1
+DROP TABLE tt;
+INSERT INTO tt (i) VALUES(1);
+ERROR:  relation "tt" does not exist
+LINE 1: INSERT INTO tt (i) VALUES(1);
+                    ^
+INSERT INTO tt (i) VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO tt (i) VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO tt (i) VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+-- should exists 
+TABLE tt;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ i 
+---
+(0 rows)
+
+DROP TABLE tt;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+   drop distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

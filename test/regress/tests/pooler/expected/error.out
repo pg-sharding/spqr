@@ -1,0 +1,22 @@
+CREATE TABLE tt(i INT);
+BEGIN;
+INSERT INTO tt VALUES(1);
+DROP TABLE tt;
+INSERT INTO tt VALUES(1);
+ERROR:  relation "tt" does not exist
+LINE 1: INSERT INTO tt VALUES(1);
+                    ^
+INSERT INTO tt VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO tt VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO tt VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+/* should exists */
+TABLE tt;
+ i 
+---
+(0 rows)
+
+DROP TABLE tt;

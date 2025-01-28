@@ -6,7 +6,6 @@ const (
 	TXIDLE = TXStatus(73)
 	TXERR  = TXStatus(69)
 	TXACT  = TXStatus(84)
-	TXCONT = TXStatus(1)
 )
 
 type TxStatusMgr interface {
@@ -24,8 +23,6 @@ func (s TXStatus) String() string {
 		return "ERROR"
 	case TXACT:
 		return "ACTIVE"
-	case TXCONT:
-		return "INTERNAL STATE"
 	}
 	return "invalid"
 }
