@@ -1,0 +1,62 @@
+FROM regress-mdb-image
+
+ENV POSTGRES_USER=$POSTGRES_USER
+ENV POSTGRES_DB=$POSTGRES_DB
+ARG POSTGRES_VERSION=13
+ENV POSTGRES_VERSION=$POSTGRES_VERSION
+
+RUN CFLAGS="" ./configure --prefix=/usr --without-mdblocales  --enable-depend --enable-cassert --enable-debug --enable-tap-tests && \
+    make -j8 && \
+    sudo make install
+
+USER root
+WORKDIR /root
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Moskow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    lsb-release \
+    ca-certificates \
+    libssl-dev \
+    libldap-common \
+    gnupg \
+    openssl
+#    ldap-utils \
+#    libldap-2.4-2 \
+#    libldap-dev
+
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    sudo postgresql-$POSTGRES_VERSION \
+    build-essential \
+    cmake \
+    gcc \
+    gdb \
+    libpam0g-dev \
+    valgrind \
+    libpq5 \
+    libpq-dev \
+    vim \
+    postgresql-${POSTGRES_VERSION}-pg-stat-kcache \
+    git \
+    python3-docutils \
+    $(apt-cache depends postgresql-server-dev-16 | grep Depends | grep -v postgres | awk '{print $2}' | tr '\n' ' ')
+
+COPY ./docker/shard/bin/ /usr/local/bin/
+
+RUN chmod a+x /usr/local/bin/entrypoint.sh
+
+RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
+    cd pg_comment_stats && \
+    make && make install && \
+    cd .. && git clone https://github.com/markokr/pghashlib.git && \
+    cd pghashlib && \
+    make && make install
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "$POSTGRES_VERSION"]

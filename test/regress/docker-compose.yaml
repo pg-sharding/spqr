@@ -1,6 +1,13 @@
 services:
+    shard-image-mdb:
+        build:
+            context: ../..
+            dockerfile: docker/shard/Dockerfile.mdb
+        depends_on:
+            - regress-mdb-image
+
     shard1:
-        image: spqr-shard-image
+        image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -14,7 +21,7 @@ services:
             timeout: 3s
             retries: 50
     shard2:
-        image: spqr-shard-image
+        image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -28,7 +35,7 @@ services:
             timeout: 3s
             retries: 50
     shard3:
-        image: spqr-shard-image
+        image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
@@ -42,7 +49,7 @@ services:
             timeout: 3s
             retries: 50
     shard4:
-        image: spqr-shard-image
+        image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
             - POSTGRES_USER=regress
             - POSTGRES_DB=regress
