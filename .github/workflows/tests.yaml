@@ -36,15 +36,26 @@ jobs:
         run: make stress
 
   regress-pgdg:
-    name: regress-pgdg
+    name: regress
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os-version: ['focal', 'jammy', 'noble']
+        version: ['13', '14', '15', '16', '17', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
+
     steps:
 
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: regress tests
-        run: ./test/regress/run_tests_CI_pgdg.sh
+      - name: Run tests
+        run: if [[ ${{ matrix.version }} == *"-mdb" ]]; then \
+                version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); \
+                make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} image=regress-mdb-image mdb-branch=MDB_$version shard-image=shard-image-mdb regress; \
+             else \
+                make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; \
+             fi
 
   regress-mdb:
     name: regress-mdb
