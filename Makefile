@@ -22,6 +22,8 @@ deps:
 
 ####################### BUILD #######################
 
+codename ?= focal
+
 build_balancer:
 	go build -pgo=auto -o spqr-balancer ./cmd/balancer
 
@@ -52,9 +54,9 @@ build_images:
 	docker compose build spqr-base-image
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
-		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
+		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
 	else\
-		docker compose build spqr-shard-image;\
+		docker compose build --build-arg codename=${codename} spqr-shard-image;\
 	fi
 
 save_shard_image:
@@ -108,7 +110,6 @@ regress_pooler: build_images
 
 POSTGRES_VERSION ?= 13
 image ?= regress-base-image
-codename ?= focal
 mdb-branch ?= MDB_16
 
 regress: build_images
