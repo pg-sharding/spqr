@@ -35,8 +35,8 @@ insert into xxhash_part (i,d ) values ('b3e31fad-80fa-48df-bcc0-51ffd1594df3', '
 insert into xxhash_part (i,d ) values ('d15707df-f256-49a5-a693-3feda5afe678', '2024-10-22');
 
 
-SELECT i, d::timestamp as t FROM xxhash_part ORDER BY t /* __spqr__execute_on: sh1 */;
-SELECT i, d::timestamp as t FROM xxhash_part ORDER BY t /* __spqr__execute_on: sh2 */;
+SELECT * FROM xxhash_part ORDER BY d /* __spqr__execute_on: sh1 */;
+SELECT * FROM xxhash_part ORDER BY d /* __spqr__execute_on: sh2 */;
 
 --TEARDOWN
 DROP TABLE xxhash_part;
