@@ -149,5 +149,4 @@ services:
             - router
             - coordinator
             - pooler
-            - regress-base-image
             - regress-mdb-image
