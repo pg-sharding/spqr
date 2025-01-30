@@ -42,7 +42,7 @@ jobs:
     strategy:
       matrix:
         os-version: ['focal', 'jammy', 'noble']
-        version: ['13', '14', '15', '16', '17', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
+        version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
 
     steps:
 
@@ -57,17 +57,6 @@ jobs:
              else 
                 make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; 
              fi
-
-  regress-mdb:
-    name: regress-mdb
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: regress tests
-        run: ./test/regress/run_tests_CI_mdb.sh
 
   gorm-regress:
     name: drivers_gorm
