@@ -22,6 +22,9 @@ deps:
 
 ####################### BUILD #######################
 
+codename ?= focal
+POSTGRES_VERSION ?= 13
+
 build_balancer:
 	go build -pgo=auto -o spqr-balancer ./cmd/balancer
 
@@ -52,9 +55,9 @@ build_images:
 	docker compose build spqr-base-image
 	@if [ "x" != "${POSTGRES_VERSION}x" ]; then\
 		echo "building ${POSTGRES_VERSION} version";\
-		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} spqr-shard-image;\
+		docker compose build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} spqr-shard-image;\
 	else\
-		docker compose build spqr-shard-image;\
+		docker compose build --build-arg codename=${codename} spqr-shard-image;\
 	fi
 
 save_shard_image:
@@ -106,10 +109,11 @@ regress_pooler_local: pooler_d_run
 regress_pooler: build_images
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
-POSTGRES_VERSION ?= 13
+mdb-branch ?= MDB_${POSTGRES_VERSION}
+shard-image ?= spqr-shard-image
 
 regress: build_images
-	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
+	docker compose -f test/regress/docker-compose.yaml down && MDB_BRANCH=${mdb-branch} SHARD_IMAGE=${shard-image} docker compose -f test/regress/docker-compose.yaml build --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --build-arg codename=${codename} && docker compose -f test/regress/docker-compose.yaml run --remove-orphans regress
 
 hibernate_regress: build_images
 	docker compose -f test/drivers/hibernate-regress/docker-compose.yaml up --remove-orphans --force-recreate --exit-code-from regress --build coordinator router shard1 shard2 regress qdb01

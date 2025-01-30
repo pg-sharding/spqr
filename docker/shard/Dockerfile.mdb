@@ -1,10 +1,16 @@
-ARG codename=focal
-FROM ubuntu:${codename}
+FROM regress-mdb-image
 
-ENV POSTGRES_USER $POSTGRES_USER
-ENV POSTGRES_DB $POSTGRES_DB
+ENV POSTGRES_USER=$POSTGRES_USER
+ENV POSTGRES_DB=$POSTGRES_DB
 ARG POSTGRES_VERSION=13
-ENV POSTGRES_VERSION $POSTGRES_VERSION
+ENV POSTGRES_VERSION=$POSTGRES_VERSION
+
+RUN CFLAGS="" ./configure --prefix=/usr --without-mdblocales  --enable-depend --enable-cassert --enable-debug --enable-tap-tests && \
+    make -j8 && \
+    sudo make install
+
+USER root
+WORKDIR /root
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Moskow
@@ -34,15 +40,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     libpq-dev \
     vim \
-    postgresql-common \
-    postgresql-server-dev-$POSTGRES_VERSION \
     postgresql-${POSTGRES_VERSION}-pg-stat-kcache \
     git \
-    python3-docutils
+    python3-docutils \
+    $(apt-cache depends postgresql-server-dev-16 | grep Depends | grep -v postgres | awk '{print $2}' | tr '\n' ' ')
 
 COPY ./docker/shard/bin/ /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
+
+RUN if [ "x${POSTGRES_VERSION}" = "x13" ]; then mkdir /usr/include/postgresql/13 && ln -s /usr/include/postgresql/server /usr/include/postgresql/13/server; fi
 
 RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pg_comment_stats && \
@@ -51,4 +58,4 @@ RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pghashlib && \
     make && make install
 
-ENTRYPOINT /usr/local/bin/entrypoint.sh $POSTGRES_VERSION
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "$POSTGRES_VERSION"]

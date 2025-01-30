@@ -1,4 +1,5 @@
-FROM ubuntu:focal
+ARG codename=focal
+FROM ubuntu:${codename}
 
 ARG POSTGRES_VERSION=13
 
@@ -15,7 +16,7 @@ RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo postgresql-${POSTGRES_VERSION}
 
-ENV PATH=$PATH:"/usr/lib/postgresql/${POSTGRES_VERSION}/lib/pgxs/src/test/regress"
+ENV PATH=$PATH:"/usr/lib/postgresql/${POSTGRES_VERSION}/lib/pgxs/src/test/regress:/home/build-user/pgbin/lib/postgresql/pgxs/src/test/regress"
 
 COPY ./ /regress
 RUN chmod a+x /regress/run_tests.sh

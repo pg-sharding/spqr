@@ -34,22 +34,29 @@ jobs:
 
       - name: stress tests
         run: make stress
-  regress:
+
+  regress-pgdg:
     name: regress
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os-version: ['focal', 'jammy', 'noble']
+        version: ['13', '14', '15', '16', '17', '13-mdb', '14-mdb', '15-mdb', '16-mdb', '17-mdb']
+
     steps:
 
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: regress tests
+      - name: Run tests
         run: |
-          make POSTGRES_VERSION=12 regress
-          make POSTGRES_VERSION=13 regress
-          make POSTGRES_VERSION=14 regress
-          make POSTGRES_VERSION=15 regress
-          make POSTGRES_VERSION=16 regress
-          make POSTGRES_VERSION=17 regress
+             if [[ ${{ matrix.version }} == *"-mdb" ]]; then 
+                version=$(echo ${{ matrix.version }} | awk '{ print substr($1, 1, 2)  }'); 
+                make POSTGRES_VERSION=$version codename=${{ matrix.os-version }} mdb-branch=MDB_$version shard-image=shard-image-mdb regress; 
+             else 
+                make POSTGRES_VERSION=${{ matrix.version }} codename=${{ matrix.os-version }} regress; 
+             fi
 
   gorm-regress:
     name: drivers_gorm
