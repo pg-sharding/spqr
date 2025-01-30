@@ -1695,20 +1695,15 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 	// just reply rfq
 	if rst.Client().Server() == nil {
 		return rst.Client().ReplyRFQ(rst.TxStatus())
-	} else {
-		if len(rst.msgBuf) != 0 {
-			rst.AddQuery(&pgproto3.Sync{})
-			if err := rst.RelayFlush(true, true); err != nil {
-				return err
-			}
-		}
-
-		if err := rst.CompleteRelay(true); err != nil {
+	}
+	if len(rst.msgBuf) != 0 {
+		rst.AddQuery(&pgproto3.Sync{})
+		if err := rst.RelayFlush(true, true); err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return rst.CompleteRelay(true)
 }
 
 // TODO : unit tests
