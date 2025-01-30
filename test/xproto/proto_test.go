@@ -3190,3 +3190,454 @@ func TestDDL(t *testing.T) {
 		}
 	}
 }
+
+func TestMixedProtoTxcommands(t *testing.T) {
+	conn, err := getC()
+	if err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	frontend := pgproto3.NewFrontend(conn, conn)
+	frontend.Send(&pgproto3.StartupMessage{
+		ProtocolVersion: 196608,
+		Parameters:      getConnectionParams(),
+	})
+	if err := frontend.Flush(); err != nil {
+		assert.NoError(t, err, "startup failed")
+	}
+
+	if err := waitRFQ(frontend); err != nil {
+		assert.NoError(t, err, "startup failed")
+		return
+	}
+
+	type MessageGroup struct {
+		Request  []pgproto3.FrontendMessage
+		Response []pgproto3.BackendMessage
+	}
+
+	for _, msgroup := range []MessageGroup{
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "COMMIT;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("COMMIT")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "BEGIN;",
+				},
+				&pgproto3.Query{
+					String: "ROLLBACK;",
+				},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+				&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "p1",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Parse{
+					Name:  "p2",
+					Query: "COMMIT",
+				},
+
+				&pgproto3.Parse{
+					Name:  "p3",
+					Query: "ROLLBACK",
+				},
+
+				/* TODO tests savepoint here */
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "p1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "p1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "p2",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("COMMIT")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "pp1",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Parse{
+					Name:  "pp2",
+					Query: "COMMIT",
+				},
+
+				&pgproto3.Parse{
+					Name:  "pp3",
+					Query: "ROLLBACK",
+				},
+
+				/* TODO tests savepoint here */
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "pp1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "pp1",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{
+					PreparedStatement: "pp3",
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("BEGIN")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXACT),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{CommandTag: []byte("ROLLBACK")},
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "ppp1",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Parse{
+					Name:  "ppp2",
+					Query: "COMMIT",
+				},
+
+				&pgproto3.Parse{
+					Name:  "ppp3",
+					Query: "ROLLBACK",
+				},
+
+				/* TODO tests savepoint here */
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "BEGIN;"},
+
+				&pgproto3.Bind{PreparedStatement: "ppp2"},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "BEGIN;"},
+
+				&pgproto3.Bind{PreparedStatement: "ppp1"},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{PreparedStatement: "ppp3"},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Bind{PreparedStatement: "ppp1"},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "COMMIT;"},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "pppp1",
+					Query: "BEGIN",
+				},
+
+				&pgproto3.Parse{
+					Name:  "pppp2",
+					Query: "COMMIT",
+				},
+
+				&pgproto3.Parse{
+					Name:  "pppp3",
+					Query: "ROLLBACK",
+				},
+
+				&pgproto3.Parse{
+					Name:  "pppp_query",
+					Query: "SELECT 1 as a",
+				},
+
+				/* TODO tests savepoint here */
+
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "BEGIN;"},
+
+				&pgproto3.Query{String: "SELECT 1 as a;"},
+
+				&pgproto3.Bind{PreparedStatement: "pppp2"},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Query{String: "BEGIN;"},
+
+				&pgproto3.Bind{PreparedStatement: "pppp_query"},
+				&pgproto3.Execute{},
+				&pgproto3.Bind{PreparedStatement: "pppp3"},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:         []byte("a"),
+							DataTypeOID:  23,
+							DataTypeSize: 4,
+							TypeModifier: -1,
+						},
+					},
+				},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0x31}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("COMMIT"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("BEGIN"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXACT)},
+
+				&pgproto3.BindComplete{},
+				&pgproto3.DataRow{
+					Values: [][]byte{[]byte{0x31}},
+				},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+				&pgproto3.BindComplete{},
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("ROLLBACK"),
+				},
+				&pgproto3.ReadyForQuery{TxStatus: byte(txstatus.TXIDLE)},
+			},
+		},
+	} {
+		for _, msg := range msgroup.Request {
+			frontend.Send(msg)
+		}
+		_ = frontend.Flush()
+		backendFinished := false
+		for ind, msg := range msgroup.Response {
+			if backendFinished {
+				break
+			}
+			retMsg, err := frontend.Receive()
+			assert.NoError(t, err)
+			switch retMsgType := retMsg.(type) {
+			case *pgproto3.ErrorResponse:
+				/* skip */
+				if retMsgType.Severity != "ERROR" {
+					retMsg, err = frontend.Receive()
+					assert.NoError(t, err)
+				}
+			case *pgproto3.NoticeResponse:
+				retMsg, err = frontend.Receive()
+				assert.NoError(t, err)
+			case *pgproto3.RowDescription:
+				for i := range retMsgType.Fields {
+					// We don't want to check table OID
+					retMsgType.Fields[i].TableOID = 0
+				}
+			case *pgproto3.ReadyForQuery:
+				switch msg.(type) {
+				case *pgproto3.ReadyForQuery:
+					break
+				default:
+					backendFinished = true
+				}
+			default:
+				break
+			}
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
+		}
+	}
+}
