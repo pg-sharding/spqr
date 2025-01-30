@@ -52,6 +52,8 @@ COPY ./docker/shard/bin/ /usr/local/bin/
 
 RUN chmod a+x /usr/local/bin/entrypoint.sh
 
+RUN if [ "x${POSTGRES_VERSION}" = "x13" ]; then mkdir /usr/include/postgresql/13 && ln -s /usr/include/postgresql/server /usr/include/postgresql/13/server; fi
+
 RUN git clone https://github.com/munakoiso/pg_comment_stats.git && \
     cd pg_comment_stats && \
     make && make install && \

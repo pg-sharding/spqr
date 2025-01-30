@@ -20,6 +20,9 @@ services:
             interval: 10s
             timeout: 3s
             retries: 50
+        depends_on:
+            - shard-image-mdb
+
     shard2:
         image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
@@ -34,6 +37,9 @@ services:
             interval: 10s
             timeout: 3s
             retries: 50
+        depends_on:
+            - shard-image-mdb
+
     shard3:
         image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
@@ -47,7 +53,10 @@ services:
             test: psql -h spqr_shard_3 -p 6432 -U regress -d regress
             interval: 10s
             timeout: 3s
-            retries: 50
+            retries: 50        
+        depends_on:
+            - shard-image-mdb
+
     shard4:
         image: ${SHARD_IMAGE:-spqr-shard-image}
         environment:
@@ -62,6 +71,9 @@ services:
             interval: 10s
             timeout: 3s
             retries: 50
+        depends_on:
+            - shard-image-mdb
+
     pooler:
         build:
             dockerfile: ./docker/router/Dockerfile
