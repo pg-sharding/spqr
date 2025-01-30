@@ -23,6 +23,7 @@ deps:
 ####################### BUILD #######################
 
 codename ?= focal
+POSTGRES_VERSION ?= 13
 
 build_balancer:
 	go build -pgo=auto -o spqr-balancer ./cmd/balancer
@@ -108,9 +109,8 @@ regress_pooler_local: pooler_d_run
 regress_pooler: build_images
 	docker compose -f test/regress/docker-compose.yaml down && docker compose -f test/regress/docker-compose.yaml run --build regress
 
-POSTGRES_VERSION ?= 13
 image ?= regress-base-image
-mdb-branch ?= MDB_16
+mdb-branch ?= MDB_${POSTGRES_VERSION}
 shard-image ?= spqr-shard-image
 
 regress: build_images

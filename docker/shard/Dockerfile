@@ -1,7 +1,6 @@
 ARG codename=focal
 FROM ubuntu:${codename}
 
-ARG codename=focal
 ENV POSTGRES_USER $POSTGRES_USER
 ENV POSTGRES_DB $POSTGRES_DB
 ARG POSTGRES_VERSION=13
