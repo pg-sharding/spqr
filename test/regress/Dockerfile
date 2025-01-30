@@ -1,9 +1,20 @@
-ARG image
-FROM ${image:-regress-base-image}
+ARG codename=focal
+FROM ubuntu:${codename}
 
 ARG POSTGRES_VERSION=13
 
-USER root
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Israel
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	curl lsb-release ca-certificates gnupg
+
+RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    sudo postgresql-${POSTGRES_VERSION}
 
 ENV PATH=$PATH:"/usr/lib/postgresql/${POSTGRES_VERSION}/lib/pgxs/src/test/regress:/home/build-user/pgbin/lib/postgresql/pgxs/src/test/regress"
 
