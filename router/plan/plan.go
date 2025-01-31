@@ -47,7 +47,7 @@ func Combine(p1, p2 Plan) Plan {
 	switch shq1 := p1.(type) {
 	case ScatterPlan:
 		return p1
-	case RandomMatchState:
+	case RandomDispatchPlan:
 		return p2
 	case ReferenceRelationState:
 		return p2
@@ -83,7 +83,11 @@ type SkipRoutingState struct {
 	Plan
 }
 
-type RandomMatchState struct {
+type RandomDispatchPlan struct {
+	Plan
+}
+
+type VirtualPlan struct {
 	Plan
 }
 

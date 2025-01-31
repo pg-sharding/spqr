@@ -22,14 +22,14 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		/*
 		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
-		return plan.RandomMatchState{}, nil
+		return plan.RandomDispatchPlan{}, nil
 
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
 		 XXX: support intelegent show support, without direct query dispatch
 		*/
-		return plan.RandomMatchState{}, nil
+		return plan.RandomDispatchPlan{}, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
