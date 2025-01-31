@@ -572,7 +572,7 @@ func (qr *ProxyQrouter) resolveValue(meta *rmeta.RoutingMetadataContext, rfqn rf
 func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMetadataContext, stmt lyx.Node) (plan.Plan, bool, error) {
 	if stmt == nil {
 		// empty statement
-		return plan.RandomMatchState{}, false, nil
+		return plan.RandomDispatchPlan{}, false, nil
 	}
 
 	rh, err := rm.ResolveRouteHint()
@@ -622,14 +622,14 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		/*
 		 * SET x = y etc., do not dispatch any statement to shards, just process this in router
 		 */
-		return plan.RandomMatchState{}, true, nil
+		return plan.RandomDispatchPlan{}, true, nil
 
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
 		 XXX: support intelegent show support, without direct query dispatch
 		*/
-		return plan.RandomMatchState{}, true, nil
+		return plan.RandomDispatchPlan{}, true, nil
 
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
@@ -710,17 +710,19 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 				switch e := expr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
 				case *lyx.FuncApplication:
+
+					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
 					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" || e.Name == "version" {
-						return plan.RandomMatchState{}, ro, nil
+						return plan.RandomDispatchPlan{}, ro, nil
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
-					return plan.RandomMatchState{}, ro, nil
+					return plan.RandomDispatchPlan{}, ro, nil
 
 				/* Special case for SELECT current_schema */
 				case *lyx.ColumnRef:
 					if e.ColName == "current_schema" {
-						return plan.RandomMatchState{}, ro, nil
+						return plan.RandomDispatchPlan{}, ro, nil
 					}
 				}
 			}
@@ -761,13 +763,13 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 		}
 
 		if onlyCatalog && anyCatalog {
-			return plan.RandomMatchState{}, ro, nil
+			return plan.RandomDispatchPlan{}, ro, nil
 		}
 		if hasInfSchema && hasOtherSchema {
 			return nil, false, rerrors.ErrInformationSchemaCombinedQuery
 		}
 		if hasInfSchema {
-			return plan.RandomMatchState{}, ro, nil
+			return plan.RandomDispatchPlan{}, ro, nil
 		}
 
 		if deparseError != nil {
@@ -905,11 +907,11 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	switch v := route.(type) {
 	case plan.ShardMatchState:
 		return v, nil
-	case plan.RandomMatchState:
+	case plan.RandomDispatchPlan:
 		return v, nil
 	case plan.ReferenceRelationState:
 		/* check for unroutable here - TODO */
-		return plan.RandomMatchState{}, nil
+		return plan.RandomDispatchPlan{}, nil
 	case plan.DDLState:
 		return v, nil
 	case plan.CopyState:

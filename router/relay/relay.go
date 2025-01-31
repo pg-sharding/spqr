@@ -594,7 +594,7 @@ func (rst *RelayStateImpl) Reroute() error {
 		return rst.procRoutes([]*kr.ShardKey{v.Route})
 	case plan.SkipRoutingState:
 		return ErrSkipQuery
-	case plan.RandomMatchState:
+	case plan.RandomDispatchPlan:
 		return rst.RerouteToRandomRoute()
 	default:
 		return fmt.Errorf("unexpected query plan %T", v)
@@ -1493,12 +1493,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					rst.AddQuery(&pgproto3.Execute{})
 
 					rst.AddQuery(&pgproto3.Sync{})
-					if err := rst.RelayFlush(true, true); err != nil {
-						return err
-					}
-
 					// do not complete relay here yet
-					return nil
+					return rst.RelayFlush(true, true)
 				}
 
 				return nil

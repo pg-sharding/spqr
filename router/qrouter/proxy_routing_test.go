@@ -70,17 +70,17 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "select 42;",
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: "select current_schema;",
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: "select current_schema();",
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
@@ -105,18 +105,18 @@ func TestMultiShardRouting(t *testing.T) {
 		},
 		{
 			query: "SELECT * FROM pg_catalog.pg_type",
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 
 		{
 			query: "SELECT * FROM pg_class",
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
 		},
 		{
 			query: `SELECT count(*) FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'people' AND table_type = 'BASE TABLE'`,
-			exp:   plan.RandomMatchState{},
+			exp:   plan.RandomDispatchPlan{},
 		},
 	} {
 		parserRes, err := lyx.Parse(tt.query)
@@ -1417,19 +1417,19 @@ func TestSetStmt(t *testing.T) {
 		{
 			query:        "SET extra_float_digits = 3",
 			distribution: distribution1,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SET application_name = 'jiofewjijiojioji';",
 			distribution: distribution2,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SHOW TRANSACTION ISOLATION LEVEL;",
 			distribution: distribution1,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 	} {
@@ -1520,14 +1520,14 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM information_schema.columns;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 
 		{
 			query:        "SELECT * FROM information_schema.sequences;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
@@ -1545,61 +1545,61 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM pg_class JOIN users ON true;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT * FROM pg_tables WHERE schemaname = 'information_schema'",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT current_schema;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT current_schema();",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT pg_is_in_recovery();",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT set_config('log_statement_stats', 'off', false);",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT version()",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT true;",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
 			query:        "SELECT 'Hello, world!'",
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 		{
@@ -1628,7 +1628,7 @@ SELECT NULL::pg_catalog.text, n.nspname FROM pg_catalog.pg_namespace n WHERE n.n
 LIMIT 1000
 `,
 			distribution: distribution.ID,
-			exp:          plan.RandomMatchState{},
+			exp:          plan.RandomDispatchPlan{},
 			err:          nil,
 		},
 
