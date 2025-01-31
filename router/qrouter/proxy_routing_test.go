@@ -1579,6 +1579,12 @@ func TestRouteWithRules_Select(t *testing.T) {
 			err:          nil,
 		},
 		{
+			query:        "SELECT version()",
+			distribution: distribution.ID,
+			exp:          plan.RandomMatchState{},
+			err:          nil,
+		},
+		{
 			query:        "SELECT 1;",
 			distribution: distribution.ID,
 			exp:          plan.RandomMatchState{},
