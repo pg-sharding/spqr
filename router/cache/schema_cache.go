@@ -19,7 +19,8 @@ type SchemaCache struct {
 }
 
 func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRule) *SchemaCache {
-	p := pool.NewMultiDBPool(shardMapping, be, 3)
+	poolSize := config.ValueOrDefaultInt(config.RouterConfig().MultiDBPoolSize, 5)
+	p := pool.NewMultiDBPool(shardMapping, be, poolSize)
 
 	return &SchemaCache{
 		shardMapping:      shardMapping,
