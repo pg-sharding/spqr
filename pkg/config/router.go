@@ -79,6 +79,7 @@ type Router struct {
 	BackendRules           []*BackendRule    `json:"backend_rules" toml:"backend_rules" yaml:"backend_rules"`
 	ShardMapping           map[string]*Shard `json:"shards" toml:"shards" yaml:"shards"`
 	SchemaCacheBackendRule *BackendRule      `json:"schema_cache_backend_rule" toml:"schema_cache_backend_rule" yaml:"schema_cache_backend_rule"`
+	MultiDBPoolSize        int               `json:"multidb_pool_size" toml:"multidb_pool_size" yaml:"multidb_pool_size"`
 
 	WorkloadFile      string `json:"workload_file" toml:"workload_file" yaml:"workload_file"`
 	WorkloadBatchSize int    `json:"workload_batch_size" toml:"workload_batch_size" yaml:"workload_batch_size"`

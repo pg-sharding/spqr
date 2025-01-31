@@ -1724,7 +1724,7 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 			case *lyx.RangeVar:
 				cptr := rst.Qr.SchemaCache()
 				if cptr != nil {
-					stm.Columns, _ = cptr.GetColumns(tableref.SchemaName, tableref.RelationName)
+					stm.Columns, _ = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
 				}
 			}
 		}

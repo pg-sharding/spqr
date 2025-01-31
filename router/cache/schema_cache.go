@@ -2,14 +2,11 @@ package cache
 
 import (
 	"fmt"
-	"math/rand/v2"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/pool"
-	"github.com/pg-sharding/spqr/pkg/startup"
 	"github.com/pkg/errors"
 )
 
@@ -18,16 +15,12 @@ type SchemaCache struct {
 	shardMapping      map[string]*config.Shard
 	be                *config.BackendRule
 
-	pool *pool.DBPool
+	pool *pool.MultiDBPool
 }
 
 func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRule) *SchemaCache {
-	var preferAZ string
-	if config.RouterConfig().PreferSameAvailabilityZone {
-		preferAZ = config.RouterConfig().AvailabilityZone
-	}
-	p := pool.NewDBPool(shardMapping, &startup.StartupParams{}, preferAZ)
-	p.SetRule(be)
+	poolSize := config.ValueOrDefaultInt(config.RouterConfig().MultiDBPoolSize, 5)
+	p := pool.NewMultiDBPool(shardMapping, be, poolSize)
 
 	return &SchemaCache{
 		shardMapping:      shardMapping,
@@ -37,7 +30,7 @@ func NewSchemaCache(shardMapping map[string]*config.Shard, be *config.BackendRul
 	}
 }
 
-func (c *SchemaCache) GetColumns(schemaName, tableName string) ([]string, error) {
+func (c *SchemaCache) GetColumns(db, schemaName, tableName string) ([]string, error) {
 	if c.be == nil {
 		return nil, errors.Errorf("backend rule was not provided")
 	}
@@ -50,16 +43,7 @@ func (c *SchemaCache) GetColumns(schemaName, tableName string) ([]string, error)
 		return v.([]string), nil
 	}
 
-	shardName := ""
-	var host config.Host
-	for name, v := range c.shardMapping {
-		hosts := v.HostsAZ()
-		host = hosts[rand.Int()%len(hosts)]
-		shardName = name
-		break
-	}
-
-	conn, err := c.pool.ConnectionHost(rand.Uint(), kr.ShardKey{Name: shardName, RW: false}, host)
+	conn, err := c.pool.Connection(db)
 	if err != nil {
 		return nil, err
 	}
