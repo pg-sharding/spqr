@@ -41,6 +41,7 @@ func (p *MultiDBPool) Put(conn shard.Shard) error {
 
 	connElement, ok := p.conns.Load(conn.ID())
 	if !ok {
+		// already discarded
 		return nil
 	}
 
@@ -48,10 +49,12 @@ func (p *MultiDBPool) Put(conn shard.Shard) error {
 	if !ok {
 		panic(fmt.Sprintf("db %s not found in pool", conn.DB()))
 	}
+
 	if conn.TxStatus() != txstatus.TXIDLE {
 		p.queue.Remove(connElement.(*list.Element))
 		p.conns.Delete(conn.ID())
 	}
+
 	return pool.(*DBPool).Put(conn)
 }
 
@@ -63,6 +66,7 @@ func (p *MultiDBPool) Discard(conn shard.Shard) error {
 
 	connElement, ok := p.conns.Load(conn.ID())
 	if !ok {
+		// already discarded
 		return nil
 	}
 
@@ -92,17 +96,18 @@ func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
 		pool = poolElement.(*DBPool)
 	}
 
-	// get random shard
+	// get random host from random shard
 	shardName, randShard := getRandomShard(p.mapping)
 	hosts := randShard.HostsAZ()
 	host := hosts[rand.Int()%len(hosts)]
 
-	// establish connection
+	// get connection
 	conn, err := pool.ConnectionHost(uint(rand.Uint64()), kr.ShardKey{Name: shardName, RW: false}, host)
 	if err != nil {
 		return nil, err
 	}
 
+	// LRU
 	if el, ok := p.conns.Load(conn.ID()); ok {
 		p.queue.MoveToFront(el.(*list.Element))
 	} else {
@@ -122,7 +127,7 @@ func (p *MultiDBPool) Connection(db string) (shard.Shard, error) {
 }
 
 func (p *MultiDBPool) View() Statistics {
-	return Statistics{}
+	panic("DBPool.View not implemented")
 }
 
 func getRandomShard(mapping map[string]*config.Shard) (string, *config.Shard) {
