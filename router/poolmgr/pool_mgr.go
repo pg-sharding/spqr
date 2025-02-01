@@ -27,7 +27,6 @@ type ConnectionKeeper interface {
 }
 
 type PoolMgr interface {
-	TXBeginCB(rst ConnectionKeeper) error
 	TXEndCB(rst ConnectionKeeper) error
 
 	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
@@ -142,10 +141,6 @@ func (t *TxConnManager) ValidateReRoute(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() == nil || rst.TxStatus() == txstatus.TXIDLE
 }
 
-func (t *TxConnManager) TXBeginCB(rst ConnectionKeeper) error {
-	return nil
-}
-
 // TODO : unit tests
 func (t *TxConnManager) TXEndCB(rst ConnectionKeeper) error {
 	ash := rst.ActiveShards()
@@ -173,10 +168,6 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 		}
 	}
 
-	return nil
-}
-
-func (s *SessConnManager) TXBeginCB(rst ConnectionKeeper) error {
 	return nil
 }
 
