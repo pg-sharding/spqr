@@ -104,8 +104,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
-	cmngr.EXPECT().TXBeginCB(gomock.Any()).AnyTimes()
-
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
 	qr.EXPECT().Route(gomock.Any(), &lyx.Select{
@@ -219,8 +217,6 @@ func TestFrontendXProto(t *testing.T) {
 	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
-
-	cmngr.EXPECT().TXBeginCB(gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 
@@ -378,8 +374,6 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
-
-	cmngr.EXPECT().TXBeginCB(gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().TXEndCB(gomock.Any()).AnyTimes()
 

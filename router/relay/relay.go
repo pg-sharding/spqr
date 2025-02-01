@@ -73,8 +73,6 @@ type RelayStateMgr interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, copyState *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) error
 
-	ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error
-
 	AddExtendedProtocMessage(q pgproto3.FrontendMessage)
 	ProcessExtendedBuffer() error
 }
@@ -701,64 +699,6 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*kr.ShardKey) error {
 	return err
 }
 
-// TODO : unit tests
-func (rst *RelayStateImpl) ProcCommand(query pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-
-	spqrlog.Zero.Debug().
-		Uint("client", rst.Client().ID()).
-		Interface("query", query).
-		Msg("client process command")
-	_ = rst.
-		Client().
-		ReplyDebugNotice(
-			fmt.Sprintf("executing your query %v", query)) // TODO performance issue
-
-	if err := rst.Client().Server().Send(query); err != nil {
-		return err
-	}
-
-	if !waitForResp {
-		return nil
-	}
-
-	for {
-		msg, err := rst.Client().Server().Receive()
-		if err != nil {
-			return err
-		}
-
-		switch v := msg.(type) {
-		case *pgproto3.CommandComplete:
-			return nil
-		case *pgproto3.ErrorResponse:
-			return fmt.Errorf("%s", v.Message)
-		default:
-			spqrlog.Zero.Debug().
-				Uint("client", rst.Client().ID()).
-				Type("message-type", v).
-				Msg("got message from server")
-			if replyCl {
-				err = rst.Client().Send(msg)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-}
-
-// TODO : unit tests
-func (rst *RelayStateImpl) RelayCommand(v pgproto3.FrontendMessage, waitForResp bool, replyCl bool) error {
-	if rst.txStatus != txstatus.TXACT {
-		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
-			return err
-		}
-		rst.txStatus = txstatus.TXACT
-	}
-
-	return rst.ProcCommand(v, waitForResp, replyCl)
-}
-
 // TODO: unit tests
 func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
 	spqrlog.Zero.Debug().
@@ -1094,12 +1034,6 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 
 	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
 		for len(buff) > 0 {
-			if rst.txStatus != txstatus.TXACT {
-				if err := rst.poolMgr.TXBeginCB(rst); err != nil {
-					return err
-				}
-			}
-
 			var v BufferedMessage
 			v, buff = buff[0], buff[1:]
 			spqrlog.Zero.Debug().
@@ -1130,19 +1064,9 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	if rst.txStatus != txstatus.TXACT {
-		if err := rst.poolMgr.TXBeginCB(rst); err != nil {
-			return nil, err
-		}
-	}
-
 	unreplied, _, err := rst.ProcQuery(msg, waitForResp, replyCl)
 
 	return unreplied, err
-}
-
-func (rst *RelayStateImpl) ShouldRetry(err error) bool {
-	return false
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {

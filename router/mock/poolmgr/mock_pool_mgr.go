@@ -182,20 +182,6 @@ func (mr *MockPoolMgrMockRecorder) RouteCB(client, sh interface{}) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouteCB", reflect.TypeOf((*MockPoolMgr)(nil).RouteCB), client, sh)
 }
 
-// TXBeginCB mocks base method.
-func (m *MockPoolMgr) TXBeginCB(rst poolmgr.ConnectionKeeper) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TXBeginCB", rst)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// TXBeginCB indicates an expected call of TXBeginCB.
-func (mr *MockPoolMgrMockRecorder) TXBeginCB(rst interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TXBeginCB", reflect.TypeOf((*MockPoolMgr)(nil).TXBeginCB), rst)
-}
-
 // TXEndCB mocks base method.
 func (m *MockPoolMgr) TXEndCB(rst poolmgr.ConnectionKeeper) error {
 	m.ctrl.T.Helper()
