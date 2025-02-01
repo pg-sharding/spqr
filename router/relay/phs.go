@@ -50,7 +50,7 @@ func (s *QueryStateExecutor) ExecCommit(rst RelayStateMgr, query string) error {
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	err := rst.ProcessMessageBuf(true, true)
+	err := rst.ProcessMessageBuf()
 	if err == nil {
 		rst.Client().CommitActiveSet()
 	}
@@ -71,7 +71,7 @@ func (s *QueryStateExecutor) ExecRollback(rst RelayStateMgr, query string) error
 	rst.AddQuery(&pgproto3.Query{
 		String: query,
 	})
-	err := rst.ProcessMessageBuf(true, true)
+	err := rst.ProcessMessageBuf()
 	if err == nil {
 		rst.Client().Rollback()
 	}
@@ -89,7 +89,7 @@ func (s *QueryStateExecutor) ExecSet(rst RelayStateMgr, query string, name, valu
 	}
 	spqrlog.Zero.Debug().Str("name", name).Str("value", value).Msg("execute set query")
 	rst.AddQuery(&pgproto3.Query{String: query})
-	if err := rst.ProcessMessageBuf(true, true); err != nil {
+	if err := rst.ProcessMessageBuf(); err != nil {
 		return err
 	}
 	rst.Client().SetParam(name, value)
@@ -99,7 +99,8 @@ func (s *QueryStateExecutor) ExecSet(rst RelayStateMgr, query string, name, valu
 
 func (s *QueryStateExecutor) ExecReset(rst RelayStateMgr, query, setting string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
-		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false)
+		rst.AddSilentQuery(rst.Client().ConstructClientParams())
+		return rst.ProcessMessageBuf()
 	}
 	return nil
 }
@@ -110,7 +111,7 @@ func (s *QueryStateExecutor) ExecResetMetadata(rst RelayStateMgr, query string, 
 	}
 	rst.AddQuery(&pgproto3.Query{String: query})
 
-	if err := rst.ProcessMessageBuf(true, true); err != nil {
+	if err := rst.ProcessMessageBuf(); err != nil {
 		return err
 	}
 
@@ -124,7 +125,7 @@ func (s *QueryStateExecutor) ExecResetMetadata(rst RelayStateMgr, query string, 
 func (s *QueryStateExecutor) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
 		rst.AddQuery(&pgproto3.Query{String: query})
-		return rst.ProcessMessageBuf(true, true)
+		return rst.ProcessMessageBuf()
 
 	}
 	return nil
