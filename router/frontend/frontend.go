@@ -38,7 +38,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			q = &cpQ
 			if err := relay.ProcQueryAdvanced(rst, q.Query, ph, func() error {
 				rst.AddQuery(q)
-				return rst.ProcessMessageBuf(true, true, false)
+				return rst.ProcessMessageBuf(true, true)
 			}, true); err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 				rst.AddQuery(q)
 
-				return rst.ProcessMessageBuf(true, true, false)
+				return rst.ProcessMessageBuf(true, true)
 			}, false); err != nil {
 				return err
 			}
@@ -132,7 +132,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
 			rst.AddQuery(q)
 			// this call compeletes relay, sends RFQ
-			return rst.ProcessMessageBuf(true, true, false)
+			return rst.ProcessMessageBuf(true, true)
 		}, false); err != nil {
 			return err
 		}
