@@ -599,6 +599,13 @@ func TestSingleShard(t *testing.T) {
 			err: nil,
 		},
 
+		/* should not be routed to one shard */
+		{
+			query: "SELECT * FROM xxtt1 a WHERE a IN (1,11,111)",
+			exp:   routingstate.MultiMatchState{},
+			err:   nil,
+		},
+
 		{
 			query: `
 			DELETE
