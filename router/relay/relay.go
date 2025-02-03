@@ -175,18 +175,21 @@ func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager p
 }
 
 func (rst *RelayStateImpl) SyncCount() int64 {
-	if rst.Cl.Server() == nil {
+	server := rst.Client().Server()
+	if server == nil {
 		return 0
 	}
-	return rst.Cl.Server().Sync()
+	return server.Sync()
 }
 
 func (rst *RelayStateImpl) DataPending() bool {
-	if rst.Cl.Server() == nil {
+	server := rst.Client().Server()
+
+	if server == nil {
 		return false
 	}
 
-	return rst.Cl.Server().DataPending()
+	return server.DataPending()
 }
 
 func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
