@@ -21,6 +21,8 @@ PostgreSQL is awesome, but it's hard to manage a single database with some terab
 
 SPQR is a production-ready system for horizontal scaling of PostgreSQL via sharding. We appreciate any kind of feedback and contribution to the project.
 
+## Get started
+
 To get started, please visit our [documentation](https://pg-sharding.tech). The full list of features is available [here](https://pg-sharding.tech/features/).
 
 ## Development
