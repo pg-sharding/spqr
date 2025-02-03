@@ -130,6 +130,11 @@ INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 NOTICE: send query to shard(s) : sh2
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 NOTICE: send query to shard(s) : sh2
+-- check that insert without columns works
+INSERT INTO xxtt1 VALUES(333, 333, 333);
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xxtt1 VALUES(333, 333);
+ERROR:  client processing error: error processing query 'INSERT INTO xxtt1 VALUES(333, 333);': failed to match any datashard., tx status IDLE
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 NOTICE: send query to shard(s) : sh1
   i  |   j    | w_id 
@@ -165,7 +170,8 @@ NOTICE: send query to shard(s) : sh2
  -211212 | 2121221 |   21
  -211212 | 2121221 |   21
  -211212 | 2121221 |   21
-(9 rows)
+     333 |     333 |  333
+(10 rows)
 
 SELECT DISTINCT * FROM xxtt1 WHERE w_id=21;
 NOTICE: send query to shard(s) : sh2
@@ -214,7 +220,8 @@ NOTICE: send query to shard(s) : sh2
  -211212 | 2121221 |   21
  -211212 | 2121221 |   21
  -211212 | 2121221 |   21
-(9 rows)
+     333 |     333 |  333
+(10 rows)
 
 SELECT * FROM xxtt1 a WHERE a.w_id = 21 and j + i != 0;
 NOTICE: send query to shard(s) : sh2
