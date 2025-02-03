@@ -884,12 +884,18 @@ func (rst *RelayStateImpl) ProcCopyComplete(query pgproto3.FrontendMessage) erro
 		Uint("client", rst.Client().ID()).
 		Type("query-type", query).
 		Msg("client process copy end")
-	if err := rst.Client().Server().Send(query); err != nil {
+	server := rst.Client().Server()
+	/* non-null server should never be set to null here until we call Unroute()
+	in complete relay */
+	if server == nil {
+		return fmt.Errorf("client not routed in copy complete phase, resetting")
+	}
+	if err := server.Send(query); err != nil {
 		return err
 	}
 
 	for {
-		msg, err := rst.Client().Server().Receive()
+		msg, err := server.Receive()
 		if err != nil {
 			return err
 		}
