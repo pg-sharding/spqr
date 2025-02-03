@@ -39,6 +39,8 @@ SELECT * FROM distrr_mm_test ORDER BY id, t /*__spqr__execute_on: sh2 */;
 
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx');
 INSERT INTO distrr_mm_test VALUES (1, 'zz'), (2, 'xx') /* __spqr__engine_v2: true */;
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx');
+INSERT INTO distrr_mm_test VALUES (1, 'zz'), (32, 'xx') /* __spqr__engine_v2: true */;
 
 DROP TABLE distrr_mm_test;
 

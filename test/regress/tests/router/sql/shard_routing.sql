@@ -50,6 +50,10 @@ INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 
+-- check that insert without columns works
+INSERT INTO xxtt1 VALUES(333, 333, 333);
+INSERT INTO xxtt1 VALUES(333, 333);
+
 SELECT * FROM xxtt1 WHERE w_id >= 1;
 SELECT * FROM xxtt1 WHERE w_id >= 20;
 SELECT * FROM xxtt1 WHERE w_id >= 21;
