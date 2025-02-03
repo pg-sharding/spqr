@@ -1652,7 +1652,11 @@ func (rst *RelayStateImpl) Parse(query string, doCaching bool) (parser.ParseStat
 			case *lyx.RangeVar:
 				cptr := rst.Qr.SchemaCache()
 				if cptr != nil {
-					stm.Columns, _ = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
+					var schemaErr error
+					stm.Columns, schemaErr = cptr.GetColumns(rst.Cl.DB(), tableref.SchemaName, tableref.RelationName)
+					if schemaErr != nil {
+						spqrlog.Zero.Err(schemaErr).Msg("get columns from schema cache")
+					}
 				}
 			}
 		}

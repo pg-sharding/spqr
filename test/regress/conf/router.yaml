@@ -71,3 +71,8 @@ backend_rules:
       sh4:
         auth_method: md5
         password: 12345678
+schema_cache_backend_rule:
+  usr: regress
+  db: regress
+  pool_discard: true
+  pool_rollback: true
