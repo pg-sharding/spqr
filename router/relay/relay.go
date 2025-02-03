@@ -184,7 +184,7 @@ func (rst *RelayStateImpl) SyncCount() int64 {
 
 func (rst *RelayStateImpl) DataPending() bool {
 	server := rst.Client().Server()
-	
+
 	if server == nil {
 		return false
 	}
