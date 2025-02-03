@@ -130,20 +130,20 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, binderQ func() error, do
 
 	switch st := state.(type) {
 	case parser.ParseStateTXBegin:
-		if rst.TxStatus() != txstatus.TXIDLE {
+		if rst.QueryExecutor().TxStatus() != txstatus.TXIDLE {
 			// ignore this
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
 			return rst.Client().ReplyCommandComplete("BEGIN")
 		}
 		return rst.QueryExecutor().ExecBegin(rst, query, &st)
 	case parser.ParseStateTXCommit:
-		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
+		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete("COMMIT")
 		}
 		return rst.QueryExecutor().ExecCommit(rst, query)
 	case parser.ParseStateTXRollback:
-		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
+		if rst.QueryExecutor().TxStatus() != txstatus.TXACT && rst.QueryExecutor().TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete("ROLLBACK")
 		}
