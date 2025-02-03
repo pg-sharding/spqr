@@ -50,9 +50,9 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 // There are several types of query that we want to process in non-passthrough way.
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
-// ProtoStateHandler provides set of function for either simple of extended protoc interactions
+// QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, binderQ func() error, doCaching bool) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, binderQ func() error, doCaching bool) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
@@ -135,19 +135,19 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			_ = rst.Client().ReplyWarningf("there is already transaction in progress")
 			return rst.Client().ReplyCommandComplete("BEGIN")
 		}
-		return ph.ExecBegin(rst, query, &st)
+		return rst.QueryExecutor().ExecBegin(rst, query, &st)
 	case parser.ParseStateTXCommit:
 		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete("COMMIT")
 		}
-		return ph.ExecCommit(rst, query)
+		return rst.QueryExecutor().ExecCommit(rst, query)
 	case parser.ParseStateTXRollback:
 		if rst.TxStatus() != txstatus.TXACT && rst.TxStatus() != txstatus.TXERR {
 			_ = rst.Client().ReplyWarningf("there is no transaction in progress")
 			return rst.Client().ReplyCommandComplete("ROLLBACK")
 		}
-		return ph.ExecRollback(rst, query)
+		return rst.QueryExecutor().ExecRollback(rst, query)
 	case parser.ParseStateEmptyQuery:
 		if err := rst.Client().Send(&pgproto3.EmptyQueryResponse{}); err != nil {
 			return err
@@ -190,7 +190,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 			return rst.Client().ReplyCommandComplete("SET")
 		}
 
-		return ph.ExecSet(rst, query, st.Name, st.Value)
+		return rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
 		param := st.Name
 		// manually create router responce
@@ -249,13 +249,13 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 	case parser.ParseStateResetStmt:
 		rst.Client().ResetParam(st.Name)
 
-		if err := ph.ExecReset(rst, query, st.Name); err != nil {
+		if err := rst.QueryExecutor().ExecReset(rst, query, st.Name); err != nil {
 			return err
 		}
 
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateResetMetadataStmt:
-		if err := ph.ExecResetMetadata(rst, query, st.Setting); err != nil {
+		if err := rst.QueryExecutor().ExecResetMetadata(rst, query, st.Setting); err != nil {
 			return err
 		}
 
@@ -269,7 +269,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, ph ProtoStateHandler, bi
 		rst.Client().ResetAll()
 		return rst.Client().ReplyCommandComplete("RESET")
 	case parser.ParseStateSetLocalStmt:
-		if err := ph.ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
+		if err := rst.QueryExecutor().ExecSetLocal(rst, query, st.Name, st.Value); err != nil {
 			return err
 		}
 		return rst.Client().ReplyCommandComplete("SET")
