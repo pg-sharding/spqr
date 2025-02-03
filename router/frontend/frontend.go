@@ -16,8 +16,6 @@ import (
 
 // ProcessMessage: process client iteration, until next transaction status idle
 func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto3.FrontendMessage) error {
-	ph := relay.NewSimpleProtoStateHandler()
-
 	if rst.Client().Rule().PoolMode != config.PoolModeTransaction {
 		switch q := msg.(type) {
 		case *pgproto3.Terminate:
@@ -36,7 +34,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAdvanced(rst, q.Query, ph, func() error {
+			if err := relay.ProcQueryAdvanced(rst, q.Query, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, true); err != nil {
@@ -63,7 +61,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
+			if err := relay.ProcQueryAdvanced(rst, q.String, func() error {
 				rst.AddQuery(q)
 
 				return rst.ProcessMessageBuf(true, true)
@@ -129,7 +127,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		if err := relay.ProcQueryAdvanced(rst, q.String, ph, func() error {
+		if err := relay.ProcQueryAdvanced(rst, q.String, func() error {
 			rst.AddQuery(q)
 			// this call compeletes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)

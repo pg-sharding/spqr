@@ -37,6 +37,7 @@ type RelayStateMgr interface {
 	poolmgr.ConnectionKeeper
 	route.RouteMgr
 
+	QueryExecutor() QueryStateExecutor
 	QueryRouter() qrouter.QueryRouter
 	PoolMgr() poolmgr.PoolMgr
 
@@ -118,14 +119,13 @@ type ParseCacheEntry struct {
 }
 
 type RelayStateImpl struct {
-	txStatus txstatus.TXStatus
-
 	traceMsgs    bool
 	activeShards []kr.ShardKey
 
 	routingState plan.Plan
 
 	Qr      qrouter.QueryRouter
+	qse     QueryStateExecutor
 	qp      parser.QParser
 	plainQ  string
 	Cl      client.RouterClient
@@ -149,6 +149,16 @@ type RelayStateImpl struct {
 	xBuf []pgproto3.FrontendMessage
 }
 
+// SetTxStatus implements poolmgr.ConnectionKeeper.
+func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
+	rst.qse.SetTxStatus(status)
+}
+
+// TxStatus implements poolmgr.ConnectionKeeper.
+func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
+	return rst.qse.TxStatus()
+}
+
 // HoldRouting implements RelayStateMgr.
 func (rst *RelayStateImpl) HoldRouting() {
 	rst.holdRouting = true
@@ -162,9 +172,9 @@ func (rst *RelayStateImpl) UnholdRouting() {
 func NewRelayState(qr qrouter.QueryRouter, client client.RouterClient, manager poolmgr.PoolMgr) RelayStateMgr {
 	return &RelayStateImpl{
 		activeShards:    nil,
-		txStatus:        txstatus.TXIDLE,
 		msgBuf:          nil,
 		traceMsgs:       false,
+		qse:             NewQueryStateExecutor(client),
 		Qr:              qr,
 		Cl:              client,
 		poolMgr:         manager,
@@ -196,22 +206,16 @@ func (rst *RelayStateImpl) QueryRouter() qrouter.QueryRouter {
 	return rst.Qr
 }
 
+func (rst *RelayStateImpl) QueryExecutor() QueryStateExecutor {
+	return rst.qse
+}
+
 func (rst *RelayStateImpl) PoolMgr() poolmgr.PoolMgr {
 	return rst.poolMgr
 }
 
-func (rst *RelayStateImpl) SetTxStatus(status txstatus.TXStatus) {
-	rst.txStatus = status
-	/* handle implicit transactions - rollback all local state for params */
-	rst.Client().CleanupLocalSet()
-}
-
 func (rst *RelayStateImpl) Client() client.RouterClient {
 	return rst.Cl
-}
-
-func (rst *RelayStateImpl) TxStatus() txstatus.TXStatus {
-	return rst.txStatus
 }
 
 // TODO : unit tests
@@ -487,7 +491,7 @@ func (rst *RelayStateImpl) ActiveShards() []kr.ShardKey {
 // TODO : unit tests
 func (rst *RelayStateImpl) Reset() error {
 	rst.activeShards = nil
-	rst.txStatus = txstatus.TXIDLE
+	rst.qse.SetTxStatus(txstatus.TXIDLE)
 
 	_ = rst.Cl.Reset()
 
@@ -579,7 +583,8 @@ func (rst *RelayStateImpl) Reroute() error {
 	rst.routingState = queryPlan
 	switch v := queryPlan.(type) {
 	case plan.ScatterPlan:
-		if rst.txStatus == txstatus.TXACT {
+		/* move this logic to executor */
+		if rst.qse.TxStatus() == txstatus.TXACT {
 			return fmt.Errorf("cannot route in an active transaction")
 		}
 		spqrlog.Zero.Debug().
@@ -729,7 +734,7 @@ func (rst *RelayStateImpl) ProcCopyPrepare(ctx context.Context, stmt *lyx.Copy) 
 	}
 
 	/* If exeecute on is specified or explicit tx is going, no routing */
-	if rst.Client().ExecuteOn() != "" || rst.txStatus == txstatus.TXACT {
+	if rst.Client().ExecuteOn() != "" || rst.qse.TxStatus() == txstatus.TXACT {
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
 			Attached:  true,
@@ -905,7 +910,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 	server := rst.Client().Server()
 
 	if server == nil {
-		rst.SetTxStatus(txstatus.TXERR)
+		rst.qse.SetTxStatus(txstatus.TXERR)
 		return nil, false, fmt.Errorf("client %p is out of transaction sync with router", rst.Client())
 	}
 
@@ -915,7 +920,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 		Msg("relay process query")
 
 	if err := server.Send(query); err != nil {
-		rst.SetTxStatus(txstatus.TXERR)
+		rst.qse.SetTxStatus(txstatus.TXERR)
 		return nil, false, err
 	}
 
@@ -951,7 +956,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			// handle replyCl somehow
 			err = rst.Client().Send(msg)
 			if err != nil {
-				rst.SetTxStatus(txstatus.TXERR)
+				rst.qse.SetTxStatus(txstatus.TXERR)
 				return nil, false, err
 			}
 
@@ -989,17 +994,17 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 					}
 				}
 			}(); err != nil {
-				rst.SetTxStatus(txstatus.TXERR)
+				rst.qse.SetTxStatus(txstatus.TXERR)
 				return nil, false, err
 			}
 		case *pgproto3.ReadyForQuery:
-			rst.SetTxStatus(txstatus.TXStatus(v.TxStatus))
+			rst.qse.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return unreplied, ok, nil
 		case *pgproto3.ErrorResponse:
 			if replyCl {
 				err = rst.Client().Send(msg)
 				if err != nil {
-					rst.SetTxStatus(txstatus.TXERR)
+					rst.qse.SetTxStatus(txstatus.TXERR)
 					return nil, false, err
 				}
 			} else {
@@ -1019,7 +1024,7 @@ func (rst *RelayStateImpl) ProcQuery(query pgproto3.FrontendMessage, waitForResp
 			if replyCl {
 				err = rst.Client().Send(msg)
 				if err != nil {
-					rst.SetTxStatus(txstatus.TXERR)
+					rst.qse.SetTxStatus(txstatus.TXERR)
 					return nil, false, err
 				}
 			} else {
@@ -1077,7 +1082,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
-		Str("txstatus", rst.txStatus.String()).
+		Str("txstatus", rst.qse.TxStatus().String()).
 		Msg("complete relay iter")
 
 	switch rst.routingState.(type) {
@@ -1100,11 +1105,12 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		return nil
 	}
 
-	switch rst.txStatus {
+	/* move this logic to executor */
+	switch rst.qse.TxStatus() {
 	case txstatus.TXIDLE:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.txStatus),
+				TxStatus: byte(rst.qse.TxStatus()),
 			}); err != nil {
 				return err
 			}
@@ -1120,14 +1126,14 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 	case txstatus.TXACT:
 		if replyCl {
 			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(rst.txStatus),
+				TxStatus: byte(rst.qse.TxStatus()),
 			}); err != nil {
 				return err
 			}
 		}
 		return nil
 	default:
-		err := fmt.Errorf("unknown tx status %v", rst.txStatus)
+		err := fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
 		return err
 	}
 }
@@ -1283,14 +1289,14 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			}
 
 			/* TODO: refactor code to make this less ugly */
-			saveTxStatus := rst.txStatus
+			saveTxStatus := rst.qse.TxStatus()
 
 			_, retMsg, err := rst.DeployPrepStmt(q.Name)
 			if err != nil {
 				return err
 			}
 
-			rst.SetTxStatus(saveTxStatus)
+			rst.qse.SetTxStatus(saveTxStatus)
 
 			// tdb: fix this
 			rst.plainQ = q.Query
@@ -1313,8 +1319,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			// However, to execute commit, rollbacks, etc., we need to wait for the next query
 			// or process it locally (set statement)
 
-			phx := NewSimpleProtoStateHandler()
-
 			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
 			// We implicitly assume that there is always Execute after Bind for the same portal.
@@ -1327,7 +1331,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				return nil
 			}
 
-			if err := ProcQueryAdvanced(rst, def.Query, phx, func() error {
+			if err := ProcQueryAdvanced(rst, def.Query, func() error {
 				rst.saveBind = &pgproto3.Bind{}
 				rst.saveBind.DestinationPortal = q.DestinationPortal
 
@@ -1426,7 +1430,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 		case *pgproto3.Describe:
 			// save txstatus because it may be overwritten if we have no backend connection
-			saveTxStat := rst.TxStatus()
+			saveTxStat := rst.qse.TxStatus()
 
 			if q.ObjectType == 'P' {
 				spqrlog.Zero.Debug().
@@ -1587,7 +1591,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				}
 			}
 
-			rst.SetTxStatus(saveTxStat)
+			rst.qse.SetTxStatus(saveTxStat)
 
 		case *pgproto3.Execute:
 			spqrlog.Zero.Debug().

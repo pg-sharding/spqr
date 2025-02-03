@@ -5,22 +5,37 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
 
-type QueryStateExecutor struct {
+type QueryStateExecutorImpl struct {
+	txstatus.TxStatusMgr
+
+	txStatus txstatus.TXStatus
+	cl       client.RouterClient
 }
 
-func (s *QueryStateExecutor) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
+func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
+	s.txStatus = status
+	/* handle implicit transactions - rollback all local state for params */
+	s.cl.CleanupLocalSet()
+}
+
+func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
+	return s.txStatus
+}
+
+func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
 	// explicitly set silent query message, as it can differ from query begin in xporot
 	rst.AddSilentQuery(&pgproto3.Query{
 		String: query,
 	})
 
-	rst.SetTxStatus(txstatus.TXACT)
-	rst.Client().StartTx()
+	s.SetTxStatus(txstatus.TXACT)
+	s.cl.StartTx()
 
 	spqrlog.Zero.Debug().Msg("start new transaction")
 
@@ -37,12 +52,12 @@ func (s *QueryStateExecutor) ExecBegin(rst RelayStateMgr, query string, st *pars
 }
 
 // query in commit query. maybe commit or commit `name`
-func (s *QueryStateExecutor) ExecCommit(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !rst.PoolMgr().ConnectionActive(rst) {
-		rst.Client().CommitActiveSet()
+		s.cl.CommitActiveSet()
 		_ = rst.Client().ReplyCommandComplete("COMMIT")
-		rst.SetTxStatus(txstatus.TXIDLE)
+		s.SetTxStatus(txstatus.TXIDLE)
 		/* empty message buf */
 		rst.Flush()
 		return nil
@@ -58,12 +73,12 @@ func (s *QueryStateExecutor) ExecCommit(rst RelayStateMgr, query string) error {
 }
 
 /* TODO: proper support for rollback to savepoint */
-func (s *QueryStateExecutor) ExecRollback(rst RelayStateMgr, query string) error {
+func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) error {
 	// Virtual tx case. Do the whole logic locally
 	if !rst.PoolMgr().ConnectionActive(rst) {
-		rst.Client().Rollback()
-		_ = rst.Client().ReplyCommandComplete("ROLLBACK")
-		rst.SetTxStatus(txstatus.TXIDLE)
+		s.cl.Rollback()
+		_ = s.cl.ReplyCommandComplete("ROLLBACK")
+		s.SetTxStatus(txstatus.TXIDLE)
 		/* empty message buf */
 		rst.Flush()
 		return nil
@@ -73,12 +88,12 @@ func (s *QueryStateExecutor) ExecRollback(rst RelayStateMgr, query string) error
 	})
 	err := rst.ProcessMessageBuf(true, true)
 	if err == nil {
-		rst.Client().Rollback()
+		s.cl.Rollback()
 	}
 	return err
 }
 
-func (s *QueryStateExecutor) ExecSet(rst RelayStateMgr, query string, name, value string) error {
+func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string) error {
 	if len(name) == 0 {
 		// some session characteristic, ignore
 		return rst.Client().ReplyCommandComplete("SET")
@@ -97,14 +112,14 @@ func (s *QueryStateExecutor) ExecSet(rst RelayStateMgr, query string, name, valu
 	return nil
 }
 
-func (s *QueryStateExecutor) ExecReset(rst RelayStateMgr, query, setting string) error {
+func (s *QueryStateExecutorImpl) ExecReset(rst RelayStateMgr, query, setting string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
 		return rst.ProcessMessage(rst.Client().ConstructClientParams(), true, false)
 	}
 	return nil
 }
 
-func (s *QueryStateExecutor) ExecResetMetadata(rst RelayStateMgr, query string, setting string) error {
+func (s *QueryStateExecutorImpl) ExecResetMetadata(rst RelayStateMgr, query string, setting string) error {
 	if !rst.PoolMgr().ConnectionActive(rst) {
 		return nil
 	}
@@ -121,7 +136,7 @@ func (s *QueryStateExecutor) ExecResetMetadata(rst RelayStateMgr, query string, 
 	return nil
 }
 
-func (s *QueryStateExecutor) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
+func (s *QueryStateExecutorImpl) ExecSetLocal(rst RelayStateMgr, query, name, value string) error {
 	if rst.PoolMgr().ConnectionActive(rst) {
 		rst.AddQuery(&pgproto3.Query{String: query})
 		return rst.ProcessMessageBuf(true, true)
@@ -130,8 +145,11 @@ func (s *QueryStateExecutor) ExecSetLocal(rst RelayStateMgr, query, name, value 
 	return nil
 }
 
-var _ ProtoStateHandler = &QueryStateExecutor{}
+var _ QueryStateExecutor = &QueryStateExecutorImpl{}
 
-func NewSimpleProtoStateHandler() ProtoStateHandler {
-	return &QueryStateExecutor{}
+func NewQueryStateExecutor(cl client.RouterClient) QueryStateExecutor {
+	return &QueryStateExecutorImpl{
+		cl:       cl,
+		txStatus: txstatus.TXIDLE,
+	}
 }
