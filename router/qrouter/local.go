@@ -6,6 +6,7 @@ import (
 	"github.com/juju/errors"
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/session"
@@ -87,4 +88,8 @@ func (l *LocalQrouter) DataShardsRoutes() []*kr.ShardKey {
 			RW:   false,
 		},
 	}
+}
+
+func (l *LocalQrouter) Mgr() meta.EntityMgr {
+	return nil
 }

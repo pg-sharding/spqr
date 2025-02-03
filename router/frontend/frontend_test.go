@@ -59,12 +59,16 @@ func TestFrontendSimple(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
 	frrule := &config.FrontendRule{
 		DB:  "db1",
 		Usr: "user1",
 	}
 
 	beRule := &config.BackendRule{}
+
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
@@ -167,6 +171,8 @@ func TestFrontendXProto(t *testing.T) {
 	qr := mockqr.NewMockQueryRouter(ctrl)
 	cmngr := mockcmgr.NewMockPoolMgr(ctrl)
 
+	mmgr := mockmgr.NewMockEntityMgr(ctrl)
+
 	frrule := &config.FrontendRule{
 		DB:       "db1",
 		Usr:      "user1",
@@ -174,6 +180,8 @@ func TestFrontendXProto(t *testing.T) {
 	}
 
 	beRule := &config.BackendRule{}
+
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
 
 	sh.EXPECT().ID().AnyTimes()
 	sh.EXPECT().Send(gomock.Any()).AnyTimes()
