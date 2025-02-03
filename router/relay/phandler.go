@@ -7,6 +7,7 @@ import (
 	"github.com/pg-sharding/lyx/lyx"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 )
@@ -16,6 +17,8 @@ import (
 type QueryStateExecutor interface {
 	txstatus.TxStatusMgr
 
+	Client() client.RouterClient
+
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error
@@ -24,6 +27,8 @@ type QueryStateExecutor interface {
 	ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy) (*pgcopy.CopyState, error)
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) error
+
+	ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error)
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecSetLocal(rst RelayStateMgr, query, name, value string) error

@@ -11,6 +11,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
 	"github.com/pg-sharding/spqr/pkg/models/kr"
+	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
@@ -356,6 +357,142 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 			}
 		}
 	}
+}
+
+// TODO : unit tests
+/* second param indicates if we should continue relay. */
+func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error) {
+	server := s.Client().Server()
+
+	if server == nil {
+		s.SetTxStatus(txstatus.TXERR)
+		return nil, false, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+	}
+
+	spqrlog.Zero.Debug().
+		Uints("shards", shard.ShardIDs(server.Datashards())).
+		Type("query-type", query).
+		Msg("relay process query")
+
+	if err := server.Send(query); err != nil {
+		s.SetTxStatus(txstatus.TXERR)
+		return nil, false, err
+	}
+
+	waitForRespLocal := waitForResp
+
+	switch query.(type) {
+	case *pgproto3.Query:
+		// ok
+	case *pgproto3.Sync:
+		// ok
+	default:
+		waitForRespLocal = false
+	}
+
+	if !waitForRespLocal {
+		/* we do not alter txstatus here */
+		return nil, true, nil
+	}
+
+	ok := true
+
+	unreplied := make([]pgproto3.BackendMessage, 0)
+
+	for {
+		msg, err := server.Receive()
+		if err != nil {
+			s.SetTxStatus(txstatus.TXERR)
+			return nil, false, err
+		}
+
+		switch v := msg.(type) {
+		case *pgproto3.CopyInResponse:
+			// handle replyCl somehow
+			err = s.Client().Send(msg)
+			if err != nil {
+				s.SetTxStatus(txstatus.TXERR)
+				return nil, false, err
+			}
+
+			q := stmt.(*lyx.Copy)
+
+			if err := func() error {
+				var leftOvermsgData []byte
+				ctx := context.TODO()
+
+				cps, err := s.ProcCopyPrepare(ctx, mgr, q)
+				if err != nil {
+					return err
+				}
+
+				for {
+					cpMsg, err := s.Client().Receive()
+					if err != nil {
+						return err
+					}
+
+					switch newMsg := cpMsg.(type) {
+					case *pgproto3.CopyData:
+						leftOvermsgData = append(leftOvermsgData, newMsg.Data...)
+
+						if leftOvermsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftOvermsgData}, cps); err != nil {
+							/* complete relay if copy failed here */
+							// _ = rst.qse.ProcCopyComplete(&pg)
+							return err
+						}
+					case *pgproto3.CopyDone, *pgproto3.CopyFail:
+						if err := s.ProcCopyComplete(cpMsg); err != nil {
+							return err
+						}
+						return nil
+					default:
+						/* panic? */
+					}
+				}
+			}(); err != nil {
+				s.SetTxStatus(txstatus.TXERR)
+				return nil, false, err
+			}
+		case *pgproto3.ReadyForQuery:
+			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
+			return unreplied, ok, nil
+		case *pgproto3.ErrorResponse:
+			if replyCl {
+				err = s.Client().Send(msg)
+				if err != nil {
+					s.SetTxStatus(txstatus.TXERR)
+					return nil, false, err
+				}
+			} else {
+				unreplied = append(unreplied, msg)
+			}
+			ok = false
+		// never resend these msgs
+		case *pgproto3.ParseComplete:
+			unreplied = append(unreplied, msg)
+		case *pgproto3.BindComplete:
+			unreplied = append(unreplied, msg)
+		default:
+			spqrlog.Zero.Debug().
+				Str("server", server.Name()).
+				Type("msg-type", v).
+				Msg("received message from server")
+			if replyCl {
+				err = s.Client().Send(msg)
+				if err != nil {
+					s.SetTxStatus(txstatus.TXERR)
+					return nil, false, err
+				}
+			} else {
+				unreplied = append(unreplied, msg)
+			}
+		}
+	}
+}
+
+func (s *QueryStateExecutorImpl) Client() client.RouterClient {
+	return s.cl
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
