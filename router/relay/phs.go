@@ -1,12 +1,22 @@
 package relay
 
 import (
+	"context"
+	"fmt"
+	"strings"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
+	"github.com/pg-sharding/spqr/pkg/meta"
+	"github.com/pg-sharding/spqr/pkg/models/distributions"
+	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
+	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
+	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/rmeta"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -143,6 +153,209 @@ func (s *QueryStateExecutorImpl) ExecSetLocal(rst RelayStateMgr, query, name, va
 
 	}
 	return nil
+}
+
+// TODO: unit tests
+func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.EntityMgr, stmt *lyx.Copy) (*pgcopy.CopyState, error) {
+	spqrlog.Zero.Debug().
+		Uint("client", s.cl.ID()).
+		Msg("client pre-process copy")
+
+	var relname string
+
+	switch q := stmt.TableRef.(type) {
+	case *lyx.RangeVar:
+		relname = q.RelationName
+	}
+	// Read delimiter from COPY options
+	delimiter := byte('\t')
+	for _, opt := range stmt.Options {
+		o := opt.(*lyx.Option)
+		if strings.ToLower(o.Name) == "delimiter" {
+			delimiter = o.Arg.(*lyx.AExprSConst).Value[0]
+		}
+		if strings.ToLower(o.Name) == "format" {
+			if o.Arg.(*lyx.AExprSConst).Value == "csv" {
+				delimiter = ','
+			}
+		}
+	}
+
+	/* If exeecute on is specified or explicit tx is going, no routing */
+	if s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT {
+		return &pgcopy.CopyState{
+			Delimiter: delimiter,
+			Attached:  true,
+			ExpRoute:  &kr.ShardKey{},
+		}, nil
+	}
+
+	// TODO: check by whole RFQN
+	ds, err := mgr.GetRelationDistribution(ctx, relname)
+	if err != nil {
+		return nil, err
+	}
+	if ds.Id == distributions.REPLICATED {
+		return &pgcopy.CopyState{
+			Scatter: true,
+		}, nil
+	}
+
+	TargetType := ds.ColTypes[0]
+
+	if len(ds.ColTypes) != 1 {
+		return nil, fmt.Errorf("multi-column copy processing is not yet supported")
+	}
+
+	var hashFunc hashfunction.HashFunctionType
+
+	if v, err := hashfunction.HashFunctionByName(ds.Relations[relname].DistributionKey[0].HashFunction); err != nil {
+		return nil, err
+	} else {
+		hashFunc = v
+	}
+
+	krs, err := mgr.ListKeyRanges(ctx, ds.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	colOffset := -1
+	for indx, c := range stmt.Columns {
+		if c == ds.Relations[relname].DistributionKey[0].Column {
+			colOffset = indx
+			break
+		}
+	}
+	if colOffset == -1 {
+		return nil, fmt.Errorf("failed to resolve target copy column offset")
+	}
+
+	return &pgcopy.CopyState{
+		Delimiter:  delimiter,
+		ExpRoute:   &kr.ShardKey{},
+		Krs:        krs,
+		RM:         rmeta.NewRoutingMetadataContext(s.cl, mgr),
+		TargetType: TargetType,
+		HashFunc:   hashFunc,
+	}, nil
+}
+
+// TODO : unit tests
+func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error) {
+	if cps.Attached {
+		for _, sh := range s.cl.Server().Datashards() {
+			err := sh.Send(data)
+			return nil, err
+		}
+		return nil, fmt.Errorf("metadata corrupted")
+	}
+
+	/* We dont really need to parse and route tuples for DISTRIBUTED relations */
+	if cps.Scatter {
+		return nil, s.cl.Server().Send(data)
+	}
+
+	var leftOvermsgData []byte = nil
+
+	rowsMp := map[string][]byte{}
+
+	values := make([]interface{}, 0)
+
+	// Parse data
+	// and decide where to route
+	prevDelimiter := 0
+	prevLine := 0
+	currentAttr := 0
+
+	for i, b := range data.Data {
+		if i+2 < len(data.Data) && string(data.Data[i:i+2]) == "\\." {
+			prevLine = len(data.Data)
+			break
+		}
+		if b == '\n' || b == cps.Delimiter {
+
+			if currentAttr == cps.ColumnOffset {
+				tmp, err := hashfunction.ApplyHashFunctionOnStringRepr(data.Data[prevDelimiter:i], cps.TargetType, cps.HashFunc)
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, tmp)
+			}
+
+			currentAttr++
+			prevDelimiter = i + 1
+		}
+		if b != '\n' {
+			continue
+		}
+
+		// check where this tuple should go
+		currroute, err := cps.RM.DeparseKeyWithRangesInternal(ctx, values, cps.Krs)
+		if err != nil {
+			return nil, err
+		}
+
+		if currroute == nil {
+			return nil, fmt.Errorf("multishard copy is not supported: %+v at line number %d %d %v", values[0], prevLine, i, b)
+		}
+
+		values = nil
+		rowsMp[currroute.Name] = append(rowsMp[currroute.Name], data.Data[prevLine:i+1]...)
+		currentAttr = 0
+		prevLine = i + 1
+	}
+
+	if prevLine != len(data.Data) {
+		if spqrlog.IsDebugLevel() {
+			_ = s.cl.ReplyNotice(fmt.Sprintf("leftover data saved to next iter %d - %d", prevLine, len(data.Data)))
+		}
+		leftOvermsgData = data.Data[prevLine:len(data.Data)]
+	}
+
+	for _, sh := range s.cl.Server().Datashards() {
+		if bts, ok := rowsMp[sh.Name()]; ok {
+			err := sh.Send(&pgproto3.CopyData{Data: bts})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// shouldn't exit from here
+	return leftOvermsgData, nil
+}
+
+// TODO : unit tests
+func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage) error {
+	spqrlog.Zero.Debug().
+		Uint("client", s.cl.ID()).
+		Type("query-type", query).
+		Msg("client process copy end")
+	server := s.cl.Server()
+	/* non-null server should never be set to null here until we call Unroute()
+	in complete relay */
+	if server == nil {
+		return fmt.Errorf("client not routed in copy complete phase, resetting")
+	}
+	if err := server.Send(query); err != nil {
+		return err
+	}
+
+	for {
+		msg, err := server.Receive()
+		if err != nil {
+			return err
+		}
+		switch msg.(type) {
+		case *pgproto3.CommandComplete, *pgproto3.ErrorResponse:
+			return s.cl.Send(msg)
+		default:
+			if err := s.cl.Send(msg); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 var _ QueryStateExecutor = &QueryStateExecutorImpl{}
