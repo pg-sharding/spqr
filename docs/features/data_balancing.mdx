@@ -8,6 +8,6 @@ Data migration between shards aims to balance the workload across shards proport
 
 We considered different options for moving data. The most popular way is to make a copy via logical replication, then delete half of the data on one node and delete another half of the data on the other node. We decided that logical replication does not work well enough yet. Instead, the coordinator makes ε-split - cut off a small part of the data. Since it is small, it all works very quickly.
 
-![ε-split](https://github.com/pg-sharding/spqr/blob/master/docs/e-split.png?raw=true "ε-split")
+![ε-split](https://github.com/pg-sharding/spqr/blob/master/docs/images/balancing_e-split.png?raw=true "ε-split")
 
 
