@@ -109,7 +109,7 @@ NOTICE: send query to shard(s) : sh2
  2147483646
 (11 rows)
 
-COPY xx (col1) FROM STDIN;
+COPY xx (col1) FROM STDIN ;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1
