@@ -3,6 +3,7 @@ package relay
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -46,22 +47,88 @@ func ReplyVirtualParamState(cl client.Client, name string, val []byte) {
 	)
 }
 
+var errAbortedTx = fmt.Errorf("current transaction is aborted, commands ignored until end of transaction block")
+
+func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, doCaching, completeRelay bool) error {
+
+	state, comment, err := rst.Parse(query, doCaching)
+	if err != nil {
+		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
+			/* this way we format next msg correctly */
+			rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
+		}
+
+		err = fmt.Errorf("client processing error: error processing query '%v': %w, tx status %s", query, err, rst.QueryExecutor().TxStatus().String())
+
+		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+			// _ = rst.UnrouteRoutes(rst.ActiveShards())
+			return rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
+		}
+
+		if rst.QueryExecutor().TxStatus() == txstatus.TXACT {
+			return rst.Client().ReplyErrWithTxStatus(err, txstatus.TXERR)
+		}
+
+		return rst.UnRouteWithError(rst.ActiveShards(), err)
+	}
+
+	txbefore := rst.QueryExecutor().TxStatus()
+	if txbefore == txstatus.TXERR {
+		if _, ok := state.(parser.ParseStateTXRollback); !ok {
+			return rst.Client().ReplyErrWithTxStatus(errAbortedTx, txstatus.TXERR)
+		}
+	}
+
+	err = ProcQueryAdvanced(rst, query, state, comment, binderQ, doCaching)
+
+	if txbefore != txstatus.TXIDLE && err != nil {
+		rst.QueryExecutor().SetTxStatus(txstatus.TXERR)
+	}
+
+	if !completeRelay {
+		return nil
+	}
+
+	if err == nil {
+		return rst.CompleteRelay(true)
+	}
+
+	/* outer function will complete relay here */
+
+	switch err {
+	case io.ErrUnexpectedEOF:
+		fallthrough
+	case io.EOF:
+		_ = rst.Unroute(rst.ActiveShards())
+		return err
+		// ok
+	default:
+		spqrlog.Zero.Error().
+			Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
+			Msg("client iteration done with error")
+
+		rerr := fmt.Errorf("client processing error: %v, tx status %s", err, rst.QueryExecutor().TxStatus().String())
+
+		if rst.QueryExecutor().TxStatus() == txstatus.TXERR {
+			return rst.Client().ReplyErrWithTxStatus(rerr, txstatus.TXERR)
+		}
+
+		return rst.UnRouteWithError(rst.ActiveShards(), rerr)
+	}
+}
+
 // ProcQueryAdvanced processes query, with router relay state
 // There are several types of query that we want to process in non-passthrough way.
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
 // So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
-func ProcQueryAdvanced(rst RelayStateMgr, query string, binderQ func() error, doCaching bool) error {
+func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) error {
 	statistics.RecordStartTime(statistics.Router, time.Now(), rst.Client().ID())
 
 	/* !!! Do not complete relay here (no TX status management) !!! */
 
 	spqrlog.Zero.Debug().Str("query", query).Uint("client", spqrlog.GetPointer(rst.Client())).Msgf("process relay state advanced")
-	state, comment, err := rst.Parse(query, doCaching)
-	if err != nil {
-		return fmt.Errorf("error processing query '%v': %w", query, err)
-	}
 
 	queryProc := func() error {
 		mp, err := parser.ParseComment(comment)

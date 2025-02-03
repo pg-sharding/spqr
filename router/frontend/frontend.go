@@ -1,7 +1,6 @@
 package frontend
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -34,15 +33,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAdvanced(rst, q.Query, func() error {
+			return relay.ProcQueryAdvancedTx(rst, q.Query, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
-			}, true); err != nil {
-				/* outer function will complete relay here */
-				return err
-			}
+			}, true, true)
 
-			return rst.CompleteRelay(true)
 		case *pgproto3.Execute:
 			// copy interface
 			cpQ := *q
@@ -62,15 +57,10 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// copy interface
 			cpQ := *q
 			q = &cpQ
-			if err := relay.ProcQueryAdvanced(rst, q.String, func() error {
+			return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
-			}, false); err != nil {
-				/* outer function will complete relay here */
-				return err
-			}
-
-			return rst.CompleteRelay(true)
+			}, false, true)
 		default:
 			return nil
 		}
@@ -128,16 +118,11 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		// copy interface
 		cpQ := *q
 		q = &cpQ
-		if err := relay.ProcQueryAdvanced(rst, q.String, func() error {
+		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
 			rst.AddQuery(q)
 			// this call compeletes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
-		}, false); err != nil {
-			/* outer function will complete relay here */
-			return err
-		}
-
-		return rst.CompleteRelay(true)
+		}, false, true)
 	default:
 		return nil
 	}
@@ -185,22 +170,18 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			}
 		}
 
-		if err := ProcessMessage(qr, rst, msg); err != nil {
-			switch err {
-			case io.ErrUnexpectedEOF:
-				fallthrough
-			case io.EOF:
-				_ = rst.Unroute(rst.ActiveShards())
-				return nil
-				// ok
-			default:
-				spqrlog.Zero.Error().
-					Uint("client", rst.Client().ID()).Int("tx-status", int(rst.QueryExecutor().TxStatus())).Err(err).
-					Msg("client iteration done with error")
-				if err := rst.UnRouteWithError(rst.ActiveShards(), fmt.Errorf("client processing error: %v, tx status %s", err, rst.TxStatus().String())); err != nil {
-					return err
-				}
-			}
+		err := ProcessMessage(qr, rst, msg)
+
+		switch err {
+		case nil:
+			break
+		case io.ErrUnexpectedEOF:
+			fallthrough
+		case io.EOF:
+			return nil
+			// ok
+		default:
+			return err
 		}
 	}
 }

@@ -1016,7 +1016,7 @@ func (cl *PsqlClient) Params() map[string]string {
 	return cl.activeParamSet
 }
 
-func (cl *PsqlClient) ReplyErrMsg(msg string, code string) error {
+func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) error {
 	var clerrmsg string
 
 	if cl.ReplyClientId {
@@ -1032,7 +1032,7 @@ func (cl *PsqlClient) ReplyErrMsg(msg string, code string) error {
 			Code:     code,
 		},
 		&pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXIDLE),
+			TxStatus: byte(s),
 		},
 	} {
 		if err := cl.Send(msg); err != nil {
@@ -1041,18 +1041,28 @@ func (cl *PsqlClient) ReplyErrMsg(msg string, code string) error {
 	}
 	return nil
 }
+
+func (cl *PsqlClient) ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error {
+	switch er := e.(type) {
+	case *spqrerror.SpqrError:
+		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, s)
+	default:
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, s)
+	}
+}
+
 func (cl *PsqlClient) ReplyErr(e error) error {
 	switch er := e.(type) {
 	case *spqrerror.SpqrError:
-		return cl.ReplyErrMsg(er.Error(), er.ErrorCode)
+		return cl.ReplyErrMsg(er.Error(), er.ErrorCode, txstatus.TXIDLE)
 	default:
-		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED)
+		return cl.ReplyErrMsg(e.Error(), spqrerror.SPQR_UNEXPECTED, txstatus.TXIDLE)
 	}
 }
 
 func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
 	clerrmsg := spqrerror.GetMessageByCode(code)
-	return cl.ReplyErrMsg(clerrmsg, code)
+	return cl.ReplyErrMsg(clerrmsg, code, txstatus.TXIDLE)
 }
 
 func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {

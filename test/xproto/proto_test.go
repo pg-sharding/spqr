@@ -460,7 +460,7 @@ func TestHintRoutingXproto(t *testing.T) {
 		Response []pgproto3.BackendMessage
 	}
 
-	for _, msgroup := range []MessageGroup{
+	for gr, msgroup := range []MessageGroup{
 		{
 			Request: []pgproto3.FrontendMessage{
 				&pgproto3.Query{
@@ -639,7 +639,7 @@ func TestHintRoutingXproto(t *testing.T) {
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg, fmt.Sprintf("iter msg %d", ind))
+			assert.Equal(t, msg, retMsg, fmt.Sprintf("group %d iter msg %d", gr, ind))
 		}
 	}
 }

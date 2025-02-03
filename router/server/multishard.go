@@ -426,6 +426,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		}, nil
 	case CommandCompleteState:
 		spqrlog.Zero.Info().Msg("multishard server: enter rfq await mode")
+		cntTXAct := 0
 
 		/* Step tree: fetch all datarow msgs */
 		for i := range m.activeShards {
@@ -443,8 +444,11 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 						return err
 					}
 
-					switch msg.(type) {
+					switch q := msg.(type) {
 					case *pgproto3.ReadyForQuery:
+						if q.TxStatus == byte(txstatus.TXACT) {
+							cntTXAct++
+						}
 						m.states[i] = ShardRFQState
 						return nil
 					default:
@@ -465,9 +469,18 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 
 		m.multistate = InitialState
 		m.status = txstatus.TXIDLE
-		return &pgproto3.ReadyForQuery{
-			TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
-		}, nil
+		if cntTXAct == 0 {
+			return &pgproto3.ReadyForQuery{
+				TxStatus: byte(txstatus.TXIDLE), // XXX : fix this
+			}, nil
+		} else if cntTXAct == len(m.activeShards) {
+			return &pgproto3.ReadyForQuery{
+				TxStatus: byte(txstatus.TXACT), // XXX : fix this
+			}, nil
+		} else {
+			rollback()
+			return nil, MultiShardSyncBroken
+		}
 	}
 
 	return nil, nil

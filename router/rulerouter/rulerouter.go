@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pg-sharding/spqr/pkg/models/spqrerror"
+	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -282,7 +283,7 @@ func (r *RuleRouterImpl) preRouteInitializedClientAdm(cl rclient.RouterClient) (
 		Msg("console client routed")
 
 	if err := cl.AssignRule(frRule); err != nil {
-		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR)
+		_ = cl.ReplyErrMsg("failed to assign rule", spqrerror.SPQR_ROUTING_ERROR, txstatus.TXIDLE)
 		return nil, err
 	}
 
