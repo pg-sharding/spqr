@@ -1,10 +1,15 @@
 package relay
 
-import "github.com/pg-sharding/spqr/router/parser"
+import (
+	"github.com/pg-sharding/spqr/pkg/txstatus"
+	"github.com/pg-sharding/spqr/router/parser"
+)
 
 // Execute requered command via
 // some protoc-specific logic
-type ProtoStateHandler interface {
+type QueryStateExecutor interface {
+	txstatus.TxStatusMgr
+
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error
 	ExecRollback(rst RelayStateMgr, query string) error

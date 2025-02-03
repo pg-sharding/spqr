@@ -25,14 +25,12 @@ func TestTxSimpleCommit(t *testing.T) {
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	ph := relay.NewSimpleProtoStateHandler()
-
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
 	cl.EXPECT().CommitActiveSet().Times(1)
 	cl.EXPECT().ReplyCommandComplete("COMMIT").Times(1)
 
-	err := ph.ExecCommit(rst, "COMMIT")
+	err := rst.QueryExecutor().ExecCommit(rst, "COMMIT")
 
 	assert.Nil(err)
 }
@@ -51,14 +49,12 @@ func TestTxSimpleRollback(t *testing.T) {
 
 	rst := relay.NewRelayState(qr, cl, cmngr)
 
-	ph := relay.NewSimpleProtoStateHandler()
-
 	cmngr.EXPECT().ConnectionActive(gomock.Any()).Return(false)
 
 	cl.EXPECT().Rollback().Times(1)
 	cl.EXPECT().ReplyCommandComplete("ROLLBACK").Times(1)
 
-	err := ph.ExecRollback(rst, "ROLLBACK")
+	err := rst.QueryExecutor().ExecRollback(rst, "ROLLBACK")
 
 	assert.Nil(err)
 }
