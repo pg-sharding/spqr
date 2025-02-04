@@ -38,6 +38,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 				rst.AddQuery(q)
 				return rst.ProcessMessageBuf(true, true)
 			}, true); err != nil {
+				/* outer function will complete relay here */
 				return err
 			}
 
@@ -63,9 +64,9 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			q = &cpQ
 			if err := relay.ProcQueryAdvanced(rst, q.String, func() error {
 				rst.AddQuery(q)
-
 				return rst.ProcessMessageBuf(true, true)
 			}, false); err != nil {
+				/* outer function will complete relay here */
 				return err
 			}
 
@@ -132,6 +133,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 			// this call compeletes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
 		}, false); err != nil {
+			/* outer function will complete relay here */
 			return err
 		}
 
@@ -188,6 +190,7 @@ func Frontend(qr qrouter.QueryRouter, cl client.RouterClient, cmngr poolmgr.Pool
 			case io.ErrUnexpectedEOF:
 				fallthrough
 			case io.EOF:
+				_ = rst.Unroute(rst.ActiveShards())
 				return nil
 				// ok
 			default:
