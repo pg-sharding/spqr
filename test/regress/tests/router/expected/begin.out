@@ -192,6 +192,27 @@ NOTICE: send query to shard(s) : sh1
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
+-- test ignore of all cmds after error
+BEGIN;
+SELECT * FROM test_beg WHERE id = 10;
+NOTICE: send query to shard(s) : sh1
+ id | age 
+----+-----
+ 10 |  16
+ 10 |  16
+(2 rows)
+
+INSERT INTO fff VALUES(1);
+ERROR:  relation "fff" does not exist
+LINE 1: INSERT INTO fff VALUES(1);
+                    ^
+INSERT INTO fff VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO fff VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+INSERT INTO fff VALUES(1);
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
 DROP TABLE test_beg;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console

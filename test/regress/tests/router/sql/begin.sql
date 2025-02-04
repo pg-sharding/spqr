@@ -59,6 +59,17 @@ SELECT * FROM test_beg WHERE id=10;
 INSERT INTO test_beg(id, age) VALUES (10, 16);
 ROLLBACK;
 
+
+-- test ignore of all cmds after error
+BEGIN;
+SELECT * FROM test_beg WHERE id = 10;
+INSERT INTO fff VALUES(1);
+INSERT INTO fff VALUES(1);
+INSERT INTO fff VALUES(1);
+INSERT INTO fff VALUES(1);
+ROLLBACK;
+
+
 DROP TABLE test_beg;
 
 \c spqr-console
