@@ -747,26 +747,6 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		Str("txstatus", rst.qse.TxStatus().String()).
 		Msg("complete relay iter")
 
-	switch rst.routingState.(type) {
-	case plan.ScatterPlan:
-		// TODO: explicitly forbid transaction, or hadnle it properly
-		spqrlog.Zero.Debug().Msg("unroute multishard route")
-
-		if err := rst.poolMgr.TXEndCB(rst); err != nil {
-			return nil
-		}
-
-		if replyCl {
-			if err := rst.Cl.Send(&pgproto3.ReadyForQuery{
-				TxStatus: byte(txstatus.TXIDLE),
-			}); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
 	/* move this logic to executor */
 	switch rst.qse.TxStatus() {
 	case txstatus.TXIDLE:
@@ -778,11 +758,7 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 			}
 		}
 
-		if err := rst.poolMgr.TXEndCB(rst); err != nil {
-			return err
-		}
-
-		return nil
+		return rst.poolMgr.TXEndCB(rst)
 	case txstatus.TXERR:
 		fallthrough
 	case txstatus.TXACT:
@@ -795,8 +771,8 @@ func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
 		}
 		return nil
 	default:
-		err := fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
-		return err
+		_ = rst.Unroute(rst.activeShards)
+		return fmt.Errorf("unknown tx status %v", rst.qse.TxStatus())
 	}
 }
 
@@ -1087,6 +1063,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 				return nil
 			}, true /* cache parsing for prep statement */); err != nil {
+				/* outer function will complete relay here */
 				return err
 			}
 
