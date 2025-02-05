@@ -708,7 +708,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(node.FromClause) == 0 && (node.LArg == nil || node.RArg == nil) {
-
 			for _, expr := range node.TargetList {
 				switch e := expr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
