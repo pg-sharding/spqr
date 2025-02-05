@@ -31,6 +31,9 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 		*/
 		return plan.RandomDispatchPlan{}, nil
 
+	case *lyx.CreateSchema:
+		return plan.DDLState{}, nil
+
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateTable:
 		if val := rm.SPH.AutoDistribution(); val != "" {
