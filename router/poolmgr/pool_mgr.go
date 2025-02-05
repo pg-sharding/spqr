@@ -65,6 +65,7 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 		if err := cl.Server().Reset(); err != nil {
 			return err
 		}
+		// TODO: figure out if we need this
 		// return fmt.Errorf("failed to unroute client from connection with active TX")
 	}
 
