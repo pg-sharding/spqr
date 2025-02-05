@@ -680,6 +680,17 @@ func TestSingleShard(t *testing.T) {
 		// },
 
 		{
+			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
+			exp: plan.ShardMatchState{
+				Route: &kr.ShardKey{
+					Name: "sh2",
+				},
+				TargetSessionAttrs: "any",
+			},
+			err: nil,
+		},
+
+		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
 			exp: plan.ShardMatchState{
 				Route: &kr.ShardKey{
