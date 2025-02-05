@@ -22,3 +22,4 @@ test: distributed_relation_multishard_modify
 test: part_table
 test: reference_table
 test: ddl
+test: engine_v2
