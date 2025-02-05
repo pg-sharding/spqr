@@ -34,7 +34,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.32.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4
