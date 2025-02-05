@@ -708,6 +708,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 		/* We cannot route SQL statements without a FROM clause. However, there are a few cases to consider. */
 		if len(node.FromClause) == 0 && (node.LArg == nil || node.RArg == nil) {
+
 			for _, expr := range node.TargetList {
 				switch e := expr.(type) {
 				/* Special cases for SELECT current_schema(), SELECT set_config(...), and SELECT pg_is_in_recovery() */
@@ -716,6 +717,12 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 					/* for queries, that need to access data on shard, ignore these "virtual" func.	 */
 					if e.Name == "current_schema" || e.Name == "set_config" || e.Name == "pg_is_in_recovery" || e.Name == "version" {
 						return plan.RandomDispatchPlan{}, ro, nil
+					}
+					for _, innerExp := range e.Args {
+						switch iE := innerExp.(type) {
+						case *lyx.Select:
+							_, _ = qr.planQueryV1(ctx, iE, rm)
+						}
 					}
 				/* Expression like SELECT 1, SELECT 'a', SELECT 1.0, SELECT true, SELECT false */
 				case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprNConst, *lyx.AExprBConst:
@@ -726,8 +733,11 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 					if e.ColName == "current_schema" {
 						return plan.RandomDispatchPlan{}, ro, nil
 					}
+				case *lyx.Select:
+					_, _ = qr.planQueryV1(ctx, e, rm)
 				}
 			}
+
 		} else if node.LArg != nil && node.RArg != nil {
 			/* deparse populates the FromClause info,
 			 * so it do recurse into both branches, even if an error is encountered

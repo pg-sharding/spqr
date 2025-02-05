@@ -20,6 +20,7 @@ test: copy_reference_table
 test: copy_inside_singleshard_connection
 test: distributed_relation_multishard_modify
 test: part_table
+test: target_list_routing
 test: reference_table
 test: ddl
 test: engine_v2

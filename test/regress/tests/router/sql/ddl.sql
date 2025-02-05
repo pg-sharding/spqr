@@ -21,6 +21,8 @@ ALTER TABLE "table_2" RENAME TO "table_1";
 ALTER TABLE "tmp" RENAME TO "table_2";
 COMMIT;
 
+DROP SCHEMA sh1;
+
 DROP TABLE table_1 CASCADE;
 DROP TABLE table_2;
 
