@@ -61,6 +61,47 @@ ERROR:  current transaction is aborted, commands ignored until end of transactio
 INSERT INTO tt (i) VALUES(1);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK;
+BEGIN;
+-- error while query planning.
+SELECT j FROM ttr /* __spqr__engine_v2: true */;
+ERROR:  client processing error: error processing query 'SELECT j FROM ttr /* __spqr__engine_v2: true */;': distribution for relation "ttr" not found., tx status ERROR
+-- errors
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+SET __spqr__default_route_behaviour TO BLOCK;
+BEGIN;
+-- try scatter out, but error because of DRB.
+SELECT j FROM tt;
+ERROR:  client processing error: error processing query 'SELECT j FROM tt;': failed to match any datashard., tx status ERROR
+-- errors
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
+SET __spqr__default_route_behaviour TO ALLOW;
+BEGIN;
+-- scatter out, recieve error from shards.
+SELECT j FROM tt /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ERROR:  column "j" does not exist
+LINE 1: SELECT j FROM tt /* __spqr__engine_v2: true */;
+               ^
+-- errors
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+SELECT;
+ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK;
 -- should exists 
 TABLE tt;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4

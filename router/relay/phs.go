@@ -515,6 +515,12 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 				return nil, false, err
 			}
 		case *pgproto3.ReadyForQuery:
+
+			spqrlog.Zero.Debug().
+				Str("server", server.Name()).
+				Str("txstatus", txstatus.TXStatus(v.TxStatus).String()).
+				Msg("received message from server")
+
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return unreplied, ok, nil
 		case *pgproto3.ErrorResponse:
