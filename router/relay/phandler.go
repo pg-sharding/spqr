@@ -10,6 +10,7 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/server"
 )
 
 // Execute requered command via
@@ -18,6 +19,8 @@ type QueryStateExecutor interface {
 	txstatus.TxStatusMgr
 
 	Client() client.RouterClient
+
+	Deploy(server server.Server) error
 
 	ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error
 	ExecCommit(rst RelayStateMgr, query string) error

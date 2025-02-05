@@ -32,7 +32,8 @@ type Client interface {
 
 	ID() uint
 
-	ReplyErrMsg(e string, c string) error
+	ReplyErrMsg(e string, c string, s txstatus.TXStatus) error
+	ReplyErrWithTxStatus(e error, s txstatus.TXStatus) error
 	ReplyErrMsgByCode(code string) error
 	ReplyErr(errmsg error) error
 	ReplyRFQ(txstatus txstatus.TXStatus) error

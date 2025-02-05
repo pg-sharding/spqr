@@ -12,46 +12,76 @@ CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
  distribution id -> ds1
 (1 row)
 
-CREATE KEY RANGE krid1 FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 1
 (1 row)
 
-CREATE KEY RANGE krid2 FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+CREATE KEY RANGE FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
  add key range 
 ---------------
  bound -> 101
 (1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION table_1 DISTRIBUTION KEY id;
-        attach table        
-----------------------------
- relation name   -> table_1
- distribution id -> ds1
-(2 rows)
+CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 201
+(1 row)
 
-ALTER DISTRIBUTION ds1 ATTACH RELATION table_2 DISTRIBUTION KEY id;
-        attach table        
-----------------------------
- relation name   -> table_2
+CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 301
+(1 row)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY id;
+       attach table        
+---------------------------
+ relation name   -> table1
  distribution id -> ds1
 (2 rows)
 
 \c regress
-CREATE TABLE table_1(id INT PRIMARY KEY);
+CREATE TABLE table1(id INT PRIMARY KEY);
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-CREATE TABLE table_2(id INT PRIMARY KEY);
+COPY table1 (id) FROM STDIN;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- should fail
 BEGIN;
-ALTER TABLE "table_1" RENAME TO "tmp" /* __spqr__engine_v2: true */;
+DELETE FROM table1;
+ERROR:  client processing error: error processing query 'DELETE FROM table1;': failed to match any datashard., tx status ERROR
+ROLLBACK;
+BEGIN;
+DELETE FROM table1 /* __spqr__engine_v2: true  */; 
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-ALTER TABLE "table_2" RENAME TO "table_1";
-ALTER TABLE "tmp" RENAME TO "table_2";
-COMMIT;
-DROP TABLE table_1 CASCADE;
+SELECT id FROM table1 ORDER BY id;
+ id 
+----
+(0 rows)
+
+ROLLBACK;
+SELECT id FROM table1 ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
-DROP TABLE table_2;
+ id  
+-----
+   1
+   2
+   3
+ 100
+ 101
+ 102
+ 103
+ 200
+ 201
+ 202
+ 300
+ 301
+ 302
+(13 rows)
+
+DROP TABLE table1 CASCADE;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
 \c spqr-console
 

@@ -491,8 +491,10 @@ func (sh *Conn) fire(q string) error {
 			switch v := msg.(type) {
 			case *pgproto3.ReadyForQuery:
 				if v.TxStatus == byte(txstatus.TXIDLE) {
+					sh.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 					return nil
 				}
+				return fmt.Errorf("unexpected tx status with rollback")
 			}
 		}
 	}

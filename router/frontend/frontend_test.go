@@ -179,6 +179,8 @@ func TestFrontendXProto(t *testing.T) {
 		PoolMode: config.PoolModeTransaction,
 	}
 
+	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()
+
 	beRule := &config.BackendRule{}
 
 	qr.EXPECT().Mgr().Return(mmgr).AnyTimes()

@@ -18,6 +18,7 @@ import (
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
 	"github.com/pg-sharding/spqr/router/rmeta"
+	"github.com/pg-sharding/spqr/router/server"
 
 	"github.com/pg-sharding/lyx/lyx"
 )
@@ -27,6 +28,68 @@ type QueryStateExecutorImpl struct {
 
 	txStatus txstatus.TXStatus
 	cl       client.RouterClient
+
+	savedBegin *pgproto3.Query
+}
+
+var unexpectedDeployTxErr = fmt.Errorf("unexpected exector tx state in transaction deploy")
+var unexpectedTxResponceErr = fmt.Errorf("unexpected responce in transaction deploy")
+var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
+
+func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
+	if server == nil {
+		return unroutedClientDeployError
+	}
+	if s.txStatus == txstatus.TXIDLE {
+		/* unexpected? */
+		return unexpectedDeployTxErr
+	}
+
+	for _, sh := range server.Datashards() {
+		if err := sh.Send(q); err != nil {
+			s.txStatus = txstatus.TXERR
+			return err
+		}
+		/* we expect command complete and rfq as begin responce */
+		msg, err := sh.Receive()
+		if err != nil {
+			return err
+		}
+		if _, ok := msg.(*pgproto3.CommandComplete); !ok {
+			return unexpectedTxResponceErr
+		}
+
+		/* we expect command complete and rfq as begin responce */
+		msg, err = sh.Receive()
+		if err != nil {
+			return err
+		}
+		if q, ok := msg.(*pgproto3.ReadyForQuery); !ok || q.TxStatus != byte(expTx) {
+			return unexpectedTxResponceErr
+		} else {
+			s.SetTxStatus(txstatus.TXStatus(q.TxStatus))
+		}
+	}
+
+	return nil
+
+}
+
+// Deploy implements QueryStateExecutor.
+func (s *QueryStateExecutorImpl) Deploy(server server.Server) error {
+	if s.txStatus == txstatus.TXIDLE {
+		/* unexpected? */
+		return nil
+	}
+
+	if !s.cl.EnhancedMultiShardProcessing() {
+		/* move this logic to executor */
+		if s.TxStatus() == txstatus.TXACT && len(server.Datashards()) > 1 {
+			return fmt.Errorf("cannot route in an active transaction")
+		}
+	}
+
+	return s.deployTxStatusInternal(server, s.savedBegin, txstatus.TXACT)
 }
 
 func (s *QueryStateExecutorImpl) SetTxStatus(status txstatus.TXStatus) {
@@ -41,12 +104,10 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
 	// explicitly set silent query message, as it can differ from query begin in xporot
-	rst.AddSilentQuery(&pgproto3.Query{
-		String: query,
-	})
 
 	s.SetTxStatus(txstatus.TXACT)
 	s.cl.StartTx()
+	s.savedBegin = &pgproto3.Query{String: query}
 
 	spqrlog.Zero.Debug().Msg("start new transaction")
 
@@ -59,7 +120,6 @@ func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *
 		}
 	}
 	return rst.Client().ReplyCommandComplete("BEGIN")
-
 }
 
 // query in commit query. maybe commit or commit `name`
@@ -73,14 +133,13 @@ func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) err
 		rst.Flush()
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{
-		String: query,
-	})
-	err := rst.ProcessMessageBuf(true, true)
-	if err == nil {
-		rst.Client().CommitActiveSet()
+
+	if err := s.deployTxStatusInternal(rst.Client().Server(), &pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+		return err
 	}
-	return err
+
+	rst.Client().CommitActiveSet()
+	return rst.Client().ReplyCommandComplete("COMMIT")
 }
 
 /* TODO: proper support for rollback to savepoint */
@@ -94,14 +153,20 @@ func (s *QueryStateExecutorImpl) ExecRollback(rst RelayStateMgr, query string) e
 		rst.Flush()
 		return nil
 	}
-	rst.AddQuery(&pgproto3.Query{
-		String: query,
-	})
-	err := rst.ProcessMessageBuf(true, true)
-	if err == nil {
-		s.cl.Rollback()
+
+	/* unroute will take care of tx server */
+	s.SetTxStatus(txstatus.TXIDLE)
+	if server := s.cl.Server(); server != nil {
+		for _, sh := range server.Datashards() {
+			if err := sh.Cleanup(&config.FrontendRule{
+				PoolRollback: true,
+			}); err != nil {
+				return err
+			}
+		}
 	}
-	return err
+	s.cl.Rollback()
+	return s.cl.ReplyCommandComplete("ROLLBACK")
 }
 
 func (s *QueryStateExecutorImpl) ExecSet(rst RelayStateMgr, query string, name, value string) error {
@@ -365,7 +430,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 	server := s.Client().Server()
 
 	if server == nil {
-		s.SetTxStatus(txstatus.TXERR)
 		return nil, false, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
@@ -375,7 +439,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 		Msg("relay process query")
 
 	if err := server.Send(query); err != nil {
-		s.SetTxStatus(txstatus.TXERR)
 		return nil, false, err
 	}
 
@@ -402,7 +465,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 	for {
 		msg, err := server.Receive()
 		if err != nil {
-			s.SetTxStatus(txstatus.TXERR)
 			return nil, false, err
 		}
 
@@ -411,7 +473,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 			// handle replyCl somehow
 			err = s.Client().Send(msg)
 			if err != nil {
-				s.SetTxStatus(txstatus.TXERR)
 				return nil, false, err
 			}
 
@@ -451,17 +512,21 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 					}
 				}
 			}(); err != nil {
-				s.SetTxStatus(txstatus.TXERR)
 				return nil, false, err
 			}
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
 			return unreplied, ok, nil
 		case *pgproto3.ErrorResponse:
+
+			spqrlog.Zero.Debug().
+				Str("server", server.Name()).
+				Type("msg-type", v).
+				Msg("received message from server")
+
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					s.SetTxStatus(txstatus.TXERR)
 					return nil, false, err
 				}
 			} else {
@@ -481,7 +546,6 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					s.SetTxStatus(txstatus.TXERR)
 					return nil, false, err
 				}
 			} else {

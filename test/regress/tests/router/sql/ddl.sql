@@ -14,7 +14,7 @@ CREATE TABLE table_1(id INT PRIMARY KEY);
 CREATE TABLE table_2(id INT PRIMARY KEY);
 
 BEGIN;
-ALTER TABLE "table_1" RENAME TO "tmp";
+ALTER TABLE "table_1" RENAME TO "tmp" /* __spqr__engine_v2: true */;
 ALTER TABLE "table_2" RENAME TO "table_1";
 ALTER TABLE "tmp" RENAME TO "table_2";
 COMMIT;
