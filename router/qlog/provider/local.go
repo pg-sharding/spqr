@@ -60,11 +60,17 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 	scanner.Split(bufio.ScanLines)
 
 	var queries []string
+	qs := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		query := strings.TrimSpace(line)
 		if len(query) > 0 {
-			queries = append(queries, query)
+			qs += " " + query
+
+			if query[len(query)-1] == ';' {
+				queries = append(queries, qs)
+				qs = ""
+			}
 		}
 	}
 
