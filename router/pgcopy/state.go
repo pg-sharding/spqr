@@ -7,8 +7,6 @@ import (
 )
 
 type CopyState struct {
-	ExpRoute *kr.ShardKey
-
 	RM *rmeta.RoutingMetadataContext
 
 	Delimiter  byte

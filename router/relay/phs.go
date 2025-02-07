@@ -10,7 +10,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/models/distributions"
 	"github.com/pg-sharding/spqr/pkg/models/hashfunction"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
@@ -252,7 +251,6 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
 			Attached:  true,
-			ExpRoute:  &kr.ShardKey{},
 		}, nil
 	}
 
@@ -299,7 +297,6 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 
 	return &pgcopy.CopyState{
 		Delimiter:  delimiter,
-		ExpRoute:   &kr.ShardKey{},
 		Krs:        krs,
 		RM:         rmeta.NewRoutingMetadataContext(s.cl, mgr),
 		TargetType: TargetType,
@@ -499,14 +496,10 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 
 						if leftOvermsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftOvermsgData}, cps); err != nil {
 							/* complete relay if copy failed here */
-							// _ = rst.qse.ProcCopyComplete(&pg)
 							return err
 						}
 					case *pgproto3.CopyDone, *pgproto3.CopyFail:
-						if err := s.ProcCopyComplete(cpMsg); err != nil {
-							return err
-						}
-						return nil
+						return s.ProcCopyComplete(cpMsg)
 					default:
 						/* panic? */
 					}
