@@ -634,6 +634,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	// XXX: need alter table which renames sharding column to non-sharding column check
 	case *lyx.CreateSchema:
 		return plan.DDLState{}, false, nil
+	case *lyx.Grant:
+		return plan.DDLState{}, false, nil
 	case *lyx.CreateTable:
 		if val := rm.SPH.AutoDistribution(); val != "" {
 
