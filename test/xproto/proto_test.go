@@ -1113,6 +1113,100 @@ func TestPrepStmtSimple(t *testing.T) {
 				},
 			},
 		},
+		{
+			Request: []pgproto3.FrontendMessage{
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "select 'Hello, world!';",
+				},
+				&pgproto3.Bind{},
+
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+
+				&pgproto3.Parse{
+					Name:  "",
+					Query: "select 'Hello, world 2!';",
+				},
+				&pgproto3.Bind{},
+
+				&pgproto3.Describe{
+					Name:       "",
+					ObjectType: 'P',
+				},
+				&pgproto3.Execute{},
+				&pgproto3.Sync{},
+			},
+			Response: []pgproto3.BackendMessage{
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("?column?"),
+							TableOID:             0,
+							TableAttributeNumber: 0,
+							DataTypeOID:          25, /* textoid */
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("Hello, world!"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+
+				&pgproto3.ParseComplete{},
+
+				&pgproto3.BindComplete{},
+
+				&pgproto3.RowDescription{
+					Fields: []pgproto3.FieldDescription{
+						{
+							Name:                 []byte("?column?"),
+							TableOID:             0,
+							TableAttributeNumber: 0,
+							DataTypeOID:          25, /* textoid */
+							DataTypeSize:         -1,
+							TypeModifier:         -1,
+							Format:               0,
+						},
+					},
+				},
+
+				&pgproto3.DataRow{
+					Values: [][]byte{
+						[]byte("Hello, world 2!"),
+					},
+				},
+
+				&pgproto3.CommandComplete{
+					CommandTag: []byte("SELECT 1"),
+				},
+
+				&pgproto3.ReadyForQuery{
+					TxStatus: byte(txstatus.TXIDLE),
+				},
+			},
+		},
 	} {
 		for _, msg := range msgroup.Request {
 			frontend.Send(msg)
