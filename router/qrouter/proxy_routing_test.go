@@ -104,6 +104,11 @@ func TestMultiShardRouting(t *testing.T) {
 			err:   nil,
 		},
 		{
+			query: "GRANT SELECT ON TABLE odssd.'eee' TO pp2;			",
+			exp:   plan.DDLState{},
+			err:   nil,
+		},
+		{
 			query: "SELECT * FROM pg_catalog.pg_type",
 			exp:   plan.RandomDispatchPlan{},
 			err:   nil,
