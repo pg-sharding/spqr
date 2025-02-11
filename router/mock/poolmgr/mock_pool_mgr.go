@@ -168,20 +168,6 @@ func (mr *MockPoolMgrMockRecorder) ConnectionActive(rst interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConnectionActive", reflect.TypeOf((*MockPoolMgr)(nil).ConnectionActive), rst)
 }
 
-// RouteCB mocks base method.
-func (m *MockPoolMgr) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RouteCB", client, sh)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// RouteCB indicates an expected call of RouteCB.
-func (mr *MockPoolMgrMockRecorder) RouteCB(client, sh interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RouteCB", reflect.TypeOf((*MockPoolMgr)(nil).RouteCB), client, sh)
-}
-
 // TXEndCB mocks base method.
 func (m *MockPoolMgr) TXEndCB(rst poolmgr.ConnectionKeeper) error {
 	m.ctrl.T.Helper()

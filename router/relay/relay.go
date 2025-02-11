@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/pg-sharding/lyx/lyx"
@@ -525,7 +527,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 		}
 	}
 
-	if err := rst.Connect(routes); err != nil {
+	if err := rst.Connect(); err != nil {
 		spqrlog.Zero.Error().
 			Err(err).
 			Uint("client", rst.Client().ID()).
@@ -667,11 +669,23 @@ func (rst *RelayStateImpl) CurrentRoutes() []*kr.ShardKey {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) Connect(shardRoutes []*kr.ShardKey) error {
+func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
+	var shardNames []string
+	for _, shkey := range sh {
+		shardNames = append(shardNames, shkey.Name)
+	}
+	sort.Strings(shardNames)
+	shardMatches := strings.Join(shardNames, ",")
+
+	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) Connect() error {
 	var serv server.Server
 	var err error
 
-	if len(shardRoutes) > 1 {
+	if len(rst.ActiveShards()) > 1 {
 		serv, err = server.NewMultiShardServer(rst.Cl.Route().ServPool())
 		if err != nil {
 			return err
@@ -691,8 +705,19 @@ func (rst *RelayStateImpl) Connect(shardRoutes []*kr.ShardKey) error {
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
 
-	if err := rst.poolMgr.RouteCB(rst.Cl, rst.activeShards); err != nil {
-		return err
+	if rst.Client().ShowNoticeMsg() {
+		if err := replyShardMatches(rst.Client(), rst.ActiveShards()); err != nil {
+			return err
+		}
+	}
+
+	for _, shkey := range rst.ActiveShards() {
+		spqrlog.Zero.Debug().
+			Str("client tsa", string(rst.Client().GetTsa())).
+			Msg("adding shard with tsa")
+		if err := rst.Client().Server().AddDataShard(rst.Client().ID(), shkey, rst.Client().GetTsa()); err != nil {
+			return err
+		}
 	}
 
 	return nil
