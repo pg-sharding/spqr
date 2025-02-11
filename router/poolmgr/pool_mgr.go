@@ -128,6 +128,12 @@ func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.S
 
 // TODO : unit tests
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+
+	if cl.Server() == nil {
+		/* If there is nothing to unroute, return */
+		return nil
+	}
+
 	for _, shkey := range sh {
 		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
 			return err

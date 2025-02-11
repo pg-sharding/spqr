@@ -659,10 +659,10 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) CurrentRoutes() []*kr.ShardKey {
+func (rst *RelayStateImpl) CurrentRoutes() []kr.ShardKey {
 	switch q := rst.routingState.(type) {
 	case plan.ShardMatchState:
-		return []*kr.ShardKey{q.Route}
+		return []kr.ShardKey{*q.Route}
 	default:
 		return nil
 	}
@@ -1064,7 +1064,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				if rst.bindRoute == nil {
 					routes := rst.CurrentRoutes()
 					if len(routes) == 1 {
-						rst.bindRoute = routes[0]
+						rst.bindRoute = &routes[0]
 					} else {
 						return fmt.Errorf("failed to deploy prepared statement")
 					}
@@ -1440,7 +1440,7 @@ func (rst *RelayStateImpl) PrepareRelayStepOnAnyRoute() (func() error, error) {
 	case nil:
 		routes := rst.CurrentRoutes()
 		return func() error {
-			return rst.UnrouteRoutes(routes)
+			return rst.Unroute(routes)
 		}, nil
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
