@@ -73,10 +73,15 @@ func TestFrontendSimple(t *testing.T) {
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{})
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 
+	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
 
 	cl.EXPECT().CleanupLocalSet().AnyTimes()
+
+	cl.EXPECT().ShowNoticeMsg().AnyTimes()
+	cl.EXPECT().GetTsa().AnyTimes()
 
 	cl.EXPECT().Usr().AnyTimes().Return("user1")
 	cl.EXPECT().DB().AnyTimes().Return("db1")
@@ -103,8 +108,6 @@ func TestFrontendSimple(t *testing.T) {
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
-
-	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -194,9 +197,14 @@ func TestFrontendXProto(t *testing.T) {
 		sh,
 	})
 
+	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
 	/* query Router */
 
 	qr.EXPECT().DataShardsRoutes().AnyTimes().Return([]*kr.ShardKey{{Name: "sh1"}})
+
+	cl.EXPECT().ShowNoticeMsg().AnyTimes()
+	cl.EXPECT().GetTsa().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -223,8 +231,6 @@ func TestFrontendXProto(t *testing.T) {
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
-
-	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 
@@ -349,6 +355,10 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	srv.EXPECT().Name().AnyTimes().Return("serv1")
 	srv.EXPECT().Datashards().AnyTimes().Return([]shard.Shard{sh1, sh2})
+	srv.EXPECT().AddDataShard(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	cl.EXPECT().ShowNoticeMsg().AnyTimes()
+	cl.EXPECT().GetTsa().AnyTimes()
 
 	cl.EXPECT().Server().AnyTimes().Return(srv)
 	cl.EXPECT().MaintainParams().AnyTimes().Return(false)
@@ -380,8 +390,6 @@ func TestFrontendSimpleCopyIn(t *testing.T) {
 
 	// reroute on first query in this case
 	cmngr.EXPECT().ValidateReRoute(gomock.Any()).AnyTimes().Return(true)
-
-	cmngr.EXPECT().RouteCB(cl, gomock.Any()).AnyTimes()
 
 	cmngr.EXPECT().UnRouteCB(gomock.Any(), gomock.Any()).AnyTimes()
 

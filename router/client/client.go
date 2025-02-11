@@ -971,7 +971,6 @@ func (cl *PsqlClient) AssignRoute(r *route.Route) error {
 }
 
 func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
-
 	if cl.serverP.Load() != nil {
 		return fmt.Errorf("client already has active connection")
 	}

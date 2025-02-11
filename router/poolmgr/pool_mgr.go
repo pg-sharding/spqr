@@ -2,8 +2,6 @@ package poolmgr
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -29,7 +27,6 @@ type ConnectionKeeper interface {
 type PoolMgr interface {
 	TXEndCB(rst ConnectionKeeper) error
 
-	RouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteCB(client client.RouterClient, sh []kr.ShardKey) error
 	UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error
 
@@ -90,38 +87,6 @@ func NewTxConnManager() *TxConnManager {
 }
 
 // TODO : unit tests
-func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
-	var shardNames []string
-	for _, shkey := range sh {
-		shardNames = append(shardNames, shkey.Name)
-	}
-	sort.Strings(shardNames)
-	shardMatches := strings.Join(shardNames, ",")
-
-	return client.ReplyNotice("send query to shard(s) : " + shardMatches)
-}
-
-// TODO : unit tests
-func (t *TxConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if client.ShowNoticeMsg() {
-		if err := replyShardMatches(client, sh); err != nil {
-			return err
-		}
-	}
-
-	for _, shkey := range sh {
-		spqrlog.Zero.Debug().
-			Str("client tsa", string(client.GetTsa())).
-			Msg("adding shard with tsa")
-		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// TODO : unit tests
 func (t *TxConnManager) ConnectionActive(rst ConnectionKeeper) bool {
 	return rst.ActiveShards() != nil
 }
@@ -175,23 +140,6 @@ func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) er
 }
 
 func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
-	return nil
-}
-
-// TODO : unit tests
-func (s *SessConnManager) RouteCB(client client.RouterClient, sh []kr.ShardKey) error {
-	if client.ShowNoticeMsg() {
-		if err := replyShardMatches(client, sh); err != nil {
-			return err
-		}
-	}
-
-	for _, shkey := range sh {
-		if err := client.Server().AddDataShard(client.ID(), shkey, client.GetTsa()); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
