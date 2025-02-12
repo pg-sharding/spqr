@@ -40,16 +40,7 @@ func unRouteWithError(cmngr PoolMgr, client client.RouterClient, sh []kr.ShardKe
 	return client.ReplyErr(errmsg)
 }
 
-type TxConnManager struct {
-}
-
-// TODO : unit tests
-func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
-	return unRouteWithError(t, client, sh, errmsg)
-}
-
-// TODO : unit tests
-func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+func unRouteShardsCommon(cl client.RouterClient, sh []kr.ShardKey) error {
 	var anyerr error
 	anyerr = nil
 
@@ -80,6 +71,19 @@ func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) erro
 	_ = cl.Unroute()
 
 	return anyerr
+}
+
+type TxConnManager struct {
+}
+
+// TODO : unit tests
+func (t *TxConnManager) UnRouteWithError(client client.RouterClient, sh []kr.ShardKey, errmsg error) error {
+	return unRouteWithError(t, client, sh, errmsg)
+}
+
+// TODO : unit tests
+func (t *TxConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
+	return unRouteShardsCommon(cl, sh)
 }
 
 func NewTxConnManager() *TxConnManager {
@@ -128,21 +132,7 @@ func (s *SessConnManager) UnRouteWithError(client client.RouterClient, sh []kr.S
 
 // TODO : unit tests
 func (s *SessConnManager) UnRouteCB(cl client.RouterClient, sh []kr.ShardKey) error {
-
-	if cl.Server() == nil {
-		/* If there is nothing to unroute, return */
-		return nil
-	}
-
-	for _, shkey := range sh {
-		if err := cl.Server().UnRouteShard(shkey, cl.Rule()); err != nil {
-			return err
-		}
-	}
-
-	_ = cl.Unroute()
-
-	return nil
+	return unRouteShardsCommon(cl, sh)
 }
 
 func (s *SessConnManager) TXEndCB(rst ConnectionKeeper) error {
