@@ -827,16 +827,6 @@ func (rst *RelayStateImpl) Unroute(shkey []kr.ShardKey) error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) UnrouteRoutes(routes []*kr.ShardKey) error {
-	keys := make([]kr.ShardKey, len(routes))
-	for ind, r := range routes {
-		keys[ind] = *r
-	}
-
-	return rst.Unroute(keys)
-}
-
-// TODO : unit tests
 func (rst *RelayStateImpl) UnRouteWithError(shkey []kr.ShardKey, errmsg error) error {
 	_ = rst.poolMgr.UnRouteWithError(rst.Cl, shkey, errmsg)
 	return rst.Reset()
