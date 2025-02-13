@@ -716,7 +716,7 @@ func (q *MemQDB) GetDistribution(_ context.Context, id string) (*Distribution, e
 }
 
 func (q *MemQDB) GetRelationDistribution(_ context.Context, relation string) (*Distribution, error) {
-	spqrlog.Zero.Debug().Msg("memqdb: get distribution for table")
+	spqrlog.Zero.Debug().Str("relation", relation).Msg("memqdb: get distribution for table")
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 

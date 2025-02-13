@@ -24,3 +24,4 @@ test: target_list_routing
 test: reference_table
 test: ddl
 test: engine_v2
+test: subplan
