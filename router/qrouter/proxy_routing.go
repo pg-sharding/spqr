@@ -158,8 +158,10 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 			/* should not happend */
 		case *lyx.AExprEmpty:
 			/*skip*/
+		case *lyx.Select:
+			/* in engine v2 we skip subplans */
 		default:
-			return rerrors.ErrComplexQuery
+			return fmt.Errorf("route by clause, unknown expr %T: %w", curr, rerrors.ErrComplexQuery)
 		}
 	}
 	return nil

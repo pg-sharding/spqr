@@ -1,0 +1,98 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 101
+(1 row)
+
+CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 201
+(1 row)
+
+CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 301
+(1 row)
+
+CREATE REFERENCE TABLE ref_rel_1;
+         attach table          
+-------------------------------
+ relation name   -> ref_rel_1
+ distribution id -> REPLICATED
+(2 rows)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
+       attach table        
+---------------------------
+ relation name   -> table1
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE table1(i INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE ref_rel_1(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+-- with engine v2 this should NOT be dispatched
+SELECT i, (SELECT count(*) from table1) FROM table1 WHERE i = 101;
+NOTICE: send query to shard(s) : sh2
+ i | count 
+---+-------
+(0 rows)
+
+-- TODO: test this
+--SELECT i, (SELECT count(*) from ref_rel_1) FROM ref_rel_1;
+-- with engine v2 this should NOT be dispatched
+SELECT i, (SELECT count(*) from ref_rel_1) FROM table1 WHERE i = 201;
+NOTICE: send query to shard(s) : sh3
+ i | count 
+---+-------
+(0 rows)
+
+--SELECT i, (SELECT count(*) from table1) FROM ref_rel_1;
+DROP TABLE table1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ref_rel_1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+ distribution id -> ds1
+(2 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+
