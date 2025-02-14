@@ -838,7 +838,7 @@ func TestSimpleAdvancedSETParsing(t *testing.T) {
 	}
 }
 
-func TestPrepStmtSimpleParametrizedQuery(t *testing.T) {
+func TestPrepStmtParametrizedQuerySimple(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")
@@ -1213,7 +1213,7 @@ func TestPrepStmtSimple(t *testing.T) {
 		}
 		_ = frontend.Flush()
 		backendFinished := false
-		for _, msg := range msgroup.Response {
+		for i, msg := range msgroup.Response {
 			if backendFinished {
 				break
 			}
@@ -1235,7 +1235,7 @@ func TestPrepStmtSimple(t *testing.T) {
 			default:
 				break
 			}
-			assert.Equal(t, msg, retMsg)
+			assert.Equal(t, msg, retMsg, "iter %d", i)
 		}
 	}
 }

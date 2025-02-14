@@ -554,8 +554,77 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
+var expandInTxError = fmt.Errorf("unxpected server expand request")
+
 // TODO : unit tests
-func (rst *RelayStateImpl) Reroute() error {
+func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
+	// if there is no routes to expand, there is nowhere to do
+	if len(routes) == 0 {
+		return nil
+	}
+
+	if rst.Client().Server().TxStatus() == txstatus.TXERR {
+		/* should never happen */
+		return expandInTxError
+	}
+
+	rst.activeShards = nil
+	for _, shr := range routes {
+		rst.activeShards = append(rst.activeShards, *shr)
+	}
+
+	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
+
+	if rst.Client().ShowNoticeMsg() {
+		if err := replyShardMatches(rst.Client(), rst.ActiveShards()); err != nil {
+			return err
+		}
+	}
+
+	beforeTx := rst.Client().Server().TxStatus()
+
+	for _, shkey := range routes {
+		spqrlog.Zero.Debug().
+			Str("client tsa", string(rst.Client().GetTsa())).
+			Str("deploying tx", rst.Client().Server().TxStatus().String()).
+			Msg("adding shard with tsa")
+
+		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), *shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
+			return err
+		}
+	}
+
+	/* take care of session param if we told to */
+	/* TODO: fix */
+	// if rst.Client().MaintainParams() {
+	// 	query := rst.Cl.ConstructClientParams()
+	// 	spqrlog.Zero.Debug().
+	// 		Uint("client", rst.Client().ID()).
+	// 		Str("query", query.String).
+	// 		Msg("setting params for client")
+	// 	_, err := rst.qse.ProcQuery(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
+	// 	return err
+	// }
+
+	return nil
+}
+
+func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
+	routes := rst.Qr.DataShardsRoutes()
+	if len(routes) == 0 {
+		return nil, fmt.Errorf("no routes configured")
+	}
+
+	r := routes[rand.Int()%len(routes)]
+	rst.routingState = plan.ShardMatchState{
+		Route: r,
+	}
+
+	return r, nil
+}
+
+// TODO : unit tests
+func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
 	span := opentracing.StartSpan("reroute")
@@ -581,31 +650,37 @@ func (rst *RelayStateImpl) Reroute() error {
 		var err error
 		queryPlan, err = rst.Qr.Route(context.TODO(), rst.qp.Stmt(), rst.Cl)
 		if err != nil {
-			return fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
+			return nil, fmt.Errorf("error processing query '%v': %v", rst.plainQ, err)
 		}
 	}
 
 	rst.routingState = queryPlan
+
 	switch v := queryPlan.(type) {
 	case plan.ScatterPlan:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed ScatterPlan")
-		return rst.procRoutes(rst.Qr.DataShardsRoutes())
+		return rst.Qr.DataShardsRoutes(), nil
 	case plan.DDLState:
 		spqrlog.Zero.Debug().
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed DDLState")
-		return rst.procRoutes(rst.Qr.DataShardsRoutes())
+		return rst.Qr.DataShardsRoutes(), nil
 	case plan.ShardMatchState:
 		// TBD: do it better
-		return rst.procRoutes([]*kr.ShardKey{v.Route})
+		return []*kr.ShardKey{v.Route}, nil
 	case plan.SkipRoutingState:
-		return ErrSkipQuery
+		return nil, ErrSkipQuery
 	case plan.RandomDispatchPlan:
-		return rst.RerouteToRandomRoute()
+		r, err := rst.selectRandomRoute()
+		if err != nil {
+			return nil, err
+		}
+
+		return []*kr.ShardKey{r}, nil
 	default:
-		return fmt.Errorf("unexpected query plan %T", v)
+		return nil, fmt.Errorf("unexpected query plan %T", v)
 	}
 }
 
@@ -622,17 +697,10 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 		Uint("client", rst.Client().ID()).
 		Msg("rerouting the client connection to random shard, resolving shard")
 
-	routes := rst.Qr.DataShardsRoutes()
-	if len(routes) == 0 {
-		return fmt.Errorf("no routes configured")
+	r, err := rst.selectRandomRoute()
+	if err != nil {
+		return err
 	}
-
-	r := routes[rand.Int()%len(routes)]
-
-	rst.routingState = plan.ShardMatchState{
-		Route: r,
-	}
-
 	return rst.procRoutes([]*kr.ShardKey{r})
 }
 
@@ -1013,8 +1081,10 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 				rst.saveBind.Parameters = q.Parameters
 
 				// Do not respond with BindComplete, as the relay step should take care of itself.
+				err := rst.PrepareRelayStep()
+				spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("executing proc query adv callback")
 
-				if err := rst.PrepareRelayStep(); err != nil {
+				if err != nil {
 					return err
 				}
 
@@ -1045,12 +1115,9 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						rst.AddQuery(&pgproto3.Execute{})
 						rst.AddQuery(&pgproto3.Sync{})
 
-						if _, err := rst.RelayFlush(true, true); err != nil {
-							return err
-						}
-
+						_, err := rst.RelayFlush(true, true)
 						// do not complete relay here yet
-						return nil
+						return err
 					}
 
 					return nil
@@ -1062,7 +1129,11 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					if len(routes) == 1 {
 						rst.bindRoute = &routes[0]
 					} else {
-						return fmt.Errorf("failed to deploy prepared statement")
+						err := fmt.Errorf("failed to deploy prepared statement")
+
+						spqrlog.Zero.Debug().Uint("client", rst.Client().ID()).Err(err).Msg("executing proc query adv callback")
+
+						return err
 					}
 				}
 
@@ -1351,16 +1422,33 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	}
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
-		// if rst.Client().EnhancedMultiShardProcessing() {
-		/* With engive v2 we can expand transaction on more targets */
-		/* TODO: XXX */
-		// }
+		if rst.Client().EnhancedMultiShardProcessing() {
+			/* With engive v2 we can expand transaction on more targets */
+			/* TODO: XXX */
+
+			r, err := rst.Reroute()
+			if err != nil {
+				return err
+			}
+
+			/*
+			 * Try to keep single-shard connection as long as possible
+			 */
+			if len(r) == 1 && len(rst.ActiveShards()) == 1 && rst.ActiveShards()[0].Name == r[0].Name {
+				return nil
+			}
+
+			/* else expand transaction */
+			return rst.expandRoutes(r)
+		}
 		return nil
 	}
 
-	switch err := rst.Reroute(); err {
+	r, err := rst.Reroute()
+
+	switch err {
 	case nil:
-		return nil
+		return rst.procRoutes(r)
 	case ErrSkipQuery:
 		if err := rst.Client().ReplyErr(err); err != nil {
 			return err

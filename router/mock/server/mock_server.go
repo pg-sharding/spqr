@@ -15,6 +15,7 @@ import (
 	shard "github.com/pg-sharding/spqr/pkg/shard"
 	tsa "github.com/pg-sharding/spqr/pkg/tsa"
 	txstatus "github.com/pg-sharding/spqr/pkg/txstatus"
+	server "github.com/pg-sharding/spqr/router/server"
 )
 
 // MockServer is a mock of Server interface.
@@ -94,6 +95,20 @@ func (m *MockServer) Datashards() []shard.Shard {
 func (mr *MockServerMockRecorder) Datashards() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Datashards", reflect.TypeOf((*MockServer)(nil).Datashards))
+}
+
+// ExpandDataShard mocks base method.
+func (m *MockServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExpandDataShard", clid, shkey, tsa, deployTX)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ExpandDataShard indicates an expected call of ExpandDataShard.
+func (mr *MockServerMockRecorder) ExpandDataShard(clid, shkey, tsa, deployTX interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExpandDataShard", reflect.TypeOf((*MockServer)(nil).ExpandDataShard), clid, shkey, tsa, deployTX)
 }
 
 // HasPrepareStatement mocks base method.
@@ -235,6 +250,20 @@ func (m *MockServer) Sync() int64 {
 func (mr *MockServerMockRecorder) Sync() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Sync", reflect.TypeOf((*MockServer)(nil).Sync))
+}
+
+// ToMultishard mocks base method.
+func (m *MockServer) ToMultishard() server.Server {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ToMultishard")
+	ret0, _ := ret[0].(server.Server)
+	return ret0
+}
+
+// ToMultishard indicates an expected call of ToMultishard.
+func (mr *MockServerMockRecorder) ToMultishard() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ToMultishard", reflect.TypeOf((*MockServer)(nil).ToMultishard))
 }
 
 // TxStatus mocks base method.

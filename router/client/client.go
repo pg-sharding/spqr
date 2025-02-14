@@ -44,6 +44,8 @@ type RouterClient interface {
 
 	AssignRule(rule *config.FrontendRule) error
 	AssignServerConn(srv server.Server) error
+	SwitchServerConn(srv server.Server) error
+
 	AssignRoute(r *route.Route) error
 
 	Route() *route.Route
@@ -974,6 +976,11 @@ func (cl *PsqlClient) AssignServerConn(srv server.Server) error {
 	if cl.serverP.Load() != nil {
 		return fmt.Errorf("client already has active connection")
 	}
+	cl.serverP.Store(&srv)
+	return nil
+}
+
+func (cl *PsqlClient) SwitchServerConn(srv server.Server) error {
 	cl.serverP.Store(&srv)
 	return nil
 }

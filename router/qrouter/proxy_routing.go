@@ -912,7 +912,6 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 // TODO : unit tests
 func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.SessionParamsHolder) (plan.Plan, error) {
-
 	meta := rmeta.NewRoutingMetadataContext(sph, qr.mgr)
 	route, ro, err := qr.routeWithRules(ctx, meta, stmt)
 	if err != nil {

@@ -34,43 +34,29 @@ type QueryStateExecutorImpl struct {
 var unexpectedDeployTxErr = fmt.Errorf("unexpected exector tx state in transaction deploy")
 var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
 
-func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
-	if server == nil {
+func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
+	if serv == nil {
 		return unroutedClientDeployError
 	}
+
 	if s.txStatus == txstatus.TXIDLE {
 		/* unexpected? */
 		return unexpectedDeployTxErr
 	}
 
-	for _, sh := range server.Datashards() {
-		if err := sh.Send(q); err != nil {
-			s.txStatus = txstatus.TXERR
-			return err
-		}
-		/* we expect command complete and rfq as begin responce */
-		msg, err := sh.Receive()
+	for _, sh := range serv.Datashards() {
+		st, err := shard.DeployTxOnShard(sh, q, expTx)
+
 		if err != nil {
+			/* assert st == txtstatus.TXERR? */
+			s.SetTxStatus(txstatus.TXStatus(txstatus.TXERR))
 			return err
-		}
-		if _, ok := msg.(*pgproto3.CommandComplete); !ok {
-			return fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
 		}
 
-		/* we expect command complete and rfq as begin responce */
-		msg, err = sh.Receive()
-		if err != nil {
-			return err
-		}
-		if q, ok := msg.(*pgproto3.ReadyForQuery); !ok || q.TxStatus != byte(expTx) {
-			return fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
-		} else {
-			s.SetTxStatus(txstatus.TXStatus(q.TxStatus))
-		}
+		s.SetTxStatus(txstatus.TXStatus(st))
 	}
 
 	return nil
-
 }
 
 // Deploy implements QueryStateExecutor.
@@ -132,7 +118,8 @@ func (s *QueryStateExecutorImpl) ExecCommit(rst RelayStateMgr, query string) err
 		return nil
 	}
 
-	if err := s.deployTxStatusInternal(rst.Client().Server(), &pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
+	if err := s.deployTxStatusInternal(s.Client().Server(),
+		&pgproto3.Query{String: query}, txstatus.TXIDLE); err != nil {
 		return err
 	}
 

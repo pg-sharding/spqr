@@ -51,6 +51,11 @@ type MultiShardServer struct {
 	copyBuf []*pgproto3.CopyOutResponse
 }
 
+// ToMultishard implements Server.
+func (m *MultiShardServer) ToMultishard() Server {
+	return m
+}
+
 func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 	ret := &MultiShardServer{
 		pool:         pool,
@@ -58,6 +63,18 @@ func NewMultiShardServer(pool *pool.DBPool) (Server, error) {
 	}
 
 	return ret, nil
+}
+
+func NewMultiShardServerFromShard(pool *pool.DBPool, sh shard.Shard) Server {
+	return &MultiShardServer{
+		pool: pool,
+		activeShards: []shard.Shard{
+			sh,
+		},
+		multistate: InitialState,
+		states:     []ShardState{ShardRFQState},
+		status:     sh.TxStatus(),
+	}
 }
 
 // HasPrepareStatement implements Server.
@@ -108,6 +125,36 @@ func (m *MultiShardServer) AddDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TS
 	m.activeShards = append(m.activeShards, sh)
 	m.states = append(m.states, ShardRFQState)
 	m.multistate = InitialState
+
+	return nil
+}
+
+func (m *MultiShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	for _, piv := range m.activeShards {
+		if piv.SHKey().Name == shkey.Name {
+			/* todo: multi-slice server can use multiple connections to shard. */
+			return nil
+		}
+	}
+	sh, err := m.pool.ConnectionWithTSA(clid, shkey, tsa)
+	if err != nil {
+		return err
+	}
+
+	if deployTX {
+		retst, err := shard.DeployTxOnShard(sh, &pgproto3.Query{
+			String: "BEGIN",
+		}, txstatus.TXACT)
+
+		if err != nil {
+			return err
+		} else if retst != txstatus.TXACT {
+			return fmt.Errorf("failed to expand transaction on shard")
+		}
+	}
+
+	m.activeShards = append(m.activeShards, sh)
+	m.states = append(m.states, m.states[0])
 
 	return nil
 }
