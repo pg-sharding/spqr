@@ -32,7 +32,6 @@ type QueryStateExecutorImpl struct {
 }
 
 var unexpectedDeployTxErr = fmt.Errorf("unexpected exector tx state in transaction deploy")
-var unexpectedTxResponceErr = fmt.Errorf("unexpected responce in transaction deploy")
 var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
 
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
@@ -55,7 +54,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q 
 			return err
 		}
 		if _, ok := msg.(*pgproto3.CommandComplete); !ok {
-			return unexpectedTxResponceErr
+			return fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
 		}
 
 		/* we expect command complete and rfq as begin responce */
@@ -64,7 +63,7 @@ func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q 
 			return err
 		}
 		if q, ok := msg.(*pgproto3.ReadyForQuery); !ok || q.TxStatus != byte(expTx) {
-			return unexpectedTxResponceErr
+			return fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
 		} else {
 			s.SetTxStatus(txstatus.TXStatus(q.TxStatus))
 		}
@@ -422,12 +421,11 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 }
 
 // TODO : unit tests
-/* second param indicates if we should continue relay. */
-func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, bool, error) {
+func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	server := s.Client().Server()
 
 	if server == nil {
-		return nil, false, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
+		return nil, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
 	spqrlog.Zero.Debug().
@@ -436,7 +434,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 		Msg("relay process query")
 
 	if err := server.Send(query); err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	waitForRespLocal := waitForResp
@@ -452,17 +450,15 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 
 	if !waitForRespLocal {
 		/* we do not alter txstatus here */
-		return nil, true, nil
+		return nil, nil
 	}
-
-	ok := true
 
 	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
 		msg, err := server.Receive()
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		switch v := msg.(type) {
@@ -470,7 +466,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 			// handle replyCl somehow
 			err = s.Client().Send(msg)
 			if err != nil {
-				return nil, false, err
+				return nil, err
 			}
 
 			q := stmt.(*lyx.Copy)
@@ -505,11 +501,11 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 					}
 				}
 			}(); err != nil {
-				return nil, false, err
+				return nil, err
 			}
 		case *pgproto3.ReadyForQuery:
 			s.SetTxStatus(txstatus.TXStatus(v.TxStatus))
-			return unreplied, ok, nil
+			return unreplied, nil
 		case *pgproto3.ErrorResponse:
 
 			spqrlog.Zero.Debug().
@@ -520,12 +516,11 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					return nil, false, err
+					return nil, err
 				}
 			} else {
 				unreplied = append(unreplied, msg)
 			}
-			ok = false
 		// never resend these msgs
 		case *pgproto3.ParseComplete:
 			unreplied = append(unreplied, msg)
@@ -539,7 +534,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 			if replyCl {
 				err = s.Client().Send(msg)
 				if err != nil {
-					return nil, false, err
+					return nil, err
 				}
 			} else {
 				unreplied = append(unreplied, msg)

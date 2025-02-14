@@ -536,7 +536,6 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	}
 
 	/* if transaction is explicitly requested, deploy */
-
 	if err := rst.QueryExecutor().Deploy(rst.Client().Server()); err != nil {
 		return err
 	}
@@ -548,7 +547,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 			Uint("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
-		_, _, err := rst.qse.ProcQuery(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
+		_, err := rst.qse.ProcQuery(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
 		return err
 	}
 
@@ -628,12 +627,13 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 		return fmt.Errorf("no routes configured")
 	}
 
-	routingState := plan.ShardMatchState{
-		Route: routes[rand.Int()%len(routes)],
-	}
-	rst.routingState = routingState
+	r := routes[rand.Int()%len(routes)]
 
-	return rst.procRoutes([]*kr.ShardKey{routingState.Route})
+	rst.routingState = plan.ShardMatchState{
+		Route: r,
+	}
+
+	return rst.procRoutes([]*kr.ShardKey{r})
 }
 
 // TODO : unit tests
@@ -650,10 +650,9 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	routingState := plan.ShardMatchState{
+	rst.routingState = plan.ShardMatchState{
 		Route: route,
 	}
-	rst.routingState = routingState
 
 	return rst.procRoutes([]*kr.ShardKey{route})
 }
@@ -724,10 +723,12 @@ func (rst *RelayStateImpl) Connect() error {
 }
 
 // TODO : unit tests
-func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
+func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	spqrlog.Zero.Debug().
 		Uint("client", rst.Client().ID()).
 		Msg("flushing message buffer")
+
+	var unreplied []pgproto3.BackendMessage
 
 	flusher := func(buff []BufferedMessage, waitForResp, replyCl bool) error {
 		for len(buff) > 0 {
@@ -745,8 +746,10 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 				resolvedReplyCl = false
 			}
 
-			if _, _, err := rst.qse.ProcQuery(v.msg, rst.qp.Stmt(), rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
+			if unrep_local, err := rst.qse.ProcQuery(v.msg, rst.qp.Stmt(), rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
 				return err
+			} else {
+				unreplied = append(unreplied, unrep_local...)
 			}
 
 		}
@@ -756,14 +759,17 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) error {
 	buf := rst.msgBuf
 	rst.msgBuf = nil
 
-	return flusher(buf, waitForResp, replyCl)
+	if err := flusher(buf, waitForResp, replyCl); err != nil {
+		return nil, err
+	}
+
+	return unreplied, nil
 }
 
 // TODO : unit tests
 func (rst *RelayStateImpl) RelayStep(msg pgproto3.FrontendMessage, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	unreplied, _, err := rst.qse.ProcQuery(msg, rst.qp.Stmt(), rst.Qr.Mgr(), waitForResp, replyCl)
-
-	return unreplied, err
+	rst.AddQuery(msg)
+	return rst.RelayFlush(waitForResp, replyCl)
 }
 
 func (rst *RelayStateImpl) CompleteRelay(replyCl bool) error {
@@ -1039,7 +1045,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						rst.AddQuery(&pgproto3.Execute{})
 						rst.AddQuery(&pgproto3.Sync{})
 
-						if err := rst.RelayFlush(true, true); err != nil {
+						if _, err := rst.RelayFlush(true, true); err != nil {
 							return err
 						}
 
@@ -1081,7 +1087,8 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 					rst.AddQuery(&pgproto3.Sync{})
 					// do not complete relay here yet
-					return rst.RelayFlush(true, true)
+					_, err = rst.RelayFlush(true, true)
+					return err
 				}
 
 				return nil
@@ -1277,7 +1284,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 
 	if len(rst.msgBuf) != 0 {
 		rst.AddQuery(&pgproto3.Sync{})
-		if err := rst.RelayFlush(true, true); err != nil {
+		if _, err := rst.RelayFlush(true, true); err != nil {
 			return err
 		}
 	}
@@ -1344,6 +1351,10 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	}
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
+		// if rst.Client().EnhancedMultiShardProcessing() {
+		/* With engive v2 we can expand transaction on more targets */
+		/* TODO: XXX */
+		// }
 		return nil
 	}
 
@@ -1454,7 +1465,8 @@ func (rst *RelayStateImpl) ProcessMessageBuf(waitForResp, replyCl bool) error {
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
 
-	return rst.RelayFlush(waitForResp, replyCl)
+	_, err := rst.RelayFlush(waitForResp, replyCl)
+	return err
 }
 
 // TODO : unit tests
