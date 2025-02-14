@@ -17,6 +17,7 @@ test: alter_distribution
 test: show_processing
 test: copy_multishard
 test: copy_reference_table
+test: multishard_expand_tx
 test: copy_inside_singleshard_connection
 test: distributed_relation_multishard_modify
 test: part_table
