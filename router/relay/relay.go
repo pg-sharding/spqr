@@ -1281,14 +1281,6 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 	}
 
 	statistics.RecordStartTime(statistics.Shard, time.Now(), rst.Client().ID())
-
-	if len(rst.msgBuf) != 0 {
-		rst.AddQuery(&pgproto3.Sync{})
-		if _, err := rst.RelayFlush(true, true); err != nil {
-			return err
-		}
-	}
-
 	return rst.CompleteRelay(true)
 }
 
