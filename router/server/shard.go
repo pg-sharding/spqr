@@ -25,6 +25,16 @@ type ShardServer struct {
 	mu sync.RWMutex
 }
 
+// ToMultishard implements Server.
+func (srv *ShardServer) ToMultishard() Server {
+	return NewMultiShardServerFromShard(srv.pool, srv.shard)
+}
+
+// ExpandDataShard implements Server.
+func (srv *ShardServer) ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error {
+	return fmt.Errorf("expanding transaction on single shard server in unsupported")
+}
+
 // DataPending implements Server.
 func (srv *ShardServer) DataPending() bool {
 	return srv.shard.DataPending()

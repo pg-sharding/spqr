@@ -1159,6 +1159,20 @@ func (mr *MockRouterClientMockRecorder) StorePreparedStatement(d interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorePreparedStatement", reflect.TypeOf((*MockRouterClient)(nil).StorePreparedStatement), d)
 }
 
+// SwitchServerConn mocks base method.
+func (m *MockRouterClient) SwitchServerConn(srv server.Server) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SwitchServerConn", srv)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SwitchServerConn indicates an expected call of SwitchServerConn.
+func (mr *MockRouterClientMockRecorder) SwitchServerConn(srv interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SwitchServerConn", reflect.TypeOf((*MockRouterClient)(nil).SwitchServerConn), srv)
+}
+
 // Unroute mocks base method.
 func (m *MockRouterClient) Unroute() error {
 	m.ctrl.T.Helper()

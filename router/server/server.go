@@ -21,6 +21,10 @@ type Server interface {
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
 
 	AddDataShard(clid uint, shardKey kr.ShardKey, tsa tsa.TSA) error
+	ExpandDataShard(clid uint, shkey kr.ShardKey, tsa tsa.TSA, deployTX bool) error
+
+	ToMultishard() Server
+
 	UnRouteShard(sh kr.ShardKey, rule *config.FrontendRule) error
 	Datashards() []shard.Shard
 

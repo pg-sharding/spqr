@@ -1,6 +1,8 @@
 package shard
 
 import (
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/conn"
@@ -80,4 +82,30 @@ type Shard interface {
 
 type ShardIterator interface {
 	ForEach(cb func(sh Shardinfo) error) error
+}
+
+/* util function to deploy begin on shard. Used by executor and tx expand. */
+func DeployTxOnShard(sh Shard, qry pgproto3.FrontendMessage, expTx txstatus.TXStatus) (txstatus.TXStatus, error) {
+	if err := sh.Send(qry); err != nil {
+		return txstatus.TXERR, err
+	}
+	/* we expect command complete and rfq as begin responce */
+	msg, err := sh.Receive()
+	if err != nil {
+		return txstatus.TXERR, err
+	}
+	if _, ok := msg.(*pgproto3.CommandComplete); !ok {
+		return txstatus.TXERR, fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
+	}
+
+	/* we expect command complete and rfq as begin responce */
+	msg, err = sh.Receive()
+	if err != nil {
+		return txstatus.TXERR, err
+	}
+	q, ok := msg.(*pgproto3.ReadyForQuery)
+	if !ok || q.TxStatus != byte(expTx) {
+		return txstatus.TXERR, fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
+	}
+	return txstatus.TXStatus(q.TxStatus), nil
 }
