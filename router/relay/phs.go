@@ -32,7 +32,6 @@ type QueryStateExecutorImpl struct {
 }
 
 var unexpectedDeployTxErr = fmt.Errorf("unexpected exector tx state in transaction deploy")
-var unexpectedTxResponceErr = fmt.Errorf("unexpected responce in transaction deploy")
 var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
 
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(server server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
