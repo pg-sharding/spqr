@@ -199,17 +199,17 @@ func (mr *MockServerMockRecorder) Send(query interface{}) *gomock.Call {
 }
 
 // SendShard mocks base method.
-func (m *MockServer) SendShard(query pgproto3.FrontendMessage, shardId uint) error {
+func (m *MockServer) SendShard(query pgproto3.FrontendMessage, shKey *kr.ShardKey) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendShard", query, shardId)
+	ret := m.ctrl.Call(m, "SendShard", query, shKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendShard indicates an expected call of SendShard.
-func (mr *MockServerMockRecorder) SendShard(query, shardId interface{}) *gomock.Call {
+func (mr *MockServerMockRecorder) SendShard(query, shKey interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendShard", reflect.TypeOf((*MockServer)(nil).SendShard), query, shardId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendShard", reflect.TypeOf((*MockServer)(nil).SendShard), query, shKey)
 }
 
 // SetTxStatus mocks base method.

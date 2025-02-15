@@ -7,22 +7,77 @@ import (
 
 type Plan interface {
 	iPlan()
-}
-
-type ShardPlan struct {
-	Plan
-	Query string
+	ExecutionTargets() []*kr.ShardKey
 }
 
 type ScatterPlan struct {
 	Plan
 	SubPlan Plan
 	/* Empty means execute everywhere */
-	ExecutionTargets []*kr.ShardKey
+	ExecTargets []*kr.ShardKey
+}
+
+func (sp ScatterPlan) ExecutionTargets() []*kr.ShardKey {
+	return sp.ExecTargets
 }
 
 type ModifyTable struct {
 	Plan
+}
+
+func (mt ModifyTable) ExecutionTargets() []*kr.ShardKey {
+	return nil
+}
+
+type ShardDispatchPlan struct {
+	Plan
+
+	ExecTarget         *kr.ShardKey
+	TargetSessionAttrs string
+}
+
+func (sms ShardDispatchPlan) ExecutionTargets() []*kr.ShardKey {
+	return []*kr.ShardKey{sms.ExecTarget}
+}
+
+type DDLState struct {
+	Plan
+}
+
+func (ddl DDLState) ExecutionTargets() []*kr.ShardKey {
+	return nil
+}
+
+type RandomDispatchPlan struct {
+	Plan
+}
+
+func (rdp RandomDispatchPlan) ExecutionTargets() []*kr.ShardKey {
+	return nil
+}
+
+type VirtualPlan struct {
+	Plan
+}
+
+func (vp VirtualPlan) ExecutionTargets() []*kr.ShardKey {
+	return nil
+}
+
+type CopyState struct {
+	Plan
+}
+
+func (cs CopyState) ExecutionTargets() []*kr.ShardKey {
+	return nil
+}
+
+type ReferenceRelationState struct {
+	Plan
+}
+
+func (rrs ReferenceRelationState) ExecutionTargets() []*kr.ShardKey {
+	return nil
 }
 
 const NOSHARD = ""
@@ -51,14 +106,14 @@ func Combine(p1, p2 Plan) Plan {
 		return p2
 	case ReferenceRelationState:
 		return p2
-	case ShardMatchState:
+	case ShardDispatchPlan:
 		switch shq2 := p2.(type) {
 		case ScatterPlan:
 			return p2
 		case ReferenceRelationState:
 			return p1
-		case ShardMatchState:
-			if shq2.Route.Name == shq1.Route.Name {
+		case ShardDispatchPlan:
+			if shq2.ExecTarget.Name == shq1.ExecTarget.Name {
 				return p1
 			}
 		}
@@ -66,35 +121,4 @@ func Combine(p1, p2 Plan) Plan {
 
 	/* execute on all shards */
 	return ScatterPlan{}
-}
-
-type ShardMatchState struct {
-	Plan
-
-	Route              *kr.ShardKey
-	TargetSessionAttrs string
-}
-
-type DDLState struct {
-	Plan
-}
-
-type SkipRoutingState struct {
-	Plan
-}
-
-type RandomDispatchPlan struct {
-	Plan
-}
-
-type VirtualPlan struct {
-	Plan
-}
-
-type CopyState struct {
-	Plan
-}
-
-type ReferenceRelationState struct {
-	Plan
 }

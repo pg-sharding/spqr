@@ -312,13 +312,13 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt
 				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 				* we have no insert cols specified, but still able to route on select
 				 */
-				return nil, rfqn.RelationFQN{}, plan.ShardMatchState{}, nil
+				return nil, rfqn.RelationFQN{}, plan.ShardDispatchPlan{}, nil
 			} else {
 				offsets = append(offsets, val)
 			}
 		}
 
-		return offsets, curr_rfqn, plan.ShardMatchState{}, nil
+		return offsets, curr_rfqn, plan.ShardDispatchPlan{}, nil
 	default:
 		return nil, rfqn.RelationFQN{}, nil, rerrors.ErrComplexQuery
 	}
@@ -394,7 +394,7 @@ func (qr *ProxyQrouter) planQueryV1(
 			}
 
 			switch state.(type) {
-			case plan.ShardMatchState:
+			case plan.ShardDispatchPlan:
 
 				tlUsable := true
 				if len(routingList) > 0 {
@@ -894,8 +894,8 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 					Str("table", rfqn.RelationName).
 					Msg("calculated route for table/cols")
 
-				route = plan.Combine(route, plan.ShardMatchState{
-					Route:              currroute,
+				route = plan.Combine(route, plan.ShardDispatchPlan{
+					ExecTarget:         currroute,
 					TargetSessionAttrs: tsa,
 				})
 			}
@@ -919,7 +919,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 	}
 
 	switch v := route.(type) {
-	case plan.ShardMatchState:
+	case plan.ShardDispatchPlan:
 		return v, nil
 	case plan.RandomDispatchPlan:
 		return v, nil
@@ -947,7 +947,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 		 */
 		switch strings.ToUpper(sph.DefaultRouteBehaviour()) {
 		case "BLOCK":
-			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		case "ALLOW":
 			fallthrough
 		default:
@@ -955,7 +955,7 @@ func (qr *ProxyQrouter) Route(ctx context.Context, stmt lyx.Node, sph session.Se
 				/* TODO: config options for this */
 				return v, nil
 			}
-			return plan.SkipRoutingState{}, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
+			return nil, spqrerror.NewByCode(spqrerror.SPQR_NO_DATASHARD)
 		}
 	}
 	return nil, rerrors.ErrComplexQuery

@@ -409,19 +409,47 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 
 // TODO : unit tests
 func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
-	server := s.Client().Server()
+	serv := s.Client().Server()
 
-	if server == nil {
+	if serv == nil {
 		return nil, fmt.Errorf("client %p is out of transaction sync with router", s.Client())
 	}
 
 	spqrlog.Zero.Debug().
-		Uints("shards", shard.ShardIDs(server.Datashards())).
+		Uints("shards", shard.ShardIDs(serv.Datashards())).
 		Type("query-type", qd.Msg).
 		Msg("relay process query")
 
-	if err := server.Send(qd.Msg); err != nil {
-		return nil, err
+	if qd.P == nil {
+		if err := serv.Send(qd.Msg); err != nil {
+			return nil, err
+		}
+
+		if s.Client().ShowNoticeMsg() && replyCl {
+			_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
+		}
+	} else {
+		et := qd.P.ExecutionTargets()
+
+		if len(et) == 0 {
+			if err := serv.Send(qd.Msg); err != nil {
+				return nil, err
+			}
+
+			if s.Client().ShowNoticeMsg() && replyCl {
+				_ = replyShardMatches(s.Client(), server.ServerShkeys(serv))
+			}
+		} else {
+			for _, targ := range et {
+				if err := serv.SendShard(qd.Msg, targ); err != nil {
+					return nil, err
+				}
+			}
+
+			if s.Client().ShowNoticeMsg() && replyCl {
+				_ = replyShardMatches(s.Client(), et)
+			}
+		}
 	}
 
 	waitForRespLocal := waitForResp
@@ -443,7 +471,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 	unreplied := make([]pgproto3.BackendMessage, 0)
 
 	for {
-		msg, err := server.Receive()
+		msg, err := serv.Receive()
 		if err != nil {
 			return nil, err
 		}
@@ -496,7 +524,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 		case *pgproto3.ErrorResponse:
 
 			spqrlog.Zero.Debug().
-				Str("server", server.Name()).
+				Str("server", serv.Name()).
 				Type("msg-type", v).
 				Msg("received message from server")
 
@@ -515,7 +543,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 			unreplied = append(unreplied, msg)
 		default:
 			spqrlog.Zero.Debug().
-				Str("server", server.Name()).
+				Str("server", serv.Name()).
 				Type("msg-type", v).
 				Msg("received message from server")
 			if replyCl {

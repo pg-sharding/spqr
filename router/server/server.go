@@ -16,7 +16,9 @@ type Server interface {
 
 	Name() string
 	Send(query pgproto3.FrontendMessage) error
-	SendShard(query pgproto3.FrontendMessage, shardId uint) error
+
+	SendShard(query pgproto3.FrontendMessage, shKey *kr.ShardKey) error
+
 	Receive() (pgproto3.BackendMessage, error)
 	ReceiveShard(shardId uint) (pgproto3.BackendMessage, error)
 
@@ -34,4 +36,13 @@ type Server interface {
 	Sync() int64
 
 	DataPending() bool
+}
+
+func ServerShkeys(s Server) []*kr.ShardKey {
+	ret := []*kr.ShardKey{}
+	for _, sh := range s.Datashards() {
+		k := sh.SHKey()
+		ret = append(ret, &k)
+	}
+	return ret
 }

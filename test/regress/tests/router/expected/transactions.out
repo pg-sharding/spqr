@@ -43,7 +43,9 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 INSERT INTO transactions_test (id) VALUES (1);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
  id 
 ----
   1
@@ -65,7 +67,9 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 INSERT INTO transactions_test (id) VALUES (1);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM transactions_test WHERE id = 1;;
+NOTICE: send query to shard(s) : sh1
  id 
 ----
   1

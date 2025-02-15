@@ -218,8 +218,8 @@ func (rm *RoutingMetadataContext) ResolveRouteHint() (routehint.RouteHint, error
 			return nil, err
 		}
 		return &routehint.TargetRouteHint{
-			State: plan.ShardMatchState{
-				Route: ds,
+			State: plan.ShardDispatchPlan{
+				ExecTarget: ds,
 			},
 		}, nil
 	}

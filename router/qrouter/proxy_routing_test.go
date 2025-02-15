@@ -380,8 +380,8 @@ func TestComment(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "select /* oiwejow--23**/ * from  xx where i = 4;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -479,8 +479,8 @@ func TestCTE(t *testing.T) {
 			  SELECT * FROM qqq;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -495,8 +495,8 @@ func TestCTE(t *testing.T) {
 			SELECT * from xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -515,8 +515,8 @@ func TestCTE(t *testing.T) {
 			SELECT * FROM xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -550,8 +550,8 @@ func TestCTE(t *testing.T) {
 			SELECT * FROM xxxx;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -686,8 +686,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM sh1.xxtt1 WHERE sh1.xxtt1.i = 21;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -697,8 +697,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = 21 and w_idj + w_idi != 0;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -708,8 +708,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxtt1 a WHERE a.i = '21' and w_idj + w_idi != 0;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -727,8 +727,8 @@ func TestSingleShard(t *testing.T) {
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -745,8 +745,8 @@ func TestSingleShard(t *testing.T) {
 			/* __spqr__default_route_behaviour: BLOCK */  returning *;
 			`,
 			err: nil,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -754,8 +754,8 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "select * from  xx where i = 4;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -765,8 +765,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "INSERT INTO xx (i) SELECT 20;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -775,8 +775,8 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "select * from  xx where i = 11;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -786,8 +786,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "Insert into xx (i) values (1), (2)",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -800,8 +800,8 @@ func TestSingleShard(t *testing.T) {
 		 */
 		{
 			query: "Insert into xx (i) select * from yy a where a.i = 8",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -811,8 +811,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM xxmixed WHERE i BETWEEN 22 AND 30 ORDER BY id;;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -822,8 +822,8 @@ func TestSingleShard(t *testing.T) {
 
 		{
 			query: "SELECT * FROM t WHERE i = 12 AND j = 1;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -832,8 +832,8 @@ func TestSingleShard(t *testing.T) {
 		},
 		{
 			query: "SELECT * FROM t WHERE i = 12 UNION ALL SELECT * FROM xxmixed WHERE i = 22;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -933,8 +933,8 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: `INSERT INTO xxtt1 SELECT * FROM xxtt1 a WHERE a.w_id = 20;`,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -946,8 +946,8 @@ func TestInsertOffsets(t *testing.T) {
 			query: `
 			INSERT INTO xxtt1 (j, i, w_id) VALUES(2121221, -211212, 21);
 			`,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -957,8 +957,8 @@ func TestInsertOffsets(t *testing.T) {
 		{
 			query: `
 			INSERT INTO "people" ("first_name","last_name","email","id") VALUES ('John','Smith','',1) RETURNING "id"`,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -969,8 +969,8 @@ func TestInsertOffsets(t *testing.T) {
 			query: `
 			INSERT INTO xxtt1 (j, w_id) SELECT a, 20 from unnest(ARRAY[10]) a
 			`,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -980,8 +980,8 @@ func TestInsertOffsets(t *testing.T) {
 
 		{
 			query: "Insert into xx (i, j, k) values (1, 12, 13), (2, 3, 4)",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -1076,8 +1076,8 @@ func TestJoins(t *testing.T) {
 	for _, tt := range []tcase{
 		{
 			query: "SELECT * FROM sshjt1 a join sshjt1 b ON TRUE WHERE a.i = 12 AND b.j = a.j;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -1087,8 +1087,8 @@ func TestJoins(t *testing.T) {
 
 		{
 			query: "SELECT * FROM sshjt1 join sshjt1 ON TRUE WHERE sshjt1.i = 12 AND sshjt1.j = sshjt1.j;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -1187,8 +1187,8 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "INSERT INTO xxtt1 (j, i) SELECT a, 20 from unnest(ARRAY[10]) a;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -1198,8 +1198,8 @@ func TestUnnest(t *testing.T) {
 
 		{
 			query: "UPDATE xxtt1 set i=a.i, j=a.j from unnest(ARRAY[(1,10)]) as a(i int, j int) where i=20 and xxtt1.j=a.j;",
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh2",
 				},
 				TargetSessionAttrs: "any",
@@ -1627,8 +1627,8 @@ func TestRouteWithRules_Select(t *testing.T) {
 		{
 			query:        "SELECT * FROM users WHERE id = '5f57cd31-806f-4789-a6fa-1d959ec4c64a';",
 			distribution: distribution.ID,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",
@@ -1652,7 +1652,7 @@ LIMIT 1000
 		// {
 		// 	query:        "SELECT * FROM users WHERE '5f57cd31-806f-4789-a6fa-1d959ec4c64a' = id;",
 		// 	distribution: distribution.ID,
-		// 	exp: plan.ShardMatchState{
+		// 	exp: plan.ShardDispatchPlan{
 		// 		Route: &plan.DataShardRoute{
 		// 			Shkey: kr.ShardKey{
 		// 				Name: "sh1",
@@ -1744,8 +1744,8 @@ func TestHashRouting(t *testing.T) {
 		{
 			query:        "INSERT INTO xx (col1) VALUES ('Hello, world!');",
 			distribution: distribution1,
-			exp: plan.ShardMatchState{
-				Route: &kr.ShardKey{
+			exp: plan.ShardDispatchPlan{
+				ExecTarget: &kr.ShardKey{
 					Name: "sh1",
 				},
 				TargetSessionAttrs: "any",

@@ -40,6 +40,12 @@ UPDATE xxm_expd SET j = j + 1 WHERE id = 299 /* __spqr__engine_v2: true */;
 UPDATE xxm_expd SET j = j + 1 WHERE id = 399 /* __spqr__engine_v2: true */;
 COMMIT;
 
+BEGIN;
+INSERT INTO xxm_expd (id, j) VALUES(55, 55) /* __spqr__engine_v2: true */;
+INSERT INTO xxm_expd (id, j) VALUES(155, 155) /* __spqr__engine_v2: true */;
+INSERT INTO xxm_expd (id, j) VALUES(355, 355) /* __spqr__engine_v2: true */;
+ROLLBACK;
+
 SELECT * FROM xxm_expd ORDER BY id;
 
 UPDATE xxm_expd SET id = -1 /* __spqr__engine_v2: true */;
