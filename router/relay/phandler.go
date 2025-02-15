@@ -10,8 +10,15 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/parser"
 	"github.com/pg-sharding/spqr/router/pgcopy"
+	"github.com/pg-sharding/spqr/router/plan"
 	"github.com/pg-sharding/spqr/router/server"
 )
+
+type QueryDesc struct {
+	Msg  pgproto3.FrontendMessage
+	Stmt lyx.Node
+	P    plan.Plan
+}
 
 // Execute requered command via
 // some protoc-specific logic
@@ -31,7 +38,7 @@ type QueryStateExecutor interface {
 	ProcCopy(ctx context.Context, data *pgproto3.CopyData, cps *pgcopy.CopyState) ([]byte, error)
 	ProcCopyComplete(query pgproto3.FrontendMessage) error
 
-	ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
+	ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error)
 
 	ExecSet(rst RelayStateMgr, query, name, value string) error
 	ExecSetLocal(rst RelayStateMgr, query, name, value string) error
