@@ -547,7 +547,11 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 			Uint("client", rst.Client().ID()).
 			Str("query", query.String).
 			Msg("setting params for client")
-		_, err := rst.qse.ProcQuery(query, rst.qp.Stmt(), rst.Qr.Mgr(), true, false)
+		_, err := rst.qse.ProcQuery(&QueryDesc{
+			Msg:  query,
+			Stmt: rst.qp.Stmt(),
+			P:    nil,
+		}, rst.Qr.Mgr(), true, false)
 		return err
 	}
 
@@ -813,7 +817,12 @@ func (rst *RelayStateImpl) RelayFlush(waitForResp bool, replyCl bool) ([]pgproto
 				resolvedReplyCl = false
 			}
 
-			if unrep_local, err := rst.qse.ProcQuery(v.msg, rst.qp.Stmt(), rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
+			if unrep_local, err := rst.qse.ProcQuery(
+				&QueryDesc{
+					Msg:  v.msg,
+					Stmt: rst.qp.Stmt(),
+					P:    rst.routingState, /*  ugh... fix this someday */
+				}, rst.Qr.Mgr(), waitForResp, resolvedReplyCl); err != nil {
 				return err
 			} else {
 				unreplied = append(unreplied, unrep_local...)

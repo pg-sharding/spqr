@@ -408,7 +408,7 @@ func (s *QueryStateExecutorImpl) ProcCopyComplete(query pgproto3.FrontendMessage
 }
 
 // TODO : unit tests
-func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt lyx.Node, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
+func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, waitForResp bool, replyCl bool) ([]pgproto3.BackendMessage, error) {
 	server := s.Client().Server()
 
 	if server == nil {
@@ -417,16 +417,16 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 
 	spqrlog.Zero.Debug().
 		Uints("shards", shard.ShardIDs(server.Datashards())).
-		Type("query-type", query).
+		Type("query-type", qd.Msg).
 		Msg("relay process query")
 
-	if err := server.Send(query); err != nil {
+	if err := server.Send(qd.Msg); err != nil {
 		return nil, err
 	}
 
 	waitForRespLocal := waitForResp
 
-	switch query.(type) {
+	switch qd.Msg.(type) {
 	case *pgproto3.Query:
 		// ok
 	case *pgproto3.Sync:
@@ -456,7 +456,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(query pgproto3.FrontendMessage, stmt 
 				return nil, err
 			}
 
-			q := stmt.(*lyx.Copy)
+			q := qd.Stmt.(*lyx.Copy)
 
 			if err := func() error {
 				var leftOvermsgData []byte
