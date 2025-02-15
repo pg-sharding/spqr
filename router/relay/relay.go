@@ -568,26 +568,19 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 		return expandInTxError
 	}
 
-	rst.activeShards = nil
 	for _, shr := range routes {
 		rst.activeShards = append(rst.activeShards, *shr)
 	}
 
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
 
-	if rst.Client().ShowNoticeMsg() {
-		if err := replyShardMatches(rst.Client(), rst.ActiveShards()); err != nil {
-			return err
-		}
-	}
-
 	beforeTx := rst.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
-			Str("deploying tx", rst.Client().Server().TxStatus().String()).
-			Msg("adding shard with tsa")
+			Str("deploying tx", beforeTx.String()).
+			Msg("expanding shard with tsa")
 
 		if err := rst.Client().Server().ExpandDataShard(rst.Client().ID(), *shkey, rst.Client().GetTsa(), beforeTx == txstatus.TXACT); err != nil {
 			return err
@@ -688,6 +681,12 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
+	defer func() {
+		if rst.Client().ShowNoticeMsg() {
+			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
+		}
+	}()
+
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -707,6 +706,12 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 // TODO : unit tests
 func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
+
+	defer func() {
+		if rst.Client().ShowNoticeMsg() {
+			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
+		}
+	}()
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
@@ -771,12 +776,6 @@ func (rst *RelayStateImpl) Connect() error {
 		Str("db", rst.Cl.DB()).
 		Uint("client", rst.Client().ID()).
 		Msg("connect client to datashard routes")
-
-	if rst.Client().ShowNoticeMsg() {
-		if err := replyShardMatches(rst.Client(), rst.ActiveShards()); err != nil {
-			return err
-		}
-	}
 
 	for _, shkey := range rst.ActiveShards() {
 		spqrlog.Zero.Debug().
@@ -1409,6 +1408,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 		Str("user", rst.Client().Usr()).
 		Str("db", rst.Client().DB()).
 		Msg("preparing relay step for client")
+
 	if rst.holdRouting {
 		return nil
 	}
@@ -1430,6 +1430,12 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 				return nil
 			}
 
+			defer func() {
+				if rst.Client().ShowNoticeMsg() && len(rst.ActiveShards()) != 0 {
+					_ = replyShardMatches(rst.Client(), rst.ActiveShards())
+				}
+			}()
+
 			/* else expand transaction */
 			return rst.expandRoutes(r)
 		}
@@ -1437,6 +1443,12 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	}
 
 	r, err := rst.Reroute()
+
+	defer func() {
+		if rst.Client().ShowNoticeMsg() && len(rst.ActiveShards()) != 0 {
+			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
+		}
+	}()
 
 	switch err {
 	case nil:

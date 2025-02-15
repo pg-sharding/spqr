@@ -526,7 +526,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			}, nil
 		} else {
 			rollback()
-			return nil, MultiShardSyncBroken
+			return nil, fmt.Errorf("multishard server: unsync in tx status amoung shard connections")
 		}
 	}
 
@@ -588,7 +588,11 @@ func (m *MultiShardServer) SetTxStatus(tx txstatus.TXStatus) {
 }
 
 func (m *MultiShardServer) TxStatus() txstatus.TXStatus {
-	return txstatus.TXIDLE
+	if len(m.activeShards) == 0 {
+		return txstatus.TXIDLE
+	}
+	/* should be equal beyond all connections */
+	return m.activeShards[0].TxStatus()
 }
 
 func (m *MultiShardServer) Datashards() []shard.Shard {
