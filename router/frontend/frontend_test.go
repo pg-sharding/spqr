@@ -118,8 +118,8 @@ func TestFrontendSimple(t *testing.T) {
 			&lyx.AExprIConst{Value: 1},
 		},
 		Where: &lyx.AExprEmpty{},
-	}, gomock.Any()).Return(plan.ShardMatchState{
-		Route: &kr.ShardKey{
+	}, gomock.Any()).Return(plan.ShardDispatchPlan{
+		ExecTarget: &kr.ShardKey{
 			Name: "sh1",
 		},
 	}, nil).Times(1)
@@ -136,7 +136,7 @@ func TestFrontendSimple(t *testing.T) {
 
 	cl.EXPECT().Receive().Times(1).Return(query, nil)
 
-	srv.EXPECT().Send(query).Times(1).Return(nil)
+	srv.EXPECT().SendShard(query, gomock.Any()).Times(1).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.RowDescription{}, nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.DataRow{
@@ -292,7 +292,7 @@ func TestFrontendXProto(t *testing.T) {
 		ObjectType: 'S',
 	}).Times(1).Return(nil)
 
-	srv.EXPECT().Send(&pgproto3.Sync{}).Times(1).Return(nil)
+	srv.EXPECT().SendShard(&pgproto3.Sync{}, gomock.Any()).Times(1).Return(nil)
 
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParseComplete{}, nil)
 	srv.EXPECT().Receive().Times(1).Return(&pgproto3.ParameterDescription{

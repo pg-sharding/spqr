@@ -195,10 +195,10 @@ func (m *MultiShardServer) Send(msg pgproto3.FrontendMessage) error {
 	return nil
 }
 
-func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shardId uint) error {
+func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shkey *kr.ShardKey) error {
 	anyShard := false
 	for _, shard := range m.activeShards {
-		if shard.ID() != shardId {
+		if shard.SHKey().Name != shkey.Name {
 			continue
 		}
 		anyShard = true
@@ -213,7 +213,7 @@ func (m *MultiShardServer) SendShard(msg pgproto3.FrontendMessage, shardId uint)
 	}
 
 	if !anyShard {
-		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%d\"", shardId)
+		return spqrerror.Newf(spqrerror.SPQR_NO_DATASHARD, "attempt to send message to nonexistent datashard \"%s\"", shkey.Name)
 	}
 	return nil
 }
@@ -270,6 +270,10 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 		var saveCIn *pgproto3.CopyInResponse = nil
 		/* Step one: ensure all shard backend are started */
 		for i := range m.activeShards {
+			/* maybe query ass partially dispatched */
+			if m.activeShards[i].Sync() == 0 {
+				continue
+			}
 			for {
 				// all shards should be in rfq state
 				msg, err := m.activeShards[i].Receive()

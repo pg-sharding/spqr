@@ -67,6 +67,7 @@ NOTICE: send query to shard(s) : sh1
 (0 rows)
 
 COPY copy_test(id) FROM STDIN;
+NOTICE: send query to shard(s) : sh1
 COMMIT;
 SELECT id FROM copy_test ORDER BY id /* __spqr__execute_on: sh1 */;
 NOTICE: send query to shard(s) : sh1

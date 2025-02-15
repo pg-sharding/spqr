@@ -53,12 +53,20 @@ BEGIN;
 UPDATE xxm_expd SET j = j + 1 WHERE id = 1 /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh1
 UPDATE xxm_expd SET j = j + 1 WHERE id = 101 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2
+NOTICE: send query to shard(s) : sh2
 UPDATE xxm_expd SET j = j + 1 WHERE id = 299 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3
+NOTICE: send query to shard(s) : sh3
 UPDATE xxm_expd SET j = j + 1 WHERE id = 399 /* __spqr__engine_v2: true */;
-NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+NOTICE: send query to shard(s) : sh4
 COMMIT;
+BEGIN;
+INSERT INTO xxm_expd (id, j) VALUES(55, 55) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1
+INSERT INTO xxm_expd (id, j) VALUES(155, 155) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh2
+INSERT INTO xxm_expd (id, j) VALUES(355, 355) /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh4
+ROLLBACK;
 SELECT * FROM xxm_expd ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id  |  j  

@@ -309,6 +309,7 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 
 	for _, shard := range shards {
 		shardId := shard.ID()
+		shKey := shard.SHKey()
 
 		if ok, _ := serv.HasPrepareStatement(hash, shardId); ok {
 			continue
@@ -318,18 +319,18 @@ func (rst *RelayStateImpl) multishardPrepareDDL(hash uint64, d *prepstatement.Pr
 			Name:          d.Name,
 			Query:         d.Query,
 			ParameterOIDs: d.ParameterOIDs,
-		}, shardId); err != nil {
+		}, &shKey); err != nil {
 			return err
 		}
 
 		if err := serv.SendShard(&pgproto3.Describe{
 			ObjectType: byte('S'),
 			Name:       d.Name,
-		}, shardId); err != nil {
+		}, &shKey); err != nil {
 			return err
 		}
 
-		if err := serv.SendShard(&pgproto3.Sync{}, shardId); err != nil {
+		if err := serv.SendShard(&pgproto3.Sync{}, &shKey); err != nil {
 			return err
 		}
 
@@ -396,22 +397,23 @@ func (rst *RelayStateImpl) multishardDescribePortal(bind *pgproto3.Bind) (*preps
 
 	shard := shards[0]
 	shardId := shard.ID()
+	shkey := shard.SHKey()
 
-	if err := serv.SendShard(bind, shardId); err != nil {
+	if err := serv.SendShard(bind, &shkey); err != nil {
 		return nil, err
 	}
 
 	if err := serv.SendShard(&pgproto3.Describe{
 		ObjectType: byte('P'),
-	}, shardId); err != nil {
+	}, &shkey); err != nil {
 		return nil, err
 	}
 
-	if err := serv.SendShard(&pgproto3.Close{ObjectType: byte('P')}, shardId); err != nil {
+	if err := serv.SendShard(&pgproto3.Close{ObjectType: byte('P')}, &shkey); err != nil {
 		return nil, err
 	}
 
-	if err := serv.SendShard(&pgproto3.Sync{}, shardId); err != nil {
+	if err := serv.SendShard(&pgproto3.Sync{}, &shkey); err != nil {
 		return nil, err
 	}
 
@@ -572,15 +574,19 @@ func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
 		return expandInTxError
 	}
 
-	for _, shr := range routes {
-		rst.activeShards = append(rst.activeShards, *shr)
-	}
-
 	_ = rst.Client().SwitchServerConn(rst.Client().Server().ToMultishard())
 
 	beforeTx := rst.Client().Server().TxStatus()
 
 	for _, shkey := range routes {
+		if slices.ContainsFunc(rst.activeShards, func(c kr.ShardKey) bool {
+			return *shkey == c
+		}) {
+			continue
+		}
+
+		rst.activeShards = append(rst.activeShards, *shkey)
+
 		spqrlog.Zero.Debug().
 			Str("client tsa", string(rst.Client().GetTsa())).
 			Str("deploying tx", beforeTx.String()).
@@ -613,8 +619,8 @@ func (rst *RelayStateImpl) selectRandomRoute() (*kr.ShardKey, error) {
 	}
 
 	r := routes[rand.Int()%len(routes)]
-	rst.routingState = plan.ShardMatchState{
-		Route: r,
+	rst.routingState = plan.ShardDispatchPlan{
+		ExecTarget: r,
 	}
 
 	return r, nil
@@ -638,8 +644,8 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 	var queryPlan plan.Plan
 
 	if v := rst.Client().ExecuteOn(); v != "" {
-		queryPlan = plan.ShardMatchState{
-			Route: &kr.ShardKey{
+		queryPlan = plan.ShardDispatchPlan{
+			ExecTarget: &kr.ShardKey{
 				Name: v,
 			},
 		}
@@ -664,11 +670,9 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 			Uint("client", rst.Client().ID()).
 			Msgf("parsed DDLState")
 		return rst.Qr.DataShardsRoutes(), nil
-	case plan.ShardMatchState:
+	case plan.ShardDispatchPlan:
 		// TBD: do it better
-		return []*kr.ShardKey{v.Route}, nil
-	case plan.SkipRoutingState:
-		return nil, ErrSkipQuery
+		return []*kr.ShardKey{v.ExecTarget}, nil
 	case plan.RandomDispatchPlan:
 		r, err := rst.selectRandomRoute()
 		if err != nil {
@@ -684,12 +688,6 @@ func (rst *RelayStateImpl) Reroute() ([]*kr.ShardKey, error) {
 // TODO : unit tests
 func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
-
-	defer func() {
-		if rst.Client().ShowNoticeMsg() {
-			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
-		}
-	}()
 
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
@@ -711,12 +709,6 @@ func (rst *RelayStateImpl) RerouteToRandomRoute() error {
 func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 	_ = rst.Cl.ReplyDebugNotice("rerouting the client connection")
 
-	defer func() {
-		if rst.Client().ShowNoticeMsg() {
-			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
-		}
-	}()
-
 	span := opentracing.StartSpan("reroute")
 	defer span.Finish()
 	span.SetTag("user", rst.Cl.Usr())
@@ -727,8 +719,8 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 		Interface("statement", rst.qp.Stmt()).
 		Msg("rerouting the client connection to target shard, resolving shard")
 
-	rst.routingState = plan.ShardMatchState{
-		Route: route,
+	rst.routingState = plan.ShardDispatchPlan{
+		ExecTarget: route,
 	}
 
 	return rst.procRoutes([]*kr.ShardKey{route})
@@ -737,15 +729,15 @@ func (rst *RelayStateImpl) RerouteToTargetRoute(route *kr.ShardKey) error {
 // TODO : unit tests
 func (rst *RelayStateImpl) CurrentRoutes() []kr.ShardKey {
 	switch q := rst.routingState.(type) {
-	case plan.ShardMatchState:
-		return []kr.ShardKey{*q.Route}
+	case plan.ShardDispatchPlan:
+		return []kr.ShardKey{*q.ExecTarget}
 	default:
 		return nil
 	}
 }
 
 // TODO : unit tests
-func replyShardMatches(client client.RouterClient, sh []kr.ShardKey) error {
+func replyShardMatches(client client.RouterClient, sh []*kr.ShardKey) error {
 	var shardNames []string
 	for _, shkey := range sh {
 		shardNames = append(shardNames, shkey.Name)
@@ -1439,12 +1431,6 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 				return nil
 			}
 
-			defer func() {
-				if rst.Client().ShowNoticeMsg() && len(rst.ActiveShards()) != 0 {
-					_ = replyShardMatches(rst.Client(), rst.ActiveShards())
-				}
-			}()
-
 			/* else expand transaction */
 			return rst.expandRoutes(r)
 		}
@@ -1452,12 +1438,6 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	}
 
 	r, err := rst.Reroute()
-
-	defer func() {
-		if rst.Client().ShowNoticeMsg() && len(rst.ActiveShards()) != 0 {
-			_ = replyShardMatches(rst.Client(), rst.ActiveShards())
-		}
-	}()
 
 	switch err {
 	case nil:

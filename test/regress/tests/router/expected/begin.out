@@ -56,7 +56,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -75,7 +77,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -94,7 +98,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -113,7 +119,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -133,7 +141,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -152,7 +162,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -171,7 +183,9 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 SELECT * FROM test_beg WHERE id=10;
+NOTICE: send query to shard(s) : sh1
  id | age 
 ----+-----
  10 |  16
@@ -190,6 +204,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO test_beg(id, age) VALUES (10, 16);
+NOTICE: send query to shard(s) : sh1
 ERROR:  cannot execute INSERT in a read-only transaction
 ROLLBACK;
 -- test ignore of all cmds after error
@@ -203,6 +218,7 @@ NOTICE: send query to shard(s) : sh1
 (2 rows)
 
 INSERT INTO fff VALUES(1);
+NOTICE: send query to shard(s) : sh1
 ERROR:  relation "fff" does not exist
 LINE 1: INSERT INTO fff VALUES(1);
                     ^

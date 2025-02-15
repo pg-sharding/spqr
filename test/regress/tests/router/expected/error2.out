@@ -50,7 +50,9 @@ BEGIN;
 INSERT INTO tt (i) VALUES(1);
 NOTICE: send query to shard(s) : sh1
 DROP TABLE tt;
+NOTICE: send query to shard(s) : sh1
 INSERT INTO tt (i) VALUES(1);
+NOTICE: send query to shard(s) : sh1
 ERROR:  relation "tt" does not exist
 LINE 1: INSERT INTO tt (i) VALUES(1);
                     ^
