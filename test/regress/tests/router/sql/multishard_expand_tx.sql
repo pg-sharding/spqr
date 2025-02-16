@@ -46,6 +46,18 @@ INSERT INTO xxm_expd (id, j) VALUES(155, 155) /* __spqr__engine_v2: true */;
 INSERT INTO xxm_expd (id, j) VALUES(355, 355) /* __spqr__engine_v2: true */;
 ROLLBACK;
 
+BEGIN;
+DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
+SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
+SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
+ROLLBACK;
+
+BEGIN;
+SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
+SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
+DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
+ROLLBACK;
+
 SELECT * FROM xxm_expd ORDER BY id;
 
 UPDATE xxm_expd SET id = -1 /* __spqr__engine_v2: true */;

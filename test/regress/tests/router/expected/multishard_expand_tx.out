@@ -67,6 +67,38 @@ NOTICE: send query to shard(s) : sh2
 INSERT INTO xxm_expd (id, j) VALUES(355, 355) /* __spqr__engine_v2: true */;
 NOTICE: send query to shard(s) : sh4
 ROLLBACK;
+BEGIN;
+DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1
+ id | j 
+----+---
+(0 rows)
+
+SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh3
+ id | j 
+----+---
+(0 rows)
+
+ROLLBACK;
+BEGIN;
+SELECT * FROM xxm_expd WHERE id = 12 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1
+ id | j 
+----+---
+(0 rows)
+
+SELECT * FROM xxm_expd WHERE id = 212 /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh3
+ id | j 
+----+---
+(0 rows)
+
+DELETE FROM xxm_expd /* __spqr__engine_v2: true */;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+ROLLBACK;
 SELECT * FROM xxm_expd ORDER BY id;
 NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
  id  |  j  
