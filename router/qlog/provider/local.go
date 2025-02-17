@@ -64,6 +64,9 @@ func (dw *LocalQlog) Recover(ctx context.Context, path string) ([]string, error)
 	for scanner.Scan() {
 		line := scanner.Text()
 		query := strings.TrimSpace(line)
+		if len(query) > 2 && query[0] == '-' && query[1] == '-' {
+			continue
+		}
 		if len(query) > 0 {
 			qs += " " + query
 
