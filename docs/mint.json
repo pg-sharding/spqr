@@ -116,6 +116,12 @@
                         "sharding/copy"
                     ]
                 },
+                {
+                    "group": "Query routing",
+                    "pages": [
+                        "routing/hints"
+                    ]
+                },
                 "welcome/design"
             ]
         }
