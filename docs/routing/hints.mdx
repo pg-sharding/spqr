@@ -1,0 +1,79 @@
+---
+title: 'Routing hints'
+---
+
+For every query, you may specify special hints in different ways:
+
+- **Comment in the SQL statement**:
+    ```sql
+    SELECT count(*) FROM articles /* __spqr__execute_on: shard2 */;
+    ```
+
+- **Via SET-RESET interface**:
+    ```sql
+    SET __spqr__default_route_behaviour TO 'ALLOW';
+    SHOW __spqr__default_route_behaviour;
+     default route behaviour 
+    -------------------------
+     ALLOW
+    (1 row)
+    RESET __spqr__default_route_behaviour;
+    ```
+
+### `target-session-attrs`
+
+The `target-session-attrs` parameter in PostgreSQL is used to specify the desired session state when connecting to a database. It is particularly useful in scenarios with multiple servers and failover configurations, where you want to ensure your session connects to the server with the desired role or state.
+
+Possible values for `target-session-attrs`:
+
+
+- `read-write`: Connects to a server in read-write mode, and fails if the primary is unavailable.
+- `read-only`: Connects to read-only servers. Fails if none available.
+- `prefer-standby` or `prefer-replica`: Prefers connecting to standby servers. If none are available, it connects to primary.
+- `any`: Connect to any available server, regardless of state.
+
+### `default_route_behaviour`
+
+Whether to explicitly block multishard queries. Overload for [query_routing.default_route_behaviour](/configuration/router#feature-flags).
+
+```sql
+DROP DATABASE prod;
+ERROR:  client processing error: error processing query 'DROP DATABASE prod': failed to match any datashard., tx status IDLE
+
+DROP DATABASE prod /* __spqr__default_route_behaviour: allow */;
+NOTICE: send query to shard(s) : shard1,shard2,shard3,shard4
+```
+
+### `__spqr__execute_on`
+
+The __spqr__execute_on parameter is used to specify the shard on which a query should be executed.
+
+```sql
+SELECT col1 FROM xx ORDER BY col1 /* __spqr__execute_on: shard2 */;
+```
+
+### `__spqr__reply_notice`
+
+Whether to show notice messages. Overload for [query_routing.default_route_behaviour](/configuration/router#debug-settings). 
+
+```sql
+SET __spqr__reply_notice TO true;
+INSERT INTO xxtest_sw (id) VALUES(1), (2), (3);
+NOTICE: send query to shard(s) : sh1
+```
+
+### `__spqr__sharding_key`
+
+The __spqr__sharding_key explicitly pass the sharding key to the SPQR Router.
+
+```sql
+INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
+```
+
+### `__spqr__distribution`
+
+The __spqr__distribution explicitly specify which distribution should you the SPQR router to the query.
+
+```sql
+DELETE FROM users WHERE /* __spqr__sharding_key: 123, __spqr__distribution: ds1 */ name = 'denchick';
+```
