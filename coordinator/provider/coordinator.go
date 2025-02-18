@@ -1556,11 +1556,11 @@ func (qc *qdbCoordinator) RenameKeyRange(ctx context.Context, krId, krIdNew stri
 	if _, err := qc.GetKeyRange(ctx, krId); err != nil {
 		return err
 	}
-	if _, err := qc.LockKeyRange(ctx, krId); err != nil {
-		return err
-	}
 	if _, err := qc.GetKeyRange(ctx, krIdNew); err == nil {
 		return spqrerror.New(spqrerror.SPQR_KEYRANGE_ERROR, fmt.Sprintf("key range '%s' already exists", krIdNew))
+	}
+	if _, err := qc.LockKeyRange(ctx, krId); err != nil {
+		return err
 	}
 	if err := qc.db.RenameKeyRange(ctx, krId, krIdNew); err != nil {
 		return err
