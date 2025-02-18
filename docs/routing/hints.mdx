@@ -26,11 +26,23 @@ The `target-session-attrs` parameter in PostgreSQL is used to specify the desire
 
 Possible values for `target-session-attrs`:
 
-
 - `read-write`: Connects to a server in read-write mode, and fails if the primary is unavailable.
 - `read-only`: Connects to read-only servers. Fails if none available.
 - `prefer-standby` or `prefer-replica`: Prefers connecting to standby servers. If none are available, it connects to primary.
 - `any`: Connect to any available server, regardless of state.
+
+```sql
+SELECT pg_is_in_recovery() /* target-session-attrs: read-write */;
+ pg_is_in_recovery 
+-------------------
+ f                 
+(1 row)
+SELECT pg_is_in_recovery() /* target-session-attrs: read-only */;
+ pg_is_in_recovery 
+-------------------
+ t                 
+(1 row)
+```
 
 ### `default_route_behaviour`
 
