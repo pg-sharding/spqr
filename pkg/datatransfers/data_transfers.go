@@ -261,28 +261,28 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 	serverName := fmt.Sprintf("%s_%s_%s", strings.Split(toShard.Hosts[0], ":")[0], dbName, fromHost)
 	// create postgres_fdw server on receiving shard
 	// TODO find master
-	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %s FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
+	_, err := to.Exec(ctx, fmt.Sprintf(`CREATE server IF NOT EXISTS %q FOREIGN DATA WRAPPER postgres_fdw OPTIONS (dbname '%s', host '%s', port '%s')`, serverName, dbName, fromHost, strings.Split(fromShard.Hosts[0], ":")[1]))
 	if err != nil {
 		return err
 	}
 	// create user mapping for postgres_fdw server
 	// TODO check if name is taken
-	schemaName := fmt.Sprintf("%s_schema", serverName)
-	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %s`, toShard.User, serverName)); err != nil {
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP USER MAPPING IF EXISTS FOR %s SERVER %q`, toShard.User, serverName)); err != nil {
 		return err
 	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %s OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE USER MAPPING FOR %s SERVER %q OPTIONS (user '%s', password '%s')`, toShard.User, serverName, fromShard.User, fromShard.Password)); err != nil {
 		return err
 	}
 	// create foreign tables corresponding to such on sending shard
 	// TODO check if schemaName is not used by relations (needs schemas in distributions)
-	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %s CASCADE`, schemaName)); err != nil {
+	schemaName := fmt.Sprintf("%s_schema", serverName)
+	if _, err = to.Exec(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, schemaName)); err != nil {
 		return err
 	}
-	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %s`, schemaName)); err != nil {
+	if _, err = to.Exec(ctx, fmt.Sprintf(`CREATE SCHEMA IF NOT EXISTS %q`, schemaName)); err != nil {
 		return err
 	}
-	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %s INTO %s`, serverName, schemaName))
+	_, err = to.Exec(ctx, fmt.Sprintf(`IMPORT FOREIGN SCHEMA public FROM SERVER %q INTO %q`, serverName, schemaName))
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func copyData(ctx context.Context, from, to *pgx.Conn, fromId, toId string, krg 
 					INSERT INTO %s
 					SELECT * FROM %s
 					WHERE %s
-`, strings.ToLower(rel.Name), fmt.Sprintf("%s.%s", schemaName, strings.ToLower(rel.Name)), krCondition)
+`, strings.ToLower(rel.Name), fmt.Sprintf("%q.%q", schemaName, strings.ToLower(rel.Name)), krCondition)
 		_, err = to.Exec(ctx, query)
 		if err != nil {
 			return err
