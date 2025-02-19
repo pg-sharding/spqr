@@ -84,7 +84,7 @@ INSERT INTO test(id, age) VALUES (10, 16) /*__spqr__sharding_key: 30*/;
 
 ### `__spqr__distribution`
 
-The __spqr__distribution explicitly specify which distribution should you the SPQR router to the query.
+The __spqr__distribution explicitly specify which distribution the SPQR router should use for query routing.
 
 ```sql
 DELETE FROM users WHERE /* __spqr__sharding_key: 123, __spqr__distribution: ds1 */ name = 'denchick';
