@@ -10,7 +10,6 @@ require (
 	github.com/go-faster/city v1.0.1
 	github.com/go-ldap/ldap/v3 v3.4.10
 	github.com/gofrs/uuid v4.4.0+incompatible
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/jcmturner/gofork v1.7.6
@@ -32,6 +31,7 @@ require (
 	github.com/xdg-go/scram v1.1.2
 	go.etcd.io/etcd/client/v3 v3.5.18
 	go.uber.org/atomic v1.11.0
+	go.uber.org/mock v0.5.0
 	golang.org/x/crypto v0.33.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/sync v0.11.0

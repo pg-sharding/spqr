@@ -8,9 +8,9 @@ import (
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/golang/mock/gomock"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	"github.com/pg-sharding/spqr/pkg/tsa"
+	"go.uber.org/mock/gomock"
 )
 
 // TestTSA_RW is a unit test function that tests the CheckTSA function of the TSA package.

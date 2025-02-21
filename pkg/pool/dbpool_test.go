@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
@@ -21,6 +20,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/tsa"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/sync/semaphore"
 )
 

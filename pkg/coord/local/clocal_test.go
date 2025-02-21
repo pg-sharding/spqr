@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/pg-sharding/spqr/pkg/coord/local"
 	"github.com/pg-sharding/spqr/qdb"
 	mock "github.com/pg-sharding/spqr/qdb/mock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestListKeyRangesCaches(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
+	"go.uber.org/mock/gomock"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/auth"

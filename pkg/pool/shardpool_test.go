@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/pg-sharding/spqr/pkg/config"
 	mockinst "github.com/pg-sharding/spqr/pkg/mock/conn"
 	mockshard "github.com/pg-sharding/spqr/pkg/mock/shard"
@@ -18,6 +17,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 // TestShardPoolConnectionAcquirePut tests the acquisition and putting of connections in the ShardPool.

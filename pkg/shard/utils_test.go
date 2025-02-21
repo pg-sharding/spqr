@@ -3,10 +3,10 @@ package shard_test
 import (
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	mocksh "github.com/pg-sharding/spqr/pkg/mock/shard"
 	"github.com/pg-sharding/spqr/pkg/shard"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 // TestShardIDs is a unit test function that tests the behavior of the ShardIDs function in the shard package.
