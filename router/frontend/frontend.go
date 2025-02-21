@@ -120,7 +120,7 @@ func ProcessMessage(qr qrouter.QueryRouter, rst relay.RelayStateMgr, msg pgproto
 		q = &cpQ
 		return relay.ProcQueryAdvancedTx(rst, q.String, func() error {
 			rst.AddQuery(q)
-			// this call compeletes relay, sends RFQ
+			// this call completes relay, sends RFQ
 			return rst.ProcessMessageBuf(true, true)
 		}, false, true)
 	default:

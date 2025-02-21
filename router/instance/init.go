@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-type RouterMetadataBootstraper interface {
+type RouterMetadataBootstrapper interface {
 	InitializeMetadata(ctx context.Context, r RouterInstance) error
 }

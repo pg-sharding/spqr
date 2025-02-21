@@ -73,7 +73,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 	return rdistr
 }
 
-// DistributedRelatitonToProto converts a DistributedRelation object to a proto.DistributedRelation object.
+// DistributedRelationToProto converts a DistributedRelation object to a proto.DistributedRelation object.
 // It takes a pointer to a DistributedRelation object as input and returns a pointer to a proto.DistributedRelation object.
 //
 // Parameters:
@@ -81,7 +81,7 @@ func DistributedRelationToDB(rel *DistributedRelation) *qdb.DistributedRelation 
 //
 // Returns:
 //   - *proto.DistributedRelation: The converted proto.DistributedRelation object.
-func DistributedRelatitonToProto(rel *DistributedRelation) *proto.DistributedRelation {
+func DistributedRelationToProto(rel *DistributedRelation) *proto.DistributedRelation {
 	rdistr := &proto.DistributedRelation{
 		Name: rel.Name,
 	}
@@ -226,7 +226,7 @@ func DistributionFromProto(ds *proto.Distribution) *Distribution {
 func DistributionToProto(ds *Distribution) *proto.Distribution {
 	drels := make([]*proto.DistributedRelation, 0)
 	for _, r := range ds.Relations {
-		drels = append(drels, DistributedRelatitonToProto(r))
+		drels = append(drels, DistributedRelationToProto(r))
 	}
 	return &proto.Distribution{
 		Id:          ds.Id,
@@ -262,7 +262,7 @@ func DistributionToDB(ds *Distribution) *qdb.Distribution {
 //
 // Returns:
 //   - []string: Columns with optional hash function.
-//   - error: An error if any occured
+//   - error: An error if any occurred
 func (rel *DistributedRelation) GetDistributionKeyColumns() ([]string, error) {
 	res := make([]string, len(rel.DistributionKey))
 	for i, col := range rel.DistributionKey {

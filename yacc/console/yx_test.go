@@ -70,7 +70,7 @@ func TestSimpleShow(t *testing.T) {
 			},
 			err: nil,
 		},
-		/* case insensetive */
+		/* case insensitive */
 		{
 			query: "ShOw versIon",
 			exp: &spqrparser.Show{

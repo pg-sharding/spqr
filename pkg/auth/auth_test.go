@@ -20,7 +20,7 @@ const shardName2 = "sh2"
 
 var buf bytes.Buffer
 
-// MockBakendRule generates a mock BackendRule for testing purposes.
+// MockBackendRule generates a mock BackendRule for testing purposes.
 //
 // It takes a string parameter `method` which represents the authentication method.
 // The function creates two AuthCfg objects, `auth1` and `auth2`, with the given method and different passwords.
@@ -33,7 +33,7 @@ var buf bytes.Buffer
 //
 // Returns:
 // - *config.BackendRule: The generated BackendRule object.
-func MockBakendRule() *config.BackendRule {
+func MockBackendRule() *config.BackendRule {
 	auth1 := &config.AuthBackendCfg{
 		Password: "123",
 	}
@@ -93,10 +93,10 @@ func TestDifferentPasswordsForDifferentShards(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule()
+	br_md5 := MockBackendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule()
+	br_clear := MockBackendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
@@ -154,10 +154,10 @@ func TestSamePasswordForOneShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule()
+	br_md5 := MockBackendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule()
+	br_clear := MockBackendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard1 := MockShard(shardName1)
@@ -208,10 +208,10 @@ func TestErrorWhenNoPasswordForShard(t *testing.T) {
 	//init test data
 	assert := assert.New(t)
 
-	br_md5 := MockBakendRule()
+	br_md5 := MockBackendRule()
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule()
+	br_clear := MockBackendRule()
 	message_clear := &pgproto3.AuthenticationCleartextPassword{}
 
 	shard := MockShard("unexisting")
@@ -299,13 +299,13 @@ func TestCanConnectWithDefaultRule(t *testing.T) {
 // - None.
 func TestDifferentPasswordsForRuleAndDefault(t *testing.T) {
 	//init test data
-	br_md5 := MockBakendRule()
+	br_md5 := MockBackendRule()
 	br_md5.DefaultAuthRule = &config.AuthBackendCfg{
 		Password: "12345",
 	}
 	message_md5 := &pgproto3.AuthenticationMD5Password{}
 
-	br_clear := MockBakendRule()
+	br_clear := MockBackendRule()
 	br_clear.DefaultAuthRule = &config.AuthBackendCfg{
 		Password: "12345",
 	}

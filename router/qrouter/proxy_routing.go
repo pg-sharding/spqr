@@ -102,33 +102,33 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 				alias, colname := lft.TableAlias, lft.ColName
 
 				/* simple key-value pair */
-				switch rght := texpr.Right.(type) {
+				switch right := texpr.Right.(type) {
 				case *lyx.ParamRef, *lyx.AExprSConst, *lyx.AExprIConst:
 					// else  error out?
 
 					// TBD: postpone routing from here to root of parsing tree
-					// maybe expimely inefficient. Will be fixed in SPQR-2.0
-					if err := qr.processConstExpr(alias, colname, rght, meta); err != nil {
+					// maybe extremely inefficient. Will be fixed in SPQR-2.0
+					if err := qr.processConstExpr(alias, colname, right, meta); err != nil {
 						return err
 					}
 
 				case *lyx.AExprList:
-					for _, expr := range rght.List {
+					for _, expr := range right.List {
 						if err := qr.processConstExpr(alias, colname, expr, meta); err != nil {
 							return err
 						}
 					}
 				case *lyx.FuncApplication:
-					// there are several types of queries like DELETE FROM rel WHERE colref = func_applicion
-					// and func_applicion is actually routable statement.
+					// there are several types of queries like DELETE FROM rel WHERE colref = func_application
+					// and func_application is actually routable statement.
 					// ANY(ARRAY(subselect)) if one type.
 
-					if strings.ToLower(rght.Name) == "any" {
-						if len(rght.Args) > 0 {
+					if strings.ToLower(right.Name) == "any" {
+						if len(right.Args) > 0 {
 							// maybe we should consider not only first arg.
 							// however, consider only it
 
-							switch argexpr := rght.Args[0].(type) {
+							switch argexpr := right.Args[0].(type) {
 							case *lyx.SubLink:
 
 								// ignore all errors.
@@ -155,7 +155,7 @@ func (qr *ProxyQrouter) routeByClause(ctx context.Context, expr lyx.Node, meta *
 		case *lyx.ColumnRef:
 			/* colref = colref case, skip */
 		case *lyx.AExprIConst, *lyx.AExprSConst, *lyx.AExprBConst, *lyx.AExprNConst:
-			/* should not happend */
+			/* should not happen */
 		case *lyx.AExprEmpty:
 			/*skip*/
 		case *lyx.Select:
@@ -243,7 +243,7 @@ func (qr *ProxyQrouter) deparseFromNode(ctx context.Context, node lyx.FromClause
 		}
 	default:
 		// other cases to consider
-		// lateral join, natual, etc
+		// lateral join, natural, etc
 
 	}
 
@@ -307,7 +307,7 @@ func (qr *ProxyQrouter) processInsertFromSelectOffsets(ctx context.Context, stmt
 		for _, col := range distributionKey {
 			if val, ok := insertColsPos[col.Column]; !ok {
 				/* Do not return err here.
-				* This particulat insert stmt is un-routable, but still, give it a try
+				* This particular insert stmt is un-routable, but still, give it a try
 				* and continue parsing.
 				* Example: INSERT INTO xx SELECT * FROM xx a WHERE a.w_id = 20;
 				* we have no insert cols specified, but still able to route on select
@@ -629,7 +629,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
-		 XXX: support intelegent show support, without direct query dispatch
+		 XXX: support intelligent show support, without direct query dispatch
 		*/
 		return plan.RandomDispatchPlan{}, true, nil
 
@@ -885,7 +885,7 @@ func (qr *ProxyQrouter) routeWithRules(ctx context.Context, rm *rmeta.RoutingMet
 
 				currroute, err := rm.DeparseKeyWithRangesInternal(ctx, compositeKey, krs)
 				if err != nil {
-					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encoutered the route error")
+					spqrlog.Zero.Debug().Interface("composite key", compositeKey).Err(err).Msg("encountered the route error")
 					return nil, false, err
 				}
 

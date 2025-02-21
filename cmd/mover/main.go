@@ -17,8 +17,8 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-var fromShardConnst = flag.String("from-shard-connstring", "", "Connection string to shard to move data from")
-var toShardConnst = flag.String("to-shard-connstring", "", "Connection string to shard to move data to")
+var fromShardConnSt = flag.String("from-shard-connstring", "", "Connection string to shard to move data from")
+var toShardConnSt = flag.String("to-shard-connstring", "", "Connection string to shard to move data to")
 
 var krId = flag.String("key-range", "", "ID of key range to move")
 var etcdAddr = flag.String("etcd-addr", "", "ETCD address")
@@ -144,13 +144,13 @@ func main() {
 
 	ctx := context.Background()
 
-	connFrom, err := pgx.Connect(ctx, *fromShardConnst)
+	connFrom, err := pgx.Connect(ctx, *fromShardConnSt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return
 	}
 
-	connTo, err := pgx.Connect(ctx, *toShardConnst)
+	connTo, err := pgx.Connect(ctx, *toShardConnSt)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
 		return

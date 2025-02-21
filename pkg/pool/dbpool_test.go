@@ -153,13 +153,13 @@ func TestDbPoolRaces(t *testing.T) {
 		"h3",
 	}
 
-	shrds := []string{
+	shards := []string{
 		"sh1",
 		"sh2",
 		"sh3",
 	}
 
-	for i, shname := range shrds {
+	for i, shname := range shards {
 		mp[shname] = map[string][]shard.Shard{}
 
 		for hi, hst := range hosts {
@@ -212,7 +212,7 @@ func TestDbPoolRaces(t *testing.T) {
 
 	cfg := map[string]*config.Shard{}
 
-	for _, sh := range shrds {
+	for _, sh := range shards {
 		cfg[sh] = &config.Shard{
 			RawHosts: hosts,
 		}
@@ -223,7 +223,7 @@ func TestDbPoolRaces(t *testing.T) {
 		defer mu.Unlock()
 
 		if len(mp[shardKey.Name][host.Address]) == 0 {
-			panic("exeeded!")
+			panic("exceeded!")
 		}
 		var sh shard.Shard
 		sh, mp[shardKey.Name][host.Address] = mp[shardKey.Name][host.Address][0], mp[shardKey.Name][host.Address][1:]
@@ -246,7 +246,7 @@ func TestDbPoolRaces(t *testing.T) {
 			go func() {
 				defer sem.Release(1)
 
-				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shrds[i%3]}, config.TargetSessionAttrsPS)
+				sh, err := dbpool.ConnectionWithTSA(uint(i), kr.ShardKey{Name: shards[i%3]}, config.TargetSessionAttrsPS)
 				assert.NoError(err)
 				err = dbpool.Put(sh)
 				assert.NoError(err)

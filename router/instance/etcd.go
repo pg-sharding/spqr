@@ -10,12 +10,12 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 )
 
-type EtcdMetadataBootstraper struct {
+type EtcdMetadataBootstrapper struct {
 	QdbAddr string
 }
 
-// InitializeMetadata implements RouterMetadataBootstraper.
-func (e *EtcdMetadataBootstraper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
+// InitializeMetadata implements RouterMetadataBootstrapper.
+func (e *EtcdMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 	etcdConn, err := qdb.NewEtcdQDB(e.QdbAddr)
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (e *EtcdMetadataBootstraper) InitializeMetadata(ctx context.Context, r Rout
 		c, err := etcdConn.GetCoordinator(ctx)
 		if err != nil {
 			if retryCnt > 0 {
-				/* await the roiter to appear */
+				/* await the router to appear */
 				time.Sleep(time.Second)
 				retryCnt--
 				continue
@@ -75,6 +75,6 @@ func (e *EtcdMetadataBootstraper) InitializeMetadata(ctx context.Context, r Rout
 	return nil
 }
 
-func NewEtcdMetadataBootstraper(QdbAddr string) RouterMetadataBootstraper {
-	return &EtcdMetadataBootstraper{QdbAddr: QdbAddr}
+func NewEtcdMetadataBootstrapper(QdbAddr string) RouterMetadataBootstrapper {
+	return &EtcdMetadataBootstrapper{QdbAddr: QdbAddr}
 }

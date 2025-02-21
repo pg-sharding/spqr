@@ -121,7 +121,7 @@ func ProcQueryAdvancedTx(rst RelayStateMgr, query string, binderQ func() error, 
 // ProcQueryAdvanced processes query, with router relay state
 // There are several types of query that we want to process in non-passthrough way.
 // For example, after BEGIN we wait until first client query witch can be router to some shard.
-// So, we need to proccess SETs, BEGINs, ROLLBACKs etc ourselves.
+// So, we need to process SETs, BEGINs, ROLLBACKs etc ourselves.
 // QueryStateExecutor provides set of function for either simple of extended protoc interactions
 // query param is either plain query from simple proto or bind query from x proto
 func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState, comment string, binderQ func() error, doCaching bool) error {
@@ -169,7 +169,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 						return err
 					}
 
-					/* This is an ddl query, which creates relation along with attaching to dsitribution */
+					/* This is an ddl query, which creates relation along with attaching to distribution */
 					rst.Client().SetAutoDistribution(true, val)
 					rst.Client().SetDistributionKey(true, valDistrib)
 
@@ -261,7 +261,7 @@ func ProcQueryAdvanced(rst RelayStateMgr, query string, state parser.ParseState,
 		return rst.QueryExecutor().ExecSet(rst, query, st.Name, st.Value)
 	case parser.ParseStateShowStmt:
 		param := st.Name
-		// manually create router responce
+		// manually create router response
 		// here we just reply single row with single column value
 
 		switch param {

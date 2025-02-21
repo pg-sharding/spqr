@@ -89,23 +89,23 @@ func DeployTxOnShard(sh Shard, qry pgproto3.FrontendMessage, expTx txstatus.TXSt
 	if err := sh.Send(qry); err != nil {
 		return txstatus.TXERR, err
 	}
-	/* we expect command complete and rfq as begin responce */
+	/* we expect command complete and rfq as begin response */
 	msg, err := sh.Receive()
 	if err != nil {
 		return txstatus.TXERR, err
 	}
 	if _, ok := msg.(*pgproto3.CommandComplete); !ok {
-		return txstatus.TXERR, fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
 	}
 
-	/* we expect command complete and rfq as begin responce */
+	/* we expect command complete and rfq as begin response */
 	msg, err = sh.Receive()
 	if err != nil {
 		return txstatus.TXERR, err
 	}
 	q, ok := msg.(*pgproto3.ReadyForQuery)
 	if !ok || q.TxStatus != byte(expTx) {
-		return txstatus.TXERR, fmt.Errorf("unexpected responce in transaction deploy %+v", msg)
+		return txstatus.TXERR, fmt.Errorf("unexpected response in transaction deploy %+v", msg)
 	}
 	return txstatus.TXStatus(q.TxStatus), nil
 }

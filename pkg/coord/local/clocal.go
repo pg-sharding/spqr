@@ -886,7 +886,7 @@ func (lc *LocalCoordinator) UpdateCoordinator(ctx context.Context, addr string) 
 // - error: An error indicating the retrieval status.
 func (lc *LocalCoordinator) GetCoordinator(ctx context.Context) (string, error) {
 	addr, err := lc.qdb.GetCoordinator(ctx)
-	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordiantor: get coordinator")
+	spqrlog.Zero.Debug().Str("address", addr).Msg("resp local coordinator: get coordinator")
 	return addr, err
 }
 

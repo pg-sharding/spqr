@@ -23,9 +23,9 @@ message ClientInfo {
 }
 
 message UsedShardInfo {
-    DBInstaceInfo instance = 1;
+    DBInstanceInfo instance = 1;
 }
 
-message DBInstaceInfo {
+message DBInstanceInfo {
     string hostname = 1;
 }

@@ -146,7 +146,7 @@ func (qp *QParser) Parse(query string) (ParseState, string, error) {
 	switch q := routerStmts.(type) {
 	case *lyx.Explain:
 		varStmt := ParseStateExplain{}
-		/* TODO: get query herte*/
+		/* TODO: get query here*/
 		// varStmt.Query = q.Stmt
 		return varStmt, comment, nil
 	case *lyx.Execute:

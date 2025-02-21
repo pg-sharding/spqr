@@ -17,7 +17,7 @@ ROLLBACK;
 
 SELECT * FROM transactions_test WHERE id = 1;;
 
--- check that commited changes present
+-- check that committed changes present
 BEGIN;
 SELECT * FROM transactions_test WHERE id = 1;;
 INSERT INTO transactions_test (id) VALUES (1);

@@ -36,7 +36,7 @@ type BalancerImpl struct {
 //
 // Returns:
 //   - *BalancerImpl: new balancer instance.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func NewBalancer() (*BalancerImpl, error) {
 	shards, err := loadShardsConfig(config.BalancerConfig().ShardsConfig)
 	if err != nil {
@@ -106,7 +106,7 @@ func (b *BalancerImpl) RunBalancer(ctx context.Context) {
 //
 // Returns:
 //   - *tasks.BalancerTask: balancer task describing data movement to be done.
-//   - error: an error if any occured
+//   - error: an error if any occurred
 func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, error) {
 	shardToState := make(map[string]*ShardMetrics)
 	shardStates := make([]*ShardMetrics, 0)
@@ -174,7 +174,7 @@ func (b *BalancerImpl) generateTasks(ctx context.Context) (*tasks.BalancerTask, 
 //
 // Returns:
 //   - *ShardMetrics: metrics from all hosts of the shard.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string, shard *config.ShardConnect) (*ShardMetrics, error) {
 	spqrlog.Zero.Debug().Str("shard id", shardId).Msg("getting shard state")
 	connStrings := datatransfers.GetConnStrings(shard)
@@ -213,7 +213,7 @@ func (b *BalancerImpl) getShardCurrentState(ctx context.Context, shardId string,
 // Returns:
 //   - metrics (HostMetrics): the metrics collected from the host.
 //   - isMaster (bool): specifies if host is master/primary or not.
-//   - err (error): an error if any occured.
+//   - err (error): an error if any occurred.
 func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics HostMetrics, isMaster bool, err error) {
 	spqrlog.Zero.Debug().Str("host", dsn).Msg("getting host state")
 	conn, err := pgx.Connect(ctx, dsn)
@@ -263,7 +263,7 @@ func (b *BalancerImpl) getHostStatus(ctx context.Context, dsn string) (metrics H
 //   - shard (*ShardMetrics): the metrics to be complemented.
 //
 // Returns:
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetrics) error {
 	spqrlog.Zero.Debug().Str("shard", shard.ShardId).Msg("getting shard detailed state")
 
@@ -375,7 +375,7 @@ func (b *BalancerImpl) getStatsByKeyRange(ctx context.Context, shard *ShardMetri
 //
 // Returns:
 //   - []*distributions.DistributedRelation: relations belonging to key range's distribution.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) ([]*distributions.DistributedRelation, error) {
 	distributionService := protos.NewDistributionServiceClient(b.coordinatorConn)
 	res, err := distributionService.GetDistribution(ctx, &protos.GetDistributionRequest{Id: kRange.Distribution})
@@ -400,7 +400,7 @@ func (b *BalancerImpl) getKRRelations(ctx context.Context, kRange *kr.KeyRange) 
 //
 // Returns:
 //   - string: the ID of the shard to move the data to.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 //
 // TODO unit tests
 func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string, keyCountToMove int) (string, bool) {
@@ -433,7 +433,7 @@ func (b *BalancerImpl) getShardToMoveTo(shardMetrics []*ShardMetrics, shardIdToM
 //
 // Returns:
 //   - shardId (string): the ID of the shard to move the data to.
-//   - maxKeyCount (int): the maximal possble amount of keys to move.
+//   - maxKeyCount (int): the maximal possible amount of keys to move.
 //
 // TODO unit tests
 func (b *BalancerImpl) moveMaxPossible(shardMetrics []*ShardMetrics, shardIdToMetrics map[string]*ShardMetrics, krId string, krShardId string) (shardId string, maxKeyCount int) {
@@ -572,7 +572,7 @@ func (b *BalancerImpl) getMostLoadedKR(shard *ShardMetrics, kind int) (value flo
 //
 // Returns:
 //   - *tasks.BalancerTask: the resulting balancer task.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krId string, shardToId string, keyCount int) (*tasks.BalancerTask, error) {
 	spqrlog.Zero.Debug().
 		Str("shard_from", shardFrom.ShardId).
@@ -616,7 +616,7 @@ func (b *BalancerImpl) getTask(shardFrom *ShardMetrics, krId string, shardToId s
 //
 // Returns:
 //   - *tasks.BalancerTask: balancer task if contained in QDB, nil otherwise.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) getCurrentTaskFromQDB(ctx context.Context) (*tasks.BalancerTask, error) {
 	tasksService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
 	resp, err := tasksService.GetBalancerTask(ctx, nil)
@@ -633,7 +633,7 @@ func (b *BalancerImpl) getCurrentTaskFromQDB(ctx context.Context) (*tasks.Balanc
 //   - task (*tasks.BalancerTask): the balancer task to be written.
 //
 // Returns:
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) syncTaskWithQDB(ctx context.Context, task *tasks.BalancerTask) error {
 	tasksService := protos.NewBalancerTaskServiceClient(b.coordinatorConn)
 	_, err := tasksService.WriteBalancerTask(ctx, &protos.WriteBalancerTaskRequest{Task: tasks.BalancerTaskToProto(task)})
@@ -651,7 +651,7 @@ func (b *BalancerImpl) syncTaskWithQDB(ctx context.Context, task *tasks.Balancer
 //   - task (*tasks.BalancerTask): the balancer task to execute.
 //
 // Returns:
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTask) error {
 
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
@@ -720,7 +720,7 @@ func (b *BalancerImpl) executeTasks(ctx context.Context, task *tasks.BalancerTas
 //   - ctx (context.Context): the context for querying the coordinator.
 //
 // Returns:
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 	keyRangeService := protos.NewKeyRangeServiceClient(b.coordinatorConn)
 	distrService := protos.NewDistributionServiceClient(b.coordinatorConn)
@@ -776,7 +776,7 @@ func (b *BalancerImpl) updateKeyRanges(ctx context.Context) error {
 //
 // Returns:
 //   - *config.DatatransferConnections: the connection info for all shards.
-//   - error: an error if any occured.
+//   - error: an error if any occurred.
 func loadShardsConfig(path string) (*config.DatatransferConnections, error) {
 	var err error
 

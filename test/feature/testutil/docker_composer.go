@@ -29,7 +29,7 @@ const shell = "/bin/bash"
 type Composer interface {
 	// Brings all containers/VMs up according to config
 	Up(env []string) error
-	// Trears all containers/VMs dowwn
+	// Tears all containers/VMs down
 	Down() error
 	// Returns names/ids of running containers
 	Services() []string
@@ -46,11 +46,11 @@ type Composer interface {
 	// Attachs container/VM to network
 	AttachToNet(service string) error
 	// Executes command inside container/VM with given timeout.
-	// Returns command retcode and output (stdoud and stderr are mixed)
+	// Returns command retcode and output (stdout and stderr are mixed)
 	RunCommand(service, cmd string, timeout time.Duration) (retcode int, output string, err error)
 	RunCommandAtHosts(cmd, hostsSubstring string, timeout time.Duration) error
 	// Executes command inside container/VM with given timeout.
-	// Returns command retcode and output (stdoud and stderr are mixed)
+	// Returns command retcode and output (stdout and stderr are mixed)
 	RunAsyncCommand(service, cmd string) error
 	// Returns content of the file from container by path
 	GetFile(service, path string) (io.ReadCloser, error)
@@ -68,7 +68,7 @@ type DockerComposer struct {
 }
 
 // NewDockerComposer returns DockerComposer instance for specified compose file
-// Parameter project specify prefix to distguish docker container and networks from different runs
+// Parameter project specify prefix to distinguish docker container and networks from different runs
 func NewDockerComposer(project, config string) (*DockerComposer, error) {
 	if config == "" {
 		config = "docker-compose.yaml"
@@ -145,7 +145,7 @@ func (dc *DockerComposer) Up(env []string) error {
 	return err
 }
 
-// Down trears all containers/VMs dowwn
+// Down tears all containers/VMs down
 func (dc *DockerComposer) Down() error {
 	return dc.runCompose([]string{"down", "-v" /* "-t", strconv.Itoa(int(defaultDockerComposeTimeout / time.Second))*/}, nil)
 }
@@ -264,7 +264,7 @@ func (dc *DockerComposer) RunAsyncCommand(service string, cmd string) error {
 	return dc.api.ContainerExecStart(context.Background(), execResp.ID, container.ExecStartOptions{})
 }
 
-// GetFile returns content of the fail from continer by path
+// GetFile returns content of the file from container by path
 func (dc *DockerComposer) GetFile(service, path string) (io.ReadCloser, error) {
 	cont, ok := dc.containers[service]
 	if !ok {
@@ -332,7 +332,7 @@ func (dc *DockerComposer) Stop(service string) error {
 	return err
 }
 
-// AttachToNet attachs container to network
+// AttachToNet attaches container to network
 func (dc *DockerComposer) AttachToNet(service string) error {
 	_, ok := dc.containers[service]
 	if !ok {

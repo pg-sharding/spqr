@@ -122,7 +122,7 @@ func init() {
 	cmd.PersistentFlags().StringVarP(&hostname, "host", "", "spqr_router_1_1", "")
 	cmd.PersistentFlags().StringVarP(&relation, "rel", "r", "x", "")
 	cmd.PersistentFlags().StringVarP(&dbname, "dbname", "d", "dbtpcc", "")
-	cmd.PersistentFlags().StringVarP(&username, "usename", "u", "user1", "")
+	cmd.PersistentFlags().StringVarP(&username, "username", "u", "user1", "")
 	cmd.PersistentFlags().StringVarP(&sslmode, "sslmode", "s", "disable", "")
 
 	cmd.AddCommand(cmdTest)

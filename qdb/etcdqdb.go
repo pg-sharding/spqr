@@ -1034,7 +1034,7 @@ func (q *EtcdQDB) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 		resp, err := q.cli.Put(ctx, relationMappingNodePath(rel.Name), id)
 		spqrlog.Zero.Debug().
-			Interface("responce", resp).
+			Interface("response", resp).
 			Msg("etcdqdb: attach table to distribution")
 		if err != nil {
 			return err

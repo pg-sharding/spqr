@@ -249,7 +249,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 						spqrlog.Zero.Info().
 							Uint("shard", m.activeShards[i].ID()).
 							Type("message-type", msg).
-							Msg("multishard server: recived message from shard while rollback after error")
+							Msg("multishard server: received message from shard while rollback after error")
 					}
 				}
 			}(i)
@@ -540,7 +540,7 @@ func (m *MultiShardServer) Receive() (pgproto3.BackendMessage, error) {
 			}, nil
 		} else {
 			rollback()
-			return nil, fmt.Errorf("multishard server: unsync in tx status amoung shard connections")
+			return nil, fmt.Errorf("multishard server: unsync in tx status among shard connections")
 		}
 	}
 

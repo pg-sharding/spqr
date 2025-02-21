@@ -257,7 +257,7 @@ func (cl *PsqlClient) DefaultRouteBehaviour() string {
 // TODO : implement, unit tests
 // ReceiveCtx implements RouterClient.
 func (*PsqlClient) ReceiveCtx(ctx context.Context) (pgproto3.FrontendMessage, error) {
-	panic("PsqClient.ReceiveCtx not implemented")
+	panic("PsqlClient.ReceiveCtx not implemented")
 }
 
 // ScatterQuery implements RouterClient.
@@ -274,10 +274,10 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, intanseDefaultTsa string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, intanceDefaultTsa string) *PsqlClient {
 	var target_session_attrs tsa.TSA
-	if intanseDefaultTsa != "" {
-		target_session_attrs = tsa.TSA(intanseDefaultTsa)
+	if intanceDefaultTsa != "" {
+		target_session_attrs = tsa.TSA(intanceDefaultTsa)
 	} else {
 		target_session_attrs = tsa.TSA(config.TargetSessionAttrsRW)
 	}
@@ -1023,17 +1023,17 @@ func (cl *PsqlClient) Params() map[string]string {
 }
 
 func (cl *PsqlClient) ReplyErrMsg(msg string, code string, s txstatus.TXStatus) error {
-	var clerrmsg string
+	var clErrMsg string
 
 	if cl.ReplyClientId {
-		clerrmsg = fmt.Sprintf("client %p: error %v", cl, msg)
+		clErrMsg = fmt.Sprintf("client %p: error %v", cl, msg)
 	} else {
-		clerrmsg = msg
+		clErrMsg = msg
 	}
 
 	for _, msg := range []pgproto3.BackendMessage{
 		&pgproto3.ErrorResponse{
-			Message:  clerrmsg,
+			Message:  clErrMsg,
 			Severity: "ERROR",
 			Code:     code,
 		},
@@ -1067,8 +1067,8 @@ func (cl *PsqlClient) ReplyErr(e error) error {
 }
 
 func (cl *PsqlClient) ReplyErrMsgByCode(code string) error {
-	clerrmsg := spqrerror.GetMessageByCode(code)
-	return cl.ReplyErrMsg(clerrmsg, code, txstatus.TXIDLE)
+	clErrMsg := spqrerror.GetMessageByCode(code)
+	return cl.ReplyErrMsg(clErrMsg, code, txstatus.TXIDLE)
 }
 
 func (cl *PsqlClient) ReplyRFQ(txstatus txstatus.TXStatus) error {

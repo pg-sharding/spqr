@@ -30,7 +30,7 @@ type DBPool struct {
 	Pool
 	pool           MultiShardPool
 	shardMapping   map[string]*config.Shard
-	cacheTSAchecks sync.Map
+	cacheTSAChecks sync.Map
 	checker        tsa.TSAChecker
 
 	ShuffleHosts bool
@@ -67,7 +67,7 @@ func (s *DBPool) traverseHostsMatchCB(clid uint, key kr.ShardKey, hosts []config
 		sh, err := s.pool.ConnectionHost(clid, key, host)
 		if err != nil {
 
-			s.cacheTSAchecks.Store(TsaKey{
+			s.cacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: host.Address,
 				AZ:   host.AZ,
@@ -118,7 +118,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
-			s.cacheTSAchecks.Store(TsaKey{
+			s.cacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
@@ -127,7 +127,7 @@ func (s *DBPool) selectReadOnlyShardHost(clid uint, key kr.ShardKey, hosts []con
 			return false
 		}
 
-		s.cacheTSAchecks.Store(TsaKey{
+		s.cacheTSAChecks.Store(TsaKey{
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
@@ -172,7 +172,7 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 			totalMsg = append(totalMsg, fmt.Sprintf("host %s: ", shard.Instance().Hostname())+err.Error())
 			_ = s.pool.Discard(shard)
 
-			s.cacheTSAchecks.Store(TsaKey{
+			s.cacheTSAChecks.Store(TsaKey{
 				Tsa:  tsa,
 				Host: shard.Instance().Hostname(),
 				AZ:   shard.Instance().AvailabilityZone(),
@@ -180,7 +180,7 @@ func (s *DBPool) selectReadWriteShardHost(clid uint, key kr.ShardKey, hosts []co
 
 			return false
 		}
-		s.cacheTSAchecks.Store(TsaKey{
+		s.cacheTSAChecks.Store(TsaKey{
 			Tsa:  tsa,
 			Host: shard.Instance().Hostname(),
 			AZ:   shard.Instance().AvailabilityZone(),
@@ -228,7 +228,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 		return nil, err
 	}
 
-	/* pool.Connection will reoder hosts in such way, that preferred tsa will go first */
+	/* pool.Connection will reorder hosts in such way, that preferred tsa will go first */
 	switch targetSessionAttrs {
 	case "":
 		fallthrough
@@ -239,7 +239,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 			if err != nil {
 				total_msg = append(total_msg, fmt.Sprintf("host %s: %s", host, err.Error()))
 
-				s.cacheTSAchecks.Store(TsaKey{
+				s.cacheTSAChecks.Store(TsaKey{
 					Tsa:  config.TargetSessionAttrsAny,
 					Host: host.Address,
 					AZ:   host.AZ,
@@ -253,7 +253,7 @@ func (s *DBPool) ConnectionWithTSA(clid uint, key kr.ShardKey, targetSessionAttr
 					Msg("failed to get connection to host for client")
 				continue
 			}
-			s.cacheTSAchecks.Store(TsaKey{
+			s.cacheTSAChecks.Store(TsaKey{
 				Tsa:  config.TargetSessionAttrsAny,
 				Host: host.Address,
 				AZ:   host.AZ,
@@ -293,7 +293,7 @@ func (s *DBPool) BuildHostOrder(key kr.ShardKey, targetSessionAttrs tsa.TSA) ([]
 			AZ:   host.AZ,
 		}
 
-		if res, ok := s.cacheTSAchecks.Load(tsaKey); ok {
+		if res, ok := s.cacheTSAChecks.Load(tsaKey); ok {
 			if res.(bool) {
 				posCache = append(posCache, host)
 			} else {
@@ -446,7 +446,7 @@ func NewDBPool(mapping map[string]*config.Shard, startupParams *startup.StartupP
 		shardMapping:   mapping,
 		ShuffleHosts:   true,
 		PreferAZ:       preferAZ,
-		cacheTSAchecks: sync.Map{},
+		cacheTSAChecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }
@@ -456,7 +456,7 @@ func NewDBPoolFromMultiPool(mapping map[string]*config.Shard, sp *startup.Startu
 	return &DBPool{
 		pool:           mp,
 		shardMapping:   mapping,
-		cacheTSAchecks: sync.Map{},
+		cacheTSAChecks: sync.Map{},
 		checker:        tsa.NewTSACheckerWithDuration(tsaRecheckDuration),
 	}
 }
@@ -466,7 +466,7 @@ func NewDBPoolWithAllocator(mapping map[string]*config.Shard, startupParams *sta
 	return &DBPool{
 		pool:           NewPool(allocator),
 		shardMapping:   mapping,
-		cacheTSAchecks: sync.Map{},
+		cacheTSAChecks: sync.Map{},
 		checker:        tsa.NewTSAChecker(),
 	}
 }

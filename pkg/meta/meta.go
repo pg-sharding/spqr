@@ -131,7 +131,7 @@ func processDrop(ctx context.Context, dstmt spqrparser.Statement, isCascade bool
 		for _, ds := range dss {
 			if ds.Id != "default" {
 				if len(ds.Relations) != 0 && !isCascade {
-					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations autoimatically", ds.Id)
+					return fmt.Errorf("cannot drop distribution %s because there are relations attached to it\nHINT: Use DROP ... CASCADE to detach relations automatically", ds.Id)
 				}
 				ret = append(ret, ds.ID())
 				err = mngr.DropDistribution(ctx, ds.Id)
@@ -630,11 +630,11 @@ func ProcessShow(ctx context.Context, stmt *spqrparser.Show, mngr EntityMgr, ci 
 
 // TODO : unit tests
 
-// processRedistribute processes the REDISTRIUTE KEY RANGE statement and returns an error if any issue occurs.
+// processRedistribute processes the REDISTRIBUTE KEY RANGE statement and returns an error if any issue occurs.
 //
 // Parameters:
 //   - ctx (context.Context): The context for the operation.
-//   - stmt (*spqrparser.Show): The REDISTRIUTE KEY RANGE statement to process.
+//   - stmt (*spqrparser.Show): The REDISTRIBUTE KEY RANGE statement to process.
 //   - mngr (EntityMgr): The entity manager for performing the redistribution.
 //   - cli (*clientinteractor.PSQLInteractor): The PSQL interactor for client interactions.
 //

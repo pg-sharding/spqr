@@ -2,3 +2,6 @@
 ^yacc/console/Makefile$
 ^yacc/console/lex.rl$
 ^yacc/console/gram.go$
+[^/]\.png$
+^\Qgo.sum\E$
+^docker/router/ssl/

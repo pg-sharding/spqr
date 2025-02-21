@@ -137,7 +137,7 @@ var runCmd = &cobra.Command{
 				Args:        args,
 			}
 
-			d, err := cntxt.Reborn()
+			d, err := ctx.Reborn()
 			if err != nil {
 				log.Fatal("Unable to run: ", err)
 			}
@@ -146,7 +146,7 @@ var runCmd = &cobra.Command{
 			}
 
 			defer func() {
-				if err := cntxt.Release(); err != nil {
+				if err := ctx.Release(); err != nil {
 					spqrlog.Zero.Error().Msg("")
 					spqrlog.Zero.Error().Err(err).Msg("")
 				}
@@ -342,7 +342,7 @@ var runCmd = &cobra.Command{
 
 		/* initialize metadata */
 		if config.RouterConfig().UseInitSQL {
-			i := instance.NewInitSQLMetadataBootstraper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
+			i := instance.NewInitSQLMetadataBootstrapper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
 			if err := i.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}
@@ -352,7 +352,7 @@ var runCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			e := instance.NewEtcdMetadataBootstraper(config.CoordinatorConfig().QdbAddr)
+			e := instance.NewEtcdMetadataBootstrapper(config.CoordinatorConfig().QdbAddr)
 			if err := e.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}
@@ -392,7 +392,7 @@ var runCmd = &cobra.Command{
 
 		wg.Add(1)
 		go func(wg *sync.WaitGroup) {
-			err := app.ServceUnixSocket(ctx)
+			err := app.ServiceUnixSocket(ctx)
 			if err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 			}

@@ -20,7 +20,7 @@ type QueryDesc struct {
 	P    plan.Plan
 }
 
-// Execute requered command via
+// Execute required command via
 // some protoc-specific logic
 type QueryStateExecutor interface {
 	txstatus.TxStatusMgr

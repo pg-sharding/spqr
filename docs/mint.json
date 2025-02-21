@@ -68,7 +68,7 @@
                         "features/multiple_servers_and_failover",
                         "features/protocol",
                         "features/read_only",
-                        "features/perfomance",
+                        "features/performance",
                         "features/authentication",
                         "features/config_reloading",
                         "features/statistics"

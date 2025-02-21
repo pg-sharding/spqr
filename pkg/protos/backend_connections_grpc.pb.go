@@ -27,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BackendConnectionsServiceClient interface {
-	ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConntionsReply, error)
+	ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConnectionsReply, error)
 }
 
 type backendConnectionsServiceClient struct {
@@ -38,8 +38,8 @@ func NewBackendConnectionsServiceClient(cc grpc.ClientConnInterface) BackendConn
 	return &backendConnectionsServiceClient{cc}
 }
 
-func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConntionsReply, error) {
-	out := new(ListBackendConntionsReply)
+func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListBackendConnectionsReply, error) {
+	out := new(ListBackendConnectionsReply)
 	err := c.cc.Invoke(ctx, BackendConnectionsService_ListBackendConnections_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *backendConnectionsServiceClient) ListBackendConnections(ctx context.Con
 // All implementations must embed UnimplementedBackendConnectionsServiceServer
 // for forward compatibility
 type BackendConnectionsServiceServer interface {
-	ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConntionsReply, error)
+	ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConnectionsReply, error)
 	mustEmbedUnimplementedBackendConnectionsServiceServer()
 }
 
@@ -59,7 +59,7 @@ type BackendConnectionsServiceServer interface {
 type UnimplementedBackendConnectionsServiceServer struct {
 }
 
-func (UnimplementedBackendConnectionsServiceServer) ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConntionsReply, error) {
+func (UnimplementedBackendConnectionsServiceServer) ListBackendConnections(context.Context, *emptypb.Empty) (*ListBackendConnectionsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListBackendConnections not implemented")
 }
 func (UnimplementedBackendConnectionsServiceServer) mustEmbedUnimplementedBackendConnectionsServiceServer() {

@@ -106,14 +106,14 @@ func ApplyHashFunction(inp interface{}, ctype string, hf HashFunctionType) (inte
 }
 
 /*
-* Apply routing hash function on bytes receieved in their string representation (from COPY).
+* Apply routing hash function on bytes received in their string representation (from COPY).
  */
 func ApplyHashFunctionOnStringRepr(inp []byte, ctype string, hf HashFunctionType) (interface{}, error) {
 
 	var parsedInp interface{}
 
 	/*
-	* We need to convert raw bytes to approrpiate interface
+	* We need to convert raw bytes to appropriate interface
 	* because caller expect data in form compatable with CompareKeyRange
 	 */
 	switch ctype {
