@@ -6,8 +6,8 @@ import (
 	"github.com/pg-sharding/spqr/router/relay"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/golang/mock/gomock"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
+	"go.uber.org/mock/gomock"
 
 	mockcl "github.com/pg-sharding/spqr/router/mock/client"
 	mockqr "github.com/pg-sharding/spqr/router/mock/qrouter"

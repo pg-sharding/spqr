@@ -23,8 +23,8 @@ import (
 	mockmgr "github.com/pg-sharding/spqr/pkg/mock/meta"
 	mockcmgr "github.com/pg-sharding/spqr/router/mock/poolmgr"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestFrontendSimpleEOF(t *testing.T) {

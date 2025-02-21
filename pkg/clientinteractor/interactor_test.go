@@ -5,9 +5,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	pkgclient "github.com/pg-sharding/spqr/pkg/client"
 	mock "github.com/pg-sharding/spqr/pkg/mock/clientinteractor"
+	"go.uber.org/mock/gomock"
 
 	proto "github.com/pg-sharding/spqr/pkg/protos"
 	"github.com/pg-sharding/spqr/router/client"
