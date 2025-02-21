@@ -77,11 +77,11 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router, ns string, persist bool) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
 	var db *qdb.MemQDB
 	var err error
 
-	if persist {
+	if rcfg.MemqdbBackupPath != "" {
 		db, err = qdb.RestoreQDB(rcfg.MemqdbBackupPath)
 		if err != nil {
 			return nil, err

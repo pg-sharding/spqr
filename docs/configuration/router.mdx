@@ -116,4 +116,3 @@ Map of string to Shard objects. Refer to the `Shard` struct in the [pkg/config/r
 | `use_coordinator_init` | Whether to execute commands from Init SQL file on Router       | `true`, `false`       |
 | `init_sql`             | Path to SQL file that router will execute before the start     | Any valid file path   |
 | `memqdb_backup_path`   | MemQDB backup state path. MemQDB's state restored if a file backup exists during the router startup. If there is no file, init.sql will be used | Any valid file path |
-| `memqdb_persistent`    | Whether to persist router configuration in non-clustered setup | `true`, `false`       |
