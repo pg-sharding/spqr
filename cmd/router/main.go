@@ -43,8 +43,6 @@ var (
 	ccfgPath string
 	qdbImpl  string
 
-	persist bool
-
 	routerPort   int
 	routerROPort int
 	adminPort    int
@@ -76,7 +74,6 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
-	rootCmd.PersistentFlags().BoolVarP(&persist, "persist", "", false, "tells router to persist its configuration in non-clustered setup")
 
 	rootCmd.PersistentFlags().IntVarP(&routerPort, "router-port", "", 0, "router PostgreSQL port")
 	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "router read-only PostgreSQL port")
@@ -114,14 +111,6 @@ var runCmd = &cobra.Command{
 
 		if err := spqrlog.UpdateZeroLogLevel(rlogLevel); err != nil {
 			return err
-		}
-
-		if persist && qdbImpl == "etcd" {
-			return fmt.Errorf("Cannot persist metadata setup locally in clustered mode. Abort")
-		}
-
-		if !persist && rcfg.MemqdbPersistent {
-			persist = true
 		}
 
 		if console && daemonize {
@@ -230,7 +219,7 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"), persist)
+		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
