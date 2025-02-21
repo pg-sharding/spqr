@@ -380,13 +380,13 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	switch stmt := tstmt.(type) {
 	case *spqrparser.TraceStmt:
 		if writer == nil {
-			return fmt.Errorf("can not save workload from here")
+			return fmt.Errorf("cannot save workload from here")
 		}
 		writer.StartLogging(stmt.All, stmt.Client)
 		return cli.StartTraceMessages(ctx)
 	case *spqrparser.StopTraceStmt:
 		if writer == nil {
-			return fmt.Errorf("can not save workload from here")
+			return fmt.Errorf("cannot save workload from here")
 		}
 		err := writer.StopLogging()
 		if err != nil {
