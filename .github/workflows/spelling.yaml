@@ -43,6 +43,26 @@ jobs:
         extra_dictionaries:
           cspell:software-terms/dict/softwareTerms.txt
           cspell:golang/dict/go.txt
+          cspell:python/src/common/extra.txt
+          cspell:python/src/python/python-lib.txt
+          cspell:node/dict/node.txt
+          cspell:java/src/java.txt
+          cspell:aws/aws.txt
+          cspell:html/dict/html.txt
+          cspell:php/dict/php.txt
+          cspell:fullstack/dict/fullstack.txt
+          cspell:shell/dict/shell-all-words.txt
+          cspell:docker/src/docker-words.txt
+          cspell:django/dict/django.txt
+          cspell:java/src/java-terms.txt
+          cspell:npm/dict/npm.txt
+          cspell:k8s/dict/k8s.txt
+          cspell:dotnet/dict/dotnet.txt
+          cspell:python/src/python/python.txt
+          cspell:filetypes/filetypes.txt
+          cspell:typescript/dict/typescript.txt
+          cspell:r/src/r.txt
+          cspell:cpp/src/stdlib-c.txt
 
   comment-pr:
     name: Report (PR)
