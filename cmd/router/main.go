@@ -101,17 +101,15 @@ var runCmd = &cobra.Command{
 			return err
 		}
 		log.Println("Running config:", cfgStr)
-		rcfg := config.RouterConfig()
 
-		spqrlog.ReloadLogger(rcfg.LogFileName)
+		spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
 
 		// Logger
-		rlogLevel := rcfg.LogLevel
 		if logLevel != "" {
-			rlogLevel = logLevel
+			config.RouterConfig().LogLevel = logLevel
 		}
 
-		if err := spqrlog.UpdateZeroLogLevel(rlogLevel); err != nil {
+		if err := spqrlog.UpdateZeroLogLevel(config.RouterConfig().LogLevel); err != nil {
 			return err
 		}
 
@@ -119,16 +117,16 @@ var runCmd = &cobra.Command{
 			if qdbImpl == "etcd" {
 				return fmt.Errorf("cannot use memqdb-backup-path with etcdqdb")
 			}
-			rcfg.MemqdbBackupPath = memqdbBackupPath
+			config.RouterConfig().MemqdbBackupPath = memqdbBackupPath
 		}
 
 		if console && daemonize {
 			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
 		}
 
-		if !console && (rcfg.Daemonize || daemonize) {
+		if !console && (config.RouterConfig().Daemonize || daemonize) {
 			cntxt := &daemon.Context{
-				PidFileName: rcfg.PidFileName,
+				PidFileName: config.RouterConfig().PidFileName,
 				PidFilePerm: 0644,
 				WorkDir:     "./",
 				Umask:       027,
@@ -153,7 +151,7 @@ var runCmd = &cobra.Command{
 			spqrlog.Zero.Debug().Msg("daemon started")
 		}
 
-		if rcfg.UseCoordinatorInit && rcfg.UseInitSQL {
+		if config.RouterConfig().UseCoordinatorInit && config.RouterConfig().UseInitSQL {
 			return fmt.Errorf("cannot use initSQL and coordinator-based init simultaneously")
 		}
 
@@ -201,34 +199,34 @@ var runCmd = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		/* will change on reload */
-		rcfg.PgprotoDebug = rcfg.PgprotoDebug || pgprotoDebug
-		rcfg.ShowNoticeMessages = rcfg.ShowNoticeMessages || pgprotoDebug
+		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
+		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || pgprotoDebug
 
 		if routerPort != 0 {
-			rcfg.RouterPort = strconv.FormatInt(int64(routerPort), 10)
+			config.RouterConfig().RouterPort = strconv.FormatInt(int64(routerPort), 10)
 		}
 
 		if routerROPort != 0 {
-			rcfg.RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
+			config.RouterConfig().RouterROPort = strconv.FormatInt(int64(routerROPort), 10)
 		}
 
 		if adminPort != 0 {
-			rcfg.AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
+			config.RouterConfig().AdminConsolePort = strconv.FormatInt(int64(adminPort), 10)
 		}
 
 		if grpcPort != 0 {
-			rcfg.GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
+			config.RouterConfig().GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
 		}
 
 		if default_route_behaviour != "" {
 			if strings.ToLower(default_route_behaviour) == "block" {
-				rcfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
+				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
 			} else {
-				rcfg.Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
+				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
 			}
 		}
 
-		router, err := instance.NewRouter(ctx, rcfg, os.Getenv("NOTIFY_SOCKET"))
+		router, err := instance.NewRouter(ctx, os.Getenv("NOTIFY_SOCKET"))
 		if err != nil {
 			return errors.Wrap(err, "router failed to start")
 		}
@@ -279,7 +277,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -308,7 +306,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.ReloadLogger(rcfg.LogFileName)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
@@ -339,12 +337,12 @@ var runCmd = &cobra.Command{
 		}()
 
 		/* initialize metadata */
-		if rcfg.UseInitSQL {
-			i := instance.NewInitSQLMetadataBootstraper(rcfg.InitSQL)
+		if config.RouterConfig().UseInitSQL {
+			i := instance.NewInitSQLMetadataBootstraper(config.RouterConfig().InitSQL)
 			if err := i.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}
-		} else if rcfg.UseCoordinatorInit {
+		} else if config.RouterConfig().UseCoordinatorInit {
 			/* load config if not yet */
 			_, err := config.LoadCoordinatorCfg(ccfgPath)
 			if err != nil {
