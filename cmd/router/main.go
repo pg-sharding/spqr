@@ -41,11 +41,12 @@ var (
 	grpcPort              int
 	defaultRouteBehaviour string
 
-	debug       bool
-	profileFile string
-	cpuProfile  bool
-	memProfile  bool
-	gomaxprocs  int
+	showNoticeMessages bool
+	pgprotoDebug       bool
+	profileFile        string
+	cpuProfile         bool
+	memProfile         bool
+	gomaxprocs         int
 
 	qdbImpl   string
 	daemonize bool
@@ -77,9 +78,10 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "overload for `admin_console_port` option in router config")
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "overload for `grpc_api_port` option in router config")
 	rootCmd.PersistentFlags().StringVarP(&defaultRouteBehaviour, "default-route-behaviour", "", "", "overload for `default_route_behaviour` option in router config")
+	rootCmd.PersistentFlags().BoolVarP(&showNoticeMessages, "show-notice-messages", "", false, "overload for `show_notice_messages` option in router config")
+	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "pgproto-debug", "", false, "overload for `pgproto_debug` option in router config")
 
 	// Flags for profiling and debug
-	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "", false, "enable debug options: reply router notice, warnings, etc.")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
@@ -201,8 +203,8 @@ var runCmd = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		/* will change on reload */
-		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || debug
-		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || debug
+		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
+		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || showNoticeMessages
 
 		if routerPort != 0 {
 			config.RouterConfig().RouterPort = strconv.FormatInt(int64(routerPort), 10)
