@@ -41,7 +41,7 @@ var (
 	grpcPort              int
 	defaultRouteBehaviour string
 
-	debug  bool
+	debug       bool
 	profileFile string
 	cpuProfile  bool
 	memProfile  bool
