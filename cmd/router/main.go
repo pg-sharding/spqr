@@ -35,7 +35,6 @@ var (
 	memProfile   bool
 	profileFile  string
 	daemonize    bool
-	console      bool
 	logLevel     string
 	gomaxprocs   int
 	pgprotoDebug bool
@@ -68,8 +67,7 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
-	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
-	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "console (not daemonize) router binary or not")
+	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run spqr-router as daemon or not")
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
@@ -114,10 +112,6 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if console && daemonize {
-			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
-		}
-
 		if persist && qdbImpl == "etcd" {
 			return fmt.Errorf("Cannot persist metadata setup locally in clustered mode. Abort")
 		}
@@ -126,7 +120,9 @@ var runCmd = &cobra.Command{
 			persist = true
 		}
 
-		if !console && (rcfg.Daemonize || daemonize) {
+		rcfg.Daemonize = rcfg.Daemonize || daemonize
+
+		if rcfg.Daemonize {
 			cntxt := &daemon.Context{
 				PidFileName: rcfg.PidFileName,
 				PidFilePerm: 0644,
