@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -64,7 +63,7 @@ type DockerComposer struct {
 	projectName string
 	config      string
 	api         *client.Client
-	containers  map[string]types.Container
+	containers  map[string]container.Summary
 	stopped     map[string]bool
 }
 
@@ -89,7 +88,7 @@ func NewDockerComposer(project, config string) (*DockerComposer, error) {
 	dc.api = api
 	dc.config = config
 	dc.projectName = fmt.Sprintf("%s-%d", project, os.Getpid())
-	dc.containers = make(map[string]types.Container)
+	dc.containers = make(map[string]container.Summary)
 	dc.stopped = make(map[string]bool)
 	return dc, nil
 }
