@@ -68,8 +68,7 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
-	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "daemonize router binary or not")
-	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "console (not daemonize) router binary or not")
+
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
@@ -85,6 +84,9 @@ func init() {
 	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "router Metadata GRPC interface admin port")
 
 	rootCmd.PersistentFlags().StringVarP(&default_route_behaviour, "default-route-behaviour", "", "", "The router will either block or scatter-out multishard queries by default")
+
+	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
+	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
 
 	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
@@ -114,16 +116,16 @@ var runCmd = &cobra.Command{
 			return err
 		}
 
-		if console && daemonize {
-			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
-		}
-
 		if persist && qdbImpl == "etcd" {
 			return fmt.Errorf("Cannot persist metadata setup locally in clustered mode. Abort")
 		}
 
 		if !persist && rcfg.MemqdbPersistent {
 			persist = true
+		}
+
+		if console && daemonize {
+			return fmt.Errorf("simultaneous use of `console` and `daemonize`. Abort")
 		}
 
 		if !console && (rcfg.Daemonize || daemonize) {
