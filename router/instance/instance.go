@@ -87,7 +87,7 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 			return nil, err
 		}
 	} else {
-		db, err = qdb.NewMemQDB("")
+		db, err = qdb.NewMemQDB(rcfg.MemqdbBackupPath)
 		if err != nil {
 			return nil, err
 		}

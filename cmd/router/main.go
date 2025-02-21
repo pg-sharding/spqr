@@ -40,8 +40,9 @@ var (
 	gomaxprocs   int
 	pgprotoDebug bool
 
-	ccfgPath string
-	qdbImpl  string
+	ccfgPath         string
+	qdbImpl          string
+	memqdbBackupPath string
 
 	routerPort   int
 	routerROPort int
@@ -74,6 +75,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
+	rootCmd.PersistentFlags().StringVarP(&memqdbBackupPath, "memqdb-backup-path", "", "", "overload for `memqdb_backup_path` option in router config")
 
 	rootCmd.PersistentFlags().IntVarP(&routerPort, "router-port", "", 0, "router PostgreSQL port")
 	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "router read-only PostgreSQL port")
@@ -111,6 +113,13 @@ var runCmd = &cobra.Command{
 
 		if err := spqrlog.UpdateZeroLogLevel(rlogLevel); err != nil {
 			return err
+		}
+
+		if memqdbBackupPath != "" {
+			if qdbImpl == "etcd" {
+				return fmt.Errorf("cannot use memqdb-backup-path with etcdqdb")
+			}
+			rcfg.MemqdbBackupPath = memqdbBackupPath
 		}
 
 		if console && daemonize {
