@@ -34,7 +34,7 @@ var (
 	cpuProfile   bool
 	memProfile   bool
 	profileFile  string
-	daemonize    bool
+	daemonizeStr string
 	logLevel     string
 	gomaxprocs   int
 	pgprotoDebug bool
@@ -67,7 +67,7 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
-	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run spqr-router as daemon or not")
+	rootCmd.PersistentFlags().StringVarP(&daemonizeStr, "daemonize", "d", "", "run spqr-router as daemon or not (`true`, `false` or `not-specified`)")
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
@@ -120,7 +120,11 @@ var runCmd = &cobra.Command{
 			persist = true
 		}
 
-		rcfg.Daemonize = rcfg.Daemonize || daemonize
+		if daemonizeStr == "true" {
+			rcfg.Daemonize = true
+		} else if daemonizeStr == "false" {
+			rcfg.Daemonize = false
+		}
 
 		if rcfg.Daemonize {
 			cntxt := &daemon.Context{
