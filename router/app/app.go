@@ -115,7 +115,7 @@ func (app *App) ServceUnixSocket(ctx context.Context) error {
 	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
 		return err
 	}
-	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", app.spqr.Config().RouterPort))
+	socketPath := path.Join(config.UnixSocketDirectory, fmt.Sprintf(".s.PGSQL.%s", config.RouterConfig().RouterPort))
 	lAddr := &net.UnixAddr{Name: socketPath, Net: "unix"}
 	listener, err := net.ListenUnix("unix", lAddr)
 	if err != nil {
