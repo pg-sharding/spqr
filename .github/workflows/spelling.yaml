@@ -42,6 +42,7 @@ jobs:
         extra_dictionary_limit: 20
         extra_dictionaries:
           cspell:software-terms/dict/softwareTerms.txt
+          cspell:golang/dict/go.txt
 
   comment-pr:
     name: Report (PR)
