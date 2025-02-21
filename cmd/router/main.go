@@ -46,11 +46,11 @@ var (
 	profileFile        string
 	cpuProfile         bool
 	memProfile         bool
-	gomaxprocs         int
 
-	qdbImpl   string
-	daemonize bool
-	console   bool
+	qdbImpl    string
+	daemonize  bool
+	console    bool
+	gomaxprocs int
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -85,12 +85,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
-	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
-	// Flags for daemonizing
+	// Other flags
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
+	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
@@ -342,7 +342,7 @@ var runCmd = &cobra.Command{
 
 		/* initialize metadata */
 		if config.RouterConfig().UseInitSQL {
-			i := instance.NewInitSQLMetadataBootstraper(config.RouterConfig().InitSQL)
+			i := instance.NewInitSQLMetadataBootstraper(config.RouterConfig().InitSQL, config.RouterConfig().ExitOnInitSQLError)
 			if err := i.InitializeMetadata(ctx, router); err != nil {
 				return err
 			}

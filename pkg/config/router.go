@@ -64,6 +64,7 @@ type Router struct {
 
 	InitSQL            string `json:"init_sql" toml:"init_sql" yaml:"init_sql"`
 	UseInitSQL         bool   `json:"use_init_sql" toml:"use_init_sql" yaml:"use_init_sql"`
+	ExitOnInitSQLError bool   `json:"exit_on_init_sql" toml:"exit_on_init_sql" yaml:"exit_on_init_sql"`
 	UseCoordinatorInit bool   `json:"use_coordinator_init" toml:"use_coordinator_init" yaml:"use_coordinator_init"`
 
 	/* default  */
