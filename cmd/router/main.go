@@ -30,26 +30,26 @@ import (
 )
 
 var (
-	rcfgPath     string
-	cpuProfile   bool
-	memProfile   bool
-	profileFile  string
-	daemonize    bool
-	console      bool
-	logLevel     string
-	gomaxprocs   int
-	pgprotoDebug bool
+	rcfgPath string
+	ccfgPath string
 
-	ccfgPath         string
-	qdbImpl          string
-	memqdbBackupPath string
+	logLevel              string
+	memqdbBackupPath      string
+	routerPort            int
+	routerROPort          int
+	adminPort             int
+	grpcPort              int
+	defaultRouteBehaviour string
 
-	routerPort   int
-	routerROPort int
-	adminPort    int
-	grpcPort     int
+	debug       bool
+	profileFile string
+	cpuProfile  bool
+	memProfile  bool
+	gomaxprocs  int
 
-	default_route_behaviour string
+	qdbImpl   string
+	daemonize bool
+	console   bool
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -65,29 +65,31 @@ var (
 )
 
 func init() {
+	// Router and coordinator config paths
 	rootCmd.PersistentFlags().StringVarP(&rcfgPath, "config", "c", "/etc/spqr/router.yaml", "path to router config file")
-	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
+	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
 
+	// Overload for values from the config file
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "overload for `log_level` option in router config")
+	rootCmd.PersistentFlags().StringVarP(&memqdbBackupPath, "memqdb-backup-path", "", "", "overload for `memqdb_backup_path` option in router config")
+	rootCmd.PersistentFlags().IntVarP(&routerPort, "router-port", "", 0, "overload for `router_port` option in router config")
+	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "overload for `router_ro_port` option in router config")
+	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "overload for `admin_console_port` option in router config")
+	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "overload for `grpc_api_port` option in router config")
+	rootCmd.PersistentFlags().StringVarP(&defaultRouteBehaviour, "default-route-behaviour", "", "", "overload for `default_route_behaviour` option in router config")
+
+	// Flags for profiling and debug
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "", false, "enable debug options: reply router notice, warnings, etc.")
+	rootCmd.PersistentFlags().StringVarP(&profileFile, "profile-file", "p", "/etc/spqr/router.prof", "path to profile file")
 	rootCmd.PersistentFlags().BoolVar(&cpuProfile, "cpu-profile", false, "profile cpu or not")
 	rootCmd.PersistentFlags().BoolVar(&memProfile, "mem-profile", false, "profile mem or not")
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "log level")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
-	rootCmd.PersistentFlags().StringVarP(&ccfgPath, "coordinator-config", "", "/etc/spqr/coordinator.yaml", "path to coordinator config file")
+	// Flags for daemonizing
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
-	rootCmd.PersistentFlags().StringVarP(&memqdbBackupPath, "memqdb-backup-path", "", "", "overload for `memqdb_backup_path` option in router config")
-
-	rootCmd.PersistentFlags().IntVarP(&routerPort, "router-port", "", 0, "router PostgreSQL port")
-	rootCmd.PersistentFlags().IntVarP(&routerROPort, "router-ro-port", "", 0, "router read-only PostgreSQL port")
-	rootCmd.PersistentFlags().IntVarP(&adminPort, "admin-port", "", 0, "router Metadata PostgreSQL interface admin port")
-	rootCmd.PersistentFlags().IntVarP(&grpcPort, "grpc-port", "", 0, "router Metadata GRPC interface admin port")
-
-	rootCmd.PersistentFlags().StringVarP(&default_route_behaviour, "default-route-behaviour", "", "", "The router will either block or scatter-out multishard queries by default")
-
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
 
-	rootCmd.PersistentFlags().BoolVarP(&pgprotoDebug, "proto-debug", "", false, "reply router notice, warning, etc")
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(testCmd)
 }
@@ -199,8 +201,8 @@ var runCmd = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
 		/* will change on reload */
-		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || pgprotoDebug
-		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || pgprotoDebug
+		config.RouterConfig().PgprotoDebug = config.RouterConfig().PgprotoDebug || debug
+		config.RouterConfig().ShowNoticeMessages = config.RouterConfig().ShowNoticeMessages || debug
 
 		if routerPort != 0 {
 			config.RouterConfig().RouterPort = strconv.FormatInt(int64(routerPort), 10)
@@ -218,8 +220,8 @@ var runCmd = &cobra.Command{
 			config.RouterConfig().GrpcApiPort = strconv.FormatInt(int64(grpcPort), 10)
 		}
 
-		if default_route_behaviour != "" {
-			if strings.ToLower(default_route_behaviour) == "block" {
+		if defaultRouteBehaviour != "" {
+			if strings.ToLower(defaultRouteBehaviour) == "block" {
 				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourBlock
 			} else {
 				config.RouterConfig().Qr.DefaultRouteBehaviour = config.DefaultRouteBehaviourAllow
