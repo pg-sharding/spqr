@@ -32,7 +32,6 @@ type RouterInstance interface {
 	Initialize() bool
 
 	Console() console.Console
-	Config() *config.Router
 }
 
 type InstanceImpl struct {
@@ -45,7 +44,6 @@ type InstanceImpl struct {
 	stchan chan struct{}
 	addr   string
 	frTLS  *tls.Config
-	cfg    *config.Router
 
 	notifier *sdnotifier.Notifier
 }
@@ -53,10 +51,6 @@ type InstanceImpl struct {
 // Console implements RouterInstance.
 func (r *InstanceImpl) Console() console.Console {
 	return r.AdmConsole
-}
-
-func (r *InstanceImpl) Config() *config.Router {
-	return r.cfg
 }
 
 func (r *InstanceImpl) ID() string {
@@ -77,29 +71,29 @@ func (r *InstanceImpl) Initialize() bool {
 
 var _ RouterInstance = &InstanceImpl{}
 
-func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceImpl, error) {
+func NewRouter(ctx context.Context, ns string) (*InstanceImpl, error) {
 	var db *qdb.MemQDB
 	var err error
 
-	if rcfg.MemqdbBackupPath != "" {
-		db, err = qdb.RestoreQDB(rcfg.MemqdbBackupPath)
+	if config.RouterConfig().MemqdbBackupPath != "" {
+		db, err = qdb.RestoreQDB(config.RouterConfig().MemqdbBackupPath)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		db, err = qdb.NewMemQDB(rcfg.MemqdbBackupPath)
+		db, err = qdb.NewMemQDB(config.RouterConfig().MemqdbBackupPath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	cache := cache.NewSchemaCache(rcfg.ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
+	cache := cache.NewSchemaCache(config.RouterConfig().ShardMapping, config.RouterConfig().SchemaCacheBackendRule)
 	lc := local.NewLocalCoordinator(db, cache)
 
 	var notifier *sdnotifier.Notifier
-	if rcfg.UseSystemdNotifier {
+	if config.RouterConfig().UseSystemdNotifier {
 		// systemd notifier
-		notifier, err = sdnotifier.NewNotifier(ns, rcfg.SystemdNotifierDebug)
+		notifier, err = sdnotifier.NewNotifier(ns, config.RouterConfig().SystemdNotifierDebug)
 		if err != nil {
 			return nil, err
 		}
@@ -108,35 +102,35 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 	}
 
 	// qrouter init
-	qtype := config.RouterMode(rcfg.RouterMode)
+	qtype := config.RouterMode(config.RouterConfig().RouterMode)
 	spqrlog.Zero.Debug().
 		Type("qtype", qtype).
 		Msg("creating QueryRouter with type")
 
-	qr, err := qrouter.NewQrouter(qtype, rcfg.ShardMapping, lc, &rcfg.Qr, cache)
+	qr, err := qrouter.NewQrouter(qtype, config.RouterConfig().ShardMapping, lc, &config.RouterConfig().Qr, cache)
 	if err != nil {
 		return nil, err
 	}
 
 	// frontend
-	frTLS, err := rcfg.FrontendTLS.Init(rcfg.Host)
+	frTLS, err := config.RouterConfig().FrontendTLS.Init(config.RouterConfig().Host)
 	if err != nil {
 		return nil, fmt.Errorf("init frontend TLS: %w", err)
 	}
 
 	//workload writer
-	batchSize := rcfg.WorkloadBatchSize
+	batchSize := config.RouterConfig().WorkloadBatchSize
 	if batchSize == 0 {
 		batchSize = 1000000
 	}
-	logFile := rcfg.LogFileName
+	logFile := config.RouterConfig().LogFileName
 	if logFile == "" {
 		logFile = "mylogs.txt"
 	}
 	writ := workloadlog.NewLogger(batchSize, logFile)
 
 	// request router
-	rr := rulerouter.NewRouter(frTLS, rcfg, notifier)
+	rr := rulerouter.NewRouter(frTLS, config.RouterConfig(), notifier)
 
 	stchan := make(chan struct{})
 	localConsole, err := console.NewLocalInstanceConsole(lc, rr, stchan, writ)
@@ -152,7 +146,6 @@ func NewRouter(ctx context.Context, rcfg *config.Router, ns string) (*InstanceIm
 		Mgr:        lc,
 		stchan:     stchan,
 		frTLS:      frTLS,
-		cfg:        rcfg,
 		Writer:     writ,
 		notifier:   notifier,
 	}
@@ -202,7 +195,7 @@ func (r *InstanceImpl) serv(netconn net.Conn, pt port.RouterPortType) (uint, err
 }
 
 func (r *InstanceImpl) Run(ctx context.Context, listener net.Listener, pt port.RouterPortType) error {
-	if r.cfg.WithJaeger {
+	if config.RouterConfig().WithJaeger {
 		closer, err := r.initJaegerTracer(config.RouterConfig())
 		if err != nil {
 			return fmt.Errorf("could not initialize jaeger tracer: %s", err)
