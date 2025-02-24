@@ -332,10 +332,10 @@ Feature: Move test
     ]
     """
 
-  Scenario: Move to non-existent shard fails
+  Scenario: Move to nonexistent shard fails
     When I run SQL on host "coordinator"
     """
-    MOVE KEY RANGE krid1 TO non-existent
+    MOVE KEY RANGE krid1 TO nonexistent
     """
     Then command return code should be "1"
     And SQL error on host "coordinator" should match regexp
@@ -343,7 +343,7 @@ Feature: Move test
     failed to connect
     """
 
-  Scenario: Move non-existent key range fails
+  Scenario: Move nonexistent key range fails
     When I run SQL on host "coordinator"
     """
     MOVE KEY RANGE krid3 TO sh2

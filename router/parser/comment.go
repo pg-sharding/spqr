@@ -42,7 +42,7 @@ func ParseComment(comm string) (map[string]string, error) {
 		}
 
 		if j == len(comm) || comm[j] != ':' {
-			return nil, xerrors.New("invalid comment format: expectd colon after option name")
+			return nil, xerrors.New("invalid comment format: expected colon after option name")
 		}
 		// skip colon symbol
 		j++
@@ -72,7 +72,7 @@ func ParseComment(comm string) (map[string]string, error) {
 		}
 		if j < len(comm) && comm[j] != ',' {
 			// empty opt name
-			return nil, xerrors.New("invalid comment format: expected comma atfer not-last key-value pair")
+			return nil, xerrors.New("invalid comment format: expected comma after not-last key-value pair")
 		}
 		// skip comma
 		j++

@@ -58,7 +58,7 @@ NOTICE: send query to shard(s) : sh1
 ----
 (0 rows)
 
--- check that commited changes present
+-- check that committed changes present
 BEGIN;
 SELECT * FROM transactions_test WHERE id = 1;;
 NOTICE: send query to shard(s) : sh1

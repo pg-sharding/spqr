@@ -109,7 +109,7 @@ func (srv *ShardServer) UnRouteShard(shkey kr.ShardKey, rule *config.FrontendRul
 	}
 
 	if srv.shard.Sync() != 0 {
-		/* will automaticly discard connection,
+		/* will automatically discard connection,
 		but we will not perform cleanup, which may stuck forever */
 		return srv.pool.Put(srv.shard)
 	}

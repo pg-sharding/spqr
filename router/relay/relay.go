@@ -291,7 +291,7 @@ func (rst *RelayStateImpl) PrepareStatement(hash uint64, d *prepstatement.Prepar
 	}
 
 	if deployed {
-		// dont need to complete relay because tx state didt changed
+		// don't need to complete relay because tx state didn't change
 		if err := rst.Cl.Server().StorePrepareStatement(hash, shardId, d, rd); err != nil {
 			return nil, nil, err
 		}
@@ -560,7 +560,7 @@ func (rst *RelayStateImpl) procRoutes(routes []*kr.ShardKey) error {
 	return nil
 }
 
-var expandInTxError = fmt.Errorf("unxpected server expand request")
+var expandInTxError = fmt.Errorf("unexpected server expand request")
 
 // TODO : unit tests
 func (rst *RelayStateImpl) expandRoutes(routes []*kr.ShardKey) error {
@@ -1057,7 +1057,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 			def := rst.Client().PreparedStatementDefinitionByName(q.PreparedStatement)
 
 			// We implicitly assume that there is always Execute after Bind for the same portal.
-			// hovewer, postgresql protocol allows some more cases.
+			// however, postgresql protocol allows some more cases.
 			if err := rst.Client().ReplyBindComplete(); err != nil {
 				return err
 			}
@@ -1148,7 +1148,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 						return err
 					}
 
-					/* Case when no decribe stmt was issued before Execute+Sync*/
+					/* Case when no describe stmt was issued before Execute+Sync*/
 					if rst.saveBind != nil {
 						rst.AddSilentQuery(rst.saveBind)
 						// do not send saved bind twice
@@ -1258,7 +1258,7 @@ func (rst *RelayStateImpl) ProcessExtendedBuffer() error {
 					}
 
 					for _, msg := range unreplied {
-						spqrlog.Zero.Debug().Type("msg type", msg).Msg("desctibe portal unreplied message")
+						spqrlog.Zero.Debug().Type("msg type", msg).Msg("describe portal unreplied message")
 						// https://www.postgresql.org/docs/current/protocol-flow.html
 						switch qq := msg.(type) {
 						case *pgproto3.RowDescription:
@@ -1416,7 +1416,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
 		if rst.Client().EnhancedMultiShardProcessing() {
-			/* With engive v2 we can expand transaction on more targets */
+			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
 			r, err := rst.Reroute()

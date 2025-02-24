@@ -279,7 +279,7 @@ func initRouterConfig(file *os.File, cfgRouter *Router) error {
 //
 // Returns:
 //   - string: JSON-formatted config
-//   - error: an error if config is invaild, nil otherwise
+//   - error: an error if config is invalid, nil otherwise
 func validateRouterConfig(cfg *Router) error {
 	for sh, shCfg := range cfg.ShardMapping {
 		if shCfg == nil {

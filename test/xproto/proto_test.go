@@ -1616,7 +1616,7 @@ func TestPrepStmtDescribePortalAndBind(t *testing.T) {
 	}
 }
 
-func TestPrepStmtAdvadsedParsing(t *testing.T) {
+func TestPrepStmtAdvancedParsing(t *testing.T) {
 	conn, err := getC()
 	if err != nil {
 		assert.NoError(t, err, "startup failed")

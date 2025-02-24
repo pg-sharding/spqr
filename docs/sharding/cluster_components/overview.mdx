@@ -24,9 +24,9 @@ Actually, this is what we did. This thing is called the **SPQR Router**.
 
 ![typical](/images/components_3.png)
 
-The router works using the PostgreSQL protocol, so the application doesn't even realize that it's communicating with a Golang application, not a regular PostgreSQL cluster. Due to this, we achive a relatively high performance per one router.
+The router works using the PostgreSQL protocol, so the application doesn't even realize that it's communicating with a Golang application, not a regular PostgreSQL cluster. Due to this, we achieve a relatively high performance per one router.
 
-Clearly, in this configuration, the router is a bottleneck and a single point of failure. Therefore, we have designed a system where **many routers can work in parallel**. In fact, thousands of routers opeating in parallel should not be a problem.
+Clearly, in this configuration, the router is a bottleneck and a single point of failure. Therefore, we have designed a system where **many routers can work in parallel**. In fact, thousands of routers operating in parallel should not be a problem.
 
 ![typical](/images/components_4.png)
 

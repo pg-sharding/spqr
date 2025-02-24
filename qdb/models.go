@@ -29,7 +29,7 @@ type MoveKeyRange struct {
 type KeyRangeStatus string
 
 const KRLocked = KeyRangeStatus("LOCKED")
-const KRUnLocked = KeyRangeStatus("UNLOCKED")
+const KRUnlocked = KeyRangeStatus("UNLOCKED")
 
 type RouterState string
 

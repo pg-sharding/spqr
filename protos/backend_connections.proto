@@ -7,10 +7,10 @@ option go_package = "spqr/proto";
 import "google/protobuf/empty.proto";
 
 service BackendConnectionsService {
-  rpc ListBackendConnections (google.protobuf.Empty) returns (ListBackendConntionsReply) {}
+  rpc ListBackendConnections (google.protobuf.Empty) returns (ListBackendConnectionsReply) {}
 }
 
-message ListBackendConntionsReply {
+message ListBackendConnectionsReply {
   repeated BackendConnectionsInfo conns = 1;
 }
 

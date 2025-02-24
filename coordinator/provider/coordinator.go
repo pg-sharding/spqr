@@ -1122,7 +1122,7 @@ func (qc *qdbCoordinator) BatchMoveKeyRange(ctx context.Context, req *kr.BatchMo
 // Returns:
 //   - totalCount (int64): The total amount of keys in all relations.
 //   - relationCount (map[string]int64): The amount of keys by relation name.
-//   - err: An error if any occured.
+//   - err: An error if any occurred.
 func (*qdbCoordinator) getKeyStats(
 	ctx context.Context,
 	conn *pgx.Conn,
@@ -1194,7 +1194,7 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 // TODO: unit tests
 
 // getMoveTasks forms the move task group. It gets bounds for intermediate data moves from the database, and returns the resulting MoveTaskGroup.
-// Bounds are determined by quering the relation with the biggest amount of keys in the key range.
+// Bounds are determined by querying the relation with the biggest amount of keys in the key range.
 //
 // Parameters:
 //   - ctx (context.Context): The context for requests to the database.
@@ -1207,7 +1207,7 @@ func (*qdbCoordinator) getBiggestRelation(relCount map[string]int64, totalCount 
 //
 // Returns:
 //   - *tasks.MoveTaskGroup: The group of data move tasks.
-//   - error: An error if any occured.
+//   - error: An error if any occurred.
 func (qc *qdbCoordinator) getMoveTasks(ctx context.Context, conn *pgx.Conn, req *kr.BatchMoveKeyRange, rel *distributions.DistributedRelation, condition string, coeff float64, ds *distributions.Distribution) (*tasks.MoveTaskGroup, error) {
 	taskList := make([]*tasks.MoveTask, 0)
 	step := int64(math.Ceil(float64(req.BatchSize)*coeff - 1e-3))
@@ -1367,7 +1367,7 @@ WHERE (sub.row_n %% constants.batch_size = 0 AND sub.row_n < constants.row_count
 //
 // Returns:
 //   - *kr.KeyRange: The key range next to the given.
-//   - error: An error if any occured.
+//   - error: An error if any occurred.
 func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyRange) (*kr.KeyRange, error) {
 	krs, err := qc.ListKeyRanges(ctx, keyRange.Distribution)
 	if err != nil {
@@ -1393,7 +1393,7 @@ func (qc *qdbCoordinator) getNextKeyRange(ctx context.Context, keyRange *kr.KeyR
 //   - taskGroup (*tasks.MoveTaskGroup): Move tasks to execute.
 //
 // Returns:
-//   - error: An error if any occured.
+//   - error: An error if any occurred.
 func (qc *qdbCoordinator) executeMoveTasks(ctx context.Context, taskGroup *tasks.MoveTaskGroup) error {
 	for len(taskGroup.Tasks) != 0 {
 		task := taskGroup.Tasks[0]
@@ -1508,7 +1508,7 @@ func (qc *qdbCoordinator) RedistributeKeyRange(ctx context.Context, req *kr.Redi
 //   - task (*tasks.RedistributeTask): The redistribute task to execute.
 //
 // Returns:
-//   - error: An error if any occured.
+//   - error: An error if any occurred.
 func (qc *qdbCoordinator) executeRedistributeTask(ctx context.Context, task *tasks.RedistributeTask) error {
 	for {
 		switch task.State {
@@ -2047,7 +2047,7 @@ func (qc *qdbCoordinator) AlterDistributionAttach(ctx context.Context, id string
 			Relations: func() []*routerproto.DistributedRelation {
 				res := make([]*routerproto.DistributedRelation, len(rels))
 				for i, rel := range rels {
-					res[i] = distributions.DistributedRelatitonToProto(rel)
+					res[i] = distributions.DistributedRelationToProto(rel)
 				}
 				return res
 			}(),

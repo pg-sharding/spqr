@@ -86,7 +86,7 @@ func (app *App) ServeAdminConsole(ctx context.Context) error {
 
 	spqrlog.Zero.Info().
 		Str("address", address).
-		Msg("SPQR Administative Console is ready on")
+		Msg("SPQR Administrative Console is ready on")
 	return app.spqr.RunAdm(ctx, listener)
 }
 
@@ -111,7 +111,7 @@ func (app *App) ServeGrpcApi(ctx context.Context) error {
 	return nil
 }
 
-func (app *App) ServceUnixSocket(ctx context.Context) error {
+func (app *App) ServiceUnixSocket(ctx context.Context) error {
 	if err := os.MkdirAll(config.UnixSocketDirectory, 0777); err != nil {
 		return err
 	}

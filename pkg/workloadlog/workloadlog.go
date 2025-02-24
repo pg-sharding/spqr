@@ -246,7 +246,7 @@ func EncodeMessage(tm TimedMessage) ([]byte, error) {
 	binSessionNum := make([]byte, 4)
 	binary.BigEndian.PutUint32(binSessionNum, uint32(tm.Session))
 
-	compl := append(binTime, binSessionNum...)
-	compl = append(compl, binMsg...)
-	return compl, nil
+	data := append(binTime, binSessionNum...)
+	data = append(data, binMsg...)
+	return data, nil
 }

@@ -196,7 +196,7 @@ func TestClientsOrderBy(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	var v1, v2, v3, v4, v5, v6 proto.UsedShardInfo
-	var i1, i2, i3, i4, i5, i6 proto.DBInstaceInfo
+	var i1, i2, i3, i4, i5, i6 proto.DBInstanceInfo
 
 	i1.Hostname = "abracadabra1"
 	i2.Hostname = "abracadabra2"

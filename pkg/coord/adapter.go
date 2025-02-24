@@ -736,7 +736,7 @@ func (a *Adapter) AlterDistributionAttach(ctx context.Context, id string, rels [
 
 	dRels := []*proto.DistributedRelation{}
 	for _, r := range rels {
-		dRels = append(dRels, distributions.DistributedRelatitonToProto(r))
+		dRels = append(dRels, distributions.DistributedRelationToProto(r))
 	}
 
 	_, err := c.AlterDistributionAttach(ctx, &proto.AlterDistributionAttachRequest{

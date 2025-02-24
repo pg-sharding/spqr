@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/conn"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
@@ -33,7 +34,7 @@ import (
 func AuthBackend(shard conn.DBInstance, berule *config.BackendRule, msg pgproto3.BackendMessage) error {
 	spqrlog.Zero.Debug().
 		Uint("shard ", spqrlog.GetPointer(shard)).
-		Type("authtype", msg).
+		Type("auth_type", msg).
 		Msg("auth backend")
 
 	switch v := msg.(type) {
@@ -380,7 +381,7 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			return fmt.Errorf("GSS configuration are not set for GSS auth method")
 		}
 		if cl.Usr() != rule.Usr {
-			return fmt.Errorf("user from client %v != %v missmatch user in config", cl.Usr(), rule.Usr)
+			return fmt.Errorf("user from client %v != %v mismatch user in config", cl.Usr(), rule.Usr)
 		}
 		b := BaseAuthModule{
 			properties: map[string]interface{}{
@@ -397,10 +398,10 @@ func AuthFrontend(cl client.Client, rule *config.FrontendRule) error {
 			username = fmt.Sprintf("%s@%s", cred.UserName(), cred.Realm())
 		}
 		if username != cl.Usr() {
-			return fmt.Errorf("GSS username missmatch with pg user: '%v' != '%v'", username, cl.Usr())
+			return fmt.Errorf("GSS username mismatch with pg user: '%v' != '%v'", username, cl.Usr())
 		}
 		if rule.AuthRule.GssConfig.KrbRealm != "" && rule.AuthRule.GssConfig.KrbRealm != cred.Realm() {
-			return fmt.Errorf("GSS realm in token missmatch with realm in confing: '%v' != '%v'", rule.AuthRule.GssConfig.KrbRealm, cred.Realm())
+			return fmt.Errorf("GSS realm in token mismatch with realm in config: '%v' != '%v'", rule.AuthRule.GssConfig.KrbRealm, cred.Realm())
 		}
 		return nil
 	default:

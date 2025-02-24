@@ -34,7 +34,7 @@ func GetConnStrings(s *config.ShardConnect) []string {
 //
 // Returns:
 //   - *pgx.Conn: the connection to master host
-//   - error: error if any occured
+//   - error: error if any occurred
 //
 // TODO: unit tests
 func GetMasterConnection(ctx context.Context, s *config.ShardConnect) (*pgx.Conn, error) {

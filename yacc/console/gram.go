@@ -1062,7 +1062,7 @@ yydefault:
 			case ClientStr:
 				yyVAL.str = v
 			default:
-				yyVAL.str = "unsupp"
+				yyVAL.str = UnsupportedStr
 			}
 		}
 	case 41:

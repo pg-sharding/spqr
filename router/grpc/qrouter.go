@@ -354,7 +354,7 @@ func ClientToProto(cl client.ClientInfo) *protos.ClientInfo {
 	}
 	for _, shard := range cl.Shards() {
 		clientInfo.Shards = append(clientInfo.Shards, &protos.UsedShardInfo{
-			Instance: &protos.DBInstaceInfo{
+			Instance: &protos.DBInstanceInfo{
 				Hostname: shard.Instance().Hostname(),
 			},
 		})
@@ -405,8 +405,8 @@ func (l *LocalQrouterServer) ListClients(context.Context, *emptypb.Empty) (*prot
 }
 
 // TODO : unit tests
-func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConntionsReply, error) {
-	reply := &protos.ListBackendConntionsReply{}
+func (l *LocalQrouterServer) ListBackendConnections(context.Context, *emptypb.Empty) (*protos.ListBackendConnectionsReply, error) {
+	reply := &protos.ListBackendConnectionsReply{}
 
 	err := l.rr.ForEach(func(sh shard.Shardinfo) error {
 		reply.Conns = append(reply.Conns, ShardToProto(sh))

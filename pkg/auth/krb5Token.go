@@ -55,7 +55,7 @@ func (m *KRB5Token) Marshal() ([]byte, error) {
 		return []byte{}, errors.New("marshal of KRB_ERROR GSSAPI MechToken not supported by gokrb5")
 	}
 	if err != nil {
-		return []byte{}, fmt.Errorf("error mashalling kerberos message within mech token: %v", err)
+		return []byte{}, fmt.Errorf("error marshalling kerberos message within mech token: %v", err)
 	}
 	b = append(b, tb...)
 	return asn1tools.AddASNAppTag(b, 0), nil

@@ -70,7 +70,7 @@ func TestStatisticsForDifferentUsers(t *testing.T) {
 	assert.Equal(1.0, statistics.GetTotalTimeQuantile(statistics.Shard, 0.5))
 }
 
-func TestNoStatisticsForMisingUser(t *testing.T) {
+func TestNoStatisticsForMissingUser(t *testing.T) {
 	assert := assert.New(t)
 
 	statistics.InitStatistics([]float64{0.5})

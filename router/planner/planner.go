@@ -27,7 +27,7 @@ func PlanDistributedQuery(ctx context.Context, rm *rmeta.RoutingMetadataContext,
 	case *lyx.VariableShowStmt:
 		/*
 		 if we want to reroute to execute this stmt, route to random shard
-		 XXX: support intelegent show support, without direct query dispatch
+		 XXX: support intelligent show support, without direct query dispatch
 		*/
 		return plan.RandomDispatchPlan{}, nil
 

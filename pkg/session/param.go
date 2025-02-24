@@ -33,7 +33,7 @@ type SessionParamsHolder interface {
 	SetScatterQuery(val bool)
 	ScatterQuery() bool
 
-	/* Check if we apply engive v2 routing for query */
+	/* Check if we apply engine v2 routing for query */
 	SetEnhancedMultiShardProcessing(bool, bool)
 	EnhancedMultiShardProcessing() bool
 

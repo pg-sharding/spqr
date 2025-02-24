@@ -18,18 +18,18 @@ type ShardingSchemaKeeper interface {
 	DeleteKeyRangeMove(ctx context.Context, moveId string) error
 }
 
-type TopolodyKeeper interface {
+type TopologyKeeper interface {
 	AddRouter(ctx context.Context, r *Router) error
 	DeleteRouter(ctx context.Context, rID string) error
 	ListRouters(ctx context.Context) ([]*Router, error)
 
 	// OpenRouter: change state of router to online
-	// Making it usable to use for query executiong.
+	// Making it usable to use for query execution.
 	// "Online" mode.
 	OpenRouter(ctx context.Context, rID string) error
 
 	// CloseRouter: change state of router to offline
-	// Making it unusable to use for query executiong.
+	// Making it unusable to use for query execution.
 	// "Offline" mode.
 	CloseRouter(ctx context.Context, rID string) error
 }
@@ -98,7 +98,7 @@ type XQDB interface {
 	// routing schema
 	QDB
 	// router topology
-	TopolodyKeeper
+	TopologyKeeper
 	// data move state
 	ShardingSchemaKeeper
 	DistributedXactKepper

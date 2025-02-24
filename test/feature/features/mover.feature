@@ -199,7 +199,7 @@ Feature: Mover test
     hostname resolving error
     """
 
-  Scenario: Move non-existent key range fails
+  Scenario: Move nonexistent key range fails
     When I run command on host "coordinator"
     """
     /spqr/spqr-mover -from-shard-connstring postgresql://regress@spqr_shard_1:6432/regress -to-shard-connstring postgresql://regress@spqr_shard_2:6432/regress -key-range krid3 -etcd-addr regress_qdb_0_1:2379

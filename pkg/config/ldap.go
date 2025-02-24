@@ -196,7 +196,7 @@ func (l *LDAPCfg) startTLS(conn *ldap.Conn, server string) error {
 
 		return nil
 	default:
-		return fmt.Errorf("invlaid ldap tls mode '%v'", l.ConnConfig.TLSConfig.TLSVerifyMode)
+		return fmt.Errorf("invalid ldap tls mode '%v'", l.ConnConfig.TLSConfig.TLSVerifyMode)
 	}
 }
 

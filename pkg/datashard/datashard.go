@@ -142,7 +142,7 @@ func (sh *Conn) Cancel() error {
 	spqrlog.Zero.Debug().
 		Str("host", pgiTmp.Hostname()).
 		Interface("msg", msg).
-		Msg("sendind cancel msg")
+		Msg("sending cancel msg")
 
 	return pgiTmp.Cancel(msg)
 }

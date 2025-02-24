@@ -7,16 +7,16 @@ import (
 	"github.com/pg-sharding/spqr/router/client"
 )
 
-type InitSQLMetadataBootstraper struct {
-	initSQLFIle        string
+type InitSQLMetadataBootstrapper struct {
+	InitSQLFIle        string
 	exitOnInitSQLError bool
 }
 
-// InitializeMetadata implements RouterMetadataBootstraper.
-func (i *InitSQLMetadataBootstraper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
+// InitializeMetadata implements RouterMetadataBootstrapper.
+func (i *InitSQLMetadataBootstrapper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 	for _, fname := range []string{
 		// rcfg.InitSQL,
-		i.initSQLFIle,
+		i.InitSQLFIle,
 	} {
 		if len(fname) == 0 {
 			continue
@@ -49,11 +49,11 @@ func (i *InitSQLMetadataBootstraper) InitializeMetadata(ctx context.Context, r R
 	return nil
 }
 
-func NewInitSQLMetadataBootstraper(initSQLFIle string, exitOnInitSQLError bool) RouterMetadataBootstraper {
-	return &InitSQLMetadataBootstraper{
-		initSQLFIle:        initSQLFIle,
+func NewInitSQLMetadataBootstrapper(initSQLFIle string, exitOnInitSQLError bool) *InitSQLMetadataBootstrapper {
+	return &InitSQLMetadataBootstrapper{
+		InitSQLFIle:        initSQLFIle,
 		exitOnInitSQLError: exitOnInitSQLError,
 	}
 }
 
-var _ RouterMetadataBootstraper = &InitSQLMetadataBootstraper{}
+var _ RouterMetadataBootstrapper = &InitSQLMetadataBootstrapper{}

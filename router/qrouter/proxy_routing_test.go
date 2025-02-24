@@ -1657,7 +1657,7 @@ LIMIT 1000
 		// 			Shkey: kr.ShardKey{
 		// 				Name: "sh1",
 		// 			},
-		// 			Matchedkr: &kr.KeyRange{
+		// 			MatchedKr: &kr.KeyRange{
 		// 				ID:           "id1",
 		// 				ShardID:      "sh1",
 		// 				Distribution: distribution.ID,

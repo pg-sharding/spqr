@@ -31,7 +31,7 @@ type QueryStateExecutorImpl struct {
 	savedBegin *pgproto3.Query
 }
 
-var unexpectedDeployTxErr = fmt.Errorf("unexpected exector tx state in transaction deploy")
+var unexpectedDeployTxErr = fmt.Errorf("unexpected executor tx state in transaction deploy")
 var unroutedClientDeployError = fmt.Errorf("failed to deploy tx status for unrouted client")
 
 func (s *QueryStateExecutorImpl) deployTxStatusInternal(serv server.Server, q *pgproto3.Query, expTx txstatus.TXStatus) error {
@@ -87,7 +87,7 @@ func (s *QueryStateExecutorImpl) TxStatus() txstatus.TXStatus {
 }
 
 func (s *QueryStateExecutorImpl) ExecBegin(rst RelayStateMgr, query string, st *parser.ParseStateTXBegin) error {
-	// explicitly set silent query message, as it can differ from query begin in xporot
+	// explicitly set silent query message, as it can differ from query begin in xproto
 
 	s.SetTxStatus(txstatus.TXACT)
 	s.cl.StartTx()
@@ -232,7 +232,7 @@ func (s *QueryStateExecutorImpl) ProcCopyPrepare(ctx context.Context, mgr meta.E
 		}
 	}
 
-	/* If exeecute on is specified or explicit tx is going, no routing */
+	/* If 'execute on' is specified or explicit tx is going, then no routing */
 	if s.cl.ExecuteOn() != "" || s.TxStatus() == txstatus.TXACT {
 		return &pgcopy.CopyState{
 			Delimiter: delimiter,
@@ -305,7 +305,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		return nil, s.cl.Server().Send(data)
 	}
 
-	var leftOvermsgData []byte = nil
+	var leftoverMsgData []byte = nil
 
 	rowsMp := map[string][]byte{}
 
@@ -359,7 +359,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 		if spqrlog.IsDebugLevel() {
 			_ = s.cl.ReplyNotice(fmt.Sprintf("leftover data saved to next iter %d - %d", prevLine, len(data.Data)))
 		}
-		leftOvermsgData = data.Data[prevLine:len(data.Data)]
+		leftoverMsgData = data.Data[prevLine:len(data.Data)]
 	}
 
 	for _, sh := range s.cl.Server().Datashards() {
@@ -372,7 +372,7 @@ func (s *QueryStateExecutorImpl) ProcCopy(ctx context.Context, data *pgproto3.Co
 	}
 
 	// shouldn't exit from here
-	return leftOvermsgData, nil
+	return leftoverMsgData, nil
 }
 
 // TODO : unit tests
@@ -487,7 +487,7 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 			q := qd.Stmt.(*lyx.Copy)
 
 			if err := func() error {
-				var leftOvermsgData []byte
+				var leftoverMsgData []byte
 				ctx := context.TODO()
 
 				cps, err := s.ProcCopyPrepare(ctx, mgr, q)
@@ -503,9 +503,9 @@ func (s *QueryStateExecutorImpl) ProcQuery(qd *QueryDesc, mgr meta.EntityMgr, wa
 
 					switch newMsg := cpMsg.(type) {
 					case *pgproto3.CopyData:
-						leftOvermsgData = append(leftOvermsgData, newMsg.Data...)
+						leftoverMsgData = append(leftoverMsgData, newMsg.Data...)
 
-						if leftOvermsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftOvermsgData}, cps); err != nil {
+						if leftoverMsgData, err = s.ProcCopy(ctx, &pgproto3.CopyData{Data: leftoverMsgData}, cps); err != nil {
 							/* complete relay if copy failed here */
 							return err
 						}

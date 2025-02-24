@@ -21,7 +21,7 @@ func CreateKeyRangeWithChecks(ctx context.Context, qdb qdb.QDB, keyRange *kr.Key
 
 	_, err := qdb.GetDistribution(ctx, keyRange.Distribution)
 	if err != nil {
-		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a non-existent distribution")
+		return spqrerror.New(spqrerror.SPQR_NO_DISTRIBUTION, "try to add key range link to a nonexistent distribution")
 	}
 
 	existsKrids, err := qdb.ListKeyRanges(ctx, keyRange.Distribution)

@@ -19,8 +19,8 @@ type ShardKey struct {
 	RW   bool
 }
 
-// qdb KeyRange with its distibtion column types
-// stored in case struct for fast convertion/access
+// qdb KeyRange with its distribution column types
+// stored in case struct for fast conversion/access
 type KeyRange struct {
 	LowerBound   KeyRangeBound
 	ShardID      string
@@ -31,7 +31,7 @@ type KeyRange struct {
 }
 
 /*
-* Old style key ranges comparation
+* Old style key ranges comparison
  */
 // TODO : unit tests
 func CmpRangesLessStringsDeprecated(bound string, key string) bool {
@@ -198,7 +198,7 @@ var MissTypedKeyRange = fmt.Errorf("key range bound is mistyped")
 func CmpRangesLess(bound KeyRangeBound, key KeyRangeBound, types []string) bool {
 	// Here we panic if we failed to convert key range bound
 	// element to expected type. We consider panic as much better
-	// result that data corruption caused by erroreus routing logic.
+	// result that data corruption caused by erroneous routing logic.
 	// Big TODO here is to use and check specific error of types mismatch.
 
 	for i := range len(bound) {

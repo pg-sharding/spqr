@@ -99,7 +99,7 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 	if err := frontend.Flush(); err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("failed to send msg to db")
 	}
-	err = recieveBackend(frontend)
+	err = receiveBackend(frontend)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("error while receiving reply")
 	}
@@ -126,7 +126,7 @@ func startNewSession(host string, port string, user string, db string, ch chan w
 			case *pgproto3.Terminate:
 				return
 			default:
-				err = recieveBackend(frontend)
+				err = receiveBackend(frontend)
 				if err != nil {
 					spqrlog.Zero.Error().Err(err).Msg("error while receiving reply")
 				}
@@ -232,7 +232,7 @@ func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 	return tm, nil
 }
 
-// recieveBackend receives messages from the database frontend until a ReadyForQuery message is received.
+// receiveBackend receives messages from the database frontend until a ReadyForQuery message is received.
 // It returns an error if there is a failure in receiving the message.
 //
 // Parameters:
@@ -242,7 +242,7 @@ func parseFile(f *os.File) (workloadlog.TimedMessage, error) {
 // - error: an error if there is a failure in receiving the message
 //
 // TODO : unit tests
-func recieveBackend(frontend *pgproto3.Frontend) error {
+func receiveBackend(frontend *pgproto3.Frontend) error {
 	for {
 		retmsg, err := frontend.Receive()
 		if err != nil {

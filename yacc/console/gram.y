@@ -415,7 +415,7 @@ kill_statement_type:
 		case ClientStr:
 			$$ = v
 		default:
-			$$ = "unsupp"
+			$$ = UnsupportedStr
 		}
 	}
 
@@ -633,7 +633,7 @@ lock_stmt:
 	{
 		$$ = &Lock{KeyRangeID: $2.KeyRangeID}
 	}
-	// or lock someting else
+	// or lock something else
 
 
 distribution_define_stmt:

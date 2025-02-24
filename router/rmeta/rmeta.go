@@ -120,7 +120,7 @@ func (routingMeta *RoutingMetadataContext) RecordParamRefExpr(resolvedRelation r
 	}
 
 	if routingMeta.Distributions[resolvedRelation].Id == distributions.REPLICATED {
-		// referencr relation, skip
+		// reference relation, skip
 		return nil
 	}
 
@@ -250,9 +250,9 @@ func (rm *RoutingMetadataContext) GetDistributionKeyOffsetType(resolvedRelation 
 }
 
 func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.RelationFQN, tp string, colname string, expr lyx.Node) error {
-	switch rght := expr.(type) {
+	switch right := expr.(type) {
 	case *lyx.ParamRef:
-		return rm.RecordParamRefExpr(resolvedRelation, colname, rght.Number-1)
+		return rm.RecordParamRefExpr(resolvedRelation, colname, right.Number-1)
 	case *lyx.AExprSConst:
 		switch tp {
 		case qdb.ColumnTypeVarcharDeprecated:
@@ -260,15 +260,15 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.Relati
 		case qdb.ColumnTypeVarcharHashed:
 			fallthrough
 		case qdb.ColumnTypeVarchar:
-			return rm.RecordConstExpr(resolvedRelation, colname, rght.Value)
+			return rm.RecordConstExpr(resolvedRelation, colname, right.Value)
 		case qdb.ColumnTypeInteger:
-			num, err := strconv.ParseInt(rght.Value, 10, 64)
+			num, err := strconv.ParseInt(right.Value, 10, 64)
 			if err != nil {
 				return err
 			}
 			return rm.RecordConstExpr(resolvedRelation, colname, num)
 		case qdb.ColumnTypeUinteger:
-			num, err := strconv.ParseUint(rght.Value, 10, 64)
+			num, err := strconv.ParseUint(right.Value, 10, 64)
 			if err != nil {
 				return err
 			}
@@ -285,9 +285,9 @@ func (rm *RoutingMetadataContext) ProcessSingleExpr(resolvedRelation rfqn.Relati
 		case qdb.ColumnTypeVarchar:
 			return fmt.Errorf("varchar type is not supported for AExprIConst expression")
 		case qdb.ColumnTypeInteger:
-			return rm.RecordConstExpr(resolvedRelation, colname, int64(rght.Value))
+			return rm.RecordConstExpr(resolvedRelation, colname, int64(right.Value))
 		case qdb.ColumnTypeUinteger:
-			return rm.RecordConstExpr(resolvedRelation, colname, uint64(rght.Value))
+			return rm.RecordConstExpr(resolvedRelation, colname, uint64(right.Value))
 		default:
 			return fmt.Errorf("incorrect key-offset type for AExprIConst expression: %s", tp)
 		}
