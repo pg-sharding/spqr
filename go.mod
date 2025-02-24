@@ -32,7 +32,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.18
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/sync v0.11.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
