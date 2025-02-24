@@ -7,7 +7,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var Zero = NewZeroLogger("", true)
+// Zero is a singleton object of zerolog.Logger.
+var Zero = NewZeroLogger("", "info", true)
 
 // NewZeroLogger initializes a zerolog.Logger.
 // If prettyLogging is true, it outputs in a human-readable format.
@@ -19,44 +20,30 @@ var Zero = NewZeroLogger("", true)
 //
 // Returns:
 // - *zerolog.Logger: Pointer to the logger instance.
-func NewZeroLogger(filepath string, prettyLogging bool) *zerolog.Logger {
+func NewZeroLogger(filepath string, logLevel string, prettyLogging bool) *zerolog.Logger {
 	_, writer, err := newWriter(filepath)
 	if err != nil {
 		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
 	}
 
+	level := parseLevel(logLevel)
+
 	if prettyLogging {
 		writer = zerolog.ConsoleWriter{Out: writer}
 	}
 
-	logger := zerolog.New(writer).With().Timestamp().Logger() // TODO pass level here
+	logger := zerolog.New(writer).With().Timestamp().Logger().Level(level)
 	return &logger
-}
-
-// UpdateZeroLogLevel updates the log level of the Zero logger.
-// It takes a logLevel string as input and returns an error if any.
-// The logLevel string should be one of the following: "debug", "info", "warn", "error", "fatal", "panic".
-// If the logLevel string is invalid, the function will return an error.
-//
-// Parameters:
-//   - logLevel: The log level to set for the Zero logger.
-//
-// Returns:
-//   - error: An error if any error occurs during the process.
-func UpdateZeroLogLevel(logLevel string) error {
-	level := parseLevel(logLevel)
-	zeroLogger := Zero.With().Logger().Level(level)
-	Zero = &zeroLogger
-	return nil
 }
 
 // ReloadLogger reloads the logger with a new log file or stdout if filepath is empty.
 //
 // Parameters:
 //   - filepath: The log file path.
+//   - logLevel: the log level
 //   - prettyLogging: Enable pretty logging.
-func ReloadLogger(logFileName string, prettyLogging bool) {
-	Zero = NewZeroLogger(logFileName, prettyLogging)
+func ReloadLogger(logFileName string, logLevel string, prettyLogging bool) {
+	Zero = NewZeroLogger(logFileName, logLevel, prettyLogging)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.
