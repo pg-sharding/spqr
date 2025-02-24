@@ -33,6 +33,8 @@ var rootCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
+		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, config.RouterConfig().LogLevel, false)
+
 		balancer, err := provider.NewBalancer()
 		if err != nil {
 			return err
