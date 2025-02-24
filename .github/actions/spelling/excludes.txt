@@ -5,4 +5,6 @@
 [^/]\.png$
 ^\Qgo.sum\E$
 ^docker/router/ssl/
-^\.github/actions/spelling/^
+^\Q.github/actions/spelling/
+^\Q.github/actions/workflows/spelling.yaml\E?$
+^.git/

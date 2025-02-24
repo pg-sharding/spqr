@@ -37,7 +37,7 @@ bts
 buf
 buildpackage
 buildx
-bootstrapper
+Bootstrapper
 byt
 caio
 CANCELREQ
@@ -249,6 +249,7 @@ INTOID
 ipam
 IRun
 isatty
+isgomock
 issuecomment
 iuwehiuhweui
 ixxxd
@@ -387,6 +388,7 @@ odssd
 ogima
 oid
 OIDKRB
+OIDS
 oiwejow
 OLAP
 opencontainers
@@ -444,6 +446,7 @@ podman
 poolmgr
 poolview
 postgre
+Postgre
 postgresql
 ppp
 pppp
@@ -466,6 +469,7 @@ qdb
 QDBKR
 QDBTx
 Qdocker
+Qgo
 qlog
 qlogger
 qlogprovider

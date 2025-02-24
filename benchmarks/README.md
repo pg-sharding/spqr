@@ -20,4 +20,4 @@ As you can see, one router scales workload decently up to 8 shards.
 ![TPC-C test results](tpcc.png)
 However, at some point adding more routers is necessary. But still there's a big room for improvement of router performance.
 
-You can compare this results with [Vitess and Aurora](https://www.amazon.science/publications/amazon-aurora-on-avoiding-distributed-consensus-for-i-os-commits-and-membership-changes), Perfomance Results.
+You can compare this results with [Vitess and Aurora](https://www.amazon.science/publications/amazon-aurora-on-avoiding-distributed-consensus-for-i-os-commits-and-membership-changes), Performance Results.
