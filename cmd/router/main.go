@@ -129,7 +129,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if !console && (config.RouterConfig().Daemonize || daemonize) {
-			cntxt := &daemon.Context{
+			ctx := &daemon.Context{
 				PidFileName: config.RouterConfig().PidFileName,
 				PidFilePerm: 0644,
 				WorkDir:     "./",
