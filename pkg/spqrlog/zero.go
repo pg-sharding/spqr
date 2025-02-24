@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var Zero = NewZeroLogger("")
+var Zero *zerolog.Logger
 
 // NewZeroLogger creates a new ZeroLogger with the specified filepath.
 // It initializes a writer and creates a logger with a timestamp.
@@ -20,13 +20,17 @@ var Zero = NewZeroLogger("")
 //
 // Returns:
 //   - *zerolog.Logger: A pointer to the created ZeroLogger.
-func NewZeroLogger(filepath string) *zerolog.Logger {
+func NewZeroLogger(filepath string, prettyLogging bool) *zerolog.Logger {
 	_, writer, err := newWriter(filepath)
 	if err != nil {
 		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
 	}
-	logger := zerolog.New(writer).With().Timestamp().Logger()
 
+	if prettyLogging {
+		writer = zerolog.ConsoleWriter{Out: writer}
+	}
+
+	logger := zerolog.New(writer).With().Timestamp().Logger() // TODO pass level here
 	return &logger
 }
 
@@ -53,12 +57,8 @@ func UpdateZeroLogLevel(logLevel string) error {
 //
 // Parameters:
 //   - filepath: The path to the log file where the data will be written.
-func ReloadLogger(filepath string) {
-	if filepath == "" {
-		return // this means os.Stdout, so no need to open new file
-	}
-	newLogger := NewZeroLogger(filepath).Level(Zero.GetLevel())
-	Zero = &newLogger
+func ReloadLogger(logFileName string, prettyLogging bool) {
+	Zero = NewZeroLogger(logFileName, prettyLogging)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.

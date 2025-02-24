@@ -47,10 +47,11 @@ var (
 	cpuProfile         bool
 	memProfile         bool
 
-	qdbImpl    string
-	daemonize  bool
-	console    bool
-	gomaxprocs int
+	qdbImpl       string
+	daemonize     bool
+	console       bool
+	prettyLogging bool
+	gomaxprocs    int
 
 	rootCmd = &cobra.Command{
 		Use:   "spqr-router run --config `path-to-config-folder`",
@@ -90,6 +91,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&qdbImpl, "qdb-impl", "", "etcd", "which implementation of QDB to use.")
 	rootCmd.PersistentFlags().BoolVarP(&daemonize, "daemonize", "d", false, "run as a daemon or not. Opposite of `console`")
 	rootCmd.PersistentFlags().BoolVarP(&console, "console", "", false, "run as a console app or not. Opposite of `daemonize`")
+	rootCmd.PersistentFlags().BoolVarP(&prettyLogging, "pretty-log", "P", false, "enables pretty logging")
 	rootCmd.PersistentFlags().IntVarP(&gomaxprocs, "gomaxprocs", "", 0, "GOMAXPROCS value")
 
 	rootCmd.AddCommand(runCmd)
@@ -106,7 +108,7 @@ var runCmd = &cobra.Command{
 		}
 		log.Println("Running config:", cfgStr)
 
-		spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
+		spqrlog.ReloadLogger(config.RouterConfig().LogFileName, prettyLogging)
 
 		// Logger
 		if logLevel != "" {
@@ -281,7 +283,7 @@ var runCmd = &cobra.Command{
 
 				switch s {
 				case syscall.SIGUSR1:
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, prettyLogging)
 				case syscall.SIGUSR2:
 					if cpuProfile {
 						// write profile
@@ -310,7 +312,7 @@ var runCmd = &cobra.Command{
 					if err != nil {
 						spqrlog.Zero.Error().Err(err).Msg("")
 					}
-					spqrlog.ReloadLogger(config.RouterConfig().LogFileName)
+					spqrlog.ReloadLogger(config.RouterConfig().LogFileName, prettyLogging)
 				case syscall.SIGINT, syscall.SIGTERM:
 					if cpuProfile {
 						// write profile
