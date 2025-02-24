@@ -1,5 +1,5 @@
 log_level = "debug"
-host = "localhost"
+host = "[spqr_router_1_1]"
 router_port = "6432"
 admin_console_port = "7432"
 grpc_api_port = "7001"
@@ -31,7 +31,7 @@ db = "opgejrqr"
 usr = "opgejrqr"
 pwd = "RJj7-J717NALMmU4As0umiYwYn7wgAOk"
 type = "DATA"
-hosts = [ "localhost:5432" ]
+hosts = [ "dumbo.db.elephantsql.com:5432" ]
   [shards.sh1.tls]
   sslmode = "disable"
   cert_file = "/etc/odyssey/ssl/server.crt"
