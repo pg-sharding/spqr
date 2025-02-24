@@ -7,26 +7,29 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var Zero = NewZeroLogger("")
+var Zero = NewZeroLogger("", true)
 
-// NewZeroLogger creates a new ZeroLogger with the specified filepath.
-// It initializes a writer and creates a logger with a timestamp.
-// The logger is returned as a pointer to a zerolog.Logger.
-// If the filepath is empty, the logger will be set to os.Stdout.
-// Otherwise, a new log file will be opened and used for logging.
+// NewZeroLogger initializes a zerolog.Logger.
+// If prettyLogging is true, it outputs in a human-readable format.
+// Prints an error message if writer initialization fails.
 //
 // Parameters:
-//   - filepath: The path to the log file where the data will be written.
+// - filepath: Log file path.
+// - prettyLogging: Enable pretty logging.
 //
 // Returns:
-//   - *zerolog.Logger: A pointer to the created ZeroLogger.
-func NewZeroLogger(filepath string) *zerolog.Logger {
+// - *zerolog.Logger: Pointer to the logger instance.
+func NewZeroLogger(filepath string, prettyLogging bool) *zerolog.Logger {
 	_, writer, err := newWriter(filepath)
 	if err != nil {
 		fmt.Printf("FAILED TO INITIALIZED LOGGER: %v", err)
 	}
-	logger := zerolog.New(writer).With().Timestamp().Logger()
 
+	if prettyLogging {
+		writer = zerolog.ConsoleWriter{Out: writer}
+	}
+
+	logger := zerolog.New(writer).With().Timestamp().Logger() // TODO pass level here
 	return &logger
 }
 
@@ -47,18 +50,13 @@ func UpdateZeroLogLevel(logLevel string) error {
 	return nil
 }
 
-// ReloadLogger reloads the logger with a new log file.
-// If the filepath is empty, the logger will be set to os.Stdout.
-// Otherwise, a new log file will be opened and used for logging.
+// ReloadLogger reloads the logger with a new log file or stdout if filepath is empty.
 //
 // Parameters:
-//   - filepath: The path to the log file where the data will be written.
-func ReloadLogger(filepath string) {
-	if filepath == "" {
-		return // this means os.Stdout, so no need to open new file
-	}
-	newLogger := NewZeroLogger(filepath).Level(Zero.GetLevel())
-	Zero = &newLogger
+//   - filepath: The log file path.
+//   - prettyLogging: Enable pretty logging.
+func ReloadLogger(logFileName string, prettyLogging bool) {
+	Zero = NewZeroLogger(logFileName, prettyLogging)
 }
 
 // parseLevel parses the given level string and returns the corresponding zerolog.Level.
