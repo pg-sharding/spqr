@@ -43,7 +43,7 @@ type Composer interface {
 	Start(service string) error
 	// Detachs container/VM from network
 	DetachFromNet(service string) error
-	// Attachs container/VM to network
+	// Attaches container/VM to network
 	AttachToNet(service string) error
 	// Executes command inside container/VM with given timeout.
 	// Returns command retcode and output (stdout and stderr are mixed)

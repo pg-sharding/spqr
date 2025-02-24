@@ -108,6 +108,7 @@ debian
 denchick
 denis
 deparse
+deparses
 deparsed
 deparsing
 dfr
