@@ -8,14 +8,15 @@ import (
 )
 
 type InitSQLMetadataBootstraper struct {
-	InitSQLFIle string
+	initSQLFIle        string
+	exitOnInitSQLError bool
 }
 
 // InitializeMetadata implements RouterMetadataBootstraper.
 func (i *InitSQLMetadataBootstraper) InitializeMetadata(ctx context.Context, r RouterInstance) error {
 	for _, fname := range []string{
 		// rcfg.InitSQL,
-		i.InitSQLFIle,
+		i.initSQLFIle,
 	} {
 		if len(fname) == 0 {
 			continue
@@ -31,6 +32,9 @@ func (i *InitSQLMetadataBootstraper) InitializeMetadata(ctx context.Context, r R
 			spqrlog.Zero.Info().Str("query", query).Msg("")
 			if err := r.Console().ProcessQuery(ctx, query, client.NewFakeClient()); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
+				if i.exitOnInitSQLError {
+					return err
+				}
 			}
 		}
 
@@ -45,9 +49,10 @@ func (i *InitSQLMetadataBootstraper) InitializeMetadata(ctx context.Context, r R
 	return nil
 }
 
-func NewInitSQLMetadataBootstraper(InitSQLFIle string) RouterMetadataBootstraper {
+func NewInitSQLMetadataBootstraper(initSQLFIle string, exitOnInitSQLError bool) RouterMetadataBootstraper {
 	return &InitSQLMetadataBootstraper{
-		InitSQLFIle: InitSQLFIle,
+		initSQLFIle:        initSQLFIle,
+		exitOnInitSQLError: exitOnInitSQLError,
 	}
 }
 
