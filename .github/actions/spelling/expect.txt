@@ -37,6 +37,7 @@ bts
 buf
 buildpackage
 buildx
+bootstrapper
 byt
 caio
 CANCELREQ

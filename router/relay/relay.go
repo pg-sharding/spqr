@@ -1416,7 +1416,7 @@ func (rst *RelayStateImpl) PrepareRelayStep() error {
 	// txactive == 0 || activeSh == nil
 	if !rst.poolMgr.ValidateReRoute(rst) {
 		if rst.Client().EnhancedMultiShardProcessing() {
-			/* Withengine v2 we can expand transaction on more targets */
+			/* With engine v2 we can expand transaction on more targets */
 			/* TODO: XXX */
 
 			r, err := rst.Reroute()

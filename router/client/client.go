@@ -274,10 +274,10 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, intanceDefaultTsa string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) *PsqlClient {
 	var target_session_attrs tsa.TSA
-	if intanceDefaultTsa != "" {
-		target_session_attrs = tsa.TSA(intanceDefaultTsa)
+	if instanceDefaultTsa != "" {
+		target_session_attrs = tsa.TSA(instanceDefaultTsa)
 	} else {
 		target_session_attrs = tsa.TSA(config.TargetSessionAttrsRW)
 	}
