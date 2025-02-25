@@ -74,10 +74,10 @@ run: build_images
 	docker compose up -d --remove-orphans --build router router2 coordinator shard1 shard2 qdb01
 
 proxy_2sh_run:
-	./spqr-router run --config ./examples/2shardproxy.yaml -d --proto-debug
+	./spqr-router run --config ./examples/2shardproxy.yaml -d --pgproto-debug
 
 proxy_4sh_run:
-	./spqr-router run --config ./examples/4shardproxy.yaml -d --proto-debug
+	./spqr-router run --config ./examples/4shardproxy.yaml -d --pgproto-debug  --show-notice-messages
 
 proxy_run:
 	./spqr-router run --config ./examples/router.yaml
