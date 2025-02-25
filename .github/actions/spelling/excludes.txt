@@ -11,3 +11,4 @@
 ^yacc/console/Makefile$
 ^go.sum$
 ^go.mod$
+^tests$
