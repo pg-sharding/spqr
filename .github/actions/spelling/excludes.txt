@@ -9,3 +9,5 @@
 ^yacc/console/gram.go$
 ^yacc/console/lex.rl$
 ^yacc/console/Makefile$
+^go.sum$
+^go.mod$
