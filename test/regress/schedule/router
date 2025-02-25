@@ -26,3 +26,4 @@ test: reference_table
 test: ddl
 test: engine_v2
 test: subplan
+test: subselects

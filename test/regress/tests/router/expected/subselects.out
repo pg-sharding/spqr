@@ -1,0 +1,93 @@
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+CREATE DISTRIBUTION ds1 COLUMN TYPES integer;
+    add distribution    
+------------------------
+ distribution id -> ds1
+(1 row)
+
+CREATE KEY RANGE FROM 1 ROUTE TO sh1 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 1
+(1 row)
+
+CREATE KEY RANGE FROM 101 ROUTE TO sh2 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 101
+(1 row)
+
+CREATE KEY RANGE FROM 201 ROUTE TO sh3 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 201
+(1 row)
+
+CREATE KEY RANGE FROM 301 ROUTE TO sh4 FOR DISTRIBUTION ds1;
+ add key range 
+---------------
+ bound -> 301
+(1 row)
+
+CREATE REFERENCE TABLE ref_rel_1;
+         attach table          
+-------------------------------
+ relation name   -> ref_rel_1
+ distribution id -> REPLICATED
+(2 rows)
+
+ALTER DISTRIBUTION ds1 ATTACH RELATION table1 DISTRIBUTION KEY i;
+       attach table        
+---------------------------
+ relation name   -> table1
+ distribution id -> ds1
+(2 rows)
+
+\c regress
+CREATE TABLE table1(i INT PRIMARY KEY);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+CREATE TABLE ref_rel_1(i int, j int);
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+SELECT * FROM (SELECT * FROM table1 WHERE i = 1) AS a;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+(0 rows)
+
+SELECT * FROM (SELECT * FROM (SELECT * FROM table1 WHERE i = 1) AS a) AS b;
+NOTICE: send query to shard(s) : sh1
+ i 
+---
+(0 rows)
+
+DROP TABLE table1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+DROP TABLE ref_rel_1;
+NOTICE: send query to shard(s) : sh1,sh2,sh3,sh4
+\c spqr-console
+
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+
+DROP DISTRIBUTION ALL CASCADE;
+       drop distribution       
+-------------------------------
+ distribution id -> REPLICATED
+ distribution id -> ds1
+(2 rows)
+
+DROP KEY RANGE ALL;
+ drop key range 
+----------------
+(0 rows)
+

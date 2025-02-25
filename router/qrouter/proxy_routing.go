@@ -241,6 +241,8 @@ func (qr *ProxyQrouter) deparseFromNode(ctx context.Context, node lyx.FromClause
 		if err := qr.deparseFromNode(ctx, q.Larg, meta); err != nil {
 			return err
 		}
+	case *lyx.SubSelect:
+		return qr.DeparseSelectStmt(ctx, q.Arg, meta)
 	default:
 		// other cases to consider
 		// lateral join, natural, etc
