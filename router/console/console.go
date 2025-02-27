@@ -9,8 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -25,13 +23,12 @@ type Console interface {
 	Serve(ctx context.Context, cl client.Client) error
 	ProcessQuery(ctx context.Context, q string, cl client.Client) error
 	Qlog() qlog.Qlog
-	Shutdown() error
 	Mgr() meta.EntityMgr
 }
 
 type LocalInstanceConsole struct {
-	EntityMgr meta.EntityMgr
-	RRouter   rulerouter.RuleRouter
+	entityMgr meta.EntityMgr
+	rrouter   rulerouter.RuleRouter
 	qlogger   qlog.Qlog
 	writer    workloadlog.WorkloadLog
 
@@ -40,27 +37,18 @@ type LocalInstanceConsole struct {
 
 var _ Console = &LocalInstanceConsole{}
 
-func (l *LocalInstanceConsole) Shutdown() error {
-	return nil
-}
-
 func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
-	return l.EntityMgr
+	return l.entityMgr
 }
 
 func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		EntityMgr: mgr,
-		RRouter:   rrouter,
+		entityMgr: mgr,
+		rrouter:   rrouter,
 		qlogger:   qlogprovider.NewLocalQlog(),
 		stchan:    stchan,
 		writer:    writer,
 	}, nil
-}
-
-type TopoCntl interface {
-	kr.KeyRangeMgr
-	topology.ShardsMgr
 }
 
 // TODO : unit tests
@@ -81,17 +69,17 @@ func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *cl
 
 // TODO : unit tests
 func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr = l.EntityMgr
+	var mgr = l.entityMgr
 
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
+		return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
 	}
 
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
+			coordAddr, err := l.entityMgr.GetCoordinator(ctx)
 			if err != nil {
 				return err
 			}
@@ -103,7 +91,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
+		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
 		if err != nil {
 			return err
 		}
@@ -116,7 +104,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
+	return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
 }
 
 func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
