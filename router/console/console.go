@@ -19,9 +19,17 @@ import (
 	"google.golang.org/grpc"
 )
 
+const greeting = `
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+`
+
 type Console interface {
 	Serve(ctx context.Context, cl client.Client) error
-	ProcessQuery(ctx context.Context, q string, cl client.Client) error
+	ProcessQuery(ctx context.Context, q string, cl *clientinteractor.PSQLInteractor) error
 	Qlog() qlog.Qlog
 	Mgr() meta.EntityMgr
 }
@@ -52,7 +60,7 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cli *clientinteractor.PSQLInteractor) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -64,17 +72,11 @@ func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *cl
 		Type("type", tstmt).
 		Msg("processQueryInternal: parsed query with type")
 
-	return l.proxyProc(ctx, tstmt, cli)
-}
-
-// TODO : unit tests
-func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr = l.entityMgr
-
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
+		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, cli, l.writer)
 	}
 
+	var mgr meta.EntityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
@@ -106,18 +108,6 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
 	return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
 }
-
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
-}
-
-const greeting = `
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-`
 
 // TODO : unit tests
 func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) error {
