@@ -45,12 +45,15 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 				Str("user", dfr.Usr).
 				Msg("generating new dynamic rule")
 			return &config.FrontendRule{
-				Usr:                   key.Usr(),
 				DB:                    key.DB(),
+				Usr:                   key.Usr(),
+				SearchPath:            dfr.SearchPath,
 				AuthRule:              dfr.AuthRule,
 				PoolMode:              dfr.PoolMode,
+				PoolDiscard:           dfr.PoolDiscard,
+				PoolRollback:          dfr.PoolRollback,
 				PoolPreparedStatement: dfr.PoolPreparedStatement,
-				SearchPath:            dfr.SearchPath,
+				PoolDefault:           dfr.PoolDefault,
 			}
 		},
 	}
@@ -62,13 +65,16 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 				return nil
 			}
 			return &config.BackendRule{
-				Usr:               key.Usr(),
 				DB:                key.DB(),
+				Usr:               key.Usr(),
 				AuthRules:         dbe.AuthRules,
 				DefaultAuthRule:   dbe.DefaultAuthRule,
+				PoolDefault:       dbe.PoolDefault,
 				ConnectionLimit:   dbe.ConnectionLimit,
 				ConnectionRetries: dbe.ConnectionRetries,
 				ConnectionTimeout: dbe.ConnectionTimeout,
+				KeepAlive:         dbe.KeepAlive,
+				TcpUserTimeout:    dbe.TcpUserTimeout,
 			}
 		},
 	}
