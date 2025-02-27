@@ -153,7 +153,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) erro
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, cl); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, clientinteractor.NewPSQLInteractor(cl)); err != nil {
 				_ = cl.ReplyErr(err)
 				// continue to consume input
 			}
