@@ -379,6 +379,18 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog) error {
 	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
+
+	if _, ok := tstmt.(*spqrparser.Show); ok {
+		if err := config.CheckGrants(config.RoleReader, rc.Rule().Grants); err != nil {
+			return err
+		}
+		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
+	}
+
+	if err := config.CheckGrants(config.RoleAdmin, rc.Rule().Grants); err != nil {
+		return err
+	}
+
 	switch stmt := tstmt.(type) {
 	case *spqrparser.TraceStmt:
 		if writer == nil {
@@ -440,8 +452,6 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 			return err
 		}
 		return cli.UnlockKeyRange(ctx, stmt.KeyRangeID)
-	case *spqrparser.Show:
-		return ProcessShow(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.Kill:
 		return ProcessKill(ctx, stmt, mgr, ci, cli)
 	case *spqrparser.SplitKeyRange:
