@@ -2,7 +2,6 @@ package console
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"

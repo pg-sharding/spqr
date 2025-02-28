@@ -8,6 +8,7 @@ time_quantiles:
   - 0.75
 world_shard_fallback: true
 show_notice_messages: true
+enable_role_system: true
 frontend_tls:
   key_file: /etc/spqr/ssl/server.key
   cert_file: /etc/spqr/ssl/server.crt
@@ -15,12 +16,14 @@ frontend_tls:
 frontend_rules:
   - db: regress
     usr: regress
+    grants: [reader,writer]
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok
   - pool_mode: TRANSACTION
     pool_default: true
     pool_prepared_statement: false
+    grants: [admin]
     auth_rule:
       auth_method: ok
 shards:
