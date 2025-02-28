@@ -78,7 +78,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	var mgr meta.EntityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := config.CheckGrants(config.RoleReader, rc.Rule().Grants); err != nil {
+		if err := config.CheckGrants(config.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -95,7 +95,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		if err := config.CheckGrants(config.RoleAdmin, rc.Rule().Grants); err != nil {
+		if err := config.CheckGrants(config.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)

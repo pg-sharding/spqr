@@ -52,7 +52,7 @@ func TestCheckGrants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfgRouter.EnableRoleSystem = tt.enableRoleSys
-			err := CheckGrants(tt.target, tt.actual)
+			err := CheckGrants(tt.target, &FrontendRule{Grants: tt.actual})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckGrants() error = %v, wantErr %v", err, tt.wantErr)
 			}

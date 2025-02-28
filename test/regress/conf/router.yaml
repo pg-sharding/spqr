@@ -16,7 +16,7 @@ frontend_tls:
 frontend_rules:
   - db: regress
     usr: regress
-    grants: [reader,writer]
+    grants: [admin]
     pool_mode: TRANSACTION
     auth_rule:
       auth_method: ok

@@ -381,13 +381,13 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
-		if err := config.CheckGrants(config.RoleReader, rc.Rule().Grants); err != nil {
+		if err := config.CheckGrants(config.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
 	}
 
-	if err := config.CheckGrants(config.RoleAdmin, rc.Rule().Grants); err != nil {
+	if err := config.CheckGrants(config.RoleAdmin, rc.Rule()); err != nil {
 		return err
 	}
 
