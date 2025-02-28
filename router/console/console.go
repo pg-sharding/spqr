@@ -2,6 +2,7 @@ package console
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -78,6 +79,9 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	var mgr meta.EntityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
+		if err := l.checkGrants(config.RoleReader, rc); err != nil {
+			return err
+		}
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
 			coordAddr, err := l.entityMgr.GetCoordinator(ctx)
@@ -92,6 +96,9 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
+		if err := l.checkGrants(config.RoleAdmin, rc); err != nil {
+			return err
+		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
 		if err != nil {
 			return err
@@ -164,8 +171,24 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 				Msg("got unexpected postgresql proto message with type")
 		}
 	}
-}
 
+}
 func (l *LocalInstanceConsole) Qlog() qlog.Qlog {
 	return l.qlogger
+}
+
+func (l *LocalInstanceConsole) checkGrants(target config.Role, rc rclient.RouterClient) error {
+	if !config.RouterConfig().UseGrantSystem {
+		return nil
+	}
+
+	current := rc.Rule().Grants
+	for _, g := range current {
+		if g == target || g == config.RoleAdmin {
+			return nil
+		}
+	}
+
+	spqrlog.Zero.Error().Str("role", string(target)).Msg("permission denied")
+	return fmt.Errorf("permission denied")
 }
