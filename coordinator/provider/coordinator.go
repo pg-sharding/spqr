@@ -193,12 +193,6 @@ func DialRouter(r *topology.Router) (*grpc.ClientConn, error) {
 	return grpc.NewClient(r.Address, grpc.WithInsecure()) //nolint:all
 }
 
-type CoordinatorClient interface {
-	client.Client
-
-	CancelMsg() *pgproto3.CancelRequest
-}
-
 const defaultWatchRouterTimeout = time.Second
 
 type qdbCoordinator struct {
@@ -1775,7 +1769,7 @@ func (qc *qdbCoordinator) RemoveBalancerTask(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (CoordinatorClient, error) {
+func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (client.Client, error) {
 	cl := psqlclient.NewPsqlClient(nconn, pt, "", false, "")
 
 	tlsconfig := qc.tlsconfig

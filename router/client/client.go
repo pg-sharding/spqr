@@ -56,8 +56,6 @@ type RouterClient interface {
 	GetTsa() tsa.TSA
 	SetTsa(string)
 
-	CancelMsg() *pgproto3.CancelRequest
-
 	ReplyParseComplete() error
 	ReplyBindComplete() error
 	ReplyCommandComplete(commandTag string) error
@@ -67,8 +65,6 @@ type RouterClient interface {
 }
 
 type PsqlClient struct {
-	client.Client
-
 	activeParamSet     map[string]string
 	localParamSet      map[string]string
 	savepointParamSet  map[string]map[string]string
@@ -111,6 +107,8 @@ type PsqlClient struct {
 
 	serverP atomic.Pointer[server.Server]
 }
+
+var _ client.Client = &PsqlClient{}
 
 func (cl *PsqlClient) resolveVirtualBoolParam(name string) bool {
 	if val, ok := cl.localParamSet[name]; ok {
