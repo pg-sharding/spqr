@@ -178,7 +178,7 @@ func (l *LocalInstanceConsole) Qlog() qlog.Qlog {
 }
 
 func (l *LocalInstanceConsole) checkGrants(target config.Role, rc rclient.RouterClient) error {
-	if !config.RouterConfig().UseGrantSystem {
+	if !config.RouterConfig().EnableRoleSystem {
 		return nil
 	}
 
