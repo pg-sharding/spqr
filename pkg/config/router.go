@@ -323,6 +323,7 @@ func validateRouterConfig(cfg *Router) error {
 	return nil
 }
 
+// TODO pass frontend rule instead. use db:user in error message
 func CheckGrants(target Role, actual []Role) error {
 	if !RouterConfig().EnableRoleSystem {
 		return nil
