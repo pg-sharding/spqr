@@ -79,7 +79,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	var mgr meta.EntityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := l.checkGrants(config.RoleReader, rc); err != nil {
+		if err := config.CheckGrants(config.RoleReader, rc.Rule().Grants); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -96,7 +96,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		if err := l.checkGrants(config.RoleAdmin, rc); err != nil {
+		if err := config.CheckGrants(config.RoleAdmin, rc.Rule().Grants); err != nil {
 			return err
 		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
@@ -175,20 +175,4 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClien
 }
 func (l *LocalInstanceConsole) Qlog() qlog.Qlog {
 	return l.qlogger
-}
-
-func (l *LocalInstanceConsole) checkGrants(target config.Role, rc rclient.RouterClient) error {
-	if !config.RouterConfig().EnableRoleSystem {
-		return nil
-	}
-
-	current := rc.Rule().Grants
-	for _, g := range current {
-		if g == target || g == config.RoleAdmin {
-			return nil
-		}
-	}
-
-	spqrlog.Zero.Error().Str("role", string(target)).Msg("permission denied")
-	return fmt.Errorf("permission denied")
 }

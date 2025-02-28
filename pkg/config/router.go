@@ -323,6 +323,20 @@ func validateRouterConfig(cfg *Router) error {
 	return nil
 }
 
+func CheckGrants(target Role, actual []Role) error {
+	if !RouterConfig().EnableRoleSystem {
+		return nil
+	}
+
+	for _, g := range actual {
+		if g == target || g == RoleAdmin {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("permission denied")
+}
+
 // RouterConfig returns the router configuration.
 //
 // Parameters:
