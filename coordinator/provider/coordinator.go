@@ -34,7 +34,7 @@ import (
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/qdb/ops"
 	"github.com/pg-sharding/spqr/router/cache"
-	psqlclient "github.com/pg-sharding/spqr/router/client"
+	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/port"
 	"github.com/pg-sharding/spqr/router/route"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
@@ -110,7 +110,7 @@ func (ci grpcConnectionIterator) ClientPoolForeach(cb func(client client.ClientI
 		}
 
 		for _, client := range resp.Clients {
-			err = cb(psqlclient.NewNoopClient(client, addr))
+			err = cb(rclient.NewNoopClient(client, addr))
 			if err != nil {
 				return err
 			}
@@ -1769,8 +1769,8 @@ func (qc *qdbCoordinator) RemoveBalancerTask(ctx context.Context) error {
 }
 
 // TODO : unit tests
-func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (client.Client, error) {
-	cl := psqlclient.NewPsqlClient(nconn, pt, "", false, "")
+func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) (rclient.RouterClient, error) {
+	cl := rclient.NewPsqlClient(nconn, pt, "", false, "")
 
 	tlsconfig := qc.tlsconfig
 	if pt == port.UnixSocketPortType {
@@ -1875,7 +1875,7 @@ func (qc *qdbCoordinator) ProcClient(ctx context.Context, nconn net.Conn, pt por
 				Type("type", tstmt).
 				Msg("parsed statement is")
 
-			if err := meta.Proc(ctx, tstmt, qc, ci, cli, nil); err != nil {
+			if err := meta.Proc(ctx, tstmt, qc, ci, cl, nil); err != nil {
 				spqrlog.Zero.Error().Err(err).Msg("")
 				_ = cli.ReportError(err)
 			} else {

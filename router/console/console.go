@@ -4,14 +4,13 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/pg-sharding/spqr/pkg/client"
-	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
+	rclient "github.com/pg-sharding/spqr/router/client"
 	"github.com/pg-sharding/spqr/router/qlog"
 	qlogprovider "github.com/pg-sharding/spqr/router/qlog/provider"
 	"github.com/pg-sharding/spqr/router/rulerouter"
@@ -28,8 +27,8 @@ https://github.com/pg-sharding/spqr/tree/master/docs
 `
 
 type Console interface {
-	Serve(ctx context.Context, cl client.Client) error
-	ProcessQuery(ctx context.Context, q string, cl *clientinteractor.PSQLInteractor) error
+	Serve(ctx context.Context, rc rclient.RouterClient) error
+	ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient) error
 	Qlog() qlog.Qlog
 	Mgr() meta.EntityMgr
 }
@@ -60,7 +59,7 @@ func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, 
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cli *clientinteractor.PSQLInteractor) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rclient.RouterClient) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -73,7 +72,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cli *
 		Msg("processQueryInternal: parsed query with type")
 
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, cli, l.writer)
+		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer)
 	}
 
 	var mgr meta.EntityMgr
@@ -106,18 +105,18 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cli *
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
+	return meta.Proc(ctx, tstmt, mgr, l.rrouter, rc, l.writer)
 }
 
 // TODO : unit tests
-func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) error {
+func (l *LocalInstanceConsole) Serve(ctx context.Context, rc rclient.RouterClient) error {
 	msgs := []pgproto3.BackendMessage{
 		&pgproto3.AuthenticationOk{},
 	}
 
 	params := []string{"client_encoding", "standard_conforming_strings"}
 	for _, p := range params {
-		if v, ok := cl.Params()[p]; ok {
+		if v, ok := rc.Params()[p]; ok {
 			msgs = append(msgs, &pgproto3.ParameterStatus{Name: p, Value: v})
 		}
 	}
@@ -136,7 +135,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) erro
 	}...)
 
 	for _, msg := range msgs {
-		if err := cl.Send(msg); err != nil {
+		if err := rc.Send(msg); err != nil {
 			spqrlog.Zero.Error().Err(err).Msg("")
 			return err
 		}
@@ -145,7 +144,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) erro
 	spqrlog.Zero.Info().Msg("console.ProcClient start")
 
 	for {
-		msg, err := cl.Receive()
+		msg, err := rc.Receive()
 
 		if err != nil {
 			return err
@@ -153,8 +152,8 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) erro
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, clientinteractor.NewPSQLInteractor(cl)); err != nil {
-				_ = cl.ReplyErr(err)
+			if err := l.ProcessQuery(ctx, v.String, rc); err != nil {
+				_ = rc.ReplyErr(err)
 				// continue to consume input
 			}
 		case *pgproto3.Terminate:

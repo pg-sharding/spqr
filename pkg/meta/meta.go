@@ -19,6 +19,7 @@ import (
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
 	"github.com/pg-sharding/spqr/qdb"
 	"github.com/pg-sharding/spqr/router/cache"
+	rclient "github.com/pg-sharding/spqr/router/client"
 	spqrparser "github.com/pg-sharding/spqr/yacc/console"
 )
 
@@ -375,7 +376,8 @@ func processAlterDistribution(ctx context.Context, astmt spqrparser.Statement, m
 //
 // Returns:
 // - error: An error if the operation fails, otherwise nil.
-func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, cli *clientinteractor.PSQLInteractor, writer workloadlog.WorkloadLog) error {
+func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci connectiterator.ConnectIterator, rc rclient.RouterClient, writer workloadlog.WorkloadLog) error {
+	cli := clientinteractor.NewPSQLInteractor(rc)
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 	switch stmt := tstmt.(type) {
 	case *spqrparser.TraceStmt:

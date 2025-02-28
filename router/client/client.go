@@ -108,7 +108,7 @@ type PsqlClient struct {
 	serverP atomic.Pointer[server.Server]
 }
 
-var _ client.Client = &PsqlClient{}
+var _ RouterClient = &PsqlClient{}
 
 func (cl *PsqlClient) resolveVirtualBoolParam(name string) bool {
 	if val, ok := cl.localParamSet[name]; ok {
@@ -272,7 +272,7 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
 	var target_session_attrs tsa.TSA
 	if instanceDefaultTsa != "" {
 		target_session_attrs = tsa.TSA(instanceDefaultTsa)
