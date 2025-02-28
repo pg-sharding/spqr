@@ -9,8 +9,6 @@ import (
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
-	"github.com/pg-sharding/spqr/pkg/models/kr"
-	"github.com/pg-sharding/spqr/pkg/models/topology"
 	"github.com/pg-sharding/spqr/pkg/spqrlog"
 	"github.com/pg-sharding/spqr/pkg/txstatus"
 	"github.com/pg-sharding/spqr/pkg/workloadlog"
@@ -21,17 +19,24 @@ import (
 	"google.golang.org/grpc"
 )
 
+const greeting = `
+		SPQR router admin console
+	Here you can configure your routing rules
+------------------------------------------------
+	You can find documentation here 
+https://github.com/pg-sharding/spqr/tree/master/docs
+`
+
 type Console interface {
 	Serve(ctx context.Context, cl client.Client) error
-	ProcessQuery(ctx context.Context, q string, cl client.Client) error
+	ProcessQuery(ctx context.Context, q string, cl *clientinteractor.PSQLInteractor) error
 	Qlog() qlog.Qlog
-	Shutdown() error
 	Mgr() meta.EntityMgr
 }
 
 type LocalInstanceConsole struct {
-	EntityMgr meta.EntityMgr
-	RRouter   rulerouter.RuleRouter
+	entityMgr meta.EntityMgr
+	rrouter   rulerouter.RuleRouter
 	qlogger   qlog.Qlog
 	writer    workloadlog.WorkloadLog
 
@@ -40,31 +45,22 @@ type LocalInstanceConsole struct {
 
 var _ Console = &LocalInstanceConsole{}
 
-func (l *LocalInstanceConsole) Shutdown() error {
-	return nil
-}
-
 func (l *LocalInstanceConsole) Mgr() meta.EntityMgr {
-	return l.EntityMgr
+	return l.entityMgr
 }
 
 func NewLocalInstanceConsole(mgr meta.EntityMgr, rrouter rulerouter.RuleRouter, stchan chan struct{}, writer workloadlog.WorkloadLog) (Console, error) { // add writer class
 	return &LocalInstanceConsole{
-		EntityMgr: mgr,
-		RRouter:   rrouter,
+		entityMgr: mgr,
+		rrouter:   rrouter,
 		qlogger:   qlogprovider.NewLocalQlog(),
 		stchan:    stchan,
 		writer:    writer,
 	}, nil
 }
 
-type TopoCntl interface {
-	kr.KeyRangeMgr
-	topology.ShardsMgr
-}
-
 // TODO : unit tests
-func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *clientinteractor.PSQLInteractor, q string) error {
+func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cli *clientinteractor.PSQLInteractor) error {
 	tstmt, err := spqrparser.Parse(q)
 	if err != nil {
 		spqrlog.Zero.Error().Err(err).Msg("")
@@ -76,22 +72,16 @@ func (l *LocalInstanceConsole) processQueryInternal(ctx context.Context, cli *cl
 		Type("type", tstmt).
 		Msg("processQueryInternal: parsed query with type")
 
-	return l.proxyProc(ctx, tstmt, cli)
-}
-
-// TODO : unit tests
-func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.Statement, cli *clientinteractor.PSQLInteractor) error {
-	var mgr = l.EntityMgr
-
 	if !config.RouterConfig().WithCoordinator {
-		return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
+		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, cli, l.writer)
 	}
 
+	var mgr meta.EntityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		switch tstmt.Cmd {
 		case spqrparser.RoutersStr:
-			coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
+			coordAddr, err := l.entityMgr.GetCoordinator(ctx)
 			if err != nil {
 				return err
 			}
@@ -103,7 +93,7 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		coordAddr, err := l.EntityMgr.GetCoordinator(ctx)
+		coordAddr, err := l.entityMgr.GetCoordinator(ctx)
 		if err != nil {
 			return err
 		}
@@ -116,20 +106,8 @@ func (l *LocalInstanceConsole) proxyProc(ctx context.Context, tstmt spqrparser.S
 	}
 
 	spqrlog.Zero.Debug().Type("mgr type", mgr).Msg("proxy proc")
-	return meta.Proc(ctx, tstmt, mgr, l.RRouter, cli, l.writer)
+	return meta.Proc(ctx, tstmt, mgr, l.rrouter, cli, l.writer)
 }
-
-func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, cl client.Client) error {
-	return l.processQueryInternal(ctx, clientinteractor.NewPSQLInteractor(cl), q)
-}
-
-const greeting = `
-		SPQR router admin console
-	Here you can configure your routing rules
-------------------------------------------------
-	You can find documentation here 
-https://github.com/pg-sharding/spqr/tree/master/docs
-`
 
 // TODO : unit tests
 func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) error {
@@ -175,7 +153,7 @@ func (l *LocalInstanceConsole) Serve(ctx context.Context, cl client.Client) erro
 
 		switch v := msg.(type) {
 		case *pgproto3.Query:
-			if err := l.ProcessQuery(ctx, v.String, cl); err != nil {
+			if err := l.ProcessQuery(ctx, v.String, clientinteractor.NewPSQLInteractor(cl)); err != nil {
 				_ = cl.ReplyErr(err)
 				// continue to consume input
 			}
