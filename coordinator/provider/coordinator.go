@@ -1797,18 +1797,29 @@ func (qc *qdbCoordinator) PrepareClient(nconn net.Conn, pt port.RouterPortType) 
 		Bool("ssl", tlsconfig != nil).
 		Msg("init client connection OK")
 
-	var authRule *config.AuthCfg
-	if config.CoordinatorConfig().Auth != nil {
-		authRule = config.CoordinatorConfig().Auth
-	} else {
+	var userConfig *config.User
+	for _, u := range config.CoordinatorConfig().Users {
+		if u.Username == cl.Usr() {
+			userConfig = &u
+			break
+		}
+	}
+	if userConfig == nil {
+		return nil, spqrerror.New(spqrerror.SPQR_AUTH_ERROR, "user not found")
+	}
+
+	if userConfig.Auth == nil {
 		spqrlog.Zero.Warn().Msg("ATTENTION! Skipping auth checking!")
-		authRule = &config.AuthCfg{
+		userConfig.Auth = &config.AuthCfg{
 			Method: config.AuthOK,
 		}
 	}
 
 	if err := cl.AssignRule(&config.FrontendRule{
-		AuthRule: authRule,
+		DB:       cl.DB(),
+		Usr:      cl.Usr(),
+		AuthRule: userConfig.Auth,
+		Grants:   userConfig.Grants,
 	}); err != nil {
 		return nil, err
 	}
