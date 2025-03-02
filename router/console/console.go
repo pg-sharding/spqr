@@ -75,7 +75,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 		return meta.Proc(ctx, tstmt, l.entityMgr, l.rrouter, rc, l.writer)
 	}
 
-	var mgr meta.EntityMgr
+	mgr := l.entityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
 		if err := config.CheckGrants(config.RoleReader, rc.Rule()); err != nil {
