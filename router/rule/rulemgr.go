@@ -47,6 +47,7 @@ func (F *RulesMgrImpl) Reload(frmp map[route.Key]*config.FrontendRule, bemp map[
 			return &config.FrontendRule{
 				DB:                    key.DB(),
 				Usr:                   key.Usr(),
+				Grants:                dfr.Grants,
 				SearchPath:            dfr.SearchPath,
 				AuthRule:              dfr.AuthRule,
 				PoolMode:              dfr.PoolMode,
@@ -127,9 +128,11 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 			if dfr == nil {
 				return nil
 			}
+			// TODO add missing fields
 			return &config.FrontendRule{
 				Usr:                   key.Usr(),
 				DB:                    key.DB(),
+				Grants:                dfr.Grants,
 				AuthRule:              dfr.AuthRule,
 				PoolMode:              dfr.PoolMode,
 				PoolPreparedStatement: dfr.PoolPreparedStatement,
@@ -143,6 +146,7 @@ func NewMgr(frmp map[route.Key]*config.FrontendRule,
 			if dbe == nil {
 				return nil
 			}
+			// TODO add missing fields
 			return &config.BackendRule{
 				Usr:               key.Usr(),
 				DB:                key.DB(),

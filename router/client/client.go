@@ -108,7 +108,7 @@ type PsqlClient struct {
 	serverP atomic.Pointer[server.Server]
 }
 
-var _ client.Client = &PsqlClient{}
+var _ RouterClient = &PsqlClient{}
 
 func (cl *PsqlClient) resolveVirtualBoolParam(name string) bool {
 	if val, ok := cl.localParamSet[name]; ok {
@@ -272,7 +272,7 @@ func (cl *PsqlClient) SetScatterQuery(val bool) {
 	}
 }
 
-func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) *PsqlClient {
+func NewPsqlClient(pgconn conn.RawConn, pt port.RouterPortType, defaultRouteBehaviour string, showNoticeMessages bool, instanceDefaultTsa string) RouterClient {
 	var target_session_attrs tsa.TSA
 	if instanceDefaultTsa != "" {
 		target_session_attrs = tsa.TSA(instanceDefaultTsa)
@@ -1133,6 +1133,16 @@ func (f FakeClient) Usr() string {
 
 func (f FakeClient) DB() string {
 	return DefaultDB
+}
+
+func (f FakeClient) Rule() *config.FrontendRule {
+	return &config.FrontendRule{
+		Usr: DefaultUsr,
+		DB:  DefaultDB,
+		Grants: []config.Role{
+			config.RoleAdmin,
+		},
+	}
 }
 
 func NewFakeClient() *FakeClient {
