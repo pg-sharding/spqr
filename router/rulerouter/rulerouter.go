@@ -150,7 +150,7 @@ func (r *RuleRouterImpl) Reload(configPath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLog)
+	spqrlog.ReloadLogger(rcfg.LogFileName, rcfg.LogLevel, rcfg.PrettyLogging)
 
 	frontendRules, backendRules, defaultFrontendRule, defaultBackendRule := ParseRules(rcfg)
 	r.rmgr.Reload(frontendRules, backendRules, defaultFrontendRule, defaultBackendRule)

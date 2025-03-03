@@ -42,8 +42,8 @@ const (
 var cfgRouter Router
 
 type Router struct {
-	LogLevel  string `json:"log_level" toml:"log_level" yaml:"log_level"`
-	PrettyLog bool   `json:"pretty_logs" toml:"pretty_logs" yaml:"pretty_logs"`
+	LogLevel      string `json:"log_level" toml:"log_level" yaml:"log_level"`
+	PrettyLogging bool   `json:"pretty_logging" toml:"pretty_logging" yaml:"pretty_logging"`
 
 	TimeQuantiles []float64 `json:"time_quantiles" toml:"time_quantiles" yaml:"time_quantiles"`
 
