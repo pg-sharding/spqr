@@ -283,6 +283,16 @@ func TestRedistribute(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			query: "REDISTRIBUTE KEY RANGE kr1 TO sh2 CHECK",
+			exp: &spqrparser.RedistributeKeyRange{
+				KeyRangeID:  "kr1",
+				DestShardID: "sh2",
+				BatchSize:   -1,
+				Check:       true,
+			},
+			err: nil,
+		},
 	} {
 
 		tmp, err := spqrparser.Parse(tt.query)
