@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/config"
 	"github.com/pg-sharding/spqr/pkg/coord"
 	"github.com/pg-sharding/spqr/pkg/meta"
@@ -78,7 +79,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 	mgr := l.entityMgr
 	switch tstmt := tstmt.(type) {
 	case *spqrparser.Show:
-		if err := config.CheckGrants(config.RoleReader, rc.Rule()); err != nil {
+		if err := catalog.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
 		switch tstmt.Cmd {
@@ -95,7 +96,7 @@ func (l *LocalInstanceConsole) ProcessQuery(ctx context.Context, q string, rc rc
 			mgr = coord.NewAdapter(conn)
 		}
 	default:
-		if err := config.CheckGrants(config.RoleAdmin, rc.Rule()); err != nil {
+		if err := catalog.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 			return err
 		}
 		coordAddr, err := l.entityMgr.GetCoordinator(ctx)

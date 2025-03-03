@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pg-sharding/spqr/pkg/catalog"
 	"github.com/pg-sharding/spqr/pkg/client"
 	"github.com/pg-sharding/spqr/pkg/clientinteractor"
 	"github.com/pg-sharding/spqr/pkg/config"
@@ -381,13 +382,13 @@ func Proc(ctx context.Context, tstmt spqrparser.Statement, mgr EntityMgr, ci con
 	spqrlog.Zero.Debug().Interface("tstmt", tstmt).Msg("proc query")
 
 	if _, ok := tstmt.(*spqrparser.Show); ok {
-		if err := config.CheckGrants(config.RoleReader, rc.Rule()); err != nil {
+		if err := catalog.CheckGrants(catalog.RoleReader, rc.Rule()); err != nil {
 			return err
 		}
 		return ProcessShow(ctx, tstmt.(*spqrparser.Show), mgr, ci, cli)
 	}
 
-	if err := config.CheckGrants(config.RoleAdmin, rc.Rule()); err != nil {
+	if err := catalog.CheckGrants(catalog.RoleAdmin, rc.Rule()); err != nil {
 		return err
 	}
 
